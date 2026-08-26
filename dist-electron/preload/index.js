@@ -1,0 +1,1 @@
+let e=require("electron");e.contextBridge.exposeInMainWorld(`wispAPI`,{ping:t=>e.ipcRenderer.invoke(`wisp:ping`,t),getSystemInfo:()=>e.ipcRenderer.invoke(`wisp:get-system-info`)});
