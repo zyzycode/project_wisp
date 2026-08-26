@@ -126,4 +126,4 @@ Out of scope:
 - 📜 [.agents/rules/](file:///home/zybz/code/project_wisp/.agents/rules/) — Специализированные правила (TypeScript, Electron, UI, State, Testing, Cross-Platform).
 - 🔄 [.agents/workflows/](file:///home/zybz/code/project_wisp/.agents/workflows/) — Рабочие регламенты (Feature, Bugfix, Refactor, Review).
 - 🧠 [.agents/skills/](file:///home/zybz/code/project_wisp/.agents/skills/) — Предметные знания (Desktop Pet, Animation, Behavior, Security).
-- 🤖 [.agents/agents/](file:///home/zybz/code/project_wisp/.agents/agents/) — Роли специализированных субагентов (Architect, Code Reviewer, UI Specialist).
+- 🤖 [.agents/agents/](file:///home/zybz/code/project_wisp/.agents/agents/) — Роли специализированных субагентов (Architect, Code Reviewer, UI Specialist, Fixer).
