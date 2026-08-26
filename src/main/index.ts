@@ -5,8 +5,11 @@ import type {
   PingResponseDTO,
   SystemInfoDTO,
   IgnoreMouseEventsDTO,
+  PetPositionDTO,
+  ScreenBoundsDTO,
 } from '../shared/ipc-contracts';
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
+import { PetPositionService } from '../application/services/pet-position.service';
 
 process.env.APP_ROOT = path.join(__dirname, '../..');
 
@@ -19,6 +22,13 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
 
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
+
+// Initialize initial position in bottom right area
+const initialWorkArea = platformAdapter.getDisplayWorkArea();
+const initialX = Math.max(0, initialWorkArea.x + initialWorkArea.width - 200);
+const initialY = Math.max(0, initialWorkArea.y + initialWorkArea.height - 200);
+
+const positionService = new PetPositionService({ x: initialX, y: initialY });
 
 function resolvePreloadPath(): string {
   const jsPath = path.join(__dirname, '../preload/index.js');
@@ -63,6 +73,22 @@ function registerIpcHandlers(): void {
     }
   );
 
+  ipcMain.handle('wisp:get-position', async (): Promise<PetPositionDTO> => {
+    return positionService.getPosition();
+  });
+
+  ipcMain.handle(
+    'wisp:update-position',
+    async (_event, targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
+      const bounds = platformAdapter.getDisplayWorkArea(targetPos);
+      return positionService.updatePosition(targetPos, bounds);
+    }
+  );
+
+  ipcMain.handle('wisp:get-screen-bounds', async (): Promise<ScreenBoundsDTO> => {
+    return platformAdapter.getDisplayWorkArea();
+  });
+
   ipcMain.handle('wisp:close-app', async (): Promise<void> => {
     app.quit();
   });
@@ -94,13 +120,12 @@ function createWindow(): void {
     },
   });
 
-  // Apply platform-specific overlay configuration (X11/Wayland/Win/Mac)
+  // Apply platform-specific overlay configuration
   platformAdapter.configureOverlayWindow(mainWindow);
 
-  // Set initial mouse event passthrough for transparent background
+  // Passthrough clicks on transparent background
   platformAdapter.setIgnoreMouseEvents(mainWindow, true, true);
 
-  // Open external links securely
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://') || url.startsWith('http://')) {
       void shell.openExternal(url);
@@ -108,7 +133,6 @@ function createWindow(): void {
     return { action: 'deny' };
   });
 
-  // Prevent unwanted internal navigation
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     if (
       !process.env.VITE_DEV_SERVER_URL &&

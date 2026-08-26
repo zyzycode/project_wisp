@@ -11,8 +11,8 @@
 | **Phase 0** | Repository / Architecture Setup | 🟢 Завершена | Документация, правила агента, кроссплатформенная спецификация |
 | **Phase 1** | Electron Shell | 🟢 Завершена | Каркас Electron + Vite + React + TS, строгая изоляция, Typed IPC |
 | **Phase 2** | Transparent Desktop Pet | 🟢 Завершена | Прозрачное frameless-окно, оверлей, always-on-top, click-through, IPlatformAdapter |
-| **Phase 3** | Dragging and Positioning | 🟡 Следующая | Физика перетаскивания, учёт рабочих областей мониторов разных ОС |
-| **Phase 4** | Character Rendering | ⚪ Запланирована | Отрисовка спрайтов, масштабирование, pixel-perfect рендер |
+| **Phase 3** | Dragging and Positioning | 🟢 Завершена | Физика перетаскивания, учёт рабочих областей мониторов разных ОС |
+| **Phase 4** | Character Rendering | 🟡 Следующая | Отрисовка спрайтов, масштабирование, pixel-perfect рендер |
 | **Phase 5** | Animation State Machine | ⚪ Запланирована | Стейт-машина анимаций, переходы, кадровая частота |
 | **Phase 6** | Basic Character Behavior | ⚪ Запланирована | Автономные действия, блуждание, idle-циклы, сон |
 | **Phase 7** | Interaction | ⚪ Запланирована | Реакция на клики, наведение курсора, контекстное меню |
@@ -54,12 +54,6 @@
 ### Phase 2 — Transparent Desktop Pet
 - **Цель:** Превратить окно Electron в прозрачный поверх-всех-окон (always-on-top, frameless) оверлей рабочего стола с использованием кроссплатформенного адаптера окон.
 - **Ожидаемый результат:** Окно не имеет системной рамки, прозрачный фон, остаётся поверх остальных окон, корректно обрабатывает прокликивание (click-through) пустых областей в среде Ubuntu Linux (с поддержкой X11 и Wayland).
-- **Что входит:**
-  - Выделение интерфейса `IPlatformAdapter` в `src/application/ports/platform-adapter.interface.ts`.
-  - Реализация `LinuxPlatformAdapter`, `WindowsPlatformAdapter`, `MacOSPlatformAdapter` и фабрики `createPlatformAdapter()`.
-  - Настройка флагов окна: `transparent: true`, `frame: false`, `alwaysOnTop: true`, `hasShadow: false`, `skipTaskbar: true`.
-  - Управление `setIgnoreMouseEvents` при наведении курсора на интерактивного питомца и уходе с него.
-  - Покрытие платформенных адаптеров unit-тестами (`tests/infrastructure/platform-adapter.test.ts`).
 - **Критерии готовности:**
   - [x] Персонаж виден на рабочем столе на прозрачном фоне в Ubuntu.
   - [x] Клики сквозь прозрачные зоны попадают в приложения под оверлеем (`setIgnoreMouseEvents`).
@@ -72,14 +66,16 @@
 - **Цель:** Реализовать возможность захвата и перемещения персонажа мышью с контролем границ экрана для любой ОС.
 - **Ожидаемый результат:** Пользователь может перетаскивать персонажа; персонаж сохраняет координаты и не улетает за пределы видимой рабочей области монитора (с учётом GNOME Dock/TopBar, панели задач Windows или macOS Dock).
 - **Что входит:**
-  - Обработка `mousedown`/`mousemove`/`mouseup` или нативный drag IPC.
-  - Определение границ текущего дисплея через платформонезависимый адаптер (`screen.getDisplayNearestPoint`).
-  - Сохранение последней позиции в памяти процесса.
-- **Что НЕ входит:**
-  - Сохранение в базу данных (пока только in-memory).
+  - Доменная логика `clampPositionToBounds` и `calculateDragInertia` в `src/domain/models/position.ts`.
+  - Прикладной сервис `PetPositionService` в `src/application/services/pet-position.service.ts`.
+  - Типизированные IPC контракты позиционирования (`getPosition`, `updatePosition`, `getScreenBounds`).
+  - Плавное React-перетаскивание на GPU-ускоренных стилях (`translate3d`), динамический наклон (tilt) при ускорении, сохранение позиции.
+  - Unit-тесты расчёта позиционирования, мультимониторных сдвигов и инерции (`tests/domain/position.test.ts`).
 - **Критерии готовности:**
-  - Плавный drag-and-drop без подёргиваний и отставаний.
-  - Персонаж упирается в границы экрана с учётом системных панелей.
+  - [x] Плавный drag-and-drop без подёргиваний и отставаний.
+  - [x] Персонаж упирается в границы экрана с учётом системных панелей.
+  - [x] Позиционирование синхронизировано через чистые сервисы приложения.
+  - [x] Unit-тесты успешно пройдены.
 
 ---
 

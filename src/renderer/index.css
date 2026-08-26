@@ -34,13 +34,19 @@ html, body {
 /* Pet Floating Widget */
 .pet-container {
   position: absolute;
-  bottom: 40px;
-  right: 60px;
+  top: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: pointer;
   z-index: 9999;
+  touch-action: none;
+  cursor: grab;
+}
+
+.pet-container.is-dragging {
+  cursor: grabbing;
+  transition: none !important;
 }
 
 .pet-avatar {
@@ -53,17 +59,17 @@ html, body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.15s ease-out;
   animation: float 3s ease-in-out infinite;
 }
 
-.pet-avatar:hover {
-  transform: scale(1.08);
-  box-shadow: 0 0 35px rgba(168, 85, 247, 0.9), 0 0 70px rgba(99, 102, 241, 0.6);
+.pet-container.is-dragging .pet-avatar {
+  animation: none;
+  box-shadow: 0 0 45px rgba(168, 85, 247, 0.9), 0 0 80px rgba(99, 102, 241, 0.7);
 }
 
-.pet-avatar:active {
-  transform: scale(0.95);
+.pet-avatar:hover {
+  box-shadow: 0 0 35px rgba(168, 85, 247, 0.9), 0 0 70px rgba(99, 102, 241, 0.6);
 }
 
 .pet-face {
@@ -91,7 +97,7 @@ html, body {
 .pet-label {
   margin-top: 8px;
   padding: 4px 10px;
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(15, 23, 42, 0.8);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
@@ -100,21 +106,24 @@ html, body {
   color: #f1f5f9;
   letter-spacing: 0.5px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
 }
 
 /* Control Bubble Menu */
 .pet-menu {
-  margin-bottom: 10px;
+  position: absolute;
+  bottom: 125px;
   padding: 10px 14px;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.92);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   color: #ffffff;
   font-size: 12px;
-  max-width: 260px;
+  width: 250px;
   animation: popIn 0.2s ease-out;
+  cursor: default;
 }
 
 .pet-menu h4 {
