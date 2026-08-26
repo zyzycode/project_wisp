@@ -16,6 +16,15 @@ export interface Size2D {
 export interface RectBounds extends Point2D, Size2D {}
 
 /**
+ * Default compact window dimensions for desktop pet.
+ * Single source of truth for window sizing across domain and application layers.
+ */
+export const DEFAULT_WINDOW_SIZE: Size2D = {
+  width: 280,
+  height: 320,
+};
+
+/**
  * Clamps a 2D position so that the pet bounding box stays strictly inside the screen work area.
  */
 export function clampPositionToBounds(

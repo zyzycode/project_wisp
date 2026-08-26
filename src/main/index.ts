@@ -21,6 +21,9 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
+export const WINDOW_WIDTH = 280;
+export const WINDOW_HEIGHT = 320;
+
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
 let positionService: PetPositionService | null = null;
@@ -37,15 +40,21 @@ function resolvePreloadPath(): string {
   return jsPath;
 }
 
-function initializeServices(): void {
-  const initialWorkArea = platformAdapter.getDisplayWorkArea();
+function calculateInitialPosition(): { x: number; y: number } {
+  const workArea = platformAdapter.getDisplayWorkArea();
   const initialX = Math.round(
-    Math.max(50, initialWorkArea.width - 250)
+    workArea.x + Math.max(20, workArea.width - WINDOW_WIDTH - 60)
   );
   const initialY = Math.round(
-    Math.max(50, initialWorkArea.height - 250)
+    workArea.y + Math.max(20, workArea.height - WINDOW_HEIGHT - 60)
   );
-  positionService = new PetPositionService({ x: initialX, y: initialY });
+  return { x: initialX, y: initialY };
+}
+
+function initializeServices(): void {
+  const initial = calculateInitialPosition();
+  positionService = new PetPositionService(initial);
+  positionService.setPetSize({ width: WINDOW_WIDTH, height: WINDOW_HEIGHT });
 }
 
 function registerIpcHandlers(): void {
@@ -82,23 +91,19 @@ function registerIpcHandlers(): void {
   ipcMain.handle(
     'wisp:set-interactive-bounds',
     async (_event, _bounds: InteractiveBoundsDTO): Promise<void> => {
-      // Handled reactively via pointer events
+      // No longer required with Compact Window Pattern
     }
   );
 
   ipcMain.handle(
     'wisp:set-drag-state',
-    async (_event, isDragging: boolean): Promise<void> => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        if (isDragging) {
-          platformAdapter.setIgnoreMouseEvents(mainWindow, false);
-        }
-      }
+    async (_event, _isDragging: boolean): Promise<void> => {
+      // Managed directly by native window positioning
     }
   );
 
   ipcMain.handle('wisp:get-position', async (): Promise<PetPositionDTO> => {
-    return positionService ? positionService.getPosition() : { x: 300, y: 300 };
+    return positionService ? positionService.getPosition() : calculateInitialPosition();
   });
 
   ipcMain.handle(
@@ -106,7 +111,8 @@ function registerIpcHandlers(): void {
     async (_event, targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
       const currentPos = positionService
         ? positionService.getPosition()
-        : { x: 300, y: 300 };
+        : calculateInitialPosition();
+
       const validX =
         typeof targetPos?.x === 'number' && Number.isFinite(targetPos.x)
           ? targetPos.x
@@ -121,6 +127,10 @@ function registerIpcHandlers(): void {
       const updated = positionService
         ? positionService.updatePosition(safePos, bounds)
         : safePos;
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setPosition(Math.round(updated.x), Math.round(updated.y));
+      }
 
       return updated;
     }
@@ -137,13 +147,13 @@ function registerIpcHandlers(): void {
 
 function createWindow(): void {
   const preloadPath = resolvePreloadPath();
-  const workArea = platformAdapter.getDisplayWorkArea();
+  const initialPos = calculateInitialPosition();
 
   mainWindow = new BrowserWindow({
-    x: workArea.x,
-    y: workArea.y,
-    width: workArea.width,
-    height: workArea.height,
+    x: initialPos.x,
+    y: initialPos.y,
+    width: WINDOW_WIDTH,
+    height: WINDOW_HEIGHT,
     show: true,
     transparent: true,
     frame: false,
@@ -172,11 +182,7 @@ function createWindow(): void {
     mainWindow?.restore();
   });
 
-  // Initial mouse passthrough state
-  platformAdapter.setIgnoreMouseEvents(mainWindow, true, true);
-
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Only open secure external links
     if (url.startsWith('https://')) {
       void shell.openExternal(url);
     }

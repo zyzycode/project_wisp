@@ -8,6 +8,8 @@ import { PetMenu } from './PetMenu';
 import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
 import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
 
+const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
+
 export const DesktopPet: React.FC = () => {
   const [systemInfo, setSystemInfo] = useState<SystemInfoDTO | null>(null);
   const [screenBounds, setScreenBounds] = useState<ScreenBoundsDTO | null>(null);
@@ -35,7 +37,7 @@ export const DesktopPet: React.FC = () => {
     screenBounds,
     animState,
     isDragging,
-    petSize: { width: Math.round(100 * scale), height: Math.round(100 * scale) },
+    petSize: COMPACT_WINDOW_SIZE,
     enabled: autoWanderEnabled,
     onPositionChange: handlePositionChange,
     dispatchAnim,
@@ -69,33 +71,15 @@ export const DesktopPet: React.FC = () => {
     }
   }, []);
 
-  const handleMouseEnter = useCallback(() => {
-    if (window.wispAPI?.setIgnoreMouseEvents) {
-      void window.wispAPI.setIgnoreMouseEvents({ ignore: false });
-    }
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    if (!isDragging && !menuOpen && window.wispAPI?.setIgnoreMouseEvents) {
-      void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
-    }
-  }, [isDragging, menuOpen]);
-
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
     setIsDragging(true);
     dispatchAnim('START_DRAG');
-    if (window.wispAPI?.setDragState) {
-      void window.wispAPI.setDragState(true);
-    }
-    if (window.wispAPI?.setIgnoreMouseEvents) {
-      void window.wispAPI.setIgnoreMouseEvents({ ignore: false });
-    }
 
     dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
+      mouseX: e.screenX,
+      mouseY: e.screenY,
       petX: position.x,
       petY: position.y,
     };
@@ -111,8 +95,8 @@ export const DesktopPet: React.FC = () => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - dragStartRef.current.mouseX;
-      const deltaY = e.clientY - dragStartRef.current.mouseY;
+      const deltaX = e.screenX - dragStartRef.current.mouseX;
+      const deltaY = e.screenY - dragStartRef.current.mouseY;
       const rawTargetX = dragStartRef.current.petX + deltaX;
       const rawTargetY = dragStartRef.current.petY + deltaY;
 
@@ -129,8 +113,6 @@ export const DesktopPet: React.FC = () => {
         prevMoveRef.current = { x: rawTargetX, y: rawTargetY, time: now };
       }
 
-      setPosition({ x: rawTargetX, y: rawTargetY });
-
       if (window.wispAPI?.updatePosition) {
         window.wispAPI.updatePosition({ x: rawTargetX, y: rawTargetY })
           .then(setPosition)
@@ -142,9 +124,6 @@ export const DesktopPet: React.FC = () => {
       setIsDragging(false);
       setTiltDeg(0);
       dispatchAnim('RELEASE_DRAG');
-      if (window.wispAPI?.setDragState) {
-        void window.wispAPI.setDragState(false);
-      }
       setTimeout(() => dispatchAnim('LAND'), 180);
     };
 
@@ -160,11 +139,6 @@ export const DesktopPet: React.FC = () => {
   return (
     <div
       className={`pet-container ${isDragging ? 'is-dragging' : ''} ${isWandering ? 'is-wandering' : ''}`}
-      style={{
-        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       {menuOpen && (
         <PetMenu
