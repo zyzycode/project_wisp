@@ -1,36 +1,50 @@
-import React, { useState, useEffect, useRef } from 'react';
-import type { SystemInfoDTO, PetPositionDTO } from '../../shared/ipc-contracts';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { SystemInfoDTO, PetPositionDTO, ScreenBoundsDTO } from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
 import type { CharacterTheme } from '../../domain/models/character-visuals';
-import { DEFAULT_THEMES, DEFAULT_THEME } from '../../domain/models/character-visuals';
+import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
+import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
 
 export const DesktopPet: React.FC = () => {
   const [systemInfo, setSystemInfo] = useState<SystemInfoDTO | null>(null);
+  const [screenBounds, setScreenBounds] = useState<ScreenBoundsDTO | null>(null);
   const [position, setPosition] = useState<PetPositionDTO>({ x: 300, y: 300 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [tiltDeg, setTiltDeg] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
-  const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(DEFAULT_THEME);
+  const [autoWanderEnabled, setAutoWanderEnabled] = useState<boolean>(true);
+  const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
+    DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
+  );
   const [scale, setScale] = useState<number>(1.0);
 
   // Animation State Machine Hook (FSM)
-  const { state: animState, expression, dispatch } = useAnimationStateMachine('idle');
+  const { state: animState, expression, dispatch: dispatchAnim } = useAnimationStateMachine('idle');
 
-  // Drag references using screen-space coordinates
-  const isDraggingRef = useRef<boolean>(false);
-  const landingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dragStartRef = useRef<{
-    mouseScreenX: number;
-    mouseScreenY: number;
-    windowX: number;
-    windowY: number;
-  }>({
-    mouseScreenX: 0,
-    mouseScreenY: 0,
-    windowX: 300,
-    windowY: 300,
+  // Autonomous Behavior Hook
+  const { isWandering, triggerNap, wakeUp } = useAutonomousBehavior({
+    currentPosition: position,
+    screenBounds,
+    animState,
+    isDragging,
+    enabled: autoWanderEnabled,
+    onPositionChange: (newPos) => {
+      setPosition(newPos);
+      if (window.wispAPI?.updatePosition) {
+        void window.wispAPI.updatePosition(newPos);
+      }
+    },
+    dispatchAnim,
+  });
+
+  // Drag calculation references
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number; petX: number; petY: number }>({
+    mouseX: 0,
+    mouseY: 0,
+    petX: 300,
+    petY: 300,
   });
   const prevMoveRef = useRef<{ x: number; y: number; time: number }>({
     x: 300,
@@ -38,57 +52,57 @@ export const DesktopPet: React.FC = () => {
     time: Date.now(),
   });
 
-  // Fetch initial position & system info
+  // Fetch initial position, screen bounds & system info
   useEffect(() => {
-    let isMounted = true;
+    if (window.wispAPI?.getSystemInfo) {
+      window.wispAPI
+        .getSystemInfo()
+        .then((info) => setSystemInfo(info))
+        .catch((err) => console.error('Failed to get system info:', err));
+    }
 
-    const fetchInfo = async () => {
-      try {
-        if (window.wispAPI?.getSystemInfo) {
-          const info = await window.wispAPI.getSystemInfo();
-          if (isMounted) setSystemInfo(info);
-        }
-        if (window.wispAPI?.getPosition) {
-          const pos = await window.wispAPI.getPosition();
-          if (isMounted) {
-            setPosition(pos);
-            dragStartRef.current.windowX = pos.x;
-            dragStartRef.current.windowY = pos.y;
-          }
-        }
-      } catch (err) {
-        console.error('Failed to initialize desktop pet:', err);
-      }
-    };
+    if (window.wispAPI?.getScreenBounds) {
+      window.wispAPI
+        .getScreenBounds()
+        .then((bounds) => setScreenBounds(bounds))
+        .catch((err) => console.error('Failed to get screen bounds:', err));
+    }
 
-    void fetchInfo();
-
-    return () => {
-      isMounted = false;
-      if (landingTimerRef.current) {
-        clearTimeout(landingTimerRef.current);
-        landingTimerRef.current = null;
-      }
-    };
+    if (window.wispAPI?.getPosition) {
+      window.wispAPI
+        .getPosition()
+        .then((pos) => {
+          setPosition(pos);
+          dragStartRef.current.petX = pos.x;
+          dragStartRef.current.petY = pos.y;
+        })
+        .catch((err) => console.error('Failed to get position:', err));
+    }
   }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    if (window.wispAPI?.setIgnoreMouseEvents) {
+      void window.wispAPI.setIgnoreMouseEvents({ ignore: false });
+    }
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (!isDragging && window.wispAPI?.setIgnoreMouseEvents) {
+      void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
+    }
+  }, [isDragging]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Left click only for dragging
 
-    if (landingTimerRef.current) {
-      clearTimeout(landingTimerRef.current);
-      landingTimerRef.current = null;
-    }
-
-    isDraggingRef.current = true;
     setIsDragging(true);
-    dispatch('START_DRAG');
+    dispatchAnim('START_DRAG');
 
     dragStartRef.current = {
-      mouseScreenX: e.screenX,
-      mouseScreenY: e.screenY,
-      windowX: position.x,
-      windowY: position.y,
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      petX: position.x,
+      petY: position.y,
     };
 
     prevMoveRef.current = {
@@ -102,11 +116,11 @@ export const DesktopPet: React.FC = () => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.screenX - dragStartRef.current.mouseScreenX;
-      const deltaY = e.screenY - dragStartRef.current.mouseScreenY;
+      const deltaX = e.clientX - dragStartRef.current.mouseX;
+      const deltaY = e.clientY - dragStartRef.current.mouseY;
 
-      const rawTargetX = dragStartRef.current.windowX + deltaX;
-      const rawTargetY = dragStartRef.current.windowY + deltaY;
+      const rawTargetX = dragStartRef.current.petX + deltaX;
+      const rawTargetY = dragStartRef.current.petY + deltaY;
 
       const now = Date.now();
       const dt = now - prevMoveRef.current.time;
@@ -139,19 +153,20 @@ export const DesktopPet: React.FC = () => {
     };
 
     const handleMouseUp = () => {
-      isDraggingRef.current = false;
       setIsDragging(false);
       setTiltDeg(0);
-      dispatch('RELEASE_DRAG');
+      dispatchAnim('RELEASE_DRAG');
 
-      // Trigger landing animation after brief drop with tracked timer cleanup
-      if (landingTimerRef.current) {
-        clearTimeout(landingTimerRef.current);
-      }
-      landingTimerRef.current = setTimeout(() => {
-        dispatch('LAND');
-        landingTimerRef.current = null;
+      // Trigger landing animation after brief drop
+      setTimeout(() => {
+        dispatchAnim('LAND');
       }, 180);
+
+      if (window.wispAPI?.setIgnoreMouseEvents) {
+        setTimeout(() => {
+          void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
+        }, 100);
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -161,14 +176,14 @@ export const DesktopPet: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dispatch]);
+  }, [isDragging, dispatchAnim]);
 
   const handlePetClick = () => {
-    if (isDraggingRef.current) return;
+    if (isDragging) return;
     if (animState === 'sleep') {
-      dispatch('WAKE_UP');
+      wakeUp();
     } else {
-      dispatch('PET');
+      dispatchAnim('PET');
     }
   };
 
@@ -179,37 +194,38 @@ export const DesktopPet: React.FC = () => {
   };
 
   return (
-    <div className={`pet-container ${isDragging ? 'is-dragging' : ''}`}>
+    <div
+      className={`pet-container ${isDragging ? 'is-dragging' : ''} ${isWandering ? 'is-wandering' : ''}`}
+      style={{
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {menuOpen && (
         <div className="pet-menu" onClick={(e) => e.stopPropagation()}>
-          <h4>✨ Wisp Companion (Phase 5)</h4>
+          <h4>✨ Wisp Companion (Phase 6)</h4>
           <div className="pet-menu-info">
             <span>ОС: <strong>{systemInfo?.platform || 'linux'}</strong> ({systemInfo?.sessionType || 'x11'})</span>
-            <span>Состояние FSM: <strong>{animState}</strong></span>
+            <span>Поведение: <strong>{isWandering ? 'Гуляет 🐾' : animState}</strong></span>
             <span>Эмоция: <strong>{expression}</strong></span>
             <span>Тема: <strong>{currentTheme.name}</strong></span>
             <span>Масштаб: <strong>{Math.round(scale * 100)}%</strong></span>
           </div>
 
-          <div className="pet-menu-section">Анимации / Поведение:</div>
+          <div className="pet-menu-section">Автономность:</div>
           <div className="pet-theme-picker">
             <button
-              className="pet-btn"
-              onClick={() => dispatch('PET')}
+              className={`pet-btn ${autoWanderEnabled ? 'pet-btn-active' : ''}`}
+              onClick={() => setAutoWanderEnabled(!autoWanderEnabled)}
             >
-              Радость
+              {autoWanderEnabled ? '🐾 Авто-прогулки: ВКЛ' : '🛑 Авто-прогулки: ВЫКЛ'}
             </button>
             <button
               className="pet-btn"
-              onClick={() => dispatch('SPOOK')}
+              onClick={() => (animState === 'sleep' ? wakeUp() : triggerNap())}
             >
-              Испуг
-            </button>
-            <button
-              className="pet-btn"
-              onClick={() => (animState === 'sleep' ? dispatch('WAKE_UP') : dispatch('START_SLEEP'))}
-            >
-              {animState === 'sleep' ? 'Разбудить' : 'Усыпить'}
+              {animState === 'sleep' ? '☀️ Разбудить' : '🌙 Усыпить'}
             </button>
           </div>
 
@@ -266,7 +282,7 @@ export const DesktopPet: React.FC = () => {
         className="pet-label"
         onClick={() => setMenuOpen(!menuOpen)}
       >
-        Wisp • {animState}
+        Wisp • {isWandering ? 'wandering' : animState}
       </div>
     </div>
   );
