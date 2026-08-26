@@ -4,7 +4,7 @@ import type {
   CharacterTheme,
 } from '../../../domain/models/character-visuals';
 import {
-  DEFAULT_THEME,
+  DEFAULT_THEMES,
   calculateRenderedDimensions,
 } from '../../../domain/models/character-visuals';
 import { WispAura } from './WispAura';
@@ -17,17 +17,19 @@ export interface CharacterRendererProps {
   isDragging?: boolean;
   tiltDeg?: number;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   onMouseDown?: (e: React.MouseEvent) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   expression = 'idle',
-  theme = DEFAULT_THEME,
+  theme = DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!,
   scale = 1.0,
   isDragging = false,
   tiltDeg = 0,
   onClick,
+  onDoubleClick,
   onMouseDown,
   onContextMenu,
 }) => {
@@ -43,6 +45,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
         transform: `rotate(${tiltDeg}deg)`,
       }}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
     >
