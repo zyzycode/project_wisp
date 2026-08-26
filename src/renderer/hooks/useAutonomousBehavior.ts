@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Point2D, RectBounds } from '../../domain/models/position';
+import type { Point2D, RectBounds, Size2D } from '../../domain/models/position';
 import type { AnimationState, AnimationEvent } from '../../domain/animation/animation-state-machine';
 import {
   calculateNextWanderTarget,
@@ -14,6 +14,7 @@ interface UseAutonomousBehaviorProps {
   screenBounds: RectBounds | null;
   animState: AnimationState;
   isDragging: boolean;
+  petSize?: Size2D;
   onPositionChange: (pos: Point2D) => void;
   dispatchAnim: (event: AnimationEvent) => boolean;
   config?: BehaviorConfig;
@@ -25,14 +26,22 @@ export function useAutonomousBehavior({
   screenBounds,
   animState,
   isDragging,
+  petSize = { width: 100, height: 100 },
   onPositionChange,
   dispatchAnim,
   config = DEFAULT_BEHAVIOR_CONFIG,
   enabled = true,
 }: UseAutonomousBehaviorProps) {
   const [isWandering, setIsWandering] = useState<boolean>(false);
+
   const positionRef = useRef<Point2D>(currentPosition);
   positionRef.current = currentPosition;
+
+  const onPositionChangeRef = useRef<(pos: Point2D) => void>(onPositionChange);
+  onPositionChangeRef.current = onPositionChange;
+
+  const dispatchAnimRef = useRef<(event: AnimationEvent) => boolean>(dispatchAnim);
+  dispatchAnimRef.current = dispatchAnim;
 
   const wanderStateRef = useRef<{
     startPos: Point2D;
@@ -65,7 +74,7 @@ export function useAutonomousBehavior({
           const wanderTarget = calculateNextWanderTarget(
             positionRef.current,
             screenBounds,
-            { width: 100, height: 100 },
+            petSize,
             config
           );
 
@@ -77,11 +86,11 @@ export function useAutonomousBehavior({
           };
 
           setIsWandering(true);
-          dispatchAnim('START_FLOAT');
+          dispatchAnimRef.current('START_FLOAT');
         } else if (action === 'take_nap') {
-          dispatchAnim('START_SLEEP');
+          dispatchAnimRef.current('START_SLEEP');
         } else if (action === 'stretch' || action === 'idle_look_around') {
-          dispatchAnim('PET'); // Trigger happy/stretch expression
+          dispatchAnimRef.current('PET'); // Trigger happy/stretch expression
         }
 
         scheduleNextAction();
@@ -93,9 +102,9 @@ export function useAutonomousBehavior({
     return () => {
       clearTimeout(timerId);
     };
-  }, [enabled, isDragging, animState, screenBounds, config, dispatchAnim]);
+  }, [enabled, isDragging, animState, screenBounds, config, petSize]);
 
-  // Wander movement frame loop
+  // Wander movement frame loop (isolated from state-induced rerenders)
   useEffect(() => {
     if (!isWandering || !wanderStateRef.current) return;
 
@@ -113,14 +122,14 @@ export function useAutonomousBehavior({
         progress
       );
 
-      onPositionChange(nextPos);
+      onPositionChangeRef.current(nextPos);
 
       if (progress < 1) {
         frameId = requestAnimationFrame(stepWander);
       } else {
         setIsWandering(false);
         wanderStateRef.current = null;
-        dispatchAnim('STOP_FLOAT');
+        dispatchAnimRef.current('STOP_FLOAT');
       }
     };
 
@@ -129,7 +138,7 @@ export function useAutonomousBehavior({
     return () => {
       cancelAnimationFrame(frameId);
     };
-  }, [isWandering, onPositionChange, dispatchAnim]);
+  }, [isWandering]);
 
   const triggerNap = useCallback(() => {
     setIsWandering(false);

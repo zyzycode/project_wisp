@@ -63,7 +63,7 @@ export function calculateNextWanderTarget(
   const actualDeltaY = clampedTarget.y - currentPos.y;
   const actualDistance = Math.hypot(actualDeltaX, actualDeltaY);
 
-  const calculatedDuration = (actualDistance / config.wanderSpeedPxPerSec) * 1000;
+  const calculatedDuration = (actualDistance / Math.max(1, config.wanderSpeedPxPerSec)) * 1000;
   const durationMs = Math.max(
     config.minWanderDurationMs,
     Math.min(config.maxWanderDurationMs, calculatedDuration)
@@ -94,19 +94,24 @@ export function interpolatePosition(
 }
 
 /**
- * Decides the next autonomous action based on current state and probabilities.
+ * Decides the next autonomous action based on configuration probabilities.
  */
 export function decideNextAutonomousAction(
   config: BehaviorConfig = DEFAULT_BEHAVIOR_CONFIG,
   randomVal: number = Math.random()
 ): AutonomousActionType {
-  if (randomVal < config.napProbability) {
+  const napProb = Math.max(0, Math.min(1, config.napProbability));
+  const remaining = 1 - napProb;
+  const wanderThreshold = napProb + remaining * 0.7;
+  const stretchThreshold = napProb + remaining * 0.9;
+
+  if (randomVal < napProb) {
     return 'take_nap';
   }
-  if (randomVal < 0.75) {
+  if (randomVal < wanderThreshold) {
     return 'wander';
   }
-  if (randomVal < 0.9) {
+  if (randomVal < stretchThreshold) {
     return 'stretch';
   }
   return 'idle_look_around';

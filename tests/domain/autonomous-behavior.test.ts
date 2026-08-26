@@ -23,6 +23,20 @@ describe('Domain: Autonomous Behavior', () => {
     expect(target.durationMs).toBeLessThanOrEqual(DEFAULT_BEHAVIOR_CONFIG.maxWanderDurationMs);
   });
 
+  it('handles wander calculations at screen corners and edges without exceeding bounds', () => {
+    // Top-left corner
+    const topLeft: Point2D = { x: 0, y: 0 };
+    const targetTL = calculateNextWanderTarget(topLeft, bounds, petSize, DEFAULT_BEHAVIOR_CONFIG, Math.PI, 1);
+    expect(targetTL.target.x).toBeGreaterThanOrEqual(0);
+    expect(targetTL.target.y).toBeGreaterThanOrEqual(0);
+
+    // Bottom-right corner
+    const bottomRight: Point2D = { x: 1820, y: 980 };
+    const targetBR = calculateNextWanderTarget(bottomRight, bounds, petSize, DEFAULT_BEHAVIOR_CONFIG, 0, 1);
+    expect(targetBR.target.x).toBeLessThanOrEqual(1820);
+    expect(targetBR.target.y).toBeLessThanOrEqual(980);
+  });
+
   it('smoothly interpolates position using easing', () => {
     const start: Point2D = { x: 100, y: 100 };
     const end: Point2D = { x: 200, y: 200 };

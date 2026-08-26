@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, screen } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import type {
@@ -21,12 +21,19 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
-const WINDOW_WIDTH = 300;
-const WINDOW_HEIGHT = 380;
-
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
 let positionService: PetPositionService | null = null;
+
+let cursorTrackerInterval: ReturnType<typeof setInterval> | null = null;
+let isCurrentlyIgnoring = false;
+let isDraggingState = false;
+let interactiveBounds: InteractiveBoundsDTO = {
+  x: 300,
+  y: 300,
+  width: 140,
+  height: 160,
+};
 
 function resolvePreloadPath(): string {
   const jsPath = path.join(__dirname, '../preload/index.js');
@@ -42,10 +49,58 @@ function resolvePreloadPath(): string {
 
 function initializeServices(): void {
   const initialWorkArea = platformAdapter.getDisplayWorkArea();
-  const initialX = Math.max(0, initialWorkArea.x + initialWorkArea.width - WINDOW_WIDTH - 20);
-  const initialY = Math.max(0, initialWorkArea.y + initialWorkArea.height - WINDOW_HEIGHT - 20);
+  const initialX = Math.round(
+    Math.max(50, initialWorkArea.width - 250)
+  );
+  const initialY = Math.round(
+    Math.max(50, initialWorkArea.height - 250)
+  );
   positionService = new PetPositionService({ x: initialX, y: initialY });
-  positionService.setPetSize({ width: WINDOW_WIDTH, height: WINDOW_HEIGHT });
+  interactiveBounds = {
+    x: initialX - 20,
+    y: initialY - 20,
+    width: 160,
+    height: 180,
+  };
+}
+
+function startCursorTracking(): void {
+  if (cursorTrackerInterval) {
+    clearInterval(cursorTrackerInterval);
+  }
+
+  cursorTrackerInterval = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+
+    if (isDraggingState) {
+      if (isCurrentlyIgnoring) {
+        isCurrentlyIgnoring = false;
+        platformAdapter.setIgnoreMouseEvents(mainWindow, false);
+      }
+      return;
+    }
+
+    const cursor = screen.getCursorScreenPoint();
+    const workArea = platformAdapter.getDisplayWorkArea();
+    
+    // Relative coordinates within the overlay window
+    const relX = cursor.x - workArea.x;
+    const relY = cursor.y - workArea.y;
+
+    const isInside =
+      relX >= interactiveBounds.x &&
+      relX <= interactiveBounds.x + interactiveBounds.width &&
+      relY >= interactiveBounds.y &&
+      relY <= interactiveBounds.y + interactiveBounds.height;
+
+    if (isInside && isCurrentlyIgnoring) {
+      isCurrentlyIgnoring = false;
+      platformAdapter.setIgnoreMouseEvents(mainWindow, false);
+    } else if (!isInside && !isCurrentlyIgnoring) {
+      isCurrentlyIgnoring = true;
+      platformAdapter.setIgnoreMouseEvents(mainWindow, true, true);
+    }
+  }, 25);
 }
 
 function registerIpcHandlers(): void {
@@ -74,6 +129,7 @@ function registerIpcHandlers(): void {
       if (mainWindow && !mainWindow.isDestroyed()) {
         const ignore = Boolean(payload?.ignore);
         const forward = payload?.forward ?? true;
+        isCurrentlyIgnoring = ignore;
         platformAdapter.setIgnoreMouseEvents(mainWindow, ignore, forward);
       }
     }
@@ -81,15 +137,21 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'wisp:set-interactive-bounds',
-    async (_event, _bounds: InteractiveBoundsDTO): Promise<void> => {
-      // In compact window architecture, the entire window is the interactive container
+    async (_event, bounds: InteractiveBoundsDTO): Promise<void> => {
+      if (bounds && typeof bounds.x === 'number' && typeof bounds.y === 'number') {
+        interactiveBounds = { ...bounds };
+      }
     }
   );
 
   ipcMain.handle(
     'wisp:set-drag-state',
-    async (_event, _isDragging: boolean): Promise<void> => {
-      // Managed directly by window drag coordinates
+    async (_event, isDragging: boolean): Promise<void> => {
+      isDraggingState = Boolean(isDragging);
+      if (isDraggingState && mainWindow && !mainWindow.isDestroyed()) {
+        isCurrentlyIgnoring = false;
+        platformAdapter.setIgnoreMouseEvents(mainWindow, false);
+      }
     }
   );
 
@@ -118,9 +180,8 @@ function registerIpcHandlers(): void {
         ? positionService.updatePosition(safePos, bounds)
         : safePos;
 
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.setPosition(Math.round(updated.x), Math.round(updated.y));
-      }
+      interactiveBounds.x = updated.x - 20;
+      interactiveBounds.y = updated.y - 20;
 
       return updated;
     }
@@ -131,19 +192,24 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('wisp:close-app', async (): Promise<void> => {
+    if (cursorTrackerInterval) {
+      clearInterval(cursorTrackerInterval);
+      cursorTrackerInterval = null;
+    }
     app.quit();
   });
 }
 
 function createWindow(): void {
   const preloadPath = resolvePreloadPath();
-  const initialPos = positionService ? positionService.getPosition() : { x: 300, y: 300 };
+  const workArea = platformAdapter.getDisplayWorkArea();
 
   mainWindow = new BrowserWindow({
-    x: Math.round(initialPos.x),
-    y: Math.round(initialPos.y),
-    width: WINDOW_WIDTH,
-    height: WINDOW_HEIGHT,
+    x: workArea.x,
+    y: workArea.y,
+    width: workArea.width,
+    height: workArea.height,
+    show: true,
     transparent: true,
     frame: false,
     hasShadow: false,
@@ -164,6 +230,10 @@ function createWindow(): void {
   // Apply platform-specific overlay configuration
   platformAdapter.configureOverlayWindow(mainWindow);
 
+  // Initial mouse passthrough state
+  platformAdapter.setIgnoreMouseEvents(mainWindow, true, true);
+  isCurrentlyIgnoring = true;
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://') || url.startsWith('http://')) {
       void shell.openExternal(url);
@@ -180,15 +250,13 @@ function createWindow(): void {
     }
   });
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
-  });
-
   if (process.env.VITE_DEV_SERVER_URL) {
     void mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
     void mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'));
   }
+
+  startCursorTracking();
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -215,6 +283,10 @@ if (!gotTheLock) {
   });
 
   app.on('window-all-closed', () => {
+    if (cursorTrackerInterval) {
+      clearInterval(cursorTrackerInterval);
+      cursorTrackerInterval = null;
+    }
     if (platformAdapter.getPlatformName() !== 'darwin') {
       app.quit();
     }

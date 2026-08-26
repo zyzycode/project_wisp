@@ -15,7 +15,7 @@ export class LinuxPlatformAdapter implements IPlatformAdapter {
   }
 
   configureOverlayWindow(window: BrowserWindow): void {
-    // On Linux X11/Wayland, setting alwaysOnTop with 'screen-saver' or 'floating' ensures pet stays above other windows
+    // On Linux X11/Wayland, setting alwaysOnTop with 'screen-saver' ensures overlay stays visible above all panels/windows
     window.setAlwaysOnTop(true, 'screen-saver');
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
