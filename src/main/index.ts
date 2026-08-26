@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import type {
@@ -25,16 +25,6 @@ let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
 let positionService: PetPositionService | null = null;
 
-let cursorTrackerInterval: ReturnType<typeof setInterval> | null = null;
-let isCurrentlyIgnoring = false;
-let isDraggingState = false;
-let interactiveBounds: InteractiveBoundsDTO = {
-  x: 300,
-  y: 300,
-  width: 140,
-  height: 160,
-};
-
 function resolvePreloadPath(): string {
   const jsPath = path.join(__dirname, '../preload/index.js');
   if (fs.existsSync(jsPath)) {
@@ -56,51 +46,6 @@ function initializeServices(): void {
     Math.max(50, initialWorkArea.height - 250)
   );
   positionService = new PetPositionService({ x: initialX, y: initialY });
-  interactiveBounds = {
-    x: initialX - 20,
-    y: initialY - 20,
-    width: 160,
-    height: 180,
-  };
-}
-
-function startCursorTracking(): void {
-  if (cursorTrackerInterval) {
-    clearInterval(cursorTrackerInterval);
-  }
-
-  cursorTrackerInterval = setInterval(() => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-
-    if (isDraggingState) {
-      if (isCurrentlyIgnoring) {
-        isCurrentlyIgnoring = false;
-        platformAdapter.setIgnoreMouseEvents(mainWindow, false);
-      }
-      return;
-    }
-
-    const cursor = screen.getCursorScreenPoint();
-    const workArea = platformAdapter.getDisplayWorkArea();
-    
-    // Relative coordinates within the overlay window
-    const relX = cursor.x - workArea.x;
-    const relY = cursor.y - workArea.y;
-
-    const isInside =
-      relX >= interactiveBounds.x &&
-      relX <= interactiveBounds.x + interactiveBounds.width &&
-      relY >= interactiveBounds.y &&
-      relY <= interactiveBounds.y + interactiveBounds.height;
-
-    if (isInside && isCurrentlyIgnoring) {
-      isCurrentlyIgnoring = false;
-      platformAdapter.setIgnoreMouseEvents(mainWindow, false);
-    } else if (!isInside && !isCurrentlyIgnoring) {
-      isCurrentlyIgnoring = true;
-      platformAdapter.setIgnoreMouseEvents(mainWindow, true, true);
-    }
-  }, 25);
 }
 
 function registerIpcHandlers(): void {
@@ -129,7 +74,6 @@ function registerIpcHandlers(): void {
       if (mainWindow && !mainWindow.isDestroyed()) {
         const ignore = Boolean(payload?.ignore);
         const forward = payload?.forward ?? true;
-        isCurrentlyIgnoring = ignore;
         platformAdapter.setIgnoreMouseEvents(mainWindow, ignore, forward);
       }
     }
@@ -137,20 +81,18 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'wisp:set-interactive-bounds',
-    async (_event, bounds: InteractiveBoundsDTO): Promise<void> => {
-      if (bounds && typeof bounds.x === 'number' && typeof bounds.y === 'number') {
-        interactiveBounds = { ...bounds };
-      }
+    async (_event, _bounds: InteractiveBoundsDTO): Promise<void> => {
+      // Handled reactively via pointer events
     }
   );
 
   ipcMain.handle(
     'wisp:set-drag-state',
     async (_event, isDragging: boolean): Promise<void> => {
-      isDraggingState = Boolean(isDragging);
-      if (isDraggingState && mainWindow && !mainWindow.isDestroyed()) {
-        isCurrentlyIgnoring = false;
-        platformAdapter.setIgnoreMouseEvents(mainWindow, false);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (isDragging) {
+          platformAdapter.setIgnoreMouseEvents(mainWindow, false);
+        }
       }
     }
   );
@@ -180,9 +122,6 @@ function registerIpcHandlers(): void {
         ? positionService.updatePosition(safePos, bounds)
         : safePos;
 
-      interactiveBounds.x = updated.x - 20;
-      interactiveBounds.y = updated.y - 20;
-
       return updated;
     }
   );
@@ -192,10 +131,6 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('wisp:close-app', async (): Promise<void> => {
-    if (cursorTrackerInterval) {
-      clearInterval(cursorTrackerInterval);
-      cursorTrackerInterval = null;
-    }
     app.quit();
   });
 }
@@ -215,6 +150,7 @@ function createWindow(): void {
     hasShadow: false,
     skipTaskbar: true,
     alwaysOnTop: true,
+    minimizable: false,
     resizable: false,
     webPreferences: {
       preload: preloadPath,
@@ -222,6 +158,7 @@ function createWindow(): void {
       nodeIntegrationInWorker: false,
       contextIsolation: true,
       sandbox: true,
+      backgroundThrottling: false,
       webSecurity: true,
       allowRunningInsecureContent: false,
     },
@@ -230,12 +167,17 @@ function createWindow(): void {
   // Apply platform-specific overlay configuration
   platformAdapter.configureOverlayWindow(mainWindow);
 
+  // Prevent desktop minimization from hiding overlay
+  mainWindow.on('minimize', () => {
+    mainWindow?.restore();
+  });
+
   // Initial mouse passthrough state
   platformAdapter.setIgnoreMouseEvents(mainWindow, true, true);
-  isCurrentlyIgnoring = true;
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://') || url.startsWith('http://')) {
+    // Only open secure external links
+    if (url.startsWith('https://')) {
       void shell.openExternal(url);
     }
     return { action: 'deny' };
@@ -255,8 +197,6 @@ function createWindow(): void {
   } else {
     void mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'));
   }
-
-  startCursorTracking();
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -283,10 +223,6 @@ if (!gotTheLock) {
   });
 
   app.on('window-all-closed', () => {
-    if (cursorTrackerInterval) {
-      clearInterval(cursorTrackerInterval);
-      cursorTrackerInterval = null;
-    }
     if (platformAdapter.getPlatformName() !== 'darwin') {
       app.quit();
     }

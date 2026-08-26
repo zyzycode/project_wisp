@@ -69,19 +69,17 @@ export const DesktopPet: React.FC = () => {
     }
   }, []);
 
-  // Synchronize interactive bounds to Main process hit tester
-  useEffect(() => {
-    if (window.wispAPI?.setInteractiveBounds) {
-      const petWidth = Math.round(140 * scale);
-      const petHeight = Math.round(160 * scale);
-      void window.wispAPI.setInteractiveBounds({
-        x: menuOpen ? position.x - 80 : position.x - 20,
-        y: menuOpen ? position.y - 280 : position.y - 20,
-        width: menuOpen ? Math.max(petWidth + 100, 300) : petWidth,
-        height: menuOpen ? petHeight + 280 : petHeight,
-      });
+  const handleMouseEnter = useCallback(() => {
+    if (window.wispAPI?.setIgnoreMouseEvents) {
+      void window.wispAPI.setIgnoreMouseEvents({ ignore: false });
     }
-  }, [position, scale, menuOpen]);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (!isDragging && !menuOpen && window.wispAPI?.setIgnoreMouseEvents) {
+      void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
+    }
+  }, [isDragging, menuOpen]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -90,6 +88,9 @@ export const DesktopPet: React.FC = () => {
     dispatchAnim('START_DRAG');
     if (window.wispAPI?.setDragState) {
       void window.wispAPI.setDragState(true);
+    }
+    if (window.wispAPI?.setIgnoreMouseEvents) {
+      void window.wispAPI.setIgnoreMouseEvents({ ignore: false });
     }
 
     dragStartRef.current = {
@@ -162,16 +163,8 @@ export const DesktopPet: React.FC = () => {
       style={{
         transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
       }}
-      onMouseEnter={() => {
-        if (window.wispAPI?.setIgnoreMouseEvents) {
-          void window.wispAPI.setIgnoreMouseEvents({ ignore: false });
-        }
-      }}
-      onMouseLeave={() => {
-        if (!isDragging && window.wispAPI?.setIgnoreMouseEvents) {
-          void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
-        }
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {menuOpen && (
         <PetMenu

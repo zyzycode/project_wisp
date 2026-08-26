@@ -15,14 +15,18 @@ export class LinuxPlatformAdapter implements IPlatformAdapter {
   }
 
   configureOverlayWindow(window: BrowserWindow): void {
-    // On Linux X11/Wayland, setting alwaysOnTop with 'screen-saver' ensures overlay stays visible above all panels/windows
-    window.setAlwaysOnTop(true, 'screen-saver');
+    // Use 'floating' on Linux to avoid Mutter/GNOME treating window as a screen saver
+    window.setAlwaysOnTop(true, 'floating');
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
 
   setIgnoreMouseEvents(window: BrowserWindow, ignore: boolean, forward = true): void {
     try {
-      window.setIgnoreMouseEvents(ignore, { forward });
+      if (ignore) {
+        window.setIgnoreMouseEvents(true, { forward });
+      } else {
+        window.setIgnoreMouseEvents(false);
+      }
     } catch (err) {
       console.warn('[LinuxPlatformAdapter] setIgnoreMouseEvents warning:', err);
     }

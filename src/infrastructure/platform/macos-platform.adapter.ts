@@ -21,7 +21,11 @@ export class MacOSPlatformAdapter implements IPlatformAdapter {
 
   setIgnoreMouseEvents(window: BrowserWindow, ignore: boolean, forward = true): void {
     try {
-      window.setIgnoreMouseEvents(ignore, { forward });
+      if (ignore) {
+        window.setIgnoreMouseEvents(true, { forward });
+      } else {
+        window.setIgnoreMouseEvents(false);
+      }
     } catch (err) {
       console.warn('[MacOSPlatformAdapter] setIgnoreMouseEvents warning:', err);
     }
