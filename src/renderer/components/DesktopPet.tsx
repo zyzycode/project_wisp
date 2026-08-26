@@ -22,26 +22,42 @@ export const DesktopPet: React.FC = () => {
     y: 300,
     time: Date.now(),
   });
+  const clickThroughTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch initial position & system info
   useEffect(() => {
-    if (window.wispAPI?.getSystemInfo) {
-      window.wispAPI
-        .getSystemInfo()
-        .then((info) => setSystemInfo(info))
-        .catch((err) => console.error('Failed to get system info:', err));
-    }
+    let isMounted = true;
 
-    if (window.wispAPI?.getPosition) {
-      window.wispAPI
-        .getPosition()
-        .then((pos) => {
-          setPosition(pos);
-          dragStartRef.current.petX = pos.x;
-          dragStartRef.current.petY = pos.y;
-        })
-        .catch((err) => console.error('Failed to get position:', err));
-    }
+    const fetchInitialData = async () => {
+      try {
+        if (window.wispAPI?.getSystemInfo) {
+          const info = await window.wispAPI.getSystemInfo();
+          if (isMounted) {
+            setSystemInfo(info);
+          }
+        }
+
+        if (window.wispAPI?.getPosition) {
+          const pos = await window.wispAPI.getPosition();
+          if (isMounted) {
+            setPosition(pos);
+            dragStartRef.current.petX = pos.x;
+            dragStartRef.current.petY = pos.y;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to initialize desktop pet data:', err);
+      }
+    };
+
+    void fetchInitialData();
+
+    return () => {
+      isMounted = false;
+      if (clickThroughTimeoutRef.current) {
+        clearTimeout(clickThroughTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleMouseEnter = useCallback(() => {
@@ -124,8 +140,11 @@ export const DesktopPet: React.FC = () => {
       setMood('Приземлился');
 
       if (window.wispAPI?.setIgnoreMouseEvents) {
+        if (clickThroughTimeoutRef.current) {
+          clearTimeout(clickThroughTimeoutRef.current);
+        }
         // Delay to ensure click-through returns smoothly after drag release
-        setTimeout(() => {
+        clickThroughTimeoutRef.current = setTimeout(() => {
           void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
         }, 100);
       }

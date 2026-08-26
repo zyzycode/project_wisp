@@ -80,8 +80,19 @@ function registerIpcHandlers(): void {
   ipcMain.handle(
     'wisp:update-position',
     async (_event, targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
-      const bounds = platformAdapter.getDisplayWorkArea(targetPos);
-      return positionService.updatePosition(targetPos, bounds);
+      const currentPos = positionService.getPosition();
+      const validX =
+        typeof targetPos?.x === 'number' && Number.isFinite(targetPos.x)
+          ? targetPos.x
+          : currentPos.x;
+      const validY =
+        typeof targetPos?.y === 'number' && Number.isFinite(targetPos.y)
+          ? targetPos.y
+          : currentPos.y;
+
+      const safePos: PetPositionDTO = { x: validX, y: validY };
+      const bounds = platformAdapter.getDisplayWorkArea(safePos);
+      return positionService.updatePosition(safePos, bounds);
     }
   );
 
@@ -176,7 +187,7 @@ if (!gotTheLock) {
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
+    if (platformAdapter.getPlatformName() !== 'darwin') {
       app.quit();
     }
   });
