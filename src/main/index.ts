@@ -7,6 +7,7 @@ import type {
   IgnoreMouseEventsDTO,
   PetPositionDTO,
   ScreenBoundsDTO,
+  InteractiveBoundsDTO,
 } from '../shared/ipc-contracts';
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
 import { PetPositionService } from '../application/services/pet-position.service';
@@ -20,15 +21,12 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
+const WINDOW_WIDTH = 300;
+const WINDOW_HEIGHT = 380;
+
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
-
-// Initialize initial position in bottom right area
-const initialWorkArea = platformAdapter.getDisplayWorkArea();
-const initialX = Math.max(0, initialWorkArea.x + initialWorkArea.width - 200);
-const initialY = Math.max(0, initialWorkArea.y + initialWorkArea.height - 200);
-
-const positionService = new PetPositionService({ x: initialX, y: initialY });
+let positionService: PetPositionService | null = null;
 
 function resolvePreloadPath(): string {
   const jsPath = path.join(__dirname, '../preload/index.js');
@@ -40,6 +38,14 @@ function resolvePreloadPath(): string {
     return mjsPath;
   }
   return jsPath;
+}
+
+function initializeServices(): void {
+  const initialWorkArea = platformAdapter.getDisplayWorkArea();
+  const initialX = Math.max(0, initialWorkArea.x + initialWorkArea.width - WINDOW_WIDTH - 20);
+  const initialY = Math.max(0, initialWorkArea.y + initialWorkArea.height - WINDOW_HEIGHT - 20);
+  positionService = new PetPositionService({ x: initialX, y: initialY });
+  positionService.setPetSize({ width: WINDOW_WIDTH, height: WINDOW_HEIGHT });
 }
 
 function registerIpcHandlers(): void {
@@ -73,14 +79,30 @@ function registerIpcHandlers(): void {
     }
   );
 
+  ipcMain.handle(
+    'wisp:set-interactive-bounds',
+    async (_event, _bounds: InteractiveBoundsDTO): Promise<void> => {
+      // In compact window architecture, the entire window is the interactive container
+    }
+  );
+
+  ipcMain.handle(
+    'wisp:set-drag-state',
+    async (_event, _isDragging: boolean): Promise<void> => {
+      // Managed directly by window drag coordinates
+    }
+  );
+
   ipcMain.handle('wisp:get-position', async (): Promise<PetPositionDTO> => {
-    return positionService.getPosition();
+    return positionService ? positionService.getPosition() : { x: 300, y: 300 };
   });
 
   ipcMain.handle(
     'wisp:update-position',
     async (_event, targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
-      const currentPos = positionService.getPosition();
+      const currentPos = positionService
+        ? positionService.getPosition()
+        : { x: 300, y: 300 };
       const validX =
         typeof targetPos?.x === 'number' && Number.isFinite(targetPos.x)
           ? targetPos.x
@@ -92,7 +114,15 @@ function registerIpcHandlers(): void {
 
       const safePos: PetPositionDTO = { x: validX, y: validY };
       const bounds = platformAdapter.getDisplayWorkArea(safePos);
-      return positionService.updatePosition(safePos, bounds);
+      const updated = positionService
+        ? positionService.updatePosition(safePos, bounds)
+        : safePos;
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setPosition(Math.round(updated.x), Math.round(updated.y));
+      }
+
+      return updated;
     }
   );
 
@@ -107,13 +137,13 @@ function registerIpcHandlers(): void {
 
 function createWindow(): void {
   const preloadPath = resolvePreloadPath();
-  const workArea = platformAdapter.getDisplayWorkArea();
+  const initialPos = positionService ? positionService.getPosition() : { x: 300, y: 300 };
 
   mainWindow = new BrowserWindow({
-    x: workArea.x,
-    y: workArea.y,
-    width: workArea.width,
-    height: workArea.height,
+    x: Math.round(initialPos.x),
+    y: Math.round(initialPos.y),
+    width: WINDOW_WIDTH,
+    height: WINDOW_HEIGHT,
     transparent: true,
     frame: false,
     hasShadow: false,
@@ -133,9 +163,6 @@ function createWindow(): void {
 
   // Apply platform-specific overlay configuration
   platformAdapter.configureOverlayWindow(mainWindow);
-
-  // Passthrough clicks on transparent background
-  platformAdapter.setIgnoreMouseEvents(mainWindow, true, true);
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://') || url.startsWith('http://')) {
@@ -176,6 +203,7 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    initializeServices();
     registerIpcHandlers();
     createWindow();
 

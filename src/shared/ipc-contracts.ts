@@ -35,6 +35,13 @@ export interface ScreenBoundsDTO {
   height: number;
 }
 
+export interface InteractiveBoundsDTO {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface WispApiBridge {
   ping: (message: string) => Promise<PingResponseDTO>;
   getSystemInfo: () => Promise<SystemInfoDTO>;
@@ -42,5 +49,7 @@ export interface WispApiBridge {
   getPosition: () => Promise<PetPositionDTO>;
   updatePosition: (pos: PetPositionDTO) => Promise<PetPositionDTO>;
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
+  setInteractiveBounds?: (bounds: InteractiveBoundsDTO) => Promise<void>;
+  setDragState?: (isDragging: boolean) => Promise<void>;
   closeApp: () => Promise<void>;
 }

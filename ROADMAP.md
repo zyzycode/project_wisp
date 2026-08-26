@@ -13,8 +13,8 @@
 | **Phase 2** | Transparent Desktop Pet | 🟢 Завершена | Прозрачное frameless-окно, оверлей, always-on-top, click-through, IPlatformAdapter |
 | **Phase 3** | Dragging and Positioning | 🟢 Завершена | Физика перетаскивания, учёт рабочих областей мониторов разных ОС |
 | **Phase 4** | Character Rendering | 🟢 Завершена | Векторный рендер (SVG/Aura/Face), масштабирование, палитры тем, HiDPI |
-| **Phase 5** | Animation State Machine | 🟡 Следующая | Стейт-машина анимаций, переходы, кадровая частота |
-| **Phase 6** | Basic Character Behavior | ⚪ Запланирована | Автономные действия, блуждание, idle-циклы, сон |
+| **Phase 5** | Animation State Machine | 🟢 Завершена | Стейт-машина FSM, переходы, тайминги, прерываемость, hook |
+| **Phase 6** | Basic Character Behavior | 🟡 Следующая | Автономные действия, блуждание, idle-циклы, сон |
 | **Phase 7** | Interaction | ⚪ Запланирована | Реакция на клики, наведение курсора, контекстное меню |
 | **Phase 8** | Local Chat UI | ⚪ Запланирована | Всплывающее окно сообщений/мыслей, поле ввода |
 | **Phase 9** | MockAIProvider | ⚪ Запланирована | Локальная эмуляция ответов, эмоций, задержек генерации |
@@ -76,13 +76,6 @@
 ### Phase 4 — Character Rendering
 - **Цель:** Создать компонент отрисовки визуального образа персонажа (спрайты/SVG/Canvas).
 - **Ожидаемый результат:** Персонаж отображается в заданном масштабе с чёткими пикселями/линиями без размытия при различном DPI дисплеев.
-- **Что входит:**
-  - Доменные типы эмоций (`CharacterExpression`), тем/палитр (`CharacterTheme`, `DEFAULT_THEMES`) и расчёта масштаба (`calculateRenderedDimensions`) в `src/domain/models/character-visuals.ts`.
-  - Модульный рендерер `CharacterRenderer` с раздельными слоями ауры/тела (`WispAura`) и мимики (`WispFace`).
-  - Поддержка эмоций (`idle`, `happy`, `curious`, `sleepy`, `surprised`, `flying`).
-  - Векторная чёткость без пикселизации при любом масштабировании и HiDPI.
-  - Тематические палитры («Космический», «Изумрудный», «Янтарный»).
-  - Unit-тесты расчёта масштабирования и палитр (`tests/domain/character-visuals.test.ts`).
 - **Критерии готовности:**
   - [x] Векторная отрисовка персонажа на SVG без размытия.
   - [x] Корректная смена выражений лица и анимаций ауры.
@@ -94,6 +87,16 @@
 ### Phase 5 — Animation State Machine
 - **Цель:** Разработать изолированную стейт-машину анимаций персонажа.
 - **Ожидаемый результат:** Плавная смена анимационных циклов (Idle → Walk → Dragged → Fall → Land) с контролем кадров и прерываемости.
+- **Что входит:**
+  - Конечный автомат FSM `AnimationStateMachine` в `src/domain/animation/animation-state-machine.ts` с таблицей состояний `ANIMATION_STATES`, проверкой прерываемости и таймингами возврата в `idle`.
+  - Хук React `useAnimationStateMachine` в `src/renderer/hooks/useAnimationStateMachine.ts` с тиками кадров через `requestAnimationFrame`.
+  - Интеграция с UI: переходы состояний при перетаскивании (`START_DRAG` $\rightarrow$ `RELEASE_DRAG` $\rightarrow$ `LAND`), кликах (`PET`, `SPOOK`), снах (`START_SLEEP`, `WAKE_UP`).
+  - Unit-тесты всех ветвей переходов, таймингов и событий FSM (`tests/domain/animation-state-machine.test.ts`).
+- **Критерии готовности:**
+  - [x] Изолированная FSM без смешивания с UI-разметкой.
+  - [x] Контроль прерываемости состояний (экстренный захват мыши).
+  - [x] Автоматический переход временных анимаций (`landing`, `happy`, `surprised`) в `idle`.
+  - [x] 100% покрытие unit-тестами.
 
 ---
 

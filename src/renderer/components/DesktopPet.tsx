@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { SystemInfoDTO, PetPositionDTO } from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
-import type {
-  CharacterExpression,
-  CharacterTheme,
-} from '../../domain/models/character-visuals';
+import type { CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES, DEFAULT_THEME } from '../../domain/models/character-visuals';
 import { CharacterRenderer } from './Character/CharacterRenderer';
+import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
 
 export const DesktopPet: React.FC = () => {
   const [systemInfo, setSystemInfo] = useState<SystemInfoDTO | null>(null);
@@ -14,92 +12,83 @@ export const DesktopPet: React.FC = () => {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [tiltDeg, setTiltDeg] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
-  const [expression, setExpression] = useState<CharacterExpression>('idle');
   const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(DEFAULT_THEME);
   const [scale, setScale] = useState<number>(1.0);
 
-  // Drag calculation references
-  const dragStartRef = useRef<{ mouseX: number; mouseY: number; petX: number; petY: number }>({
-    mouseX: 0,
-    mouseY: 0,
-    petX: 300,
-    petY: 300,
+  // Animation State Machine Hook (FSM)
+  const { state: animState, expression, dispatch } = useAnimationStateMachine('idle');
+
+  // Drag references using screen-space coordinates
+  const isDraggingRef = useRef<boolean>(false);
+  const landingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragStartRef = useRef<{
+    mouseScreenX: number;
+    mouseScreenY: number;
+    windowX: number;
+    windowY: number;
+  }>({
+    mouseScreenX: 0,
+    mouseScreenY: 0,
+    windowX: 300,
+    windowY: 300,
   });
   const prevMoveRef = useRef<{ x: number; y: number; time: number }>({
     x: 300,
     y: 300,
     time: Date.now(),
   });
-  const clickThroughTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch initial position & system info
   useEffect(() => {
     let isMounted = true;
 
-    const fetchInitialData = async () => {
+    const fetchInfo = async () => {
       try {
         if (window.wispAPI?.getSystemInfo) {
           const info = await window.wispAPI.getSystemInfo();
-          if (isMounted) {
-            setSystemInfo(info);
-          }
+          if (isMounted) setSystemInfo(info);
         }
-
         if (window.wispAPI?.getPosition) {
           const pos = await window.wispAPI.getPosition();
           if (isMounted) {
             setPosition(pos);
-            dragStartRef.current.petX = pos.x;
-            dragStartRef.current.petY = pos.y;
+            dragStartRef.current.windowX = pos.x;
+            dragStartRef.current.windowY = pos.y;
           }
         }
       } catch (err) {
-        console.error('Failed to initialize desktop pet data:', err);
+        console.error('Failed to initialize desktop pet:', err);
       }
     };
 
-    void fetchInitialData();
+    void fetchInfo();
 
     return () => {
       isMounted = false;
-      if (clickThroughTimeoutRef.current) {
-        clearTimeout(clickThroughTimeoutRef.current);
-      }
-      if (idleTimerRef.current) {
-        clearTimeout(idleTimerRef.current);
+      if (landingTimerRef.current) {
+        clearTimeout(landingTimerRef.current);
+        landingTimerRef.current = null;
       }
     };
   }, []);
-
-  const handleMouseEnter = useCallback(() => {
-    if (window.wispAPI?.setIgnoreMouseEvents) {
-      void window.wispAPI.setIgnoreMouseEvents({ ignore: false });
-    }
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    if (!isDragging && window.wispAPI?.setIgnoreMouseEvents) {
-      void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
-    }
-  }, [isDragging]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Left click only for dragging
 
-    if (idleTimerRef.current) {
-      clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = null;
+    if (landingTimerRef.current) {
+      clearTimeout(landingTimerRef.current);
+      landingTimerRef.current = null;
     }
 
+    isDraggingRef.current = true;
     setIsDragging(true);
-    setExpression('flying');
+    dispatch('START_DRAG');
 
     dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      petX: position.x,
-      petY: position.y,
+      mouseScreenX: e.screenX,
+      mouseScreenY: e.screenY,
+      windowX: position.x,
+      windowY: position.y,
     };
 
     prevMoveRef.current = {
@@ -113,11 +102,11 @@ export const DesktopPet: React.FC = () => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - dragStartRef.current.mouseX;
-      const deltaY = e.clientY - dragStartRef.current.mouseY;
+      const deltaX = e.screenX - dragStartRef.current.mouseScreenX;
+      const deltaY = e.screenY - dragStartRef.current.mouseScreenY;
 
-      const rawTargetX = dragStartRef.current.petX + deltaX;
-      const rawTargetY = dragStartRef.current.petY + deltaY;
+      const rawTargetX = dragStartRef.current.windowX + deltaX;
+      const rawTargetY = dragStartRef.current.windowY + deltaY;
 
       const now = Date.now();
       const dt = now - prevMoveRef.current.time;
@@ -150,26 +139,19 @@ export const DesktopPet: React.FC = () => {
     };
 
     const handleMouseUp = () => {
+      isDraggingRef.current = false;
       setIsDragging(false);
       setTiltDeg(0);
-      setExpression('happy');
+      dispatch('RELEASE_DRAG');
 
-      if (idleTimerRef.current) {
-        clearTimeout(idleTimerRef.current);
+      // Trigger landing animation after brief drop with tracked timer cleanup
+      if (landingTimerRef.current) {
+        clearTimeout(landingTimerRef.current);
       }
-      idleTimerRef.current = setTimeout(() => {
-        setExpression('idle');
-        idleTimerRef.current = null;
-      }, 2000);
-
-      if (window.wispAPI?.setIgnoreMouseEvents) {
-        if (clickThroughTimeoutRef.current) {
-          clearTimeout(clickThroughTimeoutRef.current);
-        }
-        clickThroughTimeoutRef.current = setTimeout(() => {
-          void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
-        }, 100);
-      }
+      landingTimerRef.current = setTimeout(() => {
+        dispatch('LAND');
+        landingTimerRef.current = null;
+      }, 180);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -179,17 +161,15 @@ export const DesktopPet: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, dispatch]);
 
   const handlePetClick = () => {
-    if (isDragging) return;
-    if (idleTimerRef.current) {
-      clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = null;
+    if (isDraggingRef.current) return;
+    if (animState === 'sleep') {
+      dispatch('WAKE_UP');
+    } else {
+      dispatch('PET');
     }
-    const expressions: CharacterExpression[] = ['happy', 'curious', 'surprised', 'idle', 'sleepy'];
-    const nextExpr = expressions[Math.floor(Math.random() * expressions.length)] ?? 'happy';
-    setExpression(nextExpr);
   };
 
   const handleClose = () => {
@@ -199,22 +179,38 @@ export const DesktopPet: React.FC = () => {
   };
 
   return (
-    <div
-      className={`pet-container ${isDragging ? 'is-dragging' : ''}`}
-      style={{
-        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className={`pet-container ${isDragging ? 'is-dragging' : ''}`}>
       {menuOpen && (
         <div className="pet-menu" onClick={(e) => e.stopPropagation()}>
-          <h4>✨ Wisp Companion (Phase 4)</h4>
+          <h4>✨ Wisp Companion (Phase 5)</h4>
           <div className="pet-menu-info">
             <span>ОС: <strong>{systemInfo?.platform || 'linux'}</strong> ({systemInfo?.sessionType || 'x11'})</span>
+            <span>Состояние FSM: <strong>{animState}</strong></span>
             <span>Эмоция: <strong>{expression}</strong></span>
             <span>Тема: <strong>{currentTheme.name}</strong></span>
             <span>Масштаб: <strong>{Math.round(scale * 100)}%</strong></span>
+          </div>
+
+          <div className="pet-menu-section">Анимации / Поведение:</div>
+          <div className="pet-theme-picker">
+            <button
+              className="pet-btn"
+              onClick={() => dispatch('PET')}
+            >
+              Радость
+            </button>
+            <button
+              className="pet-btn"
+              onClick={() => dispatch('SPOOK')}
+            >
+              Испуг
+            </button>
+            <button
+              className="pet-btn"
+              onClick={() => (animState === 'sleep' ? dispatch('WAKE_UP') : dispatch('START_SLEEP'))}
+            >
+              {animState === 'sleep' ? 'Разбудить' : 'Усыпить'}
+            </button>
           </div>
 
           <div className="pet-menu-section">Палитра:</div>
@@ -245,9 +241,6 @@ export const DesktopPet: React.FC = () => {
           </div>
 
           <div className="pet-menu-actions">
-            <button className="pet-btn" onClick={() => setExpression('happy')}>
-              Погладить
-            </button>
             <button className="pet-btn pet-btn-danger" onClick={handleClose}>
               Закрыть
             </button>
@@ -273,7 +266,7 @@ export const DesktopPet: React.FC = () => {
         className="pet-label"
         onClick={() => setMenuOpen(!menuOpen)}
       >
-        Wisp • {expression}
+        Wisp • {animState}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import type {
   IgnoreMouseEventsDTO,
   PetPositionDTO,
   ScreenBoundsDTO,
+  InteractiveBoundsDTO,
 } from '../shared/ipc-contracts';
 
 const api: WispApiBridge = {
@@ -26,6 +27,12 @@ const api: WispApiBridge = {
   },
   getScreenBounds: (): Promise<ScreenBoundsDTO> => {
     return ipcRenderer.invoke('wisp:get-screen-bounds');
+  },
+  setInteractiveBounds: (bounds: InteractiveBoundsDTO): Promise<void> => {
+    return ipcRenderer.invoke('wisp:set-interactive-bounds', bounds);
+  },
+  setDragState: (isDragging: boolean): Promise<void> => {
+    return ipcRenderer.invoke('wisp:set-drag-state', isDragging);
   },
   closeApp: (): Promise<void> => {
     return ipcRenderer.invoke('wisp:close-app');
