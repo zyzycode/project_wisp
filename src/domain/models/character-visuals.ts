@@ -25,7 +25,7 @@ export interface CharacterTheme {
   palette: CharacterColorPalette;
 }
 
-export const DEFAULT_THEMES: Record<string, CharacterTheme> = {
+export const DEFAULT_THEMES: Record<'cosmic' | 'emerald' | 'amber', CharacterTheme> = {
   cosmic: {
     id: 'cosmic',
     name: 'Космический',
@@ -60,6 +60,8 @@ export const DEFAULT_THEMES: Record<string, CharacterTheme> = {
     },
   },
 };
+
+export const DEFAULT_THEME: CharacterTheme = DEFAULT_THEMES.cosmic;
 
 /**
  * Validates and clamps character scale between safe minimum and maximum multipliers.

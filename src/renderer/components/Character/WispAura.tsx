@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import type { CharacterColorPalette } from '../../../domain/models/character-visuals';
 
 interface WispAuraProps {
@@ -7,11 +7,14 @@ interface WispAuraProps {
 }
 
 export const WispAura: React.FC<WispAuraProps> = ({ palette, isDragging = false }) => {
+  const bodyGradientId = useId();
+  const glowFilterId = useId();
+
   return (
     <g className={`wisp-aura-group ${isDragging ? 'aura-active' : ''}`}>
       <defs>
         {/* Radial body gradient */}
-        <radialGradient id="wispBodyGradient" cx="40%" cy="35%" r="60%">
+        <radialGradient id={bodyGradientId} cx="40%" cy="35%" r="60%">
           <stop offset="0%" stopColor={palette.accent} stopOpacity="1" />
           <stop offset="45%" stopColor={palette.primary} stopOpacity="0.95" />
           <stop offset="85%" stopColor={palette.secondary} stopOpacity="0.9" />
@@ -19,7 +22,7 @@ export const WispAura: React.FC<WispAuraProps> = ({ palette, isDragging = false 
         </radialGradient>
 
         {/* Outer Glow filter */}
-        <filter id="wispGlowFilter" x="-50%" y="-50%" width="200%" height="200%">
+        <filter id={glowFilterId} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur in="SourceGraphic" stdDeviation={isDragging ? 6 : 4} result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
@@ -42,11 +45,11 @@ export const WispAura: React.FC<WispAuraProps> = ({ palette, isDragging = false 
            C 88 74, 70 88, 50 88 
            C 30 88, 12 74, 12 52 
            C 12 32, 28 15, 50 15 Z"
-        fill="url(#wispBodyGradient)"
-        filter="url(#wispGlowFilter)"
+        fill={`url(#${bodyGradientId})`}
+        filter={`url(#${glowFilterId})`}
       />
 
-      {/* Inner highlight highlight */}
+      {/* Inner highlight */}
       <ellipse
         cx="40"
         cy="32"

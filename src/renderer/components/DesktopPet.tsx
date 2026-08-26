@@ -5,7 +5,7 @@ import type {
   CharacterExpression,
   CharacterTheme,
 } from '../../domain/models/character-visuals';
-import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
+import { DEFAULT_THEMES, DEFAULT_THEME } from '../../domain/models/character-visuals';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 
 export const DesktopPet: React.FC = () => {
@@ -15,9 +15,7 @@ export const DesktopPet: React.FC = () => {
   const [tiltDeg, setTiltDeg] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [expression, setExpression] = useState<CharacterExpression>('idle');
-  const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
-    DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
-  );
+  const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(DEFAULT_THEME);
   const [scale, setScale] = useState<number>(1.0);
 
   // Drag calculation references
@@ -32,26 +30,46 @@ export const DesktopPet: React.FC = () => {
     y: 300,
     time: Date.now(),
   });
+  const clickThroughTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch initial position & system info
   useEffect(() => {
-    if (window.wispAPI?.getSystemInfo) {
-      window.wispAPI
-        .getSystemInfo()
-        .then((info) => setSystemInfo(info))
-        .catch((err) => console.error('Failed to get system info:', err));
-    }
+    let isMounted = true;
 
-    if (window.wispAPI?.getPosition) {
-      window.wispAPI
-        .getPosition()
-        .then((pos) => {
-          setPosition(pos);
-          dragStartRef.current.petX = pos.x;
-          dragStartRef.current.petY = pos.y;
-        })
-        .catch((err) => console.error('Failed to get position:', err));
-    }
+    const fetchInitialData = async () => {
+      try {
+        if (window.wispAPI?.getSystemInfo) {
+          const info = await window.wispAPI.getSystemInfo();
+          if (isMounted) {
+            setSystemInfo(info);
+          }
+        }
+
+        if (window.wispAPI?.getPosition) {
+          const pos = await window.wispAPI.getPosition();
+          if (isMounted) {
+            setPosition(pos);
+            dragStartRef.current.petX = pos.x;
+            dragStartRef.current.petY = pos.y;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to initialize desktop pet data:', err);
+      }
+    };
+
+    void fetchInitialData();
+
+    return () => {
+      isMounted = false;
+      if (clickThroughTimeoutRef.current) {
+        clearTimeout(clickThroughTimeoutRef.current);
+      }
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+    };
   }, []);
 
   const handleMouseEnter = useCallback(() => {
@@ -68,6 +86,11 @@ export const DesktopPet: React.FC = () => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Left click only for dragging
+
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
 
     setIsDragging(true);
     setExpression('flying');
@@ -131,12 +154,19 @@ export const DesktopPet: React.FC = () => {
       setTiltDeg(0);
       setExpression('happy');
 
-      setTimeout(() => {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+      idleTimerRef.current = setTimeout(() => {
         setExpression('idle');
+        idleTimerRef.current = null;
       }, 2000);
 
       if (window.wispAPI?.setIgnoreMouseEvents) {
-        setTimeout(() => {
+        if (clickThroughTimeoutRef.current) {
+          clearTimeout(clickThroughTimeoutRef.current);
+        }
+        clickThroughTimeoutRef.current = setTimeout(() => {
           void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
         }, 100);
       }
@@ -153,6 +183,10 @@ export const DesktopPet: React.FC = () => {
 
   const handlePetClick = () => {
     if (isDragging) return;
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
     const expressions: CharacterExpression[] = ['happy', 'curious', 'surprised', 'idle', 'sleepy'];
     const nextExpr = expressions[Math.floor(Math.random() * expressions.length)] ?? 'happy';
     setExpression(nextExpr);

@@ -4,7 +4,7 @@ import type {
   CharacterTheme,
 } from '../../../domain/models/character-visuals';
 import {
-  DEFAULT_THEMES,
+  DEFAULT_THEME,
   calculateRenderedDimensions,
 } from '../../../domain/models/character-visuals';
 import { WispAura } from './WispAura';
@@ -23,7 +23,7 @@ export interface CharacterRendererProps {
 
 export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   expression = 'idle',
-  theme = DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!,
+  theme = DEFAULT_THEME,
   scale = 1.0,
   isDragging = false,
   tiltDeg = 0,
