@@ -1,1 +1,1 @@
-let e=require("electron");e.contextBridge.exposeInMainWorld(`wispAPI`,{ping:t=>e.ipcRenderer.invoke(`wisp:ping`,t),getSystemInfo:()=>e.ipcRenderer.invoke(`wisp:get-system-info`)});
+let e=require("electron");e.contextBridge.exposeInMainWorld(`wispAPI`,{ping:t=>e.ipcRenderer.invoke(`wisp:ping`,t),getSystemInfo:()=>e.ipcRenderer.invoke(`wisp:get-system-info`),setIgnoreMouseEvents:t=>e.ipcRenderer.invoke(`wisp:set-ignore-mouse-events`,t),closeApp:()=>e.ipcRenderer.invoke(`wisp:close-app`)});

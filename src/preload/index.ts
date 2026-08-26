@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { WispApiBridge, PingResponseDTO, SystemInfoDTO } from '../shared/ipc-contracts';
+import type {
+  WispApiBridge,
+  PingResponseDTO,
+  SystemInfoDTO,
+  IgnoreMouseEventsDTO,
+} from '../shared/ipc-contracts';
 
 const api: WispApiBridge = {
   ping: (message: string): Promise<PingResponseDTO> => {
@@ -7,6 +12,12 @@ const api: WispApiBridge = {
   },
   getSystemInfo: (): Promise<SystemInfoDTO> => {
     return ipcRenderer.invoke('wisp:get-system-info');
+  },
+  setIgnoreMouseEvents: (payload: IgnoreMouseEventsDTO): Promise<void> => {
+    return ipcRenderer.invoke('wisp:set-ignore-mouse-events', payload);
+  },
+  closeApp: (): Promise<void> => {
+    return ipcRenderer.invoke('wisp:close-app');
   },
 };
 

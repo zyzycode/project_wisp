@@ -10,8 +10,8 @@
 |---|---|---|---|
 | **Phase 0** | Repository / Architecture Setup | 🟢 Завершена | Документация, правила агента, кроссплатформенная спецификация |
 | **Phase 1** | Electron Shell | 🟢 Завершена | Каркас Electron + Vite + React + TS, строгая изоляция, Typed IPC |
-| **Phase 2** | Transparent Desktop Pet | 🟡 Следующая | Прозрачное frameless-окно, оверлей, always-on-top (X11/Wayland/Win/Mac) |
-| **Phase 3** | Dragging and Positioning | ⚪ Запланирована | Физика перетаскивания, учёт рабочих областей мониторов разных ОС |
+| **Phase 2** | Transparent Desktop Pet | 🟢 Завершена | Прозрачное frameless-окно, оверлей, always-on-top, click-through, IPlatformAdapter |
+| **Phase 3** | Dragging and Positioning | 🟡 Следующая | Физика перетаскивания, учёт рабочих областей мониторов разных ОС |
 | **Phase 4** | Character Rendering | ⚪ Запланирована | Отрисовка спрайтов, масштабирование, pixel-perfect рендер |
 | **Phase 5** | Animation State Machine | ⚪ Запланирована | Стейт-машина анимаций, переходы, кадровая частота |
 | **Phase 6** | Basic Character Behavior | ⚪ Запланирована | Автономные действия, блуждание, idle-циклы, сон |
@@ -44,13 +44,6 @@
 ### Phase 1 — Electron Shell
 - **Цель:** Создать минимальный работающий каркас приложения на Electron + Vite + React + TypeScript с поддержкой HMR.
 - **Ожидаемый результат:** Запускающееся окно приложения с работающим typed IPC и строгой изоляцией процессов на Ubuntu Linux (и совместимо с Win/Mac).
-- **Что входит:**
-  - Конфигурация TypeScript для Main, Preload и Renderer (`tsconfig.json`, `tsconfig.node.json`, `tsconfig.web.json`).
-  - Базовый `src/main/index.ts` с созданием `BrowserWindow` и безопасными `webPreferences`.
-  - Изолирующий `src/preload/index.ts` с `contextBridge.exposeInMainWorld('wispAPI', ...)`.
-  - Точка входа React в `src/renderer/` (`index.html`, `main.tsx`, `App.tsx`).
-  - Строго типизированные IPC DTO в `src/shared/ipc-contracts.ts`.
-  - Скрипты сборки и запуска (`npm run dev`, `npm run build`, `npm run typecheck`).
 - **Критерии готовности:**
   - [x] Приложение собирается без ошибок (`npm run build`).
   - [x] Строгая проверка типов пройдена (`npm run typecheck:node`, `npm run typecheck:web`).
@@ -62,14 +55,16 @@
 - **Цель:** Превратить окно Electron в прозрачный поверх-всех-окон (always-on-top, frameless) оверлей рабочего стола с использованием кроссплатформенного адаптера окон.
 - **Ожидаемый результат:** Окно не имеет системной рамки, прозрачный фон, остаётся поверх остальных окон, корректно обрабатывает прокликивание (click-through) пустых областей в среде Ubuntu Linux (с поддержкой X11 и Wayland).
 - **Что входит:**
-  - Выделение интерфейса `IPlatformAdapter` и реализация `LinuxPlatformAdapter`.
+  - Выделение интерфейса `IPlatformAdapter` в `src/application/ports/platform-adapter.interface.ts`.
+  - Реализация `LinuxPlatformAdapter`, `WindowsPlatformAdapter`, `MacOSPlatformAdapter` и фабрики `createPlatformAdapter()`.
   - Настройка флагов окна: `transparent: true`, `frame: false`, `alwaysOnTop: true`, `hasShadow: false`, `skipTaskbar: true`.
-  - Управление `setIgnoreMouseEvents` при наведении на прозрачные области.
-- **Что НЕ входит:**
-  - Сложная физика, диалоги, AI.
+  - Управление `setIgnoreMouseEvents` при наведении курсора на интерактивного питомца и уходе с него.
+  - Покрытие платформенных адаптеров unit-тестами (`tests/infrastructure/platform-adapter.test.ts`).
 - **Критерии готовности:**
-  - Персонаж виден на рабочем столе на прозрачном фоне в Ubuntu.
-  - Клики сквозь прозрачные зоны попадают в приложения под оверлеем.
+  - [x] Персонаж виден на рабочем столе на прозрачном фоне в Ubuntu.
+  - [x] Клики сквозь прозрачные зоны попадают в приложения под оверлеем (`setIgnoreMouseEvents`).
+  - [x] Наведение курсора на питомца перехватывает клики и даёт интерактивность.
+  - [x] Платформенные адаптеры покрыты тестами Vitest.
 
 ---
 

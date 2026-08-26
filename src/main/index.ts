@@ -1,9 +1,13 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import type { PingResponseDTO, SystemInfoDTO } from '../shared/ipc-contracts';
+import type {
+  PingResponseDTO,
+  SystemInfoDTO,
+  IgnoreMouseEventsDTO,
+} from '../shared/ipc-contracts';
+import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
 
-// In Vite development, process.env.VITE_DEV_SERVER_URL is provided by vite-plugin-electron
 process.env.APP_ROOT = path.join(__dirname, '../..');
 
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron');
@@ -14,6 +18,7 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let mainWindow: BrowserWindow | null = null;
+const platformAdapter = createPlatformAdapter();
 
 function resolvePreloadPath(): string {
   const jsPath = path.join(__dirname, '../preload/index.js');
@@ -37,34 +42,47 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('wisp:get-system-info', async (): Promise<SystemInfoDTO> => {
-    const platform = (
-      process.platform === 'win32'
-        ? 'win32'
-        : process.platform === 'darwin'
-          ? 'darwin'
-          : 'linux'
-    ) as 'linux' | 'win32' | 'darwin';
-
     return {
-      platform,
+      platform: platformAdapter.getPlatformName(),
+      sessionType: platformAdapter.getDisplaySessionType(),
       appVersion: app.getVersion(),
       electronVersion: process.versions.electron || 'unknown',
       chromeVersion: process.versions.chrome || 'unknown',
       nodeVersion: process.versions.node || 'unknown',
     };
   });
+
+  ipcMain.handle(
+    'wisp:set-ignore-mouse-events',
+    async (_event, payload: IgnoreMouseEventsDTO): Promise<void> => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        const ignore = Boolean(payload?.ignore);
+        const forward = payload?.forward ?? true;
+        platformAdapter.setIgnoreMouseEvents(mainWindow, ignore, forward);
+      }
+    }
+  );
+
+  ipcMain.handle('wisp:close-app', async (): Promise<void> => {
+    app.quit();
+  });
 }
 
 function createWindow(): void {
   const preloadPath = resolvePreloadPath();
+  const workArea = platformAdapter.getDisplayWorkArea();
 
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 600,
-    minWidth: 400,
-    minHeight: 300,
-    title: 'Project Wisp',
-    show: false,
+    x: workArea.x,
+    y: workArea.y,
+    width: workArea.width,
+    height: workArea.height,
+    transparent: true,
+    frame: false,
+    hasShadow: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    resizable: false,
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
@@ -76,7 +94,13 @@ function createWindow(): void {
     },
   });
 
-  // Open external links in default browser securely
+  // Apply platform-specific overlay configuration (X11/Wayland/Win/Mac)
+  platformAdapter.configureOverlayWindow(mainWindow);
+
+  // Set initial mouse event passthrough for transparent background
+  platformAdapter.setIgnoreMouseEvents(mainWindow, true, true);
+
+  // Open external links securely
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://') || url.startsWith('http://')) {
       void shell.openExternal(url);
@@ -84,7 +108,7 @@ function createWindow(): void {
     return { action: 'deny' };
   });
 
-  // Block in-app navigation outside local app
+  // Prevent unwanted internal navigation
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     if (
       !process.env.VITE_DEV_SERVER_URL &&
@@ -105,7 +129,6 @@ function createWindow(): void {
   }
 }
 
-// Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();

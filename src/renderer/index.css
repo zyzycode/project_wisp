@@ -2,99 +2,190 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
-  color: #213547;
-  background-color: #242424;
+  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100vw;
+  height: 100vh;
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #18191f 0%, #111216 100%);
-  color: #ffffff;
+  padding: 0;
+  background: transparent !important;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 #root {
   width: 100%;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  height: 100%;
+  position: relative;
+  background: transparent !important;
 }
 
-.card {
-  padding: 2em;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  margin-top: 1.5rem;
-}
-
-.system-info {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
-  text-align: left;
-  margin-top: 1rem;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-}
-
-.system-info-item {
+/* Pet Floating Widget */
+.pet-container {
+  position: absolute;
+  bottom: 40px;
+  right: 60px;
   display: flex;
   flex-direction: column;
-}
-
-.system-info-item span.label {
-  color: #888;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-}
-
-.system-info-item span.value {
-  font-weight: 600;
-  color: #646cff;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #646cff;
-  color: white;
+  align-items: center;
   cursor: pointer;
-  transition: border-color 0.25s, background-color 0.25s;
+  z-index: 9999;
 }
 
-button:hover {
-  background-color: #535bf2;
+.pet-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #a855f7 0%, #6366f1 50%, #3b82f6 100%);
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.6), 0 0 50px rgba(99, 102, 241, 0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: float 3s ease-in-out infinite;
 }
 
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.pet-avatar:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 35px rgba(168, 85, 247, 0.9), 0 0 70px rgba(99, 102, 241, 0.6);
 }
 
-.ping-result {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: rgba(100, 108, 255, 0.1);
-  border: 1px solid rgba(100, 108, 255, 0.3);
-  border-radius: 8px;
-  font-family: monospace;
-  font-size: 0.9rem;
+.pet-avatar:active {
+  transform: scale(0.95);
+}
+
+.pet-face {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.pet-eye {
+  width: 8px;
+  height: 12px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 0 6px #ffffff;
+  animation: blink 4s infinite;
+}
+
+.pet-mouth {
+  width: 10px;
+  height: 5px;
+  border-bottom: 2px solid #ffffff;
+  border-radius: 0 0 5px 5px;
+}
+
+.pet-label {
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f1f5f9;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Control Bubble Menu */
+.pet-menu {
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+  font-size: 12px;
+  max-width: 260px;
+  animation: popIn 0.2s ease-out;
+}
+
+.pet-menu h4 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  color: #c084fc;
+}
+
+.pet-menu-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: #94a3b8;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.pet-menu-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pet-btn {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pet-btn:hover {
+  background: #4338ca;
+}
+
+.pet-btn-danger {
+  background: #dc2626;
+}
+
+.pet-btn-danger:hover {
+  background: #b91c1c;
+}
+
+/* Keyframes */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes blink {
+  0%, 90%, 100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }

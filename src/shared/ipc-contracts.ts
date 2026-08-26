@@ -6,6 +6,7 @@
 
 export interface SystemInfoDTO {
   platform: 'linux' | 'win32' | 'darwin';
+  sessionType: string;
   appVersion: string;
   electronVersion: string;
   chromeVersion: string;
@@ -17,7 +18,14 @@ export interface PingResponseDTO {
   timestamp: number;
 }
 
+export interface IgnoreMouseEventsDTO {
+  ignore: boolean;
+  forward?: boolean;
+}
+
 export interface WispApiBridge {
   ping: (message: string) => Promise<PingResponseDTO>;
   getSystemInfo: () => Promise<SystemInfoDTO>;
+  setIgnoreMouseEvents: (payload: IgnoreMouseEventsDTO) => Promise<void>;
+  closeApp: () => Promise<void>;
 }
