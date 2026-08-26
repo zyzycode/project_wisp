@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { SystemInfoDTO, PetPositionDTO } from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
+import type {
+  CharacterExpression,
+  CharacterTheme,
+} from '../../domain/models/character-visuals';
+import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
+import { CharacterRenderer } from './Character/CharacterRenderer';
 
 export const DesktopPet: React.FC = () => {
   const [systemInfo, setSystemInfo] = useState<SystemInfoDTO | null>(null);
@@ -8,7 +14,11 @@ export const DesktopPet: React.FC = () => {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [tiltDeg, setTiltDeg] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
-  const [mood, setMood] = useState<string>('Спокоен');
+  const [expression, setExpression] = useState<CharacterExpression>('idle');
+  const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
+    DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
+  );
+  const [scale, setScale] = useState<number>(1.0);
 
   // Drag calculation references
   const dragStartRef = useRef<{ mouseX: number; mouseY: number; petX: number; petY: number }>({
@@ -22,42 +32,26 @@ export const DesktopPet: React.FC = () => {
     y: 300,
     time: Date.now(),
   });
-  const clickThroughTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch initial position & system info
   useEffect(() => {
-    let isMounted = true;
+    if (window.wispAPI?.getSystemInfo) {
+      window.wispAPI
+        .getSystemInfo()
+        .then((info) => setSystemInfo(info))
+        .catch((err) => console.error('Failed to get system info:', err));
+    }
 
-    const fetchInitialData = async () => {
-      try {
-        if (window.wispAPI?.getSystemInfo) {
-          const info = await window.wispAPI.getSystemInfo();
-          if (isMounted) {
-            setSystemInfo(info);
-          }
-        }
-
-        if (window.wispAPI?.getPosition) {
-          const pos = await window.wispAPI.getPosition();
-          if (isMounted) {
-            setPosition(pos);
-            dragStartRef.current.petX = pos.x;
-            dragStartRef.current.petY = pos.y;
-          }
-        }
-      } catch (err) {
-        console.error('Failed to initialize desktop pet data:', err);
-      }
-    };
-
-    void fetchInitialData();
-
-    return () => {
-      isMounted = false;
-      if (clickThroughTimeoutRef.current) {
-        clearTimeout(clickThroughTimeoutRef.current);
-      }
-    };
+    if (window.wispAPI?.getPosition) {
+      window.wispAPI
+        .getPosition()
+        .then((pos) => {
+          setPosition(pos);
+          dragStartRef.current.petX = pos.x;
+          dragStartRef.current.petY = pos.y;
+        })
+        .catch((err) => console.error('Failed to get position:', err));
+    }
   }, []);
 
   const handleMouseEnter = useCallback(() => {
@@ -73,10 +67,10 @@ export const DesktopPet: React.FC = () => {
   }, [isDragging]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only Left Click for drag
+    if (e.button !== 0) return; // Left click only for dragging
 
     setIsDragging(true);
-    setMood('Летим!');
+    setExpression('flying');
 
     dragStartRef.current = {
       mouseX: e.clientX,
@@ -92,7 +86,6 @@ export const DesktopPet: React.FC = () => {
     };
   };
 
-  // Global mousemove and mouseup during drag
   useEffect(() => {
     if (!isDragging) return;
 
@@ -121,7 +114,6 @@ export const DesktopPet: React.FC = () => {
         };
       }
 
-      // Optimistic UI update + Main process clamp
       setPosition({ x: rawTargetX, y: rawTargetY });
 
       if (window.wispAPI?.updatePosition) {
@@ -137,14 +129,14 @@ export const DesktopPet: React.FC = () => {
     const handleMouseUp = () => {
       setIsDragging(false);
       setTiltDeg(0);
-      setMood('Приземлился');
+      setExpression('happy');
+
+      setTimeout(() => {
+        setExpression('idle');
+      }, 2000);
 
       if (window.wispAPI?.setIgnoreMouseEvents) {
-        if (clickThroughTimeoutRef.current) {
-          clearTimeout(clickThroughTimeoutRef.current);
-        }
-        // Delay to ensure click-through returns smoothly after drag release
-        clickThroughTimeoutRef.current = setTimeout(() => {
+        setTimeout(() => {
           void window.wispAPI.setIgnoreMouseEvents({ ignore: true, forward: true });
         }, 100);
       }
@@ -161,9 +153,9 @@ export const DesktopPet: React.FC = () => {
 
   const handlePetClick = () => {
     if (isDragging) return;
-    const moods = ['Спокоен', 'Любопытен', 'Радостен', 'Задумчив', 'Игрив'];
-    const nextMood = moods[Math.floor(Math.random() * moods.length)] ?? 'Спокоен';
-    setMood(nextMood);
+    const expressions: CharacterExpression[] = ['happy', 'curious', 'surprised', 'idle', 'sleepy'];
+    const nextExpr = expressions[Math.floor(Math.random() * expressions.length)] ?? 'happy';
+    setExpression(nextExpr);
   };
 
   const handleClose = () => {
@@ -183,15 +175,43 @@ export const DesktopPet: React.FC = () => {
     >
       {menuOpen && (
         <div className="pet-menu" onClick={(e) => e.stopPropagation()}>
-          <h4>✨ Wisp Companion (Phase 3)</h4>
+          <h4>✨ Wisp Companion (Phase 4)</h4>
           <div className="pet-menu-info">
             <span>ОС: <strong>{systemInfo?.platform || 'linux'}</strong> ({systemInfo?.sessionType || 'x11'})</span>
-            <span>Позиция: <strong>X: {position.x}, Y: {position.y}</strong></span>
-            <span>Настроение: <strong>{mood}</strong></span>
-            <span>Перетаскивание: <strong>Зажмите ЛКМ и тяните</strong></span>
+            <span>Эмоция: <strong>{expression}</strong></span>
+            <span>Тема: <strong>{currentTheme.name}</strong></span>
+            <span>Масштаб: <strong>{Math.round(scale * 100)}%</strong></span>
           </div>
+
+          <div className="pet-menu-section">Палитра:</div>
+          <div className="pet-theme-picker">
+            {Object.values(DEFAULT_THEMES).map((thm) => (
+              <button
+                key={thm.id}
+                className={`pet-btn ${currentTheme.id === thm.id ? 'pet-btn-active' : ''}`}
+                style={{ backgroundColor: thm.palette.primary }}
+                onClick={() => setCurrentTheme(thm)}
+              >
+                {thm.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="pet-menu-section">Размер:</div>
+          <div className="pet-scale-picker">
+            {[0.8, 1.0, 1.25, 1.5].map((s) => (
+              <button
+                key={s}
+                className={`pet-btn ${scale === s ? 'pet-btn-active' : ''}`}
+                onClick={() => setScale(s)}
+              >
+                {Math.round(s * 100)}%
+              </button>
+            ))}
+          </div>
+
           <div className="pet-menu-actions">
-            <button className="pet-btn" onClick={() => setMood('Счастлив!')}>
+            <button className="pet-btn" onClick={() => setExpression('happy')}>
               Погладить
             </button>
             <button className="pet-btn pet-btn-danger" onClick={handleClose}>
@@ -201,31 +221,25 @@ export const DesktopPet: React.FC = () => {
         </div>
       )}
 
-      <div
-        className="pet-avatar"
+      <CharacterRenderer
+        expression={expression}
+        theme={currentTheme}
+        scale={scale}
+        isDragging={isDragging}
+        tiltDeg={tiltDeg}
         onMouseDown={handleMouseDown}
         onClick={handlePetClick}
         onContextMenu={(e) => {
           e.preventDefault();
           setMenuOpen(!menuOpen);
         }}
-        style={{
-          transform: `rotate(${tiltDeg}deg) scale(${isDragging ? 1.05 : 1})`,
-        }}
-        title="Зажмите ЛКМ для перемещения | ПКМ для меню"
-      >
-        <div className="pet-face">
-          <div className="pet-eye" />
-          <div className="pet-eye" />
-        </div>
-        <div className="pet-mouth" />
-      </div>
+      />
 
       <div
         className="pet-label"
         onClick={() => setMenuOpen(!menuOpen)}
       >
-        Wisp • {mood}
+        Wisp • {expression}
       </div>
     </div>
   );

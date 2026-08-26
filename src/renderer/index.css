@@ -31,7 +31,7 @@ html, body {
   background: transparent !important;
 }
 
-/* Pet Floating Widget */
+/* Pet Root Container */
 .pet-container {
   position: absolute;
   top: 0;
@@ -46,88 +46,100 @@ html, body {
 
 .pet-container.is-dragging {
   cursor: grabbing;
-  transition: none !important;
 }
 
-.pet-avatar {
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #a855f7 0%, #6366f1 50%, #3b82f6 100%);
-  box-shadow: 0 0 25px rgba(168, 85, 247, 0.6), 0 0 50px rgba(99, 102, 241, 0.4);
+/* Character Renderer & SVG Styles */
+.wisp-character-root {
+  position: relative;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  transition: box-shadow 0.2s ease, transform 0.15s ease-out;
-  animation: float 3s ease-in-out infinite;
+  cursor: grab;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-.pet-container.is-dragging .pet-avatar {
+.wisp-character-root:active {
+  cursor: grabbing;
+}
+
+.wisp-svg-canvas {
+  overflow: visible;
+  animation: float 3.5s ease-in-out infinite;
+}
+
+.wisp-character-root.dragging .wisp-svg-canvas {
   animation: none;
-  box-shadow: 0 0 45px rgba(168, 85, 247, 0.9), 0 0 80px rgba(99, 102, 241, 0.7);
+  transform: scale(1.06);
 }
 
-.pet-avatar:hover {
-  box-shadow: 0 0 35px rgba(168, 85, 247, 0.9), 0 0 70px rgba(99, 102, 241, 0.6);
+/* Ethereal Body & Aura Animation */
+.wisp-body-path {
+  transform-origin: 50% 50%;
+  animation: pulseBody 4s ease-in-out infinite alternate;
 }
 
-.pet-face {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 4px;
+.aura-active .wisp-body-path {
+  animation: pulseFast 1.5s ease-in-out infinite alternate;
 }
 
-.pet-eye {
-  width: 8px;
-  height: 12px;
-  background-color: #ffffff;
-  border-radius: 4px;
-  box-shadow: 0 0 6px #ffffff;
-  animation: blink 4s infinite;
+/* Floating Particles (Orbs) */
+.wisp-orb {
+  animation: orbit 6s linear infinite;
+  transform-origin: 50px 50px;
 }
 
-.pet-mouth {
-  width: 10px;
-  height: 5px;
-  border-bottom: 2px solid #ffffff;
-  border-radius: 0 0 5px 5px;
+.orb-1 { animation-duration: 4s; animation-direction: reverse; }
+.orb-2 { animation-duration: 5.5s; }
+.orb-3 { animation-duration: 3.5s; animation-direction: reverse; }
+.orb-4 { animation-duration: 6s; }
+
+/* Facial Eye Blink */
+.wisp-blinking-eye {
+  transform-origin: 50% 44%;
+  animation: eyeBlink 4.5s infinite;
 }
 
+/* Pet Label Badge */
 .pet-label {
-  margin-top: 8px;
+  margin-top: 4px;
   padding: 4px 10px;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
   color: #f1f5f9;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.pet-label:hover {
+  background: rgba(30, 41, 59, 0.95);
+  transform: scale(1.04);
 }
 
 /* Control Bubble Menu */
 .pet-menu {
   position: absolute;
-  bottom: 125px;
-  padding: 10px 14px;
-  background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(12px);
+  bottom: 130px;
+  padding: 12px 16px;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border-radius: 18px;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.6);
   color: #ffffff;
   font-size: 12px;
-  width: 250px;
-  animation: popIn 0.2s ease-out;
+  width: 270px;
+  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: default;
 }
 
 .pet-menu h4 {
-  margin: 0 0 6px 0;
+  margin: 0 0 8px 0;
   font-size: 13px;
   color: #c084fc;
 }
@@ -135,30 +147,46 @@ html, body {
 .pet-menu-info {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   color: #94a3b8;
   font-size: 11px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.pet-menu-actions {
+.pet-menu-section {
+  margin-top: 8px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #e2e8f0;
+  font-size: 11px;
+}
+
+.pet-theme-picker, .pet-scale-picker {
   display: flex;
   gap: 6px;
+  margin-bottom: 10px;
 }
 
 .pet-btn {
   background: #4f46e5;
   color: white;
   border: none;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 5px 9px;
+  border-radius: 8px;
   font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .pet-btn:hover {
   background: #4338ca;
+  transform: translateY(-1px);
+}
+
+.pet-btn-active {
+  background: #9333ea;
+  box-shadow: 0 0 10px rgba(147, 51, 234, 0.6);
 }
 
 .pet-btn-danger {
@@ -172,18 +200,45 @@ html, body {
 /* Keyframes */
 @keyframes float {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-9px) rotate(1deg);
   }
 }
 
-@keyframes blink {
-  0%, 90%, 100% {
+@keyframes pulseBody {
+  0% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes pulseFast {
+  0% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes eyeBlink {
+  0%, 92%, 100% {
     transform: scaleY(1);
   }
-  95% {
+  96% {
     transform: scaleY(0.1);
   }
 }
@@ -191,7 +246,7 @@ html, body {
 @keyframes popIn {
   from {
     opacity: 0;
-    transform: scale(0.9) translateY(10px);
+    transform: scale(0.92) translateY(12px);
   }
   to {
     opacity: 1;
