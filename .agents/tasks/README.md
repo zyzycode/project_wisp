@@ -94,7 +94,7 @@ architect contract -> feature implementation -> tester -> code-reviewer -> fixer
 
 ### P09-T01 — Создать индекс engine-документов
 
-- **Status:** `ready`
+- **Status:** `done`
 - **Owner:** `architect`
 - **Depends on:** none.
 - **Goal:** Создать `docs/engine/README.md` и зафиксировать, какие engine-документы являются source of truth.
@@ -107,7 +107,7 @@ architect contract -> feature implementation -> tester -> code-reviewer -> fixer
 
 ### P09-T02 — Описать `IAIProvider` contract
 
-- **Status:** `planned`
+- **Status:** `done`
 - **Owner:** `architect`
 - **Depends on:** `P09-T01`.
 - **Goal:** Описать `IAIProvider`, provider DTO, thinking/latency/error states и offline fallback.
@@ -121,7 +121,7 @@ architect contract -> feature implementation -> tester -> code-reviewer -> fixer
 
 ### P09-T03 — Описать mapper provider responses в `BehaviorIntent`
 
-- **Status:** `planned`
+- **Status:** `done`
 - **Owner:** `architect`
 - **Depends on:** `P09-T02`.
 - **Goal:** Зафиксировать `ProviderResponseIntentMapper` как application-level компонент.
@@ -135,7 +135,7 @@ architect contract -> feature implementation -> tester -> code-reviewer -> fixer
 
 ### P09-T04 — Описать `BehaviorIntent` и `AnimationIntent`
 
-- **Status:** `planned`
+- **Status:** `ready`
 - **Owner:** `architect`
 - **Depends on:** `P09-T02`, `P09-T03`.
 - **Goal:** Создать начальные каталоги допустимых behavior intents и animation intents.
