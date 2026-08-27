@@ -39,7 +39,7 @@ Reviewer не:
 - расширяет задачу;
 - меняет статусы shared backlog;
 - закрывает задачу вместо Project Manager;
-- требует backend/auth/billing/cloud AI, потому что это запрещено проектом.
+- требует backend/proxy/server implementation, dev gateway, прямые LLM SDK, пользовательские AI API-ключи или server auth/billing, потому что это запрещено scope текущего репозитория.
 
 Reviewer может запускать проверки только если это явно нужно для подтверждения findings. В обычном цикле результаты проверок предоставляет Tester или implementer.
 

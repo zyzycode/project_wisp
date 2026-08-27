@@ -17,7 +17,7 @@ Out of scope:
 Suggested agent:
 ```
 
-Если задача содержит backend, cloud AI gateway, auth, billing или пользовательские AI API-ключи, Project Manager обязан остановить этот scope и предложить desktop-only альтернативу.
+Если задача содержит backend/proxy/server implementation, dev/cloud gateway внутри этого repo, прямые LLM SDK, пользовательские AI API-ключи или server auth/billing, Project Manager обязан остановить этот scope и предложить вариант в рамках desktop-first/offline-first клиента. Будущий backend допускается только как отдельный проект с client-side контрактом для `project_wisp`.
 
 Перед назначением агента Project Manager сверяет задачу с [.agents/tasks/README.md](../tasks/README.md). Если пользовательская просьба соответствует крупной roadmap-фазе, Project Manager сначала дробит её на agent-ready задачи и только потом назначает owner-agent.
 

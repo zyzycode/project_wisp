@@ -20,9 +20,11 @@
 
 > [!IMPORTANT]
 > **Фундаментальное правило:**
-> LLM или внешние триггеры **никогда не управляют анимациями или UI напрямую**.
+> LLM, provider adapter или внешние триггеры **никогда не управляют анимациями или UI напрямую**.
 > Поток управления строго ступенчатый:
-> $$\text{Входные стимулы (AI / Таймер / Мышь)} \longrightarrow \text{Behavior Layer} \longrightarrow \text{Character State} \longrightarrow \text{Animation Controller} \longrightarrow \text{Renderer}$$
+> $$\text{Provider DTO / Таймер / Мышь / Memory Signal} \longrightarrow \text{Application Mapper} \longrightarrow \text{BehaviorIntent} \longrightarrow \text{Character Engine} \longrightarrow \text{AnimationIntent} \longrightarrow \text{Animation Controller} \longrightarrow \text{Render Engine}$$
+
+Renderer получает только presentation-ready state/props и не знает, пришёл ли стимул от `MockAIProvider`, будущего `ExternalAIProviderClient`, таймера, памяти или мыши.
 
 ---
 

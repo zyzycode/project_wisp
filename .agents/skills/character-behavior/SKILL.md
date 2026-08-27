@@ -12,7 +12,7 @@
 graph TD
     UserStimulus["Действия пользователя (Click, Drag, Chat)"] --> BehaviorCoordinator
     TimerStimulus["Системные таймеры (Boredom, Sleep, Walk)"] --> BehaviorCoordinator
-    AIStimulus["AI Intent (Реплика, предложенная эмоция)"] --> BehaviorCoordinator
+    ProviderIntent["BehaviorIntent (из ProviderResponseIntentMapper)"] --> BehaviorCoordinator
 
     subgraph Character_Core ["Character Core State"]
         BehaviorCoordinator --> MoodManager["Mood Manager (Joy, Neutral, Sleepy, Focused)"]
@@ -20,7 +20,7 @@ graph TD
         BehaviorCoordinator --> BehaviorFSM["Behavior State Machine"]
     end
 
-    BehaviorFSM --> IntentOutput["Intent / State Update DTO"]
+    BehaviorFSM --> IntentOutput["Behavior State / AnimationIntent DTO"]
     IntentOutput --> AnimationSubsystem["Animation Controller"]
     IntentOutput --> UISubsystem["Speech / Thought UI"]
 ```
@@ -51,5 +51,16 @@ graph TD
 ---
 
 ## 4. AI как один из источников ввода
-- AI (LLM / `MockAIProvider`) выступает **лишь одним из поставщиков намерений (Intent Provider)**, наряду с физическими событиями мыши и внутренними таймерами.
-- Если AI возвращает ошибку или отвечает с задержкой, стейт-машина поведения сохраняет целостность и переводит персонажа в состояние `IDLE` или `CONFUSED`.
+- AI provider не управляет поведением и UI напрямую. `MockAIProvider` или будущий `ExternalAIProviderClient` возвращает semantic provider DTO по контракту `IAIProvider`.
+- Application-level `ProviderResponseIntentMapper` переводит provider DTO во внутренний `BehaviorIntent`.
+- `BehaviorCoordinator` принимает `BehaviorIntent` наряду с физическими событиями мыши, внутренними таймерами и memory signals.
+- Если provider возвращает ошибку или отвечает с задержкой, стейт-машина поведения сохраняет целостность и переводит персонажа в безопасное состояние вроде `IDLE`, `THINKING`, `CONFUSED` или `SLEEPING` согласно `docs/engine/BEHAVIOR_INTENTS.md`.
+
+---
+
+## 5. Границы поведения
+
+- Behavior layer не видит raw provider DTO.
+- Behavior layer не выбирает конкретные SVG/sprite assets, frame sizes, rows/columns или renderer coordinates.
+- Props вроде подушки для сна выражаются как behavior/animation intent одного Wisp, а не как новая система персонажей.
+- Quiet/sleep mode и cooldown/no-spam rules принадлежат behavior layer и должны тестироваться как чистая логика.

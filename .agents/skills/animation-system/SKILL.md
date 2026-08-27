@@ -6,12 +6,13 @@
 
 ## 1. Архитектурная модель анимаций
 
-Система анимаций отделена от физики, AI-провайдеров и UI-компонентов. Она представляет собой детерминированную стейт-машину (FSM), управляемую приоритетами и событиями.
+Система анимаций отделена от физики, AI-провайдеров и UI-компонентов. Она представляет собой детерминированную стейт-машину (FSM), управляемую `AnimationIntent`, приоритетами и событиями.
 
 ### Основные компоненты:
 1. **Animation State:** Текущий активный клип (`idle_blink`, `walk_left`, `dragged_struggle`, `fall_down`, `land_impact`, `sleep_loop`, `think_bubble`).
-2. **Animation Controller:** Модуль (Pure TypeScript), управляющий кадровой частотой (FPS), переключением клипов, воспроизведением циклов и вызовом событий окончания (`onComplete`).
+2. **Animation Controller:** Модуль (Pure TypeScript), управляющий выбором клипов, переключением состояний, воспроизведением циклов и событиями окончания (`onComplete`).
 3. **Transition Rules:** Таблица допустимых переходов между анимационными состояниями.
+4. **Render Engine:** Отдельный renderer module, который отображает visual render props через SVG сейчас, sprite sheets позже и возможный rigging в будущем.
 
 ---
 
@@ -51,4 +52,6 @@ export interface AnimationClip {
 
 ## 4. Изоляция от внешних SDK
 - Анимационный контроллер **ничего не знает об LLM, сетевых протоколах или SQLite**.
-- Он получает исключительно семантические команды: `playClip('nod')`, `setMotionVector(dx, dy)`, `interruptCurrent()`.
+- Он получает исключительно внутренние `AnimationIntent` / animation events от behavior layer.
+- Он не выбирает конкретные SVG/sprite files, frame size, rows/columns или asset paths. Эти детали принадлежат Render Engine contract в `docs/engine/RENDER_ENGINE.md`.
+- Он не принимает behavior decisions: mood, energy, quiet mode и cooldown rules приходят из Character/Behavior Engine.

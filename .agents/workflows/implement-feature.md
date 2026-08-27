@@ -1,16 +1,20 @@
 # implement-feature.md — Процесс реализации новой функциональности
 
-Стандартный регламент для AI-агента при разработке новой фичи.
+Стандартный регламент для профильного Codex-агента при разработке новой фичи по конкретному `Task ID` из shared backlog.
 
 ---
 
 ## 1. Подготовка и исследование
 1. **Изучи контекст:**
    - Открой и перечитай [AGENTS.md](../../AGENTS.md) и [ARCHITECTURE.md](../../ARCHITECTURE.md).
-   - Сверься с текущей фазой в [ROADMAP.md](../../ROADMAP.md).
+   - Найди текущий `Task ID`, `Owner`, `Scope`, `Depends on`, `Acceptance criteria` и `Out of scope` в [.agents/tasks/README.md](../tasks/README.md).
+   - Сверься с актуальной фазой в [ROADMAP.md](../../ROADMAP.md), но не бери roadmap-фазу как готовую задачу.
    - Ознакомься со специализированными правилами в `.agents/rules/` для затрагиваемой области.
 2. **Найди существующий код:**
    - Проверь уже существующие типы, утилиты и компоненты. Не дублируй логику.
+3. **Проверь readiness:**
+   - Если задача не имеет статуса `ready` или её зависимости не закрыты, верни её Project Manager-у.
+   - Если задача слишком широка для одного прохода, предложи Project Manager-у дробление.
 
 ---
 
@@ -21,34 +25,36 @@
    - Не протекает ли Node.js в Renderer?
    - Не размещается ли бизнес-логика в React?
    - Не нарушается ли типизация IPC?
-4. Если меняются IPC, порты, platform contracts или границы слоёв — передай решение `architect` до реализации.
+4. Если меняются IPC, порты, `docs/engine/*`, public contracts, provider/render/behavior boundaries, platform contracts или границы слоёв — передай решение `architect` до реализации.
+5. Если задача предлагает backend/proxy/server implementation, dev gateway, прямые LLM SDK, пользовательские AI API-ключи или server auth/billing — останови scope и верни Project Manager-у.
 
 ---
 
 ## 3. Имплементация (Vertical Slice)
-0. Выбери профильную роль из [.agents/agents/README.md](../agents/README.md): `ui-specialist`, `electron-platform`, `domain-behavior`, `data-memory` или `mock-ai-provider`.
+0. Работай только как owner-agent текущей задачи из [.agents/tasks/README.md](../tasks/README.md): `ui-specialist`, `electron-platform`, `domain-behavior`, `data-memory` или `mock-ai-provider`.
 1. Реализуй изменения минимальным изолированным срезом:
-   - Опиши интерфейсы/типы контрактов в `shared/` (если необходимо).
-   - Реализуй доменную модель / Use Case в Main.
-   - Реализуй или обнови Preload API (если меняется контракт).
-   - Создай/обнови React-компоненты в Renderer.
+   - Меняй только файлы и слои, входящие в `Scope`.
+   - Не расширяй соседние слои без согласованного контракта.
+   - Не меняй shared backlog-статусы; верни отчёт Project Manager-у.
 
 ---
 
 ## 4. Тестирование и верификация
-1. Добавь или обнови Unit-тесты для новой доменной логики.
-2. Запусти проверки:
+1. Добавь или обнови тесты только если это входит в задачу или требуется риском изменения.
+2. Запусти проверки, соответствующие задаче:
    - `npm run typecheck` (проверка типов TypeScript).
    - `npm run lint` (статический анализ).
    - `npm test` (прогон набора тестов).
+   - `npm run build`, если затронуты сборка, Electron config или packaging.
 3. Убедись, что нет регрессий в существующей функциональности.
 
 ---
 
 ## 5. Самопроверка и отчёт
 Сформируй лаконичный отчёт по структуре:
+- **Task:** `Task ID`, owner-agent, scope.
 - **Что изменено:** краткое описание добавленной логики.
 - **Затронутые файлы:** список изменённых/созданных файлов с ссылками.
-- **Результаты проверок:** статус `typecheck`, `lint`, `test`.
-- **Оставшиеся шаги / TODO:** что рекомендуется реализовать на следующем шаге.
-- **Рекомендуемый следующий агент:** обычно `code-reviewer`, затем при необходимости `fixer` и `tester`.
+- **Boundaries:** как сохранены границы слоя и hard constraints.
+- **Результаты проверок:** статус `typecheck`, `lint`, `tests`, `build` или причина `NOT RUN`.
+- **Recommended next gate:** `tester`, `code-reviewer`, `architect` или `blocked`.

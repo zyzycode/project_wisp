@@ -98,7 +98,7 @@
 
 ## 5.1. Что Fixer НЕ исправляет
 
-- Требования добавить backend/proxy/server implementation, cloud/dev gateway, прямые AI SDK, пользовательские AI API-ключи, server auth или billing.
+- Требования добавить backend/proxy/server implementation, cloud/dev gateway, прямые AI SDK, пользовательские AI API-ключи или server auth/billing.
 - Архитектурные развилки без решения Architect.
 - Замечания вкуса, которые не являются дефектом, регрессией или нарушением правил проекта.
 - Соседние проблемы, не указанные Reviewer-ом.
@@ -127,7 +127,7 @@
 ## 7. Правила работы с архитектурой
 
 1. **Соблюдение однонаправленного потока:**
-   $$\text{UI (Renderer)} \longrightarrow \text{Preload (Bridge)} \longrightarrow \text{Main (Application} \rightarrow \text{Domain} \rightarrow \text{Infrastructure)}$$
+   $$\text{UI (Renderer)} \longrightarrow \text{Preload (Bridge)} \longrightarrow \text{Main (Application)} \longrightarrow \text{Domain} \longrightarrow \text{Infrastructure}$$
 2. **Платформенная нейтральность:**
    - Никаких `process.platform` в слоях Domain, Application или UI.
    - Любые платформозависимые вызовы инкапсулируются исключительно внутри `src/infrastructure/platform/`.
@@ -169,7 +169,7 @@ flowchart TD
     ReadDocs --> ReadTask[2. Чтение Task ID и fix-gate в shared backlog]
     ReadTask --> Inspect[3. Изучение файлов и контекста замечаний]
     Inspect --> Validate{4. Замечание актуально?}
-    Validate -- Нет --> ReportSkip[Пометить как DEFERRED / NOT APPLICABLE]
+    Validate -- Нет --> ReportSkip[Пометить как REJECTED / NOT APPLICABLE]
     Validate -- Да --> CheckArch{5. Требует архитектурного решения?}
     CheckArch -- Да --> BlockArch[Пометить как BLOCKED для Architect]
     CheckArch -- Нет --> DesignFix[6. Определение минимального безопасного фикса]
@@ -231,3 +231,14 @@ VERIFICATION
 RECOMMENDED NEXT GATE
 - `tester` / `code-reviewer` / `architect` / `blocked`
 ```
+
+---
+
+## 12. Контекст, который читать
+
+- [../../../AGENTS.md](../../../AGENTS.md)
+- [../../../ARCHITECTURE.md](../../../ARCHITECTURE.md)
+- [../../tasks/README.md](../../tasks/README.md)
+- [../../workflows/review.md](../../workflows/review.md), если fix-gate пришёл после code review.
+- [../../workflows/fix-bug.md](../../workflows/fix-bug.md), если fix-gate связан с воспроизводимым дефектом.
+- релевантные `.agents/rules/*.md` по затронутой области.

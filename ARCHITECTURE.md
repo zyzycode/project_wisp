@@ -69,7 +69,7 @@ graph TD
             IntentMapper["ProviderResponseIntentMapper"]
         end
 
-        subgraph Domain_Layer ["Domain Layer (Pure TypeScript - 100% Platform Neutral)"]
+        subgraph Domain_Layer ["Domain Layer (Pure TypeScript - Platform Neutral)"]
             CharModel["Character Model & Traits"]
             CharacterEngine["Character Engine (Mood/Energy/Needs)"]
             BehaviorSM["Behavior State Machine"]
@@ -223,7 +223,7 @@ export interface IPlatformAdapter {
 - Application передаёт в Domain только внутренние типы проекта: `BehaviorIntent`, `AnimationIntent`, `CharacterState`, `MemoryEntry`, settings DTO.
 
 ### 8.3. Domain Layer (Main / Pure TypeScript)
-- 100% чистая логика, одинаковая для всех платформ:
+- Полностью чистая логика, одинаковая для всех платформ:
   - `CharacterState`: настроение (`mood`), энергия (`energy`), активность (`activity`), фокус (`focus`), потребности (`needs`), черты (`traits`).
   - `CharacterEngine`: правила характера, внутренних стимулов, quiet/sleep mode и выбора автономных действий.
   - `BehaviorStateMachine`: переходы состояний (`idle`, `walking`, `sitting`, `dragging`, `talking`, `thinking`, `sleeping`).
@@ -263,7 +263,7 @@ $$\text{Стимулы (Provider / Пользователь / Таймер / П�
 ## 10. Абстракция AI и внешний backend-контракт
 
 - Интерфейс `IAIProvider` изолирован в `application/ports/`.
-- Текущая реализация: `MockAIProvider` (100% автономный офлайн-режим).
+- Текущая реализация: `MockAIProvider` (полностью автономный офлайн-режим).
 - Текущая задача клиента — делать вид, что AI уже доступен: thinking-состояния, локальные ответы, эмоции, behavior intents.
 - Будущий dev/prod backend живёт в отдельном репозитории и реализуется другой командой/людьми.
 - В `project_wisp` позже допускается только client-side adapter к готовому внешнему контракту. Рекомендуемое имя такого адаптера: `ExternalAIProviderClient`. Такой adapter не хранит пользовательские AI API-ключи и не содержит backend/proxy/server implementation.
