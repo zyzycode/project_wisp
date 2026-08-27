@@ -135,7 +135,7 @@ architect contract -> feature implementation -> tester -> code-reviewer -> fixer
 
 ### P09-T04 — Описать `BehaviorIntent` и `AnimationIntent`
 
-- **Status:** `ready`
+- **Status:** `done`
 - **Owner:** `architect`
 - **Depends on:** `P09-T02`, `P09-T03`.
 - **Goal:** Создать начальные каталоги допустимых behavior intents и animation intents.
@@ -148,7 +148,7 @@ architect contract -> feature implementation -> tester -> code-reviewer -> fixer
 
 ### P09-G01 — Architecture docs review gate
 
-- **Status:** `planned`
+- **Status:** `ready`
 - **Owner:** `code-reviewer`
 - **Depends on:** `P09-T01`, `P09-T02`, `P09-T03`, `P09-T04`.
 - **Goal:** Проверить Phase 9 engine/provider/intent документы на противоречия.
