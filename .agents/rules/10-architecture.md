@@ -37,7 +37,8 @@ $$\text{UI / Presentation} \longrightarrow \text{Application (Use Cases)} \longr
 ## 4. Принцип сменяемости провайдеров (No Provider Leakage)
 - Никакие типы данных от конкретных AI SDK (типы сообщений OpenAI, структуры Gemini и т.д.) не должны проникать в Domain, Application или UI слои.
 - Вся система оперирует исключительно внутренними типами: `AIMessage`, `AIResponse`, `CharacterMood`.
-- Адаптер (например, `MockAIProvider` или будущий `WispBackendGateway`) обязан трансформировать свои внутренние форматы во внутренний контракт `IAIProvider`.
+- Адаптер (например, `MockAIProvider` или другой локальный офлайн-провайдер) обязан трансформировать свои внутренние форматы во внутренний контракт `IAIProvider`.
+- Запрещено проектировать `WispBackendGateway`, cloud AI gateway, HTTP-клиенты к LLM или другие серверные замены провайдера.
 
 ---
 

@@ -1,16 +1,40 @@
-# Инструкция по разработке и запуску
+# Project Wisp
+
+**Project Wisp** — интерактивный desktop AI-компаньон для Linux, Windows и macOS. Wisp живёт на рабочем столе в прозрачном Electron-окне, реагирует на действия пользователя, выражает эмоции через анимации, ведёт локальный диалог и постепенно получает офлайн-память.
+
+Текущий репозиторий `project_wisp` — только desktop-клиент. Backend, dev proxy, auth/billing server logic и реальные AI SDK здесь не реализуются. На текущем этапе AI-поведение имитируется через `MockAIProvider`; будущая реальная AI-интеграция может подключаться только как client-side adapter к внешнему backend-контракту из отдельного проекта.
 
 ---
 
-## 📋 Требования к окружению
+## Текущий фокус
 
-- **Node.js**: `v20+` (рекомендуется `v22.x`)
-- **npm**: `v10+`
-- **ОС**: Ubuntu Linux (X11 / Wayland), Windows 10/11, macOS
+- Desktop-first / offline-first MVP.
+- Один основной персонаж Wisp с поведением, настроением, анимациями и props.
+- SVG сейчас; sprite sheets и будущий rigging должны идти через общий render contract.
+- Локальная память через SQLite в Main-процессе.
+- Строгая изоляция Renderer от Node.js, Electron Main и SQLite.
 
 ---
 
-## 🚀 Установка зависимостей
+## Документация
+
+- [AGENTS.md](AGENTS.md) — главные правила разработки и ограничения репозитория.
+- [ROADMAP.md](ROADMAP.md) — фазовый план работ и ведущие агенты по фазам.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — слои, процессы Electron, provider/intent/render boundaries.
+- [.agents/](.agents/) — правила, роли агентов, workflows и предметные skills.
+- `docs/engine/` — будущие подробные спецификации движков (`CHARACTER_ENGINE`, `ANIMATION_ENGINE`, `RENDER_ENGINE`, `AI_PROVIDER_CONTRACT`).
+
+---
+
+## Требования к окружению
+
+- **Node.js:** `v20+` (рекомендуется `v22.x`)
+- **npm:** `v10+`
+- **ОС:** Ubuntu Linux (X11 / Wayland), Windows 10/11, macOS
+
+---
+
+## Установка
 
 ```bash
 npm install
@@ -18,61 +42,51 @@ npm install
 
 ---
 
-## 💻 Команды разработки
+## Команды разработки
 
-### Запуск в режиме разработки (Dev Server + Electron HMR)
+Запуск в режиме разработки:
 
 ```bash
 npm run dev
 ```
 
-### Запуск тестов (Vitest)
+Запуск тестов:
 
 ```bash
 npm test
 ```
 
-### Запуск тестов в режиме наблюдения (Watch Mode)
+Запуск тестов в watch-режиме:
 
 ```bash
 npx vitest
 ```
 
----
-
-## 🔍 Проверка типов (TypeScript Strict Mode)
-
-### Полная проверка всех процессов:
+Проверка типов:
 
 ```bash
 npm run typecheck
 ```
 
-### Проверка Node-процессов (Main, Preload, Configs, Infrastructure):
+Проверка типов Main / Preload / tooling:
 
 ```bash
 npm run typecheck:node
 ```
 
-### Проверка Web-процесса (React Renderer UI):
+Проверка типов Renderer:
 
 ```bash
 npm run typecheck:web
 ```
 
----
-
-## 📦 Сборка проекта (Production Build)
-
-Сборка бандлов приложения (Renderer в `dist/`, Electron Main & Preload в `dist-electron/`):
+Production build:
 
 ```bash
 npm run build
 ```
 
----
-
-## 🧹 Очистка артефактов сборки
+Очистка артефактов сборки:
 
 ```bash
 npm run clean

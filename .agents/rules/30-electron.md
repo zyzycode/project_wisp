@@ -48,13 +48,13 @@ import { PetPosition, SendMessagePayload } from '../shared/ipc-contracts';
 contextBridge.exposeInMainWorld('wispAPI', {
   sendUserMessage: (payload: SendMessagePayload): Promise<void> =>
     ipcRenderer.invoke('chat:send-message', payload),
-    
+
   onCharacterStateChanged: (callback: (state: unknown) => void) => {
     const subscription = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
     ipcRenderer.on('character:state-changed', subscription);
     return () => ipcRenderer.removeListener('character:state-changed', subscription);
   },
-  
+
   updatePosition: (pos: PetPosition): Promise<void> =>
     ipcRenderer.invoke('window:set-position', pos),
 });
@@ -91,5 +91,6 @@ win.webContents.on('will-navigate', (event, navigationUrl) => {
 ---
 
 ## 6. Хранение секретов и конфиденциальных данных
-- Секреты (в будущем: токены бэкенда, идентификаторы сессий) никогда не передаются и не хранятся в DOM, `localStorage` или Zustand сторах Renderer-процесса.
-- Все чувствительные данные остаются в памяти Main-процесса или защищённом системном хранилище (`safeStorage`).
+- Project Wisp не должен требовать пользовательских API-ключей, backend-токенов или идентификаторов облачной сессии.
+- Локальные чувствительные данные (например, приватные настройки пользователя или будущие локальные ключи шифрования памяти) никогда не передаются и не хранятся в DOM, `localStorage` или Zustand сторах Renderer-процесса.
+- Все чувствительные данные остаются в памяти Main-процесса или защищённом системном хранилище (`safeStorage`), если такая защита действительно требуется текущей задачей.

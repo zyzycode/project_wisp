@@ -9,7 +9,8 @@
 **Project Wisp** — это интерактивный desktop AI-компаньон («shimeji нового поколения»), который:
 - Постоянно или по вызову присутствует на рабочем столе в прозрачном окне без рамок (borderless, transparent, always-on-top).
 - Обладает физическим поведением: ходит по панели задач/окнам, сидит, летает, спит, реагирует на курсор мыши и перетаскивание.
-- Выражает эмоциональные состояния через плавную систему спрайтовых или векторных анимаций.
+- На MVP является одним основным персонажем Wisp. Props (например, подушка для сна, маленькие idle-предметы и визуальные эмоции) являются частью поведения и анимаций Wisp, а не отдельной системой персонажей.
+- Выражает эмоциональные состояния через плавную систему SVG/vector, sprite sheet или будущих rigged-анимаций за единым render contract.
 - Ведёт контекстные диалоги с пользователем через минималистичное всплывающее окно чата/мыслей.
 - Обладает локальной памятью (факты о пользователе, предпочтения, история взаимодействий).
 - Работает по принципу «готовый продукт из коробки»: нулевая настройка со стороны пользователя (никаких API-ключей, регистрации у AI-провайдеров или сложных конфигураций).
@@ -19,23 +20,24 @@
 
 ## 2. Текущий скоуп разработки (Current Development Scope)
 
-На данном этапе проект разрабатывается в режиме **Desktop-First & Offline-First**:
+Репозиторий `project_wisp` разрабатывается в режиме **Desktop-First & Offline-First**:
 - Полнофункциональное Electron-приложение.
 - **Основная среда разработки:** Ubuntu Linux.
 - Прозрачный оверлей с персонажем и плавающим окном диалога.
 - Локальный стейт-машин поведения и анимаций.
 - Локальная база данных SQLite для сохранения состояния, настроек и памяти.
 - Интеграция AI через заглушку `MockAIProvider`, эмулирующую генерацию реплик, эмоциональных реакций и размышлений персонажа без подключения к сети.
+- Будущая реальная AI-интеграция может выполняться через отдельный dev/prod backend-проект, но в этом репозитории находится только desktop-клиент и его client-side контракты/адаптеры.
 
 ---
 
-## 3. Что находится вне скоупа текущего этапа (Current Non-Goals)
+## 3. Что находится вне скоупа репозитория (Repository Non-Goals)
 
-- ❌ Серверный бэкенд на Python / FastAPI.
-- ❌ Аутентификация, учетные записи и регистрация пользователей.
+- ❌ Серверный backend внутри `project_wisp`: Python / FastAPI, Node-сервисы, Docker-сервисы, proxy-серверы, облачные API-шлюзы.
+- ❌ Серверная auth/billing-логика: OAuth/JWT-серверы, платёжные шлюзы, тарифы, подписки, управление пользователями.
 - ❌ Облачная синхронизация памяти и настроек.
-- ❌ Реальные сетевые вызовы к LLM (OpenAI, Anthropic, Gemini, OpenRouter).
-- ❌ Подписки, платёжные шлюзы, биллинг и лицензирование.
+- ❌ Прямые сетевые вызовы из desktop-клиента к LLM-провайдерам (OpenAI, Anthropic, Gemini, OpenRouter) и хранение пользовательских AI API-ключей.
+- ❌ Dev proxy/backend в этом репозитории. Такой сервис, если понадобится, живёт в отдельном проекте и реализуется отдельно.
 - ❌ Автоматические облачные обновления (OTA / auto-updater пока не настроен).
 
 ---
@@ -49,7 +51,8 @@ graph TD
     subgraph Renderer_Process ["Renderer Process (UI & Presentation)"]
         UI_Components["React Components (Pet, Chat, Settings)"]
         UI_Store["Zustand UI Stores (View State)"]
-        Anim_View["Animation Renderer (Sprites/Canvas/CSS)"]
+        Render_Engine["Render Engine (SVG/Sprite Sheets/Future Rigging)"]
+        Debug_View["Dev Debug Overlay (status/counters only)"]
     end
 
     subgraph Preload_Layer ["Preload Bridge (Isolated & Typed)"]
@@ -58,17 +61,20 @@ graph TD
 
     subgraph Main_Process ["Main Process (App Core & Node.js Runtime)"]
         IPC_Handlers["IPC Router / Handlers"]
-        
+
         subgraph Application_Layer ["Application Layer"]
             PetUseCase["Character Interaction Use Cases"]
             ChatUseCase["Dialogue & Intent Use Cases"]
             SettingsUseCase["Settings & Config Use Cases"]
+            IntentMapper["ProviderResponseIntentMapper"]
         end
 
         subgraph Domain_Layer ["Domain Layer (Pure TypeScript - 100% Platform Neutral)"]
             CharModel["Character Model & Traits"]
+            CharacterEngine["Character Engine (Mood/Energy/Needs)"]
             BehaviorSM["Behavior State Machine"]
             AnimSM["Animation State Machine"]
+            IntentContracts["BehaviorIntent / AnimationIntent Contracts"]
             MemoryDomain["Memory & Knowledge Entities"]
         end
 
@@ -82,9 +88,8 @@ graph TD
 
         subgraph Infrastructure_Layer ["Infrastructure Layer (Adapters)"]
             MockAI["MockAIProvider (Offline Stub)"]
-            FutureGateway["WispBackendGateway (Future Cloud API)"]
             SQLiteRepo["SQLite Database Adapter (better-sqlite3)"]
-            
+
             subgraph Platform_Adapters ["Platform Adapters (OS-Specific)"]
                 LinuxAdapter["LinuxPlatformAdapter (X11 / Wayland detection)"]
                 WinAdapter["WindowsPlatformAdapter"]
@@ -94,14 +99,19 @@ graph TD
     end
 
     UI_Components --> UI_Store
-    UI_Components --> Anim_View
+    UI_Components --> Render_Engine
+    Debug_View -.dev only reads.-> UI_Store
+    Debug_View -.dev only inspects.-> Render_Engine
     UI_Store --> API_Bridge
     API_Bridge --> IPC_Handlers
     IPC_Handlers --> Application_Layer
     Application_Layer --> Domain_Layer
     Application_Layer --> Ports_Interfaces
+    IAIProvider -.-> IntentMapper
+    IntentMapper --> IntentContracts
+    CharacterEngine --> BehaviorSM
+    BehaviorSM --> AnimSM
     MockAI -.-> IAIProvider
-    FutureGateway -.-> IAIProvider
     SQLiteRepo -.-> IMemoryRepository
     SQLiteRepo -.-> ISettingsRepository
     LinuxAdapter -.-> IPlatformAdapter
@@ -151,7 +161,7 @@ export interface IPlatformAdapter {
 ### 5.3. Специфика Linux: X11 vs Wayland
 - В Linux-окружении (в частности, современных версиях Ubuntu) приложение может запускаться под **X11** или под **Wayland**.
 - **Wayland-особенности:** Wayland по соображениям безопасности ограничивает абсолютное глобальное позиционирование окон и глобальный захват координат мыши.
-- **Стратегия адаптации:** 
+- **Стратегия адаптации:**
   1. `LinuxPlatformAdapter` детектирует сессию (`XDG_SESSION_TYPE === 'wayland'`).
   2. При запуске под Wayland включаются соответствующие флаги Electron/Chromium (или fallback-режимы оверлея).
   3. Не предполагается абсолютно идентичное низкоуровневое поведение без учёта возможностей используемого оконного менеджера.
@@ -185,45 +195,91 @@ export interface IPlatformAdapter {
 3. **Event-Stream через `webContents.send`:** Для отправки событий от Main к Renderer.
 4. **Минимализм и платформонезависимость:** Передаются плоские сериализуемые DTO. Никаких платформозависимых путей или хэндлов ОС.
 
+### 7.1. Семейства IPC-каналов
+- **User input commands:** отправка сообщения, drag/click/double-click/right-click intent, команды открытия/закрытия UI.
+- **Character state stream:** mood, energy, activity, focus, needs, relationship summary, текущий behavior state.
+- **Presentation state stream:** animation intent, render props, speech/thought bubble state, scale/theme, prop visibility.
+- **Settings commands:** чтение/обновление настроек поведения, внешности, quiet/sleep mode и dev/debug toggles.
+- **Memory commands:** очистка памяти, получение краткого статуса памяти. Ручное редактирование отдельных memory entries не предоставляется.
+- **Debug-only commands:** доступны только в dev-режиме и возвращают counters/status, а не приватные факты памяти целиком.
+
 ---
 
 ## 8. Слои архитектуры и границы ответственности
 
 ### 8.1. UI Layer (Renderer)
-- Компоненты: `PetOverlay`, `ChatBubble`, `SettingsModal`, `ContextMenu`.
+- Компоненты: `PetOverlay`, `SpeechBubble`, `ChatInput`, `SettingsModal`, `ContextMenu`, dev-only `DebugOverlay`.
 - Хранилища Zustand: только визуальное состояние.
+- Render Engine отображает presentation-ready состояние персонажа: SVG pose, sprite sheet frame, future rig pose, props, scale, theme, hitbox/debug bounds.
+- Render Engine **не является game engine**: он не считает физику, потребности, приоритеты поведения, cooldowns, quiet/sleep rules или AI-ответы.
+- Renderer не вычисляет настроение, поведение, потребности, память или AI-ответы.
 
 ### 8.2. Application Layer (Main)
-- Use Cases: `ProcessUserMessageUseCase`, `TriggerAutonomousActionUseCase`, `UpdatePetPositionUseCase`.
+- Use Cases: `ProcessUserMessageUseCase`, `TriggerAutonomousActionUseCase`, `UpdatePetPositionUseCase`, `UpdateSettingsUseCase`.
+- Маппинг provider-ответа в `BehaviorIntent` выполняется в Application layer. Сырые DTO `MockAIProvider` или будущего `ExternalAIProviderClient` не попадают в Domain.
+- `ProviderResponseIntentMapper` — обязательный Application component, а не отдельный архитектурный слой. Он переводит provider/backend/mock response DTO во внутренний `BehaviorIntent`.
+- Mapper не принимает окончательное решение о поведении персонажа: cooldowns, quiet/sleep mode, drag priority, energy и возможность выполнить действие решает `CharacterEngine`.
+- Application слой оркестрирует порты (`IAIProvider`, repositories, platform adapters), не раскрывая конкретные adapters в UI.
+- Application передаёт в Domain только внутренние типы проекта: `BehaviorIntent`, `AnimationIntent`, `CharacterState`, `MemoryEntry`, settings DTO.
 
 ### 8.3. Domain Layer (Main / Pure TypeScript)
 - 100% чистая логика, одинаковая для всех платформ:
-  - `CharacterState`: настроение (`mood`), энергия (`energy`), активность (`activity`), фокус (`focus`).
+  - `CharacterState`: настроение (`mood`), энергия (`energy`), активность (`activity`), фокус (`focus`), потребности (`needs`), черты (`traits`).
+  - `CharacterEngine`: правила характера, внутренних стимулов, quiet/sleep mode и выбора автономных действий.
   - `BehaviorStateMachine`: переходы состояний (`idle`, `walking`, `sitting`, `dragging`, `talking`, `thinking`, `sleeping`).
-  - `AnimationStateMachine`: связка логики с анимациями.
+  - `BehaviorIntent`: семантические намерения поведения (`respond`, `sleep`, `play`, `wander`, `react`, `idle`, `quiet`).
+  - `AnimationStateMachine`: связка поведения с анимационными намерениями.
+  - `AnimationIntent`: семантические намерения рендера (`idle_blink`, `sleep_start`, `sleep_loop`, `happy`, `confused`, `dragged`, `land`).
   - `MemoryEntry`: сущности памяти.
+- Domain может знать, что Wisp использует prop вроде `pillow`, но не знает путь к asset-файлу, sprite sheet layout или CSS.
 
 ### 8.4. Ports & Adapters (Infrastructure)
 - **Порты:** `IAIProvider`, `IMemoryRepository`, `ISettingsRepository`, `IPlatformAdapter`.
-- **Адаптеры:** `MockAIProvider`, `SQLiteMemoryRepository`, `LinuxPlatformAdapter`, `WindowsPlatformAdapter`, `MacOSPlatformAdapter`.
+- **Адаптеры текущего репозитория:** `MockAIProvider`, `SQLiteMemoryRepository`, `LinuxPlatformAdapter`, `WindowsPlatformAdapter`, `MacOSPlatformAdapter`.
+- **Будущие client-side адаптеры:** допускаются только как потребители внешнего backend-контракта. Рекомендуемое нейтральное имя: `ExternalAIProviderClient`. Backend/proxy/server implementation не создаётся в `project_wisp`.
+
+### 8.5. Settings Ownership
+- UI настроек живёт в Renderer и отправляет только typed commands через `window.wispAPI`.
+- Источник правды для настроек живёт в Main/Application.
+- Персистентность настроек реализуется через `ISettingsRepository`.
+- Настройки поведения и внешности реализуются первыми.
+- OS-интеграции (`autostart`, `always-on-top`, `click-through`) идут через `IPlatformAdapter` / `IWindowManager` и не попадают в Domain или Renderer напрямую.
 
 ---
 
 ## 9. Система поведения и анимаций (Behavior & Animation Systems)
 
-$$\text{Стимулы (AI / Пользователь / Таймер)} \longrightarrow \text{Behavior State Machine} \longrightarrow \text{Character State} \longrightarrow \text{Animation Controller} \longrightarrow \text{Renderer}$$
+$$\text{Стимулы (Provider / Пользователь / Таймер / Память)} \longrightarrow \text{BehaviorIntent} \longrightarrow \text{Character Engine} \longrightarrow \text{AnimationIntent} \longrightarrow \text{Animation Controller} \longrightarrow \text{Render Engine}$$
 
-- Система анимаций полностью абстрагирована от графического API ОС.
-- Рендерер отображает спрайты через стандартный HTML5 Canvas / CSS WebGL.
+- `IAIProvider` или будущий внешний provider-клиент возвращает семантический результат: текст, настроение, confidence, suggested behavior intent. Он не управляет React, DOM, CSS, asset paths или sprite sheet frames.
+- `ProviderResponseIntentMapper` переводит provider response DTO во внутренний `BehaviorIntent`.
+- `CharacterEngine` принимает стимулы и решает, что делает один основной Wisp: отвечает, гуляет, спит, достаёт prop, реагирует, уходит в quiet/sleep mode.
+- `AnimationStateMachine` переводит поведение в `AnimationIntent` с приоритетами и правилами прерывания.
+- `Render Engine` отображает `AnimationIntent` через общий render contract. SVG остаётся текущим рабочим форматом, sprite sheets — целевой ближайший формат для богатых анимаций, future rigging допускается позже без изменения Domain.
+- Подробности sprite sheet нарезки, frame sizes, rows/columns и rigging-переходов не описываются в этом файле; они принадлежат `docs/engine/RENDER_ENGINE.md` и `docs/engine/ANIMATION_ENGINE.md`.
 
 ---
 
-## 10. Абстракция AI: MockAIProvider $\rightarrow$ WispBackendGateway
+## 10. Абстракция AI и внешний backend-контракт
 
 - Интерфейс `IAIProvider` изолирован в `application/ports/`.
 - Текущая реализация: `MockAIProvider` (100% автономный офлайн-режим).
-- Будущая замена: `WispBackendGateway` (единая точка входа к облачному сервису).
-- **Результат:** Замена провайдера не затронет ни одной строчки UI, персонажа, памяти или платформенных адаптеров.
+- Текущая задача клиента — делать вид, что AI уже доступен: thinking-состояния, локальные ответы, эмоции, behavior intents.
+- Будущий dev/prod backend живёт в отдельном репозитории и реализуется другой командой/людьми.
+- В `project_wisp` позже допускается только client-side adapter к готовому внешнему контракту. Рекомендуемое имя такого адаптера: `ExternalAIProviderClient`. Такой adapter не хранит пользовательские AI API-ключи и не содержит backend/proxy/server implementation.
+- Прямые SDK OpenAI/Anthropic/Gemini/OpenRouter в desktop-клиенте запрещены.
+- **Результат:** Замена `MockAIProvider` на client-side adapter к внешнему backend-контракту не затронет UI, character engine, memory и platform adapters.
+
+---
+
+## 10.1. Документы движков
+
+Подробные спецификации движков живут в `docs/engine/` и создаются отдельными задачами Architect перед реализацией соответствующих фаз:
+- `docs/engine/AI_PROVIDER_CONTRACT.md` — DTO provider-ответов, errors, latency/thinking, streaming/non-streaming, auth placeholders.
+- `docs/engine/CHARACTER_ENGINE.md` — traits, mood, energy, needs, behavior intents, quiet/sleep mode.
+- `docs/engine/ANIMATION_ENGINE.md` — animation intents, priority, interrupt rules, clip metadata, sprite sheet expectations.
+- `docs/engine/RENDER_ENGINE.md` — sprite sheet layout, render props, layers, props, hitboxes, anchors, themes, debug overlay.
+- Engine contracts изменяет Architect. Implementer-агенты не меняют `docs/engine/*` и связанные public contracts без Architect review.
 
 ---
 
@@ -236,6 +292,9 @@ $$\text{Стимулы (AI / Пользователь / Таймер)} \longrigh
    - В Windows: `%APPDATA%/project_wisp/wisp_data.db`.
    - В macOS: `~/Library/Application Support/project_wisp/wisp_data.db`.
 3. **Миграции:** `PRAGMA user_version`.
+4. **Память персонажа:** история сообщений, факты о пользователе, relationship state, настройки поведения и внешности.
+5. **Контроль пользователя:** обязательна возможность очистить память. Ручное редактирование отдельных memory entries не является целью `project_wisp`, потому что память считается внутренним состоянием агента.
+6. **Приватность памяти:** память хранится локально, не синхронизируется с облаком и не отправляется во внешний backend без отдельного будущего контракта и явного продуктового решения.
 
 ---
 
@@ -244,6 +303,9 @@ $$\text{Стимулы (AI / Пользователь / Таймер)} \longrigh
 - `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true`.
 - Безопасное открытие URL через системный браузер (`shell.openExternal` с валидацией `https:`).
 - Параметризованные SQL-запросы в SQLite.
+- Пользовательские AI API-ключи не хранятся в desktop-клиенте.
+- Серверная auth/billing логика не реализуется в `project_wisp`. В будущем desktop-клиент может только потреблять готовый auth/billing-контракт внешнего backend-проекта через типизированный client-side adapter.
+- Dev/debug overlay по умолчанию показывает только counters/status: текущий behavior state, animation state, provider status, memory counts, fps/perf counters. Приватные memory facts не отображаются в production и не раскрываются debug UI без отдельного dev-only решения.
 
 ---
 
@@ -254,5 +316,7 @@ $$\text{Стимулы (AI / Пользователь / Таймер)} \longrigh
 | **Domain** | Pure TypeScript, Math | Electron, React, SQLite, Node.js, `process.platform` |
 | **Application** | Domain, Ports (интерфейсы) | React, прямое знание о конкретной ОС |
 | **Renderer (UI)** | React, CSS, Zustand, `window.wispAPI` | Node.js (`fs`, `path`), Electron Main, SQLite |
+| **Render Engine** | Render props, sprite sheets, SVG fallback, CSS/Canvas/Web APIs | Behavior rules, provider-specific payloads, SQLite, Node.js |
 | **Preload** | `electron/renderer`, `shared/` | Внутренняя бизнес-логика, утечка сырого IPC |
 | **Platform Adapters** | Electron APIs, Node.js OS modules | Прямой вызов React/UI, загрязнение Domain слоя |
+| **AI Provider Adapters** | `IAIProvider` DTO, local mock data, future external backend client contract | React/DOM control, asset selection, direct LLM SDKs in desktop, backend/proxy/server implementation |
