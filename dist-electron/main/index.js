@@ -1,1 +1,345 @@
-Object.defineProperty(exports,Symbol.toStringTag,{value:`Module`});var e=Object.create,t=Object.defineProperty,n=Object.getOwnPropertyDescriptor,r=Object.getOwnPropertyNames,i=Object.getPrototypeOf,a=Object.prototype.hasOwnProperty,o=(e,i,o,s)=>{if(i&&typeof i==`object`||typeof i==`function`)for(var c=r(i),l=0,u=c.length,d;l<u;l++)d=c[l],!a.call(e,d)&&d!==o&&t(e,d,{get:(e=>i[e]).bind(null,d),enumerable:!(s=n(i,d))||s.enumerable});return e},s=(n,r,s)=>(s=n==null?{}:e(i(n)),o(r||!n||!n.__esModule||!a.call(n,`default`)?t(s,`default`,{value:n,enumerable:!0}):s,n));let c=require("electron"),l=require("node:path");l=s(l);let u=require("node:fs");u=s(u);var d=class{getPlatformName(){return`linux`}getDisplaySessionType(){return process.env.XDG_SESSION_TYPE?.toLowerCase()||`x11`}configureOverlayWindow(e){e.setAlwaysOnTop(!0,`floating`),e.setVisibleOnAllWorkspaces(!0,{visibleOnFullScreen:!0})}setIgnoreMouseEvents(e,t,n=!0){try{t?e.setIgnoreMouseEvents(!0,{forward:n}):e.setIgnoreMouseEvents(!1)}catch(e){console.warn(`[LinuxPlatformAdapter] setIgnoreMouseEvents warning:`,e)}}getDisplayWorkArea(e){try{let{x:t,y:n,width:r,height:i}=(e?c.screen.getDisplayNearestPoint(e):c.screen.getPrimaryDisplay()).workArea;return{x:t,y:n,width:r,height:i}}catch{let e=c.screen.getPrimaryDisplay();return{x:0,y:0,width:e?.workArea?.width||1920,height:e?.workArea?.height||1080}}}},f=class{getPlatformName(){return`win32`}getDisplaySessionType(){return`dwm`}configureOverlayWindow(e){e.setAlwaysOnTop(!0,`screen-saver`),e.setVisibleOnAllWorkspaces(!0,{visibleOnFullScreen:!0})}setIgnoreMouseEvents(e,t,n=!0){try{t?e.setIgnoreMouseEvents(!0,{forward:n}):e.setIgnoreMouseEvents(!1)}catch(e){console.warn(`[WindowsPlatformAdapter] setIgnoreMouseEvents warning:`,e)}}getDisplayWorkArea(e){let{x:t,y:n,width:r,height:i}=(e?c.screen.getDisplayNearestPoint(e):c.screen.getPrimaryDisplay()).workArea;return{x:t,y:n,width:r,height:i}}},p=class{getPlatformName(){return`darwin`}getDisplaySessionType(){return`cocoa`}configureOverlayWindow(e){e.setAlwaysOnTop(!0,`floating`),e.setVisibleOnAllWorkspaces(!0,{visibleOnFullScreen:!0})}setIgnoreMouseEvents(e,t,n=!0){try{t?e.setIgnoreMouseEvents(!0,{forward:n}):e.setIgnoreMouseEvents(!1)}catch(e){console.warn(`[MacOSPlatformAdapter] setIgnoreMouseEvents warning:`,e)}}getDisplayWorkArea(e){let{x:t,y:n,width:r,height:i}=(e?c.screen.getDisplayNearestPoint(e):c.screen.getPrimaryDisplay()).workArea;return{x:t,y:n,width:r,height:i}}};function m(){switch(process.platform){case`linux`:return new d;case`win32`:return new f;case`darwin`:return new p;default:return console.warn(`[PlatformAdapterFactory] Unrecognized platform "${process.platform}", falling back to Linux adapter.`),new d}}function h(e,t,n){let r=n.x,i=Math.max(r,n.x+n.width-t.width),a=n.y,o=Math.max(a,n.y+n.height-t.height);return{x:Math.round(Math.min(Math.max(e.x,r),i)),y:Math.round(Math.min(Math.max(e.y,a),o))}}var g=class{currentPosition;petSize={width:100,height:100};constructor(e){this.currentPosition=e??{x:300,y:300}}getPosition(){return{...this.currentPosition}}getPetSize(){return{...this.petSize}}setPetSize(e){this.petSize={...e}}updatePosition(e,t){let n=h(e,this.petSize,t);return this.currentPosition=n,this.currentPosition}};process.env.APP_ROOT=l.default.join(__dirname,`../..`);var _=l.default.join(process.env.APP_ROOT,`dist-electron`),v=l.default.join(process.env.APP_ROOT,`dist`);process.env.VITE_PUBLIC=process.env.VITE_DEV_SERVER_URL?l.default.join(process.env.APP_ROOT,`public`):v;var y=280,b=320,x=null,S=m(),C=null;function w(){let e=l.default.join(__dirname,`../preload/index.js`);if(u.default.existsSync(e))return e;let t=l.default.join(__dirname,`../preload/index.mjs`);return u.default.existsSync(t)?t:e}function T(){let e=S.getDisplayWorkArea();return{x:Math.round(e.x+Math.max(20,e.width-280-60)),y:Math.round(e.y+Math.max(20,e.height-320-60))}}function E(){C=new g(T()),C.setPetSize({width:280,height:320})}function D(){c.ipcMain.handle(`wisp:ping`,async(e,t)=>({reply:`Pong: ${typeof t==`string`?t:``}`,timestamp:Date.now()})),c.ipcMain.handle(`wisp:get-system-info`,async()=>({platform:S.getPlatformName(),sessionType:S.getDisplaySessionType(),appVersion:c.app.getVersion(),electronVersion:process.versions.electron||`unknown`,chromeVersion:process.versions.chrome||`unknown`,nodeVersion:process.versions.node||`unknown`})),c.ipcMain.handle(`wisp:set-ignore-mouse-events`,async(e,t)=>{if(x&&!x.isDestroyed()){let e=!!t?.ignore,n=t?.forward??!0;S.setIgnoreMouseEvents(x,e,n)}}),c.ipcMain.handle(`wisp:set-interactive-bounds`,async(e,t)=>{}),c.ipcMain.handle(`wisp:set-drag-state`,async(e,t)=>{}),c.ipcMain.handle(`wisp:get-position`,async()=>C?C.getPosition():T()),c.ipcMain.handle(`wisp:update-position`,async(e,t)=>{let n=C?C.getPosition():T(),r={x:typeof t?.x==`number`&&Number.isFinite(t.x)?t.x:n.x,y:typeof t?.y==`number`&&Number.isFinite(t.y)?t.y:n.y},i=S.getDisplayWorkArea(r),a=C?C.updatePosition(r,i):r;return x&&!x.isDestroyed()&&x.setPosition(Math.round(a.x),Math.round(a.y)),a}),c.ipcMain.handle(`wisp:get-screen-bounds`,async()=>S.getDisplayWorkArea()),c.ipcMain.handle(`wisp:close-app`,async()=>{c.app.quit()})}function O(){let e=w(),t=T();x=new c.BrowserWindow({x:t.x,y:t.y,width:280,height:320,show:!0,transparent:!0,frame:!1,hasShadow:!1,skipTaskbar:!0,alwaysOnTop:!0,minimizable:!1,resizable:!1,webPreferences:{preload:e,nodeIntegration:!1,nodeIntegrationInWorker:!1,contextIsolation:!0,sandbox:!0,backgroundThrottling:!1,webSecurity:!0,allowRunningInsecureContent:!1}}),S.configureOverlayWindow(x),x.on(`minimize`,()=>{x?.restore()}),x.webContents.setWindowOpenHandler(({url:e})=>(e.startsWith(`https://`)&&c.shell.openExternal(e),{action:`deny`})),x.webContents.on(`will-navigate`,(e,t)=>{!process.env.VITE_DEV_SERVER_URL&&!t.startsWith(`file://`)&&e.preventDefault()}),process.env.VITE_DEV_SERVER_URL?x.loadURL(process.env.VITE_DEV_SERVER_URL):x.loadFile(l.default.join(v,`index.html`))}c.app.requestSingleInstanceLock()?(c.app.on(`second-instance`,()=>{x&&(x.isMinimized()&&x.restore(),x.focus())}),c.app.whenReady().then(()=>{E(),D(),O(),c.app.on(`activate`,()=>{c.BrowserWindow.getAllWindows().length===0&&O()})}),c.app.on(`window-all-closed`,()=>{S.getPlatformName()!==`darwin`&&c.app.quit()})):c.app.quit(),exports.MAIN_DIST=_,exports.RENDERER_DIST=v,exports.WINDOW_HEIGHT=b,exports.WINDOW_WIDTH=y;
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+//#region \0rolldown/runtime.js
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
+		key = keys[i];
+		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
+			get: ((k) => from[k]).bind(null, key),
+			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+		});
+	}
+	return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", {
+	value: mod,
+	enumerable: true
+}) : target, mod));
+//#endregion
+let electron = require("electron");
+let node_path = require("node:path");
+node_path = __toESM(node_path);
+let node_fs = require("node:fs");
+node_fs = __toESM(node_fs);
+//#region src/infrastructure/platform/linux-platform.adapter.ts
+/**
+* LinuxPlatformAdapter handles platform-specific window features for Linux.
+*
+* Linux Window Manager & Protocol Considerations:
+* 1. X11 / XWayland:
+*    - Native `BrowserWindow.setPosition()` and `setAlwaysOnTop(true, 'floating')` are fully supported.
+*    - Transparency is managed by X11 compositors (Mutter, KWin, Picom).
+*
+* 2. Pure Native Wayland:
+*    - The Wayland security protocol restricts client applications from setting arbitrary global screen coordinates.
+*    - Electron on Linux defaults to XWayland unless explicitly run with Ozone Wayland flags.
+*    - Under native Wayland, if `setPosition()` is constrained by the compositor, the window safely remains at its
+*      initial position without throwing unhandled exceptions.
+*/
+var LinuxPlatformAdapter = class {
+	getPlatformName() {
+		return "linux";
+	}
+	getDisplaySessionType() {
+		return process.env.XDG_SESSION_TYPE?.toLowerCase() || "x11";
+	}
+	configureOverlayWindow(window) {
+		window.setAlwaysOnTop(true, "floating");
+		window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+	}
+	setIgnoreMouseEvents(window, ignore, forward = true) {
+		try {
+			if (ignore) window.setIgnoreMouseEvents(true, { forward });
+			else window.setIgnoreMouseEvents(false);
+		} catch (err) {
+			console.warn("[LinuxPlatformAdapter] setIgnoreMouseEvents warning:", err);
+		}
+	}
+	getDisplayWorkArea(point) {
+		try {
+			const { x, y, width, height } = (point ? electron.screen.getDisplayNearestPoint(point) : electron.screen.getPrimaryDisplay()).workArea;
+			return {
+				x,
+				y,
+				width,
+				height
+			};
+		} catch {
+			const primary = electron.screen.getPrimaryDisplay();
+			return {
+				x: 0,
+				y: 0,
+				width: primary?.workArea?.width || 1920,
+				height: primary?.workArea?.height || 1080
+			};
+		}
+	}
+};
+//#endregion
+//#region src/infrastructure/platform/windows-platform.adapter.ts
+var WindowsPlatformAdapter = class {
+	getPlatformName() {
+		return "win32";
+	}
+	getDisplaySessionType() {
+		return "dwm";
+	}
+	configureOverlayWindow(window) {
+		window.setAlwaysOnTop(true, "screen-saver");
+		window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+	}
+	setIgnoreMouseEvents(window, ignore, forward = true) {
+		try {
+			if (ignore) window.setIgnoreMouseEvents(true, { forward });
+			else window.setIgnoreMouseEvents(false);
+		} catch (err) {
+			console.warn("[WindowsPlatformAdapter] setIgnoreMouseEvents warning:", err);
+		}
+	}
+	getDisplayWorkArea(point) {
+		const { x, y, width, height } = (point ? electron.screen.getDisplayNearestPoint(point) : electron.screen.getPrimaryDisplay()).workArea;
+		return {
+			x,
+			y,
+			width,
+			height
+		};
+	}
+};
+//#endregion
+//#region src/infrastructure/platform/macos-platform.adapter.ts
+var MacOSPlatformAdapter = class {
+	getPlatformName() {
+		return "darwin";
+	}
+	getDisplaySessionType() {
+		return "cocoa";
+	}
+	configureOverlayWindow(window) {
+		window.setAlwaysOnTop(true, "floating");
+		window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+	}
+	setIgnoreMouseEvents(window, ignore, forward = true) {
+		try {
+			if (ignore) window.setIgnoreMouseEvents(true, { forward });
+			else window.setIgnoreMouseEvents(false);
+		} catch (err) {
+			console.warn("[MacOSPlatformAdapter] setIgnoreMouseEvents warning:", err);
+		}
+	}
+	getDisplayWorkArea(point) {
+		const { x, y, width, height } = (point ? electron.screen.getDisplayNearestPoint(point) : electron.screen.getPrimaryDisplay()).workArea;
+		return {
+			x,
+			y,
+			width,
+			height
+		};
+	}
+};
+//#endregion
+//#region src/infrastructure/platform/platform-adapter.factory.ts
+function createPlatformAdapter() {
+	switch (process.platform) {
+		case "linux": return new LinuxPlatformAdapter();
+		case "win32": return new WindowsPlatformAdapter();
+		case "darwin": return new MacOSPlatformAdapter();
+		default:
+			console.warn(`[PlatformAdapterFactory] Unrecognized platform "${process.platform}", falling back to Linux adapter.`);
+			return new LinuxPlatformAdapter();
+	}
+}
+//#endregion
+//#region src/domain/models/position.ts
+/**
+* Clamps a 2D position so that the pet bounding box stays strictly inside the screen work area.
+*/
+function clampPositionToBounds(targetPos, petSize, screenBounds) {
+	const minX = screenBounds.x;
+	const maxX = Math.max(minX, screenBounds.x + screenBounds.width - petSize.width);
+	const minY = screenBounds.y;
+	const maxY = Math.max(minY, screenBounds.y + screenBounds.height - petSize.height);
+	return {
+		x: Math.round(Math.min(Math.max(targetPos.x, minX), maxX)),
+		y: Math.round(Math.min(Math.max(targetPos.y, minY), maxY))
+	};
+}
+//#endregion
+//#region src/application/services/pet-position.service.ts
+var PetPositionService = class {
+	currentPosition;
+	petSize = {
+		width: 100,
+		height: 100
+	};
+	constructor(initialPosition) {
+		this.currentPosition = initialPosition ?? {
+			x: 300,
+			y: 300
+		};
+	}
+	getPosition() {
+		return { ...this.currentPosition };
+	}
+	getPetSize() {
+		return { ...this.petSize };
+	}
+	setPetSize(size) {
+		this.petSize = { ...size };
+	}
+	updatePosition(target, bounds) {
+		const clamped = clampPositionToBounds(target, this.petSize, bounds);
+		this.currentPosition = clamped;
+		return this.currentPosition;
+	}
+};
+//#endregion
+//#region src/main/index.ts
+process.env.APP_ROOT = node_path.default.join(__dirname, "../..");
+var MAIN_DIST = node_path.default.join(process.env.APP_ROOT, "dist-electron");
+var RENDERER_DIST = node_path.default.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL ? node_path.default.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+var WINDOW_WIDTH = 280;
+var WINDOW_HEIGHT = 320;
+var mainWindow = null;
+var platformAdapter = createPlatformAdapter();
+var positionService = null;
+function resolvePreloadPath() {
+	const jsPath = node_path.default.join(__dirname, "../preload/index.js");
+	if (node_fs.default.existsSync(jsPath)) return jsPath;
+	const mjsPath = node_path.default.join(__dirname, "../preload/index.mjs");
+	if (node_fs.default.existsSync(mjsPath)) return mjsPath;
+	return jsPath;
+}
+function calculateInitialPosition() {
+	const workArea = platformAdapter.getDisplayWorkArea();
+	return {
+		x: Math.round(workArea.x + Math.max(20, workArea.width - 280 - 60)),
+		y: Math.round(workArea.y + Math.max(20, workArea.height - 320 - 60))
+	};
+}
+function initializeServices() {
+	positionService = new PetPositionService(calculateInitialPosition());
+	positionService.setPetSize({
+		width: 280,
+		height: 320
+	});
+}
+function registerIpcHandlers() {
+	electron.ipcMain.handle("wisp:ping", async (_event, message) => {
+		return {
+			reply: `Pong: ${typeof message === "string" ? message : ""}`,
+			timestamp: Date.now()
+		};
+	});
+	electron.ipcMain.handle("wisp:get-system-info", async () => {
+		return {
+			platform: platformAdapter.getPlatformName(),
+			sessionType: platformAdapter.getDisplaySessionType(),
+			appVersion: electron.app.getVersion(),
+			electronVersion: process.versions.electron || "unknown",
+			chromeVersion: process.versions.chrome || "unknown",
+			nodeVersion: process.versions.node || "unknown"
+		};
+	});
+	electron.ipcMain.handle("wisp:set-ignore-mouse-events", async (_event, payload) => {
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			const ignore = Boolean(payload?.ignore);
+			const forward = payload?.forward ?? true;
+			platformAdapter.setIgnoreMouseEvents(mainWindow, ignore, forward);
+		}
+	});
+	electron.ipcMain.handle("wisp:set-interactive-bounds", async (_event, _bounds) => {});
+	electron.ipcMain.handle("wisp:set-drag-state", async (_event, _isDragging) => {});
+	electron.ipcMain.handle("wisp:get-position", async () => {
+		return positionService ? positionService.getPosition() : calculateInitialPosition();
+	});
+	electron.ipcMain.handle("wisp:update-position", async (_event, targetPos) => {
+		const currentPos = positionService ? positionService.getPosition() : calculateInitialPosition();
+		const safePos = {
+			x: typeof targetPos?.x === "number" && Number.isFinite(targetPos.x) ? targetPos.x : currentPos.x,
+			y: typeof targetPos?.y === "number" && Number.isFinite(targetPos.y) ? targetPos.y : currentPos.y
+		};
+		const bounds = platformAdapter.getDisplayWorkArea(safePos);
+		const updated = positionService ? positionService.updatePosition(safePos, bounds) : safePos;
+		if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setPosition(Math.round(updated.x), Math.round(updated.y));
+		return updated;
+	});
+	electron.ipcMain.handle("wisp:get-screen-bounds", async () => {
+		return platformAdapter.getDisplayWorkArea();
+	});
+	electron.ipcMain.handle("wisp:close-app", async () => {
+		electron.app.quit();
+	});
+}
+function createWindow() {
+	const preloadPath = resolvePreloadPath();
+	const initialPos = calculateInitialPosition();
+	mainWindow = new electron.BrowserWindow({
+		x: initialPos.x,
+		y: initialPos.y,
+		width: 280,
+		height: 320,
+		show: true,
+		transparent: true,
+		frame: false,
+		hasShadow: false,
+		skipTaskbar: true,
+		alwaysOnTop: true,
+		minimizable: false,
+		resizable: false,
+		webPreferences: {
+			preload: preloadPath,
+			nodeIntegration: false,
+			nodeIntegrationInWorker: false,
+			contextIsolation: true,
+			sandbox: true,
+			backgroundThrottling: false,
+			webSecurity: true,
+			allowRunningInsecureContent: false
+		}
+	});
+	platformAdapter.configureOverlayWindow(mainWindow);
+	mainWindow.on("minimize", () => {
+		mainWindow?.restore();
+	});
+	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+		if (url.startsWith("https://")) electron.shell.openExternal(url);
+		return { action: "deny" };
+	});
+	mainWindow.webContents.on("will-navigate", (event, navigationUrl) => {
+		if (!process.env.VITE_DEV_SERVER_URL && !navigationUrl.startsWith("file://")) event.preventDefault();
+	});
+	if (process.env.VITE_DEV_SERVER_URL) mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+	else mainWindow.loadFile(node_path.default.join(RENDERER_DIST, "index.html"));
+}
+if (!electron.app.requestSingleInstanceLock()) electron.app.quit();
+else {
+	electron.app.on("second-instance", () => {
+		if (mainWindow) {
+			if (mainWindow.isMinimized()) mainWindow.restore();
+			mainWindow.focus();
+		}
+	});
+	electron.app.whenReady().then(() => {
+		initializeServices();
+		registerIpcHandlers();
+		createWindow();
+		electron.app.on("activate", () => {
+			if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();
+		});
+	});
+	electron.app.on("window-all-closed", () => {
+		if (platformAdapter.getPlatformName() !== "darwin") electron.app.quit();
+	});
+}
+//#endregion
+exports.MAIN_DIST = MAIN_DIST;
+exports.RENDERER_DIST = RENDERER_DIST;
+exports.WINDOW_HEIGHT = WINDOW_HEIGHT;
+exports.WINDOW_WIDTH = WINDOW_WIDTH;

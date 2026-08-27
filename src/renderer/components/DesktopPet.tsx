@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { PetPositionDTO, ScreenBoundsDTO } from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
 import type { CharacterTheme } from '../../domain/models/character-visuals';
@@ -9,8 +9,12 @@ import {
   recordPetInteraction,
   calculateAffectionDecay,
 } from '../../domain/interaction/pet-interaction';
+import type { ChatMessage } from '../../domain/chat/chat-message';
+import { createChatMessage } from '../../domain/chat/chat-message';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { ContextMenu } from './Interaction/ContextMenu';
+import { SpeechBubble } from './Chat/SpeechBubble';
+import { ChatInput } from './Chat/ChatInput';
 import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
 import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
 
@@ -22,6 +26,8 @@ export const DesktopPet: React.FC = () => {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [tiltDeg, setTiltDeg] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [chatOpen, setChatOpen] = useState<boolean>(false);
+  const [currentMessage, setCurrentMessage] = useState<ChatMessage | null>(null);
   const [autoWanderEnabled, setAutoWanderEnabled] = useState<boolean>(true);
   const [affection, setAffection] = useState<PetAffectionState>(INITIAL_AFFECTION_STATE);
   const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
@@ -65,7 +71,7 @@ export const DesktopPet: React.FC = () => {
   const hasMovedRef = useRef<boolean>(false);
   const landingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch initial position, screen bounds & affection decay
+  // Fetch initial position, screen bounds, affection decay & welcome message
   useEffect(() => {
     if (window.wispAPI?.getScreenBounds) {
       window.wispAPI
@@ -85,11 +91,18 @@ export const DesktopPet: React.FC = () => {
         .catch((err) => console.error('Failed to get position:', err));
     }
 
+    // Welcome speech with cleanup
+    const welcomeTimer = setTimeout(() => {
+      setCurrentMessage(createChatMessage('pet', 'Привет! Я Wisp ✨'));
+    }, 1000);
+
+    // Affection decay interval
     const decayInterval = setInterval(() => {
       setAffection((prev) => calculateAffectionDecay(prev));
     }, 60000);
 
     return () => {
+      clearTimeout(welcomeTimer);
       clearInterval(decayInterval);
       if (landingTimerRef.current) {
         clearTimeout(landingTimerRef.current);
@@ -97,8 +110,12 @@ export const DesktopPet: React.FC = () => {
     };
   }, []);
 
+  const handleDismissMessage = useCallback(() => {
+    setCurrentMessage(null);
+  }, []);
+
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Left click only
+    if (e.button !== 0) return; // Left click only for dragging / gestures
 
     if (landingTimerRef.current) {
       clearTimeout(landingTimerRef.current);
@@ -132,6 +149,8 @@ export const DesktopPet: React.FC = () => {
         if (clickTimeRef.current > 0) {
           setIsDragging(true);
           hasMovedRef.current = true;
+          setMenuOpen(false);
+          setChatOpen(false);
           dispatchAnim('START_DRAG');
         }
       }
@@ -205,9 +224,13 @@ export const DesktopPet: React.FC = () => {
 
     if (animState === 'sleep') {
       wakeUp();
+      setCurrentMessage(createChatMessage('pet', 'Я проснулся! ☀️'));
     } else {
       setAffection((prev) => recordPetInteraction(prev, 'single_click'));
       dispatchAnim('PET');
+      const phrases = ['Мурр! ✨', 'Ты лучший! 💖', 'Хи-хи, щекотно!', 'Что делаем? 🚀'];
+      const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)] ?? 'Мурр!';
+      setCurrentMessage(createChatMessage('pet', randomPhrase));
     }
   };
 
@@ -215,13 +238,21 @@ export const DesktopPet: React.FC = () => {
     if (hasMovedRef.current) return;
     setAffection((prev) => recordPetInteraction(prev, 'double_click'));
     dispatchAnim('PET');
-    setMenuOpen(true);
+    setChatOpen(true);
+    setMenuOpen(false);
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setChatOpen(false);
     setMenuOpen((prev) => !prev);
+  };
+
+  const handleUserSendMessage = (text: string) => {
+    setAffection((prev) => recordPetInteraction(prev, 'single_click'));
+    dispatchAnim('PET');
+    setCurrentMessage(createChatMessage('pet', `«${text}» — я тебя слышу! ✨`));
   };
 
   const handleClose = () => {
@@ -234,6 +265,20 @@ export const DesktopPet: React.FC = () => {
     <div
       className={`pet-container ${isDragging ? 'is-dragging' : ''} ${isWandering ? 'is-wandering' : ''}`}
     >
+      {/* Speech Bubble */}
+      <SpeechBubble
+        message={currentMessage}
+        onDismiss={handleDismissMessage}
+      />
+
+      {/* Chat Input */}
+      <ChatInput
+        isOpen={chatOpen}
+        onSendMessage={handleUserSendMessage}
+        onClose={() => setChatOpen(false)}
+      />
+
+      {/* Context Menu */}
       <ContextMenu
         isOpen={menuOpen}
         affection={affection}
@@ -245,9 +290,21 @@ export const DesktopPet: React.FC = () => {
         onPet={() => {
           setAffection((prev) => recordPetInteraction(prev, 'petting'));
           dispatchAnim('PET');
+          setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
         }}
-        onSpook={() => dispatchAnim('SPOOK')}
-        onToggleSleep={() => (animState === 'sleep' ? wakeUp() : triggerNap())}
+        onSpook={() => {
+          dispatchAnim('SPOOK');
+          setCurrentMessage(createChatMessage('thought', 'Ой, что это было?! 👻'));
+        }}
+        onToggleSleep={() => {
+          if (animState === 'sleep') {
+            wakeUp();
+            setCurrentMessage(createChatMessage('pet', 'Доброе утро! ☀️'));
+          } else {
+            triggerNap();
+            setCurrentMessage(createChatMessage('thought', 'Zzz... 🌙'));
+          }
+        }}
         onToggleWander={() => setAutoWanderEnabled((prev) => !prev)}
         onSelectTheme={(t) => setCurrentTheme(t)}
         onSelectScale={(s) => setScale(s)}
@@ -268,9 +325,12 @@ export const DesktopPet: React.FC = () => {
 
       <div
         className="pet-label"
-        onClick={() => setMenuOpen(!menuOpen)}
+        onClick={() => {
+          setChatOpen((prev) => !prev);
+          setMenuOpen(false);
+        }}
       >
-        Wisp • {isWandering ? 'wandering' : animState} {affection.mood === 'delighted' ? '💖' : ''}
+        💬 Wisp • {isWandering ? 'wandering' : animState} {affection.mood === 'delighted' ? '💖' : ''}
       </div>
     </div>
   );

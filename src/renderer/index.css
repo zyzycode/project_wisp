@@ -100,12 +100,142 @@ html, body {
   animation: eyeBlink 4.5s infinite;
 }
 
+/* Speech Bubble (Clean semi-transparent background without heavy blur) */
+.wisp-speech-bubble {
+  position: absolute;
+  top: 15px;
+  max-width: 250px;
+  min-width: 100px;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 12px rgba(168, 85, 247, 0.2);
+  color: #f8fafc;
+  font-size: 11px;
+  line-height: 1.4;
+  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  z-index: 100;
+  text-align: center;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.wisp-speech-bubble:hover {
+  transform: scale(1.03);
+}
+
+.wisp-speech-bubble.is-thought {
+  border-style: dashed;
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+.speech-arrow {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: rgba(15, 23, 42, 0.96);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Chat Input Container */
+.wisp-chat-input-container {
+  position: absolute;
+  top: 15px;
+  width: 260px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  border-radius: 14px;
+  padding: 5px 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 0 0 16px rgba(168, 85, 247, 0.3);
+  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 101;
+  cursor: default;
+}
+
+.chat-input-form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-input-field {
+  flex: 1;
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.chat-input-field:focus {
+  border-color: #a855f7;
+  background: rgba(30, 41, 59, 1);
+}
+
+.chat-send-btn {
+  background: #a855f7;
+  border: none;
+  color: #ffffff;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.chat-send-btn:hover:not(:disabled) {
+  background: #9333ea;
+  transform: scale(1.05);
+}
+
+.chat-send-btn:disabled {
+  background: #475569;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.chat-cancel-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.chat-cancel-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chat-input-arrow {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: rgba(15, 23, 42, 0.98);
+  border-right: 1px solid rgba(168, 85, 247, 0.5);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.5);
+}
+
 /* Pet Label Badge */
 .pet-label {
   margin-top: 4px;
   padding: 4px 10px;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(10px);
+  background: rgba(15, 23, 42, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 12px;
   font-size: 11px;
@@ -131,8 +261,7 @@ html, body {
   max-height: 185px;
   overflow-y: auto;
   padding: 10px 12px;
-  background: rgba(15, 23, 42, 0.96);
-  backdrop-filter: blur(20px);
+  background: rgba(15, 23, 42, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 14px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 20px rgba(168, 85, 247, 0.15);
