@@ -13,7 +13,6 @@
 | [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md) | `ready` | Описывает внутренние semantic `BehaviorIntent`: `respond`, `think`, `react_happy`, `react_confused`, `play`, `sleep`, `wake`, `drag`, `land`, `wander`, `idle`, `quiet`. Говорят, *что* Wisp пытается сделать, а не как это рисовать. |
 | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md) | `ready` | Описывает `AnimationIntent`, маппинг поведений в визуальные запросы, requested/default priority, interrupt rules, fallback behavior и `propHint`. Превращает принятое поведение в animation-ready intent. |
 | [`RENDER_ENGINE.md`](./RENDER_ENGINE.md) | `ready` | Описывает renderer-facing visual contracts: схему `manifest.json`, универсальный формат кадров (PNG/Atlas), композицию слотов (`RenderSlot`), разделение с `AssetKind`, порт `ICharacterRenderer` и чистый DTO `RenderPresentationState`. |
-| [`LOGGING.md`](./LOGGING.md) | `ready` | Описывает контракт порта структурированного логгера `ILogger`, уровни детализации, контексты модулей, правила безопасности и кольцевой буфер `ILogBuffer` для Live Debug HUD. |
 | `MEMORY_ENGINE.md` | `planned` | Описывает local-only границы памяти: chat history, user facts, relationship state, ownership персистентности, privacy defaults и обязательное clear-memory behavior. |
 | `SETTINGS_CONTRACT.md` | `planned` | Описывает ownership настроек и DTO для behavior, appearance, memory controls и debug options. |
 

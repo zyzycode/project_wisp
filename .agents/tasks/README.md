@@ -39,29 +39,27 @@
 - **Статус:** `done`
 - **Исполнитель:** `architect`
 - **Зависит от:** none
-- **Цель:** Создать и специфицировать архитектурный контракт `docs/engine/RENDER_ENGINE.md`: форматы спрайт-листов/атласов, схема `manifest.json`, правила нарезки и воспроизведения кадров, иерархия слотов (`RenderSlot` vs `AssetKind`), контракт порта `ICharacterRenderer`, чистый `RenderPresentationState`, спецификация логирования `docs/engine/LOGGING.md` и алгоритм Graceful Fallback.
-- **Читать:** `.agents/agents/architect/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/CHARACTER_ENGINE.md`, `public/assets/sprites/manifest.json`.
-- **Менять:** `docs/engine/RENDER_ENGINE.md`, `docs/engine/LOGGING.md`.
+- **Цель:** Создать архитектурный контракт `docs/engine/RENDER_ENGINE.md`: форматы спрайт-листов, схема `manifest.json`, правила таймингов/нарезки, слоты `RenderSlot`, порт `ICharacterRenderer`, `RenderPresentationState` и Graceful Fallback.
+- **Читать:** `.agents/agents/architect/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `public/assets/sprites/manifest.json`.
+- **Менять:** `docs/engine/RENDER_ENGINE.md`.
 - **Критерии приёмки:**
-  - [x] Специфицирован формат `manifest.json` и структура описания спрайт-анимаций.
-  - [x] Описана композиция слотов: `underlay` -> `body` -> `face` -> `blush` -> `overlay`.
-  - [x] Разделены `AssetKind` и `RenderSlot`.
-  - [x] Специфицирован порт `ICharacterRenderer` и чистый `RenderPresentationState`.
-  - [x] Выделен контракт `ILogger` в `docs/engine/LOGGING.md`.
+  - [x] Специфицирован `manifest.json` и структура спрайтов.
+  - [x] Описана композиция слотов `underlay` -> `body` -> `face` -> `blush` -> `overlay`.
+  - [x] Специфицирован порт `ICharacterRenderer` и `RenderPresentationState`.
   - [x] Чётко описан алгоритм 3-уровневого Graceful Fallback.
-  - [x] Сохранены строгие границы слоёв Clean Architecture.
 
 ### P13-T01 — Structured Logger Infrastructure & Telemetry Stream
 
 - **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-A01`
-- **Цель:** Реализовать порт `ILogger`, адаптер структурированного логирования с фильтрацией по модулям, глобальным выключением и кольцевым буфером в памяти.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/LOGGING.md`.
-- **Менять:** `src/application/ports/logger.interface.ts`, `src/infrastructure/logging/` (`app-logger.ts`, `log-buffer.ts`, `index.ts`), unit-тесты.
+- **Цель:** Создать TypeScript-порт `ILogger` в Application layer и адаптер структурированного логирования (`AppLogger`, `LogBuffer`) с фильтрацией по контекстам (`FSM`, `CharacterEngine`, `Needs`, `AIProvider`, `RenderEngine`, `IPC`, `Autonomy`), уровнями (`debug`, `info`, `warn`, `error`, `silent`), глобальным выключением и кольцевым буфером для HUD.
+- **Читать:** `.agents/agents/app-developer/agent.md`.
+- **Менять:** `src/application/ports/logger.interface.ts` (создать), `src/infrastructure/logging/` (создать), tests.
 - **Критерии приёмки:**
   - [ ] Реализован интерфейс `ILogger` и адаптер `AppLogger`.
   - [ ] Поддерживаются уровни `debug`, `info`, `warn`, `error`, `silent` и кольцевой буфер `ILogBuffer`.
+  - [ ] Логирование можно полностью выключить через флаг конфига.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T02 — Asset Manifest Parser & Sprite Playback Controller
@@ -106,7 +104,7 @@
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T01`, `P13-T03`
 - **Цель:** Оверлей отладки (`Ctrl+D` / контекстное меню) с выводом live-потребностей, дружбы, тона, FPS и ленты логов.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/LOGGING.md`, `docs/engine/RENDER_ENGINE.md`, `src/renderer/components/`.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `src/renderer/components/`.
 - **Менять:** `src/renderer/components/Debug/` (`DebugHUD.tsx`, `LogViewer.tsx`).
 - **Критерии приёмки:**
   - [ ] Оверлей открывается по хоткею и меню, показывает живые данные.
