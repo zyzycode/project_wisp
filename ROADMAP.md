@@ -27,7 +27,7 @@
 | 9 — Provider & Intent Contracts | done | `architect` | Markdown contracts для provider responses, behavior intents и animation intents. |
 | 10 — Mock AI & Dialogue Loop | done | `app-developer` | Offline `MockAIProvider`, thinking state и reply flow. |
 | 11 — Character Engine v2 | done | `domain-behavior` + `architect` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
-| 12 — Animation & Reaction Pack | in_progress | `domain-behavior` | Более богатые reactions, idle variety и sleep/wake animation rules. |
+| 12 — Animation & Reaction Pack | in_progress | `architect` + `domain-behavior` | Синхронизация контракта с Character Engine v2, реакции, idle variety, sleep rules. |
 | 13 — Render Engine & Asset Pipeline | next | `app-developer` | Sprite sheet pipeline, props, layers, themes и renderer debug tools. |
 | 14 — Offline Memory & Relationship | later | `app-developer` | SQLite memory, bounded history, local fact extraction и clear memory. |
 | 15 — Desktop Life Behaviors | later | `domain-behavior` | Quiet mode, cooldowns, habits и менее навязчивая автономность. |
@@ -38,7 +38,8 @@
 
 ## Текущий фокус
 
-Контракты анимаций зафиксированы в `docs/engine/ANIMATION_ENGINE.md`. Текущая фаза реализации — **Phase 12 (Animation & Reaction Pack)**.
+Текущая фаза реализации — **Phase 12 (Animation & Reaction Pack)**.
 
 Следующий рабочий шаг:
-- Реализация `P12-T01` (Domain Animation Engine & Intent Mapping) субагентом `domain-behavior`.
+- Выполнение задачи `P12-A01` (синхронизация контракта `docs/engine/ANIMATION_ENGINE.md` с Character Engine v2) агентом `architect`.
+- После фиксации спецификации — переход к реализации доменной логики `P12-T01` (`domain-behavior`).

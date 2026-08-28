@@ -23,40 +23,52 @@
 
 - Phase 0–11: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop.
 - Phase 12 (Animation & Reaction Pack): `in_progress`
-  - `P12-T01` (Domain Animation Engine & Intent Mapping): `in_progress`
+  - `P12-A01` (Architecture Sync: Animation Engine & Character Engine v2): `in_progress`
+  - `P12-T01` (Domain Animation Engine & Intent Mapping): `planned`
   - `P12-T02` (Idle Variety & Sleep/Wake Autonomous Life Rules): `planned`
   - `P12-T03` (Unit Tests for Animation & Reaction Pack): `planned`
   - `P12-G01` (Code Review Phase 12): `planned`
 
 ## Активная очередь (Phase 12 — Animation & Reaction Pack)
 
-### P12-T01 — Domain Animation Engine & Intent Mapping
+### P12-A01 — Architecture Sync: Animation Engine & Character Engine v2
 
 - **Статус:** `in_progress`
-- **Исполнитель:** `domain-behavior`
+- **Исполнитель:** `architect`
 - **Зависит от:** none
-- **Цель:** Реализовать domain-модель `AnimationIntent`, маппинг из `BehaviorIntent`, приоритеты и расширенные состояния FSM (`happy_reaction`, `confused_reaction`, `idle_blink`, `sleep_start`, `sleep_loop`, `wake_up`, `settle`) с поддержкой `propHint`.
-- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `src/domain/animation/animation-state-machine.ts`, `src/domain/behavior/behavior-intent.ts`.
+- **Цель:** Синхронизировать `docs/engine/ANIMATION_ENGINE.md` с Character Engine v2 (7 эмоциональных тонов, визуальные эффекты смущения/румянца, правила сна по энергии и безопасные fallback-переходы под неполный набор спрайтов).
+- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/BEHAVIOR_INTENTS.md`.
+- **Менять:** `docs/engine/ANIMATION_ENGINE.md`.
+- **Критерии приёмки:**
+  - [ ] Маппинг всех тонов `SynthesizedEmotionalTone` в `AnimationIntent`.
+  - [ ] Спецификация `propHint` и подсказок выражений (`blush`, `heart`, `question`, `pillow`).
+  - [ ] Политика graceful degradation (fallback) для состояний без готовых спрайтов.
+  - [ ] Сохранены строгие границы слоёв (без UI/asset деталей).
+- **Вне скоупа:** Написание TS-кода.
+
+### P12-T01 — Domain Animation Engine & Intent Mapping
+
+- **Статус:** `planned`
+- **Исполнитель:** `domain-behavior`
+- **Зависит от:** `P12-A01`
+- **Цель:** Реализовать доменную модель `AnimationIntent`, обновлённый маппинг и переходы FSM на основе синхронизированного контракта.
+- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `src/domain/animation/`, `src/domain/behavior/`.
 - **Менять:** `src/domain/animation/` (`animation-intent.ts`, `animation-state-machine.ts`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Реализованы типы `AnimationIntent`, `AnimationIntentKind`, `AnimationPriority` согласно контракту.
-  - [ ] Реализован чистый доменный маппер `mapBehaviorIntentToAnimationIntent(behaviorIntent)`.
-  - [ ] FSM поддерживает приоритеты, не-прерываемые состояния и авто-переход в `settle` / `idle_blink`.
-  - [ ] Написаны unit-тесты на intent mapping и transitions.
+  - [ ] Типы и маппер соответствуют контракту `ANIMATION_ENGINE.md`.
   - [ ] `npm test` и `npm run typecheck` зелёные.
-- **Вне скоупа:** Рендеринг спрайтов и SVG-ассетов (это Phase 13).
+- **Вне скоупа:** Рендеринг и UI.
 
 ### P12-T02 — Idle Variety & Sleep/Wake Autonomous Life Rules
 
 - **Статус:** `planned`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P12-T01`
-- **Цель:** Добавить в автономное поведение вариативность idle (micro-motions, осмотр, моргание), тайминги засыпания при низкой энергии/высоком комфорте и правила плавного пробуждения.
-- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/CHARACTER_ENGINE.md`, `src/domain/behavior/autonomous-behavior.ts`.
+- **Цель:** Вариативность idle (micro-motions, моргание) и засыпание по витальным потребностям `Needs`.
+- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `src/domain/behavior/`.
 - **Менять:** `src/domain/behavior/` (`autonomous-behavior.ts`, `idle-variety.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Автономный генератор намерений учитывает `Needs` (засыпание при низкой энергии).
-  - [ ] Введены вариативные idle-действия без спама переходов.
+  - [ ] Автономные правила сна/пробуждения и idle-микроанимации.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 - **Вне скоупа:** UI-компоненты.
 
@@ -65,26 +77,24 @@
 - **Статус:** `planned`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P12-T02`
-- **Цель:** Комплексное покрытие тестами всех сценариев маппинга, прерывания критическими событиями (drag), удержания sleep-лупа и возврата в idle.
+- **Цель:** Комплексные тесты маппинга, приоритетов прерываний и удержания сна.
 - **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `tests/domain/`.
 - **Менять:** `tests/domain/` (`animation-engine.test.ts`, `autonomous-behavior.test.ts`).
 - **Критерии приёмки:**
-  - [ ] Покрыты 100% сценариев обязательного маппинга из `ANIMATION_ENGINE.md`.
-  - [ ] Покрыты правила приоритетов (critical drag прерывает любое состояние).
-  - [ ] `npm test` и `npm run typecheck` проходят без ошибок.
-- **Вне скоупа:** Интеграционные UI-тесты.
+  - [ ] 100% покрытие сценариев маппинга и правил прерывания.
+  - [ ] `npm test` и `npm run typecheck` зелёные.
+- **Вне скоупа:** UI-тесты.
 
 ### P12-G01 — Code Review Phase 12
 
 - **Статус:** `planned`
 - **Исполнитель:** `reviewer`
 - **Зависит от:** `P12-T03`
-- **Цель:** Независимый аудит соблюдения контракта `ANIMATION_ENGINE.md` и чистоты доменного слоя.
-- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `src/domain/animation/`, `src/domain/behavior/`.
+- **Цель:** Аудит чистоты слоёв и соответствия контракту `ANIMATION_ENGINE.md`.
+- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, код Phase 12.
 - **Менять:** ничего.
 - **Критерии приёмки:**
-  - [ ] Подтверждена изоляция Domain Layer.
-  - [ ] Подтверждено соответствие контракту анимаций.
+  - [ ] Подтверждена изоляция Domain Layer и контрактов.
 - **Вне скоупа:** Правки кода.
 
 ## Поздние фазы
