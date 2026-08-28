@@ -25,8 +25,8 @@
 - Phase 13 (Render Engine & Asset Pipeline): `in_progress`
   - `P13-A01` (Architecture Contract: RENDER_ENGINE.md): `done`
   - `P13-T01` (Structured Logger Infrastructure & Telemetry Stream): `done`
-  - `P13-T02` (Asset Manifest Parser & Sprite Playback Controller): `in_progress`
-  - `P13-T03` (Layered Character Renderer Component): `planned`
+  - `P13-T02` (Asset Manifest Parser & Sprite Playback Controller): `done`
+  - `P13-T03` (Layered Character Renderer Component): `in_progress`
   - `P13-T04` (Safe Fallback Implementation): `planned`
   - `P13-T05` (Mini-Debug HUD & Dev Overlay): `planned`
   - `P13-T06` (Unit & Component Tests for Render Engine): `planned`
@@ -63,30 +63,32 @@
 
 ### P13-T02 — Asset Manifest Parser & Sprite Playback Controller
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-A01`
 - **Цель:** Реализовать парсер и нормализатор `manifest.json` (`ManifestLoader`), чистый `AnimationPlayer` (отсчёт времени по deltaMs, сменяемость кадров, циклы и completion events) под готовые 4 спрайта `body_walk_00..03.png`.
 - **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `public/assets/sprites/manifest.json`.
 - **Менять:** `src/renderer/render-engine/` (`manifest-loader.ts`, `animation-player.ts`, `types.ts`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] `ManifestLoader` корректно читает текущий `manifest.json` и нормализует дефолтные FPS/pivot.
-  - [ ] `AnimationPlayer` детерминированно меняет кадры по tick(deltaMs), поддерживает режимы `loop`, `hold`, `once` и `until_replaced`/`bounded`.
-  - [ ] Написаны unit-тесты на расчет таймингов, переключение кадров и completion event.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
-- **Вне скоупа:** React-компоненты отрисовки.
+  - [x] `ManifestLoader` читает `manifest.json` и нормализует дефолтные FPS/pivot.
+  - [x] `AnimationPlayer` детерминированно меняет кадры по tick(deltaMs), поддерживает режимы `loop`, `hold`, `once` и `until_replaced`/`bounded`.
+  - [x] Написаны unit-тесты на расчет таймингов, переключение кадров и completion event.
+  - [x] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T03 — Layered Character Renderer Component
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T02`
-- **Цель:** React-компонент многослойного рендеринга Wisp (тело + процедурный румянец + визуальные оверлеи пропсов).
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `src/renderer/components/`.
-- **Менять:** `src/renderer/components/Character/` (`SpriteRenderer.tsx`, `CharacterRenderer.tsx`), CSS/компоненты.
+- **Цель:** Реализовать Asset/Fallback Resolver (`asset-resolver.ts`), React-адаптер (`useAnimationRenderer` / `SpriteRenderer.tsx`) и обновить `CharacterRenderer.tsx`, отображая Wisp через реальные спрайты ходьбы с оверлеями румянца (`procedural_blush`) и пропсов (`pillow`, `heart`, `question`, `sparkle`) по Z-индексу.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md` (§2, §4, §5), `src/renderer/components/CharacterRenderer.tsx`.
+- **Менять:** `src/renderer/render-engine/asset-resolver.ts` (создать), `src/renderer/components/Character/` (`SpriteRenderer.tsx`, `ProceduralBlush.tsx`, `PropsOverlay.tsx`), `src/renderer/components/CharacterRenderer.tsx`, unit/component тесты.
 - **Критерии приёмки:**
-  - [ ] Wisp рендерится через спрайты с оверлеями румянца и пропсов.
+  - [ ] `AssetResolver` маппит `AnimationIntent` в `ResolvedAnimationClip` по нормативному Z-порядку.
+  - [ ] Wisp на экране ходит реальными 4 спрайтами `body_walk_00..03.png` при FSM состоянии walk.
+  - [ ] Оверлей румянца и визуальные пропсы рендерятся в строгом Z-порядке.
   - [ ] `npm test` и `npm run typecheck` зелёные.
+- **Вне скоупа:** Оверлей Debug HUD (P13-T05).
 
 ### P13-T04 — Safe Fallback Implementation
 

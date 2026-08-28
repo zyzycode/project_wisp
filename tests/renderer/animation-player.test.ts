@@ -1,0 +1,156 @@
+import { describe, expect, it, vi } from 'vitest';
+import { AnimationPlayer, type ICharacterRenderer, type RenderPresentationState, type ResolvedAnimationClip } from '../../src/renderer/render-engine';
+
+function createClip(overrides: Partial<ResolvedAnimationClip> = {}): ResolvedAnimationClip {
+  return {
+    key: 'body_walk',
+    viewport: { width: 512, height: 512 },
+    rootPivot: { x: 256, y: 460 },
+    transform: { flipX: false, scale: 1 },
+    body: {
+      id: 'base_body',
+      category: 'body',
+      animationKey: 'body_walk',
+      zIndex: 10,
+      fps: 8,
+      frames: [0, 1, 2, 3].map((index) => ({ source: `walk_${index}.png` })),
+    },
+    ...overrides,
+  };
+}
+
+function createRenderer(): { renderer: ICharacterRenderer; states: RenderPresentationState[] } {
+  const states: RenderPresentationState[] = [];
+  return {
+    renderer: { render: (state): void => { states.push(state); }, destroy: (): void => undefined },
+    states,
+  };
+}
+
+function bodySource(state: RenderPresentationState | undefined): string | undefined {
+  return layerSource(state?.layers, 0);
+}
+
+function layerSource(stateLayers: RenderPresentationState['layers'] | undefined, index: number): string | undefined {
+  const layer = stateLayers?.[index];
+  return layer?.visible ? layer.frame.source : undefined;
+}
+
+describe('Renderer: AnimationPlayer', () => {
+  it('emits the initial walk frame and advances all four frames deterministically', () => {
+    const { renderer, states } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    player.play(createClip(), { type: 'until_replaced' });
+    expect(bodySource(player.getPresentationState())).toBe('walk_0.png');
+
+    player.tick(125);
+    expect(bodySource(player.getPresentationState())).toBe('walk_1.png');
+    player.tick(125);
+    expect(bodySource(player.getPresentationState())).toBe('walk_2.png');
+    player.tick(125);
+    expect(bodySource(player.getPresentationState())).toBe('walk_3.png');
+    player.tick(125);
+    expect(bodySource(player.getPresentationState())).toBe('walk_0.png');
+    expect(states).toHaveLength(5);
+  });
+
+  it('uses per-frame timings and resolves large deltas without stepping frame by frame', () => {
+    const { renderer } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    const clip = createClip({
+      body: {
+        ...createClip().body,
+        frames: [
+          { source: 'first.png', durationMs: 50 },
+          { source: 'second.png', durationMs: 100 },
+          { source: 'third.png', durationMs: 200 },
+        ],
+      },
+    });
+    player.play(clip, { type: 'until_replaced' });
+    player.tick(410);
+    expect(bodySource(player.getPresentationState())).toBe('second.png');
+  });
+
+  it('keeps repeated fractional ticks aligned with the same frame boundary as one whole tick', () => {
+    const { renderer } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    player.play(createClip(), { type: 'until_replaced' });
+    for (let index = 0; index < 1250; index += 1) player.tick(0.1);
+
+    expect(bodySource(player.getPresentationState())).toBe('walk_1.png');
+  });
+
+  it('completes none once at the final body frame and ignores subsequent ticks', () => {
+    const { renderer, states } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    const onCompleted = vi.fn();
+    player.onCompleted(onCompleted);
+    player.play(createClip(), { type: 'none' });
+    player.tick(500);
+
+    expect(bodySource(player.getPresentationState())).toBe('walk_3.png');
+    expect(onCompleted).toHaveBeenCalledWith({ clipKey: 'body_walk', loopCount: 1, sessionElapsedMs: 500 });
+    expect(states).toHaveLength(2);
+    player.tick(125);
+    expect(states).toHaveLength(2);
+  });
+
+  it('completes bounded playback after normalized cycle count and does not complete replaced clips', () => {
+    const { renderer } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    const onCompleted = vi.fn();
+    player.onCompleted(onCompleted);
+    player.play(createClip(), { type: 'bounded', count: 2 });
+    player.tick(999);
+    expect(onCompleted).not.toHaveBeenCalled();
+    player.tick(1);
+    expect(onCompleted).toHaveBeenCalledWith({ clipKey: 'body_walk', loopCount: 2, sessionElapsedMs: 1000 });
+
+    player.play(createClip({ key: 'replacement' }), { type: 'bounded', count: 1 });
+    expect(onCompleted).toHaveBeenCalledTimes(1);
+    player.tick(500);
+    expect(onCompleted).toHaveBeenCalledWith({ clipKey: 'replacement', loopCount: 1, sessionElapsedMs: 500 });
+  });
+
+  it('supports loop, hold, and once overlay modes independently of body playback', () => {
+    const { renderer } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    const clip = createClip({
+      face: {
+        id: 'face', category: 'face', animationKey: 'face_blink', zIndex: 20, playbackMode: 'hold',
+        fps: 10, frames: [{ source: 'face_0.png' }, { source: 'face_1.png' }],
+      },
+      expression: {
+        id: 'expression', category: 'expression', animationKey: 'expression_wink', zIndex: 21, playbackMode: 'once',
+        fps: 10, frames: [{ source: 'expression_0.png' }, { source: 'expression_1.png' }],
+      },
+      props: [{
+        id: 'prop_sparkle', category: 'props', animationKey: 'prop_sparkle', zIndex: 43, playbackMode: 'loop',
+        fps: 10, frames: [{ source: 'prop_0.png' }, { source: 'prop_1.png' }],
+      }],
+    });
+    player.play(clip, { type: 'until_replaced' });
+    player.tick(250);
+
+    const layers = player.getPresentationState()?.layers;
+    expect(layers?.map((layer) => layer.id)).toEqual(['base_body', 'face', 'prop_sparkle']);
+    expect(layerSource(layers, 1)).toBe('face_1.png');
+    expect(layerSource(layers, 2)).toBe('prop_0.png');
+  });
+
+  it('treats invalid delta values as no-ops and is safe after destroy', () => {
+    const { renderer, states } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    player.play(createClip(), { type: 'until_replaced' });
+    player.tick(0);
+    player.tick(Number.NaN);
+    player.tick(Number.POSITIVE_INFINITY);
+    expect(states).toHaveLength(1);
+    player.destroy();
+    player.destroy();
+    player.tick(125);
+    player.play(createClip(), { type: 'until_replaced' });
+    expect(states).toHaveLength(1);
+  });
+});
