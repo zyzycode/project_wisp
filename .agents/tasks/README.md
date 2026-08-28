@@ -24,48 +24,36 @@
 - Phase 0–9: `done` — архитектурная база, оверлей, FSM, UI, контракты ядра.
 - Phase 10: `done` — Mock AI dialogue loop, client integration, scenarios & code review.
 - Phase 11 (Character Engine v2): `in_progress` — потребности, отношения, пластичность, синтез эмоций.
-- Текущая активная задача: `P11-A01` (Architectural Spec & Contract Boundaries for Character Engine v2).
+  - `P11-A01` (Architectural Contracts & Layer Boundaries): `done`
+- Текущая активная задача: `P11-T01` (Domain Models, Presets & Emotional Synthesis).
 
 ## Активная очередь (Phase 11 — Character Engine v2)
 
-### P11-A01 — Architectural Contracts & Layer Boundaries for Character Engine v2
-
-- **Статус:** `ready`
-- **Исполнитель:** `architect`
-- **Зависит от:** Phase 10
-- **Цель:** Спроектировать и зафиксировать точную структуру модулей Domain/Application для Character Engine v2: расположение файлов, контракты DTO (`CharacterSnapshot`, `StimulusEvent`), порты репозитория состояния и правила изоляции.
-- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/BEHAVIOR_INTENTS.md`, `docs/engine/AI_PROVIDER_CONTRACT.md`.
-- **Менять:** `src/domain/character/types.ts` (или аналогичные pure type definitions / contracts).
-- **Критерии приёмки:**
-  - [ ] Зафиксирована файловая структура модуля характера в `src/domain/character/`.
-  - [ ] Определены контракты DTO для Application/IPC (`CharacterSnapshot`, `CharacterPresentationDTO`).
-  - [ ] Чистые типы TypeScript без UI и runtime-зависимостей, `npm run typecheck` зелёный.
-- **Вне скоупа:** бизнес-логика тиков/расчётов, UI, Electron.
-
 ### P11-T01 — Domain Models, Presets & Emotional Synthesis
 
-- **Статус:** `planned`
+- **Статус:** `ready`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P11-A01`
-- **Цель:** Реализовать доменные структуры `CharacterState`, пресет `shyDreamGirlPreset`, чистые функции `calculateShyness`, `synthesizeEmotionalTone` и `canExpressFlirt`.
+- **Цель:** Реализовать пресет `shyDreamGirlPreset`, чистые функции расчёта производных черт (`calculateShyness`), синтеза эмоционального тона (`synthesizeEmotionalTone`), проверки порогов флирта (`canExpressFlirt`) и снапшота (`createCharacterSnapshot`).
 - **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `src/domain/character/types.ts`.
-- **Менять:** `src/domain/character/` (presets, emotion synthesizer, shyness calculator).
+- **Менять:** `src/domain/character/` (создать `personality-presets.ts`, `emotional-tone.ts`, `intimacy-rules.ts`, `character-snapshot.ts` или `index.ts`).
 - **Критерии приёмки:**
-  - [ ] Реализован `shyDreamGirlPreset` с калибровкой осей.
-  - [ ] Реализованы чистые калькуляторы производных черт и синтеза эмоций.
+  - [ ] Реализован `shyDreamGirlPreset` с калибровкой всех 7 осей.
+  - [ ] Реализованы функции `calculateShyness`, `synthesizeEmotionalTone`, `canExpressFlirt`.
+  - [ ] Чистые доменные функции без UI/инфраструктуры.
   - [ ] `npm test` и `npm run typecheck` зелёные.
-- **Вне скоупа:** UI, таймеры, персистентность.
+- **Вне скоупа:** таймеры, SQLite, UI.
 
 ### P11-T02 — Needs Metabolism & Stimuli Reducer
 
 - **Статус:** `planned`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P11-T01`
-- **Цель:** Реализовать метаболизм потребностей по тикам времени (soft decay) и чистый редьюсер входящих стимулов с эволюцией `friendship` и гейтингом `loveUnlocked`.
+- **Цель:** Реализовать метаболизм потребностей по тикам времени (soft decay) и чистый редьюсер входящих стимулов с эволюцией `friendship` и гейтингом `loveUnlocked` ("no guilt").
 - **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/BEHAVIOR_INTENTS.md`.
 - **Менять:** `src/domain/character/` (metabolism, stimuli reducer).
 - **Критерии приёмки:**
-  - [ ] Чистые функции тика метаболизма и обработки стимулов (petting, chat, idle).
+  - [ ] Чистые функции тика метаболизма и обработки стимулов (petting, chat, idle, etc.).
   - [ ] Прогрессия отношений по принципу "no guilt".
   - [ ] `npm test` и `npm run typecheck` зелёные.
 - **Вне скоупа:** React хуки, SQLite.

@@ -24,10 +24,34 @@ describe('Application: MockAI Dialogue Scenarios & Intent Mapping', () => {
       createdAt: new Date().toISOString(),
     },
     characterSnapshot: {
-      mood: 'neutral',
-      energy: 85,
-      activity: 'idle',
-      focus: 'user',
+      needs: {
+        energy: 85,
+        attention: 30,
+        play: 30,
+        comfort: 20,
+      },
+      relationship: {
+        friendship: 0,
+        love: 0,
+        loveUnlocked: false,
+      },
+      personality: {
+        presetId: 'shyDreamGirl',
+        aiSelfConcept:
+          'Wisp is a shy, gentle, emotionally sensitive anime-like companion.',
+        traits: {
+          shyness: 0.55,
+          playfulness: 0.42,
+          sensitivity: 0.88,
+          boldness: 0.18,
+        },
+      },
+      intimacy: {
+        flirtiness: 0,
+        romanticCharge: 0,
+        userConsentEnabled: false,
+      },
+      synthesizedTone: 'neutral',
     },
     recentContext: [],
     locale: 'ru',

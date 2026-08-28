@@ -88,10 +88,34 @@ export async function processDialogueTurn({
     requestId,
     userMessage,
     characterSnapshot: {
-      mood: characterMood,
-      energy: 85,
-      activity: characterActivity,
-      focus: 'user',
+      needs: {
+        energy: 85,
+        attention: characterActivity === 'idle' ? 35 : 25,
+        play: 30,
+        comfort: 20,
+      },
+      relationship: {
+        friendship: 0,
+        love: 0,
+        loveUnlocked: false,
+      },
+      personality: {
+        presetId: 'shyDreamGirl',
+        aiSelfConcept:
+          'Wisp is a shy, gentle, emotionally sensitive anime-like companion.',
+        traits: {
+          shyness: characterMood === 'shy' ? 0.8 : 0.55,
+          playfulness: 0.42,
+          sensitivity: 0.88,
+          boldness: 0.18,
+        },
+      },
+      intimacy: {
+        flirtiness: 0,
+        romanticCharge: 0,
+        userConsentEnabled: false,
+      },
+      synthesizedTone: characterMood === 'sleepy' ? 'sleepy' : 'neutral',
     },
     recentContext: recentContext.slice(-6),
     locale,

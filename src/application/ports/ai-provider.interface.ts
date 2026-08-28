@@ -10,6 +10,8 @@
  * - No UI/DOM/React/CSS or animation asset details.
  */
 
+import type { CharacterSnapshot } from '../../domain/character/types';
+
 export type AIProviderStatusKind = 'ready' | 'thinking' | 'degraded' | 'offline' | 'error';
 
 export interface AIProviderStatus {
@@ -24,12 +26,7 @@ export interface AIProviderUserMessage {
   createdAt: string;
 }
 
-export interface AIProviderCharacterSnapshot {
-  mood: string;
-  energy: number;
-  activity: string;
-  focus: string;
-}
+export type AIProviderCharacterSnapshot = CharacterSnapshot;
 
 export interface AIProviderContextMessage {
   role: 'user' | 'wisp';
@@ -45,7 +42,15 @@ export interface AIProviderRequest {
   locale?: string;
 }
 
-export type AIProviderTone = 'warm' | 'playful' | 'sleepy' | 'curious' | 'confused' | 'quiet';
+export type AIProviderTone =
+  | 'warm'
+  | 'playful'
+  | 'sleepy'
+  | 'curious'
+  | 'confused'
+  | 'quiet'
+  | 'shy'
+  | 'affectionate';
 
 export type AIProviderSuggestedMood =
   | 'neutral'
@@ -53,7 +58,8 @@ export type AIProviderSuggestedMood =
   | 'curious'
   | 'sleepy'
   | 'confused'
-  | 'shy';
+  | 'shy'
+  | 'affectionate';
 
 export type ProviderSuggestedBehaviorKind =
   | 'respond'
