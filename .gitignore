@@ -99,10 +99,11 @@ env/
 *.sqlite3-shm
 *.sqlite3-wal
 
-# Local scripts, generated images, and static assets
+# Local scripts, generated images, and large binary sprites
 scripts/
-public/
 generated_images/
+public/**/*.png
+public/*.png
 
 # Personal human-only notes, not AI/project documentation
 docs/AI_STUDIO_PROMPTS.md

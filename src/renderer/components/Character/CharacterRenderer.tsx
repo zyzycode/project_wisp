@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { AnimationIntent } from '../../../domain/animation/animation-intent';
+import { createSystemAnimationIntent } from '../../../domain/animation/animation-intent';
 import type {
   CharacterExpression,
   CharacterTheme,
@@ -8,7 +10,9 @@ import {
   calculateRenderedDimensions,
 } from '../../../domain/models/character-visuals';
 import { WispAura } from './WispAura';
-import { WispFace } from './WispFace';
+import { AssetResolver, ManifestLoader, type NormalizedSpriteManifest } from '../../render-engine';
+import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
+import { SpriteRenderer } from './SpriteRenderer';
 
 export interface CharacterRendererProps {
   expression?: CharacterExpression;
@@ -16,6 +20,7 @@ export interface CharacterRendererProps {
   scale?: number;
   isDragging?: boolean;
   tiltDeg?: number;
+  animationIntent?: AnimationIntent;
   onClick?: () => void;
   onDoubleClick?: () => void;
   onMouseDown?: (e: React.MouseEvent) => void;
@@ -28,17 +33,37 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   scale = 1.0,
   isDragging = false,
   tiltDeg = 0,
+  animationIntent,
   onClick,
   onDoubleClick,
   onMouseDown,
   onContextMenu,
 }) => {
+  const defaultIntent = useMemo(() => createSystemAnimationIntent('idle_blink'), []);
+  const intent = animationIntent ?? defaultIntent;
+  const [resolver, setResolver] = useState<AssetResolver>(() => new AssetResolver(EMPTY_MANIFEST));
+  const presentationState = useCharacterAnimation(resolver, intent);
   const baseSize = { width: 100, height: 100 };
   const renderedSize = calculateRenderedDimensions(baseSize, scale);
+
+  useEffect(() => {
+    let disposed = false;
+    void fetch('/assets/sprites/manifest.json')
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Unable to load sprites: ${response.status}`);
+        return response.json() as Promise<unknown>;
+      })
+      .then((manifest) => {
+        if (!disposed) setResolver(new AssetResolver(new ManifestLoader().load(manifest)));
+      })
+      .catch(() => undefined);
+    return (): void => { disposed = true; };
+  }, []);
 
   return (
     <div
       className={`wisp-character-root ${isDragging ? 'dragging' : ''}`}
+      data-expression={expression}
       style={{
         width: `${renderedSize.width}px`,
         height: `${renderedSize.height}px`,
@@ -59,8 +84,10 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
         }}
       >
         <WispAura palette={theme.palette} isDragging={isDragging} />
-        <WispFace expression={expression} eyeColor={theme.palette.eyes} />
       </svg>
+      <SpriteRenderer state={presentationState} />
     </div>
   );
 };
+
+const EMPTY_MANIFEST: NormalizedSpriteManifest = { schemaVersion: 1, animations: {} };

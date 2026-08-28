@@ -1,0 +1,179 @@
+{
+  "body_sleep_trans": {
+    "category": "body/sleep_transition",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/sleep_transition/body_sleep_trans_00.png",
+      "/assets/sprites/body/sleep_transition/body_sleep_trans_01.png",
+      "/assets/sprites/body/sleep_transition/body_sleep_trans_02.png",
+      "/assets/sprites/body/sleep_transition/body_sleep_trans_03.png"
+    ],
+    "sourceFile": "готов_спать.png"
+  },
+  "body_idle": {
+    "category": "body/idle",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/idle/body_idle_00.png",
+      "/assets/sprites/body/idle/body_idle_01.png",
+      "/assets/sprites/body/idle/body_idle_02.png",
+      "/assets/sprites/body/idle/body_idle_03.png"
+    ],
+    "sourceFile": "дыхание.png"
+  },
+  "body_thinking": {
+    "category": "body/thinking",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/thinking/body_thinking_00.png",
+      "/assets/sprites/body/thinking/body_thinking_01.png",
+      "/assets/sprites/body/thinking/body_thinking_02.png",
+      "/assets/sprites/body/thinking/body_thinking_03.png"
+    ],
+    "sourceFile": "думает.png"
+  },
+  "body_dragged": {
+    "category": "body/dragged",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/dragged/body_dragged_00.png",
+      "/assets/sprites/body/dragged/body_dragged_01.png",
+      "/assets/sprites/body/dragged/body_dragged_02.png",
+      "/assets/sprites/body/dragged/body_dragged_03.png"
+    ],
+    "sourceFile": "перетаскивание.png"
+  },
+  "body_land": {
+    "category": "body/land",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/land/body_land_00.png",
+      "/assets/sprites/body/land/body_land_01.png",
+      "/assets/sprites/body/land/body_land_02.png",
+      "/assets/sprites/body/land/body_land_03.png"
+    ],
+    "sourceFile": "приземлен.png"
+  },
+  "face_happy": {
+    "category": "faces/happy",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/happy/face_happy_00.png",
+      "/assets/sprites/faces/happy/face_happy_01.png",
+      "/assets/sprites/faces/happy/face_happy_02.png",
+      "/assets/sprites/faces/happy/face_happy_03.png"
+    ],
+    "sourceFile": "счаст.png"
+  },
+  "body_sleep": {
+    "category": "body/sleep",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/sleep/body_sleep_00.png",
+      "/assets/sprites/body/sleep/body_sleep_01.png",
+      "/assets/sprites/body/sleep/body_sleep_02.png",
+      "/assets/sprites/body/sleep/body_sleep_03.png"
+    ],
+    "sourceFile": "спит_дыхание.png"
+  },
+  "body_petting": {
+    "category": "body/petting",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/petting/body_petting_00.png",
+      "/assets/sprites/body/petting/body_petting_01.png",
+      "/assets/sprites/body/petting/body_petting_02.png",
+      "/assets/sprites/body/petting/body_petting_03.png"
+    ],
+    "sourceFile": "радость.png"
+  },
+  "body_walk": {
+    "category": "body/walk",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/walk/body_walk_00.png",
+      "/assets/sprites/body/walk/body_walk_01.png",
+      "/assets/sprites/body/walk/body_walk_02.png",
+      "/assets/sprites/body/walk/body_walk_03.png"
+    ],
+    "sourceFile": "ходьба.png"
+  },
+  "face_talking": {
+    "category": "faces/talking",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/talking/face_talking_00.png",
+      "/assets/sprites/faces/talking/face_talking_01.png",
+      "/assets/sprites/faces/talking/face_talking_02.png",
+      "/assets/sprites/faces/talking/face_talking_03.png"
+    ],
+    "sourceFile": "речь.png"
+  },
+  "face_shocked": {
+    "category": "faces/shocked",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/shocked/face_shocked_00.png",
+      "/assets/sprites/faces/shocked/face_shocked_01.png",
+      "/assets/sprites/faces/shocked/face_shocked_02.png",
+      "/assets/sprites/faces/shocked/face_shocked_03.png"
+    ],
+    "sourceFile": "удивление.png"
+  },
+  "face_sad": {
+    "category": "faces/sad",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/sad/face_sad_00.png",
+      "/assets/sprites/faces/sad/face_sad_01.png",
+      "/assets/sprites/faces/sad/face_sad_02.png",
+      "/assets/sprites/faces/sad/face_sad_03.png"
+    ],
+    "sourceFile": "грусть.png"
+  },
+  "face_thinking": {
+    "category": "faces/thinking",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/thinking/face_thinking_00.png",
+      "/assets/sprites/faces/thinking/face_thinking_01.png",
+      "/assets/sprites/faces/thinking/face_thinking_02.png",
+      "/assets/sprites/faces/thinking/face_thinking_03.png"
+    ],
+    "sourceFile": "озадаченност.png"
+  },
+  "face_sleep": {
+    "category": "faces/sleep",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/sleep/face_sleep_00.png",
+      "/assets/sprites/faces/sleep/face_sleep_01.png",
+      "/assets/sprites/faces/sleep/face_sleep_02.png",
+      "/assets/sprites/faces/sleep/face_sleep_03.png"
+    ],
+    "sourceFile": "сон_лиц.png"
+  },
+  "face_confused": {
+    "category": "face/confused",
+    "framesCount": 16,
+    "frames": [
+      "/assets/sprites/custom/растерянность/растерянность_00.png",
+      "/assets/sprites/custom/растерянность/растерянность_01.png",
+      "/assets/sprites/custom/растерянность/растерянность_02.png",
+      "/assets/sprites/custom/растерянность/растерянность_03.png",
+      "/assets/sprites/custom/растерянность/растерянность_04.png",
+      "/assets/sprites/custom/растерянность/растерянность_05.png",
+      "/assets/sprites/custom/растерянность/растерянность_06.png",
+      "/assets/sprites/custom/растерянность/растерянность_07.png",
+      "/assets/sprites/custom/растерянность/растерянность_08.png",
+      "/assets/sprites/custom/растерянность/растерянность_09.png",
+      "/assets/sprites/custom/растерянность/растерянность_10.png",
+      "/assets/sprites/custom/растерянность/растерянность_11.png",
+      "/assets/sprites/custom/растерянность/растерянность_12.png",
+      "/assets/sprites/custom/растерянность/растерянность_13.png",
+      "/assets/sprites/custom/растерянность/растерянность_14.png",
+      "/assets/sprites/custom/растерянность/растерянность_15.png"
+    ],
+    "sourceFile": "растерянность.png"
+  }
+}

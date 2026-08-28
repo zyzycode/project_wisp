@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { PetPositionDTO, ScreenBoundsDTO } from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
 import type { CharacterTheme } from '../../domain/models/character-visuals';
@@ -20,6 +20,8 @@ import { ChatInput } from './Chat/ChatInput';
 import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
 import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
 import { useDialogueLoop } from '../hooks/useDialogueLoop';
+import { createSystemAnimationIntent, type AnimationIntentKind } from '../../domain/animation/animation-intent';
+import type { AnimationState } from '../../domain/animation/animation-state-machine';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
 
@@ -65,6 +67,11 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     },
     dispatchAnim,
   });
+
+  const characterAnimationIntent = useMemo(
+    () => createSystemAnimationIntent(isWandering ? 'walk' : animationStateToIntentKind(animState)),
+    [animState, isWandering]
+  );
 
   // Dialogue Loop Hook (AI Provider -> BehaviorIntent -> SpeechBubble & FSM)
   const { handleSendMessage: handleUserSendMessage } = useDialogueLoop({
@@ -329,6 +336,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
       <CharacterRenderer
         expression={expression}
+        animationIntent={characterAnimationIntent}
         theme={currentTheme}
         scale={scale}
         isDragging={isDragging}
@@ -351,3 +359,22 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     </div>
   );
 };
+
+function animationStateToIntentKind(state: AnimationState): AnimationIntentKind {
+  switch (state) {
+    case 'float': return 'walk';
+    case 'dragged': return 'dragged';
+    case 'falling': return 'dragged';
+    case 'landing': return 'land';
+    case 'sleep':
+    case 'sleep_loop': return 'sleep_loop';
+    case 'sleep_start': return 'sleep_start';
+    case 'wake_up': return 'wake_up';
+    case 'happy': return 'happy_reaction';
+    case 'surprised': return 'confused_reaction';
+    case 'thinking': return 'thinking_loop';
+    case 'spook': return 'spook';
+    case 'settle': return 'settle';
+    case 'idle': return 'idle_blink';
+  }
+}

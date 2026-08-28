@@ -26,8 +26,8 @@
   - `P13-A01` (Architecture Contract: RENDER_ENGINE.md): `done`
   - `P13-T01` (Structured Logger Infrastructure & Telemetry Stream): `done`
   - `P13-T02` (Asset Manifest Parser & Sprite Playback Controller): `done`
-  - `P13-T03` (Layered Character Renderer Component): `in_progress`
-  - `P13-T04` (Safe Fallback Implementation): `planned`
+  - `P13-T03` (Layered Character Renderer Component): `done`
+  - `P13-T04` (Safe Fallback Implementation): `in_progress`
   - `P13-T05` (Mini-Debug HUD & Dev Overlay): `planned`
   - `P13-T06` (Unit & Component Tests for Render Engine): `planned`
   - `P13-G01` (Code Review Phase 13): `planned`
@@ -77,29 +77,30 @@
 
 ### P13-T03 — Layered Character Renderer Component
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T02`
-- **Цель:** Реализовать Asset/Fallback Resolver (`asset-resolver.ts`), React-адаптер (`useAnimationRenderer` / `SpriteRenderer.tsx`) и обновить `CharacterRenderer.tsx`, отображая Wisp через реальные спрайты ходьбы с оверлеями румянца (`procedural_blush`) и пропсов (`pillow`, `heart`, `question`, `sparkle`) по Z-индексу.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md` (§2, §4, §5), `src/renderer/components/CharacterRenderer.tsx`.
-- **Менять:** `src/renderer/render-engine/asset-resolver.ts` (создать), `src/renderer/components/Character/` (`SpriteRenderer.tsx`, `ProceduralBlush.tsx`, `PropsOverlay.tsx`), `src/renderer/components/CharacterRenderer.tsx`, unit/component тесты.
+- **Цель:** Реализовать Asset/Fallback Resolver, React-адаптер (`useCharacterAnimation`) и обновить `CharacterRenderer.tsx`, отображая Wisp через спрайты с оверлеями румянца и пропсов по Z-индексам.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`.
+- **Менять:** `src/renderer/render-engine/asset-resolver.ts`, `src/renderer/components/Character/`, `src/renderer/components/CharacterRenderer.tsx`.
 - **Критерии приёмки:**
-  - [ ] `AssetResolver` маппит `AnimationIntent` в `ResolvedAnimationClip` по нормативному Z-порядку.
-  - [ ] Wisp на экране ходит реальными 4 спрайтами `body_walk_00..03.png` при FSM состоянии walk.
-  - [ ] Оверлей румянца и визуальные пропсы рендерятся в строгом Z-порядке.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
-- **Вне скоупа:** Оверлей Debug HUD (P13-T05).
+  - [x] Wisp ходит спрайтами при FSM walk.
+  - [x] Z-порядок слоёв соблюден.
+  - [x] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T04 — Safe Fallback Implementation
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T03`
-- **Цель:** Автоматический безопасный откат при отсутствии покадровых спрайтов (Level 1 -> Level 2 -> Level 3).
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`.
-- **Менять:** `src/renderer/render-engine/fallback-controller.ts`, unit-тесты.
+- **Цель:** Реализовать строгую 3-уровневую систему Graceful Degradation и технический фоллбек в `AssetResolver` и `SpriteRenderer` согласно `docs/engine/RENDER_ENGINE.md` (§6): Level 1 (точное совпадение тона) -> Level 2 (базовый body_walk / body_idle + процедурный оверлей) -> Level 3 (системная векторная заглушка / безопасный дефолт) без падений FSM и сбоев таймеров, плюс Technical Fallback при ошибках загрузки картинок (404/decode error).
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md` (§6 Graceful Fallback).
+- **Менять:** `src/renderer/render-engine/asset-resolver.ts`, `src/renderer/components/Character/SpriteRenderer.tsx`, unit/component тесты.
 - **Критерии приёмки:**
-  - [ ] Никакие отсутствующие спрайты не вызывают ошибок или зависаний.
+  - [ ] Полная изоляция: отсутствующий в манифесте или битый спрайт ни при каких обстоятельствах не крашит FSM и не блокирует цикл анимации.
+  - [ ] Level 2 корректно сохраняет семантические оверлеи (`blush`, `props`) даже если спрайты тела откатились к `body_idle`.
+  - [ ] Technical Fallback обрабатывает ошибки `onError` у `<img>` без зависания плеера.
+  - [ ] Написаны unit-тесты на все 3 уровня фоллбека и обработку сетевых/дисковых ошибок.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T05 — Mini-Debug HUD & Dev Overlay

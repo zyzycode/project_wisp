@@ -64,11 +64,29 @@ html, body {
 }
 
 .wisp-svg-canvas {
+  position: absolute;
+  inset: 0;
   overflow: visible;
   animation: float 3.5s ease-in-out infinite;
 }
 
+.wisp-sprite-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  animation: float 3.5s ease-in-out infinite;
+}
+
+.wisp-sprite-canvas image {
+  image-rendering: auto;
+}
+
 .wisp-character-root.dragging .wisp-svg-canvas {
+  animation: none;
+  transform: scale(1.06);
+}
+
+.wisp-character-root.dragging .wisp-sprite-canvas {
   animation: none;
   transform: scale(1.06);
 }
