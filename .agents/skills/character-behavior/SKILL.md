@@ -15,7 +15,7 @@ graph TD
     ProviderIntent["BehaviorIntent (из ProviderResponseIntentMapper)"] --> BehaviorCoordinator
 
     subgraph Character_Core ["Character Core State"]
-        BehaviorCoordinator --> MoodManager["Mood Manager (Joy, Neutral, Sleepy, Focused)"]
+        BehaviorCoordinator --> ToneSynthesizer["Tone Synthesizer (SynthesizedEmotionalTone)"]
         BehaviorCoordinator --> EnergyManager["Energy & Fatigue (0 - 100%)"]
         BehaviorCoordinator --> BehaviorFSM["Behavior State Machine"]
     end
@@ -27,10 +27,10 @@ graph TD
 
 ---
 
-## 2. Эмоциональная модель (Moods & Traits)
+## 2. Эмоциональная модель (Tone & Traits)
 
 Персонаж обладает характеристиками:
-- **Базовые настроения (`Mood`):** `neutral` (нейтральное), `happy` (радостное), `curious` (любопытное), `sleepy` (сонное), `mischievous` (озорное), `confused` (озадаченное).
+- **Синтезированный эмоциональный тон (`SynthesizedEmotionalTone`):** `shy`, `sleepy`, `playful`, `curious`, `neutral`, `affectionate`, `flustered`.
 - **Уровень энергии (`Energy`):** От 0% до 100%. Расходуется при ходьбе и активных играх, восстанавливается во сне.
 - **Внимание (`Focus`):** Направлено ли внимание компаньона на пользователя или он занят своими делами.
 
@@ -41,12 +41,11 @@ graph TD
 Состояния поведения персонажа:
 1. `IDLE` — спокойное присутствие на экране, фоновое дыхание, редкие моргания.
 2. `WANDERING` — автономное перемещение по рабочей области экрана в поисках интересной точки.
-3. `OBSERVING` — поворот головы в сторону курсора мыши пользователя.
+3. `SITTING` — спокойная пауза или отдых рядом с пользователем.
 4. `THINKING` — процесс формулирования мысли или генерации ответа на вопрос.
 5. `TALKING` — отображение реплики в облачке диалога с соответствующей мимикой.
-6. `DRAGGED` — персонаж удерживается курсором мыши.
-7. `FALLING` — свободное падение под действием гравитации до приземления на «пол».
-8. `SLEEPING` — глубокий сон при долгом отсутствии активности.
+6. `DRAGGING` — персонаж удерживается курсором мыши.
+7. `SLEEPING` — глубокий сон при долгом отсутствии активности.
 
 ---
 

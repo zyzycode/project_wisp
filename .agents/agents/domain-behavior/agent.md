@@ -21,8 +21,8 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 ## 3. Зоны ответственности
 
 1. `BehaviorStateMachine`, `AnimationStateMachine`, transitions, priorities.
-2. Расчёт движения, границ, drag/fall/land/sleep/wander состояний в чистой логике.
-3. Эмоциональные состояния, energy/focus/mood и автономные стимулы.
+2. Расчёт движения, границ, drag/land/sleep/wander состояний в чистой логике.
+3. Эмоциональный тон (`SynthesizedEmotionalTone`), energy/focus и автономные стимулы.
 4. `BehaviorIntent` и `AnimationIntent` usage согласно `docs/engine/*`.
 5. Unit-тесты для переходов состояний и edge cases.
 6. Cooldown/no-spam, quiet mode, sleep mode и props-as-intents для одного Wisp.
@@ -49,7 +49,7 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 - [../../rules/10-architecture.md](../../rules/10-architecture.md)
 - [../../rules/20-typescript.md](../../rules/20-typescript.md)
 - [../../rules/60-testing.md](../../rules/60-testing.md)
-- `docs/engine/CHARACTER_ENGINE.md`, если задача касается характера, mood/energy/needs или stimuli.
+- `docs/engine/CHARACTER_ENGINE.md`, если задача касается характера, `SynthesizedEmotionalTone`/energy/needs или stimuli.
 - `docs/engine/BEHAVIOR_INTENTS.md`, если задача касается behavior intents.
 - `docs/engine/ANIMATION_ENGINE.md`, если задача касается animation intents, FSM, priority или interrupt rules.
 - [../../skills/character-behavior/SKILL.md](../../skills/character-behavior/SKILL.md)

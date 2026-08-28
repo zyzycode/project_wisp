@@ -31,7 +31,7 @@
 
 ### P11-T01 — Domain Models, Presets & Emotional Synthesis
 
-- **Статус:** `ready`
+- **Статус:** `in_progress`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P11-A01`
 - **Цель:** Реализовать пресет `shyDreamGirlPreset`, чистые функции расчёта производных черт (`calculateShyness`), синтеза эмоционального тона (`synthesizeEmotionalTone`), проверки порогов флирта (`canExpressFlirt`) и снапшота (`createCharacterSnapshot`).
@@ -40,6 +40,7 @@
 - **Критерии приёмки:**
   - [ ] Реализован `shyDreamGirlPreset` с калибровкой всех 7 осей.
   - [ ] Реализованы функции `calculateShyness`, `synthesizeEmotionalTone`, `canExpressFlirt`.
+  - [ ] `createCharacterSnapshot` передаёт все 7 осей личности и derived traits без UI/инфраструктуры.
   - [ ] Чистые доменные функции без UI/инфраструктуры.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 - **Вне скоупа:** таймеры, SQLite, UI.

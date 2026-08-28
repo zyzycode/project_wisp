@@ -35,7 +35,7 @@ Project Manager владеет статусами и sequencing задач в `.
   -> Render Engine
 ```
 
-- **Provider DTO** принадлежит реализациям `IAIProvider`. Он передает реплику и suggested mood/behavior, опираясь на `CharacterSnapshot`, но не знает React, DOM, CSS, файлы ассетов или renderer state.
+- **Provider DTO** принадлежит реализациям `IAIProvider`. Он передает реплику и suggested tone/behavior, опираясь на `CharacterSnapshot`, но не знает React, DOM, CSS, файлы ассетов или renderer state.
 - **`ProviderResponseIntentMapper`** принадлежит Application layer. Он переводит provider-specific response DTO во внутренний `BehaviorIntent`.
 - **`BehaviorIntent`** является domain/application handoff для семантического поведения.
 - **Character Engine** принимает окончательные behavior decisions с учетом потребностей (`Needs`), отношений (`Relationship`), характера (`Personality`), романтического напряжения (`IntimacyState`) и режима тишины.

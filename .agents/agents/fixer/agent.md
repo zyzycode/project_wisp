@@ -127,7 +127,7 @@
 ## 7. Правила работы с архитектурой
 
 1. **Соблюдение однонаправленного потока:**
-   $$\text{UI (Renderer)} \longrightarrow \text{Preload (Bridge)} \longrightarrow \text{Main (Application)} \longrightarrow \text{Domain} \longrightarrow \text{Infrastructure}$$
+   $$\text{UI (Renderer)} \longrightarrow \text{Preload (Bridge)} \longrightarrow \text{Main (Application)} \longrightarrow \text{Domain};\quad \text{Infrastructure adapters} \longrightarrow \text{Application ports}$$
 2. **Платформенная нейтральность:**
    - Никаких `process.platform` в слоях Domain, Application или UI.
    - Любые платформозависимые вызовы инкапсулируются исключительно внутри `src/infrastructure/platform/`.

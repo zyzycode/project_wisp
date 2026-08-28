@@ -50,7 +50,7 @@ export type AnimationIntentKind =
 export type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
 ```
 
-`propHint` описывает семантический реквизит / эффект (`pillow`, `heart`, `question`), а не путь к файлу. Конкретные имена ассетов и их слои принадлежат `RENDER_ENGINE.md` / `ARTIST_BRIEF.md`.
+`propHint` описывает семантический реквизит / эффект (`pillow`, `heart`, `question`), а не путь к файлу. Конкретные имена ассетов и их слои принадлежат будущему `RENDER_ENGINE.md`; до его создания источником asset-level требований является `ARTIST_BRIEF.md`.
 
 `priority`, `interrupt` и `loop` в `AnimationIntent` являются входными метаданными запроса. Resolved animation policy принадлежит Animation Controller: он может повысить priority, запретить interrupt, изменить loop mode или выбрать fallback с учётом текущего animation state.
 
@@ -67,7 +67,7 @@ export type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
 | `sleep_loop` | sleep | high | limited | until_replaced | Спящий или quiet visual state. |
 | `wake_up` | transition | high | no | none | Переход из sleep / quiet state. |
 | `dragged` | movement | critical | no | until_replaced | Прямое перетаскивание пользователем. |
-| `land` | transition | high | no | none | Стабилизация после drag/fall. |
+| `land` | transition | high | no | none | Стабилизация после drag movement. |
 | `walk` | movement | normal | yes | until_replaced | Автономное перемещение / блуждание. |
 | `settle` | transition | low | yes | none | Мягкий возврат в idle. |
 
@@ -103,7 +103,7 @@ export type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
 
 ## Граница Render Engine
 
-`ANIMATION_ENGINE.md` не описывает детали ассетов и пикселей. Следующие параметры принадлежат `RENDER_ENGINE.md` / `ARTIST_BRIEF.md`:
+`ANIMATION_ENGINE.md` не описывает детали ассетов и пикселей. Следующие параметры принадлежат будущему `RENDER_ENGINE.md`; до его создания они фиксируются в `ARTIST_BRIEF.md`:
 - frame size (512×512 px);
 - rows/columns, sprite sheet slicing;
 - конкретные пути к файлам (`body/idle/body_idle_00.png` и т.д.);

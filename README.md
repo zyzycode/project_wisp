@@ -9,9 +9,9 @@
 ## Текущий фокус
 
 - Desktop-first / offline-first MVP.
-- Один основной персонаж Wisp с поведением, настроением, анимациями и props.
-- SVG сейчас; sprite sheets и будущий rigging должны идти через общий render contract.
-- Локальная память через SQLite в Main-процессе.
+- Один основной персонаж Wisp с поведением, эмоциональным тоном, анимациями и props.
+- SVG сейчас; sprite sheets и будущий rigging должны идти через общий render contract, когда `RENDER_ENGINE.md` будет создан.
+- Локальная persistence принадлежит Main-процессу; полноценная память через SQLite запланирована отдельной фазой.
 - Строгая изоляция Renderer от Node.js, Electron Main и SQLite.
 
 ---
@@ -22,7 +22,7 @@
 - [ROADMAP.md](ROADMAP.md) — фазовый план работ и ведущие агенты по фазам.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — слои, процессы Electron, provider/intent/render boundaries.
 - [.agents/](.agents/) — правила, роли агентов, workflows и предметные skills.
-- `docs/engine/` — будущие подробные спецификации движков (`CHARACTER_ENGINE`, `ANIMATION_ENGINE`, `RENDER_ENGINE`, `AI_PROVIDER_CONTRACT`).
+- `docs/engine/` — спецификации движков и индекс готовых/planned contract-документов.
 
 ---
 

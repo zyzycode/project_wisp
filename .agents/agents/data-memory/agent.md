@@ -52,8 +52,8 @@ Data & Memory отвечает за SQLite, репозитории, миграц
 - [../../rules/30-electron.md](../../rules/30-electron.md)
 - [../../rules/50-state-and-data.md](../../rules/50-state-and-data.md)
 - [../../rules/60-testing.md](../../rules/60-testing.md)
-- `docs/engine/MEMORY_ENGINE.md`, если задача касается памяти, истории, фактов или relationship state.
-- `docs/engine/SETTINGS_CONTRACT.md`, если задача касается persisted settings.
+- `docs/engine/MEMORY_ENGINE.md`, если задача касается памяти, истории, фактов или relationship state и contract уже создан.
+- `docs/engine/SETTINGS_CONTRACT.md`, если задача касается persisted settings и contract уже создан.
 
 ---
 

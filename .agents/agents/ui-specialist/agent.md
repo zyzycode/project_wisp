@@ -24,7 +24,7 @@
    - Предотвращение лишних ререндеров React.
    - Оптимизация композитинга в прозрачных окнах Electron.
    - Обеспечение чёткости отрисовки спрайтов (pixel-perfect scaling) при разном DPI.
-   - Реализация Render Engine adapters по контрактам `docs/engine/RENDER_ENGINE.md` без behavior decisions.
+   - Реализация Render Engine adapters по `docs/engine/RENDER_ENGINE.md`, если contract уже создан; до этого — по `ARCHITECTURE.md`, `ARTIST_BRIEF.md` и текущим renderer patterns без behavior decisions.
 3. **Desktop Usability & UX:**
    - Плавность drag-and-drop взаимодействий.
    - Удобство позиционирования всплывающих подсказок и диалоговых окон относительно персонажа.
@@ -52,8 +52,8 @@
 - [../../rules/10-architecture.md](../../rules/10-architecture.md)
 - [../../rules/20-typescript.md](../../rules/20-typescript.md)
 - [../../rules/40-react-ui.md](../../rules/40-react-ui.md)
-- `docs/engine/RENDER_ENGINE.md`, если задача касается Render Engine, SVG/sprite sheets, layers, hitbox или visual bounds.
-- `docs/engine/SETTINGS_CONTRACT.md`, если задача касается settings/debug UI.
+- `docs/engine/RENDER_ENGINE.md`, если задача касается Render Engine и contract уже создан.
+- `docs/engine/SETTINGS_CONTRACT.md`, если задача касается settings/debug UI и contract уже создан.
 - [../../skills/desktop-pet/SKILL.md](../../skills/desktop-pet/SKILL.md), если задача касается overlay/desktop UX.
 
 ---

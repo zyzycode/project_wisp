@@ -41,7 +41,7 @@
 - Public contracts, ports, IPC, provider/render/behavior boundaries: `architect`.
 - React components, visual state, CSS, speech bubble, chat UI, settings UI: `ui-specialist`.
 - Electron windows, tray, autostart, click-through, Linux X11/Wayland, preload и IPC: `electron-platform`.
-- Mood, energy, sleep, autonomous behavior, FSM transitions, animation intent selection: `domain-behavior`.
+- `SynthesizedEmotionalTone`, energy, sleep, autonomous behavior, FSM transitions, animation intent selection: `domain-behavior`.
 - SQLite, memory, settings persistence, migrations: `data-memory`.
 - Mock replies, provider DTOs, thinking/error/fallback state: `mock-ai-provider`.
 - Independent code review: `code-reviewer`.

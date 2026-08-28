@@ -28,7 +28,7 @@ export interface BehaviorIntent {
   source: 'user' | 'provider' | 'timer' | 'memory' | 'system';
   priority: 'low' | 'normal' | 'high' | 'critical';
   replyText?: string;
-  moodHint?: 'neutral' | 'happy' | 'curious' | 'sleepy' | 'confused' | 'shy' | 'affectionate';
+  toneHint?: 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';
   reason?: string;
   requestId?: string;
 }
@@ -50,7 +50,7 @@ export interface BehaviorIntent {
 | `sleep` | Перейти в sleep/quiet behavior, если Character Engine разрешит. | user, provider, timer |
 | `wake` | Выйти из sleep/quiet behavior, если правила разрешают. | user, system |
 | `drag` | Зафиксировать прямое перетаскивание пользователем. | user |
-| `land` | Завершить drag/fall movement и стабилизировать персонажа. | user, system |
+| `land` | Завершить drag movement и стабилизировать персонажа. | user, system |
 | `wander` | Ненавязчивое автономное перемещение. | timer |
 | `idle` | Стабильное спокойное поведение без активной цели. | timer, system |
 | `quiet` | Подавить навязчивые автономные действия и реплики. | user, settings, system |
@@ -59,7 +59,7 @@ export interface BehaviorIntent {
 
 | Сценарий | BehaviorIntent | Что остаётся вне intent |
 |---|---|---|
-| Chat reply | `respond` с `replyText` и optional `moodHint` | Конкретный speech bubble layout, animation clip, duration |
+| Chat reply | `respond` с `replyText` и optional `toneHint` | Конкретный speech bubble layout, animation clip, duration |
 | Thinking | `think` | Визуальный loop, frames, spinner/face details |
 | Happy reaction | `react_happy` | Выбор happy animation clip или SVG expression |
 | Confused reaction | `react_confused` | Выбор confused animation clip или fallback face |

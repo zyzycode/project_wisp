@@ -64,11 +64,17 @@ export interface CharacterSnapshot {
   personality: {
     presetId: string;
     aiSelfConcept: string;
-    traits: {
-      shyness: number;
-      playfulness: number;
+    axes: {
+      openness: number;
+      extraversion: number;
+      agreeableness: number;
       sensitivity: number;
+      playfulness: number;
       boldness: number;
+      independence: number;
+    };
+    derivedTraits: {
+      shyness: number;
     };
   };
   /** Романтическое состояние и границы */
@@ -98,9 +104,9 @@ export interface AIProviderResponse {
   status: 'ok' | 'fallback';
   reply: {
     text: string;
-    tone?: 'warm' | 'playful' | 'sleepy' | 'curious' | 'confused' | 'quiet' | 'shy' | 'affectionate';
+    tone?: 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';
   };
-  suggestedMood?: 'neutral' | 'happy' | 'curious' | 'sleepy' | 'confused' | 'shy' | 'affectionate';
+  suggestedTone?: 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';
   suggestedBehavior?: ProviderSuggestedBehaviorKind;
   confidence: number;
   diagnostics?: {
@@ -125,6 +131,8 @@ export type ProviderSuggestedBehaviorKind =
 
 ### Правила:
 - `reply.text` — текст для отображения в SpeechBubble и передачи в историю диалога.
+- `reply.tone` — разговорный оттенок конкретной реплики provider-а в словаре `SynthesizedEmotionalTone`.
+- `suggestedTone` — подсказка для `SynthesizedEmotionalTone`; `CharacterEngine` остаётся источником истины и может проигнорировать provider hint.
 - `suggestedBehavior` — семантическая подсказка. `CharacterEngine` решает, допустимо ли действие с учетом `Needs`, `Relationship`, `cooldowns`, `quiet/sleep mode` и приоритета действий пользователя.
 - First-party providers возвращают `suggestedBehavior` только из разрешенного подмножества `BehaviorIntentKind` (см. `BEHAVIOR_INTENTS.md`).
 - Provider не должен предлагать `drag` или `land` (они принадлежат прямому user interaction). Если такие значения пришли, mapper отбрасывает их в fallback.

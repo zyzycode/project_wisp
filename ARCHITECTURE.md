@@ -25,7 +25,7 @@
 - **Основная среда разработки:** Ubuntu Linux.
 - Прозрачный оверлей с персонажем и плавающим окном диалога.
 - Локальный стейт-машин поведения и анимаций.
-- Локальная база данных SQLite для сохранения состояния, настроек и памяти.
+- Main-owned persistence для состояния и настроек; полноценная SQLite-память реализуется отдельной фазой.
 - Интеграция AI через заглушку `MockAIProvider`, эмулирующую генерацию реплик, эмоциональных реакций и размышлений персонажа без подключения к сети.
 - Будущая реальная AI-интеграция может выполняться через отдельный dev/prod backend-проект, но в этом репозитории находится только desktop-клиент и его client-side контракты/адаптеры.
 
@@ -71,7 +71,7 @@ graph TD
 
         subgraph Domain_Layer ["Domain Layer (Pure TypeScript - Platform Neutral)"]
             CharModel["Character Model & Traits"]
-            CharacterEngine["Character Engine (Mood/Energy/Needs)"]
+            CharacterEngine["Character Engine (Tone/Energy/Needs)"]
             BehaviorSM["Behavior State Machine"]
             AnimSM["Animation State Machine"]
             IntentContracts["BehaviorIntent / AnimationIntent Contracts"]
@@ -197,7 +197,7 @@ export interface IPlatformAdapter {
 
 ### 7.1. Семейства IPC-каналов
 - **User input commands:** отправка сообщения, drag/click/double-click/right-click intent, команды открытия/закрытия UI.
-- **Character state stream:** mood, energy, activity, focus, needs, relationship summary, текущий behavior state.
+- **Character state stream:** synthesized emotional tone, energy, activity, focus, needs, relationship summary, текущий behavior state.
 - **Presentation state stream:** animation intent, render props, speech/thought bubble state, scale/theme, prop visibility.
 - **Settings commands:** чтение/обновление настроек поведения, внешности, quiet/sleep mode и dev/debug toggles.
 - **Memory commands:** очистка памяти, получение краткого статуса памяти. Ручное редактирование отдельных memory entries не предоставляется.
@@ -224,7 +224,7 @@ export interface IPlatformAdapter {
 
 ### 8.3. Domain Layer (Main / Pure TypeScript)
 - Полностью чистая логика, одинаковая для всех платформ:
-  - `CharacterState`: настроение (`mood`), энергия (`energy`), активность (`activity`), фокус (`focus`), потребности (`needs`), черты (`traits`).
+  - `CharacterState`: синтезированный эмоциональный тон (`synthesizedTone`), энергия (`energy`), активность (`activity`), фокус (`focus`), потребности (`needs`), черты (`traits`).
   - `CharacterEngine`: правила характера, внутренних стимулов, quiet/sleep mode и выбора автономных действий.
   - `BehaviorStateMachine`: переходы состояний (`idle`, `walking`, `sitting`, `dragging`, `talking`, `thinking`, `sleeping`).
   - `BehaviorIntent`: семантические намерения поведения (`respond`, `think`, `react_happy`, `react_confused`, `play`, `sleep`, `wake`, `drag`, `land`, `wander`, `idle`, `quiet`). Generic `react` не является public intent kind.
@@ -256,7 +256,7 @@ $$\text{Стимулы (Provider / Пользователь / Таймер / П�
 - `CharacterEngine` принимает стимулы и решает, что делает один основной Wisp: отвечает, гуляет, спит, достаёт prop, реагирует, уходит в quiet/sleep mode.
 - `AnimationStateMachine` переводит поведение в `AnimationIntent` с requested/default metadata для приоритета, прерываемости и loop mode; resolved policy применяет Animation Controller.
 - `Render Engine` отображает `AnimationIntent` через общий render contract. SVG остаётся текущим рабочим форматом, sprite sheets — целевой ближайший формат для богатых анимаций, future rigging допускается позже без изменения Domain.
-- Подробности sprite sheet нарезки, frame sizes, rows/columns, concrete asset names и geometry принадлежат `docs/engine/RENDER_ENGINE.md`. `docs/engine/ANIMATION_ENGINE.md` описывает semantic animation intents, priority/interrupt policy и clip-level expectations без frame-level asset details.
+- Подробности sprite sheet нарезки, frame sizes, rows/columns, concrete asset names и geometry принадлежат будущему `docs/engine/RENDER_ENGINE.md`; до его создания используются `docs/ARTIST_BRIEF.md` и текущий renderer-код. `docs/engine/ANIMATION_ENGINE.md` описывает semantic animation intents, priority/interrupt policy и clip-level expectations без frame-level asset details.
 
 ---
 
@@ -276,9 +276,9 @@ $$\text{Стимулы (Provider / Пользователь / Таймер / П�
 
 Подробные спецификации движков живут в `docs/engine/` и создаются отдельными задачами Architect перед реализацией соответствующих фаз:
 - `docs/engine/AI_PROVIDER_CONTRACT.md` — DTO provider-ответов, errors, latency/thinking, streaming/non-streaming и запрет auth/billing fields в desktop provider DTO.
-- `docs/engine/CHARACTER_ENGINE.md` — traits, mood, energy, needs, behavior intents, quiet/sleep mode.
+- `docs/engine/CHARACTER_ENGINE.md` — traits, `SynthesizedEmotionalTone`, energy, needs, behavior intents, quiet/sleep mode.
 - `docs/engine/ANIMATION_ENGINE.md` — animation intents, requested/default priority metadata, interrupt rules, fallback и clip-level expectations без sprite sheet slicing details.
-- `docs/engine/RENDER_ENGINE.md` — sprite sheet layout, render props, layers, props, hitboxes, anchors, themes, debug overlay.
+- `docs/engine/RENDER_ENGINE.md` — planned contract для sprite sheet layout, render props, layers, props, hitboxes, anchors, themes, debug overlay.
 - Engine contracts изменяет Architect. Implementer-агенты не меняют `docs/engine/*` и связанные public contracts без Architect review.
 
 ---

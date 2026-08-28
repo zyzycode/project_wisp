@@ -42,7 +42,7 @@
       up: (db: Database) => {
         db.exec(`
           CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-          CREATE TABLE messages (id TEXT PRIMARY KEY, role TEXT NOT NULL, content TEXT NOT NULL, timestamp INTEGER NOT NULL);
+          CREATE TABLE chat_messages (id TEXT PRIMARY KEY, role TEXT NOT NULL, content TEXT NOT NULL, timestamp INTEGER NOT NULL);
           CREATE TABLE memories (id TEXT PRIMARY KEY, key TEXT NOT NULL, value TEXT NOT NULL, confidence REAL NOT NULL);
         `);
       }
