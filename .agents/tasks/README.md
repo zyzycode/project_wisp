@@ -21,52 +21,76 @@
 
 ## Текущее состояние
 
-- Phase 0–9: `done` — архитектурная база, оверлей, FSM, UI, контракты ядра.
-- Phase 10: `done` — Mock AI dialogue loop, client integration, scenarios & code review.
-- Phase 11 (Character Engine v2): `in_progress` (гейт ревью)
-  - `P11-A01` (Architectural Contracts & Layer Boundaries): `done`
-  - `P11-T01` (Domain Models, Presets & Emotional Synthesis): `done`
-  - `P11-T02` (Needs Metabolism, Plasticity & Stimuli Reducer): `done`
-  - `P11-T03` (Unit Tests for Character Engine v2): `done`
-  - `P11-T04` (Application Character State & Dialogue Integration): `done`
-- Текущая активная задача: `P11-G01` (Code Review Phase 11).
+- Phase 0–11: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop.
+- Phase 12 (Animation & Reaction Pack): `in_progress`
+  - `P12-T01` (Domain Animation Engine & Intent Mapping): `in_progress`
+  - `P12-T02` (Idle Variety & Sleep/Wake Autonomous Life Rules): `planned`
+  - `P12-T03` (Unit Tests for Animation & Reaction Pack): `planned`
+  - `P12-G01` (Code Review Phase 12): `planned`
 
-## Активная очередь (Phase 11 — Character Engine v2)
+## Активная очередь (Phase 12 — Animation & Reaction Pack)
 
-### P11-T04 — Application Character State & Dialogue Integration
-
-- **Статус:** `done`
-- **Исполнитель:** `app-developer`
-- **Зависит от:** `P11-T02`, `P11-T03`
-- **Цель:** Связать доменный Character Engine с `dialogue-loop.service.ts` через in-memory character state сервис, заменив моковые данные `CharacterSnapshot` на актуальные доменные структуры.
-- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `src/domain/character/`, `src/application/services/dialogue-loop.service.ts`.
-- **Менять:** `src/application/services/` (`character-state.service.ts`, `dialogue-loop.service.ts`, `index.ts`), unit-тесты.
-- **Критерии приёмки:**
-  - [x] In-memory сервис хранит `CharacterState` и обновляет его по тикам/событиям через доменные функции.
-  - [x] `processDialogueTurn` формирует реальный `CharacterSnapshot` через `createCharacterSnapshot`.
-  - [x] `npm test` и `npm run typecheck` зелёные.
-- **Вне скоупа:** Персистентность в SQLite (это Phase 14).
-
-### P11-G01 — Code Review Phase 11
+### P12-T01 — Domain Animation Engine & Intent Mapping
 
 - **Статус:** `in_progress`
-- **Исполнитель:** `reviewer`
-- **Зависит от:** `P11-T04`
-- **Цель:** Независимый аудит чистоты слоёв, отсутствия утечек инфраструктуры в домен, offline-first принципов и корректности интеграции Character Engine v2.
-- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `src/domain/character/`, `src/application/services/character-state.service.ts`, `src/application/services/dialogue-loop.service.ts`.
-- **Менять:** ничего (read-only аудит).
+- **Исполнитель:** `domain-behavior`
+- **Зависит от:** none
+- **Цель:** Реализовать domain-модель `AnimationIntent`, маппинг из `BehaviorIntent`, приоритеты и расширенные состояния FSM (`happy_reaction`, `confused_reaction`, `idle_blink`, `sleep_start`, `sleep_loop`, `wake_up`, `settle`) с поддержкой `propHint`.
+- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `src/domain/animation/animation-state-machine.ts`, `src/domain/behavior/behavior-intent.ts`.
+- **Менять:** `src/domain/animation/` (`animation-intent.ts`, `animation-state-machine.ts`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Подтверждение соблюдения архитектурных границ (Domain не зависит от Node/Electron/UI/DB).
-  - [ ] Подтверждение соблюдения принципов offline-first (нет сетевых вызовов, SDK сторонних провайдеров).
-  - [ ] Подтверждение корректности интеграции в Application слой и валидности формул синтеза тона/метаболизма.
-  - [ ] Отсутствие регрессий в тестовом покрытии (`npm test`, `npm run typecheck`).
-- **Вне скоупа:** Исправление кода в том же проходе, добавление новых фичей.
+  - [ ] Реализованы типы `AnimationIntent`, `AnimationIntentKind`, `AnimationPriority` согласно контракту.
+  - [ ] Реализован чистый доменный маппер `mapBehaviorIntentToAnimationIntent(behaviorIntent)`.
+  - [ ] FSM поддерживает приоритеты, не-прерываемые состояния и авто-переход в `settle` / `idle_blink`.
+  - [ ] Написаны unit-тесты на intent mapping и transitions.
+  - [ ] `npm test` и `npm run typecheck` зелёные.
+- **Вне скоупа:** Рендеринг спрайтов и SVG-ассетов (это Phase 13).
+
+### P12-T02 — Idle Variety & Sleep/Wake Autonomous Life Rules
+
+- **Статус:** `planned`
+- **Исполнитель:** `domain-behavior`
+- **Зависит от:** `P12-T01`
+- **Цель:** Добавить в автономное поведение вариативность idle (micro-motions, осмотр, моргание), тайминги засыпания при низкой энергии/высоком комфорте и правила плавного пробуждения.
+- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/CHARACTER_ENGINE.md`, `src/domain/behavior/autonomous-behavior.ts`.
+- **Менять:** `src/domain/behavior/` (`autonomous-behavior.ts`, `idle-variety.ts`), unit-тесты.
+- **Критерии приёмки:**
+  - [ ] Автономный генератор намерений учитывает `Needs` (засыпание при низкой энергии).
+  - [ ] Введены вариативные idle-действия без спама переходов.
+  - [ ] `npm test` и `npm run typecheck` зелёные.
+- **Вне скоупа:** UI-компоненты.
+
+### P12-T03 — Unit Tests for Animation & Reaction Pack
+
+- **Статус:** `planned`
+- **Исполнитель:** `domain-behavior`
+- **Зависит от:** `P12-T02`
+- **Цель:** Комплексное покрытие тестами всех сценариев маппинга, прерывания критическими событиями (drag), удержания sleep-лупа и возврата в idle.
+- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `tests/domain/`.
+- **Менять:** `tests/domain/` (`animation-engine.test.ts`, `autonomous-behavior.test.ts`).
+- **Критерии приёмки:**
+  - [ ] Покрыты 100% сценариев обязательного маппинга из `ANIMATION_ENGINE.md`.
+  - [ ] Покрыты правила приоритетов (critical drag прерывает любое состояние).
+  - [ ] `npm test` и `npm run typecheck` проходят без ошибок.
+- **Вне скоупа:** Интеграционные UI-тесты.
+
+### P12-G01 — Code Review Phase 12
+
+- **Статус:** `planned`
+- **Исполнитель:** `reviewer`
+- **Зависит от:** `P12-T03`
+- **Цель:** Независимый аудит соблюдения контракта `ANIMATION_ENGINE.md` и чистоты доменного слоя.
+- **Читать:** `docs/engine/ANIMATION_ENGINE.md`, `src/domain/animation/`, `src/domain/behavior/`.
+- **Менять:** ничего.
+- **Критерии приёмки:**
+  - [ ] Подтверждена изоляция Domain Layer.
+  - [ ] Подтверждено соответствие контракту анимаций.
+- **Вне скоупа:** Правки кода.
 
 ## Поздние фазы
 
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
-| 12 | Animation & Reaction Pack: richer reactions, idle variety, sleep/wake rules | `domain-behavior` |
 | 13 | Render Engine & Asset Pipeline: sprite sheets, layers, props, themes | `app-developer` |
 | 14 | Offline Memory & Relationship: SQLite memory, facts, history, clear memory | `app-developer` |
 | 15 | Desktop Life Behaviors: quiet mode, cooldowns, habits | `domain-behavior` |

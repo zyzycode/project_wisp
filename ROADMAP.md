@@ -26,9 +26,9 @@
 | 8 — Local Chat UI | done | `app-developer` | Speech bubble и local chat input. |
 | 9 — Provider & Intent Contracts | done | `architect` | Markdown contracts для provider responses, behavior intents и animation intents. |
 | 10 — Mock AI & Dialogue Loop | done | `app-developer` | Offline `MockAIProvider`, thinking state и reply flow. |
-| 11 — Character Engine v2 | in_progress | `domain-behavior` + `architect` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
-| 12 — Animation & Reaction Pack | next | `domain-behavior` | Более богатые reactions, idle variety и sleep/wake animation rules. |
-| 13 — Render Engine & Asset Pipeline | later | `app-developer` | Sprite sheet pipeline, props, layers, themes и renderer debug tools. |
+| 11 — Character Engine v2 | done | `domain-behavior` + `architect` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
+| 12 — Animation & Reaction Pack | in_progress | `domain-behavior` | Более богатые reactions, idle variety и sleep/wake animation rules. |
+| 13 — Render Engine & Asset Pipeline | next | `app-developer` | Sprite sheet pipeline, props, layers, themes и renderer debug tools. |
 | 14 — Offline Memory & Relationship | later | `app-developer` | SQLite memory, bounded history, local fact extraction и clear memory. |
 | 15 — Desktop Life Behaviors | later | `domain-behavior` | Quiet mode, cooldowns, habits и менее навязчивая автономность. |
 | 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и dev-only debug panel. |
@@ -38,21 +38,7 @@
 
 ## Текущий фокус
 
-Контракты движка зафиксированы в `docs/engine/`. Текущая фаза реализации — **Phase 11 (Character Engine v2)**.
+Контракты анимаций зафиксированы в `docs/engine/ANIMATION_ENGINE.md`. Текущая фаза реализации — **Phase 12 (Animation & Reaction Pack)**.
 
 Следующий рабочий шаг:
-- Выполнение задач Phase 11 (`P11-T01` и далее) в `.agents/tasks/README.md`.
-- Реализация доменной модели Character Engine v2 на основе `docs/engine/CHARACTER_ENGINE.md`.
-
-## Заметки по фазам
-
-### Phase 10 — Mock AI & Dialogue Loop
-Цель: закрыта. Реализован `IAIProvider`, offline `MockAIProvider`, сценарии маппинга интентов и сквозной цикл диалога в оверлее.
-
-### Phase 11 — Character Engine v2
-Цель: перевести Wisp из статического питомца в глубокую психологическую модель с витальными потребностями (`Needs`), прогрессией отношений (`friendship` и гейтинг `love`), осями личности (`PersonalityAxes`), пластичностью, пресетом *Shy Dream Girl* и динамическим синтезом эмоционального тона.
-
-Документы-источники:
-- `docs/engine/CHARACTER_ENGINE.md`;
-- `docs/engine/BEHAVIOR_INTENTS.md`;
-- `docs/engine/AI_PROVIDER_CONTRACT.md`.
+- Реализация `P12-T01` (Domain Animation Engine & Intent Mapping) субагентом `domain-behavior`.
