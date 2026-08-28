@@ -26,7 +26,7 @@
 
 - Phase 0-8: `done` — база проекта, Electron shell, desktop overlay, drag/positioning, rendering, animation FSM, basic behavior, interaction, local chat UI.
 - Phase 9: `done` — provider/intent contracts описаны и прошли docs review.
-- Текущая задача: `P10-T01`.
+- Текущая задача: `P10-T02`.
 - Следующая фаза реализации: Phase 10 — Mock AI & Dialogue Loop.
 
 ## Активная очередь
@@ -44,7 +44,7 @@
 
 ### P10-T01 — Добавить `IAIProvider` port и DTO
 
-- **Статус:** `ready`
+- **Статус:** `done`
 - **Исполнитель:** `mock-ai-provider`
 - **Зависит от:** `P09-G01`
 - **Цель:** добавить типизированную границу provider для локального MockAI.
@@ -55,7 +55,7 @@
 
 ### P10-T02 — Реализовать локальный `MockAIProvider`
 
-- **Статус:** `planned`
+- **Статус:** `ready`
 - **Исполнитель:** `mock-ai-provider`
 - **Зависит от:** `P10-T01`
 - **Цель:** генерировать offline-ответы Wisp по простым локальным категориям.
