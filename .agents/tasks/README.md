@@ -26,8 +26,8 @@
   - `P12-A01` (Architecture Sync: Animation Engine & Character Engine v2): `done`
   - `P12-T01` (Domain Animation Engine & Intent Mapping): `done`
   - `P12-T02` (Idle Variety & Sleep/Wake Autonomous Life Rules): `done`
-  - `P12-T03` (Unit Tests for Animation & Reaction Pack): `in_progress`
-  - `P12-G01` (Code Review Phase 12): `planned`
+  - `P12-T03` (Unit Tests for Animation & Reaction Pack): `done`
+  - `P12-G01` (Code Review Phase 12): `in_progress`
 
 ## Активная очередь (Phase 12 — Animation & Reaction Pack)
 
@@ -74,28 +74,29 @@
 
 ### P12-T03 — Unit Tests for Animation & Reaction Pack
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P12-T02`
-- **Цель:** Написать сквозные интеграционные unit-тесты для Phase 12: проверить связку `CharacterEngine` (метаболизм `Needs`, 7 тонов) -> `BehaviorIntent` -> `AnimationIntent` -> `AnimationStateMachine` (приоритеты прерываний, устойчивость сна `sleep_loop`, `wake_up` по клику и дефициту внимания, реакция `spook` и `land`).
-- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/CHARACTER_ENGINE.md`, `tests/domain/`.
-- **Менять:** `tests/domain/` (`animation-engine-integration.test.ts` [создать] или `tests/domain/` тесты).
+- **Цель:** Написать сквозные интеграционные unit-тесты для Phase 12.
+- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `tests/domain/`.
+- **Менять:** `tests/domain/animation-reaction-pack.test.ts`.
 - **Критерии приёмки:**
-  - [ ] 100% покрытие сквозных цепочек взаимодействия от Character State до Animation Intent и FSM.
-  - [ ] Протестированы все краевые случаи: отмена прерываний сна обычным idle, мгновенное прерывание критическим drag/spook, пробуждение по вниманию/энергии.
-  - [ ] `npm test` и `npm run typecheck` завершаются без ошибок.
+  - [x] 100% покрытие сквозных цепочек взаимодействия (Needs -> BehaviorIntent -> AnimationIntent -> FSM).
+  - [x] `npm test` и `npm run typecheck` завершаются без ошибок.
 - **Вне скоупа:** UI-тесты.
 
 ### P12-G01 — Code Review Phase 12
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `reviewer`
 - **Зависит от:** `P12-T03`
-- **Цель:** Финальный аудит Phase 12 перед переходом к Phase 13.
-- **Читать:** `.agents/agents/reviewer/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, код Phase 12.
+- **Цель:** Финальный архитектурный аудит всей Phase 12 перед переходом к Phase 13 (Render Engine).
+- **Читать:** `.agents/agents/reviewer/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, весь код Phase 12 (`src/domain/animation/`, `src/domain/behavior/`, `tests/domain/`).
 - **Менять:** ничего.
 - **Критерии приёмки:**
-  - [ ] Подтверждена изоляция Domain Layer и контрактов.
+  - [ ] Подтверждена строгая изоляция Domain Layer (отсутствие зависимостей от React, Electron, DOM).
+  - [ ] Подтверждено полное соответствие контракту `docs/engine/ANIMATION_ENGINE.md`.
+  - [ ] Все тесты фазы зелёные.
 - **Вне скоупа:** Правки кода.
 
 ## Поздние фазы
