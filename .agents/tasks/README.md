@@ -25,39 +25,25 @@
 - Phase 10: `done` — Mock AI dialogue loop, client integration, scenarios & code review.
 - Phase 11 (Character Engine v2): `in_progress` — потребности, отношения, пластичность, синтез эмоций.
   - `P11-A01` (Architectural Contracts & Layer Boundaries): `done`
-- Текущая активная задача: `P11-T01` (Domain Models, Presets & Emotional Synthesis).
+  - `P11-T01` (Domain Models, Presets & Emotional Synthesis): `done`
+- Текущая активная задача: `P11-T02` (Needs Metabolism & Stimuli Reducer).
 
 ## Активная очередь (Phase 11 — Character Engine v2)
 
-### P11-T01 — Domain Models, Presets & Emotional Synthesis
-
-- **Статус:** `in_progress`
-- **Исполнитель:** `domain-behavior`
-- **Зависит от:** `P11-A01`
-- **Цель:** Реализовать пресет `shyDreamGirlPreset`, чистые функции расчёта производных черт (`calculateShyness`), синтеза эмоционального тона (`synthesizeEmotionalTone`), проверки порогов флирта (`canExpressFlirt`) и снапшота (`createCharacterSnapshot`).
-- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `src/domain/character/types.ts`.
-- **Менять:** `src/domain/character/` (создать `personality-presets.ts`, `emotional-tone.ts`, `intimacy-rules.ts`, `character-snapshot.ts` или `index.ts`).
-- **Критерии приёмки:**
-  - [ ] Реализован `shyDreamGirlPreset` с калибровкой всех 7 осей.
-  - [ ] Реализованы функции `calculateShyness`, `synthesizeEmotionalTone`, `canExpressFlirt`.
-  - [ ] `createCharacterSnapshot` передаёт все 7 осей личности и derived traits без UI/инфраструктуры.
-  - [ ] Чистые доменные функции без UI/инфраструктуры.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
-- **Вне скоупа:** таймеры, SQLite, UI.
-
 ### P11-T02 — Needs Metabolism & Stimuli Reducer
 
-- **Статус:** `planned`
+- **Статус:** `ready`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P11-T01`
-- **Цель:** Реализовать метаболизм потребностей по тикам времени (soft decay) и чистый редьюсер входящих стимулов с эволюцией `friendship` и гейтингом `loveUnlocked` ("no guilt").
-- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/BEHAVIOR_INTENTS.md`.
-- **Менять:** `src/domain/character/` (metabolism, stimuli reducer).
+- **Цель:** Реализовать метаболизм потребностей по тикам времени (soft decay) и чистый редьюсер входящих стимулов с эволюцией `friendship` и гейтингом `loveUnlocked` ("no guilt" principle).
+- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/BEHAVIOR_INTENTS.md`, `src/domain/character/types.ts`.
+- **Менять:** `src/domain/character/` (создать `metabolism.ts`, `stimuli-reducer.ts`, обновить `index.ts`).
 - **Критерии приёмки:**
-  - [ ] Чистые функции тика метаболизма и обработки стимулов (petting, chat, idle, etc.).
-  - [ ] Прогрессия отношений по принципу "no guilt".
+  - [ ] Чистые функции тика метаболизма `metabolizeNeeds(needs, deltaMs, tone)` с soft decay.
+  - [ ] Чистый редьюсер стимулов `processStimulus(state, event)` (petting, click, message, idle).
+  - [ ] Прогрессия отношений: рост дружбы, разблокировка `loveUnlocked` при `friendship >= 400`, отсутствие штрафов за отсутствие пользователя.
   - [ ] `npm test` и `npm run typecheck` зелёные.
-- **Вне скоупа:** React хуки, SQLite.
+- **Вне скоупа:** React хуки, таймеры UI, SQLite.
 
 ### P11-T03 — Unit Tests for Character Engine v2
 
