@@ -275,7 +275,7 @@ $$\text{Стимулы (Provider / Пользователь / Таймер / П�
 ## 10.1. Документы движков
 
 Подробные спецификации движков живут в `docs/engine/` и создаются отдельными задачами Architect перед реализацией соответствующих фаз:
-- `docs/engine/AI_PROVIDER_CONTRACT.md` — DTO provider-ответов, errors, latency/thinking, streaming/non-streaming, auth placeholders.
+- `docs/engine/AI_PROVIDER_CONTRACT.md` — DTO provider-ответов, errors, latency/thinking, streaming/non-streaming и запрет auth/billing fields в desktop provider DTO.
 - `docs/engine/CHARACTER_ENGINE.md` — traits, mood, energy, needs, behavior intents, quiet/sleep mode.
 - `docs/engine/ANIMATION_ENGINE.md` — animation intents, requested/default priority metadata, interrupt rules, fallback и clip-level expectations без sprite sheet slicing details.
 - `docs/engine/RENDER_ENGINE.md` — sprite sheet layout, render props, layers, props, hitboxes, anchors, themes, debug overlay.

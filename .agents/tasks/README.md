@@ -25,26 +25,26 @@
 ## Текущее состояние
 
 - Phase 0-8: `done` — база проекта, Electron shell, desktop overlay, drag/positioning, rendering, animation FSM, basic behavior, interaction, local chat UI.
-- Phase 9: `review` — provider/intent contracts уже описаны, нужен gate ревью документации.
-- Текущий gate: `P09-G01`.
+- Phase 9: `done` — provider/intent contracts описаны и прошли docs review.
+- Текущая задача: `P10-T01`.
 - Следующая фаза реализации: Phase 10 — Mock AI & Dialogue Loop.
 
 ## Активная очередь
 
 ### P09-G01 — Ревью provider/intent docs
 
-- **Статус:** `ready`
+- **Статус:** `done`
 - **Исполнитель:** `code-reviewer`
 - **Зависит от:** `P09-T01`-`P09-T04`
 - **Цель:** проверить Phase 9 markdown contracts на противоречия.
 - **Читать:** `AGENTS.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `docs/engine/README.md`, `docs/engine/AI_PROVIDER_CONTRACT.md`, `docs/engine/BEHAVIOR_INTENTS.md`, `docs/engine/ANIMATION_ENGINE.md`.
 - **Менять:** ничего, если явно не попросят.
-- **Критерии приёмки:** список замечаний или явное "замечаний нет"; без правок продуктового кода.
+- **Критерии приёмки:** review findings исправлены architect-ом; без правок продуктового кода.
 - **Вне скоупа:** implementation, tests, fixing docs.
 
 ### P10-T01 — Добавить `IAIProvider` port и DTO
 
-- **Статус:** `planned`
+- **Статус:** `ready`
 - **Исполнитель:** `mock-ai-provider`
 - **Зависит от:** `P09-G01`
 - **Цель:** добавить типизированную границу provider для локального MockAI.

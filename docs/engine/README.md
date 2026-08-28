@@ -38,7 +38,7 @@ provider DTO
 - `ProviderResponseIntentMapper` принадлежит Application layer. Он переводит provider-specific response DTO во внутренний `BehaviorIntent` и не принимает финальные behavior decisions.
 - `BehaviorIntent` является domain/application handoff для semantic behavior. Он называет намерение действия, а не animation clip или asset path.
 - Character Engine владеет behavior decisions. Он применяет mood, energy, needs, quiet/sleep rules, cooldowns и приоритет user input.
-- `AnimationIntent` является semantic visual request после принятого поведения: `idle_blink`, `thinking_loop`, `talking`, `happy_reaction`, `confused_reaction`, `dragged`, `land`, `sleep_start` или `sleep_loop`.
+- `AnimationIntent` является semantic visual request после принятого поведения: `idle_blink`, `thinking_loop`, `talking`, `happy_reaction`, `confused_reaction`, `sleep_start`, `sleep_loop`, `wake_up`, `dragged`, `land`, `walk` или `settle`.
 - Animation Controller владеет resolved animation state, timing, priority и interrupt rules.
 - Render Engine отображает presentation-ready visual state через SVG сейчас, sprite sheets следующим шагом и возможный rigging позже.
 
