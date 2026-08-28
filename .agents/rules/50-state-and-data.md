@@ -10,7 +10,7 @@
 |---|---|---|---|
 | **Local UI State** | React компонент (`useState`) | Текст в input, hover-эффект | До размонтирования компонента |
 | **Global UI State** | Renderer Zustand Store | Открыто ли окно настроек, текущий масштаб | Время работы текущей сессии |
-| **Domain State** | Main Process (State Machines) | Текущее действие, настроение, координаты | Сессия + сохранение ключевых параметров в SQLite |
+| **Domain State** | Main Process (State Machines) | Текущее действие, `SynthesizedEmotionalTone`, координаты | Сессия + сохранение ключевых параметров в SQLite |
 | **Persistent State** | SQLite Database (Main Process) | История диалогов, воспоминания, настройки | Постоянно между перезапусками |
 
 ---

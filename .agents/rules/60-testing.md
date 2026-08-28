@@ -56,4 +56,4 @@ npm test
 
 Docs-only задачи проверяются через markdown/diff consistency и не требуют запуска product tests, если пользователь, Project Manager или конкретный workflow не попросили иначе.
 
-Tester работает по конкретному test-gate из shared backlog и возвращает Project Manager-у `PASS`, `FAIL` или `BLOCKED` с recommended next gate.
+Reviewer работает по конкретному test/verification gate из shared backlog и возвращает Project Manager-у `PASS`, `FAIL` или `BLOCKED` с recommended next gate.

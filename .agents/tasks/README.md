@@ -32,7 +32,7 @@
 
 ### P11-T02 — Needs Metabolism & Stimuli Reducer
 
-- **Статус:** `ready`
+- **Статус:** `in_progress`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P11-T01`
 - **Цель:** Реализовать метаболизм потребностей по тикам времени (soft decay) и чистый редьюсер входящих стимулов с эволюцией `friendship` и гейтингом `loveUnlocked` ("no guilt" principle).
@@ -48,7 +48,7 @@
 ### P11-T03 — Unit Tests for Character Engine v2
 
 - **Статус:** `planned`
-- **Исполнитель:** `tester`
+- **Исполнитель:** `reviewer`
 - **Зависит от:** `P11-T02`
 - **Цель:** Написать полный набор Vitest тестов для Character Engine v2 (Metabolism, Shyness, Emotional tone, Intimacy gating, Stimuli reducer).
 - **Читать:** `docs/engine/CHARACTER_ENGINE.md`.
@@ -59,7 +59,7 @@
 ### P11-G01 — Code Review Phase 11
 
 - **Статус:** `planned`
-- **Исполнитель:** `code-reviewer`
+- **Исполнитель:** `reviewer`
 - **Зависит от:** `P11-T03`
 - **Цель:** Независимый аудит чистоты domain layer и отсутствия утечек инфраструктуры/UI.
 - **Читать:** изменённые файлы Phase 11 и `docs/engine/CHARACTER_ENGINE.md`.
@@ -72,10 +72,10 @@
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
 | 12 | Animation & Reaction Pack: richer reactions, idle variety, sleep/wake rules | `domain-behavior` |
-| 13 | Render Engine & Asset Pipeline: sprite sheets, layers, props, themes | `ui-specialist` |
-| 14 | Offline Memory & Relationship: SQLite memory, facts, history, clear memory | `data-memory` |
+| 13 | Render Engine & Asset Pipeline: sprite sheets, layers, props, themes | `app-developer` |
+| 14 | Offline Memory & Relationship: SQLite memory, facts, history, clear memory | `app-developer` |
 | 15 | Desktop Life Behaviors: quiet mode, cooldowns, habits | `domain-behavior` |
-| 16 | Settings & Control Surface: behavior, appearance, memory controls, debug UI | `ui-specialist` |
-| 17 | External AI Contract Readiness: future client-side adapter only | `architect` + `mock-ai-provider` |
-| 18 | Stability & Performance Hardening: long sessions, cleanup, Wayland/X11 | `tester` |
-| 19 | Production Packaging: Linux first, then Windows/macOS | `electron-platform` |
+| 16 | Settings & Control Surface: behavior, appearance, memory controls, debug UI | `app-developer` |
+| 17 | External AI Contract Readiness: future client-side adapter only | `architect` + `app-developer` |
+| 18 | Stability & Performance Hardening: long sessions, cleanup, Wayland/X11 | `reviewer` |
+| 19 | Production Packaging: Linux first, then Windows/macOS | `app-developer` |

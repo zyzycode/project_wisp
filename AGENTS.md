@@ -72,14 +72,9 @@ Renderer UI -> typed preload/IPC -> Application use cases -> Domain -> Ports <- 
 
 - `project-manager`: scope, маршрутизация задач, roadmap/backlog docs. Не меняет продуктовый код.
 - `architect`: границы слоёв, IPC/ports, engine contracts, `docs/engine/*`.
-- `ui-specialist`: Renderer UI, render engine, visual state, settings UI.
-- `electron-platform`: Main/Preload, окна, IPC, OS adapters.
+- `app-developer`: основной desktop implementation: Main/Preload, Renderer UI, IPC, platform adapters, persistence/provider adapters.
 - `domain-behavior`: character engine, behavior FSM, animation FSM.
-- `data-memory`: SQLite, repositories, migrations, локальная память и persistence настроек.
-- `mock-ai-provider`: `IAIProvider`, `MockAIProvider`, обработка provider DTO.
-- `code-reviewer`: только review, сначала замечания, без исправлений.
-- `fixer`: исправляет только подтверждённые замечания.
-- `tester`: проверка, проектирование тестов и запуск тестов.
+- `reviewer`: review, verification, test strategy. Не чинит findings в том же review-pass.
 
 ## Рабочие правила
 

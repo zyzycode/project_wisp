@@ -50,7 +50,7 @@ export type AnimationIntentKind =
 export type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
 ```
 
-`propHint` описывает семантический реквизит / эффект (`pillow`, `heart`, `question`), а не путь к файлу. Конкретные имена ассетов и их слои принадлежат будущему `RENDER_ENGINE.md`; до его создания источником asset-level требований является `ARTIST_BRIEF.md`.
+`propHint` описывает семантический реквизит / эффект (`pillow`, `heart`, `question`), а не путь к файлу. Конкретные имена ассетов и их слои принадлежат будущему `RENDER_ENGINE.md`; до его создания asset-level детали не являются public engine contract.
 
 `priority`, `interrupt` и `loop` в `AnimationIntent` являются входными метаданными запроса. Resolved animation policy принадлежит Animation Controller: он может повысить priority, запретить interrupt, изменить loop mode или выбрать fallback с учётом текущего animation state.
 
@@ -103,7 +103,7 @@ export type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
 
 ## Граница Render Engine
 
-`ANIMATION_ENGINE.md` не описывает детали ассетов и пикселей. Следующие параметры принадлежат будущему `RENDER_ENGINE.md`; до его создания они фиксируются в `ARTIST_BRIEF.md`:
+`ANIMATION_ENGINE.md` не описывает детали ассетов и пикселей. Следующие параметры принадлежат будущему `RENDER_ENGINE.md` и до его создания не являются public engine contract:
 - frame size (512×512 px);
 - rows/columns, sprite sheet slicing;
 - конкретные пути к файлам (`body/idle/body_idle_00.png` и т.д.);

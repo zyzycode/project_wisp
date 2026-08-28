@@ -7,7 +7,7 @@
 ## 1. Подготовка и фиксация поведения
 1. Подтверди `Task ID`, owner-agent, `Scope`, `Acceptance criteria`, `Out of scope` и `Depends on` в shared backlog.
 2. Убедись, что для рефакторимого модуля существуют достаточные сценарные тесты.
-3. Если тестов недостаточно — **сначала зафиксируй это как blocker или отдельную tester-задачу**, если текущий scope не разрешает писать тесты.
+3. Если тестов недостаточно — **сначала зафиксируй это как blocker или отдельный reviewer-gate**, если текущий scope не разрешает писать тесты.
 4. Категорически запрещено совмещать добавление новых фичей с рефакторингом в одном шаге.
 5. Если рефакторинг меняет границы слоёв, IPC, порты, `docs/engine/*`, public contracts, provider/render/behavior boundaries или platform contracts — сначала получи решение `architect`.
 6. Если задача предлагает backend/proxy/server implementation, dev gateway, прямые LLM SDK, пользовательские AI API-ключи или server auth/billing — останови scope и верни Project Manager-у.
@@ -33,4 +33,4 @@
 1. Запусти полный цикл проверок: `typecheck`, `lint`, `test`.
 2. Убедись в отсутствии неиспользуемых импортов и устаревших комментариев.
 3. Сообщи о результатах рефакторинга, затронутых файлах, сохранённых boundaries и проверках.
-4. Укажи recommended next gate: `tester`, `code-reviewer`, `architect` или `blocked`.
+4. Укажи recommended next gate: `reviewer`, `architect`, `done` или `blocked`.

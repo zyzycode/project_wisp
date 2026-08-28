@@ -1,6 +1,6 @@
 # codex-orchestration.md — Регламент управления Codex-агентами
 
-Этот workflow описывает, как Project Manager распределяет работу между специализированными Codex-ролями Project Wisp.
+Этот workflow описывает, как Project Manager распределяет работу между базовыми Codex-ролями Project Wisp.
 
 ---
 
@@ -29,14 +29,9 @@ Suggested agent:
 |---|---|---|
 | Roadmap, AGENTS, workflows, task split | `project-manager` | При конфликте архитектурных правил |
 | IPC, ports, dependency direction | `architect` | Всегда |
-| React Renderer, visual UI, chat/settings UI | `ui-specialist` | Если меняется IPC или state ownership |
-| BrowserWindow, Preload, Main, platform adapters | `electron-platform` | Если меняется контракт между слоями |
+| Main/Preload, Renderer UI, platform adapters, persistence/provider adapters | `app-developer` | Если меняется IPC, ports или state ownership |
 | Behavior/Animation FSM, эмоции, физика | `domain-behavior` | Если меняется публичный доменный контракт |
-| SQLite, repositories, migrations, memory | `data-memory` | Если меняется модель памяти или persistence contract |
-| `IAIProvider`, `MockAIProvider`, локальные ответы | `mock-ai-provider` | Если меняется контракт AI-порта |
-| Независимое ревью | `code-reviewer` | При архитектурных findings |
-| Исправление findings | `fixer` | Если finding требует перепроектирования |
-| Проверка и тестовая стратегия | `tester` | Если падение указывает на архитектурную проблему |
+| Review, verification, test strategy, regression checks | `reviewer` | Если findings указывают на архитектурную проблему |
 
 ---
 
@@ -45,11 +40,10 @@ Suggested agent:
 1. **Project Manager** выбирает одну задачу из `.agents/tasks/README.md`, переводит её в `ready` / `in_progress` и назначает роль.
 2. **Architect** подключается до реализации, если меняются границы слоёв, IPC, порты, `docs/engine/*` или platform contracts.
 3. **Feature agent** реализует только свой слой или согласованный вертикальный срез и возвращает результат Project Manager-у.
-4. **Tester** запускает проверки, соответствующие риску изменения, если для задачи есть test gate.
-5. **Code Reviewer** проверяет diff и формирует findings, если для задачи есть review gate.
-6. **Fixer** исправляет только подтверждённые findings, если review/test gate нашёл проблему.
-7. **Project Manager** обновляет статус задачи в `.agents/tasks/README.md`, переводит следующий gate в `ready` или возвращает задачу на нужный этап.
-8. **Project Manager** проверяет diff consistency и делает git commit связанных изменений, если рабочее дерево содержит только изменения текущего task/gate.
+4. **Reviewer** запускает проверки и/или проверяет diff, если для задачи есть review/test gate.
+5. **Project Manager** возвращает confirmed findings текущему owner-агенту как fix-pass или переводит следующий gate в `ready`.
+6. **Project Manager** обновляет статус задачи в `.agents/tasks/README.md`.
+7. **Project Manager** проверяет diff consistency и делает git commit связанных изменений, если рабочее дерево содержит только изменения текущего task/gate.
 
 ---
 
@@ -64,9 +58,8 @@ Suggested agent:
 - Project Manager делает commit после принятия результата и переключения статуса задачи; commit должен содержать только связанные изменения текущего task/gate.
 - Агент не берёт соседнюю задачу самостоятельно, даже если видит её как `ready`; назначение делает Project Manager.
 - Feature agent не закрывает фазу целиком, а возвращает результат только по своей задаче.
-- Reviewer не чинит findings; он возвращает список проблем и рекомендует `fixer` gate.
-- Fixer не расширяет scope; он чинит только подтверждённые findings.
-- Tester не реализует продуктовую функциональность; он подтверждает сценарии и сообщает, можно ли закрывать задачу.
+- Reviewer не чинит findings в том же review-pass; он возвращает список проблем и рекомендует fix-pass owner-агенту.
+- Owner-agent не расширяет scope во время fix-pass; он чинит только подтверждённые findings.
 
 Минимальная передача между агентами:
 

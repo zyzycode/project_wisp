@@ -59,20 +59,4 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 
 ## 6. Формат результата
 
-```markdown
-TASK
-- Task ID:
-- Scope:
-
-CHANGES
-- Что изменено в Domain/Application behavior logic.
-
-BOUNDARIES
-- Как сохранена независимость от React/Electron/SQLite/provider/renderer assets.
-
-VERIFICATION
-- typecheck/lint/tests/build, что запускалось или почему не запускалось.
-
-RECOMMENDED NEXT GATE
-- `tester` / `code-reviewer` / `architect` / `blocked`
-```
+Использовать общий формат из [../README.md](../README.md). В `CHANGES` отдельно назвать изменения в Domain/Application behavior logic; в `BOUNDARIES` подтвердить независимость от React/Electron/SQLite/provider/renderer assets.

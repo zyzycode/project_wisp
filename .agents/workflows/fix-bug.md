@@ -5,7 +5,7 @@
 ---
 
 ## 1. Воспроизведение и локализация
-1. Подтверди `Task ID`, fix-gate, owner-agent и confirmed finding от `code-reviewer` или `tester`.
+1. Подтверди `Task ID`, fix-gate, owner-agent и confirmed finding от `reviewer`.
 2. Проанализируй стек вызовов ошибки или описание некорректного поведения.
 3. Локализуй точное место возникновения сбоя (процесс: Main, Preload или Renderer; модуль; функция).
 4. Определи фундаментальную первопричину (Root Cause), а не маскируй симптомы.
@@ -37,4 +37,4 @@
 - Описание точечного исправления.
 - Ссылки на изменённые файлы и добавленный тест.
 - Результаты проверок.
-- Recommended next gate: `tester`, `code-reviewer`, `architect` или `blocked`.
+- Recommended next gate: `reviewer`, `architect`, `done` или `blocked`.

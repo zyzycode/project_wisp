@@ -31,7 +31,7 @@
 ---
 
 ## 3. Имплементация (Vertical Slice)
-0. Работай только как owner-agent текущей задачи из [.agents/tasks/README.md](../tasks/README.md): `ui-specialist`, `electron-platform`, `domain-behavior`, `data-memory` или `mock-ai-provider`.
+0. Работай только как owner-agent текущей задачи из [.agents/tasks/README.md](../tasks/README.md): обычно `app-developer` или `domain-behavior`.
 1. Реализуй изменения минимальным изолированным срезом:
    - Меняй только файлы и слои, входящие в `Scope`.
    - Не расширяй соседние слои без согласованного контракта.
@@ -57,4 +57,4 @@
 - **Затронутые файлы:** список изменённых/созданных файлов с ссылками.
 - **Boundaries:** как сохранены границы слоя и hard constraints.
 - **Результаты проверок:** статус `typecheck`, `lint`, `tests`, `build` или причина `NOT RUN`.
-- **Recommended next gate:** `tester`, `code-reviewer`, `architect` или `blocked`.
+- **Recommended next gate:** `reviewer`, `architect`, `done` или `blocked`.

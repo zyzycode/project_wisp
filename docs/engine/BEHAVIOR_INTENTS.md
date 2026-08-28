@@ -25,7 +25,7 @@ ProviderResponseIntentMapper
 ```typescript
 export interface BehaviorIntent {
   kind: BehaviorIntentKind;
-  source: 'user' | 'provider' | 'timer' | 'memory' | 'system';
+  source: 'user' | 'provider' | 'timer' | 'memory' | 'settings' | 'system';
   priority: 'low' | 'normal' | 'high' | 'critical';
   replyText?: string;
   toneHint?: 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';

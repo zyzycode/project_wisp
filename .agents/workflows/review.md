@@ -4,7 +4,7 @@
 
 > [!IMPORTANT]
 > **Принцип Diff-Only Review:**
-> Code Reviewer смотрит **исключительно в diff** (предоставленный патч / изменения), а **НЕ** читает весь проект или файлы вне зоны изменений. Reviewer не исправляет код, не меняет статусы backlog и не закрывает задачу вместо Project Manager. Его результат — findings по diff, оценка риска и recommended next gate.
+> Reviewer смотрит **исключительно в diff** (предоставленный патч / изменения), а **НЕ** читает весь проект или файлы вне зоны изменений. Reviewer не исправляет код, не меняет статусы backlog и не закрывает задачу вместо Project Manager. Его результат — findings по diff, оценка риска и recommended next gate.
 
 ---
 
@@ -91,11 +91,11 @@ FINDINGS
 
 VERIFICATION
 - Reviewer checked:
-- Relied on implementer/tester report:
+- Relied on implementer report:
 - Not checked:
 
 RECOMMENDED NEXT GATE
-- `done` / `fixer` / `tester` / `architect` / `blocked`
+- `done` / `app-developer` / `domain-behavior` / `architect` / `blocked`
 ```
 
 ---
@@ -103,7 +103,7 @@ RECOMMENDED NEXT GATE
 ## 6. Routing
 
 - `done` — findings нет, acceptance criteria выполнены, остаточный риск приемлем.
-- `fixer` — есть точечные confirmed findings, не требующие нового architecture decision.
-- `tester` — реализация выглядит корректной, но не хватает verification.
+- `app-developer` — нужен fix-pass в Main/Preload/Renderer/platform/persistence/provider/packaging зоне.
+- `domain-behavior` — нужен fix-pass в behavior/animation/domain зоне.
 - `architect` — затронуты contracts, layer boundaries, IPC, ports, `docs/engine/*` или есть архитектурный конфликт.
 - `blocked` — не хватает task ID, контекста, diff, результатов проверки или задача оказалась слишком широкой.

@@ -212,7 +212,7 @@ export interface IPlatformAdapter {
 - Хранилища Zustand: только визуальное состояние.
 - Render Engine отображает presentation-ready состояние персонажа: SVG pose, sprite sheet frame, future rig pose, props, scale, theme, hitbox/debug bounds.
 - Render Engine **не является game engine**: он не считает физику, потребности, приоритеты поведения, cooldowns, quiet/sleep rules или AI-ответы.
-- Renderer не вычисляет настроение, поведение, потребности, память или AI-ответы.
+- Renderer не вычисляет `SynthesizedEmotionalTone`, поведение, потребности, память или AI-ответы.
 
 ### 8.2. Application Layer (Main)
 - Use Cases: `ProcessUserMessageUseCase`, `TriggerAutonomousActionUseCase`, `UpdatePetPositionUseCase`, `UpdateSettingsUseCase`.
@@ -251,12 +251,12 @@ export interface IPlatformAdapter {
 
 $$\text{Стимулы (Provider / Пользователь / Таймер / Память)} \longrightarrow \text{BehaviorIntent} \longrightarrow \text{Character Engine} \longrightarrow \text{AnimationIntent} \longrightarrow \text{Animation Controller} \longrightarrow \text{Render Engine}$$
 
-- `IAIProvider` или будущий внешний provider-клиент возвращает семантический результат: текст, настроение, confidence, suggested behavior intent. Он не управляет React, DOM, CSS, asset paths или sprite sheet frames.
+- `IAIProvider` или будущий внешний provider-клиент возвращает семантический результат: текст, suggested tone, confidence, suggested behavior intent. Он не управляет React, DOM, CSS, asset paths или sprite sheet frames.
 - `ProviderResponseIntentMapper` переводит provider response DTO во внутренний `BehaviorIntent`.
 - `CharacterEngine` принимает стимулы и решает, что делает один основной Wisp: отвечает, гуляет, спит, достаёт prop, реагирует, уходит в quiet/sleep mode.
 - `AnimationStateMachine` переводит поведение в `AnimationIntent` с requested/default metadata для приоритета, прерываемости и loop mode; resolved policy применяет Animation Controller.
 - `Render Engine` отображает `AnimationIntent` через общий render contract. SVG остаётся текущим рабочим форматом, sprite sheets — целевой ближайший формат для богатых анимаций, future rigging допускается позже без изменения Domain.
-- Подробности sprite sheet нарезки, frame sizes, rows/columns, concrete asset names и geometry принадлежат будущему `docs/engine/RENDER_ENGINE.md`; до его создания используются `docs/ARTIST_BRIEF.md` и текущий renderer-код. `docs/engine/ANIMATION_ENGINE.md` описывает semantic animation intents, priority/interrupt policy и clip-level expectations без frame-level asset details.
+- Подробности sprite sheet нарезки, frame sizes, rows/columns, concrete asset names и geometry принадлежат будущему `docs/engine/RENDER_ENGINE.md`; до его создания агенты ориентируются на текущий renderer-код и явно назначенную задачу. `docs/engine/ANIMATION_ENGINE.md` описывает semantic animation intents, priority/interrupt policy и clip-level expectations без frame-level asset details.
 
 ---
 
@@ -284,6 +284,8 @@ $$\text{Стимулы (Provider / Пользователь / Таймер / П�
 ---
 
 ## 11. Хранилище данных и пути (SQLite & Storage)
+
+Этот раздел описывает target architecture для persistence и памяти. Полноценная SQLite-память (`chat history`, user facts, relationship state, clear memory) запланирована для Phase 14; до этого задачи используют только явно реализованные Main-owned persistence pieces.
 
 1. **Движок:** Локальный SQLite в Main-процессе (`better-sqlite3`).
 2. **Кроссплатформенное разрешение путей:**

@@ -1,56 +1,39 @@
-# Codex Agents — карта ролей
+# Codex Agents — базовые роли
 
-Документы ролей нужны для удержания малого контекста, а не для бюрократии. Каждый агент читает только карточку задачи, эту карту ролей и файлы, явно нужные для его scope.
-
-## Маршрутизация
-
-1. `project-manager` ограничивает scope, держит `ROADMAP.md` и `.agents/tasks/README.md` компактными, затем назначает одного исполнителя.
-2. `architect` подключается для изменений layer boundaries, IPC, ports, `docs/engine/*` и provider/render/behavior contracts.
-3. Feature agent реализует один слой или один небольшой vertical slice.
-4. `code-reviewer` ревьюит изменённые файлы и возвращает findings.
-5. `fixer` исправляет только подтверждённые findings.
-6. `tester` проверяет acceptance criteria перед закрытием задачи Project Manager-ом.
+Роли нужны для малого контекста, а не для бюрократии. В Project Wisp используются только 5 основных ролей; детализация по слоям живёт в `.agents/rules/*.md` и `docs/engine/*.md`.
 
 ## Роли
 
-| Роль | Зона владения | Пишет код | Запускает тесты |
+| Роль | Зона владения | Пишет код | Запускает проверки |
 |---|---|---:|---:|
-| `project-manager` | scope, карточки задач, docs routing, status | нет | нет продуктовых тестов |
-| `architect` | contracts, boundaries, architecture docs | обычно нет | только при необходимости |
-| `ui-specialist` | Renderer UI, render engine, CSS, settings UI | да | да |
-| `electron-platform` | Main/Preload, windows, IPC, OS adapters | да | да |
-| `domain-behavior` | character rules, behavior FSM, animation FSM | да | да |
-| `data-memory` | SQLite, repositories, migrations, local persistence | да | да |
-| `mock-ai-provider` | `IAIProvider`, `MockAIProvider`, provider DTOs | да | да |
-| `code-reviewer` | risks, regressions, missing tests | нет | опционально |
-| `fixer` | confirmed review findings | да | да |
-| `tester` | verification and test coverage | tests only when assigned | да |
+| `project-manager` | scope, roadmap, backlog, docs routing | нет | docs consistency |
+| `architect` | layer boundaries, IPC/ports, engine contracts | обычно нет | при необходимости |
+| `app-developer` | desktop implementation: Main, Preload, Renderer, platform, persistence/provider adapters | да | да |
+| `domain-behavior` | character engine, behavior FSM, animation FSM, pure domain rules | да | да |
+| `reviewer` | review, verification, test strategy, regression checks | tests only when assigned | да |
+
+## Выбор роли
+
+- Product/task docs, roadmap/backlog sequencing: `project-manager`.
+- Public contracts, ports, IPC, provider/render/behavior boundaries: `architect`.
+- Main/Preload, Renderer UI, platform adapters, SQLite adapters, settings UI, `MockAIProvider`, packaging: `app-developer`.
+- `SynthesizedEmotionalTone`, needs, relationship rules, sleep/quiet, autonomous behavior, FSM transitions, animation intent selection: `domain-behavior`.
+- Diff review, test gate, verification strategy, regression checks: `reviewer`.
+
+Confirmed findings возвращаются текущему owner-агенту (`app-developer` или `domain-behavior`) как fix-pass. Reviewer не чинит код в том же review-pass.
 
 ## Правила контекста
 
-- Начинать с `AGENTS.md`, этого файла и назначенной карточки задачи.
+- Начинать с `AGENTS.md`, этой карты ролей и назначенной карточки задачи.
 - Читать `ARCHITECTURE.md` только для architecture-affecting work.
 - Читать `docs/engine/*.md` только если карточка задачи называет этот contract.
 - Читать `.agents/rules/*.md` только для слоя, который меняется.
 - Не читать все role, workflow, skill и rule docs по умолчанию.
 - Не копировать целые разделы roadmap в prompts агентов; передавать одну карточку задачи.
 
-## Выбор исполнителя
+## Review Modes
 
-- Product/task docs: `project-manager`.
-- Public contracts, ports, IPC, provider/render/behavior boundaries: `architect`.
-- React components, visual state, CSS, speech bubble, chat UI, settings UI: `ui-specialist`.
-- Electron windows, tray, autostart, click-through, Linux X11/Wayland, preload и IPC: `electron-platform`.
-- `SynthesizedEmotionalTone`, energy, sleep, autonomous behavior, FSM transitions, animation intent selection: `domain-behavior`.
-- SQLite, memory, settings persistence, migrations: `data-memory`.
-- Mock replies, provider DTOs, thinking/error/fallback state: `mock-ai-provider`.
-- Independent code review: `code-reviewer`.
-- Confirmed fixes: `fixer`.
-- Acceptance verification: `tester`.
-
-## Review modes
-
-Общий `code-reviewer` выбирает фокус по изменённым файлам:
+`reviewer` выбирает фокус по изменённым файлам:
 
 - `ui`: Renderer isolation и отсутствие business logic в React.
 - `platform`: Electron security, preload, IPC, OS adapters.
@@ -60,3 +43,23 @@
 - `docs`: markdown consistency и scope control.
 
 Architect review обязателен перед изменением public contracts, `docs/engine/*`, IPC, ports, provider boundaries, render/animation/behavior boundaries или layer ownership.
+
+## Общий формат отчёта
+
+```markdown
+TASK
+- Task ID:
+- Scope:
+
+CHANGES
+- Что изменено.
+
+BOUNDARIES
+- Как сохранены ограничения слоя и hard constraints.
+
+VERIFICATION
+- typecheck/lint/tests/build/smoke или причина NOT RUN.
+
+RECOMMENDED NEXT GATE
+- `reviewer` / `architect` / `blocked` / `done`
+```
