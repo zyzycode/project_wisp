@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_INTIMACY_THRESHOLDS,
+  adaptPersonalityAxes,
   calculateShyness,
   canExpressFlirt,
   createCharacterSnapshot,
+  metabolizeNeeds,
+  processStimulus,
   shyDreamGirlPreset,
   synthesizeEmotionalTone,
+  trackPreference,
 } from '../../src/domain/character';
 import type { CharacterState } from '../../src/domain/character';
 
@@ -185,5 +189,156 @@ describe('Domain: Character Engine v2', () => {
       },
       synthesizedTone: 'affectionate',
     });
+  });
+
+  it('metabolizes needs with soft long-absence drift and no relationship penalty', () => {
+    const needs = {
+      energy: 10,
+      attention: 0,
+      play: 0,
+      comfort: 95,
+    };
+
+    const nextNeeds = metabolizeNeeds(needs, 30 * 24 * 60 * 60 * 1000, 'neutral');
+
+    expect(nextNeeds.energy).toBeGreaterThan(70);
+    expect(nextNeeds.attention).toBeLessThanOrEqual(56);
+    expect(nextNeeds.play).toBeLessThanOrEqual(60);
+    expect(nextNeeds.comfort).toBeLessThan(20);
+    expect(needs).toEqual({
+      energy: 10,
+      attention: 0,
+      play: 0,
+      comfort: 95,
+    });
+  });
+
+  it('adapts personality axes with plasticity, soft resistance, and hard bounds', () => {
+    const axes = {
+      ...shyDreamGirlPreset.axes,
+      boldness: {
+        base: 0.5,
+        current: 0.5,
+        softMin: 0.4,
+        softMax: 0.6,
+        hardMin: 0.2,
+        hardMax: 0.65,
+        plasticity: 1,
+      },
+    };
+
+    const resisted = adaptPersonalityAxes(axes, { boldness: 0.2 });
+    const hardClamped = adaptPersonalityAxes(axes, { boldness: 10 });
+
+    expect(resisted.boldness.current).toBeCloseTo(0.635, 3);
+    expect(hardClamped.boldness.current).toBe(0.65);
+    expect(axes.boldness.current).toBe(0.5);
+  });
+
+  it('tracks preference samples, confidence, and value drift', () => {
+    const first = trackPreference({}, 'tea', 60);
+    const second = trackPreference(first, 'tea', -60);
+
+    expect(first.tea).toEqual({
+      value: 60,
+      confidence: 1 / 7,
+      samples: 1,
+    });
+    expect(second.tea).toEqual({
+      value: 0,
+      confidence: 0.25,
+      samples: 2,
+    });
+  });
+
+  it('processes stimuli immutably and unlocks love through friendship progression', () => {
+    const state = createState({
+      relationship: { friendship: 395, love: 0, loveUnlocked: false },
+      lastUpdated: 1000,
+    });
+
+    const next = processStimulus(state, {
+      type: 'topic_dialogue',
+      intensity: 2,
+      metadata: {
+        topicKey: 'games',
+        preferenceValue: 80,
+      },
+    });
+
+    expect(next).not.toBe(state);
+    expect(next.needs).not.toBe(state.needs);
+    expect(next.personality).not.toBe(state.personality);
+    expect(next.relationship.friendship).toBe(411);
+    expect(next.relationship.loveUnlocked).toBe(true);
+    expect(next.relationship.love).toBe(4);
+    expect(next.preferences.games).toEqual({
+      value: 80,
+      confidence: 1 / 7,
+      samples: 1,
+    });
+    expect(state.relationship).toEqual({ friendship: 395, love: 0, loveUnlocked: false });
+    expect(state.preferences).toEqual({});
+  });
+
+  it('processes click, pet, and chat message stimuli as bounded positive interactions', () => {
+    const state = createState({
+      needs: { energy: 70, attention: 50, play: 50, comfort: 50 },
+      relationship: { friendship: 410, love: 10, loveUnlocked: true },
+    });
+
+    const clicked = processStimulus(state, { type: 'click' });
+    const petted = processStimulus(clicked, { type: 'pet' });
+    const chatted = processStimulus(petted, { type: 'chat_message' });
+
+    expect(clicked.relationship.friendship).toBe(411);
+    expect(clicked.relationship.love).toBe(10);
+    expect(petted.relationship.friendship).toBe(415);
+    expect(petted.relationship.love).toBe(12);
+    expect(chatted.relationship.friendship).toBe(421);
+    expect(chatted.relationship.love).toBe(13);
+    expect(chatted.needs.attention).toBeLessThan(state.needs.attention);
+    expect(chatted.needs.play).toBeLessThan(state.needs.play);
+    expect(chatted.needs.comfort).toBeLessThan(state.needs.comfort);
+  });
+
+  it('catches up need metabolism before applying a non-idle stimulus', () => {
+    const state = createState({
+      needs: { energy: 40, attention: 0, play: 0, comfort: 20 },
+      relationship: { friendship: 100, love: 0, loveUnlocked: false },
+      lastUpdated: 1000,
+    });
+
+    const next = processStimulus(state, {
+      type: 'chat_message',
+      metadata: {
+        deltaMs: 14 * 24 * 60 * 60 * 1000,
+      },
+    });
+
+    expect(next.lastUpdated).toBe(14 * 24 * 60 * 60 * 1000 + 1000);
+    expect(next.needs.attention).toBeGreaterThan(0);
+    expect(next.needs.attention).toBeLessThan(56);
+    expect(next.needs.play).toBeGreaterThan(0);
+    expect(next.relationship.friendship).toBe(106);
+    expect(state.needs).toEqual({ energy: 40, attention: 0, play: 0, comfort: 20 });
+  });
+
+  it('does not degrade relationship during idle ticks', () => {
+    const state = createState({
+      relationship: { friendship: 300, love: 25, loveUnlocked: false },
+      lastUpdated: 0,
+    });
+
+    const next = processStimulus(state, {
+      type: 'idle_tick',
+      metadata: {
+        deltaMs: 14 * 24 * 60 * 60 * 1000,
+      },
+    });
+
+    expect(next.relationship).toEqual(state.relationship);
+    expect(next.needs.attention).toBeGreaterThan(state.needs.attention);
+    expect(next.needs.attention).toBeLessThan(56);
   });
 });

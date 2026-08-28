@@ -4,3 +4,7 @@ export * from './derived-traits';
 export * from './intimacy-rules';
 export * from './emotional-tone';
 export * from './character-snapshot';
+export * from './metabolism';
+export * from './personality-plasticity';
+export * from './preferences';
+export * from './stimuli-reducer';
