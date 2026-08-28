@@ -24,8 +24,8 @@
 - Phase 0–11: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop.
 - Phase 12 (Animation & Reaction Pack): `in_progress`
   - `P12-A01` (Architecture Sync: Animation Engine & Character Engine v2): `done`
-  - `P12-T01` (Domain Animation Engine & Intent Mapping): `in_progress`
-  - `P12-T02` (Idle Variety & Sleep/Wake Autonomous Life Rules): `planned`
+  - `P12-T01` (Domain Animation Engine & Intent Mapping): `done`
+  - `P12-T02` (Idle Variety & Sleep/Wake Autonomous Life Rules): `in_progress`
   - `P12-T03` (Unit Tests for Animation & Reaction Pack): `planned`
   - `P12-G01` (Code Review Phase 12): `planned`
 
@@ -36,41 +36,41 @@
 - **Статус:** `done`
 - **Исполнитель:** `architect`
 - **Зависит от:** none
-- **Цель:** Синхронизировать `docs/engine/ANIMATION_ENGINE.md` с Character Engine v2 (7 эмоциональных тонов, визуальные эффекты смущения/румянца, правила сна по энергии и безопасные fallback-переходы под неполный набор спрайтов).
+- **Цель:** Синхронизировать `docs/engine/ANIMATION_ENGINE.md` с Character Engine v2.
 - **Читать:** `.agents/agents/architect/agent.md`, `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/ANIMATION_ENGINE.md`.
 - **Менять:** `docs/engine/ANIMATION_ENGINE.md`.
 - **Критерии приёмки:**
   - [x] Маппинг всех тонов `SynthesizedEmotionalTone` в `AnimationIntent`.
   - [x] Спецификация `propHint` и подсказок выражений (`blush`, `heart`, `question`, `pillow`).
-  - [x] Политика graceful degradation (fallback) для состояний без готовых спрайтов.
-  - [x] Сохранены строгие границы слоёв (без UI/asset деталей).
+  - [x] Политика graceful degradation (fallback).
 - **Вне скоупа:** Написание TS-кода.
 
 ### P12-T01 — Domain Animation Engine & Intent Mapping
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P12-A01`
 - **Цель:** Реализовать доменную модель `AnimationIntent`, типы `AnimationExpressionHint`/`AnimationPropHint`, чистый маппер `mapBehaviorIntentToAnimationIntent` и расширить FSM с поддержкой приоритетов и состояний (`spook`, `sleep_start`, `sleep_loop`, `wake_up`, `settle`).
-- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `src/domain/animation/animation-state-machine.ts`, `src/domain/behavior/behavior-intent.ts`.
-- **Менять:** `src/domain/animation/` (`animation-intent.ts` [создать], `animation-state-machine.ts`, `index.ts`), unit-тесты.
+- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `src/domain/animation/`.
+- **Менять:** `src/domain/animation/` (`animation-intent.ts`, `animation-state-machine.ts`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Типы `AnimationIntent`, `AnimationIntentKind`, `AnimationPriority`, `AnimationExpressionHint`, `AnimationPropHint` соответствуют контракту.
-  - [ ] Чистый маппер реализует сводную матрицу переходов с учётом 7 тонов `SynthesizedEmotionalTone`.
-  - [ ] `AnimationStateMachine` поддерживает новые состояния, приоритеты и не-прерываемые циклы.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
+  - [x] Типы `AnimationIntent`, `AnimationIntentKind`, `AnimationPriority`, `AnimationExpressionHint`, `AnimationPropHint` соответствуют контракту.
+  - [x] Чистый маппер реализует сводную матрицу переходов с учётом 7 тонов `SynthesizedEmotionalTone`.
+  - [x] `AnimationStateMachine` поддерживает новые состояния, приоритеты и не-прерываемые циклы.
+  - [x] `npm test` и `npm run typecheck` зелёные.
 - **Вне скоупа:** Рендеринг и UI.
 
 ### P12-T02 — Idle Variety & Sleep/Wake Autonomous Life Rules
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P12-T01`
-- **Цель:** Вариативность idle (micro-motions, моргание) и засыпание по витальным потребностям `Needs`.
-- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `src/domain/behavior/`.
-- **Менять:** `src/domain/behavior/` (`autonomous-behavior.ts`, `idle-variety.ts`), unit-тесты.
+- **Цель:** Реализовать витальные автономные правила засыпания и пробуждения на основе `Needs` (засыпание при `energy <= 20` или `comfort >= 80`, пробуждение при `attention >= 90` или восстановлении `energy >= 80`) и вариативность idle-поведения с учётом тона и пауз.
+- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/CHARACTER_ENGINE.md`, `src/domain/behavior/`.
+- **Менять:** `src/domain/behavior/` (`autonomous-behavior.ts`, `idle-variety.ts` [создать/обновить]), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Автономные правила сна/пробуждения и idle-микроанимации.
+  - [ ] Автономный генератор намерений корректно генерирует `sleep`/`wake` на основе порогов `Needs`.
+  - [ ] Idle-вариативность генерирует микродействия без спама и не прерывает `sleep_loop`.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 - **Вне скоупа:** UI-компоненты.
 

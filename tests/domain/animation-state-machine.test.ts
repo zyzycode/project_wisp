@@ -2,7 +2,19 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   AnimationStateMachine,
   ANIMATION_STATES,
-} from '../../src/domain/animation/animation-state-machine';
+  createSystemAnimationIntent,
+  mapBehaviorIntentToAnimationIntent,
+} from '../../src/domain/animation';
+import type { BehaviorIntent } from '../../src/domain/behavior/behavior-intent';
+
+function behaviorIntent(overrides: Partial<BehaviorIntent>): BehaviorIntent {
+  return {
+    kind: 'idle',
+    source: 'user',
+    priority: 'normal',
+    ...overrides,
+  };
+}
 
 describe('Domain: AnimationStateMachine', () => {
   it('initializes in idle state with idle expression', () => {
@@ -43,8 +55,10 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentState()).toBe('happy');
     expect(fsm.getCurrentExpression()).toBe('happy');
 
-    // Happy -> auto transition to idle after 1500ms
+    // Happy -> settle -> idle after bounded reaction completes
     fsm.update(1600);
+    expect(fsm.getCurrentState()).toBe('settle');
+    fsm.update(300);
     expect(fsm.getCurrentState()).toBe('idle');
 
     // Idle -> THINK -> REACT_CONFUSED -> surprised
@@ -54,14 +68,16 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentState()).toBe('surprised');
     expect(fsm.getCurrentExpression()).toBe('surprised');
 
-    // Surprised -> auto transition to idle after 1200ms
+    // Surprised -> settle -> idle after bounded reaction completes
     fsm.update(1300);
+    expect(fsm.getCurrentState()).toBe('settle');
+    fsm.update(300);
     expect(fsm.getCurrentState()).toBe('idle');
 
-    // Idle -> THINK -> START_SLEEP -> sleep
+    // Idle -> THINK -> START_SLEEP -> sleep_start
     expect(fsm.transition('THINK')).toBe(true);
     expect(fsm.transition('START_SLEEP')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('sleep');
+    expect(fsm.getCurrentState()).toBe('sleep_start');
     expect(fsm.getCurrentExpression()).toBe('sleepy');
   });
 
@@ -74,8 +90,24 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentState()).toBe('landing');
 
     fsm.update(350); // total 850ms >= 800ms
+    expect(fsm.getCurrentState()).toBe('settle');
+    expect(fsm.getCurrentExpression()).toBe('idle');
+
+    fsm.update(300);
     expect(fsm.getCurrentState()).toBe('idle');
     expect(fsm.getCurrentExpression()).toBe('idle');
+  });
+
+  it('settles after autonomous float stops', () => {
+    const fsm = new AnimationStateMachine('idle');
+
+    expect(fsm.transition('START_FLOAT')).toBe(true);
+    expect(fsm.getCurrentState()).toBe('float');
+    expect(fsm.transition('STOP_FLOAT')).toBe(true);
+    expect(fsm.getCurrentState()).toBe('settle');
+
+    fsm.update(300);
+    expect(fsm.getCurrentState()).toBe('idle');
   });
 
   it('blocks non-allowed transitions from current state', () => {
@@ -108,5 +140,73 @@ describe('Domain: AnimationStateMachine', () => {
     unsubscribe();
     fsm.transition('START_DRAG');
     expect(listener).toHaveBeenCalledTimes(2); // not called again after unsubscribe
+  });
+
+  it('runs sleep lifecycle through protected sleep_start and stable sleep_loop', () => {
+    const fsm = new AnimationStateMachine('idle');
+
+    expect(fsm.transition('START_SLEEP')).toBe(true);
+    expect(fsm.getCurrentState()).toBe('sleep_start');
+    expect(fsm.transition('REACT_HAPPY')).toBe(false);
+    expect(fsm.getCurrentState()).toBe('sleep_start');
+
+    fsm.update(1000);
+    expect(fsm.getCurrentState()).toBe('sleep_loop');
+    expect(fsm.transition('SETTLE')).toBe(false);
+    expect(fsm.transition('THINK')).toBe(false);
+    expect(fsm.transition('START_FLOAT')).toBe(false);
+    expect(fsm.getCurrentState()).toBe('sleep_loop');
+  });
+
+  it('allows wake_up and drag to replace protected sleep_loop', () => {
+    const wakeFsm = new AnimationStateMachine('sleep_loop');
+
+    expect(wakeFsm.transition('WAKE_UP')).toBe(true);
+    expect(wakeFsm.getCurrentState()).toBe('wake_up');
+    expect(wakeFsm.transition('REACT_CONFUSED')).toBe(false);
+
+    wakeFsm.update(900);
+    expect(wakeFsm.getCurrentState()).toBe('settle');
+    wakeFsm.update(300);
+    expect(wakeFsm.getCurrentState()).toBe('idle');
+
+    const dragFsm = new AnimationStateMachine('sleep_loop');
+    expect(dragFsm.transition('START_DRAG')).toBe(true);
+    expect(dragFsm.getCurrentState()).toBe('dragged');
+  });
+
+  it('applies AnimationIntent with priority protection', () => {
+    const fsm = new AnimationStateMachine('sleep_loop');
+    const lowIdle = createSystemAnimationIntent('idle_blink', 'neutral');
+    const normalTalk = mapBehaviorIntentToAnimationIntent(
+      behaviorIntent({ kind: 'respond', source: 'provider' }),
+      'neutral'
+    );
+    const wake = mapBehaviorIntentToAnimationIntent(behaviorIntent({ kind: 'wake' }), 'sleepy');
+
+    expect(fsm.applyIntent(lowIdle)).toBe(false);
+    expect(fsm.applyIntent(normalTalk)).toBe(false);
+    expect(fsm.applyIntent(wake)).toBe(true);
+    expect(fsm.getCurrentState()).toBe('wake_up');
+  });
+
+  it('does not let low-priority idle or settle intents cancel active dialogue', () => {
+    const fsm = new AnimationStateMachine('thinking');
+
+    expect(fsm.applyIntent(createSystemAnimationIntent('idle_blink', 'neutral'))).toBe(false);
+    expect(fsm.applyIntent(createSystemAnimationIntent('settle', 'neutral'))).toBe(false);
+    expect(fsm.getCurrentState()).toBe('thinking');
+  });
+
+  it('lets critical spook interrupt any state and settle afterward', () => {
+    const fsm = new AnimationStateMachine('sleep_start');
+    const spook = createSystemAnimationIntent('spook', 'neutral');
+
+    expect(fsm.applyIntent(spook)).toBe(true);
+    expect(fsm.getCurrentState()).toBe('spook');
+    expect(fsm.getCurrentExpression()).toBe('surprised');
+
+    fsm.update(900);
+    expect(fsm.getCurrentState()).toBe('settle');
   });
 });
