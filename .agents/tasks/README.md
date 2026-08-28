@@ -24,8 +24,8 @@
 - Phase 0–12: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop, Animation & Reaction Pack.
 - Phase 13 (Render Engine & Asset Pipeline): `in_progress`
   - `P13-A01` (Architecture Contract: RENDER_ENGINE.md): `done`
-  - `P13-T01` (Structured Logger Infrastructure & Telemetry Stream): `in_progress`
-  - `P13-T02` (Asset Manifest Parser & Sprite Playback Controller): `planned`
+  - `P13-T01` (Structured Logger Infrastructure & Telemetry Stream): `done`
+  - `P13-T02` (Asset Manifest Parser & Sprite Playback Controller): `in_progress`
   - `P13-T03` (Layered Character Renderer Component): `planned`
   - `P13-T04` (Safe Fallback Implementation): `planned`
   - `P13-T05` (Mini-Debug HUD & Dev Overlay): `planned`
@@ -39,7 +39,7 @@
 - **Статус:** `done`
 - **Исполнитель:** `architect`
 - **Зависит от:** none
-- **Цель:** Создать архитектурный контракт `docs/engine/RENDER_ENGINE.md`: форматы спрайт-листов, схема `manifest.json`, правила таймингов/нарезки, слоты `RenderSlot`, порт `ICharacterRenderer`, `RenderPresentationState` и Graceful Fallback.
+- **Цель:** Создать архитектурный контракт `docs/engine/RENDER_ENGINE.md`.
 - **Читать:** `.agents/agents/architect/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `public/assets/sprites/manifest.json`.
 - **Менять:** `docs/engine/RENDER_ENGINE.md`.
 - **Критерии приёмки:**
@@ -50,29 +50,31 @@
 
 ### P13-T01 — Structured Logger Infrastructure & Telemetry Stream
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-A01`
-- **Цель:** Создать TypeScript-порт `ILogger` в Application layer и адаптер структурированного логирования (`AppLogger`, `LogBuffer`) с фильтрацией по контекстам (`FSM`, `CharacterEngine`, `Needs`, `AIProvider`, `RenderEngine`, `IPC`, `Autonomy`), уровнями (`debug`, `info`, `warn`, `error`, `silent`), глобальным выключением и кольцевым буфером для HUD.
+- **Цель:** Реализовать порт `ILogger` и адаптер `AppLogger` с `LogBuffer`.
 - **Читать:** `.agents/agents/app-developer/agent.md`.
-- **Менять:** `src/application/ports/logger.interface.ts` (создать), `src/infrastructure/logging/` (создать), tests.
+- **Менять:** `src/application/ports/logger.interface.ts`, `src/infrastructure/logging/`.
 - **Критерии приёмки:**
-  - [ ] Реализован интерфейс `ILogger` и адаптер `AppLogger`.
-  - [ ] Поддерживаются уровни `debug`, `info`, `warn`, `error`, `silent` и кольцевой буфер `ILogBuffer`.
-  - [ ] Логирование можно полностью выключить через флаг конфига.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
+  - [x] Реализован интерфейс `ILogger` и адаптер `AppLogger`.
+  - [x] Поддерживаются уровни `debug`, `info`, `warn`, `error`, `silent` и кольцевой буфер `ILogBuffer`.
+  - [x] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T02 — Asset Manifest Parser & Sprite Playback Controller
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-A01`
-- **Цель:** Загрузка и валидация `manifest.json`, кэширование спрайтов, контроллер покадрового воспроизведения под готовые 4 спрайта `body_walk_00..03.png`.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `public/assets/sprites/`.
-- **Менять:** `src/renderer/render-engine/` (`manifest-loader.ts`, `playback-controller.ts`), unit-тесты.
+- **Цель:** Реализовать парсер и нормализатор `manifest.json` (`ManifestLoader`), чистый `AnimationPlayer` (отсчёт времени по deltaMs, сменяемость кадров, циклы и completion events) под готовые 4 спрайта `body_walk_00..03.png`.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `public/assets/sprites/manifest.json`.
+- **Менять:** `src/renderer/render-engine/` (`manifest-loader.ts`, `animation-player.ts`, `types.ts`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Загрузка спрайтов и вычисление кадров по таймингам.
+  - [ ] `ManifestLoader` корректно читает текущий `manifest.json` и нормализует дефолтные FPS/pivot.
+  - [ ] `AnimationPlayer` детерминированно меняет кадры по tick(deltaMs), поддерживает режимы `loop`, `hold`, `once` и `until_replaced`/`bounded`.
+  - [ ] Написаны unit-тесты на расчет таймингов, переключение кадров и completion event.
   - [ ] `npm test` и `npm run typecheck` зелёные.
+- **Вне скоупа:** React-компоненты отрисовки.
 
 ### P13-T03 — Layered Character Renderer Component
 
