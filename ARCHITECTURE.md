@@ -227,9 +227,9 @@ export interface IPlatformAdapter {
   - `CharacterState`: настроение (`mood`), энергия (`energy`), активность (`activity`), фокус (`focus`), потребности (`needs`), черты (`traits`).
   - `CharacterEngine`: правила характера, внутренних стимулов, quiet/sleep mode и выбора автономных действий.
   - `BehaviorStateMachine`: переходы состояний (`idle`, `walking`, `sitting`, `dragging`, `talking`, `thinking`, `sleeping`).
-  - `BehaviorIntent`: семантические намерения поведения (`respond`, `sleep`, `play`, `wander`, `react`, `idle`, `quiet`).
+  - `BehaviorIntent`: семантические намерения поведения (`respond`, `think`, `react_happy`, `react_confused`, `play`, `sleep`, `wake`, `drag`, `land`, `wander`, `idle`, `quiet`). Generic `react` не является public intent kind.
   - `AnimationStateMachine`: связка поведения с анимационными намерениями.
-  - `AnimationIntent`: семантические намерения рендера (`idle_blink`, `sleep_start`, `sleep_loop`, `happy`, `confused`, `dragged`, `land`).
+  - `AnimationIntent`: семантические визуальные запросы (`idle_blink`, `thinking_loop`, `talking`, `happy_reaction`, `confused_reaction`, `sleep_start`, `sleep_loop`, `wake_up`, `dragged`, `land`, `walk`, `settle`).
   - `MemoryEntry`: сущности памяти.
 - Domain может знать, что Wisp использует prop вроде `pillow`, но не знает путь к asset-файлу, sprite sheet layout или CSS.
 
@@ -254,9 +254,9 @@ $$\text{Стимулы (Provider / Пользователь / Таймер / П�
 - `IAIProvider` или будущий внешний provider-клиент возвращает семантический результат: текст, настроение, confidence, suggested behavior intent. Он не управляет React, DOM, CSS, asset paths или sprite sheet frames.
 - `ProviderResponseIntentMapper` переводит provider response DTO во внутренний `BehaviorIntent`.
 - `CharacterEngine` принимает стимулы и решает, что делает один основной Wisp: отвечает, гуляет, спит, достаёт prop, реагирует, уходит в quiet/sleep mode.
-- `AnimationStateMachine` переводит поведение в `AnimationIntent` с приоритетами и правилами прерывания.
+- `AnimationStateMachine` переводит поведение в `AnimationIntent` с requested/default metadata для приоритета, прерываемости и loop mode; resolved policy применяет Animation Controller.
 - `Render Engine` отображает `AnimationIntent` через общий render contract. SVG остаётся текущим рабочим форматом, sprite sheets — целевой ближайший формат для богатых анимаций, future rigging допускается позже без изменения Domain.
-- Подробности sprite sheet нарезки, frame sizes, rows/columns и rigging-переходов не описываются в этом файле; они принадлежат `docs/engine/RENDER_ENGINE.md` и `docs/engine/ANIMATION_ENGINE.md`.
+- Подробности sprite sheet нарезки, frame sizes, rows/columns, concrete asset names и geometry принадлежат `docs/engine/RENDER_ENGINE.md`. `docs/engine/ANIMATION_ENGINE.md` описывает semantic animation intents, priority/interrupt policy и clip-level expectations без frame-level asset details.
 
 ---
 
@@ -277,7 +277,7 @@ $$\text{Стимулы (Provider / Пользователь / Таймер / П�
 Подробные спецификации движков живут в `docs/engine/` и создаются отдельными задачами Architect перед реализацией соответствующих фаз:
 - `docs/engine/AI_PROVIDER_CONTRACT.md` — DTO provider-ответов, errors, latency/thinking, streaming/non-streaming, auth placeholders.
 - `docs/engine/CHARACTER_ENGINE.md` — traits, mood, energy, needs, behavior intents, quiet/sleep mode.
-- `docs/engine/ANIMATION_ENGINE.md` — animation intents, priority, interrupt rules, clip metadata, sprite sheet expectations.
+- `docs/engine/ANIMATION_ENGINE.md` — animation intents, requested/default priority metadata, interrupt rules, fallback и clip-level expectations без sprite sheet slicing details.
 - `docs/engine/RENDER_ENGINE.md` — sprite sheet layout, render props, layers, props, hitboxes, anchors, themes, debug overlay.
 - Engine contracts изменяет Architect. Implementer-агенты не меняют `docs/engine/*` и связанные public contracts без Architect review.
 

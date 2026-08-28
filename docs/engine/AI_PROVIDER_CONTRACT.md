@@ -77,7 +77,7 @@ type AIProviderResponse = {
     tone?: 'warm' | 'playful' | 'sleepy' | 'curious' | 'confused' | 'quiet';
   };
   suggestedMood?: 'neutral' | 'happy' | 'curious' | 'sleepy' | 'confused' | 'shy';
-  suggestedBehavior?: 'respond' | 'think' | 'react' | 'sleep' | 'wake' | 'idle' | 'quiet';
+  suggestedBehavior?: ProviderSuggestedBehaviorKind;
   confidence: number;
   diagnostics?: {
     provider: 'mock' | 'external';
@@ -87,11 +87,26 @@ type AIProviderResponse = {
 };
 ```
 
+```typescript
+type ProviderSuggestedBehaviorKind =
+  | 'respond'
+  | 'think'
+  | 'react_happy'
+  | 'react_confused'
+  | 'play'
+  | 'sleep'
+  | 'wake'
+  | 'wander'
+  | 'idle'
+  | 'quiet';
+```
+
 Правила:
 
 - `reply.text` является текстом для дальнейшей обработки Application layer, а не прямой командой Renderer-у.
 - `suggestedBehavior` остаётся подсказкой provider-а. Character Engine позже решает, допустимо ли действие с учётом priority, cooldowns, quiet/sleep mode, drag state, mood и energy.
-- `suggestedBehavior` не является полной спецификацией `BehaviorIntent`; детальный каталог принадлежит `BEHAVIOR_INTENTS.md` и задаче `P09-T04`.
+- First-party providers должны отдавать `suggestedBehavior` как provider-allowed subset канонического `BehaviorIntentKind` из `BEHAVIOR_INTENTS.md`.
+- Provider не должен предлагать `drag` или `land`: они принадлежат прямому user/system interaction flow. Если external payload всё же прислал такие значения, mapper обязан отбросить их в safe fallback.
 - Response не содержит CSS class names, React component names, SVG paths, sprite sheet names, frame indexes, animation fps или asset paths.
 
 ## Thinking и latency
@@ -210,6 +225,7 @@ Mapper может:
 
 - нормализовать provider hints в известные internal intent names;
 - отбросить неизвестные или unsafe suggested values;
+- применить простую таблицу provider semantics, например `react_happy -> react_happy`, `react_confused -> react_confused`, `play -> play`, legacy/external raw `react + suggestedMood: happy/confused -> react_happy/react_confused`;
 - превратить provider fallback/error в нейтральный fallback `BehaviorIntent`;
 - приложить sanitized reply text и provider-neutral metadata, нужные Application layer;
 - сохранить `requestId` для tracing/debug counters.

@@ -17,7 +17,7 @@ ProviderResponseIntentMapper
 
 - Character Engine принимает или отклоняет `BehaviorIntent`.
 - Animation Engine переводит принятое поведение в `AnimationIntent`.
-- Animation Controller применяет timing, priority, interrupt rules и fallback.
+- Animation Controller применяет resolved timing, priority, interrupt rules и fallback.
 - Render Engine отображает уже выбранный visual state через render contract.
 
 ## Форма intent
@@ -38,11 +38,13 @@ type AnimationIntent = {
 
 `propHint` описывает semantic prop, а не asset path. Конкретные asset names и layout принадлежат `RENDER_ENGINE.md`.
 
+`priority`, `interrupt` и `loop` в `AnimationIntent` являются requested/default metadata. Resolved animation policy принадлежит Animation Controller: он может повысить priority, запретить interrupt, заменить loop mode или выбрать fallback с учётом текущего animation state.
+
 ## Начальный каталог
 
 Каталог ниже задаёт минимальный стартовый набор, а не финальный предел системы. Количество visual states, reactions, transition intents и supported interactions должно расширяться вместе с поведением Wisp, если новые intents остаются semantic visual requests и не включают concrete assets или frame-level details.
 
-| `kind` | Category | Priority | Interruptible | Loop | Назначение |
+| `kind` | Category | Requested priority | Requested interrupt | Requested loop | Назначение |
 |---|---|---|---|---|---|
 | `idle_blink` | idle | low | yes | bounded | Нейтральный idle micro-motion. |
 | `thinking_loop` | dialogue | normal | yes | until_replaced | Визуальное ожидание ответа provider-а. |
@@ -82,13 +84,13 @@ type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
 
 Правила:
 
-- `critical` intents, например `dragged`, немедленно прерывают все остальные animation intents.
+- Requested `critical` intents, например `dragged`, являются emergency request и должны прерывать остальные animation intents после validation в Animation Controller.
 - User-driven movement/release (`dragged`, `land`) сильнее provider/timer reactions.
 - `wake_up` не прерывается обычными idle/reaction intents; direct user drag всё равно имеет emergency priority.
 - `sleep_loop` удерживается до `wake` или direct user/system rule. Обычные idle/reaction intents не вытесняют sleep.
 - `thinking_loop` может быть заменён `talking`, fallback reaction, user drag или explicit cancel.
 - Temporary reactions (`happy_reaction`, `confused_reaction`) должны возвращаться в stable state: `idle_blink`, `sleep_loop` или текущий movement state.
-- Если requested animation недоступна, Animation Controller выбирает semantic fallback той же категории, затем `idle_blink`.
+- Если requested animation недоступна или конфликтует с текущим resolved state, Animation Controller выбирает semantic fallback той же категории, затем `idle_blink`.
 
 ## Граница Render Engine
 

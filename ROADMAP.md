@@ -1,348 +1,94 @@
-# ROADMAP.md — Поэтапный план разработки Project Wisp
+# ROADMAP.md — Project Wisp
 
-Документ описывает последовательные вертикальные срезы (Vertical Slices) разработки проекта от базовой настройки до релизной версии с постоянным учётом кроссплатформенности (Linux / Ubuntu baseline, Windows, macOS).
+Roadmap описывает направление продукта, а не список задач реализации. Подробные карточки задач держатся в `.agents/tasks/README.md` только для активной фазы.
 
----
+## Северная звезда продукта
 
-## 🎯 Общий обзор фаз
+Project Wisp — offline-first desktop AI-компаньон: пользователь устанавливает приложение, запускает его, и персонаж живёт на рабочем столе без пользовательских API-ключей, аккаунтов у внешних AI-провайдеров, локальных серверов или облачной настройки.
 
-| Фаза | Название | Статус | Ведущий агент | Фокус |
-|---|---|---|---|---|
-| **Phase 0** | Repository / Architecture Setup | 🟢 Завершена | `project-manager` + `architect` | Документация, правила агента, кроссплатформенная спецификация |
-| **Phase 1** | Electron Shell | 🟢 Завершена | `electron-platform` | Каркас Electron + Vite + React + TS, строгая изоляция, Typed IPC |
-| **Phase 2** | Transparent Desktop Pet | 🟢 Завершена | `electron-platform` | Прозрачное frameless-окно, оверлей, always-on-top, click-through, IPlatformAdapter |
-| **Phase 3** | Dragging and Positioning | 🟢 Завершена | `domain-behavior` + `electron-platform` | Физика перетаскивания, учёт рабочих областей мониторов разных ОС |
-| **Phase 4** | Character Rendering | 🟢 Завершена | `ui-specialist` | Векторный рендер (SVG/Aura/Face), масштабирование, палитры тем, HiDPI |
-| **Phase 5** | Animation State Machine | 🟢 Завершена | `domain-behavior` | Стейт-машина FSM, переходы, тайминги, прерываемость, hook |
-| **Phase 6** | Basic Character Behavior | 🟢 Завершена | `domain-behavior` | Автономные действия, блуждание, idle-циклы, сон |
-| **Phase 7** | Interaction | 🟢 Завершена | `domain-behavior` + `ui-specialist` | Жесты (клик/двойной клик), привязанность, контекстное меню |
-| **Phase 8** | Local Chat UI | 🟢 Завершена | `ui-specialist` | Всплывающее окно сообщений/мыслей (SpeechBubble), поле ввода (ChatInput) |
-| **Phase 9** | Provider & Intent Contracts | 🟡 Следующая | `architect` | `IAIProvider`, `behaviorIntent`, `animationIntent`, границы MockAI/UI |
-| **Phase 10** | Mock AI & Dialogue Loop | ⚪ Запланирована | `mock-ai-provider` | `MockAIProvider`, thinking-состояния, локальные реплики |
-| **Phase 11** | Character Engine v2 | ⚪ Запланирована | `domain-behavior` | Черты характера, настроение, энергия, потребности, внутренние стимулы |
-| **Phase 12** | Animation & Reaction Pack | ⚪ Запланирована | `domain-behavior` | Библиотека эмоций, idle-варианты, micro-reactions, sprite sheets |
-| **Phase 13** | Render Engine & Asset Pipeline | ⚪ Запланирована | `ui-specialist` | Sprite sheet pipeline, слои персонажа, props, темы, масштабирование |
-| **Phase 14** | Offline Memory & Relationship | ⚪ Запланирована | `data-memory` | SQLite-память, факты о пользователе, история общения, отношения |
-| **Phase 15** | Desktop Life Behaviors | ⚪ Запланирована | `domain-behavior` | Привычки, автономная активность, quiet/sleep mode, реакции на окружение |
-| **Phase 16** | Settings & Control Surface | ⚪ Запланирована | `ui-specialist` | Поведение, внешность, память, debug-панель; OS-интеграции позже |
-| **Phase 17** | External AI Contract Readiness | ⚪ Будущее | `architect` + `mock-ai-provider` | Client-side контракт для отдельного dev/prod backend, без backend-кода в repo |
-| **Phase 18** | Stability & Performance Hardening | ⚪ Будущее | `tester` | FPS, память, устойчивость IPC, прозрачные окна, деградации Wayland |
-| **Phase 19** | Production Packaging | ⚪ Будущее | `electron-platform` | Кроссплатформенная сборка (AppImage/deb, exe, dmg), локальные настройки релиза |
+Скоуп этого репозитория: кроссплатформенный Electron desktop client для Linux, Windows и macOS. Базовая среда разработки — Ubuntu Linux.
 
----
+Жёстко вне скоупа этого репозитория:
 
-## 📋 Детальное описание фаз
+- backend/proxy/server implementation;
+- официальные внешние AI SDK в desktop-клиенте;
+- пользовательские AI API-ключи;
+- server-side auth/billing;
+- cloud memory sync.
 
----
+## Обзор фаз
 
-### Phase 0 — Repository / Architecture Setup
-- **Цель:** Подготовить инфраструктуру документации, архитектурные правила, платформенные контракты и инструментарий для AI-агентов.
-- **Ожидаемый результат:** Готовые `AGENTS.md`, `ARCHITECTURE.md`, `ROADMAP.md` и директория `.agents/` со всеми правилами, воркфлоу, кроссплатформенными требованиями и скиллами.
-- **Критерии готовности:**
-  - [x] Все файлы созданы на русском языке (структура путей на английском).
-  - [x] Архитектура полностью согласована, учтены Linux (Ubuntu), Windows и macOS.
+| Фаза | Статус | Исполнитель | Результат |
+|---|---|---|---|
+| 0 — Repository / Architecture Setup | done | `project-manager` + `architect` | Проектные правила, роли и стартовая архитектура готовы. |
+| 1 — Electron Shell | done | `electron-platform` | Electron + Vite + React + TypeScript shell с typed IPC и изоляцией. |
+| 2 — Transparent Desktop Pet | done | `electron-platform` | Frameless transparent overlay с platform-aware window behavior. |
+| 3 — Dragging and Positioning | done | `domain-behavior` + `electron-platform` | Dragging, bounds и сохранение позиции. |
+| 4 — Character Rendering | done | `ui-specialist` | SVG/vector renderer Wisp с базовыми scale/theme. |
+| 5 — Animation State Machine | done | `domain-behavior` | Animation FSM, transitions и interrupt rules. |
+| 6 — Basic Character Behavior | done | `domain-behavior` | Idle, wander, sit и sleep behavior. |
+| 7 — Interaction | done | `domain-behavior` + `ui-specialist` | Click, double-click, context menu и reactions. |
+| 8 — Local Chat UI | done | `ui-specialist` | Speech bubble и local chat input. |
+| 9 — Provider & Intent Contracts | review | `architect` | Markdown contracts для provider responses, behavior intents и animation intents. |
+| 10 — Mock AI & Dialogue Loop | next | `mock-ai-provider` | Offline `MockAIProvider`, thinking state и reply flow. |
+| 11 — Character Engine v2 | later | `domain-behavior` | Traits, mood, energy, needs и stimuli. |
+| 12 — Animation & Reaction Pack | later | `domain-behavior` | Более богатые reactions, idle variety и sleep/wake animation rules. |
+| 13 — Render Engine & Asset Pipeline | later | `ui-specialist` | Sprite sheet pipeline, props, layers, themes и renderer debug tools. |
+| 14 — Offline Memory & Relationship | later | `data-memory` | SQLite memory, bounded history, local fact extraction и clear memory. |
+| 15 — Desktop Life Behaviors | later | `domain-behavior` | Quiet mode, cooldowns, habits и менее навязчивая автономность. |
+| 16 — Settings & Control Surface | later | `ui-specialist` | Behavior, appearance, memory controls и dev-only debug panel. |
+| 17 — External AI Contract Readiness | future | `architect` + `mock-ai-provider` | Только client-side контракт будущего adapter; backend остаётся отдельно. |
+| 18 — Stability & Performance Hardening | future | `tester` | Long-session stability, cleanup checks и Linux Wayland/X11 fallbacks. |
+| 19 — Production Packaging | future | `electron-platform` | Linux package baseline, затем готовность Windows/macOS release. |
 
----
+## Текущий фокус
 
-### Phase 1 — Electron Shell
-- **Цель:** Создать минимальный работающий каркас приложения на Electron + Vite + React + TypeScript с поддержкой HMR.
-- **Ожидаемый результат:** Запускающееся окно приложения с работающим typed IPC и строгой изоляцией процессов на Ubuntu Linux (и совместимо с Win/Mac).
-- **Критерии готовности:**
-  - [x] Приложение собирается без ошибок (`npm run build`).
-  - [x] Строгая проверка типов пройдена (`npm run typecheck:node`, `npm run typecheck:web`).
-  - [x] Соблюдена полная изоляция (`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`).
+Phase 9 contracts уже написаны, их нужно отревьюить перед продолжением реализации.
 
----
+Следующий gate:
 
-### Phase 2 — Transparent Desktop Pet
-- **Цель:** Превратить окно Electron в прозрачный поверх-всех-окон (always-on-top, frameless) оверлей рабочего стола с использованием кроссплатформенного адаптера окон.
-- **Ожидаемый результат:** Окно не имеет системной рамки, прозрачный фон, остаётся поверх остальных окон, корректно обрабатывает прокликивание (click-through) пустых областей в среде Ubuntu Linux (с поддержкой X11 и Wayland).
-- **Критерии готовности:**
-  - [x] Персонаж виден на рабочем столе на прозрачном фоне в Ubuntu.
-  - [x] Клики сквозь прозрачные зоны попадают в приложения под оверлеем (`setIgnoreMouseEvents`).
-  - [x] Наведение курсора на питомца перехватывает клики и даёт интерактивность.
-  - [x] Платформенные адаптеры покрыты тестами Vitest.
+- `P09-G01` в `.agents/tasks/README.md`;
+- Исполнитель: `code-reviewer`;
+- Scope: только consistency markdown contracts.
 
----
+После этого начинается Phase 10 — первый реальный AI-facing implementation slice, всё ещё полностью offline и на базе `MockAIProvider`.
 
-### Phase 3 — Dragging and Positioning
-- **Цель:** Реализовать возможность захвата и перемещения персонажа мышью с контролем границ экрана для любой ОС.
-- **Ожидаемый результат:** Пользователь может перетаскивать персонажа; персонаж сохраняет координаты и не улетает за пределы видимой рабочей области монитора (с учётом GNOME Dock/TopBar, панели задач Windows или macOS Dock).
-- **Критерии готовности:**
-  - [x] Плавный drag-and-drop без подёргиваний и отставаний.
-  - [x] Персонаж упирается в границы экрана с учётом системных панелей.
-  - [x] Позиционирование синхронизировано через чистые сервисы приложения.
-  - [x] Unit-тесты успешно пройдены.
-
----
-
-### Phase 4 — Character Rendering
-- **Цель:** Создать компонент отрисовки визуального образа персонажа (спрайты/SVG/Canvas).
-- **Ожидаемый результат:** Персонаж отображается в заданном масштабе с чёткими пикселями/линиями без размытия при различном DPI дисплеев.
-- **Критерии готовности:**
-  - [x] Векторная отрисовка персонажа на SVG без размытия.
-  - [x] Корректная смена выражений лица и анимаций ауры.
-  - [x] Поддержка изменения масштаба и тем оформления.
-  - [x] Unit-тесты успешно пройдены.
-
----
-
-### Phase 5 — Animation State Machine
-- **Цель:** Разработать изолированную стейт-машину анимаций персонажа.
-- **Ожидаемый результат:** Плавная смена анимационных циклов (Idle → Walk → Dragged → Fall → Land) с контролем кадров и прерываемости.
-- **Критерии готовности:**
-  - [x] Изолированная FSM без смешивания с UI-разметкой.
-  - [x] Контроль прерываемости состояний (экстренный захват мыши).
-  - [x] Автоматический переход временных анимаций (`landing`, `happy`, `surprised`) в `idle`.
-  - [x] Ключевые переходы и edge cases покрыты unit-тестами.
-
----
-
-### Phase 6 — Basic Character Behavior
-- **Цель:** Добавить персонажу автономность и «жизнь» на рабочем столе.
-- **Ожидаемый результат:** Персонаж самостоятельно решает погулять, посидеть, осмотреться или вздремнуть, если пользователь его не трогает.
-- **Критерии готовности:**
-  - [x] Персонаж периодически и плавно перемещается по экрану без выхода за границы дисплея.
-  - [x] Любое действие пользователя (drag/click) прерывает автономное движение.
-  - [x] Поддержка циклов сна/бодрствования.
-  - [x] Ключевые поведенческие сценарии и edge cases покрыты unit-тестами.
-
----
-
-### Phase 7 — Interaction
-- **Цель:** Реализовать систему интерактивного взаимодействия пользователя с компаньоном.
-- **Ожидаемый результат:** Персонаж реагирует на клики (радуется, пугается), двойной клик открывает диалог, правый клик открывает контекстное меню.
-- **Критерии готовности:**
-  - [x] Одиночный клик вызывает реакцию и повышает настроение компаньона.
-  - [x] Двойной клик и правый клик открывают контекстное меню.
-  - [x] Плавный перехват мыши при открытом меню.
-  - [x] Ключевые сценарии взаимодействия покрыты unit-тестами.
-
----
-
-### Phase 8 — Local Chat UI
-- **Цель:** Создать визуальный интерфейс для общения с персонажем.
-- **Ожидаемый результат:** Всплывающий речевой пузырь (speech bubble) и окно ввода сообщения рядом с персонажем.
-- **Что входит:**
-  - Доменная сущность `ChatMessage`, санитайзер сообщений `sanitizeUserMessage` и адаптивный расчёт времени отображения пузыря в зависимости от длины текста `calculateBubbleDisplayDuration` в `src/domain/chat/chat-message.ts`.
-  - Компонент `SpeechBubble` в `src/renderer/components/Chat/SpeechBubble.tsx` с поддержкой мыслей/речи, авто-скрытия и стрелочки указателя к питомцу.
-  - Компонент `ChatInput` в `src/renderer/components/Chat/ChatInput.tsx` с автофокусом, отправкой по клавише `Enter`, отменой по `Escape` и защитой от перехвата драга.
-  - Интеграция в `DesktopPet.tsx` (ввод сообщений, реплики питомца при кликах/пробуждении/усыплении).
-  - Unit-тесты расчёта длительности отображения и валидации сообщений (`tests/domain/chat-message.test.ts`).
-- **Критерии готовности:**
-  - [x] Речевой пузырь появляется над питомцем с анимацией и автоматически исчезает.
-  - [x] Форма ввода `ChatInput` позволяет отправлять реплики и закрывается по Esc / кнопке.
-  - [x] Клик по пузырю моментально скрывает его.
-  - [x] Ключевые сценарии чата, валидации и длительности отображения покрыты unit-тестами.
-
----
+## Заметки по фазам
 
 ### Phase 9 — Provider & Intent Contracts
-- **Ведущий агент:** `architect`
-- **Цель:** Уточнить контракты `IAIProvider`, `behaviorIntent` и `animationIntent` до реализации MockAI, чтобы AI-слой не управлял UI напрямую.
-- **Ожидаемый результат:** Есть архитектурное описание того, как сообщение пользователя превращается в намерение поведения и анимации, не нарушая границы Renderer/Application/Domain.
-- **Что входит:**
-  - Документ `docs/engine/AI_PROVIDER_CONTRACT.md` с DTO сообщений, ответов, ошибок, latency/thinking-состояний и offline fallback.
-  - Документ или раздел `docs/engine/BEHAVIOR_INTENTS.md` / `docs/engine/CHARACTER_ENGINE.md` с перечнем допустимых behavior intents.
-  - Документ или раздел `docs/engine/ANIMATION_ENGINE.md` с перечнем допустимых animation intents и правилами priority/interrupt.
-  - Правило: `IAIProvider` возвращает семантический результат, но не вызывает React, не меняет DOM и не выбирает конкретный asset-файл.
-  - Правило: Renderer получает только presentation-ready state/props через typed IPC/store, а не provider-specific payload.
-- **Критерии готовности:**
-  - [ ] Architect описал границы `IAIProvider`, behavior intents и animation intents в `.md`.
-  - [ ] Понятно, какие данные может вернуть MockAI, а какие принадлежат behavior/animation engine.
-  - [ ] Нет требований к реальному backend, proxy или внешнему AI SDK в `project_wisp`.
-  - [ ] Следующая фаза MockAI может быть реализована без архитектурных догадок.
 
----
+Цель: убедиться, что AI/provider data не просачивается в UI decisions. `IAIProvider` возвращает semantic response DTO; application переводит их в `BehaviorIntent`; domain/character logic выбирает поведение; animation/rendering получает presentation-ready state.
+
+Документы-источники:
+
+- `docs/engine/README.md`;
+- `docs/engine/AI_PROVIDER_CONTRACT.md`;
+- `docs/engine/BEHAVIOR_INTENTS.md`;
+- `docs/engine/ANIMATION_ENGINE.md`.
+
+Условие завершения: docs review подтверждает, что contracts не требуют backend code, external SDK, UI asset decisions внутри providers или provider-specific payloads в Renderer.
 
 ### Phase 10 — Mock AI & Dialogue Loop
-- **Ведущий агент:** `mock-ai-provider`
-- **Цель:** Внедрить `IAIProvider` и полноценный локальный `MockAIProvider`, чтобы персонаж уже сейчас выглядел как мыслящий компаньон без реальной AI-интеграции.
-- **Ожидаемый результат:** Пользователь пишет сообщение, персонаж входит в thinking-состояние, затем отвечает локальной репликой, меняет эмоцию и запускает подходящую реакцию/анимацию.
-- **Что входит:**
-  - Порт `IAIProvider` и DTO для сообщений/ответов без типов внешних AI SDK.
-  - `MockAIProvider` с наборами локальных ответов по категориям: приветствие, вопрос, забота, игра, сон, непонимание.
-  - Симуляция задержки ответа и состояния thinking.
-  - Связь ответа с `mood`, `activity`, `animationIntent` без прямого управления UI.
-  - Fallback-ответы при пустом/слишком длинном/непонятном вводе.
-- **Критерии готовности:**
-  - [ ] Персонаж отвечает полностью офлайн.
-  - [ ] UI общается только через существующие контракты, не зная конкретный provider.
-  - [ ] Thinking-состояние видно в поведении и/или пузыре.
-  - [ ] Ответ может менять настроение и запускать реакционную анимацию.
-  - [ ] Unit/integration тесты покрывают типовые ответы и fallback-сценарии.
 
----
+Цель: сделать так, чтобы Wisp отвечал локально и ощущался живым до появления реального AI backend.
 
-### Phase 11 — Character Engine v2
-- **Ведущий агент:** `domain-behavior`
-- **Цель:** Расширить ядро персонажа от набора состояний к офлайн-движку характера и внутренних стимулов.
-- **Ожидаемый результат:** Один основной персонаж Wisp имеет устойчивые черты, настроение, энергию и потребности, которые влияют на автономное поведение, ответы, выбор анимаций и использование маленьких props.
-- **Что входит:**
-  - Документ-спецификация `docs/engine/CHARACTER_ENGINE.md` с моделью характера, mood/energy/focus/needs и правилами переходов.
-  - Доменные модели traits: дружелюбие, любопытство, сонливость, игривость, застенчивость.
-  - Внутренние потребности: отдых, внимание, общение, движение.
-  - Система стимулов: пользовательский ввод, таймеры, настроение, память, события окна.
-  - Приоритеты поведения: пользовательский drag/click всегда сильнее автономных действий.
-  - Props как часть поведения одного Wisp: подушка для сна, маленькая эмоция/иконка мысли, простые предметы idle-сцен.
-- **Критерии готовности:**
-  - [ ] Character engine описан отдельным `.md` документом.
-  - [ ] Состояния персонажа не зависят от React/Electron/SQLite.
-  - [ ] Настроение и энергия влияют на выбор автономных действий.
-  - [ ] Новые правила покрыты unit-тестами доменного слоя.
+Минимальный срез:
 
----
+- typed `IAIProvider` port и DTO;
+- local `MockAIProvider`;
+- simulated thinking/latency;
+- deterministic response categories;
+- mapper из provider response в `BehaviorIntent`;
+- tests для main reply и fallback scenarios.
 
-### Phase 12 — Animation & Reaction Pack
-- **Ведущий агент:** `domain-behavior`
-- **Цель:** Сделать персонажа визуально богаче: больше эмоций, микрореакций, idle-вариантов и плавных переходов.
-- **Ожидаемый результат:** Wisp перестаёт повторять один и тот же цикл и начинает выглядеть живым даже без чата.
-- **Что входит:**
-  - Документ-спецификация `docs/engine/ANIMATION_ENGINE.md` с каталогом состояний, приоритетами, interrupt rules и требованиями к клипам.
-  - Переход от текущего SVG-подхода к sprite sheet pipeline как целевому формату анимаций.
-  - Sprite sheet contract: фиксированный размер кадра, одинаковый origin/anchor, padding, transparent background, naming convention, fps и loop metadata.
-  - Новые idle-варианты: blink, look-around, stretch, yawn, hum, tiny-hop, settle.
-  - Эмоциональные реакции: happy, shy, confused, curious, sleepy, startled, proud.
-  - Микрореакции на hover, single click, double click, drag start, drag release, landing.
-  - Sleep-сцены с props: Wisp достаёт подушку, ложится, засыпает и просыпается.
-  - Правила плавного перехода между анимациями без резких скачков.
-- **Критерии готовности:**
-  - [ ] У каждого поведения есть понятный `animationIntent`.
-  - [ ] Реакции имеют приоритеты и корректную прерываемость.
-  - [ ] Idle-поведение выбирает разные клипы, а не один бесконечный цикл.
-  - [ ] Sprite sheets описаны как основной формат будущих анимаций.
-  - [ ] Добавлены тесты FSM/transition rules.
+### Поздние фазы
 
----
+Поздние фазы намеренно остаются краткими summaries, пока не станут активными. Когда фаза переходит в `next`, Project Manager раскрывает только первые несколько executable task cards в `.agents/tasks/README.md`.
 
-### Phase 13 — Render Engine & Asset Pipeline
-- **Ведущий агент:** `ui-specialist`
-- **Цель:** Зафиксировать и улучшить систему визуального рендера персонажа как отдельный модуль с понятными правилами.
-- **Ожидаемый результат:** Рендер поддерживает sprite sheets, слои персонажа, props, темы, масштабирование, HiDPI и временную совместимость с текущим SVG-представлением.
-- **Что входит:**
-  - Документ-спецификация `docs/engine/RENDER_ENGINE.md` с устройством слоёв, координат, размеров, anchor points, sprite sheets, props и тем.
-  - Явное разделение character state, animation state и visual render props.
-  - Правила нарезки sprite sheets: frame width/height, rows/columns, animation key, frame duration, loop mode, hitbox и visual bounds.
-  - Палитры/темы персонажа без вмешательства в доменную логику.
-  - Правила asset naming, размеров, прозрачности, HiDPI и pixel-perfect scaling.
-  - Debug overlay для bounding boxes, anchor point и текущего animation state.
-- **Критерии готовности:**
-  - [ ] Renderer не содержит бизнес-логики поведения.
-  - [ ] Масштабирование не ломает hitbox, drag и позиционирование пузыря.
-  - [ ] Тема/палитра меняется без изменения FSM.
-  - [ ] Спецификация рендера описана отдельным `.md` документом.
+## Правила поддержки roadmap
 
----
-
-### Phase 14 — Offline Memory & Relationship
-- **Ведущий агент:** `data-memory`
-- **Цель:** Добавить локальную долговременную память и простую модель отношений без внешних сервисов.
-- **Ожидаемый результат:** Wisp помнит историю общения, базовые факты о пользователе, свои настройки и эмоциональную динамику между перезапусками.
-- **Что входит:**
-  - SQLite через Main-процесс и репозитории `IMemoryRepository` / `ISettingsRepository`.
-  - История сообщений с ограничением размера и безопасной очисткой.
-  - Факты о пользователе: имя, предпочтения, частые темы, важные события.
-  - Relationship score: доверие, привязанность, знакомство, настроение после последнего общения.
-  - Простые правила извлечения фактов из сообщений без LLM.
-  - Обязательная очистка памяти пользователем: история, факты, relationship state.
-  - Редактирование отдельных воспоминаний не входит в scope: память считается внутренним состоянием агента.
-- **Критерии готовности:**
-  - [ ] Данные хранятся в `app.getPath('userData')`.
-  - [ ] Renderer не знает о SQLite.
-  - [ ] Память переживает перезапуск приложения.
-  - [ ] Пользователь может очистить память.
-  - [ ] Пользователь не редактирует отдельные memory entries вручную.
-  - [ ] Миграции и репозитории покрыты тестами.
-
----
-
-### Phase 15 — Desktop Life Behaviors
-- **Ведущий агент:** `domain-behavior`
-- **Цель:** Расширить офлайн-жизнь персонажа на рабочем столе: привычки, расписания, самостоятельные действия и реакции на контекст.
-- **Ожидаемый результат:** Даже без чата Wisp ведёт себя разнообразно: отдыхает, скучает, просится пообщаться, исследует экран, реагирует на долгое отсутствие пользователя.
-- **Что входит:**
-  - Поведенческие циклы дня: active, bored, sleepy, resting, playful.
-  - Локальные привычки: любимое место на экране, частота общения, предпочтительные idle-действия.
-  - Реакции на время бездействия: сон, тихая мысль, попытка привлечь внимание.
-  - Реакции на пользовательское возвращение после паузы.
-  - Ограничители навязчивости: cooldowns, quiet hours, no-spam rules.
-  - Sleep mode как основной anti-distraction режим: Wisp достаёт подушку/устраивается, спит и не отвлекает пользователя.
-- **Критерии готовности:**
-  - [ ] Автономные действия не мешают работе пользователя.
-  - [ ] Любой прямой ввод пользователя прерывает автономное поведение.
-  - [ ] Есть quiet/sleep mode с cooldown rules.
-  - [ ] Поведенческие правила тестируются как чистая доменная логика.
-
----
-
-### Phase 16 — Settings & Control Surface
-- **Ведущий агент:** `ui-specialist`
-- **Цель:** Дать пользователю контроль над внешностью, поведением, памятью и системными интеграциями.
-- **Ожидаемый результат:** Пользователь может настроить Wisp без редактирования конфигов и без понимания внутренней архитектуры.
-- **Что входит:**
-  - Окно настроек: масштаб, тема, скорость/частота поведения, интенсивность анимаций.
-  - Приоритет первой версии настроек: поведение и внешность.
-  - Переключатели поведения: quiet hours, sleep mode, интенсивность автономных действий.
-  - Управление памятью: просмотр краткого состояния, очистка истории/фактов.
-  - Debug-панель для разработки: текущий state, animation, mood, energy, provider status.
-  - OS-интеграции вторым шагом: автозапуск, always-on-top, click-through.
-- **Критерии готовности:**
-  - [ ] Настройки сохраняются локально.
-  - [ ] UI настроек не обращается напрямую к Node/Electron/SQLite.
-  - [ ] Есть безопасное восстановление defaults.
-  - [ ] Debug-панель доступна только в dev-режиме.
-  - [ ] OS-интеграции изолированы за платформенными адаптерами.
-
----
-
-### Phase 17 — External AI Contract Readiness
-- **Ведущий агент:** `architect` + `mock-ai-provider`
-- **Цель:** Подготовить desktop-клиент к будущему подключению отдельного dev/prod backend без реализации backend-кода в `project_wisp`.
-- **Ожидаемый результат:** В коде клиента есть ясная граница: сейчас работает `MockAIProvider`, позже можно добавить client-side adapter к внешнему контракту, не меняя UI, behavior engine и память.
-- **Что входит:**
-  - Документ `docs/engine/AI_PROVIDER_CONTRACT.md` с DTO, ошибками, streaming/non-streaming режимами и auth placeholders.
-  - Feature flag / config для выбора provider в dev-сборке.
-  - Заглушка client-side adapter без реальных ключей и без server implementation.
-  - Явное правило: dev proxy/backend всегда живёт в отдельном репозитории и реализуется другой командой/людьми.
-  - Правила обработки offline/error/rate-limit состояний.
-  - Запрет на хранение пользовательских API-ключей в desktop-клиенте.
-- **Критерии готовности:**
-  - [ ] `MockAIProvider` остаётся default provider.
-  - [ ] В репозитории нет backend/proxy/server кода.
-  - [ ] Будущий внешний backend описан только контрактом клиента.
-  - [ ] Dev proxy/backend не создаётся в `project_wisp`.
-  - [ ] Auth/billing представлены только как будущие client-side контракты, без реализации серверной логики.
-
----
-
-### Phase 18 — Stability & Performance Hardening
-- **Ведущий агент:** `tester`
-- **Цель:** Довести desktop-поведение до стабильного повседневного использования.
-- **Ожидаемый результат:** Персонаж плавно работает в долгих сессиях, не течёт по памяти, корректно переживает ошибки IPC/рендера и имеет понятные fallback-режимы для Linux Wayland.
-- **Что входит:**
-  - Профилирование частых ререндеров и тяжёлых анимаций.
-  - Проверка очистки таймеров, подписок и IPC-listeners.
-  - Устойчивые fallback-режимы прозрачности/click-through/позиционирования.
-  - Smoke-сценарии для основных пользовательских потоков.
-- **Критерии готовности:**
-  - [ ] Нет известных утечек таймеров и подписок.
-  - [ ] Прозрачное окно деградирует предсказуемо на Wayland.
-  - [ ] Базовый FPS и потребление памяти приемлемы для длительной сессии.
-  - [ ] Пройдены typecheck, lint, unit/integration тесты и ручной Linux smoke-test.
-
----
-
-### Phase 19 — Production Packaging
-- **Ведущий агент:** `electron-platform`
-- **Цель:** Подготовить автономный desktop-клиент к распространению.
-- **Ожидаемый результат:** Пользователь может скачать, установить и запустить Project Wisp без API-ключей, локальных серверов и ручной настройки окружения.
-- **Что входит:**
-  - Сборки для Linux, Windows и macOS.
-  - Проверка путей данных через `app.getPath('userData')`.
-  - Локальные настройки релиза и базовая диагностика запуска.
-  - Документация установки и известных ограничений платформ.
-- **Критерии готовности:**
-  - [ ] Linux package проходит установку и запуск на Ubuntu baseline.
-  - [ ] Windows/macOS сборки не используют platform-specific код вне адаптеров.
-  - [ ] Пользовательский путь “скачал → установил → персонаж ожил” не требует пользовательских AI API-ключей или локального сервера.
-  - [ ] Финальный релиз не содержит backend/server implementation.
+- Держать этот файл короче 140 строк.
+- Не дублировать task-level acceptance criteria.
+- Не добавлять speculative subtasks для фаз дальше, чем на одну фазу вперёд.
+- Использовать `docs/engine/*.md` для stable contracts, а `.agents/tasks/README.md` — для active queue.
+- Если future idea не нужна для следующих двух фаз, не добавлять её в roadmap или оставить одной короткой заметкой.
