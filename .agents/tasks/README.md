@@ -25,8 +25,8 @@
 - Phase 12 (Animation & Reaction Pack): `in_progress`
   - `P12-A01` (Architecture Sync: Animation Engine & Character Engine v2): `done`
   - `P12-T01` (Domain Animation Engine & Intent Mapping): `done`
-  - `P12-T02` (Idle Variety & Sleep/Wake Autonomous Life Rules): `in_progress`
-  - `P12-T03` (Unit Tests for Animation & Reaction Pack): `planned`
+  - `P12-T02` (Idle Variety & Sleep/Wake Autonomous Life Rules): `done`
+  - `P12-T03` (Unit Tests for Animation & Reaction Pack): `in_progress`
   - `P12-G01` (Code Review Phase 12): `planned`
 
 ## Активная очередь (Phase 12 — Animation & Reaction Pack)
@@ -50,41 +50,40 @@
 - **Статус:** `done`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P12-A01`
-- **Цель:** Реализовать доменную модель `AnimationIntent`, типы `AnimationExpressionHint`/`AnimationPropHint`, чистый маппер `mapBehaviorIntentToAnimationIntent` и расширить FSM с поддержкой приоритетов и состояний (`spook`, `sleep_start`, `sleep_loop`, `wake_up`, `settle`).
+- **Цель:** Реализовать доменную модель `AnimationIntent`, типы, чистый маппер и расширенную FSM.
 - **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `src/domain/animation/`.
 - **Менять:** `src/domain/animation/` (`animation-intent.ts`, `animation-state-machine.ts`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [x] Типы `AnimationIntent`, `AnimationIntentKind`, `AnimationPriority`, `AnimationExpressionHint`, `AnimationPropHint` соответствуют контракту.
-  - [x] Чистый маппер реализует сводную матрицу переходов с учётом 7 тонов `SynthesizedEmotionalTone`.
+  - [x] Типы и чистый маппер соответствуют контракту.
   - [x] `AnimationStateMachine` поддерживает новые состояния, приоритеты и не-прерываемые циклы.
   - [x] `npm test` и `npm run typecheck` зелёные.
 - **Вне скоупа:** Рендеринг и UI.
 
 ### P12-T02 — Idle Variety & Sleep/Wake Autonomous Life Rules
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P12-T01`
-- **Цель:** Реализовать витальные автономные правила засыпания и пробуждения на основе `Needs` (засыпание при `energy <= 20` или `comfort >= 80`, пробуждение при `attention >= 90` или восстановлении `energy >= 80`) и вариативность idle-поведения с учётом тона и пауз.
-- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/CHARACTER_ENGINE.md`, `src/domain/behavior/`.
-- **Менять:** `src/domain/behavior/` (`autonomous-behavior.ts`, `idle-variety.ts` [создать/обновить]), unit-тесты.
+- **Цель:** Реализовать витальные автономные правила сна/пробуждения по `Needs` и вариативность idle.
+- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `src/domain/behavior/`.
+- **Менять:** `src/domain/behavior/` (`autonomous-behavior.ts`, `idle-variety.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Автономный генератор намерений корректно генерирует `sleep`/`wake` на основе порогов `Needs`.
-  - [ ] Idle-вариативность генерирует микродействия без спама и не прерывает `sleep_loop`.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
+  - [x] Автономные правила сна/пробуждения и idle-микроанимации.
+  - [x] `npm test` и `npm run typecheck` зелёные.
 - **Вне скоупа:** UI-компоненты.
 
 ### P12-T03 — Unit Tests for Animation & Reaction Pack
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `domain-behavior`
 - **Зависит от:** `P12-T02`
-- **Цель:** Комплексные тесты маппинга, приоритетов прерываний и удержания сна.
-- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `tests/domain/`.
-- **Менять:** `tests/domain/` (`animation-engine.test.ts`, `autonomous-behavior.test.ts`).
+- **Цель:** Написать сквозные интеграционные unit-тесты для Phase 12: проверить связку `CharacterEngine` (метаболизм `Needs`, 7 тонов) -> `BehaviorIntent` -> `AnimationIntent` -> `AnimationStateMachine` (приоритеты прерываний, устойчивость сна `sleep_loop`, `wake_up` по клику и дефициту внимания, реакция `spook` и `land`).
+- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/CHARACTER_ENGINE.md`, `tests/domain/`.
+- **Менять:** `tests/domain/` (`animation-engine-integration.test.ts` [создать] или `tests/domain/` тесты).
 - **Критерии приёмки:**
-  - [ ] 100% покрытие сценариев маппинга и правил прерывания.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
+  - [ ] 100% покрытие сквозных цепочек взаимодействия от Character State до Animation Intent и FSM.
+  - [ ] Протестированы все краевые случаи: отмена прерываний сна обычным idle, мгновенное прерывание критическим drag/spook, пробуждение по вниманию/энергии.
+  - [ ] `npm test` и `npm run typecheck` завершаются без ошибок.
 - **Вне скоупа:** UI-тесты.
 
 ### P12-G01 — Code Review Phase 12
@@ -92,7 +91,7 @@
 - **Статус:** `planned`
 - **Исполнитель:** `reviewer`
 - **Зависит от:** `P12-T03`
-- **Цель:** Аудит чистоты слоёв и соответствия контракту `ANIMATION_ENGINE.md`.
+- **Цель:** Финальный аудит Phase 12 перед переходом к Phase 13.
 - **Читать:** `.agents/agents/reviewer/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, код Phase 12.
 - **Менять:** ничего.
 - **Критерии приёмки:**

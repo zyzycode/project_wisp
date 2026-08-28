@@ -5,7 +5,11 @@
  */
 
 import type { Point2D, RectBounds, Size2D } from '../models/position';
+import type { AnimationIntentKind } from '../animation';
+import type { Needs, SynthesizedEmotionalTone } from '../character';
+import type { BehaviorIntent, BehaviorIntentMoodHint } from './behavior-intent';
 import { clampPositionToBounds } from '../models/position';
+import { selectIdleMicroMotion, type IdleVarietyConfig, DEFAULT_IDLE_VARIETY_CONFIG } from './idle-variety';
 
 export type AutonomousActionType =
   | 'idle_look_around'
@@ -37,6 +41,51 @@ export interface WanderTarget {
   target: Point2D;
   durationMs: number;
 }
+
+export interface VitalAutonomousThresholds {
+  sleepEnergyMax: number;
+  sleepComfortMin: number;
+  wakeAttentionMin: number;
+  wakeEnergyMin: number;
+}
+
+export const DEFAULT_VITAL_AUTONOMOUS_THRESHOLDS: VitalAutonomousThresholds = {
+  sleepEnergyMax: 20,
+  sleepComfortMin: 80,
+  wakeAttentionMin: 90,
+  wakeEnergyMin: 80,
+};
+
+export type AutonomousAnimationStateHint =
+  | AnimationIntentKind
+  | 'idle'
+  | 'float'
+  | 'falling'
+  | 'landing'
+  | 'sleep'
+  | 'happy'
+  | 'surprised'
+  | 'thinking';
+
+export interface AutonomousDecisionContext {
+  needs: Needs;
+  tone: SynthesizedEmotionalTone;
+  currentAnimation?: AutonomousAnimationStateHint;
+  idleElapsedMs?: number;
+  randomVal?: number;
+}
+
+export interface AutonomousIntentConfig {
+  behavior: BehaviorConfig;
+  idleVariety: IdleVarietyConfig;
+  thresholds: VitalAutonomousThresholds;
+}
+
+export const DEFAULT_AUTONOMOUS_INTENT_CONFIG: AutonomousIntentConfig = {
+  behavior: DEFAULT_BEHAVIOR_CONFIG,
+  idleVariety: DEFAULT_IDLE_VARIETY_CONFIG,
+  thresholds: DEFAULT_VITAL_AUTONOMOUS_THRESHOLDS,
+};
 
 /**
  * Calculates a valid wander target within screen boundaries and distance limits.
@@ -115,4 +164,88 @@ export function decideNextAutonomousAction(
     return 'stretch';
   }
   return 'idle_look_around';
+}
+
+function isSleepAnimationState(currentAnimation: AutonomousAnimationStateHint | undefined): boolean {
+  return currentAnimation === 'sleep_loop' || currentAnimation === 'sleep_start' || currentAnimation === 'sleep';
+}
+
+function toneToMoodHint(tone: SynthesizedEmotionalTone): BehaviorIntentMoodHint {
+  switch (tone) {
+    case 'playful':
+      return 'happy';
+    case 'flustered':
+      return 'shy';
+    case 'sleepy':
+    case 'curious':
+    case 'shy':
+    case 'affectionate':
+    case 'neutral':
+      return tone;
+  }
+}
+
+function createTimerIntent(kind: BehaviorIntent['kind'], tone: SynthesizedEmotionalTone, priority: BehaviorIntent['priority'], reason: string): BehaviorIntent {
+  return {
+    kind,
+    source: 'timer',
+    priority,
+    moodHint: toneToMoodHint(tone),
+    reason,
+  };
+}
+
+function shouldSleep(needs: Needs, thresholds: VitalAutonomousThresholds): boolean {
+  return needs.energy <= thresholds.sleepEnergyMax || needs.comfort >= thresholds.sleepComfortMin;
+}
+
+function shouldWakeFromSleep(needs: Needs, thresholds: VitalAutonomousThresholds): boolean {
+  return needs.attention >= thresholds.wakeAttentionMin || needs.energy >= thresholds.wakeEnergyMin;
+}
+
+export function decideNextAutonomousBehaviorIntent(
+  context: AutonomousDecisionContext,
+  config: AutonomousIntentConfig = DEFAULT_AUTONOMOUS_INTENT_CONFIG
+): BehaviorIntent | null {
+  const sleepActive = isSleepAnimationState(context.currentAnimation);
+
+  if (sleepActive) {
+    if (shouldWakeFromSleep(context.needs, config.thresholds)) {
+      return createTimerIntent('wake', context.tone, 'high', 'vital_wake');
+    }
+
+    return null;
+  }
+
+  if (shouldSleep(context.needs, config.thresholds)) {
+    return createTimerIntent('sleep', 'sleepy', 'high', 'vital_sleep');
+  }
+
+  const idleElapsedMs = context.idleElapsedMs ?? config.behavior.minIdleDurationMs;
+
+  if (idleElapsedMs < config.behavior.minIdleDurationMs) {
+    return null;
+  }
+
+  const randomVal = context.randomVal ?? Math.random();
+  const action = decideNextAutonomousAction(config.behavior, randomVal);
+
+  switch (action) {
+    case 'take_nap':
+      return createTimerIntent('sleep', 'sleepy', 'high', 'autonomous_nap');
+    case 'wander':
+      return createTimerIntent('wander', context.tone, 'normal', 'autonomous_wander');
+    case 'stretch':
+      return createTimerIntent('play', context.tone, 'normal', 'autonomous_stretch');
+    case 'idle_look_around': {
+      const microMotion = selectIdleMicroMotion(
+        context.tone,
+        idleElapsedMs,
+        randomVal,
+        config.idleVariety
+      );
+
+      return createTimerIntent('idle', context.tone, 'low', microMotion?.behaviorReason ?? 'autonomous_idle');
+    }
+  }
 }
