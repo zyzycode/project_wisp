@@ -8,27 +8,27 @@ Project Wisp — кроссплатформенный desktop AI-компань�
 
 Обещание пользователю: скачал, установил, Wisp ожил. Пользователь не должен регистрироваться у AI-провайдеров, вставлять API-ключи, понимать токены/модели, запускать локальные серверы или заниматься администрированием.
 
-## Текущий скоуп
+## Текущий объём работ
 
 Репозиторий — desktop-first и offline-first MVP.
 
 - Целевые платформы: Linux, Windows, macOS.
 - Базовая среда разработки: Ubuntu Linux.
-- Стек приложения: Electron, TypeScript strict mode, React, Zustand, typed IPC.
+- Стек приложения: Electron, TypeScript в строгом режиме, React, Zustand, типизированный IPC.
 - AI-слой: граница `IAIProvider`, текущая реализация — локальный `MockAIProvider`.
-- Хранение данных: локальный SQLite за Main-process репозиториями, когда начнутся память и настройки.
+- Хранение данных: локальный SQLite за репозиториями Main-процесса, когда начнутся память и настройки.
 
 ## Жёсткие ограничения
 
 - Никакого backend/proxy/server кода в `project_wisp`.
 - Никаких официальных внешних AI SDK в desktop-клиенте.
 - Никаких пользовательских AI API-ключей.
-- Никакой server-side auth/billing логики.
+- Никакой серверной auth/billing-логики.
 - Никаких лишних npm-зависимостей.
 - Никакого нецелевого рефакторинга.
 - Domain и Application остаются платформонезависимыми.
-- OS-specific поведение живёт за platform adapters.
-- Renderer не имеет доступа к Node.js и не знает детали storage, provider или OS.
+- Платформозависимое поведение живёт за platform adapters.
+- Renderer не имеет доступа к Node.js и не знает детали хранилища, provider или ОС.
 
 ## Архитектура кратко
 
@@ -40,11 +40,11 @@ Renderer UI -> typed preload/IPC -> Application use cases -> Domain -> Ports <- 
 
 Владение:
 
-- Main process: окна, IPC handlers, application use cases, domain orchestration, persistence adapters.
-- Preload: минимальный typed `window.wispAPI` bridge с `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
-- Renderer: только React UI и presentation state.
+- Main process: окна, IPC handlers, application use cases, оркестрация домена, persistence adapters.
+- Preload: минимальный типизированный мост `window.wispAPI` с `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
+- Renderer: только React UI и состояние отображения.
 - Domain: чистый TypeScript для поведения, анимаций и правил персонажа.
-- Provider: возвращает semantic response DTO; он не управляет React, DOM, CSS, assets или animation frames.
+- Provider: возвращает semantic response DTO; он не управляет React, DOM, CSS, ассетами или кадрами анимации.
 
 ## Бюджет контекста
 
@@ -53,57 +53,57 @@ Renderer UI -> typed preload/IPC -> Application use cases -> Domain -> Ports <- 
 Минимум для большинства задач:
 
 - `AGENTS.md`;
-- одна task card из `.agents/tasks/README.md`;
-- только source docs, названные в task card;
-- только code files, нужные для задачи.
+- одна карточка задачи из `.agents/tasks/README.md`;
+- только документы-источники, названные в карточке задачи;
+- только файлы кода, нужные для задачи.
 
-`ARCHITECTURE.md` читать только для задач, которые меняют или проверяют архитектурные границы. `docs/engine/*.md` читать только если задача касается этого engine contract. `.agents/rules/*.md` читать только для релевантного слоя.
+`ARCHITECTURE.md` читать только для задач, которые меняют или проверяют архитектурные границы. `docs/engine/*.md` читать только если задача касается соответствующего engine contract. `.agents/rules/*.md` читать только для релевантного слоя.
 
 Целевой размер markdown:
 
 - `AGENTS.md`: до 120 строк.
 - `ROADMAP.md`: до 140 строк.
 - `.agents/tasks/README.md`: до 180 строк.
-- Не дублировать task-level детали между roadmap и backlog.
+- Не дублировать детали задач между roadmap и backlog.
 
 ## Роли агентов
 
 Карта ролей находится в `.agents/agents/README.md`.
 
-- `project-manager`: scope, routing задач, roadmap/backlog docs. Не меняет product-code.
+- `project-manager`: scope, маршрутизация задач, roadmap/backlog docs. Не меняет продуктовый код.
 - `architect`: границы слоёв, IPC/ports, engine contracts, `docs/engine/*`.
 - `ui-specialist`: Renderer UI, render engine, visual state, settings UI.
 - `electron-platform`: Main/Preload, окна, IPC, OS adapters.
 - `domain-behavior`: character engine, behavior FSM, animation FSM.
-- `data-memory`: SQLite, repositories, migrations, локальная память/settings persistence.
-- `mock-ai-provider`: `IAIProvider`, `MockAIProvider`, provider DTO handling.
-- `code-reviewer`: только review, findings first, без fixes.
-- `fixer`: исправляет только подтверждённые findings.
-- `tester`: verification, test design и test execution.
+- `data-memory`: SQLite, repositories, migrations, локальная память и persistence настроек.
+- `mock-ai-provider`: `IAIProvider`, `MockAIProvider`, обработка provider DTO.
+- `code-reviewer`: только review, сначала замечания, без исправлений.
+- `fixer`: исправляет только подтверждённые замечания.
+- `tester`: проверка, проектирование тестов и запуск тестов.
 
 ## Рабочие правила
 
-Перед правками определить touched files и короткий план. Делать самый маленький vertical slice, который закрывает задачу. Использовать существующие абстракции. Сохранять cross-platform boundaries. Не менять unrelated files и не откатывать чужие изменения.
+Перед правками определить затронутые файлы и короткий план. Делать самый маленький vertical slice, который закрывает задачу. Использовать существующие абстракции. Сохранять кроссплатформенные границы. Не менять unrelated files и не откатывать чужие изменения.
 
 Проверка:
 
-- Изменения product-code требуют подходящие typecheck/lint/tests.
-- Docs-only changes требуют markdown/diff consistency review.
-- Project Manager не запускает product tests для обычной docs planning работы.
+- Изменения продуктового кода требуют подходящие typecheck/lint/tests.
+- Изменения только документации требуют проверки markdown/diff consistency.
+- Project Manager не запускает продуктовые тесты для обычной работы с документацией и планированием.
 
 ## Формат задачи
 
 ```markdown
-Goal / Цель:
+Цель:
 <один конкретный результат>
 
-Context / Контекст:
+Контекст:
 <phase + только релевантные docs/files>
 
-Owner / Исполнитель:
+Исполнитель:
 <одна роль агента>
 
-Constraints:
+Ограничения:
 - <границы слоя>
 - <запрещённые области>
 

@@ -10,8 +10,8 @@
 - Держать файл коротким: целевой размер — до 180 строк.
 - Не расписывать будущие фазы детально заранее.
 - Активными держать только текущую фазу и ближайшие 3-7 задач.
-- Когда фаза закрыта, переносить детали в краткую строку `done`, а не хранить полные acceptance criteria.
-- Агенту в prompt передаётся одна task card, а не весь backlog.
+- Когда фаза закрыта, переносить детали в краткую строку `done`, а не хранить полные критерии приёмки.
+- Агенту в prompt передаётся одна карточка задачи, а не весь backlog.
 - Если задаче нужны подробности контракта, агент читает только релевантный `docs/engine/*.md`.
 
 ## Статусы
@@ -25,9 +25,9 @@
 ## Текущее состояние
 
 - Phase 0-8: `done` — база проекта, Electron shell, desktop overlay, drag/positioning, rendering, animation FSM, basic behavior, interaction, local chat UI.
-- Phase 9: `review` — provider/intent contracts уже описаны, нужен docs review gate.
+- Phase 9: `review` — provider/intent contracts уже описаны, нужен gate ревью документации.
 - Текущий gate: `P09-G01`.
-- Следующая implementation phase: Phase 10 — Mock AI & Dialogue Loop.
+- Следующая фаза реализации: Phase 10 — Mock AI & Dialogue Loop.
 
 ## Активная очередь
 
@@ -39,7 +39,7 @@
 - **Цель:** проверить Phase 9 markdown contracts на противоречия.
 - **Читать:** `AGENTS.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `docs/engine/README.md`, `docs/engine/AI_PROVIDER_CONTRACT.md`, `docs/engine/BEHAVIOR_INTENTS.md`, `docs/engine/ANIMATION_ENGINE.md`.
 - **Менять:** ничего, если явно не попросят.
-- **Критерии приёмки:** список findings или явное "findings нет"; без product-code edits.
+- **Критерии приёмки:** список замечаний или явное "замечаний нет"; без правок продуктового кода.
 - **Вне скоупа:** implementation, tests, fixing docs.
 
 ### P10-T01 — Добавить `IAIProvider` port и DTO
@@ -47,10 +47,10 @@
 - **Статус:** `planned`
 - **Исполнитель:** `mock-ai-provider`
 - **Зависит от:** `P09-G01`
-- **Цель:** добавить typed provider boundary для локального MockAI.
+- **Цель:** добавить типизированную границу provider для локального MockAI.
 - **Читать:** `docs/engine/AI_PROVIDER_CONTRACT.md`, `docs/engine/BEHAVIOR_INTENTS.md`.
 - **Менять:** только application/shared provider types.
-- **Критерии приёмки:** нет external AI SDK types; DTO не зависит от UI; errors/thinking/latency типизированы.
+- **Критерии приёмки:** нет типов external AI SDK; DTO не зависит от UI; errors/thinking/latency типизированы.
 - **Вне скоупа:** network calls, backend/proxy, UI redesign.
 
 ### P10-T02 — Реализовать локальный `MockAIProvider`
@@ -58,10 +58,10 @@
 - **Статус:** `planned`
 - **Исполнитель:** `mock-ai-provider`
 - **Зависит от:** `P10-T01`
-- **Цель:** генерировать offline Wisp replies по простым локальным категориям.
+- **Цель:** генерировать offline-ответы Wisp по простым локальным категориям.
 - **Читать:** provider contract и файлы, изменённые в `P10-T01`.
-- **Менять:** mock provider implementation и local response catalog.
-- **Критерии приёмки:** категории greeting/question/care/play/sleep/fallback; simulated latency; no network.
+- **Менять:** реализацию mock provider и локальный каталог ответов.
+- **Критерии приёмки:** категории greeting/question/care/play/sleep/fallback; simulated latency; без network.
 - **Вне скоупа:** memory extraction, real LLM, external backend.
 
 ### P10-T03 — Связать dialogue loop
@@ -71,8 +71,8 @@
 - **Зависит от:** `P10-T02`
 - **Цель:** связать user message -> provider response -> intent mapper -> presentation state.
 - **Читать:** provider contract, behavior intents, текущие chat UI boundaries.
-- **Менять:** dialogue application flow и typed state handoff.
-- **Критерии приёмки:** UI не знает concrete provider; thinking/reply flow виден; provider response мапится в `BehaviorIntent`.
+- **Менять:** dialogue application flow и типизированную передачу состояния.
+- **Критерии приёмки:** UI не знает конкретный provider; thinking/reply flow виден; provider response мапится в `BehaviorIntent`.
 - **Вне скоупа:** settings window, memory, backend.
 
 ### P10-T04 — Проверить MockAI scenarios
@@ -81,7 +81,7 @@
 - **Исполнитель:** `tester`
 - **Зависит от:** `P10-T03`
 - **Цель:** проверить provider categories, fallback и thinking flow.
-- **Читать:** изменённые Phase 10 files и релевантные contracts.
+- **Читать:** изменённые файлы Phase 10 и релевантные contracts.
 - **Менять:** только focused tests.
 - **Критерии приёмки:** покрыты greeting/question/sleep/unknown paths; provider не управляет UI напрямую.
 - **Вне скоупа:** visual regression, packaging, real network.
@@ -91,26 +91,26 @@
 - **Статус:** `planned`
 - **Исполнитель:** `code-reviewer`
 - **Зависит от:** `P10-T04`
-- **Цель:** отревьюить Phase 10 changes на boundary leaks и missing tests.
-- **Читать:** изменённые Phase 10 files и релевантные contracts.
+- **Цель:** отревьюить изменения Phase 10 на boundary leaks и missing tests.
+- **Читать:** изменённые файлы Phase 10 и релевантные contracts.
 - **Менять:** ничего, если явно не попросят.
-- **Критерии приёмки:** findings или clear approval; backend/SDK leakage checked.
-- **Вне скоупа:** fixes and new features.
+- **Критерии приёмки:** замечания или явное approval; проверено отсутствие backend/SDK leakage.
+- **Вне скоупа:** fixes и новые features.
 
 ### P10-G02 — Исправить confirmed MockAI findings
 
 - **Статус:** `planned`
 - **Исполнитель:** `fixer`
 - **Зависит от:** `P10-G01`
-- **Цель:** исправить только confirmed reviewer findings.
+- **Цель:** исправить только подтверждённые замечания reviewer.
 - **Читать:** reviewer findings и файлы, названные в findings.
-- **Менять:** только files named in findings.
+- **Менять:** только файлы, названные в findings.
 - **Критерии приёмки:** findings resolved или явно rejected с причиной.
 - **Вне скоупа:** expanding Phase 10.
 
 ## Поздние фазы
 
-Раскрывать фазу в task cards только тогда, когда она становится следующей активной фазой.
+Раскрывать фазу в карточки задач только тогда, когда она становится следующей активной фазой.
 
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
@@ -124,19 +124,19 @@
 | 18 | Stability & Performance Hardening: long sessions, cleanup, Wayland/X11 | `tester` |
 | 19 | Production Packaging: Linux first, then Windows/macOS | `electron-platform` |
 
-## Шаблон task card
+## Шаблон карточки задачи
 
 ```markdown
-Goal / Цель:
+Цель:
 <один конкретный результат>
 
-Context / Контекст:
+Контекст:
 <roadmap phase + только релевантные docs/files>
 
-Owner / Исполнитель:
+Исполнитель:
 <одна роль агента>
 
-Constraints:
+Ограничения:
 - <границы слоя>
 - <запрещённые области>
 
@@ -150,4 +150,4 @@ Constraints:
 
 ## Правило PM
 
-Project Manager не просит агентов читать каждый `.md` файл. PM берёт одну task card, добавляет только нужные ссылки и обновляет эту доску после принятия результата.
+Project Manager не просит агентов читать каждый `.md` файл. PM берёт одну карточку задачи, добавляет только нужные ссылки и обновляет эту доску после принятия результата.

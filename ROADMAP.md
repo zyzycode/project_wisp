@@ -6,7 +6,7 @@ Roadmap описывает направление продукта, а не сп
 
 Project Wisp — offline-first desktop AI-компаньон: пользователь устанавливает приложение, запускает его, и персонаж живёт на рабочем столе без пользовательских API-ключей, аккаунтов у внешних AI-провайдеров, локальных серверов или облачной настройки.
 
-Скоуп этого репозитория: кроссплатформенный Electron desktop client для Linux, Windows и macOS. Базовая среда разработки — Ubuntu Linux.
+Скоуп этого репозитория: кроссплатформенный Electron desktop-клиент для Linux, Windows и macOS. Базовая среда разработки — Ubuntu Linux.
 
 Жёстко вне скоупа этого репозитория:
 
@@ -43,7 +43,7 @@ Project Wisp — offline-first desktop AI-компаньон: пользоват
 
 ## Текущий фокус
 
-Phase 9 contracts уже написаны, их нужно отревьюить перед продолжением реализации.
+Контракты Phase 9 уже написаны, их нужно отревьюить перед продолжением реализации.
 
 Следующий gate:
 
@@ -51,13 +51,13 @@ Phase 9 contracts уже написаны, их нужно отревьюить 
 - Исполнитель: `code-reviewer`;
 - Scope: только consistency markdown contracts.
 
-После этого начинается Phase 10 — первый реальный AI-facing implementation slice, всё ещё полностью offline и на базе `MockAIProvider`.
+После этого начинается Phase 10 — первый реальный AI-facing срез реализации, всё ещё полностью offline и на базе `MockAIProvider`.
 
 ## Заметки по фазам
 
 ### Phase 9 — Provider & Intent Contracts
 
-Цель: убедиться, что AI/provider data не просачивается в UI decisions. `IAIProvider` возвращает semantic response DTO; application переводит их в `BehaviorIntent`; domain/character logic выбирает поведение; animation/rendering получает presentation-ready state.
+Цель: убедиться, что данные AI/provider не просачиваются в UI decisions. `IAIProvider` возвращает semantic response DTO; application переводит их в `BehaviorIntent`; domain/character logic выбирает поведение; animation/rendering получает presentation-ready state.
 
 Документы-источники:
 
@@ -74,8 +74,8 @@ Phase 9 contracts уже написаны, их нужно отревьюить 
 
 Минимальный срез:
 
-- typed `IAIProvider` port и DTO;
-- local `MockAIProvider`;
+- типизированный `IAIProvider` port и DTO;
+- локальный `MockAIProvider`;
 - simulated thinking/latency;
 - deterministic response categories;
 - mapper из provider response в `BehaviorIntent`;
@@ -83,7 +83,7 @@ Phase 9 contracts уже написаны, их нужно отревьюить 
 
 ### Поздние фазы
 
-Поздние фазы намеренно остаются краткими summaries, пока не станут активными. Когда фаза переходит в `next`, Project Manager раскрывает только первые несколько executable task cards в `.agents/tasks/README.md`.
+Поздние фазы намеренно остаются краткими сводками, пока не станут активными. Когда фаза переходит в `next`, Project Manager раскрывает только первые несколько исполнимых карточек задач в `.agents/tasks/README.md`.
 
 ## Правила поддержки roadmap
 
