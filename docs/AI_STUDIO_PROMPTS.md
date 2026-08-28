@@ -1,144 +1,193 @@
-# 🪄 Полный сборник 16-кадровых (Ultra Smooth 60 FPS) промптов для ChatGPT / GPT-4o по Референсу на Прозрачном PNG
+# 🪄 Полный сборник 4-кадровых (Keyframe Optimized) промптов для ChatGPT / GPT-4o по Референсу на Прозрачном PNG
 
-> **Цель:** Генерация ультра-плавных кинематографичных **16-кадровых спрайт-листов** персонажа Wisp в **симметричной сетке 4 колонки × 4 строки (4x4 grid)** по **прикреплённому референсу (Attached Reference Image)** сразу в формате **PNG с прозрачным фоном (Transparent PNG with Alpha Channel)**.
+> **Цель:** Генерация четких, геометрически стабильных **4-кадровых спрайт-листов (Keyframes)** персонажа Wisp в **горизонтальной сетке 1 строка × 4 колонки (1×4 horizontal grid)** по **прикреплённому референсу (Attached Reference Image)** сразу в формате **PNG с прозрачным фоном (Transparent PNG with Alpha Channel)**.
+> 
+> *Сетка 1×4 из 4 ключевых кадров минимизирует «кипение» нейросети, идеально сохраняет пропорции персонажа и точно соответствует структуре проекта [ARTIST_BRIEF.md](file:///home/zybz/code/project_wisp/docs/ARTIST_BRIEF.md).*
 
 ---
 
 ## 📌 Инструкция для генерации в ChatGPT / GPT-4o / Midjourney / DALL-E:
 
 1. **Прикрепи референс:** Обязательно прикрепи изображение персонажа перед отправкой промпта.
-2. **Формат сетки:** Сетка **4 строки по 4 столбца (4×4 grid = 16 кадров)**, чтение слева направо, сверху вниз (1..4, 5..8, 9..12, 13..16).
-3. **Плавность (In-Betweens):** Каждое движение непрерывно перетекает из предыдущего кадра в следующий с шагом в 1-2 пикселя (принцип субпиксельной интерполяции Диснея).
-4. **Фон:** **100% прозрачный PNG (`.png` true alpha channel, zero background color)**.
+2. **Формат сетки:** Сетка строго **1 горизонтальный ряд из 4 равных квадратных кадров (1 row × 4 columns grid = 4 frames total)**, чтение слева направо (`00`, `01`, `02`, `03`).
+3. **Единый масштаб и привязка (Pivot & Baseline):**
+   * Персонаж занимает одинаковую высоту во всех 4 кадрах (высота тела ~400px в квадратной ячейке).
+   * Стопы на всех кадрах стоят на единой горизонтальной линии пола (Baseline).
+   * Персонаж строго отцентрован по горизонтали в каждой из 4 ячеек.
+4. **Фон:** **100% прозрачный PNG (`.png` true alpha channel, zero background color, no shadows)**.
 
 ---
 
-## 📋 Промпты для всех анимаций (16 кадров, сетка 4×4)
+## 📋 Промпты для генерации анимаций (4 ключевых кадра, сетка 1×4)
 
 ---
 
-### 🚶 1. Ходьба влево: Ультра-плавная 16-кадровая походка (16-Frame Smooth Stride Loop — сетка 4×4) ⭐
+### 🚶 1. Ходьба влево: 4 ключевых кадра (4-Frame Walk Cycle — сетка 1×4) ⭐
+*Файлы: `body/walk/body_walk_00.png` — `body_walk_03.png`*
 
-> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D side-scrolling video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color, no white box, no solid backdrop). Generate an ultra-smooth 16-frame walking loop in full side profile (character turned completely to the left, walking towards the left) arranged in a clean 4x4 grid (4 rows of 4 columns, 16 frames total, read left-to-right, top-to-bottom).`
+> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D side-scrolling video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color, no floor shadows, no white box).`
 >
-> `CONTINUOUS ULTRA-SMOOTH IN-BETWEEN MOTION (16 FRAMES):`
-> `The character walks with continuous, natural fluidity where every frame smoothly flows into the next:`
-> `- Frames 1 to 4 [Right Step Transition]: Right leg steps forward and contacts the floor -> body weight smoothly catches and transfers -> knee straightens as body passes over the foot.`
-> `- Frames 5 to 8 [Left Leg Pass & Extension]: Left leg gently lifts off the floor behind -> bends at knee passing forward through center -> extends forward into mid-air ready to touch down.`
-> `- Frames 9 to 12 [Left Step Transition]: Left foot makes contact forward -> weight smoothly absorbs and rolls forward -> body passes over the planted left leg.`
-> `- Frames 13 to 16 [Right Leg Pass & Extension]: Right leg lifts off behind -> swings forward through center -> reaches forward in mid-air, seamlessly looping back into Frame 1.`
+> `LAYOUT & GRID:`
+> `Generate a clean horizontal sprite sheet with exactly 4 equal-sized square frames in a single row (1 row × 4 columns grid, 4 frames total, read left-to-right: Frame 1, Frame 2, Frame 3, Frame 4).`
 >
-> `SECONDARY MOTION & CENTERING:`
-> `- Arms swing forward and backward in a smooth continuous pendulum arc opposite to the legs.`
-> `- Long wavy hair and dress hem gently flow and ripple backward with continuous flowing wave physics lagging 1-2 frames behind the stride.`
-> `- Character stays perfectly upright with a straight spine and perfectly centered horizontally in each grid cell across all 16 frames.`
-> `High quality 2D game art style, sharp clean transparent PNG cutout with true alpha transparency, absolutely no background and no shadows.`
+> `CHARACTER ANCHOR & SCALE:`
+> `- Full side-view profile (character completely turned to the left, walking towards the left).`
+> `- Character must maintain identical height, scale, and body thickness across all 4 frames.`
+> `- Feet must stay aligned to the exact same horizontal floor baseline across all frames.`
+> `- Character stays perfectly centered horizontally in each of the 4 grid cells.`
+>
+> `4 KEYFRAME WALK CYCLE (LEFT-TO-RIGHT):`
+> `- Frame 1 (Contact A - Right Leg Forward): Right foot makes forward contact with the floor, left foot pushes off behind, left arm forward, right arm back.`
+> `- Frame 2 (Passing Position A): Body lifts slightly as left leg swings forward through the center past the planted right leg, arms pass near body.`
+> `- Frame 3 (Contact B - Left Leg Forward): Left foot contacts the floor forward, right foot trailing behind, right arm forward, left arm back.`
+> `- Frame 4 (Passing Position B): Body lifts as right leg swings forward through the center past the planted left leg, looping seamlessly back into Frame 1.`
+>
+> `SECONDARY MOTION: Wavy hair and dress hem flow backward with gentle inertial drag. High quality 2D game asset, sharp clean lines, true transparent PNG.`
 
 ---
 
-### 🧍 2. Стояние на месте / Дыхание и живой покой (16-Frame Idle & Micro-Breathing Loop — сетка 4×4) ⭐
+### 🧍 2. Дыхание и живой покой (4-Frame Idle & Micro-Breathing Loop — сетка 1×4) ⭐
+*Файлы: `body/idle/body_idle_00.png` — `body_idle_03.png`*
 
-> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, transparent cutout, zero background color). Generate an ultra-smooth 16-frame idle living breathing loop in a clean 4x4 grid layout (4 rows of 4 columns, 16 frames total, read left-to-right, top-to-bottom).`
+> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, transparent cutout, zero background color, no backdrop).`
 >
-> `CRITICAL ANCHOR & CONTINUOUS MICRO-MOTION:`
-> `- Feet MUST remain completely flat, anchored to the exact same horizontal floor baseline across all 16 frames.`
-> `- The character stays perfectly centered horizontally in each cell.`
+> `LAYOUT & GRID:`
+> `Generate a clean horizontal sprite sheet with exactly 4 equal-sized square frames in a single row (1 row × 4 columns grid, 4 frames total, read left-to-right: Frame 1 to 4).`
 >
-> `16-FRAME CONTINUOUS LIVING CYCLE:`
-> `- Frames 1 to 4 [Slow Gentle Inhale]: Chest and shoulders smoothly rise by 1-2-3-4 pixels, posture gently straightening, eyes open with warm gentle expression.`
-> `- Frames 5 to 6 [Peak of Breath]: Lungs fully expanded, subtle joyful head tilt, long wavy hair softly floats outward on a gentle magical updraft.`
-> `- Frames 7 to 8 [Natural Blink]: Eyelids softly close in mid-breath and gently reopen smoothly.`
-> `- Frames 9 to 13 [Slow Smooth Exhale]: Chest and shoulders gently descend pixel-by-pixel, hair gracefully settling back down.`
-> `- Frames 14 to 16 [Settle & Return]: Soft pleasant smile looking forward, body smoothly resetting into Frame 1 for a seamless infinite loop.`
-> `100% character identity match with reference. Clean 2D game asset, true transparent PNG with alpha transparency, no solid background and no shadows.`
+> `CRITICAL ANCHOR & STABILITY:`
+> `- Both feet MUST remain completely flat and anchored to the exact same floor line across all 4 frames.`
+> `- Character stays perfectly centered horizontally in each cell with unchanged body height and proportions.`
+>
+> `4 KEYFRAME IDLE LOOP (LEFT-TO-RIGHT):`
+> `- Frame 1 [Base Pose]: Neutral standing pose, straight posture, calm open eyes with a warm gentle expression, hair resting naturally.`
+> `- Frame 2 [Inhale Start]: Chest gently expands and shoulders subtly rise by 3-4 pixels, posture straightens slightly.`
+> `- Frame 3 [Peak Inhale & Float]: Peak of breath, lungs expanded, long wavy hair softly floats outward on a gentle magical updraft.`
+> `- Frame 4 [Exhale / Reset]: Chest and shoulders gently descend back down, hair smoothly settles, resetting into Frame 1 for a seamless infinite loop.`
+>
+> `100% character identity match with reference. Clean 2D game asset, true transparent PNG with alpha transparency, no background shadows.`
 
 ---
 
-### 🖱️ 3. Подхват курсором мыши / Болтание в воздухе (16-Frame Dangling & Flailing Loop — сетка 4×4)
+### 🖱️ 3. Подхват курсором / Болтание в воздухе (4-Frame Dragged & Flailing Loop — сетка 1×4) ⭐
+*Файлы: `body/dragged/body_dragged_00.png` — `body_dragged_03.png` (или `00`–`01`)*
 
-> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color). Generate an ultra-smooth 16-frame dangling and air-struggle loop in a clean 4x4 grid (4 rows of 4 columns, 16 frames total, read left-to-right, top-to-bottom). The character is lifted into mid-air by the player's mouse cursor as if held by the collar / scruff:`
+> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color).`
 >
-> `16-FRAME FLUID MOTION SEQUENCE:`
-> `- Frames 1 to 4: Character is lifted up, wide surprised eyes (O_O), legs start kicking in mid-air in alternate cute running steps.`
-> `- Frames 5 to 8: Character flails legs faster, arms swinging for balance, long wavy hair swaying from side to side with inertia.`
-> `- Frames 9 to 12: Character slows down kicking, swinging gently from left to right like a cute pendulum, hair trailing behind smoothly.`
-> `- Frames 13 to 16: Character gives up struggling, dangling cutely and limp with a resigned sweet chibi pout, giving a tiny wink, looping back to Frame 1.`
-> `Character stays perfectly centered in each cell. True transparent PNG, isolated cutout with zero background, no shadows.`
+> `LAYOUT & GRID:`
+> `Generate a clean horizontal sprite sheet with exactly 4 equal-sized square frames in a single row (1 row × 4 columns grid, 4 frames total, read left-to-right). The character is lifted into mid-air by the player's mouse cursor as if held by the scruff/collar:`
+>
+> `4 KEYFRAME DANGLING CYCLE (LEFT-TO-RIGHT):`
+> `- Frame 1 [Lifted & Surprised]: Character lifted up off the floor, wide surprised eyes (O_O), legs hanging down limp, arms reaching up.`
+> `- Frame 2 [Mid-Air Kick Left]: Kicks left leg forward in mid-air panic, right leg back, arms flailing outward for balance.`
+> `- Frame 3 [Mid-Air Kick Right]: Kicks right leg forward, left leg back, wavy hair swaying sideways with momentum.`
+> `- Frame 4 [Cute Resigned Dangle]: Stops kicking, dangling cutely in mid-air with a resigned chibi pout, legs slightly bent, smoothly looping back to Frame 1.`
+>
+> `Character centered in each cell. True transparent PNG, isolated cutout with zero background, no shadows.`
 
 ---
 
-### 🪂 4. Приземление и упругое касание пола (16-Frame Landing & Squash-Stretch — сетка 4×4)
+### 🪂 4. Приземление и упругий контакт (4-Frame Landing & Squash-Stretch — сетка 1×4) ⭐
+*Файлы: `body/land/body_land_00.png` — `body_land_03.png` (или `00`–`01`)*
 
-> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color). Generate a fluid 16-frame landing, impact absorption, and recovery animation in a clean 4x4 grid (4 rows of 4 columns, 16 frames total, read left-to-right, top-to-bottom):`
+> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color).`
 >
-> `16-FRAME PHYSICAL PROGRESSION:`
-> `- Frames 1 to 3 [Falling Anticipation]: Falling down through air, toes pointing downward, hair floating upward.`
-> `- Frames 4 to 5 [Contact]: Toes and footpads make contact with the floor line.`
-> `- Frames 6 to 8 [Deep Squash & Absorption]: Knees smoothly bend down into a deep crouch, hands touch the floor for balance, long wavy hair ripples and billows outward with downward force.`
-> `- Frames 9 to 11 [Spring Recoil]: Body begins uncurling and pushing upward, hair trailing upward as kinetic bounce takes over.`
-> `- Frames 12 to 14 [Stretch & Stand]: Straightens up tall, chest lifted proudly, hair softly falling back into place around shoulders.`
-> `- Frames 15 to 16 [Proud Recovery]: Dusts off dress with a bright confident smile, settling into neutral standing pose.`
-> `Character centered along the vertical axis in every cell. Clean 2D game asset, true transparent PNG with alpha transparency, no background shadows.`
+> `LAYOUT & GRID:`
+> `Generate a 4-frame horizontal landing and impact sequence in a clean 1 row × 4 columns grid (4 frames total, read left-to-right):`
+>
+> `4 KEYFRAME LANDING PROGRESSION (LEFT-TO-RIGHT):`
+> `- Frame 1 [Falling Anticipation]: Airborne just before landing, toes pointed downward towards floor, arms spread slightly, wavy hair trailing upward.`
+> `- Frame 2 [Deep Squash Impact]: Feet hit the floor line, knees deeply bent in a low crouch absorbing impact, dress and wavy hair flare outward from downward kinetic energy.`
+> `- Frame 3 [Spring Stretch Recoil]: Body springs upward pushing out of the crouch, spine stretched tall on tip-toes, hair trailing upward.`
+> `- Frame 4 [Neutral Settle]: Smoothly settles flat-footed into standard proud standing pose with a confident smile, hair resting on shoulders.`
+>
+> `Floor contact line remains consistent on frames 2, 3, and 4. Clean 2D game asset, true transparent PNG with alpha transparency, zero shadows.`
 
 ---
 
-### 🛌 5. Засыпание: Достаёт подушку и укладывается (16-Frame Sleep Transition — сетка 4×4) ⭐
+### 🛌 5. Засыпание: Укладывание на подушку (4-Frame Sleep Transition — сетка 1×4) ⭐
+*Файлы: `body/sleep/body_sleep_00.png` — `body_sleep_03.png`*
 
-> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color). Generate a cinematic 16-frame continuous storytelling sleep transition in a clean 4x4 grid (4 rows of 4 columns, 16 frames total, read left-to-right, top-to-bottom):`
+> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color).`
 >
-> `16-FRAME STORY SEQUENCE:`
-> `- Frames 1 to 3: Character rubs sleepy eyes with one hand, yawning softly with drowsy closed eyes.`
-> `- Frames 4 to 6: Magically pulls out a soft pastel fluffy sleeping pillow from behind and hugs it gently with both hands.`
-> `- Frames 7 to 9: Kneels down gracefully and sets the fluffy pillow onto the floor in front of them with a warm smile.`
-> `- Frames 10 to 12: Gently lowers their body sideways onto the floor, resting head down onto the soft pillow.`
-> `- Frames 13 to 14: Curls knees in cozily, pulling the corner of the pillow closer to their chin.`
-> `- Frames 15 to 16: Closes eyes in complete peace, long lush wavy hair spreading across the floor like a plush blanket, entering deep sleep.`
-> `Identical outfit and hair colors throughout. High quality transparent PNG with true alpha channel, zero background.`
+> `LAYOUT & GRID:`
+> `Generate a cinematic 4-frame storytelling sleep transition in a clean 1 row × 4 columns grid (4 frames total, read left-to-right):`
+>
+> `4 KEYFRAME SLEEP TRANSITION (LEFT-TO-RIGHT):`
+> `- Frame 1 [Sleepy Yawn]: Character rubs sleepy eyes with one fist, mouth open in a cute drowsy yawn.`
+> `- Frame 2 [Place Pillow]: Character kneels down and places a soft fluffy pastel pillow on the floor with both hands.`
+> `- Frame 3 [Lowering Down]: Character lies down sideways, resting head softly onto the plush pillow, pulling legs in cozily.`
+> `- Frame 4 [Deep Asleep]: Lying comfortably on side asleep on the pillow, eyes peacefully closed, long wavy hair spread across the floor.`
+>
+> `Identical outfit and character scaling throughout. High quality transparent PNG with true alpha channel, zero background.`
 
 ---
 
-### 🌙 5b. Глубокий сон: Плавное дыхание во сне (16-Frame Deep Sleep Breathing Loop — сетка 4×4)
+### 🌙 5b. Сон: Дыхание во сне (4-Frame Deep Sleep Breathing Loop — сетка 1×4) ⭐
+*Файлы: `body/sleep/body_sleep_00.png` — `body_sleep_01.png`*
 
-> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color). Generate a 16-frame ultra-smooth sleeping breathing loop in a clean 4x4 grid (4 rows of 4 columns, 16 frames total, read left-to-right, top-to-bottom). Character is lying comfortably on side asleep on a fluffy pastel pillow, eyes peacefully closed, long wavy hair pooled around them:`
+> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color).`
 >
-> `16-FRAME BREATHING CYCLE:`
-> `- Frames 1 to 7 [Continuous Slow Inhale]: Chest softly and gradually rises pixel by pixel (subtle deep sleep breathing), a cute glowing "Zzz" bubble gently grows and floats up near the nose.`
-> `- Frame 8 [Apex of Sleep Inhale]: Peak expansion, peaceful expression.`
-> `- Frames 9 to 15 [Continuous Slow Exhale]: Chest gently and smoothly sinks back down, "Zzz" bubble pops with tiny magical micro-sparkles.`
-> `- Frame 16 [Smooth Loop Transition]: Body fully relaxed, seamlessly looping back to Frame 1.`
+> `LAYOUT & GRID:`
+> `Generate a 4-frame sleeping breathing loop in a clean 1 row × 4 columns grid (4 frames total, read left-to-right). Character is lying sideways asleep on a fluffy pastel pillow, eyes peacefully closed, wavy hair pooled around:`
+>
+> `4 KEYFRAME SLEEP BREATHING LOOP (LEFT-TO-RIGHT):`
+> `- Frame 1 [Resting Baseline]: Body fully relaxed asleep on pillow, chest neutral, tiny "Zzz" bubble appears above head.`
+> `- Frame 2 [Gentle Inhale]: Chest softly expands upward by 3 pixels, "Zzz" bubble floats slightly higher.`
+> `- Frame 3 [Peak Sleep Inhale]: Peak chest rise, serene peaceful facial expression.`
+> `- Frame 4 [Gentle Exhale]: Chest gently sinks back down, "Zzz" bubble softly pops with micro-sparkles, seamlessly looping to Frame 1.`
+>
 > `Clean 2D game asset, true transparent PNG with alpha transparency, no solid background.`
 
 ---
 
-### 💡 6. Размышление: Вопрос -> Озарение -> Готовность (16-Frame Thinking & Answering — сетка 4×4) ⭐
+### 💡 6. Размышление: Вопрос -> Озарение -> Готовность (4-Frame Thinking Sequence — сетка 1×4) ⭐
+*Файлы: `body/thinking/body_thinking_00.png` — `body_thinking_01.png`*
 
-> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color). Generate a 16-frame thinking and question-answering animation sequence in a clean 4x4 grid (4 rows of 4 columns, 16 frames total, read left-to-right, top-to-bottom).`
+> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color).`
 >
-> `CRITICAL ANCHOR: Feet stay firmly anchored on the floor baseline across all 16 frames, only upper body gestures:`
-> `- Frames 1 to 4 [Question & Curiosity]: Character tilts head to the right, index finger moves smoothly to tap their chin, a small glowing question mark (?) fades in above their head.`
-> `- Frames 5 to 8 [Deep Thought]: Eyes look upward thoughtfully, wavy hair drifts gently, question mark morphs into a softly glowing thinking bubble with sparkles.`
-> `- Frames 9 to 12 [Eureka / Idea Strike]: Eyes widen with joy and realization, eyebrows lift, thought bubble pops into a bright glowing exclamation point (!), character snaps fingers with a beaming smile.`
-> `- Frames 13 to 16 [Ready to Answer]: Character brings hands together in front of chest, smiling joyfully and nodding forward, ready to answer.`
-> `100% character visual match with reference. True transparent PNG, alpha channel transparency, no solid background.`
+> `LAYOUT & GRID:`
+> `Generate a 4-frame thinking and Eureka animation sequence in a clean 1 row × 4 columns grid (4 frames total, read left-to-right):`
+>
+> `4 KEYFRAME THINKING PROGRESSION (LEFT-TO-RIGHT):`
+> `- Frame 1 [Curious Question]: Character tilts head curiously, index finger on chin, small glowing question mark (?) appears above head.`
+> `- Frame 2 [Deep Thought]: Eyes look upward thoughtfully, finger tapping chin, question mark turns into a soft thinking cloud.`
+> `- Frame 3 [Eureka / Idea Strike!]: Eyes widen with realization, glowing exclamation mark (!) pops above head, character snaps fingers with a bright smile.`
+> `- Frame 4 [Ready to Answer]: Hands clasped in front of chest, nodding joyfully with a confident beaming smile, ready to answer.`
+>
+> `Feet remain firmly anchored to the baseline floor across all frames. True transparent PNG, alpha channel transparency, zero background.`
 
 ---
 
-### 💖 7. Интерактивная ласка / Реакция на поглаживание (16-Frame Petting & Love Reaction — сетка 4×4) ⭐
+### 💖 7. Ласка / Реакция на поглаживание (4-Frame Petting & Love Reaction — сетка 1×4) ⭐
+*Файлы: `props/fx_heart.png` + реакции персонажа*
 
-> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color). Generate an ultra-cute 16-frame petting reaction loop in a clean 4x4 grid (4 rows of 4 columns, 16 frames total, read left-to-right, top-to-bottom):`
+> `Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color).`
 >
-> `16-FRAME SMOOTH EMOTION CYCLE:`
-> `- Frames 1 to 3 [Touch & Lean]: Character feels a gentle hand/cursor, softly leaning their head into the touch with eyes closing blissfully.`
-> `- Frames 4 to 6 [Blushing & Warmth]: Soft pink blush spreads across cheeks, joyful curved eyes (^ _ ^), tiny glowing pink floating hearts appear around head.`
-> `- Frames 7 to 10 [Happy Hop]: Character does a cute continuous hop upward in excitement, long wavy hair bouncing gracefully into the air.`
-> `- Frames 11 to 13 [Soft Landing & Spin]: Lands softly on toes, spinning slightly with a beaming radiant smile, hands clapping together near chest.`
-> `- Frames 14 to 16 [Content Settle]: Playfully winks with one eye, hearts softly dissolve, character settles into warm happy idle looking forward.`
+> `LAYOUT & GRID:`
+> `Generate an ultra-cute 4-frame petting reaction in a clean 1 row × 4 columns grid (4 frames total, read left-to-right):`
+>
+> `4 KEYFRAME REACTION CYCLE (LEFT-TO-RIGHT):`
+> `- Frame 1 [Blissful Lean]: Character tilts and leans head into the touch/cursor, eyes closed blissfully with a gentle smile.`
+> `- Frame 2 [Blushing & Hearts]: Soft pink blush on cheeks, joyful curved eyes (^ _ ^), tiny glowing pink hearts float above head.`
+> `- Frame 3 [Excited Hop]: Cute mini-hop into the air with joy, hands clapping near chest, wavy hair bouncing upward.`
+> `- Frame 4 [Happy Settle]: Lands softly on feet, winking playfully with a beaming smile, settling back into idle.`
+>
 > `Clean 2D game asset, true transparent PNG with alpha transparency, no background shadows.`
 
 ---
 
-### 🎭 8. Пак эмоций лица: 16 выражений (16 Distinct Facial Expressions — сетка 4×4)
+### 🎭 8. Пак базовых эмоций лица (4 Key Facial Expressions — сетка 1×4) ⭐
+*Файлы: `faces/face_neutral.png`, `faces/face_happy.png`, `faces/face_blink.png`, `faces/face_confused.png` (или `face_shocked.png`)*
 
-> `Using the EXACT character face structure, hair style, bangs, eye color, and art style from the ATTACHED REFERENCE IMAGE, create a 2D video game sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color). Generate 16 distinct expressive close-up facial expressions in a clean 4x4 grid (4 rows of 4 columns, 16 faces total), perfectly centered in each cell and framed by wavy hair and bangs:`
-> `1) Pure Radiant Joy (^ _ ^) | 2) Soft Natural Blink | 3) Puzzled / Confused (one brow raised) | 4) Surprised Shock (O_O) | 5) Talking Open Mouth | 6) Talking Syllable Closed | 7) Playful Smirk with Tongue :P | 8) Serene Sleep | 9) Flirty Winking Allure | 10) Glowing Heart Eyes (In Love) | 11) Smug Cat Face :3 | 12) Overwhelmed Red Blush Spiral Eyes | 13) Tsundere Pout looking away | 14) Soft Embarrassed Giggle | 15) Dazed Euphoria / Dreamy | 16) Confident Proud Smile.`
-> `Exact face consistency matching reference. True transparent PNG, alpha transparency, no solid background.`
+> `Using the EXACT character face structure, hair style, bangs, eye color, and art style from the ATTACHED REFERENCE IMAGE, create a 2D game face sprite sheet as a PNG with a 100% completely transparent background (true alpha channel, zero background color).`
+>
+> `LAYOUT & GRID:`
+> `Generate 4 distinct expressive close-up facial portraits in a clean 1 row × 4 columns grid (4 faces total, read left-to-right):`
+>
+> `4 KEY EXPRESSIONS (LEFT-TO-RIGHT):`
+> `- Frame 1 [Neutral / Calm]: Open natural eyes, serene gentle mouth, neutral idle expression.`
+> `- Frame 2 [Happy / Joy (^ _ ^)]: Joyful upward curved crescent eyes, radiant beaming open smile, soft pink blush on cheeks.`
+> `- Frame 3 [Natural Blink]: Eyelids softly and fully closed, peaceful gentle resting mouth.`
+> `- Frame 4 [Shocked / Surprised (O_O)]: Wide open circular eyes with tiny pupils, small open gasp 'O' mouth, raised eyebrows.`
+>
+> `Identical head angle and framing across all 4 cells. True transparent PNG, alpha transparency, no solid background.`
