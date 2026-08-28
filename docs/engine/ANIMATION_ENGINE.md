@@ -12,13 +12,18 @@ ProviderResponseIntentMapper
   -> Character Engine
   -> AnimationIntent
   -> Animation Controller
-  -> Render Engine
+  -> Asset/Fallback Resolver
+  -> AnimationPlayer
+  -> RenderPresentationState
+  -> ICharacterRenderer
 ```
 
 - Character Engine принимает или отклоняет `BehaviorIntent` с учетом `Needs`, `Relationship`, `Personality`, `IntimacyState` и текущего `SynthesizedEmotionalTone`.
 - Animation Engine переводит принятое поведение в semantic `AnimationIntent`.
-- Animation Controller применяет resolved priority, interrupt rules, loop policy, sleep stability и graceful fallback.
-- Render Engine отображает уже выбранный presentation-ready visual state через render contract.
+- Animation Controller применяет resolved priority, interrupt rules, loop policy и координирует переходы стейт-машины.
+- Asset/Fallback Resolver разрешает семантический fallback и сопоставляет intent с конкретными клипами и оверлеями из манифеста.
+- AnimationPlayer управляет тактовой частотой (delta timing, currentFrame) и формирует `RenderPresentationState`.
+- ICharacterRenderer детерминированно отрисовывает подготовленный `RenderPresentationState` через активный адаптер (например, `ReactSpriteRenderer`).
 
 Animation Engine не принимает решений о поведении персонажа и не читает raw provider DTO. Он получает уже нормализованный `BehaviorIntent` и актуальный эмоциональный тон от Character Engine / Application boundary.
 
@@ -93,11 +98,11 @@ export type AnimationPropHint =
 
 `emotionalTone` синхронизирован со словарём `SynthesizedEmotionalTone` из `CHARACTER_ENGINE.md`. Это не provider hint: финальное значение приходит после решения Character Engine.
 
-`expressionHint` описывает семантическую мимику (`blush`, `sleepy`, `happy`, `surprised`, `curious`, `idle`, `winking`, `pout`). Отсутствие `expressionHint` означает, что Animation Controller может выбрать default expression для `kind + emotionalTone`.
+`expressionHint` описывает семантическую мимику (`blush`, `sleepy`, `happy`, `surprised`, `curious`, `idle`, `winking`, `pout`). Отсутствие `expressionHint` означает, что Animation Controller / Resolver может выбрать default expression для `kind + emotionalTone`.
 
 `propHint` описывает семантический реквизит или эффект (`pillow`, `heart`, `question`, `sparkle`, `none`). Он не является physical asset path и не задаёт способ отрисовки.
 
-`priority`, `interrupt` и `loop` в `AnimationIntent` являются входными метаданными запроса. Resolved animation policy принадлежит Animation Controller: он может повысить priority, запретить interrupt, изменить loop mode или выбрать fallback с учётом текущего animation state.
+`priority`, `interrupt` и `loop` в `AnimationIntent` являются входными метаданными запроса. Resolved animation policy принадлежит Animation Controller: он может повысить priority, запретить interrupt, изменить loop mode или передать fallback-указания с учётом текущего animation state.
 
 ## Начальный каталог
 
@@ -206,11 +211,11 @@ wake_up (priority: high, interrupt: no, loop: none)
 
 ## Graceful Degradation
 
-Animation Controller обязан поддерживать многоуровневый fallback для неполного графического пака. Неполнота visual assets никогда не должна приводить к падению Animation FSM, зависанию sequence или рассинхронизации behavior/animation state.
+Animation Controller и Asset/Fallback Resolver обязаны поддерживать многоуровневый fallback для неполного графического пака. Неполнота visual assets никогда не должна приводить к падению Animation FSM, зависанию sequence или рассинхронизации behavior/animation state.
 
 Fallback algorithm:
 
-| Уровень | Условие | Действие Controller-а | Гарантия |
+| Уровень | Условие | Действие Resolver / Controller | Гарантия |
 |---|---|---|---|
 | Level 1 | Доступен специализированный visual variant для `kind + emotionalTone + expressionHint + propHint`. | Использовать наиболее точное совпадение, например отдельный variant для flustered blush reaction. | Семантика intent отображается максимально богато. |
 | Level 2 | Специализированного variant нет, но доступен базовый visual cycle категории. | Использовать базовую роль категории (`body_idle`, `body_walk`, dialogue/reaction/sleep base) и наложить semantic expression/prop layer, если он доступен. | `propHint: 'heart'`, `propHint: 'question'`, `propHint: 'sparkle'`, `propHint: 'pillow'` и `expressionHint: 'blush'` деградируют независимо от body cycle. |
@@ -241,11 +246,11 @@ Fallback invariants:
 
 ## Граница Render Engine
 
-`ANIMATION_ENGINE.md` не описывает детали ассетов, пикселей и UI implementation. Следующие категории принадлежат будущему `RENDER_ENGINE.md` и не являются public Animation Engine contract:
+`ANIMATION_ENGINE.md` не описывает детали ассетов, пикселей и UI implementation. Следующие категории принадлежат `RENDER_ENGINE.md` и не являются public Animation Engine contract:
 - physical asset paths, concrete file names и renderer resource layout;
 - texture dimensions, sprite slicing grid, frame indexes и asset-specific playback timing;
 - renderer framework primitives, imperative document commands, CSS classes и layout rules;
 - interprocess channel names, native window handles и platform-specific APIs;
 - pixel ratio, anchors, hitboxes и coordinate math.
 
-Render Engine получает presentation-ready visual state от Animation Controller и отрисовывает его. Render Engine не принимает решений о поведении, не парсит provider DTO и не вычисляет Character Engine formulas.
+Render Engine получает presentation-ready visual state (`RenderPresentationState`) от AnimationPlayer и отрисовывает его через `ICharacterRenderer`. Render Engine не принимает решений о поведении, не парсит provider DTO и не вычисляет Character Engine формулы.

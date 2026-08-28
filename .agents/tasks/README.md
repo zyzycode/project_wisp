@@ -23,8 +23,8 @@
 
 - Phase 0–12: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop, Animation & Reaction Pack.
 - Phase 13 (Render Engine & Asset Pipeline): `in_progress`
-  - `P13-A01` (Architecture Contract: RENDER_ENGINE.md): `in_progress`
-  - `P13-T01` (Structured Logger Infrastructure & Telemetry Stream): `planned`
+  - `P13-A01` (Architecture Contract: RENDER_ENGINE.md): `done`
+  - `P13-T01` (Structured Logger Infrastructure & Telemetry Stream): `in_progress`
   - `P13-T02` (Asset Manifest Parser & Sprite Playback Controller): `planned`
   - `P13-T03` (Layered Character Renderer Component): `planned`
   - `P13-T04` (Safe Fallback Implementation): `planned`
@@ -36,31 +36,32 @@
 
 ### P13-A01 — Architecture Contract: RENDER_ENGINE.md
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `architect`
 - **Зависит от:** none
-- **Цель:** Создать и специфицировать архитектурный контракт `docs/engine/RENDER_ENGINE.md`: форматы спрайт-листов, схема `manifest.json`, правила нарезки и воспроизведения кадров, иерархия слоёв (базовое тело + мимика + процедурный румянец + пропсы), спецификация контракта логгера `ILogger` и 3-уровневый алгоритм Graceful Fallback.
+- **Цель:** Создать и специфицировать архитектурный контракт `docs/engine/RENDER_ENGINE.md`: форматы спрайт-листов/атласов, схема `manifest.json`, правила нарезки и воспроизведения кадров, иерархия слотов (`RenderSlot` vs `AssetKind`), контракт порта `ICharacterRenderer`, чистый `RenderPresentationState`, спецификация логирования `docs/engine/LOGGING.md` и алгоритм Graceful Fallback.
 - **Читать:** `.agents/agents/architect/agent.md`, `docs/engine/ANIMATION_ENGINE.md`, `docs/engine/CHARACTER_ENGINE.md`, `public/assets/sprites/manifest.json`.
-- **Менять:** `docs/engine/RENDER_ENGINE.md` (создать).
+- **Менять:** `docs/engine/RENDER_ENGINE.md`, `docs/engine/LOGGING.md`.
 - **Критерии приёмки:**
-  - [ ] Специфицирован формат `manifest.json` и структура описания спрайт-анимаций.
-  - [ ] Описана композиция слоёв: `body` -> `face` -> `blush` -> `props` (`pillow`, `heart`, `question`, `sparkle`).
-  - [ ] Формализован контракт интерфейса `ILogger` с уровнями и контекстами.
-  - [ ] Чётко описан алгоритм 3-уровневого Graceful Fallback при отсутствии конкретных кадров.
-  - [ ] Сохранены строгие границы слоёв (контракт не зависит от деталей сборщика Vite или React-хуков).
-- **Вне скоупа:** Написание TS-кода или компонентов.
+  - [x] Специфицирован формат `manifest.json` и структура описания спрайт-анимаций.
+  - [x] Описана композиция слотов: `underlay` -> `body` -> `face` -> `blush` -> `overlay`.
+  - [x] Разделены `AssetKind` и `RenderSlot`.
+  - [x] Специфицирован порт `ICharacterRenderer` и чистый `RenderPresentationState`.
+  - [x] Выделен контракт `ILogger` в `docs/engine/LOGGING.md`.
+  - [x] Чётко описан алгоритм 3-уровневого Graceful Fallback.
+  - [x] Сохранены строгие границы слоёв Clean Architecture.
 
 ### P13-T01 — Structured Logger Infrastructure & Telemetry Stream
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-A01`
 - **Цель:** Реализовать порт `ILogger`, адаптер структурированного логирования с фильтрацией по модулям, глобальным выключением и кольцевым буфером в памяти.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`.
-- **Менять:** `src/application/ports/logger.interface.ts`, `src/infrastructure/logging/`.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/LOGGING.md`.
+- **Менять:** `src/application/ports/logger.interface.ts`, `src/infrastructure/logging/` (`app-logger.ts`, `log-buffer.ts`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
   - [ ] Реализован интерфейс `ILogger` и адаптер `AppLogger`.
-  - [ ] Поддерживаются уровни `debug`, `info`, `warn`, `error`, `silent` и кольцевой буфер.
+  - [ ] Поддерживаются уровни `debug`, `info`, `warn`, `error`, `silent` и кольцевой буфер `ILogBuffer`.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T02 — Asset Manifest Parser & Sprite Playback Controller
@@ -105,7 +106,7 @@
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T01`, `P13-T03`
 - **Цель:** Оверлей отладки (`Ctrl+D` / контекстное меню) с выводом live-потребностей, дружбы, тона, FPS и ленты логов.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `src/renderer/components/`.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/LOGGING.md`, `docs/engine/RENDER_ENGINE.md`, `src/renderer/components/`.
 - **Менять:** `src/renderer/components/Debug/` (`DebugHUD.tsx`, `LogViewer.tsx`).
 - **Критерии приёмки:**
   - [ ] Оверлей открывается по хоткею и меню, показывает живые данные.
