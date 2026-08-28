@@ -103,7 +103,7 @@
 
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
-| 13 | Render Engine & Asset Pipeline: sprite sheets, layers, props, fallback, debug HUD | `app-developer` |
+| 13 | Render Engine, Sprite Pipeline, Logger & Mini-Debug HUD | `app-developer` |
 | 14 | Offline Memory & Relationship: SQLite memory, facts, history, clear memory | `app-developer` |
 | 15 | Desktop Life Behaviors: quiet mode, cooldowns, habits | `domain-behavior` |
 | 16 | Settings & Control Surface: behavior, appearance, memory controls, full debug panel | `app-developer` |
