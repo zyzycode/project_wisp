@@ -69,9 +69,38 @@ describe('Renderer: AssetResolver', () => {
   });
 
   it('falls back to body_idle when the preferred body asset is unavailable', () => {
-    const fallbackManifest: NormalizedSpriteManifest = { schemaVersion: 1, animations: { body_idle: manifest.animations.body_idle! } };
+    const idle = manifest.animations.body_idle;
+    if (idle === undefined) throw new Error('Test manifest must contain body_idle.');
+    const fallbackManifest: NormalizedSpriteManifest = { schemaVersion: 1, animations: { body_idle: idle } };
     const clip = new AssetResolver(fallbackManifest).resolve(createSystemAnimationIntent('walk'));
 
     expect(clip.body.animationKey).toBe('body_idle');
+  });
+
+  it('uses the exact tone-specialized body and matching overlays at Level 1', () => {
+    const levelOneManifest: NormalizedSpriteManifest = {
+      ...manifest,
+      animations: { ...manifest.animations, body_walk_playful: animation('body_walk_playful', 'body/walk', 'body') },
+    };
+    const clip = new AssetResolver(levelOneManifest).resolve(createSystemAnimationIntent('walk', 'playful'));
+
+    expect(clip.body.animationKey).toBe('body_walk_playful');
+    expect(clip.expression?.animationKey).toBe('expression_wink');
+    expect(clip.props?.[0]?.animationKey).toBe('prop_sparkle');
+  });
+
+  it('uses the base body while preserving available blush and prop hints at Level 2', () => {
+    const clip = new AssetResolver(manifest).resolve(createSystemAnimationIntent('walk', 'flustered'));
+
+    expect(clip.body.animationKey).toBe('body_walk');
+    expect(clip.proceduralBlush).toBeDefined();
+    expect(clip.props?.[0]?.animationKey).toBe('prop_heart');
+  });
+
+  it('returns the static system baseline at Level 3 when no body assets exist', () => {
+    const clip = new AssetResolver({ schemaVersion: 1, animations: {} }).resolve(createSystemAnimationIntent('sleep_loop'));
+
+    expect(clip.body.frames[0]?.source).toBe('system://wisp/default_idle.svg');
+    expect(clip.body.animationKey).toBe('system_default_idle');
   });
 });

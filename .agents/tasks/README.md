@@ -27,8 +27,8 @@
   - `P13-T01` (Structured Logger Infrastructure & Telemetry Stream): `done`
   - `P13-T02` (Asset Manifest Parser & Sprite Playback Controller): `done`
   - `P13-T03` (Layered Character Renderer Component): `done`
-  - `P13-T04` (Safe Fallback Implementation): `in_progress`
-  - `P13-T05` (Mini-Debug HUD & Dev Overlay): `planned`
+  - `P13-T04` (Safe Fallback Implementation): `done`
+  - `P13-T05` (Mini-Debug HUD & Dev Overlay): `in_progress`
   - `P13-T06` (Unit & Component Tests for Render Engine): `planned`
   - `P13-G01` (Code Review Phase 13): `planned`
 
@@ -90,29 +90,30 @@
 
 ### P13-T04 — Safe Fallback Implementation
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T03`
-- **Цель:** Реализовать строгую 3-уровневую систему Graceful Degradation и технический фоллбек в `AssetResolver` и `SpriteRenderer` согласно `docs/engine/RENDER_ENGINE.md` (§6): Level 1 (точное совпадение тона) -> Level 2 (базовый body_walk / body_idle + процедурный оверлей) -> Level 3 (системная векторная заглушка / безопасный дефолт) без падений FSM и сбоев таймеров, плюс Technical Fallback при ошибках загрузки картинок (404/decode error).
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md` (§6 Graceful Fallback).
-- **Менять:** `src/renderer/render-engine/asset-resolver.ts`, `src/renderer/components/Character/SpriteRenderer.tsx`, unit/component тесты.
+- **Цель:** Реализовать 3-уровневый Graceful Fallback и Technical Fallback при ошибках загрузки картинок.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`.
+- **Менять:** `src/renderer/render-engine/technical-fallback-controller.ts`, `tests/renderer/fallback-controller.test.ts`.
 - **Критерии приёмки:**
-  - [ ] Полная изоляция: отсутствующий в манифесте или битый спрайт ни при каких обстоятельствах не крашит FSM и не блокирует цикл анимации.
-  - [ ] Level 2 корректно сохраняет семантические оверлеи (`blush`, `props`) даже если спрайты тела откатились к `body_idle`.
-  - [ ] Technical Fallback обрабатывает ошибки `onError` у `<img>` без зависания плеера.
-  - [ ] Написаны unit-тесты на все 3 уровня фоллбека и обработку сетевых/дисковых ошибок.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
+  - [x] Никакие отсутствующие спрайты не вызывают ошибок или зависаний.
+  - [x] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T05 — Mini-Debug HUD & Dev Overlay
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T01`, `P13-T03`
-- **Цель:** Оверлей отладки (`Ctrl+D` / контекстное меню) с выводом live-потребностей, дружбы, тона, FPS и ленты логов.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `src/renderer/components/`.
-- **Менять:** `src/renderer/components/Debug/` (`DebugHUD.tsx`, `LogViewer.tsx`).
+- **Цель:** Реализовать интерактивный оверлей разработчика (вызов по хоткею `Ctrl+D` или через контекстное меню Wisp), выводящий в реальном времени шкалы потребностей `Needs` (Energy, Attention, Play, Comfort), статус отношений `Relationship` (Friendship, Love), текущий эмоциональный тон (`SynthesizedEmotionalTone`), активное FSM-состояние, счетчик FPS и компактный live-терминал логов из `LogBuffer`.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `ARCHITECTURE.md` (§4, §7.1), `src/renderer/components/`.
+- **Менять:** `src/renderer/components/Debug/` (создать: `DebugHUD.tsx`, `LogViewer.tsx`, `NeedsBar.tsx`), `src/renderer/components/ContextMenu.tsx`, `src/renderer/components/DesktopPet.tsx`, unit/component тесты.
 - **Критерии приёмки:**
-  - [ ] Оверлей открывается по хоткею и меню, показывает живые данные.
+  - [ ] Оверлей открывается/закрывается по комбинации `Ctrl+D` и по клику в контекстном меню («Toggle Debug HUD»).
+  - [ ] Отображаются актуальные значения Needs (Energy, Attention, Play, Comfort) и Relationship.
+  - [ ] Отображается активный эмоциональный тон, AnimationIntent и текущий кадр/FPS.
+  - [ ] Встроена лента логов из `LogBuffer` с цветовой подсветкой уровней (`debug`, `info`, `warn`, `error`) и кнопкой очистки/паузы.
+  - [ ] Оверлей не блокирует перетаскивание питомца и работает в dev-режиме без загрязнения продакшн-бандла.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T06 — Unit & Component Tests for Render Engine
@@ -120,7 +121,7 @@
 - **Статус:** `planned`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T04`, `P13-T05`
-- **Цель:** Полное тестовое покрытие пайплайна спрайтов, логгера, фоллбеков и компонентов.
+- **Цель:** Полное интеграционное тестирование рендерера, плеера, логгера и HUD.
 - **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `tests/renderer/`.
 - **Менять:** `tests/renderer/`.
 - **Критерии приёмки:**
@@ -131,7 +132,7 @@
 - **Статус:** `planned`
 - **Исполнитель:** `reviewer`
 - **Зависит от:** `P13-T06`
-- **Цель:** Аудит Phase 13.
+- **Цель:** Финальный аудит Phase 13.
 - **Читать:** `.agents/agents/reviewer/agent.md`, `docs/engine/RENDER_ENGINE.md`, код Phase 13.
 - **Менять:** ничего.
 

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { ProceduralBlush } from './ProceduralBlush';
 import { PropsOverlay } from './PropsOverlay';
 import type { RenderLayerDef, RenderPresentationState, VisibleRenderLayerDef } from '../../render-engine/types';
+import { TechnicalFallbackController } from '../../render-engine/technical-fallback-controller';
 
 export interface SpriteRendererProps {
   state?: RenderPresentationState;
@@ -9,8 +10,14 @@ export interface SpriteRendererProps {
 
 /** Displays already-resolved layers only; it never chooses clips or assets. */
 export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
+  const controllerRef = useRef(new TechnicalFallbackController());
+  const [, setTechnicalRevision] = useState(0);
   if (state === undefined) return null;
-  const visibleLayers = [...state.layers.filter(isVisibleLayer)].sort((left, right) => left.zIndex - right.zIndex);
+  const controller = controllerRef.current;
+  const visibleLayers = state.layers
+    .map((layer) => controller.resolve(layer))
+    .filter((layer): layer is VisibleRenderLayerDef => layer !== undefined && isVisibleLayer(layer))
+    .sort((left, right) => left.zIndex - right.zIndex);
   const primaryLayers = visibleLayers.filter((layer) => layer.category !== 'props');
   const propLayers = visibleLayers.filter((layer) => layer.category === 'props');
   const { viewport, rootPivot, transform } = state;
@@ -30,15 +37,43 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
       aria-label="Wisp sprite animation"
     >
       <g transform={transformValue}>
-        {primaryLayers.map((layer) => <SpriteLayer key={layer.id} layer={layer} state={state} />)}
+        {primaryLayers.map((layer) => (
+          <SpriteLayer
+            key={getLayerRenderKey(layer)}
+            layer={layer}
+            state={state}
+            onLoad={() => controller.recordLoaded(layer)}
+            onError={(failedSource) => {
+              if (controller.recordFailed(layer, failedSource)) setTechnicalRevision((revision) => revision + 1);
+            }}
+          />
+        ))}
         {state.proceduralBlush === undefined ? null : <ProceduralBlush blush={state.proceduralBlush} />}
-        <PropsOverlay layers={propLayers} viewport={viewport} rootPivot={rootPivot} />
+        <PropsOverlay
+          layers={propLayers}
+          viewport={viewport}
+          rootPivot={rootPivot}
+          onLayerLoad={(layer) => controller.recordLoaded(layer)}
+          onLayerError={(layer, failedSource) => {
+            if (controller.recordFailed(layer, failedSource)) setTechnicalRevision((revision) => revision + 1);
+          }}
+        />
       </g>
     </svg>
   );
 };
 
-function SpriteLayer({ layer, state }: { readonly layer: VisibleRenderLayerDef; readonly state: RenderPresentationState }): React.ReactElement {
+function SpriteLayer({
+  layer,
+  state,
+  onLoad,
+  onError,
+}: {
+  readonly layer: VisibleRenderLayerDef;
+  readonly state: RenderPresentationState;
+  readonly onLoad: () => void;
+  readonly onError: (failedSource: string) => void;
+}): React.ReactElement {
   const x = state.rootPivot.x + layer.offset.x - layer.pivot.x;
   const y = state.rootPivot.y + layer.offset.y - layer.pivot.y;
   return (
@@ -53,12 +88,18 @@ function SpriteLayer({ layer, state }: { readonly layer: VisibleRenderLayerDef; 
       opacity={layer.opacity}
       style={{ mixBlendMode: layer.blendMode === 'additive' ? 'screen' : layer.blendMode }}
       preserveAspectRatio="xMidYMid meet"
+      onLoad={onLoad}
+      onError={(event) => onError(event.currentTarget.getAttribute('data-frame-source') ?? '')}
     />
   );
 }
 
 function isVisibleLayer(layer: RenderLayerDef): layer is VisibleRenderLayerDef {
   return layer.visible;
+}
+
+function getLayerRenderKey(layer: VisibleRenderLayerDef): string {
+  return `${layer.id}:${layer.frame.source}`;
 }
 
 export function resolveSpriteSource(source: string): string {
