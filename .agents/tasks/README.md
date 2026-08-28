@@ -23,41 +23,44 @@
 
 - Phase 0–9: `done` — архитектурная база, оверлей, FSM, UI, контракты ядра.
 - Phase 10: `done` — Mock AI dialogue loop, client integration, scenarios & code review.
-- Phase 11 (Character Engine v2): `in_progress` — потребности, отношения, пластичность, синтез эмоций.
+- Phase 11 (Character Engine v2): `in_progress` (гейт ревью)
   - `P11-A01` (Architectural Contracts & Layer Boundaries): `done`
   - `P11-T01` (Domain Models, Presets & Emotional Synthesis): `done`
   - `P11-T02` (Needs Metabolism, Plasticity & Stimuli Reducer): `done`
   - `P11-T03` (Unit Tests for Character Engine v2): `done`
-- Текущая активная задача: `P11-T04` (Application Character State & Dialogue Integration).
+  - `P11-T04` (Application Character State & Dialogue Integration): `done`
+- Текущая активная задача: `P11-G01` (Code Review Phase 11).
 
 ## Активная очередь (Phase 11 — Character Engine v2)
 
 ### P11-T04 — Application Character State & Dialogue Integration
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P11-T02`, `P11-T03`
 - **Цель:** Связать доменный Character Engine с `dialogue-loop.service.ts` через in-memory character state сервис, заменив моковые данные `CharacterSnapshot` на актуальные доменные структуры.
 - **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `src/domain/character/`, `src/application/services/dialogue-loop.service.ts`.
-- **Менять:** `src/application/services/` (создать `character-state.service.ts`, обновить `dialogue-loop.service.ts`, `index.ts`).
+- **Менять:** `src/application/services/` (`character-state.service.ts`, `dialogue-loop.service.ts`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] In-memory сервис хранит `CharacterState` и обновляет его по тикам/событиям через доменные функции.
-  - [ ] `processDialogueTurn` формирует реальный `CharacterSnapshot` через `createCharacterSnapshot`.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
+  - [x] In-memory сервис хранит `CharacterState` и обновляет его по тикам/событиям через доменные функции.
+  - [x] `processDialogueTurn` формирует реальный `CharacterSnapshot` через `createCharacterSnapshot`.
+  - [x] `npm test` и `npm run typecheck` зелёные.
 - **Вне скоупа:** Персистентность в SQLite (это Phase 14).
 
 ### P11-G01 — Code Review Phase 11
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `reviewer`
 - **Зависит от:** `P11-T04`
-- **Цель:** Независимый аудит чистоты слоёв, отсутствия утечек инфраструктуры в домен и корректности интеграции.
-- **Читать:** изменённые файлы Phase 11 и `docs/engine/CHARACTER_ENGINE.md`.
-- **Менять:** ничего.
+- **Цель:** Независимый аудит чистоты слоёв, отсутствия утечек инфраструктуры в домен, offline-first принципов и корректности интеграции Character Engine v2.
+- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `src/domain/character/`, `src/application/services/character-state.service.ts`, `src/application/services/dialogue-loop.service.ts`.
+- **Менять:** ничего (read-only аудит).
 - **Критерии приёмки:**
-  - [ ] Подтверждение соблюдения архитектурных границ и offline-first.
-  - [ ] Подтверждение корректности интеграции в Application слой.
-- **Вне скоупа:** новые фичи.
+  - [ ] Подтверждение соблюдения архитектурных границ (Domain не зависит от Node/Electron/UI/DB).
+  - [ ] Подтверждение соблюдения принципов offline-first (нет сетевых вызовов, SDK сторонних провайдеров).
+  - [ ] Подтверждение корректности интеграции в Application слой и валидности формул синтеза тона/метаболизма.
+  - [ ] Отсутствие регрессий в тестовом покрытии (`npm test`, `npm run typecheck`).
+- **Вне скоупа:** Исправление кода в том же проходе, добавление новых фичей.
 
 ## Поздние фазы
 

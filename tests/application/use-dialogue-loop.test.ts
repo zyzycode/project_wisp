@@ -4,6 +4,70 @@ import {
   processDialogueTurn,
   applyBehaviorIntentToAnimation,
 } from '../../src/application/services/dialogue-loop.service';
+import { CharacterStateService } from '../../src/application/services/character-state.service';
+import type {
+  AIProviderRequest,
+  AIProviderResponse,
+  AIProviderStatus,
+  IAIProvider,
+} from '../../src/application/ports/ai-provider.interface';
+import {
+  createCharacterSnapshot,
+  shyDreamGirlPreset,
+} from '../../src/domain/character';
+import type { CharacterState } from '../../src/domain/character';
+
+class CaptureAIProvider implements IAIProvider {
+  public lastRequest: AIProviderRequest | undefined;
+
+  public async getStatus(): Promise<AIProviderStatus> {
+    return { kind: 'ready' };
+  }
+
+  public async generateResponse(request: AIProviderRequest): Promise<AIProviderResponse> {
+    this.lastRequest = request;
+
+    return {
+      requestId: request.requestId,
+      status: 'ok',
+      reply: {
+        text: 'Wisp слушает внимательно.',
+        tone: 'warm',
+      },
+      suggestedMood: 'happy',
+      suggestedBehavior: 'respond',
+      confidence: 0.95,
+    };
+  }
+}
+
+function createCharacterState(overrides: Partial<CharacterState> = {}): CharacterState {
+  return {
+    needs: {
+      energy: 70,
+      attention: 50,
+      play: 50,
+      comfort: 50,
+      ...overrides.needs,
+    },
+    relationship: {
+      friendship: 395,
+      love: 0,
+      loveUnlocked: false,
+      ...overrides.relationship,
+    },
+    personality: overrides.personality ?? shyDreamGirlPreset,
+    intimacy: {
+      flirtiness: 0,
+      romanticCharge: 0,
+      userConsentEnabled: false,
+      boundariesKnown: false,
+      ...overrides.intimacy,
+    },
+    preferences: overrides.preferences ?? {},
+    lastUpdated: overrides.lastUpdated ?? 1000,
+  };
+}
 
 describe('Application: Dialogue Loop Service & Intent Mapping', () => {
   describe('applyBehaviorIntentToAnimation', () => {
@@ -156,6 +220,55 @@ describe('Application: Dialogue Loop Service & Intent Mapping', () => {
 
       expect(turn2.intent.kind).toBe('respond');
       expect(turn2.replyText).toBeDefined();
+    });
+
+    it('uses a live CharacterStateService snapshot instead of hardcoded character values', async () => {
+      const provider = new CaptureAIProvider();
+      const characterStateService = new CharacterStateService({
+        initialState: createCharacterState({
+          relationship: { friendship: 395, love: 0, loveUnlocked: false },
+        }),
+      });
+
+      const turn = await processDialogueTurn({
+        aiProvider: provider,
+        userText: 'Привет, Wisp!',
+        characterStateService,
+      });
+
+      expect(provider.lastRequest?.characterSnapshot).toEqual(turn.characterSnapshot);
+      expect(turn.characterSnapshot.relationship.friendship).toBe(401);
+      expect(turn.characterSnapshot.relationship.loveUnlocked).toBe(true);
+      expect(turn.characterSnapshot.relationship.love).toBe(1);
+      expect(turn.characterSnapshot.needs.attention).toBeLessThan(50);
+      expect(characterStateService.getState().relationship.friendship).toBeGreaterThan(
+        turn.characterSnapshot.relationship.friendship
+      );
+    });
+
+    it('accepts an explicit domain-created CharacterSnapshot for a dialogue turn', async () => {
+      const provider = new CaptureAIProvider();
+      const characterSnapshot = createCharacterSnapshot(
+        createCharacterState({
+          relationship: { friendship: 500, love: 500, loveUnlocked: true },
+          intimacy: {
+            flirtiness: 12,
+            romanticCharge: 34,
+            userConsentEnabled: true,
+            boundariesKnown: true,
+          },
+        })
+      );
+
+      const turn = await processDialogueTurn({
+        aiProvider: provider,
+        userText: 'Как дела?',
+        characterSnapshot,
+      });
+
+      expect(provider.lastRequest?.characterSnapshot).toEqual(characterSnapshot);
+      expect(turn.characterSnapshot).toEqual(characterSnapshot);
+      expect(turn.characterSnapshot.synthesizedTone).toBe('affectionate');
     });
   });
 });

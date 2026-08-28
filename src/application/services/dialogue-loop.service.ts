@@ -3,16 +3,25 @@ import type {
   AIProviderRequest,
   AIProviderUserMessage,
   AIProviderContextMessage,
+  AIProviderSuggestedMood,
+  AIProviderTone,
 } from '../ports/ai-provider.interface';
+import type { CharacterSnapshot, SynthesizedEmotionalTone } from '../../domain/character';
 import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
 import type { AnimationEvent } from '../../domain/animation/animation-state-machine';
+import {
+  CharacterStateService,
+  defaultCharacterStateService,
+} from './character-state.service';
 import { mapProviderResponseToBehaviorIntent } from './provider-response-intent-mapper';
 
 export interface DialogueTurnParams {
   aiProvider: IAIProvider;
   userText: string;
-  characterMood: string;
-  characterActivity: string;
+  characterMood?: string;
+  characterActivity?: string;
+  characterSnapshot?: CharacterSnapshot;
+  characterStateService?: CharacterStateService;
   recentContext?: AIProviderContextMessage[];
   locale?: string;
 }
@@ -22,6 +31,7 @@ export interface DialogueTurnResult {
   replyText?: string;
   userMessage: AIProviderUserMessage;
   contextMessage?: AIProviderContextMessage;
+  characterSnapshot: CharacterSnapshot;
 }
 
 /**
@@ -64,6 +74,32 @@ export function applyBehaviorIntentToAnimation(
   }
 }
 
+function providerToneToCharacterTone(
+  tone?: AIProviderTone,
+  mood?: AIProviderSuggestedMood
+): SynthesizedEmotionalTone | undefined {
+  const providerToneOrMood = tone ?? mood;
+
+  switch (providerToneOrMood) {
+    case 'playful':
+    case 'sleepy':
+    case 'curious':
+    case 'shy':
+    case 'affectionate':
+    case 'neutral':
+      return providerToneOrMood;
+    case 'warm':
+      return 'affectionate';
+    case 'confused':
+    case 'quiet':
+      return 'neutral';
+    case 'happy':
+      return 'playful';
+    case undefined:
+      return undefined;
+  }
+}
+
 /**
  * Executes a single turn of the dialogue cycle in the application layer.
  * Constructs the typed AIProviderRequest, generates the response via IAIProvider port,
@@ -72,8 +108,8 @@ export function applyBehaviorIntentToAnimation(
 export async function processDialogueTurn({
   aiProvider,
   userText,
-  characterMood,
-  characterActivity,
+  characterSnapshot,
+  characterStateService = defaultCharacterStateService,
   recentContext = [],
   locale = 'ru',
 }: DialogueTurnParams): Promise<DialogueTurnResult> {
@@ -83,46 +119,43 @@ export async function processDialogueTurn({
     text: userText,
     createdAt: new Date().toISOString(),
   };
+  const resolvedCharacterSnapshot =
+    characterSnapshot ??
+    (() => {
+      characterStateService.applyStimulus({
+        type: 'user_message',
+        source: 'user',
+        text: userText,
+        requestId,
+        createdAt: userMessage.createdAt,
+      });
+
+      return characterStateService.getSnapshot();
+    })();
 
   const request: AIProviderRequest = {
     requestId,
     userMessage,
-    characterSnapshot: {
-      needs: {
-        energy: 85,
-        attention: characterActivity === 'idle' ? 35 : 25,
-        play: 30,
-        comfort: 20,
-      },
-      relationship: {
-        friendship: 0,
-        love: 0,
-        loveUnlocked: false,
-      },
-      personality: {
-        presetId: 'shyDreamGirl',
-        aiSelfConcept:
-          'Wisp is a shy, gentle, emotionally sensitive anime-like companion.',
-        traits: {
-          shyness: characterMood === 'shy' ? 0.8 : 0.55,
-          playfulness: 0.42,
-          sensitivity: 0.88,
-          boldness: 0.18,
-        },
-      },
-      intimacy: {
-        flirtiness: 0,
-        romanticCharge: 0,
-        userConsentEnabled: false,
-      },
-      synthesizedTone: characterMood === 'sleepy' ? 'sleepy' : 'neutral',
-    },
+    characterSnapshot: resolvedCharacterSnapshot,
     recentContext: recentContext.slice(-6),
     locale,
   };
 
   const response = await aiProvider.generateResponse(request);
   const intent = mapProviderResponseToBehaviorIntent(response);
+
+  if (characterSnapshot === undefined) {
+    characterStateService.applyStimulus({
+      type: 'provider_response',
+      source: 'provider',
+      text: response.reply.text,
+      requestId,
+      createdAt: new Date().toISOString(),
+      metadata: {
+        tone: providerToneToCharacterTone(response.reply.tone, response.suggestedMood) ?? null,
+      },
+    });
+  }
 
   const contextMessage: AIProviderContextMessage | undefined = intent.replyText
     ? {
@@ -137,5 +170,6 @@ export async function processDialogueTurn({
     replyText: intent.replyText,
     userMessage,
     contextMessage,
+    characterSnapshot: resolvedCharacterSnapshot,
   };
 }
