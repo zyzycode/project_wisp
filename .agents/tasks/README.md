@@ -26,75 +26,35 @@
 
 - Phase 0-8: `done` — база проекта, Electron shell, desktop overlay, drag/positioning, rendering, animation FSM, basic behavior, interaction, local chat UI.
 - Phase 9: `done` — provider/intent contracts описаны и прошли docs review.
-- Текущая задача: `P10-T02`.
-- Следующая фаза реализации: Phase 10 — Mock AI & Dialogue Loop.
+- Phase 10 (Mock AI & Dialogue Loop):
+  - `P10-T01` (IAIProvider port & DTO): `done`
+  - `P10-T02` (Local MockAIProvider implementation): `done`
+  - `P10-T04` (MockAI scenarios & intent mapping tests): `done`
+- Текущая задача: `P10-T03` (Связать dialogue loop в UI).
+- Следующие шаги: `P10-G01` (Code Review Phase 10) -> Phase 11 (Character Engine v2).
 
 ## Активная очередь
 
-### P09-G01 — Ревью provider/intent docs
-
-- **Статус:** `done`
-- **Исполнитель:** `code-reviewer`
-- **Зависит от:** `P09-T01`-`P09-T04`
-- **Цель:** проверить Phase 9 markdown contracts на противоречия.
-- **Читать:** `AGENTS.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `docs/engine/README.md`, `docs/engine/AI_PROVIDER_CONTRACT.md`, `docs/engine/BEHAVIOR_INTENTS.md`, `docs/engine/ANIMATION_ENGINE.md`.
-- **Менять:** ничего, если явно не попросят.
-- **Критерии приёмки:** review findings исправлены architect-ом; без правок продуктового кода.
-- **Вне скоупа:** implementation, tests, fixing docs.
-
-### P10-T01 — Добавить `IAIProvider` port и DTO
-
-- **Статус:** `done`
-- **Исполнитель:** `mock-ai-provider`
-- **Зависит от:** `P09-G01`
-- **Цель:** добавить типизированную границу provider для локального MockAI.
-- **Читать:** `docs/engine/AI_PROVIDER_CONTRACT.md`, `docs/engine/BEHAVIOR_INTENTS.md`.
-- **Менять:** только application/shared provider types.
-- **Критерии приёмки:** нет типов external AI SDK; DTO не зависит от UI; errors/thinking/latency типизированы.
-- **Вне скоупа:** network calls, backend/proxy, UI redesign.
-
-### P10-T02 — Реализовать локальный `MockAIProvider`
+### P10-T03 — Связать dialogue loop в клиенте
 
 - **Статус:** `ready`
-- **Исполнитель:** `mock-ai-provider`
-- **Зависит от:** `P10-T01`
-- **Цель:** генерировать offline-ответы Wisp по простым локальным категориям.
-- **Читать:** provider contract и файлы, изменённые в `P10-T01`.
-- **Менять:** реализацию mock provider и локальный каталог ответов.
-- **Критерии приёмки:** категории greeting/question/care/play/sleep/fallback; simulated latency; без network.
-- **Вне скоупа:** memory extraction, real LLM, external backend.
-
-### P10-T03 — Связать dialogue loop
-
-- **Статус:** `planned`
-- **Исполнитель:** `mock-ai-provider`
-- **Зависит от:** `P10-T02`
-- **Цель:** связать user message -> provider response -> intent mapper -> presentation state.
-- **Читать:** provider contract, behavior intents, текущие chat UI boundaries.
-- **Менять:** dialogue application flow и типизированную передачу состояния.
-- **Критерии приёмки:** UI не знает конкретный provider; thinking/reply flow виден; provider response мапится в `BehaviorIntent`.
-- **Вне скоупа:** settings window, memory, backend.
-
-### P10-T04 — Проверить MockAI scenarios
-
-- **Статус:** `planned`
-- **Исполнитель:** `tester`
-- **Зависит от:** `P10-T03`
-- **Цель:** проверить provider categories, fallback и thinking flow.
-- **Читать:** изменённые файлы Phase 10 и релевантные contracts.
-- **Менять:** только focused tests.
-- **Критерии приёмки:** покрыты greeting/question/sleep/unknown paths; provider не управляет UI напрямую.
-- **Вне скоупа:** visual regression, packaging, real network.
+- **Исполнитель:** `mock-ai-provider` (или `ui-specialist`)
+- **Зависит от:** `P10-T02`, `P10-T04`
+- **Цель:** связать отправку сообщения в ChatInput -> асинхронный вызов IAIProvider -> thinking state -> маппинг в BehaviorIntent -> отображение реплики в SpeechBubble и запуск соответствующей анимации Wisp.
+- **Читать:** `docs/engine/AI_PROVIDER_CONTRACT.md`, `docs/engine/BEHAVIOR_INTENTS.md`, `tests/application/mock-ai-dialogue-scenarios.test.ts`, `src/renderer/components/DesktopPet.tsx`.
+- **Менять:** `src/renderer/components/DesktopPet.tsx` (и при необходимости сопутствующие хуки/сервисы диалога).
+- **Критерии приёмки:** при вводе фразы Wisp переходит в thinking, затем SpeechBubble показывает ответ провайдера, а FSM запускает анимацию (react_happy, react_confused, respond, sleep и т.д.); unit тесты и typecheck зелёные.
+- **Вне скоупа:** backend, реальная LLM сеть, SQLite память.
 
 ### P10-G01 — Ревью MockAI implementation
 
 - **Статус:** `planned`
 - **Исполнитель:** `code-reviewer`
-- **Зависит от:** `P10-T04`
-- **Цель:** отревьюить изменения Phase 10 на boundary leaks и missing tests.
+- **Зависит от:** `P10-T03`
+- **Цель:** отревьюить изменения Phase 10 на boundary leaks, отсутствие внешних LLM SDK и корректность intent mapping.
 - **Читать:** изменённые файлы Phase 10 и релевантные contracts.
-- **Менять:** ничего, если явно не попросят.
-- **Критерии приёмки:** замечания или явное approval; проверено отсутствие backend/SDK leakage.
+- **Менять:** ничего.
+- **Критерии приёмки:** замечания или явное approval; отсутствие backend/SDK leakage.
 - **Вне скоупа:** fixes и новые features.
 
 ### P10-G02 — Исправить confirmed MockAI findings
@@ -103,8 +63,8 @@
 - **Исполнитель:** `fixer`
 - **Зависит от:** `P10-G01`
 - **Цель:** исправить только подтверждённые замечания reviewer.
-- **Читать:** reviewer findings и файлы, названные в findings.
-- **Менять:** только файлы, названные в findings.
+- **Читать:** reviewer findings и названные файлы.
+- **Менять:** только файлы из findings.
 - **Критерии приёмки:** findings resolved или явно rejected с причиной.
 - **Вне скоупа:** expanding Phase 10.
 
@@ -147,7 +107,3 @@
 Вне скоупа:
 <что задача точно не делает>
 ```
-
-## Правило PM
-
-Project Manager не просит агентов читать каждый `.md` файл. PM берёт одну карточку задачи, добавляет только нужные ссылки и обновляет эту доску после принятия результата.

@@ -29,21 +29,43 @@ describe('Infrastructure: MockAIProvider', () => {
   });
 
   describe('Category detection & responses', () => {
-    it('handles greeting messages', async () => {
+    it('handles greeting messages in Russian, English and various casings', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
-      const ruResponse = await provider.generateResponse(createRequest('Привет, Wisp!'));
-      expect(ruResponse.status).toBe('ok');
-      expect(ruResponse.suggestedBehavior).toBe('react_happy');
-      expect(ruResponse.suggestedMood).toBe('happy');
-      expect(ruResponse.diagnostics?.provider).toBe('mock');
+      // Russian greeting variants
+      const ru1 = await provider.generateResponse(createRequest('Привет, Wisp!'));
+      expect(ru1.status).toBe('ok');
+      expect(ru1.suggestedBehavior).toBe('react_happy');
+      expect(ru1.suggestedMood).toBe('happy');
+      expect(ru1.diagnostics?.provider).toBe('mock');
 
-      const enResponse = await provider.generateResponse(createRequest('Hello friend!'));
-      expect(enResponse.status).toBe('ok');
-      expect(enResponse.suggestedBehavior).toBe('react_happy');
+      const ru2 = await provider.generateResponse(createRequest('доброе утро'));
+      expect(ru2.status).toBe('ok');
+      expect(ru2.suggestedBehavior).toBe('react_happy');
+
+      const ru3 = await provider.generateResponse(createRequest('ДОБРЫЙ ДЕНЬ'));
+      expect(ru3.status).toBe('ok');
+      expect(ru3.suggestedBehavior).toBe('react_happy');
+
+      const ru4 = await provider.generateResponse(createRequest('здравствуй маленький огонек'));
+      expect(ru4.status).toBe('ok');
+      expect(ru4.suggestedBehavior).toBe('react_happy');
+
+      // English greeting variants
+      const en1 = await provider.generateResponse(createRequest('Hello friend!'));
+      expect(en1.status).toBe('ok');
+      expect(en1.suggestedBehavior).toBe('react_happy');
+
+      const en2 = await provider.generateResponse(createRequest('howdy partner'));
+      expect(en2.status).toBe('ok');
+      expect(en2.suggestedBehavior).toBe('react_happy');
+
+      const en3 = await provider.generateResponse(createRequest('HEY!'));
+      expect(en3.status).toBe('ok');
+      expect(en3.suggestedBehavior).toBe('react_happy');
     });
 
-    it('handles question messages', async () => {
+    it('handles question messages with question marks and interrogative words', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
       const q1 = await provider.generateResponse(createRequest('Как твои дела?'));
@@ -55,50 +77,86 @@ describe('Infrastructure: MockAIProvider', () => {
       const q2 = await provider.generateResponse(createRequest('Why is the sky blue'));
       expect(q2.status).toBe('ok');
       expect(q2.reply.tone).toBe('curious');
+      expect(q2.suggestedBehavior).toBe('respond');
+
+      const q3 = await provider.generateResponse(createRequest('почему мерцают звезды'));
+      expect(q3.status).toBe('ok');
+      expect(q3.reply.tone).toBe('curious');
+      expect(q3.suggestedBehavior).toBe('respond');
+
+      const q4 = await provider.generateResponse(createRequest('Расскажи где ты живешь'));
+      expect(q4.status).toBe('ok');
+      expect(q4.suggestedBehavior).toBe('respond');
     });
 
-    it('handles care messages', async () => {
+    it('handles care messages with affectionate words', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
-      const res = await provider.generateResponse(createRequest('Хочу тебя погладить и обнять'));
-      expect(res.status).toBe('ok');
-      expect(res.reply.tone).toBe('warm');
-      expect(res.suggestedMood).toBe('happy');
-      expect(res.suggestedBehavior).toBe('react_happy');
+      const res1 = await provider.generateResponse(createRequest('Хочу тебя погладить и обнять'));
+      expect(res1.status).toBe('ok');
+      expect(res1.reply.tone).toBe('warm');
+      expect(res1.suggestedMood).toBe('happy');
+      expect(res1.suggestedBehavior).toBe('react_happy');
+
+      const res2 = await provider.generateResponse(createRequest('Ты умница, вот тебе печенька'));
+      expect(res2.status).toBe('ok');
+      expect(res2.suggestedBehavior).toBe('react_happy');
+
+      const res3 = await provider.generateResponse(createRequest('I love you, snuggle closer'));
+      expect(res3.status).toBe('ok');
+      expect(res3.suggestedBehavior).toBe('react_happy');
     });
 
     it('handles play messages', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
-      const res = await provider.generateResponse(createRequest('Давай играть в мячик!'));
-      expect(res.status).toBe('ok');
-      expect(res.reply.tone).toBe('playful');
-      expect(res.suggestedMood).toBe('happy');
-      expect(res.suggestedBehavior).toBe('play');
+      const res1 = await provider.generateResponse(createRequest('Давай играть в мячик!'));
+      expect(res1.status).toBe('ok');
+      expect(res1.reply.tone).toBe('playful');
+      expect(res1.suggestedMood).toBe('happy');
+      expect(res1.suggestedBehavior).toBe('play');
+
+      const res2 = await provider.generateResponse(createRequest('Поиграем вместе, попрыгай'));
+      expect(res2.status).toBe('ok');
+      expect(res2.suggestedBehavior).toBe('play');
+
+      const res3 = await provider.generateResponse(createRequest('Let us dance and have fun game'));
+      expect(res3.status).toBe('ok');
+      expect(res3.suggestedBehavior).toBe('play');
     });
 
     it('handles sleep messages', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
-      const res = await provider.generateResponse(createRequest('Я устал, пора спать, спокойной ночи'));
-      expect(res.status).toBe('ok');
-      expect(res.reply.tone).toBe('sleepy');
-      expect(res.suggestedMood).toBe('sleepy');
-      expect(res.suggestedBehavior).toBe('sleep');
+      const res1 = await provider.generateResponse(createRequest('Я устал, пора спать, спокойной ночи'));
+      expect(res1.status).toBe('ok');
+      expect(res1.reply.tone).toBe('sleepy');
+      expect(res1.suggestedMood).toBe('sleepy');
+      expect(res1.suggestedBehavior).toBe('sleep');
+
+      const res2 = await provider.generateResponse(createRequest('Отдохни и засыпай'));
+      expect(res2.status).toBe('ok');
+      expect(res2.suggestedBehavior).toBe('sleep');
+
+      const res3 = await provider.generateResponse(createRequest('Time to take a nap, goodnight'));
+      expect(res3.status).toBe('ok');
+      expect(res3.suggestedBehavior).toBe('sleep');
     });
 
-    it('handles unknown messages gracefully', async () => {
+    it('handles unknown messages gracefully with fallback template', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
-      const res = await provider.generateResponse(createRequest('абвгд xyz 42'));
+      const res = await provider.generateResponse(createRequest('абвгд xyz 42 998877'));
       expect(res.status).toBe('ok');
       expect(res.suggestedBehavior).toBe('respond');
       expect(res.reply.text).toBeDefined();
+      expect(res.reply.text.length).toBeGreaterThan(0);
+      expect(res.confidence).toBe(0.7);
     });
   });
 
   describe('Fallback scenarios', () => {
-    it('returns fallback on empty or whitespace-only input', async () => {
+    it('returns fallback on empty, whitespace, or newline input', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
       const emptyRes = await provider.generateResponse(createRequest('   '));
@@ -106,21 +164,29 @@ describe('Infrastructure: MockAIProvider', () => {
       expect(emptyRes.diagnostics?.fallbackReason).toBe('empty_input');
       expect(emptyRes.suggestedMood).toBe('confused');
       expect(emptyRes.suggestedBehavior).toBe('react_confused');
+
+      const newlineRes = await provider.generateResponse(createRequest('\n\t  \r\n'));
+      expect(newlineRes.status).toBe('fallback');
+      expect(newlineRes.diagnostics?.fallbackReason).toBe('empty_input');
     });
 
-    it('returns fallback when message exceeds maxMessageLength', async () => {
+    it('returns fallback when message exceeds maxMessageLength boundary', async () => {
+      const maxLen = 10;
       const provider = new MockAIProvider({
         simulatedLatencyMs: 0,
-        maxMessageLength: 20,
+        maxMessageLength: maxLen,
       });
 
-      const longText = 'Это очень длинное сообщение, которое превышает установленный лимит';
-      const longRes = await provider.generateResponse(createRequest(longText));
+      // Exactly at limit -> OK
+      const atLimit = await provider.generateResponse(createRequest('1234567890'));
+      expect(atLimit.status).toBe('ok');
 
-      expect(longRes.status).toBe('fallback');
-      expect(longRes.diagnostics?.fallbackReason).toBe('message_too_long');
-      expect(longRes.suggestedMood).toBe('confused');
-      expect(longRes.suggestedBehavior).toBe('react_confused');
+      // Exceeds limit by 1 -> fallback
+      const overLimit = await provider.generateResponse(createRequest('12345678901'));
+      expect(overLimit.status).toBe('fallback');
+      expect(overLimit.diagnostics?.fallbackReason).toBe('message_too_long');
+      expect(overLimit.suggestedMood).toBe('confused');
+      expect(overLimit.suggestedBehavior).toBe('react_confused');
     });
   });
 
@@ -143,6 +209,48 @@ describe('Infrastructure: MockAIProvider', () => {
       const finalStatus = await provider.getStatus();
       expect(finalStatus.kind).toBe('ready');
       expect(finalStatus.activeRequestId).toBeUndefined();
+    });
+  });
+
+  describe('Boundary & Contract compliance', () => {
+    it('never suggests restricted behaviors like drag or land', async () => {
+      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+      const testInputs = [
+        'привет',
+        'как дела?',
+        'поиграем',
+        'хочу спать',
+        'погладить',
+        'абвгд random',
+        '',
+        'x'.repeat(600),
+      ];
+
+      for (const input of testInputs) {
+        const res = await provider.generateResponse(createRequest(input));
+        expect(res.suggestedBehavior).not.toBe('drag');
+        expect(res.suggestedBehavior).not.toBe('land');
+      }
+    });
+
+    it('returns pure semantic DTO without UI/DOM/render properties', async () => {
+      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+      const res = await provider.generateResponse(createRequest('Привет!'));
+
+      const forbiddenKeys = [
+        'className',
+        'style',
+        'component',
+        'element',
+        'assetPath',
+        'frameIndex',
+        'fps',
+        'svgPath',
+      ];
+
+      for (const key of forbiddenKeys) {
+        expect(res).not.toHaveProperty(key);
+      }
     });
   });
 });
