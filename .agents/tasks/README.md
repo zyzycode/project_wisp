@@ -103,10 +103,10 @@
 
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
-| 13 | Render Engine & Asset Pipeline: sprite sheets, layers, props, themes | `app-developer` |
+| 13 | Render Engine & Asset Pipeline: sprite sheets, layers, props, fallback, debug HUD | `app-developer` |
 | 14 | Offline Memory & Relationship: SQLite memory, facts, history, clear memory | `app-developer` |
 | 15 | Desktop Life Behaviors: quiet mode, cooldowns, habits | `domain-behavior` |
-| 16 | Settings & Control Surface: behavior, appearance, memory controls, debug UI | `app-developer` |
+| 16 | Settings & Control Surface: behavior, appearance, memory controls, full debug panel | `app-developer` |
 | 17 | External AI Contract Readiness: future client-side adapter only | `architect` + `app-developer` |
 | 18 | Stability & Performance Hardening: long sessions, cleanup, Wayland/X11 | `reviewer` |
 | 19 | Production Packaging: Linux first, then Windows/macOS | `app-developer` |

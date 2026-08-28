@@ -28,10 +28,10 @@
 | 10 — Mock AI & Dialogue Loop | done | `app-developer` | Offline `MockAIProvider`, thinking state и reply flow. |
 | 11 — Character Engine v2 | done | `domain-behavior` + `architect` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
 | 12 — Animation & Reaction Pack | in_progress | `architect` + `domain-behavior` | Синхронизация контракта с Character Engine v2, реакции, idle variety, sleep rules. |
-| 13 — Render Engine & Asset Pipeline | next | `architect` + `app-developer` | Спецификация RENDER_ENGINE.md, спрайт-пайплайн, слои (пропсы/румянец), fallback. |
+| 13 — Render Engine & Asset Pipeline | next | `architect` + `app-developer` | Спецификация RENDER_ENGINE.md, спрайты, слои, fallback и Mini-Debug HUD (Ctrl+D). |
 | 14 — Offline Memory & Relationship | later | `app-developer` | SQLite memory, bounded history, local fact extraction и clear memory. |
 | 15 — Desktop Life Behaviors | later | `domain-behavior` | Quiet mode, cooldowns, habits и менее навязчивая автономность. |
-| 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и dev-only debug panel. |
+| 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и расширенная dev-only debug panel. |
 | 17 — External AI Contract Readiness | future | `architect` + `app-developer` | Только client-side контракт будущего adapter; backend остаётся отдельно. |
 | 18 — Stability & Performance Hardening | future | `reviewer` | Long-session stability, cleanup checks и Linux Wayland/X11 fallbacks. |
 | 19 — Production Packaging | future | `app-developer` | Linux package baseline, затем готовность Windows/macOS release. |
@@ -43,9 +43,10 @@
 
 ### Phase 13 — Render Engine & Asset Pipeline (`next`)
 Оживление персонажа реальными спрайтами и визуальными эффектами:
-1. **`P13-A01` (`architect`):** Фиксация контракта `docs/engine/RENDER_ENGINE.md` (спрайт-листы, `manifest.json`, pivot points, слои пропсов `propHint`, процедурный румянец, контракт 3-уровневого Graceful Fallback).
+1. **`P13-A01` (`architect`):** Фиксация контракта `docs/engine/RENDER_ENGINE.md` (спрайт-листы, `manifest.json`, pivot points, слои пропсов `propHint`, процедурный румянец, 3-уровневый Graceful Fallback).
 2. **`P13-T01` (`app-developer`):** Загрузчик спрайтов, парсер манифеста и покадровый playback-контроллер (подключение готовых 4 кадров `body/walk`).
 3. **`P13-T02` (`app-developer`):** Многослойный рендерер персонажа (тело + оверлей мимики + пропсы сердечек/подушки/вопросиков).
-4. **`P13-T03` (`app-developer`):** Graceful Fallback система (автоматический откат к базовому спрайту или векторной заглушке при отсутствии специализированного набора кадров).
-5. **`P13-T04` (`app-developer`):** Unit и компонентные тесты рендерера.
-6. **`P13-G01` (`reviewer`):** Аудит фазы 13.
+4. **`P13-T03` (`app-developer`):** Graceful Fallback система (автоматический откат к базовому спрайту или векторной заглушке).
+5. **`P13-T04` (`app-developer`):** Mini-Debug HUD (хоткей `Ctrl+D` / пункт контекстного меню) — live-отображение потребностей (Energy, Attention, Play, Comfort), дружбы/любви, эмоционального тона, FPS и активных слоёв.
+6. **`P13-T05` (`app-developer`):** Unit и компонентные тесты рендерера.
+7. **`P13-G01` (`reviewer`):** Аудит фазы 13.
