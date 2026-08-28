@@ -10,11 +10,14 @@ export interface ContextMenuProps {
   scale: number;
   autoWanderEnabled: boolean;
   isSleeping: boolean;
+  debugHudVisible: boolean;
+  debugHudEnabled: boolean;
   onClose: () => void;
   onPet: () => void;
   onSpook: () => void;
   onToggleSleep: () => void;
   onToggleWander: () => void;
+  onToggleDebugHud: () => void;
   onSelectTheme: (theme: CharacterTheme) => void;
   onSelectScale: (scale: number) => void;
   onQuit: () => void;
@@ -27,11 +30,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   scale,
   autoWanderEnabled,
   isSleeping,
+  debugHudVisible,
+  debugHudEnabled,
   onClose,
   onPet,
   onSpook,
   onToggleSleep,
   onToggleWander,
+  onToggleDebugHud,
   onSelectTheme,
   onSelectScale,
   onQuit,
@@ -115,6 +121,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       </div>
 
       <div className="menu-divider" />
+
+      {debugHudEnabled ? (
+        <button className="menu-action-btn" onClick={onToggleDebugHud}>
+          {debugHudVisible ? '🐞 Hide Debug HUD' : '🐞 Toggle Debug HUD'}
+        </button>
+      ) : null}
 
       {/* Quit Button */}
       <button className="menu-quit-btn" onClick={onQuit}>

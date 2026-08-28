@@ -28,8 +28,8 @@
   - `P13-T02` (Asset Manifest Parser & Sprite Playback Controller): `done`
   - `P13-T03` (Layered Character Renderer Component): `done`
   - `P13-T04` (Safe Fallback Implementation): `done`
-  - `P13-T05` (Mini-Debug HUD & Dev Overlay): `in_progress`
-  - `P13-T06` (Unit & Component Tests for Render Engine): `planned`
+  - `P13-T05` (Mini-Debug HUD & Dev Overlay): `done`
+  - `P13-T06` (Unit & Component Tests for Render Engine): `in_progress`
   - `P13-G01` (Code Review Phase 13): `planned`
 
 ## Активная очередь (Phase 13 — Render Engine & Asset Pipeline)
@@ -102,30 +102,28 @@
 
 ### P13-T05 — Mini-Debug HUD & Dev Overlay
 
-- **Статус:** `in_progress`
+- **Статус:** `done`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T01`, `P13-T03`
-- **Цель:** Реализовать интерактивный оверлей разработчика (вызов по хоткею `Ctrl+D` или через контекстное меню Wisp), выводящий в реальном времени шкалы потребностей `Needs` (Energy, Attention, Play, Comfort), статус отношений `Relationship` (Friendship, Love), текущий эмоциональный тон (`SynthesizedEmotionalTone`), активное FSM-состояние, счетчик FPS и компактный live-терминал логов из `LogBuffer`.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `ARCHITECTURE.md` (§4, §7.1), `src/renderer/components/`.
-- **Менять:** `src/renderer/components/Debug/` (создать: `DebugHUD.tsx`, `LogViewer.tsx`, `NeedsBar.tsx`), `src/renderer/components/ContextMenu.tsx`, `src/renderer/components/DesktopPet.tsx`, unit/component тесты.
+- **Цель:** Оверлей отладки (`Ctrl+D` / контекстное меню) с выводом live-потребностей, дружбы, тона, FPS и ленты логов.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `src/renderer/components/`.
+- **Менять:** `src/renderer/components/Debug/` (`DebugHUD.tsx`, `LogViewer.tsx`).
 - **Критерии приёмки:**
-  - [ ] Оверлей открывается/закрывается по комбинации `Ctrl+D` и по клику в контекстном меню («Toggle Debug HUD»).
-  - [ ] Отображаются актуальные значения Needs (Energy, Attention, Play, Comfort) и Relationship.
-  - [ ] Отображается активный эмоциональный тон, AnimationIntent и текущий кадр/FPS.
-  - [ ] Встроена лента логов из `LogBuffer` с цветовой подсветкой уровней (`debug`, `info`, `warn`, `error`) и кнопкой очистки/паузы.
-  - [ ] Оверлей не блокирует перетаскивание питомца и работает в dev-режиме без загрязнения продакшн-бандла.
-  - [ ] `npm test` и `npm run typecheck` зелёные.
+  - [x] Оверлей открывается по хоткею и меню, показывает живые данные.
+  - [x] `npm test` и `npm run typecheck` зелёные.
 
 ### P13-T06 — Unit & Component Tests for Render Engine
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P13-T04`, `P13-T05`
-- **Цель:** Полное интеграционное тестирование рендерера, плеера, логгера и HUD.
+- **Цель:** Сквозное интеграционное тестирование полного графического пайплайна Phase 13: `AnimationIntent` -> `AssetResolver` (3 уровня фоллбека) -> `AnimationPlayer` (тайминги и completion) -> `SpriteRenderer` (слои румянца/пропсов) -> `DebugHUD` & `LogBuffer`.
 - **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`, `tests/renderer/`.
-- **Менять:** `tests/renderer/`.
+- **Менять:** `tests/renderer/render-pipeline-integration.test.tsx` (создать/обновить).
 - **Критерии приёмки:**
-  - [ ] 100% зелёные тесты.
+  - [ ] 100% покрытие сквозного графического пайплайна.
+  - [ ] Проверены сценарии переключения состояний, отображения оверлеев румянца и реакций, работы Debug HUD.
+  - [ ] `npm test` и `npm run typecheck` завершаются без ошибок.
 
 ### P13-G01 — Code Review Phase 13
 

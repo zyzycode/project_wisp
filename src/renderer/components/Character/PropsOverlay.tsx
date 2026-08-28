@@ -1,5 +1,6 @@
 import React from 'react';
 import type { VisibleRenderLayerDef } from '../../render-engine/types';
+import { resolveSpriteSource } from './SpriteRenderer';
 
 export interface PropsOverlayProps {
   layers: readonly VisibleRenderLayerDef[];
@@ -19,7 +20,7 @@ export const PropsOverlay: React.FC<PropsOverlayProps> = ({ layers, viewport, ro
           key={getLayerRenderKey(layer)}
           data-layer-id={layer.id}
           data-frame-source={layer.frame.source}
-          href={layer.frame.source}
+          href={resolveSpriteSource(layer.frame.source)}
           x={x}
           y={y}
           width={viewport.width}

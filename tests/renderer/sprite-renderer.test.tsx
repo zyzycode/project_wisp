@@ -1,7 +1,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { resolveSpriteSource, SpriteRenderer } from '../../src/renderer/components/Character/SpriteRenderer';
+import { BASE_CHARACTER_SIZE, CharacterRenderer } from '../../src/renderer/components/Character/CharacterRenderer';
 import type { RenderPresentationState } from '../../src/renderer/render-engine';
+import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 
 const state: RenderPresentationState = {
   viewport: { width: 512, height: 512 },
@@ -58,5 +60,52 @@ describe('Renderer: SpriteRenderer', () => {
 
     expect(resolveSpriteSource('system://wisp/default_idle.svg')).toMatch(/^data:image\/svg\+xml,/);
     expect(renderToStaticMarkup(<SpriteRenderer state={fallbackState} />)).toContain('data:image/svg+xml,');
+  });
+
+  it('applies transform and pivot correctly in SpriteRenderer SVG group', () => {
+    const flippedState: RenderPresentationState = {
+      ...state,
+      transform: { flipX: true, scale: 1.25 },
+    };
+    const markup = renderToStaticMarkup(<SpriteRenderer state={flippedState} />);
+    expect(markup).toContain('transform="translate(256 460) scale(-1.25 1.25) translate(-256 -460)"');
+  });
+});
+
+describe('Renderer: CharacterRenderer Visual Polish', () => {
+  it('renders purely via SpriteRenderer with no legacy SVG vector ball or aura paths', () => {
+    const markup = renderToStaticMarkup(
+      <CharacterRenderer theme={DEFAULT_THEMES.cosmic} scale={1.0} />
+    );
+
+    // Contains character root
+    expect(markup).toContain('wisp-character-root');
+    expect(markup).toContain('data-testid="wisp-character-root"');
+
+    // Does NOT contain legacy SVG aura classes or elements
+    expect(markup).not.toContain('wisp-aura-group');
+    expect(markup).not.toContain('wisp-body-path');
+    expect(markup).not.toContain('wisp-orb');
+    expect(markup).not.toContain('wisp-face');
+    expect(markup).not.toContain('wisp-svg-canvas');
+  });
+
+  it('applies configured base dimensions and scale to root container', () => {
+    const markup100 = renderToStaticMarkup(<CharacterRenderer scale={1.0} />);
+    expect(markup100).toContain(`width:${BASE_CHARACTER_SIZE.width}px`);
+    expect(markup100).toContain(`height:${BASE_CHARACTER_SIZE.height}px`);
+
+    const markup150 = renderToStaticMarkup(<CharacterRenderer scale={1.5} />);
+    expect(markup150).toContain(`width:${Math.round(BASE_CHARACTER_SIZE.width * 1.5)}px`);
+    expect(markup150).toContain(`height:${Math.round(BASE_CHARACTER_SIZE.height * 1.5)}px`);
+  });
+
+  it('applies theme drop-shadow glow and tiltDeg rotation cleanly', () => {
+    const markup = renderToStaticMarkup(
+      <CharacterRenderer theme={DEFAULT_THEMES.emerald} tiltDeg={12} isDragging />
+    );
+    expect(markup).toContain('rotate(12deg)');
+    expect(markup).toContain('drop-shadow(0 0 16px rgba(16, 185, 129, 0.65))');
+    expect(markup).toContain('dragging');
   });
 });

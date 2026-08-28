@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { PetPositionDTO, ScreenBoundsDTO } from '../../shared/ipc-contracts';
+import type { DebugTelemetryDTO, PetPositionDTO, ScreenBoundsDTO } from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
 import type { CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
@@ -22,10 +22,20 @@ import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
 import { useDialogueLoop } from '../hooks/useDialogueLoop';
 import { createSystemAnimationIntent, type AnimationIntentKind } from '../../domain/animation/animation-intent';
 import type { AnimationState } from '../../domain/animation/animation-state-machine';
+import { DebugHUD } from './Debug';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
 
 const DEFAULT_MOCK_AI_PROVIDER = new MockAIProvider({ simulatedLatencyMs: 300 });
+const EMPTY_DEBUG_TELEMETRY: DebugTelemetryDTO = {
+  character: {
+    needs: { energy: 0, attention: 0, play: 0, comfort: 0 },
+    relationship: { friendship: 0, love: 0, loveUnlocked: false },
+    synthesizedTone: 'neutral',
+    lastUpdated: 0,
+  },
+  logs: [],
+};
 
 export interface DesktopPetProps {
   aiProvider?: IAIProvider;
@@ -47,6 +57,10 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
   );
   const [scale, setScale] = useState<number>(1.0);
+  const [debugHudVisible, setDebugHudVisible] = useState<boolean>(false);
+  const [debugTelemetry, setDebugTelemetry] = useState<DebugTelemetryDTO>(EMPTY_DEBUG_TELEMETRY);
+  const [renderFps, setRenderFps] = useState<number>(0);
+  const debugHudEnabled = window.wispAPI.debugEnabled;
 
   // Animation State Machine Hook (FSM)
   const { state: animState, expression, dispatch: dispatchAnim } = useAnimationStateMachine('idle');
@@ -72,6 +86,57 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     () => createSystemAnimationIntent(isWandering ? 'walk' : animationStateToIntentKind(animState)),
     [animState, isWandering]
   );
+  useEffect(() => {
+    if (!debugHudEnabled || !debugHudVisible) return undefined;
+    const getDebugTelemetry = window.wispAPI.getDebugTelemetry;
+    const onDebugTelemetry = window.wispAPI.onDebugTelemetry;
+    if (getDebugTelemetry === undefined || onDebugTelemetry === undefined) return undefined;
+    let active = true;
+    const refreshTelemetry = (): void => {
+      void getDebugTelemetry()
+        .then((telemetry) => { if (active) setDebugTelemetry(telemetry); })
+        .catch(() => undefined);
+    };
+    refreshTelemetry();
+    const unsubscribe = onDebugTelemetry((telemetry) => setDebugTelemetry(telemetry));
+    const intervalId = window.setInterval(refreshTelemetry, 1000);
+    return (): void => {
+      active = false;
+      window.clearInterval(intervalId);
+      unsubscribe();
+    };
+  }, [debugHudEnabled, debugHudVisible]);
+
+  useEffect(() => {
+    if (!debugHudEnabled) return undefined;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        setDebugHudVisible((visible) => !visible);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return (): void => window.removeEventListener('keydown', handleKeyDown);
+  }, [debugHudEnabled]);
+
+  useEffect(() => {
+    if (!debugHudVisible) return undefined;
+    let frameId = 0;
+    let frames = 0;
+    let sampleStartedAt = performance.now();
+    const sample = (now: number): void => {
+      frames += 1;
+      const elapsedMs = now - sampleStartedAt;
+      if (elapsedMs >= 500) {
+        setRenderFps(Math.round((frames * 1000) / elapsedMs));
+        frames = 0;
+        sampleStartedAt = now;
+      }
+      frameId = requestAnimationFrame(sample);
+    };
+    frameId = requestAnimationFrame(sample);
+    return (): void => cancelAnimationFrame(frameId);
+  }, [debugHudVisible]);
 
   // Dialogue Loop Hook (AI Provider -> BehaviorIntent -> SpeechBubble & FSM)
   const { handleSendMessage: handleUserSendMessage } = useDialogueLoop({
@@ -309,6 +374,8 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         scale={scale}
         autoWanderEnabled={autoWanderEnabled}
         isSleeping={animState === 'sleep'}
+        debugHudVisible={debugHudVisible}
+        debugHudEnabled={debugHudEnabled}
         onClose={() => setMenuOpen(false)}
         onPet={() => {
           setAffection((prev) => recordPetInteraction(prev, 'petting'));
@@ -329,6 +396,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
           }
         }}
         onToggleWander={() => setAutoWanderEnabled((prev) => !prev)}
+        onToggleDebugHud={() => {
+          setDebugHudVisible((visible) => !visible);
+        }}
         onSelectTheme={(t) => setCurrentTheme(t)}
         onSelectScale={(s) => setScale(s)}
         onQuit={handleClose}
@@ -346,6 +416,22 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         onDoubleClick={handlePetDoubleClick}
         onContextMenu={handleContextMenu}
       />
+
+      {debugHudEnabled && debugHudVisible ? (
+        <DebugHUD
+          needs={debugTelemetry.character.needs}
+          relationship={debugTelemetry.character.relationship}
+          tone={debugTelemetry.character.synthesizedTone}
+          animationState={animState}
+          animationIntent={characterAnimationIntent}
+          fps={renderFps}
+          logs={debugTelemetry.logs}
+          onClearLogs={() => {
+            const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
+            if (clearLogs !== undefined) void clearLogs();
+          }}
+        />
+      ) : null}
 
       <div
         className="pet-label"

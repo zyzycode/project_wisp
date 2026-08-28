@@ -9,10 +9,11 @@ import {
   DEFAULT_THEMES,
   calculateRenderedDimensions,
 } from '../../../domain/models/character-visuals';
-import { WispAura } from './WispAura';
 import { AssetResolver, ManifestLoader, type NormalizedSpriteManifest } from '../../render-engine';
 import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { SpriteRenderer } from './SpriteRenderer';
+
+export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
 
 export interface CharacterRendererProps {
   expression?: CharacterExpression;
@@ -43,8 +44,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   const intent = animationIntent ?? defaultIntent;
   const [resolver, setResolver] = useState<AssetResolver>(() => new AssetResolver(EMPTY_MANIFEST));
   const presentationState = useCharacterAnimation(resolver, intent);
-  const baseSize = { width: 100, height: 100 };
-  const renderedSize = calculateRenderedDimensions(baseSize, scale);
+  const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
 
   useEffect(() => {
     let disposed = false;
@@ -63,28 +63,19 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   return (
     <div
       className={`wisp-character-root ${isDragging ? 'dragging' : ''}`}
+      data-testid="wisp-character-root"
       data-expression={expression}
       style={{
         width: `${renderedSize.width}px`,
         height: `${renderedSize.height}px`,
         transform: `rotate(${tiltDeg}deg)`,
+        filter: `drop-shadow(0 0 16px ${theme.palette.glow})`,
       }}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
     >
-      <svg
-        viewBox="0 0 100 100"
-        width="100%"
-        height="100%"
-        className="wisp-svg-canvas"
-        style={{
-          filter: `drop-shadow(0 0 16px ${theme.palette.glow})`,
-        }}
-      >
-        <WispAura palette={theme.palette} isDragging={isDragging} />
-      </svg>
       <SpriteRenderer state={presentationState} />
     </div>
   );
