@@ -22,8 +22,8 @@ const BODY_KEYS: Readonly<Record<AnimationIntent['kind'], string>> = {
   thinking_loop: 'body_thinking',
   talking: 'body_thinking',
   happy_reaction: 'body_petting',
-  confused_reaction: 'body_idle',
-  spook: 'body_idle',
+  confused_reaction: 'body_thinking',
+  spook: 'body_thinking',
   sleep_start: 'body_sleep_trans',
   sleep_loop: 'body_sleep',
   wake_up: 'body_land',
@@ -56,9 +56,20 @@ const PROP_CONFIG: Readonly<Record<Exclude<NonNullable<AnimationIntent['propHint
   sparkle: { key: 'prop_sparkle', id: 'prop_sparkle', zIndex: 43, blendMode: 'screen', playbackMode: 'loop' },
 };
 
+export interface AssetResolverOptions {
+  readonly enableFaceOverlays?: boolean;
+}
+
 /** Resolves semantic intents to presentation-ready, framework-neutral animation clips. */
 export class AssetResolver {
-  constructor(private readonly manifest: NormalizedSpriteManifest) {}
+  private readonly enableFaceOverlays: boolean;
+
+  constructor(
+    private readonly manifest: NormalizedSpriteManifest,
+    options: AssetResolverOptions = {}
+  ) {
+    this.enableFaceOverlays = options.enableFaceOverlays ?? true;
+  }
 
   resolve(intent: AnimationIntent): ResolvedAnimationClip {
     const body = this.resolveBody(intent);
@@ -89,6 +100,7 @@ export class AssetResolver {
   }
 
   private resolveFace(intent: AnimationIntent): (ResolvedOverlayTrack & { readonly category: 'face' }) | undefined {
+    if (!this.enableFaceOverlays) return undefined;
     const key = intent.expressionHint === undefined ? undefined : FACE_KEYS[intent.expressionHint];
     const animation = key === undefined ? undefined : selectAnimation(this.manifest.animations[key], 'face');
     return animation === undefined ? undefined : toOverlayTrack(animation, 'face', 'face', 20, 'hold', 'normal');

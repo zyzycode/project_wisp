@@ -92,7 +92,7 @@ const DEFAULT_TONE_HINTS: Record<SynthesizedEmotionalTone, ToneHints> = {
 };
 
 const INTENT_POLICIES: Record<AnimationIntentKind, IntentPolicy> = {
-  idle_blink: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'bounded' },
+  idle_blink: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
   thinking_loop: { category: 'dialogue', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
   talking: { category: 'dialogue', priority: 'normal', interrupt: 'yes', loop: 'bounded' },
   happy_reaction: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'bounded' },
@@ -139,9 +139,9 @@ const BEHAVIOR_MAPPINGS: Record<BehaviorIntentKind, BehaviorMapping> = {
       shy: { propHint: 'question' },
       sleepy: { propHint: 'question' },
       playful: { expressionHint: 'surprised' },
+      curious: {},
       neutral: { expressionHint: 'surprised', propHint: 'question' },
       affectionate: { expressionHint: 'pout' },
-      curious: {},
       flustered: {},
     }),
   },

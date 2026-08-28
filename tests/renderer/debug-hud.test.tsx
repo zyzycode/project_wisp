@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DebugLogEntryDTO } from '../../src/shared/ipc-contracts';
 import { createSystemAnimationIntent } from '../../src/domain/animation/animation-intent';
 import { DebugHUD, getVisibleLogs, LogViewer } from '../../src/renderer/components/Debug';
+import { ContextMenu } from '../../src/renderer/components/Interaction/ContextMenu';
+import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 
 const logs: DebugLogEntryDTO[] = [
   { id: 'debug', level: 'debug', context: 'FSM', message: 'idle entered', createdAt: '2026-08-28T00:00:00.000Z' },
@@ -64,5 +66,47 @@ describe('Renderer: DebugHUD', () => {
 
     expect(getVisibleLogs(incoming, true, frozen).map((entry) => entry.id)).toEqual(['debug', 'info']);
     expect(getVisibleLogs(incoming, false, null).map((entry) => entry.id)).toEqual(['debug', 'info', 'later']);
+  });
+
+  it('embeds every control section and debug telemetry in one canvas', () => {
+    const markup = renderToStaticMarkup(
+      <ContextMenu
+        isOpen
+        affection={{ mood: 'content', affectionScore: 70, lastInteractionAt: 0 }}
+        currentTheme={DEFAULT_THEMES.cosmic!}
+        scale={1}
+        autoWanderEnabled
+        isSleeping={false}
+        debugHudEnabled
+        debugContent={
+          <DebugHUD
+            needs={{ energy: 80, attention: 50, play: 40, comfort: 30 }}
+            relationship={{ friendship: 420, love: 35, loveUnlocked: false }}
+            tone="playful"
+            animationState="float"
+            animationIntent={createSystemAnimationIntent('walk', 'playful')}
+            fps={60}
+            logs={logs}
+            onClearLogs={vi.fn()}
+          />
+        }
+        onClose={vi.fn()}
+        onPet={vi.fn()}
+        onSpook={vi.fn()}
+        onToggleSleep={vi.fn()}
+        onToggleWander={vi.fn()}
+        onSelectTheme={vi.fn()}
+        onSelectScale={vi.fn()}
+        onQuit={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain('🎮 Действия');
+    expect(markup).toContain('🎨 Внешний вид');
+    expect(markup).toContain('🛠️ Debug');
+    expect(markup).toContain('menu-canvas');
+    expect(markup).toContain('Close control panel');
+    expect(markup).toContain('data-testid="debug-hud"');
+    expect(markup).not.toContain('menu-tabs');
   });
 });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { DebugTelemetryDTO, PetPositionDTO, ScreenBoundsDTO } from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
-import type { CharacterTheme } from '../../domain/models/character-visuals';
+import type { CharacterExpression, CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
 import {
   PetAffectionState,
@@ -20,7 +20,11 @@ import { ChatInput } from './Chat/ChatInput';
 import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
 import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
 import { useDialogueLoop } from '../hooks/useDialogueLoop';
-import { createSystemAnimationIntent, type AnimationIntentKind } from '../../domain/animation/animation-intent';
+import {
+  createSystemAnimationIntent,
+  type AnimationExpressionHint,
+  type AnimationIntentKind,
+} from '../../domain/animation/animation-intent';
 import type { AnimationState } from '../../domain/animation/animation-state-machine';
 import { DebugHUD } from './Debug';
 
@@ -66,7 +70,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const { state: animState, expression, dispatch: dispatchAnim } = useAnimationStateMachine('idle');
 
   // Autonomous Behavior Hook
-  const { isWandering, triggerNap, wakeUp } = useAutonomousBehavior({
+  const { isWandering, flipX, triggerNap, wakeUp } = useAutonomousBehavior({
     currentPosition: position,
     screenBounds,
     animState,
@@ -82,12 +86,16 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     dispatchAnim,
   });
 
-  const characterAnimationIntent = useMemo(
-    () => createSystemAnimationIntent(isWandering ? 'walk' : animationStateToIntentKind(animState)),
-    [animState, isWandering]
-  );
+  const characterAnimationIntent = useMemo(() => {
+    const kind = isWandering ? 'walk' : animationStateToIntentKind(animState);
+    const expressionHint = expressionToHint(expression);
+    return createSystemAnimationIntent(kind, 'neutral', {
+      expressionHint,
+    });
+  }, [animState, expression, isWandering]);
+
   useEffect(() => {
-    if (!debugHudEnabled || !debugHudVisible) return undefined;
+    if (!debugHudEnabled || (!debugHudVisible && !menuOpen)) return undefined;
     const getDebugTelemetry = window.wispAPI.getDebugTelemetry;
     const onDebugTelemetry = window.wispAPI.onDebugTelemetry;
     if (getDebugTelemetry === undefined || onDebugTelemetry === undefined) return undefined;
@@ -105,7 +113,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.clearInterval(intervalId);
       unsubscribe();
     };
-  }, [debugHudEnabled, debugHudVisible]);
+  }, [debugHudEnabled, debugHudVisible, menuOpen]);
 
   useEffect(() => {
     if (!debugHudEnabled) return undefined;
@@ -120,7 +128,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   }, [debugHudEnabled]);
 
   useEffect(() => {
-    if (!debugHudVisible) return undefined;
+    if (!debugHudVisible && !menuOpen) return undefined;
     let frameId = 0;
     let frames = 0;
     let sampleStartedAt = performance.now();
@@ -136,7 +144,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     };
     frameId = requestAnimationFrame(sample);
     return (): void => cancelAnimationFrame(frameId);
-  }, [debugHudVisible]);
+  }, [debugHudVisible, menuOpen]);
 
   // Dialogue Loop Hook (AI Provider -> BehaviorIntent -> SpeechBubble & FSM)
   const { handleSendMessage: handleUserSendMessage } = useDialogueLoop({
@@ -349,6 +357,26 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     }
   };
 
+  const debugHudElement = (
+    <DebugHUD
+      needs={debugTelemetry.character.needs}
+      relationship={debugTelemetry.character.relationship}
+      tone={debugTelemetry.character.synthesizedTone}
+      animationState={animState}
+      animationIntent={characterAnimationIntent}
+      fps={renderFps}
+      logs={debugTelemetry.logs}
+      position={position}
+      isWandering={isWandering}
+      flipX={flipX}
+      mood={affection.mood}
+      onClearLogs={() => {
+        const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
+        if (clearLogs !== undefined) void clearLogs();
+      }}
+    />
+  );
+
   return (
     <div
       className={`pet-container ${isDragging ? 'is-dragging' : ''} ${isWandering ? 'is-wandering' : ''}`}
@@ -374,17 +402,25 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         scale={scale}
         autoWanderEnabled={autoWanderEnabled}
         isSleeping={animState === 'sleep'}
-        debugHudVisible={debugHudVisible}
         debugHudEnabled={debugHudEnabled}
+        debugContent={debugHudElement}
         onClose={() => setMenuOpen(false)}
         onPet={() => {
           setAffection((prev) => recordPetInteraction(prev, 'petting'));
           dispatchAnim('PET');
           setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
         }}
-        onSpook={() => {
-          dispatchAnim('SPOOK');
-          setCurrentMessage(createChatMessage('thought', 'Ой, что это было?! 👻'));
+        onThink={() => {
+          dispatchAnim('THINK');
+          setMenuOpen(false);
+          const thoughts = [
+            'Хм-м, о чём бы поразмышлять?.. 🤔',
+            'Интересно, как устроен этот мир? ✨',
+            'А звёзды сегодня такие яркие... 💭',
+            'Думаю о чём-то приятном! 🌸',
+          ];
+          const randomThought = thoughts[Math.floor(Math.random() * thoughts.length)] ?? 'Хм-м... 🤔';
+          setCurrentMessage(createChatMessage('thought', randomThought));
         }}
         onToggleSleep={() => {
           if (animState === 'sleep') {
@@ -396,9 +432,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
           }
         }}
         onToggleWander={() => setAutoWanderEnabled((prev) => !prev)}
-        onToggleDebugHud={() => {
-          setDebugHudVisible((visible) => !visible);
-        }}
         onSelectTheme={(t) => setCurrentTheme(t)}
         onSelectScale={(s) => setScale(s)}
         onQuit={handleClose}
@@ -409,6 +442,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         animationIntent={characterAnimationIntent}
         theme={currentTheme}
         scale={scale}
+        flipX={flipX}
         isDragging={isDragging}
         tiltDeg={tiltDeg}
         onMouseDown={handleMouseDown}
@@ -417,25 +451,12 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         onContextMenu={handleContextMenu}
       />
 
-      {debugHudEnabled && debugHudVisible ? (
-        <DebugHUD
-          needs={debugTelemetry.character.needs}
-          relationship={debugTelemetry.character.relationship}
-          tone={debugTelemetry.character.synthesizedTone}
-          animationState={animState}
-          animationIntent={characterAnimationIntent}
-          fps={renderFps}
-          logs={debugTelemetry.logs}
-          onClearLogs={() => {
-            const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
-            if (clearLogs !== undefined) void clearLogs();
-          }}
-        />
-      ) : null}
+      {debugHudEnabled && debugHudVisible ? debugHudElement : null}
 
       <div
         className="pet-label"
-        onClick={() => {
+        onClick={(event) => {
+          event.stopPropagation();
           setChatOpen((prev) => !prev);
           setMenuOpen(false);
         }}
@@ -462,5 +483,17 @@ function animationStateToIntentKind(state: AnimationState): AnimationIntentKind 
     case 'spook': return 'spook';
     case 'settle': return 'settle';
     case 'idle': return 'idle_blink';
+  }
+}
+
+function expressionToHint(expr: CharacterExpression): AnimationExpressionHint {
+  switch (expr) {
+    case 'happy': return 'happy';
+    case 'sleepy': return 'sleepy';
+    case 'surprised':
+    case 'flying': return 'surprised';
+    case 'curious': return 'curious';
+    case 'idle':
+    default: return 'idle';
   }
 }

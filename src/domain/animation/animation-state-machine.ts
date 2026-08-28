@@ -54,14 +54,14 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     interruptible: true,
     priority: 'low',
     stable: true,
-    allowedTransitions: ['float', 'dragged', 'sleep', 'sleep_start', 'happy', 'surprised', 'falling', 'thinking'],
+    allowedTransitions: ['float', 'dragged', 'sleep', 'sleep_start', 'happy', 'surprised', 'falling', 'thinking', 'spook'],
   },
   float: {
     defaultExpression: 'idle',
     interruptible: true,
     priority: 'normal',
     stable: false,
-    allowedTransitions: ['settle', 'idle', 'dragged', 'falling', 'happy', 'surprised', 'sleep', 'sleep_start', 'thinking'],
+    allowedTransitions: ['settle', 'idle', 'dragged', 'falling', 'happy', 'surprised', 'sleep', 'sleep_start', 'thinking', 'spook'],
   },
   dragged: {
     defaultExpression: 'flying',
@@ -116,6 +116,8 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     interruptible: true,
     priority: 'normal',
     stable: false,
+    durationMs: 2500,
+    autoNextState: 'settle',
     allowedTransitions: ['settle', 'idle', 'happy', 'surprised', 'sleep', 'sleep_start', 'float', 'dragged', 'falling', 'thinking', 'spook'],
   },
   spook: {
@@ -369,14 +371,14 @@ function animationIntentKindToState(kind: AnimationIntentKind): AnimationState {
       return 'sleep_loop';
     case 'wake_up':
       return 'wake_up';
-    case 'dragged':
-      return 'dragged';
-    case 'spook':
-      return 'spook';
     case 'land':
       return 'landing';
     case 'walk':
       return 'float';
+    case 'dragged':
+      return 'dragged';
+    case 'spook':
+      return 'spook';
     case 'settle':
       return 'settle';
   }

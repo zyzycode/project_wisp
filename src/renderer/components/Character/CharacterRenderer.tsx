@@ -9,11 +9,17 @@ import {
   DEFAULT_THEMES,
   calculateRenderedDimensions,
 } from '../../../domain/models/character-visuals';
-import { AssetResolver, ManifestLoader, type NormalizedSpriteManifest } from '../../render-engine';
+import defaultManifestData from '../../../../public/assets/sprites/manifest.json';
+import { AssetResolver, ManifestLoader } from '../../render-engine';
 import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { SpriteRenderer } from './SpriteRenderer';
 
 export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
+
+const INITIAL_RESOLVER = new AssetResolver(
+  new ManifestLoader().load(defaultManifestData),
+  { enableFaceOverlays: false }
+);
 
 export interface CharacterRendererProps {
   expression?: CharacterExpression;
@@ -44,7 +50,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
 }) => {
   const defaultIntent = useMemo(() => createSystemAnimationIntent('idle_blink'), []);
   const intent = animationIntent ?? defaultIntent;
-  const [resolver, setResolver] = useState<AssetResolver>(() => new AssetResolver(EMPTY_MANIFEST));
+  const [resolver, setResolver] = useState<AssetResolver>(() => INITIAL_RESOLVER);
   const presentationState = useCharacterAnimation(resolver, intent);
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
 
@@ -68,7 +74,13 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
         return response.json() as Promise<unknown>;
       })
       .then((manifest) => {
-        if (!disposed) setResolver(new AssetResolver(new ManifestLoader().load(manifest)));
+        if (!disposed) {
+          setResolver(
+            new AssetResolver(new ManifestLoader().load(manifest), {
+              enableFaceOverlays: false,
+            })
+          );
+        }
       })
       .catch(() => undefined);
     return (): void => { disposed = true; };
@@ -94,5 +106,3 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
     </div>
   );
 };
-
-const EMPTY_MANIFEST: NormalizedSpriteManifest = { schemaVersion: 1, animations: {} };

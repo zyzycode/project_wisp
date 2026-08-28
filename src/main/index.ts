@@ -25,8 +25,8 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
-export const WINDOW_WIDTH = 280;
-export const WINDOW_HEIGHT = 320;
+export const WINDOW_WIDTH = 640;
+export const WINDOW_HEIGHT = 640;
 
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();

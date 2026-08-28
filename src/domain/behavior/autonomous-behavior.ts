@@ -91,6 +91,7 @@ export const DEFAULT_AUTONOMOUS_INTENT_CONFIG: AutonomousIntentConfig = {
  * Calculates a valid wander target within screen boundaries and distance limits.
  * For a grounded walking character, movement is strictly horizontal (left/right along the X-axis)
  * to maintain constant ground elevation (Y).
+ * Automatically detects screen edges and steers away from obstacles so the pet never walks in place.
  */
 export function calculateNextWanderTarget(
   currentPos: Point2D,
@@ -100,9 +101,34 @@ export function calculateNextWanderTarget(
   randomAngle: number = Math.random() < 0.5 ? 0 : Math.PI,
   randomDistanceFactor: number = 0.5 + Math.random() * 0.5
 ): WanderTarget {
-  const distance = config.maxWanderDistancePx * randomDistanceFactor;
-  const directionX = Math.cos(randomAngle) >= 0 ? 1 : -1;
-  const rawTargetX = currentPos.x + directionX * distance;
+  const minX = screenBounds.x;
+  const maxX = screenBounds.x + Math.max(0, screenBounds.width - petSize.width);
+
+  const roomRight = Math.max(0, maxX - currentPos.x);
+  const roomLeft = Math.max(0, currentPos.x - minX);
+
+  let directionX = Math.cos(randomAngle) >= 0 ? 1 : -1;
+
+  // If chosen direction is blocked by screen boundary, turn around towards open space
+  if (directionX > 0 && roomRight < 60 && roomLeft >= 60) {
+    directionX = -1;
+  } else if (directionX < 0 && roomLeft < 60 && roomRight >= 60) {
+    directionX = 1;
+  }
+
+  const availableRoom = directionX > 0 ? roomRight : roomLeft;
+  const desiredDistance = config.maxWanderDistancePx * randomDistanceFactor;
+  const actualDistance = Math.min(availableRoom, desiredDistance);
+
+  // If completely trapped with no room to step
+  if (actualDistance < 20) {
+    return {
+      target: clampPositionToBounds({ x: currentPos.x, y: currentPos.y }, petSize, screenBounds),
+      durationMs: 0,
+    };
+  }
+
+  const rawTargetX = currentPos.x + directionX * actualDistance;
   const rawTargetY = currentPos.y; // Maintain steady ground elevation
 
   const clampedTarget = clampPositionToBounds(
@@ -111,10 +137,8 @@ export function calculateNextWanderTarget(
     screenBounds
   );
 
-  const actualDeltaX = clampedTarget.x - currentPos.x;
-  const actualDistance = Math.abs(actualDeltaX);
-
-  const calculatedDuration = (actualDistance / Math.max(1, config.wanderSpeedPxPerSec)) * 1000;
+  const finalDeltaX = Math.abs(clampedTarget.x - currentPos.x);
+  const calculatedDuration = (finalDeltaX / Math.max(1, config.wanderSpeedPxPerSec)) * 1000;
   const durationMs = Math.max(
     config.minWanderDurationMs,
     Math.min(config.maxWanderDurationMs, calculatedDuration)

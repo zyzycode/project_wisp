@@ -79,18 +79,23 @@ export function useAutonomousBehavior({
             config
           );
 
-          const movingLeft = wanderTarget.target.x < positionRef.current.x;
-          setFlipX(movingLeft);
+          if (wanderTarget.durationMs > 0 && Math.abs(wanderTarget.target.x - positionRef.current.x) > 10) {
+            const movingRight = wanderTarget.target.x > positionRef.current.x;
+            setFlipX(movingRight);
 
-          wanderStateRef.current = {
-            startPos: { ...positionRef.current },
-            targetPos: wanderTarget.target,
-            startTime: performance.now(),
-            durationMs: wanderTarget.durationMs,
-          };
+            wanderStateRef.current = {
+              startPos: { ...positionRef.current },
+              targetPos: wanderTarget.target,
+              startTime: performance.now(),
+              durationMs: wanderTarget.durationMs,
+            };
 
-          setIsWandering(true);
-          dispatchAnimRef.current('START_FLOAT');
+            setIsWandering(true);
+            dispatchAnimRef.current('START_FLOAT');
+          } else {
+            // No room to wander, do a small idle stretch instead
+            dispatchAnimRef.current('PET');
+          }
         } else if (action === 'take_nap') {
           dispatchAnimRef.current('START_SLEEP');
         } else if (action === 'stretch' || action === 'idle_look_around') {

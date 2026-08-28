@@ -73,7 +73,6 @@
   },
   "body_sleep": {
     "category": "body/sleep",
-    "fps": 2,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/sleep/body_sleep_00.png",
@@ -85,7 +84,6 @@
   },
   "body_petting": {
     "category": "body/petting",
-    "fps": 6,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/petting/body_petting_00.png",
@@ -109,7 +107,6 @@
   },
   "face_talking": {
     "category": "faces/talking",
-    "fps": 8,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/talking/face_talking_00.png",
@@ -117,7 +114,18 @@
       "/assets/sprites/faces/talking/face_talking_02.png",
       "/assets/sprites/faces/talking/face_talking_03.png"
     ],
-    "sourceFile": "речь.png"
+    "sourceFile": "лицо_разговор.png"
+  },
+  "face_sleep": {
+    "category": "faces/sleep",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/sleep/face_sleep_00.png",
+      "/assets/sprites/faces/sleep/face_sleep_01.png",
+      "/assets/sprites/faces/sleep/face_sleep_02.png",
+      "/assets/sprites/faces/sleep/face_sleep_03.png"
+    ],
+    "sourceFile": "сон.png"
   },
   "face_shocked": {
     "category": "faces/shocked",
@@ -129,11 +137,10 @@
       "/assets/sprites/faces/shocked/face_shocked_02.png",
       "/assets/sprites/faces/shocked/face_shocked_03.png"
     ],
-    "sourceFile": "удивление.png"
+    "sourceFile": "растерянность.png"
   },
   "face_sad": {
     "category": "faces/sad",
-    "fps": 4,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/sad/face_sad_00.png",
@@ -141,11 +148,10 @@
       "/assets/sprites/faces/sad/face_sad_02.png",
       "/assets/sprites/faces/sad/face_sad_03.png"
     ],
-    "sourceFile": "грусть.png"
+    "sourceFile": "лицо_грусть.png"
   },
   "face_thinking": {
     "category": "faces/thinking",
-    "fps": 6,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/thinking/face_thinking_00.png",
@@ -153,42 +159,6 @@
       "/assets/sprites/faces/thinking/face_thinking_02.png",
       "/assets/sprites/faces/thinking/face_thinking_03.png"
     ],
-    "sourceFile": "озадаченност.png"
-  },
-  "face_sleep": {
-    "category": "faces/sleep",
-    "fps": 2,
-    "framesCount": 4,
-    "frames": [
-      "/assets/sprites/faces/sleep/face_sleep_00.png",
-      "/assets/sprites/faces/sleep/face_sleep_01.png",
-      "/assets/sprites/faces/sleep/face_sleep_02.png",
-      "/assets/sprites/faces/sleep/face_sleep_03.png"
-    ],
-    "sourceFile": "сон_лиц.png"
-  },
-  "face_confused": {
-    "category": "face/confused",
-    "fps": 12,
-    "framesCount": 16,
-    "frames": [
-      "/assets/sprites/custom/растерянность/растерянность_00.png",
-      "/assets/sprites/custom/растерянность/растерянность_01.png",
-      "/assets/sprites/custom/растерянность/растерянность_02.png",
-      "/assets/sprites/custom/растерянность/растерянность_03.png",
-      "/assets/sprites/custom/растерянность/растерянность_04.png",
-      "/assets/sprites/custom/растерянность/растерянность_05.png",
-      "/assets/sprites/custom/растерянность/растерянность_06.png",
-      "/assets/sprites/custom/растерянность/растерянность_07.png",
-      "/assets/sprites/custom/растерянность/растерянность_08.png",
-      "/assets/sprites/custom/растерянность/растерянность_09.png",
-      "/assets/sprites/custom/растерянность/растерянность_10.png",
-      "/assets/sprites/custom/растерянность/растерянность_11.png",
-      "/assets/sprites/custom/растерянность/растерянность_12.png",
-      "/assets/sprites/custom/растерянность/растерянность_13.png",
-      "/assets/sprites/custom/растерянность/растерянность_14.png",
-      "/assets/sprites/custom/растерянность/растерянность_15.png"
-    ],
-    "sourceFile": "растерянность.png"
+    "sourceFile": "лицо_думает.png"
   }
 }

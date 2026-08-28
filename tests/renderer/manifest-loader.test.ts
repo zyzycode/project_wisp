@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SPRITE_FPS, DEFAULT_SPRITE_PIVOT, ManifestLoader, ManifestValidationError } from '../../src/renderer/render-engine';
+import { DEFAULT_SPRITE_PIVOT, ManifestLoader, ManifestValidationError } from '../../src/renderer/render-engine';
 
 const loader = new ManifestLoader();
 
@@ -15,9 +15,9 @@ describe('Renderer: ManifestLoader', () => {
     const walk = manifest.animations.body_walk;
     const happy = manifest.animations.face_happy;
     expect(manifest.schemaVersion).toBe(1);
-    expect(walk?.fps).toBe(DEFAULT_SPRITE_FPS);
+    expect(walk?.fps).toBe(6);
     expect(walk?.pivot).toEqual(DEFAULT_SPRITE_PIVOT);
-    expect(walk?.frames.map((frame) => frame.durationMs)).toEqual([125, 125, 125, 125]);
+    expect(walk?.frames.map((frame) => Math.round(frame.durationMs))).toEqual([167, 167, 167, 167]);
     expect(happy?.category).toBe('face/happy');
     expect(happy?.layer).toBe('face');
   });
