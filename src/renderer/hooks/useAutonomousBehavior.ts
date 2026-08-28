@@ -33,6 +33,7 @@ export function useAutonomousBehavior({
   enabled = true,
 }: UseAutonomousBehaviorProps) {
   const [isWandering, setIsWandering] = useState<boolean>(false);
+  const [flipX, setFlipX] = useState<boolean>(false);
 
   const positionRef = useRef<Point2D>(currentPosition);
   positionRef.current = currentPosition;
@@ -77,6 +78,9 @@ export function useAutonomousBehavior({
             petSize,
             config
           );
+
+          const movingLeft = wanderTarget.target.x < positionRef.current.x;
+          setFlipX(movingLeft);
 
           wanderStateRef.current = {
             startPos: { ...positionRef.current },
@@ -152,6 +156,7 @@ export function useAutonomousBehavior({
 
   return {
     isWandering,
+    flipX,
     triggerNap,
     wakeUp,
   };

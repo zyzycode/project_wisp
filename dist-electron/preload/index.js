@@ -1,6 +1,13 @@
 let electron = require("electron");
+//#region src/shared/debug-mode.ts
+/** Debug commands are available only while running through the Vite development server. */
+function isDebugMode() {
+	return Boolean(process.env.VITE_DEV_SERVER_URL);
+}
+//#endregion
 //#region src/preload/index.ts
-electron.contextBridge.exposeInMainWorld("wispAPI", {
+var api = {
+	debugEnabled: isDebugMode(),
 	ping: (message) => {
 		return electron.ipcRenderer.invoke("wisp:ping", message);
 	},
@@ -25,8 +32,20 @@ electron.contextBridge.exposeInMainWorld("wispAPI", {
 	setDragState: (isDragging) => {
 		return electron.ipcRenderer.invoke("wisp:set-drag-state", isDragging);
 	},
+	...isDebugMode() ? {
+		getDebugTelemetry: () => electron.ipcRenderer.invoke("wisp:get-debug-telemetry"),
+		clearDebugTelemetryLogs: () => electron.ipcRenderer.invoke("wisp:clear-debug-telemetry-logs"),
+		onDebugTelemetry: (listener) => {
+			const handler = (_event, telemetry) => listener(telemetry);
+			electron.ipcRenderer.on("wisp:debug-telemetry", handler);
+			return () => {
+				electron.ipcRenderer.removeListener("wisp:debug-telemetry", handler);
+			};
+		}
+	} : {},
 	closeApp: () => {
 		return electron.ipcRenderer.invoke("wisp:close-app");
 	}
-});
+};
+electron.contextBridge.exposeInMainWorld("wispAPI", api);
 //#endregion

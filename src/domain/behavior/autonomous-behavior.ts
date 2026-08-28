@@ -31,10 +31,10 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   minIdleDurationMs: 4000,
   maxIdleDurationMs: 9000,
   minWanderDurationMs: 2500,
-  maxWanderDurationMs: 6000,
-  wanderSpeedPxPerSec: 75,
+  maxWanderDurationMs: 7000,
+  wanderSpeedPxPerSec: 90,
   napProbability: 0.15,
-  maxWanderDistancePx: 250,
+  maxWanderDistancePx: 500,
 };
 
 export interface WanderTarget {
@@ -89,18 +89,21 @@ export const DEFAULT_AUTONOMOUS_INTENT_CONFIG: AutonomousIntentConfig = {
 
 /**
  * Calculates a valid wander target within screen boundaries and distance limits.
+ * For a grounded walking character, movement is strictly horizontal (left/right along the X-axis)
+ * to maintain constant ground elevation (Y).
  */
 export function calculateNextWanderTarget(
   currentPos: Point2D,
   screenBounds: RectBounds,
   petSize: Size2D = { width: 100, height: 100 },
   config: BehaviorConfig = DEFAULT_BEHAVIOR_CONFIG,
-  randomAngle: number = Math.random() * Math.PI * 2,
+  randomAngle: number = Math.random() < 0.5 ? 0 : Math.PI,
   randomDistanceFactor: number = 0.5 + Math.random() * 0.5
 ): WanderTarget {
   const distance = config.maxWanderDistancePx * randomDistanceFactor;
-  const rawTargetX = currentPos.x + Math.cos(randomAngle) * distance;
-  const rawTargetY = currentPos.y + Math.sin(randomAngle) * distance;
+  const directionX = Math.cos(randomAngle) >= 0 ? 1 : -1;
+  const rawTargetX = currentPos.x + directionX * distance;
+  const rawTargetY = currentPos.y; // Maintain steady ground elevation
 
   const clampedTarget = clampPositionToBounds(
     { x: rawTargetX, y: rawTargetY },
@@ -109,8 +112,7 @@ export function calculateNextWanderTarget(
   );
 
   const actualDeltaX = clampedTarget.x - currentPos.x;
-  const actualDeltaY = clampedTarget.y - currentPos.y;
-  const actualDistance = Math.hypot(actualDeltaX, actualDeltaY);
+  const actualDistance = Math.abs(actualDeltaX);
 
   const calculatedDuration = (actualDistance / Math.max(1, config.wanderSpeedPxPerSec)) * 1000;
   const durationMs = Math.max(

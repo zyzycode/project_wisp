@@ -7,9 +7,12 @@ import type {
   PetPositionDTO,
   ScreenBoundsDTO,
   InteractiveBoundsDTO,
+  DebugTelemetryDTO,
 } from '../shared/ipc-contracts';
+import { isDebugMode } from '../shared/debug-mode';
 
 const api: WispApiBridge = {
+  debugEnabled: isDebugMode(),
   ping: (message: string): Promise<PingResponseDTO> => {
     return ipcRenderer.invoke('wisp:ping', message);
   },
@@ -34,6 +37,15 @@ const api: WispApiBridge = {
   setDragState: (isDragging: boolean): Promise<void> => {
     return ipcRenderer.invoke('wisp:set-drag-state', isDragging);
   },
+  ...(isDebugMode() ? {
+    getDebugTelemetry: (): Promise<DebugTelemetryDTO> => ipcRenderer.invoke('wisp:get-debug-telemetry'),
+    clearDebugTelemetryLogs: (): Promise<void> => ipcRenderer.invoke('wisp:clear-debug-telemetry-logs'),
+    onDebugTelemetry: (listener: (telemetry: DebugTelemetryDTO) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, telemetry: DebugTelemetryDTO): void => listener(telemetry);
+      ipcRenderer.on('wisp:debug-telemetry', handler);
+      return (): void => { ipcRenderer.removeListener('wisp:debug-telemetry', handler); };
+    },
+  } : {}),
   closeApp: (): Promise<void> => {
     return ipcRenderer.invoke('wisp:close-app');
   },

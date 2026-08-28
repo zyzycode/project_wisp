@@ -19,6 +19,7 @@ export interface CharacterRendererProps {
   expression?: CharacterExpression;
   theme?: CharacterTheme;
   scale?: number;
+  flipX?: boolean;
   isDragging?: boolean;
   tiltDeg?: number;
   animationIntent?: AnimationIntent;
@@ -32,6 +33,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   expression = 'idle',
   theme = DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!,
   scale = 1.0,
+  flipX = false,
   isDragging = false,
   tiltDeg = 0,
   animationIntent,
@@ -45,6 +47,18 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   const [resolver, setResolver] = useState<AssetResolver>(() => new AssetResolver(EMPTY_MANIFEST));
   const presentationState = useCharacterAnimation(resolver, intent);
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
+
+  const activePresentationState = useMemo(() => {
+    if (presentationState === undefined) return undefined;
+    if (presentationState.transform.flipX === flipX) return presentationState;
+    return {
+      ...presentationState,
+      transform: {
+        ...presentationState.transform,
+        flipX,
+      },
+    };
+  }, [presentationState, flipX]);
 
   useEffect(() => {
     let disposed = false;
@@ -76,7 +90,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
     >
-      <SpriteRenderer state={presentationState} />
+      <SpriteRenderer state={activePresentationState} />
     </div>
   );
 };

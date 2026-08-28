@@ -28,8 +28,8 @@
 | 10 — Mock AI & Dialogue Loop | done | `app-developer` | Offline `MockAIProvider`, thinking state и reply flow. |
 | 11 — Character Engine v2 | done | `domain-behavior` + `architect` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
 | 12 — Animation & Reaction Pack | done | `architect` + `domain-behavior` | Синхронизация контракта с Character Engine v2, реакции, idle variety, sleep rules. |
-| 13 — Render Engine & Asset Pipeline | in_progress | `architect` + `app-developer` | RENDER_ENGINE.md, спрайты, слои, fallback, структурированный логгер и Debug HUD. |
-| 14 — Offline Memory & Relationship | later | `app-developer` | SQLite memory, bounded history, local fact extraction и clear memory. |
+| 13 — Render Engine & Asset Pipeline | done | `architect` + `app-developer` | RENDER_ENGINE.md, спрайтовый пайплайн (ходьба), слои, fallback, структурированный логгер и Debug HUD. |
+| 14 — Offline Memory & Relationship | in_progress | `architect` + `app-developer` | SQLite memory, bounded history, local fact extraction и clear memory. |
 | 15 — Desktop Life Behaviors | later | `domain-behavior` | Quiet mode, cooldowns, habits и менее навязчивая автономность. |
 | 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и расширенная dev-only debug panel. |
 | 17 — External AI Contract Readiness | future | `architect` + `app-developer` | Только client-side контракт будущего adapter; backend остаётся отдельно. |
@@ -38,7 +38,7 @@
 
 ## Текущий фокус
 
-Текущая фаза реализации — **Phase 13 (Render Engine & Asset Pipeline)**.
+Текущая фаза реализации — **Phase 14 (Offline Memory & Relationship)**.
 
 Следующий рабочий шаг:
-- **`P13-A01` (`architect`):** Фиксация контракта `docs/engine/RENDER_ENGINE.md` (спрайт-листы, `manifest.json`, pivot points, слои пропсов `propHint`, процедурный румянец, 3-уровневый Graceful Fallback).
+- **`P14-A01` (`architect`):** Создание архитектурного контракта `docs/engine/MEMORY_ENGINE.md` (схема SQLite, таблицы facts/history/relationship, privacy defaults, offline boundaries, clear memory).

@@ -8,9 +8,13 @@ import type {
   PetPositionDTO,
   ScreenBoundsDTO,
   InteractiveBoundsDTO,
+  DebugTelemetryDTO,
 } from '../shared/ipc-contracts';
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
 import { PetPositionService } from '../application/services/pet-position.service';
+import { defaultCharacterStateService } from '../application/services/character-state.service';
+import { AppLogger, LogBuffer } from '../infrastructure/logging';
+import { isDebugMode } from '../shared/debug-mode';
 
 process.env.APP_ROOT = path.join(__dirname, '../..');
 
@@ -27,6 +31,12 @@ export const WINDOW_HEIGHT = 320;
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
 let positionService: PetPositionService | null = null;
+const debugLogBuffer = new LogBuffer();
+const appLogger = new AppLogger({
+  level: 'debug',
+  buffer: debugLogBuffer,
+  sink: () => publishDebugTelemetry(),
+});
 
 function resolvePreloadPath(): string {
   const jsPath = path.join(__dirname, '../preload/index.js');
@@ -55,6 +65,33 @@ function initializeServices(): void {
   const initial = calculateInitialPosition();
   positionService = new PetPositionService(initial);
   positionService.setPetSize({ width: WINDOW_WIDTH, height: WINDOW_HEIGHT });
+  appLogger.info('CharacterEngine', 'Main character telemetry initialized');
+}
+
+function getDebugTelemetry(): DebugTelemetryDTO {
+  const snapshot = defaultCharacterStateService.getSnapshot();
+  const state = defaultCharacterStateService.getState();
+  return {
+    character: {
+      needs: { ...snapshot.needs },
+      relationship: { ...snapshot.relationship },
+      synthesizedTone: snapshot.synthesizedTone,
+      lastUpdated: state.lastUpdated,
+    },
+    logs: appLogger.getBufferedEntries().map((entry) => ({
+      id: entry.id,
+      level: entry.level,
+      context: entry.context,
+      message: entry.message,
+      createdAt: entry.createdAt,
+    })),
+  };
+}
+
+function publishDebugTelemetry(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('wisp:debug-telemetry', getDebugTelemetry());
+  }
 }
 
 function registerIpcHandlers(): void {
@@ -132,6 +169,8 @@ function registerIpcHandlers(): void {
         mainWindow.setPosition(Math.round(updated.x), Math.round(updated.y));
       }
 
+      appLogger.debug('IPC', 'Pet position updated', { x: updated.x, y: updated.y });
+
       return updated;
     }
   );
@@ -139,6 +178,14 @@ function registerIpcHandlers(): void {
   ipcMain.handle('wisp:get-screen-bounds', async (): Promise<ScreenBoundsDTO> => {
     return platformAdapter.getDisplayWorkArea();
   });
+
+  if (isDebugMode()) {
+    ipcMain.handle('wisp:get-debug-telemetry', async (): Promise<DebugTelemetryDTO> => getDebugTelemetry());
+    ipcMain.handle('wisp:clear-debug-telemetry-logs', async (): Promise<void> => {
+      appLogger.clearBuffer();
+      publishDebugTelemetry();
+    });
+  }
 
   ipcMain.handle('wisp:close-app', async (): Promise<void> => {
     app.quit();
