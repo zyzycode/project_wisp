@@ -6,66 +6,14 @@ import type {
   IAIProvider,
   ProviderSuggestedBehaviorKind,
 } from '../../src/application/ports/ai-provider.interface';
+import type {
+  BehaviorIntent,
+  BehaviorIntentKind,
+} from '../../src/domain/behavior/behavior-intent';
+import { mapProviderResponseToBehaviorIntent } from '../../src/application/services/provider-response-intent-mapper';
 
-/**
- * BehaviorIntent types specified by docs/engine/BEHAVIOR_INTENTS.md
- */
-export type BehaviorIntentKind =
-  | 'respond'
-  | 'think'
-  | 'react_happy'
-  | 'react_confused'
-  | 'play'
-  | 'sleep'
-  | 'wake'
-  | 'drag'
-  | 'land'
-  | 'wander'
-  | 'idle'
-  | 'quiet';
-
-export interface BehaviorIntent {
-  kind: BehaviorIntentKind;
-  source: 'user' | 'provider' | 'timer' | 'memory' | 'system';
-  priority: 'low' | 'normal' | 'high' | 'critical';
-  replyText?: string;
-  moodHint?: 'neutral' | 'happy' | 'curious' | 'sleepy' | 'confused' | 'shy';
-  reason?: string;
-  requestId?: string;
-}
-
-/**
- * Reference application mapper as specified in docs/engine/AI_PROVIDER_CONTRACT.md
- */
-export function mapProviderResponseToBehaviorIntent(response: AIProviderResponse): BehaviorIntent {
-  if (response.status === 'fallback') {
-    return {
-      kind: 'react_confused',
-      source: 'provider',
-      priority: 'normal',
-      replyText: response.reply.text,
-      moodHint: response.suggestedMood ?? 'confused',
-      reason: response.diagnostics?.fallbackReason ?? 'fallback',
-      requestId: response.requestId,
-    };
-  }
-
-  // Provider cannot trigger direct user gestures (drag / land)
-  const rawBehavior = response.suggestedBehavior as string | undefined;
-  const safeKind: BehaviorIntentKind =
-    rawBehavior && rawBehavior !== 'drag' && rawBehavior !== 'land'
-      ? (rawBehavior as BehaviorIntentKind)
-      : 'respond';
-
-  return {
-    kind: safeKind,
-    source: 'provider',
-    priority: 'normal',
-    replyText: response.reply.text,
-    moodHint: response.suggestedMood ?? 'neutral',
-    requestId: response.requestId,
-  };
-}
+export { mapProviderResponseToBehaviorIntent };
+export type { BehaviorIntent, BehaviorIntentKind };
 
 describe('Application: MockAI Dialogue Scenarios & Intent Mapping', () => {
   const createRequest = (text: string, requestId = 'req-dialogue-1'): AIProviderRequest => ({
@@ -102,7 +50,7 @@ describe('Application: MockAI Dialogue Scenarios & Intent Mapping', () => {
     });
 
     it('maps question response to respond BehaviorIntent with curious mood', async () => {
-      const response = await provider.generateResponse(createRequest('Почему трава зеленая?'));
+      const response = await provider.generateResponse(createRequest('Почему трава зелёная?'));
       expect(response.status).toBe('ok');
 
       const intent = mapProviderResponseToBehaviorIntent(response);

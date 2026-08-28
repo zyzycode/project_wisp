@@ -11,16 +11,27 @@ import {
 } from '../../domain/interaction/pet-interaction';
 import type { ChatMessage } from '../../domain/chat/chat-message';
 import { createChatMessage } from '../../domain/chat/chat-message';
+import type { IAIProvider } from '../../application/ports/ai-provider.interface';
+import { MockAIProvider } from '../../infrastructure/ai/mock-ai-provider';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { ContextMenu } from './Interaction/ContextMenu';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { ChatInput } from './Chat/ChatInput';
 import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
 import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
+import { useDialogueLoop } from '../hooks/useDialogueLoop';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
 
-export const DesktopPet: React.FC = () => {
+const DEFAULT_MOCK_AI_PROVIDER = new MockAIProvider({ simulatedLatencyMs: 300 });
+
+export interface DesktopPetProps {
+  aiProvider?: IAIProvider;
+}
+
+export const DesktopPet: React.FC<DesktopPetProps> = ({
+  aiProvider = DEFAULT_MOCK_AI_PROVIDER,
+}) => {
   const [screenBounds, setScreenBounds] = useState<ScreenBoundsDTO | null>(null);
   const [position, setPosition] = useState<PetPositionDTO>({ x: 300, y: 300 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -53,6 +64,17 @@ export const DesktopPet: React.FC = () => {
       }
     },
     dispatchAnim,
+  });
+
+  // Dialogue Loop Hook (AI Provider -> BehaviorIntent -> SpeechBubble & FSM)
+  const { handleSendMessage: handleUserSendMessage } = useDialogueLoop({
+    aiProvider,
+    animState,
+    affection,
+    setAffection,
+    setCurrentMessage,
+    dispatchAnim,
+    locale: 'ru',
   });
 
   // Drag & Click reference trackers
@@ -247,12 +269,6 @@ export const DesktopPet: React.FC = () => {
     e.stopPropagation();
     setChatOpen(false);
     setMenuOpen((prev) => !prev);
-  };
-
-  const handleUserSendMessage = (text: string) => {
-    setAffection((prev) => recordPetInteraction(prev, 'single_click'));
-    dispatchAnim('PET');
-    setCurrentMessage(createChatMessage('pet', `«${text}» — я тебя слышу! ✨`));
   };
 
   const handleClose = () => {

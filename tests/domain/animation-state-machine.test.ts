@@ -30,6 +30,41 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentExpression()).toBe('happy');
   });
 
+  it('transitions properly into thinking state and reacts to dialogue responses', () => {
+    const fsm = new AnimationStateMachine('idle');
+
+    // Idle -> THINK -> thinking (expression: curious)
+    expect(fsm.transition('THINK')).toBe(true);
+    expect(fsm.getCurrentState()).toBe('thinking');
+    expect(fsm.getCurrentExpression()).toBe('curious');
+
+    // Thinking -> REACT_HAPPY -> happy (expression: happy)
+    expect(fsm.transition('REACT_HAPPY')).toBe(true);
+    expect(fsm.getCurrentState()).toBe('happy');
+    expect(fsm.getCurrentExpression()).toBe('happy');
+
+    // Happy -> auto transition to idle after 1500ms
+    fsm.update(1600);
+    expect(fsm.getCurrentState()).toBe('idle');
+
+    // Idle -> THINK -> REACT_CONFUSED -> surprised
+    expect(fsm.transition('THINK')).toBe(true);
+    expect(fsm.getCurrentState()).toBe('thinking');
+    expect(fsm.transition('REACT_CONFUSED')).toBe(true);
+    expect(fsm.getCurrentState()).toBe('surprised');
+    expect(fsm.getCurrentExpression()).toBe('surprised');
+
+    // Surprised -> auto transition to idle after 1200ms
+    fsm.update(1300);
+    expect(fsm.getCurrentState()).toBe('idle');
+
+    // Idle -> THINK -> START_SLEEP -> sleep
+    expect(fsm.transition('THINK')).toBe(true);
+    expect(fsm.transition('START_SLEEP')).toBe(true);
+    expect(fsm.getCurrentState()).toBe('sleep');
+    expect(fsm.getCurrentExpression()).toBe('sleepy');
+  });
+
   it('handles timed state transitions automatically on update', () => {
     const fsm = new AnimationStateMachine('landing');
     expect(fsm.getCurrentState()).toBe('landing');

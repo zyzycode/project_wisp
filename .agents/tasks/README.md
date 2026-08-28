@@ -1,18 +1,15 @@
 # .agents/tasks/README.md — компактная доска задач Project Wisp
 
-Этот файл больше не является полной базой задач. Он хранит только ближайший рабочий фронт и правила передачи задач агентам.
-
+Этот файл хранит только ближайший рабочий фронт и правила передачи задач агентам.
 `ROADMAP.md` отвечает на вопрос: куда идём.
 Этот файл отвечает на вопрос: что делать следующим.
 
 ## Бюджет контекста
 
 - Держать файл коротким: целевой размер — до 180 строк.
-- Не расписывать будущие фазы детально заранее.
-- Активными держать только текущую фазу и ближайшие 3-7 задач.
-- Когда фаза закрыта, переносить детали в краткую строку `done`, а не хранить полные критерии приёмки.
+- Активными держать только текущую фазу и 3–5 задач.
 - Агенту в prompt передаётся одна карточка задачи, а не весь backlog.
-- Если задаче нужны подробности контракта, агент читает только релевантный `docs/engine/*.md`.
+- Агент читает только релевантный `docs/engine/*.md`.
 
 ## Статусы
 
@@ -24,57 +21,81 @@
 
 ## Текущее состояние
 
-- Phase 0-8: `done` — база проекта, Electron shell, desktop overlay, drag/positioning, rendering, animation FSM, basic behavior, interaction, local chat UI.
-- Phase 9: `done` — provider/intent contracts описаны и прошли docs review.
-- Phase 10 (Mock AI & Dialogue Loop):
-  - `P10-T01` (IAIProvider port & DTO): `done`
-  - `P10-T02` (Local MockAIProvider implementation): `done`
-  - `P10-T04` (MockAI scenarios & intent mapping tests): `done`
-- Текущая задача: `P10-T03` (Связать dialogue loop в UI).
-- Следующие шаги: `P10-G01` (Code Review Phase 10) -> Phase 11 (Character Engine v2).
+- Phase 0–9: `done` — архитектурная база, оверлей, FSM, UI, контракты ядра.
+- Phase 10: `done` — Mock AI dialogue loop, client integration, scenarios & code review.
+- Phase 11 (Character Engine v2): `in_progress` — потребности, отношения, пластичность, синтез эмоций.
+- Текущая активная задача: `P11-A01` (Architectural Spec & Contract Boundaries for Character Engine v2).
 
-## Активная очередь
+## Активная очередь (Phase 11 — Character Engine v2)
 
-### P10-T03 — Связать dialogue loop в клиенте
+### P11-A01 — Architectural Contracts & Layer Boundaries for Character Engine v2
 
 - **Статус:** `ready`
-- **Исполнитель:** `mock-ai-provider` (или `ui-specialist`)
-- **Зависит от:** `P10-T02`, `P10-T04`
-- **Цель:** связать отправку сообщения в ChatInput -> асинхронный вызов IAIProvider -> thinking state -> маппинг в BehaviorIntent -> отображение реплики в SpeechBubble и запуск соответствующей анимации Wisp.
-- **Читать:** `docs/engine/AI_PROVIDER_CONTRACT.md`, `docs/engine/BEHAVIOR_INTENTS.md`, `tests/application/mock-ai-dialogue-scenarios.test.ts`, `src/renderer/components/DesktopPet.tsx`.
-- **Менять:** `src/renderer/components/DesktopPet.tsx` (и при необходимости сопутствующие хуки/сервисы диалога).
-- **Критерии приёмки:** при вводе фразы Wisp переходит в thinking, затем SpeechBubble показывает ответ провайдера, а FSM запускает анимацию (react_happy, react_confused, respond, sleep и т.д.); unit тесты и typecheck зелёные.
-- **Вне скоупа:** backend, реальная LLM сеть, SQLite память.
+- **Исполнитель:** `architect`
+- **Зависит от:** Phase 10
+- **Цель:** Спроектировать и зафиксировать точную структуру модулей Domain/Application для Character Engine v2: расположение файлов, контракты DTO (`CharacterSnapshot`, `StimulusEvent`), порты репозитория состояния и правила изоляции.
+- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/BEHAVIOR_INTENTS.md`, `docs/engine/AI_PROVIDER_CONTRACT.md`.
+- **Менять:** `src/domain/character/types.ts` (или аналогичные pure type definitions / contracts).
+- **Критерии приёмки:**
+  - [ ] Зафиксирована файловая структура модуля характера в `src/domain/character/`.
+  - [ ] Определены контракты DTO для Application/IPC (`CharacterSnapshot`, `CharacterPresentationDTO`).
+  - [ ] Чистые типы TypeScript без UI и runtime-зависимостей, `npm run typecheck` зелёный.
+- **Вне скоупа:** бизнес-логика тиков/расчётов, UI, Electron.
 
-### P10-G01 — Ревью MockAI implementation
+### P11-T01 — Domain Models, Presets & Emotional Synthesis
+
+- **Статус:** `planned`
+- **Исполнитель:** `domain-behavior`
+- **Зависит от:** `P11-A01`
+- **Цель:** Реализовать доменные структуры `CharacterState`, пресет `shyDreamGirlPreset`, чистые функции `calculateShyness`, `synthesizeEmotionalTone` и `canExpressFlirt`.
+- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `src/domain/character/types.ts`.
+- **Менять:** `src/domain/character/` (presets, emotion synthesizer, shyness calculator).
+- **Критерии приёмки:**
+  - [ ] Реализован `shyDreamGirlPreset` с калибровкой осей.
+  - [ ] Реализованы чистые калькуляторы производных черт и синтеза эмоций.
+  - [ ] `npm test` и `npm run typecheck` зелёные.
+- **Вне скоупа:** UI, таймеры, персистентность.
+
+### P11-T02 — Needs Metabolism & Stimuli Reducer
+
+- **Статус:** `planned`
+- **Исполнитель:** `domain-behavior`
+- **Зависит от:** `P11-T01`
+- **Цель:** Реализовать метаболизм потребностей по тикам времени (soft decay) и чистый редьюсер входящих стимулов с эволюцией `friendship` и гейтингом `loveUnlocked`.
+- **Читать:** `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/BEHAVIOR_INTENTS.md`.
+- **Менять:** `src/domain/character/` (metabolism, stimuli reducer).
+- **Критерии приёмки:**
+  - [ ] Чистые функции тика метаболизма и обработки стимулов (petting, chat, idle).
+  - [ ] Прогрессия отношений по принципу "no guilt".
+  - [ ] `npm test` и `npm run typecheck` зелёные.
+- **Вне скоупа:** React хуки, SQLite.
+
+### P11-T03 — Unit Tests for Character Engine v2
+
+- **Статус:** `planned`
+- **Исполнитель:** `tester`
+- **Зависит от:** `P11-T02`
+- **Цель:** Написать полный набор Vitest тестов для Character Engine v2 (Metabolism, Shyness, Emotional tone, Intimacy gating, Stimuli reducer).
+- **Читать:** `docs/engine/CHARACTER_ENGINE.md`.
+- **Менять:** `tests/domain/character-engine.test.ts`.
+- **Критерии приёмки:** 100% покрытие всех веток логики характера, `npm test` зелёный.
+- **Вне скоупа:** UI тесты.
+
+### P11-G01 — Code Review Phase 11
 
 - **Статус:** `planned`
 - **Исполнитель:** `code-reviewer`
-- **Зависит от:** `P10-T03`
-- **Цель:** отревьюить изменения Phase 10 на boundary leaks, отсутствие внешних LLM SDK и корректность intent mapping.
-- **Читать:** изменённые файлы Phase 10 и релевантные contracts.
+- **Зависит от:** `P11-T03`
+- **Цель:** Независимый аудит чистоты domain layer и отсутствия утечек инфраструктуры/UI.
+- **Читать:** изменённые файлы Phase 11 и `docs/engine/CHARACTER_ENGINE.md`.
 - **Менять:** ничего.
-- **Критерии приёмки:** замечания или явное approval; отсутствие backend/SDK leakage.
-- **Вне скоупа:** fixes и новые features.
-
-### P10-G02 — Исправить confirmed MockAI findings
-
-- **Статус:** `planned`
-- **Исполнитель:** `fixer`
-- **Зависит от:** `P10-G01`
-- **Цель:** исправить только подтверждённые замечания reviewer.
-- **Читать:** reviewer findings и названные файлы.
-- **Менять:** только файлы из findings.
-- **Критерии приёмки:** findings resolved или явно rejected с причиной.
-- **Вне скоупа:** expanding Phase 10.
+- **Критерии приёмки:** подтверждение соблюдения архитектурных границ и offline-first.
+- **Вне скоупа:** новые фичи.
 
 ## Поздние фазы
 
-Раскрывать фазу в карточки задач только тогда, когда она становится следующей активной фазой.
-
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
-| 11 | Character Engine v2: traits, mood, energy, needs, stimuli | `domain-behavior` |
 | 12 | Animation & Reaction Pack: richer reactions, idle variety, sleep/wake rules | `domain-behavior` |
 | 13 | Render Engine & Asset Pipeline: sprite sheets, layers, props, themes | `ui-specialist` |
 | 14 | Offline Memory & Relationship: SQLite memory, facts, history, clear memory | `data-memory` |
@@ -83,27 +104,3 @@
 | 17 | External AI Contract Readiness: future client-side adapter only | `architect` + `mock-ai-provider` |
 | 18 | Stability & Performance Hardening: long sessions, cleanup, Wayland/X11 | `tester` |
 | 19 | Production Packaging: Linux first, then Windows/macOS | `electron-platform` |
-
-## Шаблон карточки задачи
-
-```markdown
-Цель:
-<один конкретный результат>
-
-Контекст:
-<roadmap phase + только релевантные docs/files>
-
-Исполнитель:
-<одна роль агента>
-
-Ограничения:
-- <границы слоя>
-- <запрещённые области>
-
-Критерии приёмки:
-- [ ] <проверяемый результат>
-- [ ] <verification>
-
-Вне скоупа:
-<что задача точно не делает>
-```

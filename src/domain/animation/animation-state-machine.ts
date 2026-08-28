@@ -14,7 +14,8 @@ export type AnimationState =
   | 'landing'
   | 'sleep'
   | 'happy'
-  | 'surprised';
+  | 'surprised'
+  | 'thinking';
 
 export type AnimationEvent =
   | 'START_DRAG'
@@ -25,7 +26,11 @@ export type AnimationEvent =
   | 'START_SLEEP'
   | 'WAKE_UP'
   | 'PET'
-  | 'SPOOK';
+  | 'SPOOK'
+  | 'THINK'
+  | 'REACT_HAPPY'
+  | 'REACT_CONFUSED'
+  | 'SETTLE';
 
 export interface StateConfig {
   defaultExpression: CharacterExpression;
@@ -39,12 +44,12 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
   idle: {
     defaultExpression: 'idle',
     interruptible: true,
-    allowedTransitions: ['float', 'dragged', 'sleep', 'happy', 'surprised', 'falling'],
+    allowedTransitions: ['float', 'dragged', 'sleep', 'happy', 'surprised', 'falling', 'thinking'],
   },
   float: {
     defaultExpression: 'idle',
     interruptible: true,
-    allowedTransitions: ['idle', 'dragged', 'falling', 'happy', 'surprised', 'sleep'],
+    allowedTransitions: ['idle', 'dragged', 'falling', 'happy', 'surprised', 'sleep', 'thinking'],
   },
   dragged: {
     defaultExpression: 'flying',
@@ -68,19 +73,24 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     interruptible: false,
     durationMs: 1500,
     autoNextState: 'idle',
-    allowedTransitions: ['idle', 'dragged', 'surprised'],
+    allowedTransitions: ['idle', 'dragged', 'surprised', 'thinking', 'sleep'],
   },
   surprised: {
     defaultExpression: 'surprised',
     interruptible: false,
     durationMs: 1200,
     autoNextState: 'idle',
-    allowedTransitions: ['idle', 'dragged', 'falling'],
+    allowedTransitions: ['idle', 'dragged', 'falling', 'thinking', 'happy', 'sleep'],
   },
   sleep: {
     defaultExpression: 'sleepy',
     interruptible: true,
-    allowedTransitions: ['idle', 'dragged', 'surprised', 'happy'],
+    allowedTransitions: ['idle', 'dragged', 'surprised', 'happy', 'thinking'],
+  },
+  thinking: {
+    defaultExpression: 'curious',
+    interruptible: true,
+    allowedTransitions: ['idle', 'happy', 'surprised', 'sleep', 'float', 'dragged', 'falling', 'thinking'],
   },
 };
 
@@ -148,16 +158,22 @@ export class AnimationStateMachine {
         break;
       case 'STOP_FLOAT':
       case 'WAKE_UP':
+      case 'SETTLE':
         targetState = 'idle';
         break;
       case 'START_SLEEP':
         targetState = 'sleep';
         break;
       case 'PET':
+      case 'REACT_HAPPY':
         targetState = 'happy';
         break;
       case 'SPOOK':
+      case 'REACT_CONFUSED':
         targetState = 'surprised';
+        break;
+      case 'THINK':
+        targetState = 'thinking';
         break;
       default:
         break;
