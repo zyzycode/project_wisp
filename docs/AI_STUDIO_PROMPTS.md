@@ -1,557 +1,448 @@
 # AI Studio Prompts & Technical Sprite Contract — Project Wisp
 
 > [!NOTE]
-> Личный human-only документ. Включает в себя технический контракт спрайтовой системы, правила позиционирования слоёв и готовые к копированию промпты для AI Studio / Gemini.
+> Личный human-only документ. Включает в себя технический контракт спрайтовой системы, правила позиционирования слоёв, параметры хромакея и готовые к копированию промпты для **Google AI Studio / Gemini** с зелёным фоном `#00FF00`.
 
 ---
 
 ## 📐 1. Технический контракт спрайтовой системы (Sprite Contract)
 
 ### 1.1. Базовые параметры холста
-* **Размер итогового холста (Canvas Size):** строго **`512 × 512 px`** (в игре рендерится как $256 \times 256\text{ px}$ на экранах Retina/High-DPI с двукратной четкостью).
-* **Формат файлов:** `PNG-32` с полноценным альфа-каналом (100% прозрачный фон RGBA).
-* **Цветовое пространство:** `sRGB`, 8 bit/канал.
+* **Размер итогового холста (Canvas Size):** строго **`512 × 512 px`** (в игре рендерится как $256 \times 256\text{ px}$ на экранах Retina/High-DPI с двукратной чёткостью).
+* **Формат файлов в игре:** `PNG-32` с полноценным альфа-каналом (100% прозрачный фон RGBA).
+* **Формат генерации в Gemini:** JPG/PNG на однотонном зелёном фоне **`#00FF00`** (без теней, градиентов и свечения).
+* **Расположение кадров в Gemini:** строго **в один горизонтальный ряд (1 row × 4 columns wide strip)**, чтобы скрипт [`scripts/process_gemini_sprites.py`](../scripts/process_gemini_sprites.py) автоматически нарезал, убирал фон, масштабировал и центрировал спрайты.
 
 ### 1.2. Слоёная архитектура персонажа (Layer Stacking)
 Персонаж рендерится послойно в едином холсте $512 \times 512\text{ px}$:
 1. **Слой 0 (`props / shadows`):** тень персонажа под ногами, подушка для сна.
-2. **Слой 1 (`base_body`):** тело персонажа с прической и одеждой. Область лица оставляется чистой под оверлей.
+2. **Слой 1 (`base_body`):** тело персонажа с прической и одеждой. **Область лица остаётся чистой (цвет кожи без глаз и рта)** под оверлей.
 3. **Слой 2 (`face`):** летающие черты лица (глаза, брови, рот) на прозрачном фоне.
 4. **Слой 3 (`procedural_blush / fx`):** процедурный румянец, иконки эмоций (`fx_heart`, `fx_question`).
 
 ---
 
-## 📏 2. Геометрические координаты и точки привязки (Anchors & Pivots)
+## 📏 2. Геометрические координаты и привязки (Anchors & Pivots)
 
 ### 2.1. Контракт тела (Body Contract)
 * **Точка опоры (Pivot):** `{ x: 0.50, y: 0.90 }`.
 * **Горизонтальное центрирование (Center X):** строго по центру (**`X = 256 px`**).
-* **Линия опоры стоп (Floor Baseline Y):** строго **`Y = 460 px`** от верхнего края холста (снизу остается запас $\sim 52\text{ px}$ под тень и эффекты).
-* **Высота стоящего персонажа (Target Height):** строго **`385 – 390 px`** (макушка головы находится в районе $Y \approx 70\dots75\text{ px}$).
+* **Линия опоры стоп (Floor Baseline Y):** строго **`Y = 460 px`** от верхнего края холста.
+* **Высота стоящего персонажа (Target Height):** строго **`385 – 390 px`** (макушка головы $Y \approx 70\dots75\text{ px}$).
 
 ### 2.2. Контракт оверлеев лиц (Face Overlay Contract)
 > [!IMPORTANT]
-> **Почему лица выходили гигантскими:**
-> Если нейросеть рисовать лицо на весь холст $512 \times 512$, черты лица получаются масштаба крупного портрета ($400\text{ px}$ шириной) вместо маленького личика на чиби-теле!
-> 
-> **Строгие координаты зоны лица на холсте $512 \times 512$:**
-> * **Центр лица:** `X = 256 px`, `Y = 160 px`.
-> * **Зона черт лица (Face Bounding Box):** 
->   * По горизонтали: `X ∈ [176, 336] px` (ширина $\approx 160\text{ px}$).
->   * По вертикали: `Y ∈ [110, 220] px` (высота $\approx 110\text{ px}$).
-> * **Линия уровня глаз:** `Y ≈ 140 – 155 px`.
-> * **Линия рта:** `Y ≈ 185 – 200 px`.
-> * **Прозрачность:** всё остальное пространство холста $512 \times 512$ — **100% чистая прозрачность**. Никаких контуров головы, кожи лица, черепа, ушей и волос!
-
----
-
-## 🧘 Блок 1: Анимации тела (Body Sheets)
-
----
-
-### 1A. `body_idle` | Дыхание в покое (4 кадра) (`дыхание.png`)
-* **Категория:** `body/idle`
-* **Файлы после нарезки:** `body/idle/body_idle_00.png` — `body_idle_03.png`
-
-```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
-
-Stability rules:
-- Character keeps identical height, scale, body thickness, outfit, and palette across all frames.
-- Character is centered horizontally in each cell (X=256).
-- Feet stay aligned to one consistent floor baseline (Y=460).
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
-
-Animation Goal: Create a calm standing idle loop with micro-breathing.
-
-Frame 1: Base pose, calm open eyes, gentle neutral expression, hair resting naturally.
-Frame 2: Inhale start, chest expands and shoulders rise by 3-4 pixels.
-Frame 3: Peak inhale, posture slightly lifted, hair floats subtly.
-Frame 4: Exhale/reset, shoulders and hair settle back toward Frame 1.
-```
-
----
-
-### 1B. `body_idle_8f` | Живой 8-кадровый Idle (`дыхание_8к.png`)
-* **Категория:** `body/idle`
-* **Файлы после нарезки:** `body/idle/body_idle_00.png` — `body_idle_07.png`
-* **Сетка:** `2 rows × 4 columns` (или `1 row × 8 columns`)
-
-```text
-Using the EXACT character design, hair style, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean, fluid 2D game sprite sheet with true alpha transparency.
-
-Layout: exactly 8 equal square frames arranged in a 2 rows × 4 columns grid (or 1 row × 8 columns), read sequentially from Frame 1 to Frame 8.
-
-Stability rules:
-- Character keeps identical height (385-390px), body thickness, outfit, and pastel palette across all 8 frames.
-- Character is strictly centered horizontally in each cell (X=256).
-- Feet remain firmly planted on the exact same floor baseline (Y=460).
-- Background is 100% transparent: no background box, no gradient, no floor line, no drop shadow.
-- Clean sharp anime/chibi game asset, consistent line weight, no extra characters.
-
-Animation Goal: An ultra-smooth 8-frame idle cycle combining deep breathing, micro-sway, and exactly 2 natural quick blinks spread smoothly across the cycle (Frame 2 and Frame 6).
-
-Frame 1 (Resting Base): Natural upright posture, hands relaxed at sides, calm open eyes looking forward, gentle pleasant mouth, hair resting softly.
-Frame 2 (Inhale & Blink 1): Chest begins to expand (+2px), quick natural blink (eyes softly closed in clean lash curves), hair tips float slightly.
-Frame 3 (Peak Inhale): Chest fully expanded, shoulders lifted (+4px), eyes open wide and sparkling looking at viewer, hair suspended at peak.
-Frame 4 (Exhale Transition): Shoulders begin smooth descent, eyes remain calm and open, weight shifts gently toward right foot.
-Frame 5 (Exhale Rest): Chest settles to resting height, calm open eyes with a soft micro-smile, posture relaxed.
-Frame 6 (Micro-Sway & Blink 2): Weight shifts subtly toward left foot, quick second blink (eyes softly closed), hands drift gently with inertia.
-Frame 7 (Reopen & Re-center): Eyes reopen clear and bright, weight smoothly returns toward center between both feet.
-Frame 8 (Loop Settle): Open serene eyes, body smoothly eases back into Frame 1 position for a seamless organic loop.
-```
-
----
-
-### 2. `body_walk` | Ходьба в 1 горизонтальную линию (4 кадра) (`ходьба.png`)
-* **Категория:** `body/walk`
-* **Файлы после нарезки:** `body/walk/body_walk_00.png` — `body_walk_03.png`
-
-```text
-Using the EXACT character design, hair style, facial features, chibi body proportions, clothing, and pastel color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game sprite sheet.
-
-Layout & Alignment:
-- Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide banner).
-- All 4 characters must be positioned strictly along the exact same horizontal floor baseline (Y=460).
-- Character torso centered at X=256 in each frame cell.
-- Solid flat pure white background (#FFFFFF) or 100% transparent PNG, with NO ground shadows, NO floor lines, NO scenery, and NO boxes around frames.
-- Character height (385-390px), hair color, eye style, and dress details must remain 100% identical and consistent across all 4 frames.
-
-Animation Breakdown (Side-View Walking Cycle facing LEFT):
-- Frame 1 (Left Foot Contact): Character walks facing left. Left leg takes a confident step forward with heel touching the floor baseline. Right leg stretches backward supporting on toe. Left arm swings backward, right arm swings forward.
-- Frame 2 (Passing & Rise): Both feet meet together in the center. Body lifts slightly higher (+4px) on toes as the right leg begins swinging forward. Hair and dress float naturally.
-- Frame 3 (Right Foot Contact): Right leg takes a confident step forward with heel touching the floor baseline. Left leg stretches backward supporting on toe. Right arm swings backward, left arm swings forward.
-- Frame 4 (Passing & Settle): Both feet meet together in the center. Body settles smoothly back to baseline height, looping seamlessly back into Frame 1.
-```
-
----
-
-### 3. `body_dragged` | Перетаскивание курсором (`перетаскивание.png`)
-* **Категория:** `body/dragged`
-* **Файлы после нарезки:** `body_dragged_00.png` — `body_dragged_03.png`
-
-```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
-
-Stability rules:
-- Character keeps identical height, scale, body thickness, outfit, and palette across all frames.
-- Character is centered horizontally in each cell (X=256).
-- Character is suspended in mid-air (airborne), centered vertically.
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
-
-Animation Goal: Create a cute dangling loop where the character is lifted in mid-air by the mouse cursor, as if held by the collar.
-
-Frame 1: Lifted and surprised, wide eyes, legs hanging, arms reaching up.
-Frame 2: Kicks left leg forward, right leg back, arms flailing for balance.
-Frame 3: Kicks right leg forward, left leg back, hair swaying sideways.
-Frame 4: Resigned cute dangle, tiny pout, legs slightly bent, loops back to Frame 1.
-```
-
----
-
-### 4. `body_land` | Приземление на пол (`приземлен.png`)
-* **Категория:** `body/land`
-* **Файлы после нарезки:** `body_land_00.png` — `body_land_03.png`
-
-```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
-
-Stability rules:
-- Character keeps identical height, scale, body thickness, outfit, and palette across all frames.
-- Character is centered horizontally in each cell (X=256).
-- Frames 2-4 share the exact same floor baseline (Y=460).
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
-
-Animation Goal: Create a soft landing sequence with squash and stretch.
-
-Frame 1: Airborne anticipation, toes pointed down, arms slightly spread, hair trailing upward.
-Frame 2: Deep squash impact, feet hit baseline, knees bent low, hair and dress flare outward.
-Frame 3: Spring stretch recoil, body rises tall on toes, hair trailing upward.
-Frame 4: Neutral settle, flat-footed standard pose, hair resting, ready to return to idle.
-```
-
----
-
-### 5. `body_sleep_trans` | Переход ко сну (`готов_спать.png`)
-* **Категория:** `body/sleep_transition`
-* **Файлы после нарезки:** `body_sleep_trans_00.png` — `body_sleep_trans_03.png`
-
-```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
-
-Stability rules:
-- Character keeps identical scale, body thickness, outfit, and palette across all frames.
-- Character is centered horizontally in each cell.
-- Baseline floor aligns with Y=460.
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
-
-Animation Goal: Create a cozy sleep transition with a small pastel pillow.
-
-Frame 1: Sleepy yawn, rubbing eyes with one fist while standing.
-Frame 2: Kneels down and places a soft pillow on the floor.
-Frame 3: Lies down sideways, head lowering onto the pillow, legs curling in.
-Frame 4: Fully asleep lying on side, peaceful closed eyes, hair spread softly.
-```
-
----
-
-### 6. `body_sleep` | Дыхание во сне (`спит_дыхание.png`)
-* **Категория:** `body/sleep`
-* **Файлы после нарезки:** `body_sleep_00.png` — `body_sleep_03.png`
-
-```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
-
-Stability rules:
-- Character keeps identical scale, body thickness, outfit, and palette across all frames.
-- Character lies sideways on the pillow resting near floor baseline (Y=460).
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
-
-Animation Goal: Create a sleeping breathing loop with the character lying sideways on the pillow.
-
-Frame 1: Resting baseline, fully relaxed asleep on side.
-Frame 2: Gentle inhale, chest and blanket/dress rise about 3 pixels.
-Frame 3: Peak inhale, serene expression.
-Frame 4: Gentle exhale, chest settles back to Frame 1.
-```
-
----
-
-### 7. `body_thinking` | Задумчивость (`думает.png`)
-* **Категория:** `body/thinking`
-* **Файлы после нарезки:** `body_thinking_00.png` — `body_thinking_03.png`
-
-```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
-
-Stability rules:
-- Character keeps identical height, scale, body thickness, outfit, and palette across all frames.
-- Character is centered horizontally in each cell (X=256).
-- Feet remain firmly anchored to baseline (Y=460).
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
-
-Animation Goal: Create a thinking-to-ready sequence.
-
-Frame 1: Curious question pose, head tilted, finger near chin.
-Frame 2: Deep thought, eyes looking upward, finger tapping chin.
-Frame 3: Realization, eyes brighten, small smile, subtle hand gesture.
-Frame 4: Ready to answer, hands clasped or small nod, confident warm expression.
-```
-
----
-
-### 8. `body_petting` | Реакция на поглаживание (`радость.png`)
-* **Категория:** `body/petting`
-* **Файлы после нарезки:** `body_petting_00.png` — `body_petting_03.png`
-
-```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
-
-Stability rules:
-- Character keeps identical height, scale, body thickness, outfit, and palette across all frames.
-- Character is centered horizontally in each cell (X=256).
-- Feet remain aligned to baseline (Y=460) except during the small hop.
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
-
-Animation Goal: Create a cute positive reaction to being petted.
-
-Frame 1: Leans into touch with closed eyes and gentle smile.
-Frame 2: Blushing happy expression, joyful eyes, hands clasped together.
-Frame 3: Tiny excited hop (lifts 10-15px above baseline), hands near chest, hair bouncing.
-Frame 4: Soft landing and happy settle, ready to return to idle.
-```
-
----
-
-## 😊 Блок 2: Оверлеи лиц (Face Overlays)
-
-> [!IMPORTANT]
 > **ПРАВИЛО ОВЕРЛЕЕВ ЛИЦ:**
-> Нейросети **строго запрещено рисовать голову, волосы, уши, шею и овал лица**.
-> Генерируются **только черты лица** (глаза, брови, нос, рот) в точных пропорциях головы персонажа. Черты лица занимают строго центральную область головы (`X: 176...336`, `Y: 110...220` внутри квадрата 512×512), а всё окружение — 100% прозрачный фон.
+> Нейросеть генерирует **только черты лица** (глаза, брови, нос, рот, румянец).
+> **Строго запрещено рисовать контур головы, волосы, уши, шею и овал лица!**
+> Черты лица занимают центральную зону головы ($X \in [176, 336]$, $Y \in [110, 220]$ внутри квадрата $512 \times 512$), а фон `#00FF00` автоматически удаляется скриптом.
 
 ---
 
-### 8F. `face_idle_blink_8f` | Моргание для покоя (8 кадров) (`моргание_8к.png`)
-* **Категория:** `faces/idle_blink`
-* **Файлы после нарезки:** `faces/idle_blink/face_idle_00.png` — `face_idle_07.png`
-* **Сетка:** `2 rows × 4 columns` (или `1 row × 8 columns`)
+## 🛠️ 3. Пайплайн обработки генераций
+
+После генерации картинки в Gemini:
+1. Сохрани файл в папку `generated_images/gemini/` (например, `face_dizzy.jpg` или `body_sit.jpg`).
+2. Запусти скрипт обработки:
+   ```bash
+   python3 scripts/process_gemini_sprites.py --debug
+   ```
+3. Скрипт автоматически:
+   - Удалит фон `#00FF00` с деспиллом (без зелёного ореола) через [`scripts/chroma_key_remover.py`](../scripts/chroma_key_remover.py).
+   - Нарежет на 4 кадра PNG-32 по $512 \times 512$.
+   - Откалибрует масштаб и координаты лица ($X=256, Y=180$) или тела ($Y=460$).
+   - Создаст превью наложения на тело в `public/assets/sprites/body/idle/delete_me/`.
+
+---
+
+# 🎭 БЛОК 1: Оверлеи лиц и эмоций (Face Overlays)
+
+---
+
+### F01. `face_curious` | Любопытство / Интерес
+* **Папка в игре:** `public/assets/sprites/faces/curious/`
+* **Файлы:** `face_curious_00.png` — `face_curious_03.png`
+* **Сохранить в:** `generated_images/gemini/face_curious.jpg`
 
 ```text
-Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a 2D facial feature sprite sheet.
 
-Layout: exactly 8 equal square cells in a 2 rows × 4 columns grid (or 1 row × 8 columns), read sequentially from Frame 1 to Frame 8.
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
 CRITICAL OVERLAY RULES:
-- ONLY draw facial features: eyes, eyebrows, nose, mouth, and subtle soft blush.
-- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
-- The area around the eyes and mouth must be 100% transparent alpha.
-- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image (facial zone X:176-336, Y:110-220 within 512x512 canvas).
-- Absolute consistency across all 8 frames: identical eye size, color palette, and line art style.
+- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX.
+- DO NOT draw the head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. All features must have clean hard silhouettes against #00FF00.
+- Consistency: identical eye size, color palette, and line art across all 4 frames.
 
-Animation Goal: Natural relaxed idle face with a single realistic quick blink on frames 5-6 (leaving eyes open for 75% of the cycle).
-
-Frame 1 (Open Base): Calm open eyes with sparkling highlights, gentle neutral mouth line, faint blush.
-Frame 2 (Calm Hold): Same calm open eyes, pleasant micro-smile.
-Frame 3 (Calm Hold): Same open eyes looking gently forward, relaxed eyebrows.
-Frame 4 (Calm Hold / Pre-Blink): Open eyes, relaxed posture.
-Frame 5 (Quick Half-Blink): Eyelids dropping halfway down (anticipation frame).
-Frame 6 (Full Blink): Eyes smoothly closed into clean soft lash lines, closed relaxed mouth.
-Frame 7 (Quick Eye Opening): Eyelids rising halfway back up, highlights reappearing.
-Frame 8 (Open Settle): Eyes fully open and clear again, seamless transition back to Frame 1.
+Animation Breakdown:
+- Frame 1: One eyebrow slightly raised, eyes looking slightly up-left, small cute closed mouth.
+- Frame 2: Curious head-tilt expression, eyes looking further to upper-left, soft pleasant mouth.
+- Frame 3: Wonder and realization, sparkling wide curious eyes with small star glints, tiny "o" mouth.
+- Frame 4: Satisfied warm smile, eyes relaxed and centering back.
 ```
 
 ---
 
-### 9. `face_happy` | Радость / Счастье (`счаст.png`)
-* **Категория:** `faces/happy`
-* **Файлы после нарезки:** `face_happy_00.png` — `face_happy_03.png`
+### F02. `face_dizzy` | Спиральки в глазах / Головокружение
+* **Папка в игре:** `public/assets/sprites/faces/dizzy/`
+* **Файлы:** `face_dizzy_00.png` — `face_dizzy_03.png`
+* **Сохранить в:** `generated_images/gemini/face_dizzy.jpg`
 
 ```text
-Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a 2D facial feature sprite sheet.
 
-Layout: exactly 4 equal square cells in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
 CRITICAL OVERLAY RULES:
-- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (blush, tears, sweat drops).
-- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
-- The area around the eyes and mouth must be 100% transparent alpha.
-- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image (facial zone X:176-336, Y:110-220 within 512x512 canvas).
-- Absolute consistency across all 4 frames: identical eye size, color palette, and line art style.
+- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (sweat drops, stars).
+- DO NOT draw the head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. All features must have clean hard silhouettes against #00FF00.
+- Consistency: identical eye size, color palette, and line art across all 4 frames.
 
-Facial Expression Theme: Happy / Joy progression
-
-Frame 1 (Soft Smile): Calm open eyes with gentle highlights, tiny pleasant smile, faint blush.
-Frame 2 (Cheerful): Bright open eyes looking forward, wider smiling mouth, noticeable pink blush.
-Frame 3 (Joyful Squinched): Closed curved anime eyes (^ ^), happy open smile showing upper teeth/mouth, cute rosy cheeks.
-Frame 4 (Ecstatic / Laughing): Tightly closed joyful eyes (> <), wide happy open laugh, sparkling highlight accents, bright blush.
+Animation Breakdown:
+- Frame 1: Spiral swirl pupils starting to spin, wavy wobbly mouth (~), tiny anime sweat droplet.
+- Frame 2: Large white-and-dark spiral swirl eyes, wavy open mouth, dizzy pink blush cheeks.
+- Frame 3: Dizzy spiral eyes rotated 180 degrees, funny tongue-out wobbly mouth, spinning stars near cheeks.
+- Frame 4: Recovering half-closed dizzy eyes, small dazed "o" mouth.
 ```
 
 ---
 
-### 10. `face_sad` | Грусть / Плач (`грусть.png`)
-* **Категория:** `faces/sad`
-* **Файлы после нарезки:** `face_sad_00.png` — `face_sad_03.png`
+### F03. `face_surprised` | Испуг / Внезапный подхват мышью
+* **Папка в игре:** `public/assets/sprites/faces/surprised/`
+* **Файлы:** `face_surprised_00.png` — `face_surprised_03.png`
+* **Сохранить в:** `generated_images/gemini/face_surprised.jpg`
 
 ```text
-Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a 2D facial feature sprite sheet.
 
-Layout: exactly 4 equal square cells in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
 CRITICAL OVERLAY RULES:
-- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (blush, tears, sweat drops).
-- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
-- The area around the eyes and mouth must be 100% transparent alpha.
-- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image (facial zone X:176-336, Y:110-220 within 512x512 canvas).
-- Absolute consistency across all 4 frames: identical eye size, color palette, and line art style.
+- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (sweat drops).
+- DO NOT draw the head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. All features must have clean hard silhouettes against #00FF00.
+- Consistency: identical eye size, color palette, and line art across all 4 frames.
 
-Facial Expression Theme: Sadness / Distress progression
-
-Frame 1 (Mild Sadness): Drooped eyebrows, slightly lowered pupils, tiny downturned mouth.
-Frame 2 (Worry / Hurt): Troubled angled brows, glossy teary eyes with extra reflections, small quivering mouth.
-Frame 3 (Crying): Squeezed shut sad eyes with tear drops at the corners, small open whimpering mouth, slight blue distress tint on forehead.
-Frame 4 (Bawling / Streaming Tears): Closed crying eyes with animated tear streams flowing down cheeks, wide open crying mouth.
+Animation Breakdown:
+- Frame 1: High raised eyebrows, wide rounded eyes with focused pupils, tiny "o" mouth.
+- Frame 2: High arched startled brows, wide round eyes with tiny dot pupils, open oval gasp mouth (O), tiny sweat drop near temple.
+- Frame 3: Wide sparkling surprised eyes, raised brows, open cute mouth.
+- Frame 4: Calming down, eyes slightly relaxing, mouth closing to a soft "o".
 ```
 
 ---
 
-### 11. `face_shocked` | Удивление / Шок (`удивление.png`)
-* **Категория:** `faces/shocked`
-* **Файлы после нарезки:** `face_shocked_00.png` — `face_shocked_03.png`
+### F04. `face_blush` | Смущение / Нежный румянец
+* **Папка в игре:** `public/assets/sprites/faces/blush/`
+* **Файлы:** `face_blush_00.png` — `face_blush_03.png`
+* **Сохранить в:** `generated_images/gemini/face_blush.jpg`
 
 ```text
-Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a 2D facial feature sprite sheet.
 
-Layout: exactly 4 equal square cells in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
 CRITICAL OVERLAY RULES:
-- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (blush, tears, sweat drops).
-- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
-- The area around the eyes and mouth must be 100% transparent alpha.
-- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image (facial zone X:176-336, Y:110-220 within 512x512 canvas).
-- Absolute consistency across all 4 frames: identical eye size, color palette, and line art style.
+- ONLY draw facial features: eyes, eyebrows, nose, mouth, and pink blush with cute diagonal blush hatch lines.
+- DO NOT draw the head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. All features must have clean hard silhouettes against #00FF00.
+- Consistency: identical eye size, color palette, and line art across all 4 frames.
 
-Facial Expression Theme: Surprise / Shock progression
-
-Frame 1 (Notice / Perked): Raised eyebrows, slightly widened eyes with focused small pupils, tiny "o" mouth.
-Frame 2 (Surprised): High arched eyebrows, wide rounded eyes, open oval mouth.
-Frame 3 (Shocked / Stunned): High startled eyebrows, tiny shrunken pupils (dot eyes), wide open gaping mouth, tiny anime sweatdrop near temple.
-Frame 4 (Comical Panic / Bewildered): Swirl or spiral dizzy pupils, wavy uneven open mouth, multiple panic sweat droplets.
+Animation Breakdown:
+- Frame 1: Shy downward-sideways glance, soft light rosy blush on cheeks, timid small mouth line.
+- Frame 2: Deeper rosy blush with cute diagonal blush hatching lines, sideways bashful glance, shy smile.
+- Frame 3: Flustered closed curved anime eyes (^ ^), bright red blush cheeks, embarrassed wavy mouth.
+- Frame 4: Shy peek, one eye softly peeking, bright blush, timid sweet smile.
 ```
 
 ---
 
-### 12. `face_talking` | Речь и мимика (`речь.png`)
-* **Категория:** `faces/talking`
-* **Файлы после нарезки:** `face_talking_00.png` — `face_talking_03.png`
+### F05. `face_winking` | Игривое подмигивание
+* **Папка в игре:** `public/assets/sprites/faces/winking/`
+* **Файлы:** `face_winking_00.png` — `face_winking_03.png`
+* **Сохранить в:** `generated_images/gemini/face_winking.jpg`
 
 ```text
-Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a 2D facial feature sprite sheet.
 
-Layout: exactly 4 equal square cells in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
 CRITICAL OVERLAY RULES:
-- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (blush, tears, sweat drops).
-- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
-- The area around the eyes and mouth must be 100% transparent alpha.
-- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image (facial zone X:176-336, Y:110-220 within 512x512 canvas).
-- Absolute consistency across all 4 frames: identical eye size, color palette, and line art style.
+- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small sparkle FX.
+- DO NOT draw the head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. All features must have clean hard silhouettes against #00FF00.
+- Consistency: identical eye size, color palette, and line art across all 4 frames.
 
-Facial Expression Theme: Talking & Lip-sync with gentle blink
-
-Frame 1 (Resting / Closed): Natural calm open eyes, closed resting mouth (line).
-Frame 2 (Slight Open / M-B-P transition): Natural open eyes, slightly parted relaxed mouth.
-Frame 3 (Wide Open / A-O vowels): Bright expressive open eyes, open talking mouth.
-Frame 4 (Mid-Talk Blink): Half-closed blinking eyes, round "Oh" vowel mouth shape.
+Animation Breakdown:
+- Frame 1: Cheerful open sparkling eyes, bright smile.
+- Frame 2: Left eye closing into a sharp wink curve with a tiny yellow star glint, right eye wide and open, cheeky grin.
+- Frame 3: Full wink hold, left eye closed in a clean lash curve with sparkle accent, right eye wide, happy open smile with blush.
+- Frame 4: Left eye reopening smoothly, cheerful relaxed smile.
 ```
 
 ---
 
-### 13. `face_thinking` | Задумчивость и сомнение (`думает_лицо.png`)
-* **Категория:** `faces/thinking`
-* **Файлы после нарезки:** `face_thinking_00.png` — `face_thinking_03.png`
+### F06. `face_pout` | Надутые щёчки / Милая обида
+* **Папка в игре:** `public/assets/sprites/faces/pout/`
+* **Файлы:** `face_pout_00.png` — `face_pout_03.png`
+* **Сохранить в:** `generated_images/gemini/face_pout.jpg`
 
 ```text
-Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a 2D facial feature sprite sheet.
 
-Layout: exactly 4 equal square cells in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
 CRITICAL OVERLAY RULES:
-- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (blush, tears, sweat drops).
-- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
-- The area around the eyes and mouth must be 100% transparent alpha.
-- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image (facial zone X:176-336, Y:110-220 within 512x512 canvas).
-- Absolute consistency across all 4 frames: identical eye size, color palette, and line art style.
+- ONLY draw facial features: eyes, eyebrows, nose, mouth, and puffed cheek blush.
+- DO NOT draw the head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. All features must have clean hard silhouettes against #00FF00.
+- Consistency: identical eye size, color palette, and line art across all 4 frames.
 
-Facial Expression Theme: Thinking / Skeptical progression
-
-Frame 1 (Curious): One eyebrow slightly raised, eyes looking slightly up-left, neutral closed mouth.
-Frame 2 (Pondering): Furrowed inner brows, eyes looking all the way up, mouth pursed to the side.
-Frame 3 (Confused): Asymmetrical eyebrows (one high, one low), squinted asymmetrical eyes, wavy skeptical mouth (~).
-Frame 4 (Idea / Eureka): Eyebrows snap up, wide sparkling enlightened eyes with star highlights, small confident smile.
+Animation Breakdown:
+- Frame 1: Mild annoyance, slightly furrowed brows, side glance, small cute protruded pout mouth (3).
+- Frame 2: Puffed cheeks start, cheeks expanding with rosy blush, annoyed side-glance, puffed '3' mouth.
+- Frame 3: Full cute pout, cheeks fully puffed with blush and cute puff outline curves, furrowed brows, turned-away eyes, grumpy-cute '3' mouth.
+- Frame 4: Stubborn cute pout hold, eyes glancing back toward viewer.
 ```
 
 ---
 
-### 14. `face_sleep` | Сонное лицо (`сон_лицо.png`)
-* **Категория:** `faces/sleep`
-* **Файлы после нарезки:** `face_sleep_00.png` — `face_sleep_03.png`
+### F07. `pupils_normal` | Изолированные зрачки (для Gaze Tracking)
+* **Папка в игре:** `public/assets/sprites/faces/pupils/`
+* **Файлы:** `pupils_normal_00.png`, `pupils_normal_01.png`
+* **Сохранить в:** `generated_images/gemini/pupils_normal.jpg`
 
 ```text
-Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
+Using the EXACT eye color, iris gradient, pupil core, specular highlights, and eye-spacing from the ATTACHED REFERENCE IMAGE, generate an isolated pair of pupils for procedural eye tracking.
 
-Layout: exactly 4 equal square cells in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+Layout: Exactly 2 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 2 columns wide strip).
 
-CRITICAL OVERLAY RULES:
-- ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (blush, tears, sweat drops).
-- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
-- The area around the eyes and mouth must be 100% transparent alpha.
-- Keep the exact relative position, small scale, eye-spacing, and height of the face as if positioned onto the head in the reference image (facial zone X:176-336, Y:110-220 within 512x512 canvas).
-- Absolute consistency across all 4 frames: identical eye size, color palette, and line art style.
+CRITICAL RULES:
+- ONLY draw the isolated pair of pupils and irises (left pupil and right pupil).
+- DO NOT draw eyelashes, eyelids, sclera (white of eye), skin, eyebrows, head, or body.
+- The two pupils must be positioned at the exact distance and vertical height matching the eyes in the reference image.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Clean hard silhouettes against #00FF00.
 
-Facial Expression Theme: Sleepy / Slumber progression
-
-Frame 1 (Heavy Lids): Half-closed drowsy eyes, low relaxed eyebrows, tiny yawn mouth.
-Frame 2 (Wide Yawn): Tightly squeezed shut eyes, wide open yawning mouth, tiny sleep tear at corner.
-Frame 3 (Peaceful Asleep): Softly curved closed resting eyes, gentle relaxed mouth line, soft warm blush.
-Frame 4 (Deep Sleep): Straight closed sleeping lash lines, tiny relaxed slightly parted "o" mouth with a tiny sleeping bubble near mouth/nose.
+Breakdown:
+- Frame 1: Standard isolated pupil pair looking straight forward with specular highlights.
+- Frame 2: Same isolated pupil pair with an extra subtle star glint highlight.
 ```
 
 ---
 
-## 🚀 Блок 3: Дополнительные анимации и эффекты (Expansion Pack)
+# 🏃 БЛОК 2: Shimeji-позы тела (Body Sheets)
+
+> Все позы тела генерируются **без запечённых глаз и рта** (с чистым овалом лица цвета кожи), чтобы поверх можно было накладывать любые эмоции.
 
 ---
 
-### 15. `body_wave` | Машет рукой (`машет.png`)
-* **Категория:** `body/wave`
-* **Файлы после нарезки:** `body_wave_00.png` — `body_wave_03.png`
+### B01. `body_sit` | Сидит на полу
+* **Папка в игре:** `public/assets/sprites/body/sit/`
+* **Файлы:** `body_sit_00.png` — `body_sit_03.png`
+* **Сохранить в:** `generated_images/gemini/body_sit.jpg`
 
 ```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game sprite sheet.
 
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
-Stability rules:
-- Character keeps identical height, scale, body thickness, outfit, and palette across all frames.
-- Character is centered horizontally in each cell (X=256).
-- Feet stay aligned to floor baseline (Y=460).
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
+Stability & Rules:
+- Character keeps identical scale, clothing, hair, and palette across all 4 frames.
+- Character is centered horizontally in each cell.
+- The bottom of the seated character rests consistently on the floor baseline.
+- CRITICAL: The face area on the head is completely clean skin (NO baked eyes, NO baked mouth, NO facial features).
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Character must have a clean hard silhouette against #00FF00.
 
-Animation Goal: Create a cute standing hand-waving cycle (greeting/goodbye).
-
-Frame 1: Raises right hand up to head level, friendly smile, left hand resting at hip.
-Frame 2: Hand tilts left, fingers spread slightly, body leans slightly right.
-Frame 3: Hand tilts right, cheerful open expression, head tilted cutely.
-Frame 4: Hand sways back toward center, looping cleanly back to Frame 1.
+Animation Breakdown (Sitting idle loop):
+- Frame 1: Sits comfortably on the ground facing forward, hands resting softly on knees, legs folded cutely.
+- Frame 2: Inhale, chest and shoulders rise slightly (+2px), hair tips float subtly.
+- Frame 3: Gentle weight shift to one side, leaning slightly on one hand, hair resting.
+- Frame 4: Exhale and settle smoothly back into Frame 1 position.
 ```
 
 ---
 
-### 16. `body_celebrate` | Танец радости / Победа (`победа.png`)
-* **Категория:** `body/celebrate`
-* **Файлы после нарезки:** `body_celebrate_00.png` — `body_celebrate_03.png`
+### B02. `body_stand_up` | Вставание на ноги
+* **Папка в игре:** `public/assets/sprites/body/stand_up/`
+* **Файлы:** `body_stand_up_00.png` — `body_stand_up_03.png`
+* **Сохранить в:** `generated_images/gemini/body_stand_up.jpg`
 
 ```text
-Using the EXACT character design, hair style, facial features, body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game sprite sheet.
 
-Layout: exactly 4 equal square frames in one horizontal row (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
-Stability rules:
-- Character keeps identical height, scale, body thickness, outfit, and palette across all frames.
-- Character is centered horizontally in each cell (X=256).
-- Feet stay aligned to floor baseline (Y=460) except during the jump.
-- Background is 100% transparent: no solid fill, backdrop, white box, floor, or baked shadow.
-- Clean sharp 2D game asset, no extra characters, no UI, no text labels.
+Stability & Rules:
+- Character keeps identical scale, clothing, hair, and palette across all 4 frames.
+- Character is centered horizontally in each cell.
+- Feet stay aligned to the floor baseline.
+- CRITICAL: The face area on the head is completely clean skin (NO baked eyes, NO baked mouth).
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Character must have a clean hard silhouette against #00FF00.
 
-Animation Goal: Create an energetic celebration / victory animation.
-
-Frame 1: Crouches down with fists clenched near chest (anticipation).
-Frame 2: Leaps upward into the air (+20px) throwing both arms up high in a "V" sign, joyful expression.
-Frame 3: Lands softly on baseline (Y=460), swaying hips with a cute victory pose.
-Frame 4: Claps hands together in front of chest with a sparkling bright smile, ready to loop.
+Animation Breakdown (Transition from sitting to standing):
+- Frame 1: Seated posture, hands placed on the floor for support.
+- Frame 2: Pushes up from floor onto knees and balls of feet (half-crouch).
+- Frame 3: Straightening legs, standing up tall, hands swinging naturally to sides.
+- Frame 4: Standard upright standing idle posture, fully balanced on feet.
 ```
 
 ---
 
-### 17. `props_pack` | Пак предметов и эффектов (`предметы.png`)
-* **Категория:** `props`
-* **Файлы после нарезки:** `props/prop_*.png`
+### B03. `body_lie` | Лежит на полу
+* **Папка в игре:** `public/assets/sprites/body/lie/`
+* **Файлы:** `body_lie_00.png` — `body_lie_03.png`
+* **Сохранить в:** `generated_images/gemini/body_lie.jpg`
 
 ```text
-Using the EXACT pastel cute anime art style and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game props and FX sheet on a transparent background PNG.
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game sprite sheet.
 
-Layout: exactly 4 equal square cells in one horizontal row (1 row × 4 columns).
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+Stability & Rules:
+- Character keeps identical scale, clothing, hair, and palette across all 4 frames.
+- Character lies sideways/belly on the floor resting along the baseline.
+- CRITICAL: The face area on the head is completely clean skin (NO baked eyes, NO baked mouth).
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Character must have a clean hard silhouette against #00FF00.
+
+Animation Breakdown (Lying on floor relaxing):
+- Frame 1: Lying on tummy/side resting on elbows, legs slightly raised behind.
+- Frame 2: Gentle leg sway, one foot kicks up cutely in the air.
+- Frame 3: Other foot kicks up, chest rises slightly with gentle breathing.
+- Frame 4: Feet lower softly, returning smoothly to Frame 1.
+```
+
+---
+
+### B04. `body_run` | Быстрый бег
+* **Папка в игре:** `public/assets/sprites/body/run/`
+* **Файлы:** `body_run_00.png` — `body_run_03.png`
+* **Сохранить в:** `generated_images/gemini/body_run.jpg`
+
+```text
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game sprite sheet.
+
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+Stability & Rules:
+- Character is seen from side profile / 3/4 view facing LEFT in a running pose.
+- Character height, dress, and hair remain 100% consistent across all frames.
+- Feet contact the floor baseline during strides.
+- CRITICAL: The face area on the head is clean skin without baked facial features.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Character must have a clean hard silhouette against #00FF00.
+
+Animation Breakdown (Energetic running cycle facing LEFT):
+- Frame 1 (Left Leg Contact): Left leg takes a long forward running stride, right leg trailing back, right arm forward, hair flying backward with inertia.
+- Frame 2 (Passing Flight): Both feet off the floor, body lifted (+6px) in airborne phase, legs passing each other.
+- Frame 3 (Right Leg Contact): Right leg takes a long forward running stride, left leg trailing back, left arm forward, hair flowing backward.
+- Frame 4 (Second Flight): Both feet off the floor, body lifted in airborne phase, ready to loop into Frame 1.
+```
+
+---
+
+### B05. `body_fall` | Падение в воздухе
+* **Папка в игре:** `public/assets/sprites/body/fall/`
+* **Файлы:** `body_fall_00.png` — `body_fall_03.png`
+* **Сохранить в:** `generated_images/gemini/body_fall.jpg`
+
+```text
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game sprite sheet.
+
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+Stability & Rules:
+- Character is suspended in mid-air falling downward.
+- Dress and long hair are billowing upward due to wind resistance.
+- Character is centered horizontally in each frame cell.
+- CRITICAL: The face area on the head is clean skin without baked facial features.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Character must have a clean hard silhouette against #00FF00.
+
+Animation Breakdown (Free fall animation):
+- Frame 1: Falling pose, arms reaching upward, legs dangling slightly, hair billowing up.
+- Frame 2: Flails left arm and kicks right leg, hair swaying to one side.
+- Frame 3: Flails right arm and kicks left leg, hair swaying to the other side.
+- Frame 4: Arms spread out for wind balance, hair billowing high, loops back to Frame 1.
+```
+
+---
+
+### B06. `body_crash_splat` | Шлепок о пол / Расплющивание
+* **Папка в игре:** `public/assets/sprites/body/crash_splat/`
+* **Файлы:** `body_crash_splat_00.png` — `body_crash_splat_03.png`
+* **Сохранить в:** `generated_images/gemini/body_crash_splat.jpg`
+
+```text
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game sprite sheet.
+
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+Stability & Rules:
+- Floor baseline is consistent across all contact frames.
+- Comical cartoon squash-and-stretch physics.
+- CRITICAL: The face area on the head is clean skin without baked facial features.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Character must have a clean hard silhouette against #00FF00.
+
+Animation Breakdown (Impact landing and flat squish):
+- Frame 1 (Anticipation): Just 10px above floor, toes pointed down, bracing for impact.
+- Frame 2 (Hard Impact): Extreme squashed pose flat on the floor, knees bent wide, hair and dress splayed outward.
+- Frame 3 (Flat Splat): Comical flat pancake starfish pose completely flat on the floor baseline, arms and legs spread out wide.
+- Frame 4 (Squished Wobble): Flat on floor, slight dazed jiggle vibration.
+```
+
+---
+
+### B07. `body_recover` | Подъём и отряхивание после падения
+* **Папка в игре:** `public/assets/sprites/body/recover/`
+* **Файлы:** `body_recover_00.png` — `body_recover_03.png`
+* **Сохранить в:** `generated_images/gemini/body_recover.jpg`
+
+```text
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game sprite sheet.
+
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), ordered left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+Stability & Rules:
+- Feet and knees stay grounded on floor baseline.
+- CRITICAL: The face area on the head is clean skin without baked facial features.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Character must have a clean hard silhouette against #00FF00.
+
+Animation Breakdown (Getting back up):
+- Frame 1: Pushes upper body off the floor on hands, knees still on ground.
+- Frame 2: Gets onto knees, rubs head or dusts off dress with one hand.
+- Frame 3: Steps up onto one foot, rising upward.
+- Frame 4: Stands tall on both feet, quick final shake/dust-off, transitioning back to idle.
+```
+
+---
+
+# 🎁 БЛОК 3: Реквизит и спецэффекты (Props & FX)
+
+---
+
+### P01. `props_pack` | Пак предметов и эмоций
+* **Папка в игре:** `public/assets/sprites/props/`
+* **Файлы:** `prop_shadow.png`, `prop_pillow.png`, `prop_heart.png`, `prop_question.png`
+* **Сохранить в:** `generated_images/gemini/props_pack.jpg`
+
+```text
+Using the EXACT pastel cute anime art style and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game props and FX sheet.
+
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
 
 Items breakdown:
-Cell 1 (prop_shadow): A clean, soft semi-transparent oval floor shadow seen from top-down 3/4 perspective, smooth soft gradient edge.
-Cell 2 (prop_pillow): A small, soft cozy pastel sleeping pillow with subtle creases.
-Cell 3 (fx_heart): A cute floating anime heart icon with soft sparkle highlights.
-Cell 4 (fx_question): A cute question mark "?" icon with a subtle exclamation mark sparkle.
+- Cell 1 (prop_shadow): A clean, soft semi-transparent oval floor shadow seen from top-down 3/4 perspective, smooth soft gradient edge.
+- Cell 2 (prop_pillow): A small, soft cozy pastel sleeping pillow with subtle creases.
+- Cell 3 (prop_heart): A cute floating anime heart icon with soft sparkle highlights.
+- Cell 4 (prop_question): A cute question mark "?" icon with a subtle exclamation mark sparkle.
 
 Rules:
-- 100% transparent background (true alpha).
-- No characters, no background scenes, no solid boxes.
+- Background must be a single flat solid color #00FF00. No shadows, no gradient, no texture, no glow, no green reflected light. Clean hard silhouettes against #00FF00.
+- No characters, no scenery.
 ```
