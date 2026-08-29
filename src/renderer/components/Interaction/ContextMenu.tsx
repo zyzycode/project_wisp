@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { CharacterTheme } from '../../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../../domain/models/character-visuals';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
@@ -54,26 +54,34 @@ const TONE_LABELS_RU: Record<SynthesizedEmotionalTone, string> = {
   neutral: 'Спокойное',
 };
 
-const ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
+const ALL_ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
   { event: 'SETTLE', label: '🌿 Дыхание' },
   { event: 'START_FLOAT', label: '🐾 Ходьба' },
   { event: 'PET', label: '💖 Радость' },
-  { event: 'WAVE', label: '👋 Приветствие' },
+  { event: 'WAVE', label: '🖐️ Привет' },
   { event: 'CELEBRATE', label: '🎉 Праздник' },
   { event: 'THINK', label: '💡 Мысли' },
   { event: 'SPOOK', label: '😲 Испуг' },
   { event: 'BORED', label: '🥱 Скука' },
   { event: 'START_SLEEP', label: '🌙 Сон' },
   { event: 'WAKE_UP', label: '☀️ Подъём' },
-  { event: 'START_DRAG', label: '🪁 Полёт' },
-  { event: 'LAND', label: '🛫 Посадка' },
-];
-
-const POSE_BUTTONS: { event: AnimationEvent; label: string }[] = [
   { event: 'SIT', label: '🪑 Сесть' },
   { event: 'LIE_DOWN', label: '🛌 Лечь' },
   { event: 'STAND_UP', label: '🧍 Встать' },
   { event: 'RUN', label: '🏃 Бегать' },
+  { event: 'START_DRAG', label: '🪁 Полёт' },
+  { event: 'LAND', label: '🛬 Посадка' },
+];
+
+const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = [
+  { face: null, label: '🔄 Авто' },
+  { face: 'happy', label: '😊 Радость' },
+  { face: 'sad', label: '😢 Грусть' },
+  { face: 'shocked', label: '😲 Шок' },
+  { face: 'sleepy', label: '😴 Сон' },
+  { face: 'talking', label: '💬 Речь' },
+  { face: 'thinking', label: '🤔 Мысли' },
+  { face: 'angry', label: '😠 Злость' },
 ];
 
 export interface ContextMenuAction {
@@ -97,7 +105,9 @@ export function createInteractionMenuActions(callbacks: {
 }
 
 export function createPoseMenuActions(onPlayAnimation: (event: AnimationEvent) => void): ContextMenuAction[] {
-  return POSE_BUTTONS.map(({ event, label }) => ({
+  return ALL_ANIMATION_BUTTONS.filter(({ event }) =>
+    ['SIT', 'LIE_DOWN', 'STAND_UP', 'RUN'].includes(event)
+  ).map(({ event, label }) => ({
     id: event,
     label,
     onSelect: () => onPlayAnimation(event),
@@ -111,7 +121,7 @@ export function subscribeToOutsideMouseDown(
 ): () => void {
   const handleMouseDown = (event: MouseEvent): void => {
     const target = event.target;
-    if (target instanceof Node && !menuElement.contains(target)) onClose();
+    if (target !== null && !menuElement.contains(target as Node)) onClose();
   };
 
   ownerDocument.addEventListener('mousedown', handleMouseDown);
@@ -119,8 +129,8 @@ export function subscribeToOutsideMouseDown(
 }
 
 const MENU_MARGIN = 12;
-const MENU_WIDTH = 320;
-const MENU_MAX_HEIGHT = 476;
+const MENU_WIDTH = 580;
+const MENU_MAX_HEIGHT = 556;
 
 export function calculateContextMenuPosition(
   anchor: ContextMenuPosition,
@@ -137,21 +147,9 @@ export function calculateContextMenuPosition(
   };
 }
 
-const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = [
-  { face: null, label: '🔄 Авто' },
-  { face: 'happy', label: '😊 Радость' },
-  { face: 'sad', label: '😢 Грусть' },
-  { face: 'shocked', label: '😲 Шок' },
-  { face: 'sleepy', label: '😴 Сон' },
-  { face: 'talking', label: '💬 Речь' },
-  { face: 'thinking', label: '🤔 Мысли' },
-  { face: 'angry', label: '😠 Злость' },
-];
-
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
   position,
-  activeTab,
   tone = 'neutral',
   currentTheme,
   scale,
@@ -162,7 +160,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   isAlwaysOnTop = false,
   debugContent,
   currentFace = null,
-  onTabChange,
   onClose,
   onPet,
   onPlay,
@@ -179,7 +176,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onSelectScale,
   onQuit,
 }) => {
-  const [internalTab, setInternalTab] = useState<ContextMenuTab>('main');
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -191,224 +187,181 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   if (!isOpen) return null;
 
-  const currentTab = activeTab ?? internalTab;
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 880;
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 580;
   const menuPosition = position === undefined
     ? undefined
-    : calculateContextMenuPosition(position, { width: window.innerWidth, height: window.innerHeight });
+    : calculateContextMenuPosition(position, { width: viewportWidth, height: viewportHeight });
   const positionedStyle = menuPosition === undefined ? undefined : {
     left: menuPosition.x,
     top: menuPosition.y,
     right: 'auto',
     bottom: 'auto',
-    width: Math.min(MENU_WIDTH, Math.max(0, window.innerWidth - MENU_MARGIN * 2)),
+    width: Math.min(MENU_WIDTH, Math.max(0, viewportWidth - MENU_MARGIN * 2)),
   };
   const interactionActions = createInteractionMenuActions({ onPet, onPlay, onFeed, onThink });
-
-  const handleTabSelect = (tab: ContextMenuTab) => {
-    setInternalTab(tab);
-    onTabChange?.(tab);
-  };
+  const showDebugPanel = Boolean(debugHudEnabled && debugContent);
 
   return (
     <div
       ref={menuRef}
-      className="wisp-context-menu"
+      className={`wisp-context-menu ${showDebugPanel ? 'has-debug' : ''}`}
       style={positionedStyle}
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
     >
       <div className="menu-header">
-        <div className="menu-title">✨ Wisp Companion</div>
+        <div className="menu-header-left">
+          <span className="menu-title">✨ Wisp Companion</span>
+          <span className="menu-status-pill">
+            {TONE_LABELS_RU[tone] ?? tone}
+          </span>
+        </div>
         <button type="button" className="menu-close-btn" aria-label="Close control panel" onClick={onClose}>
           ✕
         </button>
       </div>
 
-      {debugHudEnabled && debugContent ? (
-        <div className="menu-tab-bar" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={currentTab === 'main'}
-            className={`menu-tab-btn ${currentTab === 'main' ? 'active' : ''}`}
-            onClick={() => handleTabSelect('main')}
-          >
-            ✨ Меню
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={currentTab === 'debug'}
-            className={`menu-tab-btn ${currentTab === 'debug' ? 'active' : ''}`}
-            onClick={() => handleTabSelect('debug')}
-          >
-            🛠️ Debug
-          </button>
-        </div>
-      ) : null}
-
-      <div className="menu-canvas" aria-label="Wisp control panel">
-        {currentTab === 'debug' && debugHudEnabled && debugContent ? (
-          <div className="menu-debug-pane">
-            <div className="menu-section-title">🛠️ Debug</div>
-            {debugContent}
-          </div>
-        ) : (
-          <div className="menu-main-pane">
-            <div className="menu-status-badge">
-              <span>Настроение: <strong>{TONE_LABELS_RU[tone] ?? tone}</strong></span>
-            </div>
-
-            <div className="menu-section-title">🎮 Действия</div>
-            <div className="menu-btn-grid">
-              {interactionActions.map((action) => (
-                <button key={action.id} className="menu-action-btn" onClick={action.onSelect}>
-                  {action.label}
-                </button>
-              ))}
-              <button className="menu-action-btn" onClick={onToggleSleep}>{isSleeping ? '☀️ Разбудить' : '🌙 Усыпить'}</button>
-              <button className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`} onClick={onToggleWander}>
-                {autoWanderEnabled ? '🐾 Прогулка: ВКЛ' : '🛑 Прогулка: ВЫКЛ'}
+      <div className="menu-unified-grid" aria-label="Wisp control panel">
+        {/* Column 1: Core Controls & Customization */}
+        <div className="menu-column menu-column-controls">
+          <div className="menu-section-title">🎮 Действия</div>
+          <div className="menu-btn-grid">
+            {interactionActions.map((action) => (
+              <button key={action.id} className="menu-action-btn" onClick={action.onSelect}>
+                {action.label}
               </button>
-            </div>
-
-            {onPlayAnimation ? (
-              <>
-                <div className="menu-divider" />
-                <div className="menu-section-title">🐾 Быстрые позы</div>
-                <div className="menu-anim-btn-grid">
-                  {createPoseMenuActions(onPlayAnimation).map((action) => (
-                    <button
-                      key={action.id}
-                      type="button"
-                      className="menu-anim-btn"
-                      onClick={action.onSelect}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
-
-            {onResetPosition || onToggleAlwaysOnTop || (debugHudEnabled && onToggleDebugHud) ? (
-              <>
-                <div className="menu-divider" />
-                <div className="menu-section-title">🖥️ Окно и инструменты</div>
-                <div className="menu-btn-grid">
-                  {onResetPosition ? (
-                    <button type="button" className="menu-action-btn" onClick={onResetPosition}>
-                      🎯 Сбросить позицию
-                    </button>
-                  ) : null}
-                  {onToggleAlwaysOnTop ? (
-                    <button
-                      type="button"
-                      className={`menu-action-btn ${isAlwaysOnTop ? 'active' : ''}`}
-                      aria-pressed={isAlwaysOnTop}
-                      onClick={onToggleAlwaysOnTop}
-                    >
-                      📌 Поверх всех окон: {isAlwaysOnTop ? 'ВКЛ' : 'ВЫКЛ'}
-                    </button>
-                  ) : null}
-                  {debugHudEnabled && onToggleDebugHud ? (
-                    <button
-                      type="button"
-                      className={`menu-action-btn ${debugHudVisible ? 'active' : ''}`}
-                      aria-pressed={debugHudVisible}
-                      onClick={onToggleDebugHud}
-                    >
-                      🛠️ Debug HUD: {debugHudVisible ? 'ВКЛ' : 'ВЫКЛ'}
-                    </button>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-
-            {onSelectFace ? (
-              <>
-                <div className="menu-divider" />
-                <div className="menu-section-title">🎭 Выражения лица</div>
-                <div className="menu-anim-btn-grid">
-                  {FACE_BUTTONS.map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      className={`menu-anim-btn ${currentFace === item.face ? 'active' : ''}`}
-                      onClick={() => onSelectFace(item.face)}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
-
-            {onPlayAnimation ? (
-              <>
-                <div className="menu-divider" />
-                <div className="menu-section-title">🎬 Анимации тела</div>
-                <div className="menu-anim-btn-grid">
-                  {ANIMATION_BUTTONS.map((item) => (
-                    <button
-                      key={item.event}
-                      type="button"
-                      className="menu-anim-btn"
-                      onClick={() => onPlayAnimation(item.event)}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
-
-            <div className="menu-divider" />
-            <div className="menu-section-title">🎨 Темы оформления</div>
-            <div className="menu-theme-grid">
-              {Object.values(DEFAULT_THEMES).map((theme) => (
-                <button
-                  key={theme.id}
-                  className={`menu-theme-btn ${currentTheme.id === theme.id ? 'active' : ''}`}
-                  style={{ background: theme.palette.primary }}
-                  onClick={() => onSelectTheme(theme)}
-                >
-                  {theme.name}
-                </button>
-              ))}
-            </div>
-
-            <div className="menu-divider" />
-            <div className="menu-section-title">🔍 Размер: {Math.round(scale * 100)}%</div>
-            <div className="menu-scale-controls">
-              <button
-                className="menu-scale-btn"
-                disabled={scale <= 0.6}
-                onClick={() => onSelectScale(Math.max(0.5, Number((scale - 0.1).toFixed(1))))}
-              >
-                - Уменьшить
-              </button>
-              <button
-                className="menu-scale-btn"
-                onClick={() => onSelectScale(1.0)}
-              >
-                Сброс (100%)
-              </button>
-              <button
-                className="menu-scale-btn"
-                disabled={scale >= 2.0}
-                onClick={() => onSelectScale(Math.min(2.0, Number((scale + 0.1).toFixed(1))))}
-              >
-                + Увеличить
-              </button>
-            </div>
-
-            <div className="menu-divider" />
-            <button className="menu-quit-btn" onClick={onQuit}>
-              🚪 Выйти из приложения
+            ))}
+            <button className="menu-action-btn" onClick={onToggleSleep}>
+              {isSleeping ? '☀️ Разбудить' : '🌙 Усыпить'}
+            </button>
+            <button className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`} onClick={onToggleWander}>
+              {autoWanderEnabled ? '🐾 Прогулка: ВКЛ' : '🛑 Прогулка: ВЫКЛ'}
             </button>
           </div>
-        )}
+
+          <div className="menu-divider" />
+          <div className="menu-section-title">🎨 Темы оформления</div>
+          <div className="menu-theme-grid">
+            {Object.values(DEFAULT_THEMES).map((theme) => (
+              <button
+                key={theme.id}
+                className={`menu-theme-btn ${currentTheme.id === theme.id ? 'active' : ''}`}
+                style={{ background: theme.palette.primary }}
+                onClick={() => onSelectTheme(theme)}
+              >
+                {theme.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="menu-divider" />
+          <div className="menu-section-title">🔍 Размер: {Math.round(scale * 100)}%</div>
+          <div className="menu-scale-controls">
+            <button
+              className="menu-scale-btn"
+              disabled={scale <= 0.6}
+              onClick={() => onSelectScale(Math.max(0.5, Number((scale - 0.1).toFixed(1))))}
+            >
+              - Уменьшить
+            </button>
+            <button
+              className="menu-scale-btn"
+              onClick={() => onSelectScale(1.0)}
+            >
+              100%
+            </button>
+            <button
+              className="menu-scale-btn"
+              disabled={scale >= 2.0}
+              onClick={() => onSelectScale(Math.min(2.0, Number((scale + 0.1).toFixed(1))))}
+            >
+              + Увеличить
+            </button>
+          </div>
+
+          <div className="menu-divider" />
+          <div className="menu-section-title">🖥️ Окно и инструменты</div>
+          <div className="menu-btn-grid">
+            {onResetPosition ? (
+              <button type="button" className="menu-action-btn" onClick={onResetPosition}>
+                🎯 Сбросить позицию
+              </button>
+            ) : null}
+            {onToggleAlwaysOnTop ? (
+              <button
+                type="button"
+                className={`menu-action-btn ${isAlwaysOnTop ? 'active' : ''}`}
+                aria-pressed={isAlwaysOnTop}
+                onClick={onToggleAlwaysOnTop}
+              >
+                📌 Поверх окон: {isAlwaysOnTop ? 'ВКЛ' : 'ВЫКЛ'}
+              </button>
+            ) : null}
+            {debugHudEnabled && onToggleDebugHud ? (
+              <button
+                type="button"
+                className={`menu-action-btn ${debugHudVisible ? 'active' : ''}`}
+                aria-pressed={debugHudVisible}
+                onClick={onToggleDebugHud}
+              >
+                🛠️ Debug HUD: {debugHudVisible ? 'ВКЛ' : 'ВЫКЛ'}
+              </button>
+            ) : null}
+          </div>
+
+          <div className="menu-divider" />
+          <button className="menu-quit-btn" onClick={onQuit}>
+            🚪 Выйти из приложения
+          </button>
+        </div>
+
+        {/* Column 2: Animations & Expressions (Consolidated, No Duplication) */}
+        <div className="menu-column menu-column-animations">
+          {onPlayAnimation ? (
+            <>
+              <div className="menu-section-title">🎬 Анимации и позы</div>
+              <div className="menu-anim-4col-grid">
+                {ALL_ANIMATION_BUTTONS.map((item) => (
+                  <button
+                    key={item.event}
+                    type="button"
+                    className="menu-anim-btn"
+                    onClick={() => onPlayAnimation(item.event)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {onSelectFace ? (
+            <>
+              <div className="menu-divider" />
+              <div className="menu-section-title">🎭 Выражения лица</div>
+              <div className="menu-anim-4col-grid">
+                {FACE_BUTTONS.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    className={`menu-anim-btn ${currentFace === item.face ? 'active' : ''}`}
+                    onClick={() => onSelectFace(item.face)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        {/* Column 3: Telemetry & Inspector & Logs (when debug is enabled) */}
+        {showDebugPanel ? (
+          <div className="menu-column menu-column-debug" data-testid="telemetry-panel">
+            {debugContent}
+          </div>
+        ) : null}
       </div>
     </div>
   );

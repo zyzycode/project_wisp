@@ -49,8 +49,11 @@ var LinuxPlatformAdapter = class {
 		return process.env.XDG_SESSION_TYPE?.toLowerCase() || "x11";
 	}
 	configureOverlayWindow(window) {
-		window.setAlwaysOnTop(true, "floating");
+		this.setAlwaysOnTop(window, true);
 		window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+	}
+	setAlwaysOnTop(window, enabled) {
+		window.setAlwaysOnTop(enabled, "floating");
 	}
 	setIgnoreMouseEvents(window, ignore, forward = true) {
 		try {
@@ -90,8 +93,11 @@ var WindowsPlatformAdapter = class {
 		return "dwm";
 	}
 	configureOverlayWindow(window) {
-		window.setAlwaysOnTop(true, "screen-saver");
+		this.setAlwaysOnTop(window, true);
 		window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+	}
+	setAlwaysOnTop(window, enabled) {
+		window.setAlwaysOnTop(enabled, "screen-saver");
 	}
 	setIgnoreMouseEvents(window, ignore, forward = true) {
 		try {
@@ -121,8 +127,11 @@ var MacOSPlatformAdapter = class {
 		return "cocoa";
 	}
 	configureOverlayWindow(window) {
-		window.setAlwaysOnTop(true, "floating");
+		this.setAlwaysOnTop(window, true);
 		window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+	}
+	setAlwaysOnTop(window, enabled) {
+		window.setAlwaysOnTop(enabled, "floating");
 	}
 	setIgnoreMouseEvents(window, ignore, forward = true) {
 		try {
@@ -579,6 +588,8 @@ function normalizeStimulusType(type) {
 		case "user_right_click": return "click";
 		case "pet":
 		case "user_pet": return "pet";
+		case "play": return "play";
+		case "feed": return "feed";
 		case "chat_message":
 		case "user_message":
 		case "provider_response": return "chat_message";
@@ -661,6 +672,32 @@ function interactionDeltas(type, intensity) {
 				agreeableness: .002 * intensity,
 				sensitivity: -.001 * intensity
 			}
+		};
+		case "play": return {
+			needs: {
+				attention: -3 * intensity,
+				play: -15 * intensity,
+				energy: -3 * intensity,
+				boredom: -18 * intensity
+			},
+			friendship: 3 * intensity,
+			love: 0,
+			intimacy: {},
+			personality: {
+				extraversion: .003 * intensity,
+				playfulness: .004 * intensity
+			}
+		};
+		case "feed": return {
+			needs: {
+				energy: 6 * intensity,
+				comfort: -4 * intensity,
+				boredom: -2 * intensity
+			},
+			friendship: 2 * intensity,
+			love: 0,
+			intimacy: {},
+			personality: { agreeableness: .001 * intensity }
 		};
 		case "chat_message": return {
 			needs: {
@@ -812,6 +849,31 @@ var CharacterStateService = class {
 };
 var defaultCharacterStateService = new CharacterStateService();
 //#endregion
+//#region src/application/services/character-interaction.use-case.ts
+var STIMULUS_BY_INTERACTION = {
+	click: "user_click",
+	double_click: "user_double_click",
+	right_click: "user_right_click",
+	drag_end: "user_drag_end",
+	pet: "user_pet",
+	play: "play",
+	feed: "feed"
+};
+var CharacterInteractionUseCase = class {
+	characterStateService;
+	constructor(characterStateService) {
+		this.characterStateService = characterStateService;
+	}
+	execute(interaction) {
+		return this.characterStateService.applyStimulus({
+			type: STIMULUS_BY_INTERACTION[interaction.type],
+			source: "user",
+			intensity: interaction.intensity
+		});
+	}
+};
+var defaultCharacterInteractionUseCase = new CharacterInteractionUseCase(defaultCharacterStateService);
+//#endregion
 //#region src/infrastructure/logging/log-buffer.ts
 var DEFAULT_LOG_BUFFER_SIZE = 100;
 var LogBuffer = class {
@@ -947,8 +1009,8 @@ var RENDERER_DIST = node_path.default.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL ? node_path.default.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 var COMPACT_WINDOW_WIDTH = 280;
 var COMPACT_WINDOW_HEIGHT = 320;
-var EXPANDED_WINDOW_WIDTH = 620;
-var EXPANDED_WINDOW_HEIGHT = 500;
+var EXPANDED_WINDOW_WIDTH = 880;
+var EXPANDED_WINDOW_HEIGHT = 580;
 var WINDOW_WIDTH = 280;
 var WINDOW_HEIGHT = 320;
 var mainWindow = null;
@@ -1003,6 +1065,20 @@ function getDebugTelemetry() {
 function publishDebugTelemetry() {
 	if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("wisp:debug-telemetry", getDebugTelemetry());
 }
+var CHARACTER_INTERACTION_TYPES = [
+	"click",
+	"double_click",
+	"right_click",
+	"drag_end",
+	"pet",
+	"play",
+	"feed"
+];
+function isCharacterInteractionDTO(value) {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value;
+	return CHARACTER_INTERACTION_TYPES.includes(candidate.type) && (candidate.intensity === void 0 || typeof candidate.intensity === "number" && Number.isFinite(candidate.intensity));
+}
 function registerIpcHandlers() {
 	electron.ipcMain.handle("wisp:ping", async (_event, message) => {
 		return {
@@ -1030,8 +1106,8 @@ function registerIpcHandlers() {
 	electron.ipcMain.handle("wisp:set-interactive-bounds", async (_event, _bounds) => {});
 	electron.ipcMain.handle("wisp:set-drag-state", async (_event, _isDragging) => {});
 	electron.ipcMain.handle("wisp:set-menu-expanded", async (_event, expanded) => {
-		const width = expanded ? 620 : 280;
-		const height = expanded ? 500 : 320;
+		const width = expanded ? 880 : 280;
+		const height = expanded ? 580 : 320;
 		if (positionService) {
 			positionService.setPetSize({
 				width,
@@ -1073,6 +1149,17 @@ function registerIpcHandlers() {
 	});
 	electron.ipcMain.handle("wisp:get-screen-bounds", async () => {
 		return platformAdapter.getDisplayWorkArea();
+	});
+	electron.ipcMain.handle("wisp:character-interact", async (_event, interaction) => {
+		if (!isCharacterInteractionDTO(interaction)) throw new TypeError("Invalid character interaction payload");
+		defaultCharacterInteractionUseCase.execute(interaction);
+		publishDebugTelemetry();
+	});
+	electron.ipcMain.handle("wisp:set-always-on-top", async (_event, enabled) => {
+		if (typeof enabled !== "boolean") throw new TypeError("Invalid always-on-top value");
+		if (!mainWindow || mainWindow.isDestroyed()) return false;
+		platformAdapter.setAlwaysOnTop(mainWindow, enabled);
+		return mainWindow.isAlwaysOnTop();
 	});
 	if (isDebugMode()) {
 		electron.ipcMain.handle("wisp:get-debug-telemetry", async () => getDebugTelemetry());

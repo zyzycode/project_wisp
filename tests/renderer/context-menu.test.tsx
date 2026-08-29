@@ -35,7 +35,7 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toBe('');
   });
 
-  it('renders actions, themes, and scales when opened in main tab', () => {
+  it('renders actions, themes, and scales in unified layout without position override', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
@@ -47,6 +47,7 @@ describe('Renderer: ContextMenu', () => {
         isSleeping={false}
         debugHudEnabled
         debugContent={<div>Debug Telemetry</div>}
+        isAlwaysOnTop={true}
         onClose={vi.fn()}
         onPet={vi.fn()}
         onPlay={vi.fn()}
@@ -73,7 +74,7 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Подумать');
     expect(markup).toContain('Усыпить');
     expect(markup).toContain('Прогулка: ВКЛ');
-    expect(markup).toContain('🎬 Анимации тела');
+    expect(markup).toContain('🎬 Анимации и позы');
     expect(markup).toContain('🎭 Выражения лица');
     expect(markup).toContain('😊 Радость');
     expect(markup).toContain('😢 Грусть');
@@ -82,23 +83,48 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('🐾 Ходьба');
     expect(markup).toContain('💖 Радость');
     expect(markup).toContain('💡 Мысли');
-    expect(markup).toContain('Быстрые позы');
     expect(markup).toContain('Сесть');
     expect(markup).toContain('Лечь');
     expect(markup).toContain('Встать');
     expect(markup).toContain('Бегать');
     expect(markup).toContain('Сбросить позицию');
-    expect(markup).toContain('Поверх всех окон: ВЫКЛ');
+    expect(markup).toContain('Поверх окон: ВКЛ');
     expect(markup).toContain('Debug HUD: ВЫКЛ');
     expect(markup).toContain('Космический');
     expect(markup).toContain('100%');
     expect(markup).toContain('Выйти из приложения');
+    // Verify it doesn't force inline position style so side-by-side CSS layout applies
+    expect(markup).not.toContain('style="left:');
+  });
+
+  it('applies positioned style when explicit position anchor is provided', () => {
+    const markup = renderToStaticMarkup(
+      <ContextMenu
+        isOpen
+        position={{ x: 100, y: 120 }}
+        currentTheme={DEFAULT_THEMES.cosmic!}
+        scale={1.0}
+        autoWanderEnabled
+        isSleeping={false}
+        debugHudEnabled={false}
+        onClose={vi.fn()}
+        onPet={vi.fn()}
+        onThink={vi.fn()}
+        onToggleSleep={vi.fn()}
+        onToggleWander={vi.fn()}
+        onSelectTheme={vi.fn()}
+        onSelectScale={vi.fn()}
+        onQuit={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain('style="left:100px;top:12px;right:auto;bottom:auto;width:580px"');
   });
 
   it('clamps cursor-based position inside every viewport edge', () => {
-    expect(calculateContextMenuPosition({ x: -100, y: -50 }, { width: 620, height: 500 }))
+    expect(calculateContextMenuPosition({ x: -100, y: -50 }, { width: 880, height: 580 }))
       .toEqual({ x: 12, y: 12 });
-    expect(calculateContextMenuPosition({ x: 999, y: 999 }, { width: 620, height: 500 }))
+    expect(calculateContextMenuPosition({ x: 999, y: 999 }, { width: 880, height: 580 }))
       .toEqual({ x: 288, y: 12 });
     expect(calculateContextMenuPosition({ x: 100, y: 100 }, { width: 200, height: 180 }))
       .toEqual({ x: 12, y: 12 });
@@ -133,12 +159,8 @@ describe('Renderer: ContextMenu', () => {
   });
 
   it('closes only for outside mousedown and removes the same listener on cleanup', () => {
-    class TestNode {}
-    const previousNode = globalThis.Node;
-    Object.defineProperty(globalThis, 'Node', { configurable: true, value: TestNode });
-
-    const insideTarget = new TestNode();
-    const outsideTarget = new TestNode();
+    const insideTarget = {} as Node;
+    const outsideTarget = {} as Node;
     const onClose = vi.fn();
     let listener: ((event: MouseEvent) => void) | undefined;
     const ownerDocument = {
@@ -151,17 +173,15 @@ describe('Renderer: ContextMenu', () => {
       contains: (target: Node | null) => target === insideTarget,
     } as Pick<HTMLDivElement, 'contains'>;
 
-    try {
-      const cleanup = subscribeToOutsideMouseDown(ownerDocument, menuElement, onClose);
-      listener?.({ target: insideTarget } as unknown as MouseEvent);
-      listener?.({ target: outsideTarget } as unknown as MouseEvent);
+    const cleanup = subscribeToOutsideMouseDown(ownerDocument, menuElement, onClose);
+    const handleMouseDown = listener;
+    if (handleMouseDown === undefined) throw new Error('Outside-click listener was not registered.');
+    handleMouseDown({ target: insideTarget } as unknown as MouseEvent);
+    handleMouseDown({ target: outsideTarget } as unknown as MouseEvent);
 
-      expect(onClose).toHaveBeenCalledOnce();
-      cleanup();
-      expect(ownerDocument.removeEventListener).toHaveBeenCalledWith('mousedown', listener);
-    } finally {
-      Object.defineProperty(globalThis, 'Node', { configurable: true, value: previousNode });
-    }
+    expect(onClose).toHaveBeenCalledOnce();
+    cleanup();
+    expect(ownerDocument.removeEventListener).toHaveBeenCalledWith('mousedown', handleMouseDown);
   });
 
   it('renders wake-up button when pet is sleeping', () => {
@@ -188,7 +208,7 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('☀️ Разбудить');
   });
 
-  it('renders debug content when activeTab is debug', () => {
+  it('renders debug content directly in the unified panel when debugContent is provided', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen

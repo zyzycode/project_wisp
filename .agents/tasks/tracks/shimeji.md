@@ -12,8 +12,9 @@
 - [x] **P14-A01:** Архитектурная формализация Shimeji-движка и контрактов в `SHIMEJI_SPEC.md`. (`done` / `architect`)
 - [x] **P14-S02:** Физика перетаскивания и баллистика броска мышью (`MotionEngine`). (`done` / `domain-behavior`)
 - [x] **P14-S02-REV:** Ревью-гейт кинематики броска и баллистики (`Approved`). (`done` / `reviewer`)
+- [x] **P14-S04:** Цепочки активностей (`ActivityChain`), `RepetitionPenalty` и ивент `Zoomies`. (`done` / `domain-behavior`)
+- [x] **P14-S04-REV:** Ревью-гейт цепочек активностей, штрафов повторов и зумис (`Approved`). (`done` / `reviewer`)
 - [ ] **P14-S03:** Procedural Gaze Tracking и реакции на курсор (`lerp`, `dead_zone`, `swat_cursor`). (`ready` / `domain-behavior` + `app-developer`)
-- [ ] **P14-S04:** Цепочки активностей (`ActivityChain`), `RepetitionPenalty` и ивент `Zoomies`. (`ready` / `domain-behavior`)
 - [ ] **P14-S05:** Взаимодействие с границами окон и панелью задач (лазание, свисание). (`planned`)
 - [ ] **P14-G01:** Финальный интеграционный Review Gate Phase 14. (`planned`)
 
@@ -30,14 +31,15 @@
   - `docs/engine/SHIMEJI_SPEC.md` (Раздел 4: Gaze Tracking & Reactions)
 - **Менять:** `src/renderer/render-engine/`, `src/domain/behavior/`, unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Плавный поворот зрачков без джиттера при движении мыши рядом с персонажем.
-  - [ ] При приближении в упор срабатывает жест лапкой `swat_cursor`.
+  - [ ] Плавный расчет смещения зрачков без джиттера.
+  - [ ] Реакция `swat_cursor` при близком наведении мыши.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.
 
-### [TASK: P14-S04] — Activity Chains, Penalty & Zoomies Event
-- **Исполнитель:** `domain-behavior`
-- **Зависит от:** `P14-S02`
-- **Цель:** Иерархические цепочки поведения (подойти к краю -> сесть -> посмотреть), защита от повторения одних и тех же поз (`RepetitionPenalty`) и редкое событие `Zoomies` (безумный спринт с заносом).
+### [TASK: P14-S05] — Environment Snapshots & Window Boundaries Interaction
+- **Исполнитель:** `domain-behavior` + `app-developer`
+- **Зависит от:** `P14-S04`
+- **Цель:** Поддержка взаимодействия с границами окон и панелью задач (лазание по бокам, свисание с верхней границы) через `EnvironmentSnapshot`.
 - **Читать:**
   - `.agents/agents/domain-behavior/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 5 & 6: Activity Chains & Character Engine integration)
-- **Менять:** `src/domain/behavior/`, unit-тесты.
+  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 5: Environment & Surfaces)
+- **Менять:** `src/domain/behavior/`, `src/infrastructure/platform/`, unit-тесты.

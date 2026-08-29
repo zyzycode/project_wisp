@@ -26,6 +26,12 @@ var api = {
 	getScreenBounds: () => {
 		return electron.ipcRenderer.invoke("wisp:get-screen-bounds");
 	},
+	interactWithCharacter: (interaction) => {
+		return electron.ipcRenderer.invoke("wisp:character-interact", interaction);
+	},
+	setAlwaysOnTop: (enabled) => {
+		return electron.ipcRenderer.invoke("wisp:set-always-on-top", enabled);
+	},
 	setInteractiveBounds: (bounds) => {
 		return electron.ipcRenderer.invoke("wisp:set-interactive-bounds", bounds);
 	},

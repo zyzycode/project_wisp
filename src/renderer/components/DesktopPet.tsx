@@ -56,7 +56,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [tiltDeg, setTiltDeg] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
-  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 12, y: 12 });
   const [chatOpen, setChatOpen] = useState<boolean>(false);
   const [currentMessage, setCurrentMessage] = useState<ChatMessage | null>(null);
   const [autoWanderEnabled, setAutoWanderEnabled] = useState<boolean>(true);
@@ -124,8 +123,8 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     screenBounds,
     animState,
     isDragging,
-    petSize: menuOpen ? { width: 620, height: 500 } : COMPACT_WINDOW_SIZE,
-    enabled: autoWanderEnabled,
+    petSize: menuOpen ? { width: 880, height: 580 } : COMPACT_WINDOW_SIZE,
+    enabled: autoWanderEnabled && !menuOpen,
     onPositionChange: (newPos) => {
       setPosition(newPos);
       if (window.wispAPI?.updatePosition) {
@@ -402,7 +401,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     e.stopPropagation();
     sendCharacterInteraction({ type: 'right_click' });
     setChatOpen(false);
-    setMenuPosition({ x: e.clientX, y: e.clientY });
     setMenuOpen(true);
   };
 
@@ -457,7 +455,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       setCurrentMessage(createChatMessage('pet', 'Ой! 😲'));
     } else if (event === 'WAVE') {
       dispatchAnim('WAVE', true, true);
-      setCurrentMessage(createChatMessage('pet', 'Привет-привет! 👋'));
+      setCurrentMessage(createChatMessage('pet', 'Привет-привет! 🖐️'));
     } else if (event === 'CELEBRATE') {
       dispatchAnim('CELEBRATE', true, true);
       setCurrentMessage(createChatMessage('pet', 'Ура-а! Празднуем! 🎉'));
@@ -499,8 +497,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
         if (clearLogs !== undefined) void clearLogs();
       }}
-      onPlayAnimation={handlePlayAnimation}
-      onSelectFace={handleSelectFace}
       onSelectBodyAnimation={(key) => {
         setInspectorBodyKey(key);
         if (key === null) setInspectorFaceKey(null);
@@ -530,7 +526,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       {/* Context Menu */}
       <ContextMenu
         isOpen={menuOpen}
-        position={menuPosition}
         tone={debugTelemetry.character.synthesizedTone}
         currentTheme={currentTheme}
         scale={scale}

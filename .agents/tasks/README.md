@@ -44,22 +44,6 @@
 
 ---
 
-### [TASK: P14-S04] — Activity Chains, Penalty & Zoomies Event
-- **Статус:** `ready`
-- **Исполнитель:** `domain-behavior`
-- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Иерархические цепочки поведения (`ActivityChain`), штраф за повторение поз (`RepetitionPenalty`) и редкое событие `Zoomies` (спринт с заносом).
-- **Читать:**
-  - `.agents/agents/domain-behavior/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md` (Разделы 5 и 6)
-- **Менять:** `src/domain/behavior/`, unit-тесты.
-- **Критерии приёмки:**
-  - [ ] Реализованы цепочки активностей с защитой от циклов.
-  - [ ] Шкала скуки и ивент Zoomies триггерятся по формулам спецификации.
-  - [ ] `npm test && npm run typecheck` проходят без ошибок.
-
----
-
 ### [TASK: P14-UI03] — Speech Bubble Auto-Dismiss & Polish
 - **Статус:** `ready`
 - **Исполнитель:** `app-developer`
@@ -84,3 +68,6 @@
   - `.agents/agents/sprite-artist/agent.md`
   - `docs/engine/RENDER_ENGINE.md` (Раздел 1)
 - **Менять:** `public/assets/sprites/faces/`
+- **Критерии приёмки:**
+  - [ ] Изолированные лица на прозрачном фоне 512x512.
+  - [ ] Отдельный спрайт зрачков `pupils_normal`.

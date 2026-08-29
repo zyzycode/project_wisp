@@ -87,7 +87,7 @@ describe('Renderer: DebugHUD', () => {
     expect(markup).toContain('Quota exceeded');
   });
 
-  it('embeds control sections on main tab and tab switcher in ContextMenu', () => {
+  it('embeds control sections and debug content seamlessly in unified ContextMenu', () => {
     const logs: DebugLogEntryDTO[] = [
       { id: '1', level: 'info', category: 'fsm', message: 'Embedded log', timestamp: 500 },
     ];
@@ -127,12 +127,12 @@ describe('Renderer: DebugHUD', () => {
 
     expect(markup).toContain('🎮 Действия');
     expect(markup).toContain('🎨 Темы оформления');
-    expect(markup).toContain('menu-tab-bar');
-    expect(markup).toContain('menu-canvas');
+    expect(markup).toContain('menu-unified-grid');
+    expect(markup).toContain('telemetry-panel');
     expect(markup).toContain('Close control panel');
   });
 
-  it('renders debug telemetry when activeTab is debug', () => {
+  it('renders debug telemetry in unified menu when debugContent is passed', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
