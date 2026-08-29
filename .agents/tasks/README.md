@@ -1,72 +1,77 @@
-# .agents/tasks/README.md — компактная доска задач Project Wisp
+# .agents/tasks/README.md — Доска активного спринта Project Wisp
 
-Этот файл хранит только ближайший рабочий фронт (3–5 задач) и правила передачи задач агентам.
-- `ROADMAP.md` — верхнеуровневый продуктовый роудмап (фазы 0..19).
-- `docs/engine/SHIMEJI_SPEC.md` — подробный план и спецификация Shimeji-механик.
-
-## Бюджет контекста
-
-- Держать файл коротким: целевой размер — до 180 строк.
-- Активными держать только текущую фазу и 3–5 задач.
-- Агенту в prompt передаётся одна карточка задачи, а не весь backlog.
-- Агент читает только релевантный `docs/engine/*.md`.
-
-## Статусы
-
-- `planned` — задача понятна, но ещё не готова к выдаче.
-- `ready` — можно выдавать owner-agent.
-- `in_progress` — задача выполняется.
-- `blocked` — нужен внешний ответ или решение.
-- `done` — результат принят.
-
-## Текущее состояние спринта
-
-- Phase 0–13: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop, Animation & Reaction Pack, Render Engine, Sprites, Logger & Debug HUD.
-- Visual Track (13-F — Face Overlay & Anchors): `done`
-  - `P13-F01` (Face Compatibility & Anchor Map Contract): `done`
-  - `P13-F02` (Offline Sprite Manifest Generator & Validator): `done`
-  - `P13-F03` (Face Asset Preparation Pack — art): `ready` (художник)
-  - `P13-F04` (Face Overlay Integration & Anchor Resolver in Renderer): `done`
-  - `P13-F05` (Face Overlay Review Gate): `done`
-- Phase 14 (Shimeji & Advanced Autonomy): `in_progress` (детали в `docs/engine/SHIMEJI_SPEC.md`)
-  - `P14-S01` (FSM Locomotion Expansion & Boredom Need): `done`
-  - `P14-S01-REV` (Review Gate Locomotion & Boredom Need): `done`
-  - `P14-S02` (Drag & Throw Ballistics Physics): `ready` (`domain-behavior`)
-  - `P14-S03` (Procedural Gaze Tracking & Cursor Reactions): `planned`
-  - `P14-S04` (Activity Chains, Repetition Penalty & Zoomies Event): `planned`
+Этот файл — **командный пульт текущего спринта**.
+Он содержит только активные задачи (3–5 карточек) прямо сейчас.
 
 ---
 
-## Активная очередь задач
+## 🗺️ Тематические треки бэклога
 
-### [TASK: P14-S02] — Drag & Throw Ballistics Physics
-- **Статус:** `ready`
-- **Исполнитель:** `domain-behavior`
-- **Зависит от:** `P14-S01`
-- **Цель:** Реализовать в domain физику броска мышью: вычисление вектора скорости `(vx, vy)` при `dragEnd`, параболический полёт с гравитацией, отскок от границ экрана и разделение приземления на `soft_landing`, `stumble` (спотыкание) и `crash_landing` (плюхнулся) с фазой `recover`.
+Все детальные задачи, ТЗ и чеклисты декомпозированы по специализированным трекам:
+
+| Трек | Файл | Направление |
+|---|---|---|
+| 🐾 **Shimeji & Autonomy** | [`tracks/shimeji.md`](./tracks/shimeji.md) | Локомоция, баллистика бросков, слежение за мышью, зумис |
+| 🎨 **Visual & Sprites** | [`tracks/visual-sprites.md`](./tracks/visual-sprites.md) | ТЗ художника, оверлей лиц, анкоры, генерация манифеста |
+| 🖥️ **UI & Desktop** | [`tracks/ui-desktop.md`](./tracks/ui-desktop.md) | Контекстное меню, чат-облачко, инспектор анимаций в Debug HUD |
+| 🧠 **Memory & AI** | [`tracks/memory-ai.md`](./tracks/memory-ai.md) | SQLite память, диалоги, факты, AI-провайдеры |
+
+---
+
+## 🚦 Правила передачи задач агентам
+
+1. Агенту в prompt передаётся **только одна изолированная карточка**.
+2. Первая строка в `Читать:` — всегда `.agents/agents/<роль>/agent.md`.
+3. Агент читает **только** свой файл трека и релевантный `docs/engine/*.md`.
+
+---
+
+## 🔥 Активная очередь спринта (В работе и следующие)
+
+### [TASK: P14-A01] — Shimeji Engine Architecture & Contract Formalization
+- **Статус:** `in_progress`
+- **Исполнитель:** `architect`
+- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
+- **Цель:** Спроектировать и зафиксировать в `docs/engine/SHIMEJI_SPEC.md` строгие архитектурные контракты Shimeji: DTO для кинематики броска (без утечек Electron в domain), интерфейсы Gaze Tracking (координаты мыши, lerp, dead_zone, swat) и цепочки поведения с `RepetitionPenalty`.
 - **Читать:**
-  - `.agents/agents/domain-behavior/agent.md` (ОБЯЗАТЕЛЬНО первой строкой: манифест роли)
-  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 1.2 «Физика перетаскивания и броска»)
+  - `.agents/agents/architect/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md`
+  - `docs/engine/CHARACTER_ENGINE.md`
   - `docs/engine/ANIMATION_ENGINE.md`
-- **Менять:** `src/domain/behavior/` (модуль кинематики/физики), unit-тесты.
+- **Менять:** `docs/engine/SHIMEJI_SPEC.md`, `docs/engine/README.md`.
 - **Критерии приёмки:**
-  - [ ] Скорость `(vx, vy)` рассчитывается по истории последних точек перетаскивания (sliding window).
-  - [ ] Симулируется баллистическая траектория с гравитацией, сопротивлением воздуха и отскоком от границ экрана.
-  - [ ] Приземление на высокой скорости переводит персонажа в `crash_landing` / `recover`, на средней — в `stumble`, на низкой — в `soft_landing`.
-  - [ ] Написаны unit-тесты на расчёт импульса, гравитацию и условия приземления.
-  - [ ] `npm test && npm run typecheck` завершаются без ошибок.
-- **Вне скоупа:** не трогать Renderer, не вызывать Electron window API напрямую из domain.
+  - [ ] Описаны строгие TypeScript DTO для баллистики и исходов приземления.
+  - [ ] Описаны интерфейсы и формулы Gaze Tracking.
+  - [ ] Зафиксированы строгие правила изоляции (domain чистый от Electron/DOM).
 
-### [TASK: P14-S03] — Procedural Gaze Tracking & Cursor Reactions
-- **Статус:** `planned`
-- **Исполнитель:** `domain-behavior` + `app-developer`
-- **Зависит от:** `P14-S01`, `P13-F04`
-- **Цель:** Реализовать слежение зрачков за курсором (`lerp`, `dead_zone`) и анимацию попытки поймать курсор лапкой `swat_cursor`.
+---
+
+### [TASK: P14-UI01] — Context Menu & Interaction Polish
+- **Статус:** `ready`
+- **Исполнитель:** `app-developer`
+- **Трек:** [`tracks/ui-desktop.md`](./tracks/ui-desktop.md)
+- **Цель:** Расширить контекстное меню персонажа: добавить интерактивы (Погладить, Поиграть, Покормить), принудительную смену поз для тестов (Сесть, Лечь, Встать), сброс позиции по центру и тумблер Debug HUD.
 - **Читать:**
   - `.agents/agents/app-developer/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 1.3 «Слежение за курсором»)
-- **Менять:** `src/renderer/`, `src/domain/behavior/`, unit-тесты.
+  - `.agents/tasks/tracks/ui-desktop.md` (Раздел 2, Task P14-UI01)
+- **Менять:** `src/renderer/` (модули контекстного меню), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Плавный поворот взгляда без дрожания.
-  - [ ] `npm test && npm run typecheck` завершаются без ошибок.
-- **Вне скоупа:** не менять FSM и контракты памяти.
+  - [ ] Меню открывается по правому клику и не выходит за пределы экрана.
+  - [ ] Пункты меню триггерят соответствующие стимулы/действия.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.
+
+---
+
+### [TASK: P14-S02] — Drag & Throw Ballistics Physics
+- **Статус:** `blocked` (ждёт завершения P14-A01)
+- **Исполнитель:** `domain-behavior`
+- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
+- **Цель:** Реализовать в domain чистую физику броска мышью по контракту из `SHIMEJI_SPEC.md`.
+
+---
+
+### [TASK: P13-F03] — Face & Body Asset Preparation Pack
+- **Статус:** `ready`
+- **Исполнитель:** `художник`
+- **Трек:** [`tracks/visual-sprites.md`](./tracks/visual-sprites.md)
+- **Цель:** Отрисовка прозрачных PNG лиц (`faces/`) и новых поз локомоции (`body/`).
