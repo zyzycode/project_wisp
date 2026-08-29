@@ -1,6 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { ContextMenu } from '../../src/renderer/components/Interaction/ContextMenu';
+import {
+  calculateContextMenuPosition,
+  ContextMenu,
+  createInteractionMenuActions,
+  createPoseMenuActions,
+  subscribeToOutsideMouseDown,
+} from '../../src/renderer/components/Interaction/ContextMenu';
 import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 
 describe('Renderer: ContextMenu', () => {
@@ -15,6 +21,8 @@ describe('Renderer: ContextMenu', () => {
         debugHudEnabled={false}
         onClose={vi.fn()}
         onPet={vi.fn()}
+        onPlay={vi.fn()}
+        onFeed={vi.fn()}
         onThink={vi.fn()}
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
@@ -41,9 +49,14 @@ describe('Renderer: ContextMenu', () => {
         debugContent={<div>Debug Telemetry</div>}
         onClose={vi.fn()}
         onPet={vi.fn()}
+        onPlay={vi.fn()}
+        onFeed={vi.fn()}
         onThink={vi.fn()}
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
+        onToggleDebugHud={vi.fn()}
+        onToggleAlwaysOnTop={vi.fn()}
+        onResetPosition={vi.fn()}
         onPlayAnimation={vi.fn()}
         onSelectFace={vi.fn()}
         onSelectTheme={vi.fn()}
@@ -55,6 +68,8 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Wisp Companion');
     expect(markup).toContain('Нежное');
     expect(markup).toContain('Погладить');
+    expect(markup).toContain('Поиграть');
+    expect(markup).toContain('Покормить');
     expect(markup).toContain('Подумать');
     expect(markup).toContain('Усыпить');
     expect(markup).toContain('Прогулка: ВКЛ');
@@ -67,9 +82,86 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('🐾 Ходьба');
     expect(markup).toContain('💖 Радость');
     expect(markup).toContain('💡 Мысли');
+    expect(markup).toContain('Быстрые позы');
+    expect(markup).toContain('Сесть');
+    expect(markup).toContain('Лечь');
+    expect(markup).toContain('Встать');
+    expect(markup).toContain('Бегать');
+    expect(markup).toContain('Сбросить позицию');
+    expect(markup).toContain('Поверх всех окон: ВЫКЛ');
+    expect(markup).toContain('Debug HUD: ВЫКЛ');
     expect(markup).toContain('Космический');
     expect(markup).toContain('100%');
     expect(markup).toContain('Выйти из приложения');
+  });
+
+  it('clamps cursor-based position inside every viewport edge', () => {
+    expect(calculateContextMenuPosition({ x: -100, y: -50 }, { width: 620, height: 500 }))
+      .toEqual({ x: 12, y: 12 });
+    expect(calculateContextMenuPosition({ x: 999, y: 999 }, { width: 620, height: 500 }))
+      .toEqual({ x: 288, y: 12 });
+    expect(calculateContextMenuPosition({ x: 100, y: 100 }, { width: 200, height: 180 }))
+      .toEqual({ x: 12, y: 12 });
+  });
+
+  it('binds interaction and pose callbacks to the expected menu actions', () => {
+    const callbacks = {
+      onPet: vi.fn(),
+      onPlay: vi.fn(),
+      onFeed: vi.fn(),
+      onThink: vi.fn(),
+    };
+    const interactionActions = createInteractionMenuActions(callbacks);
+
+    for (const action of interactionActions) action.onSelect();
+
+    expect(callbacks.onPet).toHaveBeenCalledOnce();
+    expect(callbacks.onPlay).toHaveBeenCalledOnce();
+    expect(callbacks.onFeed).toHaveBeenCalledOnce();
+    expect(callbacks.onThink).toHaveBeenCalledOnce();
+
+    const onPlayAnimation = vi.fn();
+    const poseActions = createPoseMenuActions(onPlayAnimation);
+    for (const action of poseActions) action.onSelect();
+
+    expect(onPlayAnimation.mock.calls.map(([event]) => event)).toEqual([
+      'SIT',
+      'LIE_DOWN',
+      'STAND_UP',
+      'RUN',
+    ]);
+  });
+
+  it('closes only for outside mousedown and removes the same listener on cleanup', () => {
+    class TestNode {}
+    const previousNode = globalThis.Node;
+    Object.defineProperty(globalThis, 'Node', { configurable: true, value: TestNode });
+
+    const insideTarget = new TestNode();
+    const outsideTarget = new TestNode();
+    const onClose = vi.fn();
+    let listener: ((event: MouseEvent) => void) | undefined;
+    const ownerDocument = {
+      addEventListener: vi.fn((_type: string, nextListener: (event: MouseEvent) => void) => {
+        listener = nextListener;
+      }),
+      removeEventListener: vi.fn(),
+    } as unknown as Document;
+    const menuElement = {
+      contains: (target: Node | null) => target === insideTarget,
+    } as Pick<HTMLDivElement, 'contains'>;
+
+    try {
+      const cleanup = subscribeToOutsideMouseDown(ownerDocument, menuElement, onClose);
+      listener?.({ target: insideTarget } as unknown as MouseEvent);
+      listener?.({ target: outsideTarget } as unknown as MouseEvent);
+
+      expect(onClose).toHaveBeenCalledOnce();
+      cleanup();
+      expect(ownerDocument.removeEventListener).toHaveBeenCalledWith('mousedown', listener);
+    } finally {
+      Object.defineProperty(globalThis, 'Node', { configurable: true, value: previousNode });
+    }
   });
 
   it('renders wake-up button when pet is sleeping', () => {

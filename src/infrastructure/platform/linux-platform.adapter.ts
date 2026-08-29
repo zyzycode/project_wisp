@@ -30,8 +30,12 @@ export class LinuxPlatformAdapter implements IPlatformAdapter {
 
   configureOverlayWindow(window: BrowserWindow): void {
     // 'floating' level ensures window remains above regular apps in GNOME/Mutter without screensaver layer bugs
-    window.setAlwaysOnTop(true, 'floating');
+    this.setAlwaysOnTop(window, true);
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
+
+  setAlwaysOnTop(window: BrowserWindow, enabled: boolean): void {
+    window.setAlwaysOnTop(enabled, 'floating');
   }
 
   setIgnoreMouseEvents(window: BrowserWindow, ignore: boolean, forward = true): void {

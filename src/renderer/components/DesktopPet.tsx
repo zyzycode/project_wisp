@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { DebugTelemetryDTO, PetPositionDTO, ScreenBoundsDTO } from '../../shared/ipc-contracts';
+import type {
+  CharacterInteractionDTO,
+  DebugTelemetryDTO,
+  PetPositionDTO,
+  ScreenBoundsDTO,
+} from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
 import type { CharacterExpression, CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
-import { defaultCharacterStateService } from '../../application/services/character-state.service';
 import type { ChatMessage } from '../../domain/chat/chat-message';
 import { createChatMessage } from '../../domain/chat/chat-message';
 import type { IAIProvider } from '../../application/ports/ai-provider.interface';
@@ -20,7 +24,7 @@ import {
   type AnimationExpressionHint,
   type AnimationIntentKind,
 } from '../../domain/animation/animation-intent';
-import type { AnimationEvent, AnimationState } from '../../domain/animation/animation-state-machine';
+import type { AnimationEvent, AnyAnimationState } from '../../domain/animation/animation-state-machine';
 import { DebugHUD } from './Debug';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
@@ -48,6 +52,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [tiltDeg, setTiltDeg] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 12, y: 12 });
   const [chatOpen, setChatOpen] = useState<boolean>(false);
   const [currentMessage, setCurrentMessage] = useState<ChatMessage | null>(null);
   const [autoWanderEnabled, setAutoWanderEnabled] = useState<boolean>(true);
@@ -57,9 +62,15 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   );
   const [scale, setScale] = useState<number>(1.0);
   const [debugHudVisible, setDebugHudVisible] = useState<boolean>(false);
+  const [isAlwaysOnTop, setIsAlwaysOnTop] = useState<boolean>(true);
   const [debugTelemetry, setDebugTelemetry] = useState<DebugTelemetryDTO>(EMPTY_DEBUG_TELEMETRY);
   const [renderFps, setRenderFps] = useState<number>(0);
   const debugHudEnabled = window.wispAPI.debugEnabled;
+
+  const sendCharacterInteraction = useCallback((interaction: CharacterInteractionDTO): void => {
+    void window.wispAPI.interactWithCharacter(interaction)
+      .catch((err) => console.error('Character interaction failed:', err));
+  }, []);
 
   // Animation State Machine Hook (FSM)
   const { state: animState, expression, dispatch: dispatchAnim } = useAnimationStateMachine('idle');
@@ -317,7 +328,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         setTiltDeg(0);
         dispatchAnim('RELEASE_DRAG');
 
-        defaultCharacterStateService.applyStimulus({ type: 'user_drag_end', source: 'user' });
+        sendCharacterInteraction({ type: 'drag_end' });
 
         // Trigger landing animation after brief drop with managed timer
         if (landingTimerRef.current) {
@@ -337,7 +348,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dispatchAnim]);
+  }, [isDragging, dispatchAnim, sendCharacterInteraction]);
 
   // Click & Double Click Interaction Handlers
   const handlePetClick = () => {
@@ -347,7 +358,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       wakeUp();
       setCurrentMessage(createChatMessage('pet', 'Я проснулся! ☀️'));
     } else {
-      defaultCharacterStateService.applyStimulus({ type: 'click', source: 'user' });
+      sendCharacterInteraction({ type: 'click' });
       dispatchAnim('PET');
       const phrases = ['Мурр! ✨', 'Ты лучший! 💖', 'Хи-хи, щекотно!', 'Что делаем? 🚀'];
       const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)] ?? 'Мурр!';
@@ -357,7 +368,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
   const handlePetDoubleClick = () => {
     if (hasMovedRef.current) return;
-    defaultCharacterStateService.applyStimulus({ type: 'click', source: 'user', intensity: 2 });
+    sendCharacterInteraction({ type: 'double_click', intensity: 2 });
     dispatchAnim('PET');
     setChatOpen(true);
     setMenuOpen(false);
@@ -366,9 +377,34 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    sendCharacterInteraction({ type: 'right_click' });
     setChatOpen(false);
-    setMenuOpen((prev) => !prev);
+    setMenuPosition({ x: e.clientX, y: e.clientY });
+    setMenuOpen(true);
   };
+
+  const handleResetPosition = useCallback(() => {
+    const resetToCenter = (bounds: ScreenBoundsDTO): void => {
+      const centeredPosition = {
+        x: Math.round(bounds.x + (bounds.width - COMPACT_WINDOW_SIZE.width) / 2),
+        y: Math.round(bounds.y + (bounds.height - COMPACT_WINDOW_SIZE.height) / 2),
+      };
+
+      void window.wispAPI.updatePosition(centeredPosition).then((nextPosition) => {
+        setPosition(nextPosition);
+        dragStartRef.current.petX = nextPosition.x;
+        dragStartRef.current.petY = nextPosition.y;
+        setMenuOpen(false);
+      }).catch((err) => console.error('Failed to reset position:', err));
+    };
+
+    void window.wispAPI.getScreenBounds()
+      .then((bounds) => {
+        setScreenBounds(bounds);
+        resetToCenter(bounds);
+      })
+      .catch((err) => console.error('Failed to get screen bounds:', err));
+  }, []);
 
   const handleClose = () => {
     if (window.wispAPI?.closeApp) {
@@ -386,14 +422,14 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       dispatchAnim('WAKE_UP', true, false);
       setCurrentMessage(createChatMessage('pet', 'Доброе утро! ☀️'));
     } else if (event === 'PET' || event === 'REACT_HAPPY') {
-      defaultCharacterStateService.applyStimulus({ type: 'pet', source: 'user' });
+      sendCharacterInteraction({ type: 'pet' });
       dispatchAnim('PET', true, true);
       setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
     } else if (event === 'THINK') {
       dispatchAnim('THINK', true, true);
       setCurrentMessage(createChatMessage('thought', 'Хм-м, о чём бы поразмышлять?.. 🤔'));
     } else if (event === 'SPOOK' || event === 'REACT_CONFUSED') {
-      defaultCharacterStateService.applyStimulus({ type: 'user_click', source: 'user', intensity: 2 });
+      sendCharacterInteraction({ type: 'click', intensity: 2 });
       dispatchAnim('SPOOK', true, true);
       setCurrentMessage(createChatMessage('pet', 'Ой! 😲'));
     } else if (event === 'WAVE') {
@@ -416,7 +452,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     } else {
       dispatchAnim(event, true, true);
     }
-  }, [dispatchAnim, triggerNap, wakeUp]);
+  }, [dispatchAnim, sendCharacterInteraction, triggerNap, wakeUp]);
 
   const debugHudElement = (
     <DebugHUD
@@ -460,19 +496,32 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       {/* Context Menu */}
       <ContextMenu
         isOpen={menuOpen}
+        position={menuPosition}
         tone={debugTelemetry.character.synthesizedTone}
         currentTheme={currentTheme}
         scale={scale}
         autoWanderEnabled={autoWanderEnabled}
         isSleeping={animState === 'sleep'}
         debugHudEnabled={debugHudEnabled}
+        debugHudVisible={debugHudVisible}
+        isAlwaysOnTop={isAlwaysOnTop}
         debugContent={debugHudElement}
         currentFace={customFace}
         onClose={() => setMenuOpen(false)}
         onPet={() => {
-          defaultCharacterStateService.applyStimulus({ type: 'pet', source: 'user' });
+          sendCharacterInteraction({ type: 'pet' });
           dispatchAnim('PET', true, true);
           setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
+        }}
+        onPlay={() => {
+          sendCharacterInteraction({ type: 'play' });
+          dispatchAnim('RUN', true, false);
+          setCurrentMessage(createChatMessage('pet', 'Давай играть! Догони меня! 🎮'));
+        }}
+        onFeed={() => {
+          sendCharacterInteraction({ type: 'feed' });
+          dispatchAnim('REACT_HAPPY', true, false);
+          setCurrentMessage(createChatMessage('pet', 'Спасибо за угощение! Вкусно! 🍪'));
         }}
         onThink={() => {
           dispatchAnim('THINK', true, true);
@@ -498,6 +547,14 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
           }
         }}
         onToggleWander={() => setAutoWanderEnabled((prev) => !prev)}
+        onToggleDebugHud={() => setDebugHudVisible((visible) => !visible)}
+        onToggleAlwaysOnTop={() => {
+          const nextValue = !isAlwaysOnTop;
+          void window.wispAPI.setAlwaysOnTop(nextValue)
+            .then(setIsAlwaysOnTop)
+            .catch((err) => console.error('Failed to toggle always-on-top:', err));
+        }}
+        onResetPosition={handleResetPosition}
         onPlayAnimation={handlePlayAnimation}
         onSelectFace={handleSelectFace}
         onSelectTheme={(t) => setCurrentTheme(t)}
@@ -535,7 +592,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   );
 };
 
-function animationStateToIntentKind(state: AnimationState): AnimationIntentKind {
+function animationStateToIntentKind(state: AnyAnimationState): AnimationIntentKind {
   switch (state) {
     case 'float': return 'walk';
     case 'dragged': return 'dragged';
@@ -553,6 +610,15 @@ function animationStateToIntentKind(state: AnimationState): AnimationIntentKind 
     case 'celebrate': return 'celebrate';
     case 'bored': return 'bored';
     case 'settle': return 'settle';
+    case 'sit': return 'sit';
+    case 'stand_up': return 'stand_up';
+    case 'lie_down': return 'lie_down';
+    case 'get_up': return 'get_up';
+    case 'run': return 'run';
+    case 'jump': return 'jump';
+    case 'fall': return 'fall';
+    case 'land': return 'land';
+    case 'crawl': return 'crawl';
     case 'idle': return 'idle_blink';
   }
 }

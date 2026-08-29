@@ -8,6 +8,7 @@ import type {
   ScreenBoundsDTO,
   InteractiveBoundsDTO,
   DebugTelemetryDTO,
+  CharacterInteractionDTO,
 } from '../shared/ipc-contracts';
 import { isDebugMode } from '../shared/debug-mode';
 
@@ -30,6 +31,12 @@ const api: WispApiBridge = {
   },
   getScreenBounds: (): Promise<ScreenBoundsDTO> => {
     return ipcRenderer.invoke('wisp:get-screen-bounds');
+  },
+  interactWithCharacter: (interaction: CharacterInteractionDTO): Promise<void> => {
+    return ipcRenderer.invoke('wisp:character-interact', interaction);
+  },
+  setAlwaysOnTop: (enabled: boolean): Promise<boolean> => {
+    return ipcRenderer.invoke('wisp:set-always-on-top', enabled);
   },
   setInteractiveBounds: (bounds: InteractiveBoundsDTO): Promise<void> => {
     return ipcRenderer.invoke('wisp:set-interactive-bounds', bounds);

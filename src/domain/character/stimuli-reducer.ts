@@ -22,6 +22,8 @@ export type CharacterStimulusType =
   | 'user_right_click'
   | 'pet'
   | 'user_pet'
+  | 'play'
+  | 'feed'
   | 'chat_message'
   | 'user_message'
   | 'provider_response'
@@ -39,7 +41,15 @@ export interface CharacterStimulus {
   readonly metadata?: Record<string, string | number | boolean | null>;
 }
 
-type NormalizedStimulusType = 'click' | 'pet' | 'chat_message' | 'idle_tick' | 'topic_dialogue' | 'other';
+type NormalizedStimulusType =
+  | 'click'
+  | 'pet'
+  | 'play'
+  | 'feed'
+  | 'chat_message'
+  | 'idle_tick'
+  | 'topic_dialogue'
+  | 'other';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -124,6 +134,10 @@ function normalizeStimulusType(type: CharacterStimulusType): NormalizedStimulusT
     case 'pet':
     case 'user_pet':
       return 'pet';
+    case 'play':
+      return 'play';
+    case 'feed':
+      return 'feed';
     case 'chat_message':
     case 'user_message':
     case 'provider_response':
@@ -242,6 +256,31 @@ function interactionDeltas(
         love: 2 * intensity,
         intimacy: { romanticCharge: 1.5 * intensity },
         personality: { agreeableness: 0.002 * intensity, sensitivity: -0.001 * intensity },
+      };
+    case 'play':
+      return {
+        needs: {
+          attention: -3 * intensity,
+          play: -15 * intensity,
+          energy: -3 * intensity,
+          boredom: -18 * intensity,
+        },
+        friendship: 3 * intensity,
+        love: 0,
+        intimacy: {},
+        personality: { extraversion: 0.003 * intensity, playfulness: 0.004 * intensity },
+      };
+    case 'feed':
+      return {
+        needs: {
+          energy: 6 * intensity,
+          comfort: -4 * intensity,
+          boredom: -2 * intensity,
+        },
+        friendship: 2 * intensity,
+        love: 0,
+        intimacy: {},
+        personality: { agreeableness: 0.001 * intensity },
       };
     case 'chat_message':
       return {

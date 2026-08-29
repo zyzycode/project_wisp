@@ -15,8 +15,12 @@ export class MacOSPlatformAdapter implements IPlatformAdapter {
   }
 
   configureOverlayWindow(window: BrowserWindow): void {
-    window.setAlwaysOnTop(true, 'floating');
+    this.setAlwaysOnTop(window, true);
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
+
+  setAlwaysOnTop(window: BrowserWindow, enabled: boolean): void {
+    window.setAlwaysOnTop(enabled, 'floating');
   }
 
   setIgnoreMouseEvents(window: BrowserWindow, ignore: boolean, forward = true): void {

@@ -9,10 +9,13 @@ import type {
   ScreenBoundsDTO,
   InteractiveBoundsDTO,
   DebugTelemetryDTO,
+  CharacterInteractionDTO,
+  CharacterInteractionTypeDTO,
 } from '../shared/ipc-contracts';
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
 import { PetPositionService } from '../application/services/pet-position.service';
 import { defaultCharacterStateService } from '../application/services/character-state.service';
+import { defaultCharacterInteractionUseCase } from '../application/services/character-interaction.use-case';
 import { AppLogger, LogBuffer } from '../infrastructure/logging';
 import { isDebugMode } from '../shared/debug-mode';
 
@@ -97,6 +100,26 @@ function publishDebugTelemetry(): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('wisp:debug-telemetry', getDebugTelemetry());
   }
+}
+
+const CHARACTER_INTERACTION_TYPES: readonly CharacterInteractionTypeDTO[] = [
+  'click',
+  'double_click',
+  'right_click',
+  'drag_end',
+  'pet',
+  'play',
+  'feed',
+];
+
+function isCharacterInteractionDTO(value: unknown): value is CharacterInteractionDTO {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<CharacterInteractionDTO>;
+  return (
+    CHARACTER_INTERACTION_TYPES.includes(candidate.type as CharacterInteractionTypeDTO) &&
+    (candidate.intensity === undefined ||
+      (typeof candidate.intensity === 'number' && Number.isFinite(candidate.intensity)))
+  );
 }
 
 function registerIpcHandlers(): void {
@@ -209,6 +232,29 @@ function registerIpcHandlers(): void {
   ipcMain.handle('wisp:get-screen-bounds', async (): Promise<ScreenBoundsDTO> => {
     return platformAdapter.getDisplayWorkArea();
   });
+
+  ipcMain.handle(
+    'wisp:character-interact',
+    async (_event, interaction: unknown): Promise<void> => {
+      if (!isCharacterInteractionDTO(interaction)) {
+        throw new TypeError('Invalid character interaction payload');
+      }
+      defaultCharacterInteractionUseCase.execute(interaction);
+      publishDebugTelemetry();
+    }
+  );
+
+  ipcMain.handle(
+    'wisp:set-always-on-top',
+    async (_event, enabled: unknown): Promise<boolean> => {
+      if (typeof enabled !== 'boolean') {
+        throw new TypeError('Invalid always-on-top value');
+      }
+      if (!mainWindow || mainWindow.isDestroyed()) return false;
+      platformAdapter.setAlwaysOnTop(mainWindow, enabled);
+      return mainWindow.isAlwaysOnTop();
+    }
+  );
 
   if (isDebugMode()) {
     ipcMain.handle('wisp:get-debug-telemetry', async (): Promise<DebugTelemetryDTO> => getDebugTelemetry());

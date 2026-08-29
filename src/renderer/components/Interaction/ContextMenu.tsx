@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { CharacterTheme } from '../../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../../domain/models/character-visuals';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
@@ -7,8 +7,14 @@ import type { AnimationExpressionHint } from '../../../domain/animation/animatio
 
 export type ContextMenuTab = 'main' | 'debug';
 
+export interface ContextMenuPosition {
+  x: number;
+  y: number;
+}
+
 export interface ContextMenuProps {
   isOpen: boolean;
+  position?: ContextMenuPosition;
   activeTab?: ContextMenuTab;
   tone?: SynthesizedEmotionalTone;
   currentTheme: CharacterTheme;
@@ -16,14 +22,21 @@ export interface ContextMenuProps {
   autoWanderEnabled: boolean;
   isSleeping: boolean;
   debugHudEnabled: boolean;
+  debugHudVisible?: boolean;
+  isAlwaysOnTop?: boolean;
   debugContent?: React.ReactNode;
   currentFace?: AnimationExpressionHint | null;
   onTabChange?: (tab: ContextMenuTab) => void;
   onClose: () => void;
   onPet: () => void;
+  onPlay?: () => void;
+  onFeed?: () => void;
   onThink: () => void;
   onToggleSleep: () => void;
   onToggleWander: () => void;
+  onToggleDebugHud?: () => void;
+  onToggleAlwaysOnTop?: () => void;
+  onResetPosition?: () => void;
   onPlayAnimation?: (anim: AnimationEvent) => void;
   onSelectFace?: (face: AnimationExpressionHint | null) => void;
   onSelectTheme: (theme: CharacterTheme) => void;
@@ -56,6 +69,74 @@ const ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
   { event: 'LAND', label: '🛫 Посадка' },
 ];
 
+const POSE_BUTTONS: { event: AnimationEvent; label: string }[] = [
+  { event: 'SIT', label: '🪑 Сесть' },
+  { event: 'LIE_DOWN', label: '🛌 Лечь' },
+  { event: 'STAND_UP', label: '🧍 Встать' },
+  { event: 'RUN', label: '🏃 Бегать' },
+];
+
+export interface ContextMenuAction {
+  id: string;
+  label: string;
+  onSelect: () => void;
+}
+
+export function createInteractionMenuActions(callbacks: {
+  onPet: () => void;
+  onPlay?: () => void;
+  onFeed?: () => void;
+  onThink: () => void;
+}): ContextMenuAction[] {
+  return [
+    { id: 'pet', label: '💖 Погладить', onSelect: callbacks.onPet },
+    ...(callbacks.onPlay ? [{ id: 'play', label: '🎮 Поиграть', onSelect: callbacks.onPlay }] : []),
+    ...(callbacks.onFeed ? [{ id: 'feed', label: '🍪 Покормить', onSelect: callbacks.onFeed }] : []),
+    { id: 'think', label: '💡 Подумать', onSelect: callbacks.onThink },
+  ];
+}
+
+export function createPoseMenuActions(onPlayAnimation: (event: AnimationEvent) => void): ContextMenuAction[] {
+  return POSE_BUTTONS.map(({ event, label }) => ({
+    id: event,
+    label,
+    onSelect: () => onPlayAnimation(event),
+  }));
+}
+
+export function subscribeToOutsideMouseDown(
+  ownerDocument: Document,
+  menuElement: Pick<HTMLDivElement, 'contains'>,
+  onClose: () => void
+): () => void {
+  const handleMouseDown = (event: MouseEvent): void => {
+    const target = event.target;
+    if (target instanceof Node && !menuElement.contains(target)) onClose();
+  };
+
+  ownerDocument.addEventListener('mousedown', handleMouseDown);
+  return () => ownerDocument.removeEventListener('mousedown', handleMouseDown);
+}
+
+const MENU_MARGIN = 12;
+const MENU_WIDTH = 320;
+const MENU_MAX_HEIGHT = 476;
+
+export function calculateContextMenuPosition(
+  anchor: ContextMenuPosition,
+  viewport: { width: number; height: number }
+): ContextMenuPosition {
+  const availableWidth = Math.max(0, viewport.width - MENU_MARGIN * 2);
+  const availableHeight = Math.max(0, viewport.height - MENU_MARGIN * 2);
+  const renderedWidth = Math.min(MENU_WIDTH, availableWidth);
+  const renderedHeight = Math.min(MENU_MAX_HEIGHT, availableHeight);
+
+  return {
+    x: Math.min(Math.max(MENU_MARGIN, anchor.x), Math.max(MENU_MARGIN, viewport.width - renderedWidth - MENU_MARGIN)),
+    y: Math.min(Math.max(MENU_MARGIN, anchor.y), Math.max(MENU_MARGIN, viewport.height - renderedHeight - MENU_MARGIN)),
+  };
+}
+
 const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = [
   { face: null, label: '🔄 Авто' },
   { face: 'happy', label: '😊 Радость' },
@@ -69,6 +150,7 @@ const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = 
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
+  position,
   activeTab,
   tone = 'neutral',
   currentTheme,
@@ -76,14 +158,21 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   autoWanderEnabled,
   isSleeping,
   debugHudEnabled,
+  debugHudVisible = false,
+  isAlwaysOnTop = false,
   debugContent,
   currentFace = null,
   onTabChange,
   onClose,
   onPet,
+  onPlay,
+  onFeed,
   onThink,
   onToggleSleep,
   onToggleWander,
+  onToggleDebugHud,
+  onToggleAlwaysOnTop,
+  onResetPosition,
   onPlayAnimation,
   onSelectFace,
   onSelectTheme,
@@ -91,9 +180,29 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onQuit,
 }) => {
   const [internalTab, setInternalTab] = useState<ContextMenuTab>('main');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const menuElement = menuRef.current;
+    if (!menuElement) return undefined;
+    return subscribeToOutsideMouseDown(document, menuElement, onClose);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const currentTab = activeTab ?? internalTab;
+  const menuPosition = position === undefined
+    ? undefined
+    : calculateContextMenuPosition(position, { width: window.innerWidth, height: window.innerHeight });
+  const positionedStyle = menuPosition === undefined ? undefined : {
+    left: menuPosition.x,
+    top: menuPosition.y,
+    right: 'auto',
+    bottom: 'auto',
+    width: Math.min(MENU_WIDTH, Math.max(0, window.innerWidth - MENU_MARGIN * 2)),
+  };
+  const interactionActions = createInteractionMenuActions({ onPet, onPlay, onFeed, onThink });
 
   const handleTabSelect = (tab: ContextMenuTab) => {
     setInternalTab(tab);
@@ -102,7 +211,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   return (
     <div
+      ref={menuRef}
       className="wisp-context-menu"
+      style={positionedStyle}
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -150,13 +261,69 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
             <div className="menu-section-title">🎮 Действия</div>
             <div className="menu-btn-grid">
-              <button className="menu-action-btn" onClick={onPet}>💖 Погладить</button>
-              <button className="menu-action-btn" onClick={onThink}>💡 Подумать</button>
+              {interactionActions.map((action) => (
+                <button key={action.id} className="menu-action-btn" onClick={action.onSelect}>
+                  {action.label}
+                </button>
+              ))}
               <button className="menu-action-btn" onClick={onToggleSleep}>{isSleeping ? '☀️ Разбудить' : '🌙 Усыпить'}</button>
               <button className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`} onClick={onToggleWander}>
                 {autoWanderEnabled ? '🐾 Прогулка: ВКЛ' : '🛑 Прогулка: ВЫКЛ'}
               </button>
             </div>
+
+            {onPlayAnimation ? (
+              <>
+                <div className="menu-divider" />
+                <div className="menu-section-title">🐾 Быстрые позы</div>
+                <div className="menu-anim-btn-grid">
+                  {createPoseMenuActions(onPlayAnimation).map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      className="menu-anim-btn"
+                      onClick={action.onSelect}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
+            {onResetPosition || onToggleAlwaysOnTop || (debugHudEnabled && onToggleDebugHud) ? (
+              <>
+                <div className="menu-divider" />
+                <div className="menu-section-title">🖥️ Окно и инструменты</div>
+                <div className="menu-btn-grid">
+                  {onResetPosition ? (
+                    <button type="button" className="menu-action-btn" onClick={onResetPosition}>
+                      🎯 Сбросить позицию
+                    </button>
+                  ) : null}
+                  {onToggleAlwaysOnTop ? (
+                    <button
+                      type="button"
+                      className={`menu-action-btn ${isAlwaysOnTop ? 'active' : ''}`}
+                      aria-pressed={isAlwaysOnTop}
+                      onClick={onToggleAlwaysOnTop}
+                    >
+                      📌 Поверх всех окон: {isAlwaysOnTop ? 'ВКЛ' : 'ВЫКЛ'}
+                    </button>
+                  ) : null}
+                  {debugHudEnabled && onToggleDebugHud ? (
+                    <button
+                      type="button"
+                      className={`menu-action-btn ${debugHudVisible ? 'active' : ''}`}
+                      aria-pressed={debugHudVisible}
+                      onClick={onToggleDebugHud}
+                    >
+                      🛠️ Debug HUD: {debugHudVisible ? 'ВКЛ' : 'ВЫКЛ'}
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
 
             {onSelectFace ? (
               <>

@@ -16,6 +16,7 @@ export interface IPlatformAdapter {
   getPlatformName(): SupportedPlatform;
   getDisplaySessionType(): string; // 'x11' | 'wayland' | 'native'
   configureOverlayWindow(window: Electron.BrowserWindow): void;
+  setAlwaysOnTop(window: Electron.BrowserWindow, enabled: boolean): void;
   setIgnoreMouseEvents(window: Electron.BrowserWindow, ignore: boolean, forward?: boolean): void;
   getDisplayWorkArea(point?: { x: number; y: number }): ScreenBounds;
 }

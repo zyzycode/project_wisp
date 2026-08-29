@@ -15,8 +15,12 @@ export class WindowsPlatformAdapter implements IPlatformAdapter {
   }
 
   configureOverlayWindow(window: BrowserWindow): void {
-    window.setAlwaysOnTop(true, 'screen-saver');
+    this.setAlwaysOnTop(window, true);
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
+
+  setAlwaysOnTop(window: BrowserWindow, enabled: boolean): void {
+    window.setAlwaysOnTop(enabled, 'screen-saver');
   }
 
   setIgnoreMouseEvents(window: BrowserWindow, ignore: boolean, forward = true): void {

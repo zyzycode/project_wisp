@@ -49,4 +49,19 @@ describe('Platform Adapters', () => {
     expect(adapter).toBeDefined();
     expect(typeof adapter.getPlatformName()).toBe('string');
   });
+
+  it.each([
+    ['Linux', new LinuxPlatformAdapter(), 'floating'],
+    ['Windows', new WindowsPlatformAdapter(), 'screen-saver'],
+    ['macOS', new MacOSPlatformAdapter(), 'floating'],
+  ] as const)('%s adapter toggles native always-on-top state', (_name, adapter, level) => {
+    const setAlwaysOnTop = vi.fn();
+    const window = { setAlwaysOnTop } as unknown as Electron.BrowserWindow;
+
+    adapter.setAlwaysOnTop(window, false);
+    adapter.setAlwaysOnTop(window, true);
+
+    expect(setAlwaysOnTop).toHaveBeenNthCalledWith(1, false, level);
+    expect(setAlwaysOnTop).toHaveBeenNthCalledWith(2, true, level);
+  });
 });

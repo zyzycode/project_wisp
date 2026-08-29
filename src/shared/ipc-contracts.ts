@@ -35,6 +35,20 @@ export interface ScreenBoundsDTO {
   height: number;
 }
 
+export type CharacterInteractionTypeDTO =
+  | 'click'
+  | 'double_click'
+  | 'right_click'
+  | 'drag_end'
+  | 'pet'
+  | 'play'
+  | 'feed';
+
+export interface CharacterInteractionDTO {
+  type: CharacterInteractionTypeDTO;
+  intensity?: number;
+}
+
 export interface InteractiveBoundsDTO {
   x: number;
   y: number;
@@ -73,6 +87,8 @@ export interface WispApiBridge {
   getPosition: () => Promise<PetPositionDTO>;
   updatePosition: (pos: PetPositionDTO) => Promise<PetPositionDTO>;
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
+  interactWithCharacter: (interaction: CharacterInteractionDTO) => Promise<void>;
+  setAlwaysOnTop: (enabled: boolean) => Promise<boolean>;
   setInteractiveBounds?: (bounds: InteractiveBoundsDTO) => Promise<void>;
   setDragState?: (isDragging: boolean) => Promise<void>;
   setMenuExpanded?: (expanded: boolean) => Promise<PetPositionDTO>;
