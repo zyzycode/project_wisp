@@ -9,7 +9,6 @@
 | `project-manager` | scope, roadmap, backlog, docs routing | нет | docs consistency |
 | `architect` | layer boundaries, IPC/ports, engine contracts | обычно нет | при необходимости |
 | `app-developer` | desktop implementation: Main, Preload, Renderer, platform, persistence/provider adapters | да | да |
-| `animator` | visual polish: sprite scaling, CSS timing, legacy SVG cleanup, layer alignment | да | да |
 | `domain-behavior` | character engine, behavior FSM, animation FSM, pure domain rules | да | да |
 | `reviewer` | review, verification, test strategy, regression checks | tests only when assigned | да |
 
@@ -17,12 +16,11 @@
 
 - Product/task docs, roadmap/backlog sequencing: `project-manager`.
 - Public contracts, ports, IPC, provider/render/behavior boundaries: `architect`.
-- Main/Preload, Renderer infrastructure, platform adapters, SQLite, settings UI, `MockAIProvider`: `app-developer`.
-- Visual polish, sprite scaling, pivot tuning, CSS animations, legacy SVG cleanup: `animator`.
-- `SynthesizedEmotionalTone`, needs, relationship rules, sleep/quiet, autonomous behavior, FSM transitions: `domain-behavior`.
+- Main/Preload, Renderer UI & infrastructure, platform adapters, SQLite, settings UI, `MockAIProvider`: `app-developer`.
+- `SynthesizedEmotionalTone`, needs, relationship rules, sleep/quiet, autonomous behavior, FSM transitions, animation intents: `domain-behavior`.
 - Diff review, test gate, verification strategy, regression checks: `reviewer`.
 
-Confirmed findings возвращаются текущему owner-агенту (`app-developer`, `animator` или `domain-behavior`) как fix-pass. Reviewer не чинит код в том же review-pass.
+Confirmed findings возвращаются текущему owner-агенту (`app-developer` или `domain-behavior`) как fix-pass. Reviewer не чинит код в том же review-pass.
 
 ## Правила контекста
 
