@@ -1,7 +1,7 @@
 {
   "body_sleep_trans": {
     "category": "body/sleep_transition",
-    "fps": 3,
+    "fps": 2,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/sleep_transition/body_sleep_trans_00.png",
@@ -13,7 +13,7 @@
   },
   "body_idle": {
     "category": "body/idle",
-    "fps": 4,
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/idle/body_idle_00.png",
@@ -25,7 +25,7 @@
   },
   "body_thinking": {
     "category": "body/thinking",
-    "fps": 6,
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/thinking/body_thinking_00.png",
@@ -37,7 +37,7 @@
   },
   "body_dragged": {
     "category": "body/dragged",
-    "fps": 8,
+    "fps": 4,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/dragged/body_dragged_00.png",
@@ -49,7 +49,7 @@
   },
   "body_land": {
     "category": "body/land",
-    "fps": 8,
+    "fps": 4,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/land/body_land_00.png",
@@ -61,7 +61,7 @@
   },
   "face_happy": {
     "category": "faces/happy",
-    "fps": 6,
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/happy/face_happy_00.png",
@@ -73,6 +73,7 @@
   },
   "body_sleep": {
     "category": "body/sleep",
+    "fps": 1,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/sleep/body_sleep_00.png",
@@ -84,6 +85,7 @@
   },
   "body_petting": {
     "category": "body/petting",
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/petting/body_petting_00.png",
@@ -95,7 +97,7 @@
   },
   "body_walk": {
     "category": "body/walk",
-    "fps": 6,
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/walk/body_walk_00.png",
@@ -107,6 +109,7 @@
   },
   "face_talking": {
     "category": "faces/talking",
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/talking/face_talking_00.png",
@@ -118,6 +121,7 @@
   },
   "face_sleep": {
     "category": "faces/sleep",
+    "fps": 1,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/sleep/face_sleep_00.png",
@@ -129,7 +133,7 @@
   },
   "face_shocked": {
     "category": "faces/shocked",
-    "fps": 6,
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/shocked/face_shocked_00.png",
@@ -141,6 +145,7 @@
   },
   "face_sad": {
     "category": "faces/sad",
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/sad/face_sad_00.png",
@@ -152,6 +157,7 @@
   },
   "face_thinking": {
     "category": "faces/thinking",
+    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/faces/thinking/face_thinking_00.png",

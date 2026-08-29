@@ -37,6 +37,9 @@ const api: WispApiBridge = {
   setDragState: (isDragging: boolean): Promise<void> => {
     return ipcRenderer.invoke('wisp:set-drag-state', isDragging);
   },
+  setMenuExpanded: (expanded: boolean): Promise<PetPositionDTO> => {
+    return ipcRenderer.invoke('wisp:set-menu-expanded', expanded);
+  },
   ...(isDebugMode() ? {
     getDebugTelemetry: (): Promise<DebugTelemetryDTO> => ipcRenderer.invoke('wisp:get-debug-telemetry'),
     clearDebugTelemetryLogs: (): Promise<void> => ipcRenderer.invoke('wisp:clear-debug-telemetry-logs'),

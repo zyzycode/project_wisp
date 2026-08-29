@@ -25,8 +25,13 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
-export const WINDOW_WIDTH = 640;
-export const WINDOW_HEIGHT = 640;
+export const COMPACT_WINDOW_WIDTH = 280;
+export const COMPACT_WINDOW_HEIGHT = 320;
+export const EXPANDED_WINDOW_WIDTH = 620;
+export const EXPANDED_WINDOW_HEIGHT = 500;
+
+export const WINDOW_WIDTH = COMPACT_WINDOW_WIDTH;
+export const WINDOW_HEIGHT = COMPACT_WINDOW_HEIGHT;
 
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
@@ -98,7 +103,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle('wisp:ping', async (_event, message: unknown): Promise<PingResponseDTO> => {
     const text = typeof message === 'string' ? message : '';
     return {
-      reply: `Pong: ${text}`,
+      reply: `pong: ${text}`,
       timestamp: Date.now(),
     };
   });
@@ -128,7 +133,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle(
     'wisp:set-interactive-bounds',
     async (_event, _bounds: InteractiveBoundsDTO): Promise<void> => {
-      // No longer required with Compact Window Pattern
+      // Managed by dynamic window sizing
     }
   );
 
@@ -136,6 +141,32 @@ function registerIpcHandlers(): void {
     'wisp:set-drag-state',
     async (_event, _isDragging: boolean): Promise<void> => {
       // Managed directly by native window positioning
+    }
+  );
+
+  ipcMain.handle(
+    'wisp:set-menu-expanded',
+    async (_event, expanded: boolean): Promise<PetPositionDTO> => {
+      const width = expanded ? EXPANDED_WINDOW_WIDTH : COMPACT_WINDOW_WIDTH;
+      const height = expanded ? EXPANDED_WINDOW_HEIGHT : COMPACT_WINDOW_HEIGHT;
+
+      if (positionService) {
+        positionService.setPetSize({ width, height });
+        const currentPos = positionService.getPosition();
+        const bounds = platformAdapter.getDisplayWorkArea(currentPos);
+        const updated = positionService.updatePosition(currentPos, bounds);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setResizable(true);
+          mainWindow.setBounds({
+            x: Math.round(updated.x),
+            y: Math.round(updated.y),
+            width,
+            height,
+          });
+        }
+        return updated;
+      }
+      return calculateInitialPosition();
     }
   );
 
@@ -199,8 +230,8 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     x: initialPos.x,
     y: initialPos.y,
-    width: WINDOW_WIDTH,
-    height: WINDOW_HEIGHT,
+    width: COMPACT_WINDOW_WIDTH,
+    height: COMPACT_WINDOW_HEIGHT,
     show: true,
     transparent: true,
     frame: false,
@@ -208,7 +239,7 @@ function createWindow(): void {
     skipTaskbar: true,
     alwaysOnTop: true,
     minimizable: false,
-    resizable: false,
+    resizable: true,
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
@@ -250,8 +281,13 @@ function createWindow(): void {
   } else {
     void mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'));
   }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
+// Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
@@ -274,10 +310,10 @@ if (!gotTheLock) {
       }
     });
   });
-
-  app.on('window-all-closed', () => {
-    if (platformAdapter.getPlatformName() !== 'darwin') {
-      app.quit();
-    }
-  });
 }
+
+app.on('window-all-closed', () => {
+  if (platformAdapter.getPlatformName() !== 'darwin') {
+    app.quit();
+  }
+});

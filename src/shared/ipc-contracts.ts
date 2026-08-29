@@ -75,6 +75,7 @@ export interface WispApiBridge {
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
   setInteractiveBounds?: (bounds: InteractiveBoundsDTO) => Promise<void>;
   setDragState?: (isDragging: boolean) => Promise<void>;
+  setMenuExpanded?: (expanded: boolean) => Promise<PetPositionDTO>;
   getDebugTelemetry?: () => Promise<DebugTelemetryDTO>;
   clearDebugTelemetryLogs?: () => Promise<void>;
   onDebugTelemetry?: (listener: (telemetry: DebugTelemetryDTO) => void) => () => void;
