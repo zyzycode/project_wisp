@@ -5,6 +5,10 @@ import { ContextMenu } from '../../src/renderer/components/Interaction/ContextMe
 import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 import { createSystemAnimationIntent } from '../../src/domain/animation/animation-intent';
 import type { DebugLogEntryDTO } from '../../src/shared/ipc-contracts';
+import {
+  createInspectorSelectionHandler,
+  normalizeInspectorSelection,
+} from '../../src/renderer/components/Debug/AnimationInspector';
 
 const sampleNeeds = { energy: 75, attention: 82, play: 60, comfort: 90 };
 const sampleRelationship = { friendship: 55, love: 10, loveUnlocked: false };
@@ -178,5 +182,50 @@ describe('Renderer: DebugHUD', () => {
     expect(markup).toContain('🎬 Проигрывание анимаций');
     expect(markup).toContain('🐾 Ходьба (Walk)');
     expect(markup).toContain('💖 Радость (Happy)');
+  });
+
+  it('renders every manifest body and face option in the animation inspector', () => {
+    const markup = renderToStaticMarkup(
+      <DebugHUD
+        needs={sampleNeeds}
+        relationship={sampleRelationship}
+        tone="neutral"
+        animationState="idle"
+        animationIntent={createSystemAnimationIntent('idle_blink')}
+        fps={60}
+        logs={[]}
+        bodyAnimationKeys={['body_idle', 'body_walk', 'body_sleep']}
+        faceAnimationKeys={['face_happy', 'face_angry']}
+        selectedBodyAnimationKey="body_walk"
+        selectedFaceAnimationKey="face_angry"
+        showAnchorPoint
+        onClearLogs={vi.fn()}
+        onSelectBodyAnimation={vi.fn()}
+        onSelectManifestFace={vi.fn()}
+        onToggleAnchorPoint={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain('Animation &amp; Anchor Inspector');
+    expect(markup).toContain('body_idle');
+    expect(markup).toContain('body_walk');
+    expect(markup).toContain('body_sleep');
+    expect(markup).toContain('face_happy');
+    expect(markup).toContain('face_angry');
+    expect(markup).toContain('Show Anchor Point');
+    expect(markup).toContain('checked=""');
+  });
+
+  it('normalizes inspector values and forwards exact manifest keys', () => {
+    expect(normalizeInspectorSelection('')).toBeNull();
+    expect(normalizeInspectorSelection('body_celebrate')).toBe('body_celebrate');
+
+    const onSelect = vi.fn();
+    const handler = createInspectorSelectionHandler(onSelect);
+    handler({ currentTarget: { value: 'face_shocked' } } as React.ChangeEvent<HTMLSelectElement>);
+    handler({ currentTarget: { value: '' } } as React.ChangeEvent<HTMLSelectElement>);
+
+    expect(onSelect).toHaveBeenNthCalledWith(1, 'face_shocked');
+    expect(onSelect).toHaveBeenNthCalledWith(2, null);
   });
 });

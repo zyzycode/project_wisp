@@ -12,7 +12,11 @@ import type { ChatMessage } from '../../domain/chat/chat-message';
 import { createChatMessage } from '../../domain/chat/chat-message';
 import type { IAIProvider } from '../../application/ports/ai-provider.interface';
 import { MockAIProvider } from '../../infrastructure/ai/mock-ai-provider';
-import { CharacterRenderer } from './Character/CharacterRenderer';
+import {
+  CharacterRenderer,
+  type DebugAnimationSelection,
+  type ManifestAnimationRegistry,
+} from './Character/CharacterRenderer';
 import { ContextMenu } from './Interaction/ContextMenu';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { ChatInput } from './Chat/ChatInput';
@@ -63,6 +67,13 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [scale, setScale] = useState<number>(1.0);
   const [debugHudVisible, setDebugHudVisible] = useState<boolean>(false);
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState<boolean>(true);
+  const [manifestAnimations, setManifestAnimations] = useState<ManifestAnimationRegistry>({
+    bodyKeys: [],
+    faceKeys: [],
+  });
+  const [inspectorBodyKey, setInspectorBodyKey] = useState<string | null>(null);
+  const [inspectorFaceKey, setInspectorFaceKey] = useState<string | null>(null);
+  const [showAnchorPoint, setShowAnchorPoint] = useState<boolean>(false);
   const [debugTelemetry, setDebugTelemetry] = useState<DebugTelemetryDTO>(EMPTY_DEBUG_TELEMETRY);
   const [renderFps, setRenderFps] = useState<number>(0);
   const debugHudEnabled = window.wispAPI.debugEnabled;
@@ -132,6 +143,18 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       expressionHint,
     });
   }, [animState, expression, isWandering, customFace]);
+
+  const debugAnimationSelection = useMemo<DebugAnimationSelection | undefined>(() => {
+    if (inspectorBodyKey === null) return undefined;
+    return {
+      bodyKey: inspectorBodyKey,
+      ...(inspectorFaceKey === null ? {} : { faceKey: inspectorFaceKey }),
+    };
+  }, [inspectorBodyKey, inspectorFaceKey]);
+
+  const handleManifestAnimationsLoaded = useCallback((registry: ManifestAnimationRegistry): void => {
+    setManifestAnimations(registry);
+  }, []);
 
   useEffect(() => {
     if (!debugHudEnabled || (!debugHudVisible && !menuOpen)) return undefined;
@@ -467,12 +490,23 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       isWandering={isWandering}
       flipX={flipX}
       currentFace={customFace}
+      bodyAnimationKeys={manifestAnimations.bodyKeys}
+      faceAnimationKeys={manifestAnimations.faceKeys}
+      selectedBodyAnimationKey={inspectorBodyKey}
+      selectedFaceAnimationKey={inspectorFaceKey}
+      showAnchorPoint={showAnchorPoint}
       onClearLogs={() => {
         const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
         if (clearLogs !== undefined) void clearLogs();
       }}
       onPlayAnimation={handlePlayAnimation}
       onSelectFace={handleSelectFace}
+      onSelectBodyAnimation={(key) => {
+        setInspectorBodyKey(key);
+        if (key === null) setInspectorFaceKey(null);
+      }}
+      onSelectManifestFace={setInspectorFaceKey}
+      onToggleAnchorPoint={() => setShowAnchorPoint((visible) => !visible)}
     />
   );
 
@@ -570,6 +604,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         flipX={flipX}
         isDragging={isDragging}
         tiltDeg={tiltDeg}
+        debugAnimationSelection={debugAnimationSelection}
+        showAnchorPoint={showAnchorPoint}
+        onManifestAnimationsLoaded={handleManifestAnimationsLoaded}
         onMouseDown={handleMouseDown}
         onClick={handlePetClick}
         onDoubleClick={handlePetDoubleClick}

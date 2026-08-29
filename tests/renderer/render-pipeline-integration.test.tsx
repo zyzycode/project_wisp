@@ -140,6 +140,42 @@ describe('Phase 13: render and telemetry pipeline', () => {
     expect(levelThreeClip.body.frames[0]?.source).toBe('system://wisp/default_idle.svg');
   });
 
+  it('plays exact manifest body and face selections without consulting FSM intent mapping', () => {
+    const selectedBody = manifest.animations.body_sleep;
+    if (selectedBody === undefined) throw new Error('Integration manifest must contain body_sleep.');
+    const customRootPivot = { x: 120, y: 180 };
+    const debugManifest: NormalizedSpriteManifest = {
+      ...manifest,
+      animations: {
+        ...manifest.animations,
+        body_sleep: {
+          ...selectedBody,
+          canvasSize: { width: 400, height: 240 },
+          pivot: customRootPivot,
+          frames: selectedBody.frames.map((frame) => ({ ...frame, pivot: customRootPivot })),
+        },
+      },
+    };
+    const { renderer, states } = createRecordingRenderer();
+    const player = new AnimationPlayer(renderer);
+    const clip = new AssetResolver(debugManifest).resolveDebugSelection('body_sleep', 'face_sleep');
+
+    player.play(clip, { type: 'until_replaced' });
+
+    expect(states[0]?.layers.map((layer) => layer.animationKey)).toEqual([
+      'body_sleep',
+      'face_sleep',
+    ]);
+    expect(states[0]?.layers[1]).toMatchObject({
+      id: 'face',
+      pivot: customRootPivot,
+      offset: { x: 0, y: 0 },
+    });
+    const markup = renderToStaticMarkup(<SpriteRenderer state={states[0]} />);
+    expect(markup).toContain('face_sleep_0.png');
+    expect(markup).toMatch(/data-layer-id="face"[^>]*x="0" y="0" width="400" height="240"/);
+  });
+
   it('renders Main-compatible structured log entries and current needs in DebugHUD', () => {
     const buffer = new LogBuffer(5);
     const logger = new AppLogger({ level: 'debug', buffer, idFactory: () => 'integration-log', now: () => new Date('2026-08-28T00:00:00.000Z') });

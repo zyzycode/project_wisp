@@ -9,7 +9,12 @@ import {
   DEFAULT_THEMES,
   calculateRenderedDimensions,
 } from '../../../domain/models/character-visuals';
-import { AssetResolver, ManifestLoader } from '../../render-engine';
+import {
+  AssetResolver,
+  ManifestLoader,
+  type RenderPresentationState,
+  type SpritePoint,
+} from '../../render-engine';
 import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { SpriteRenderer } from './SpriteRenderer';
 
@@ -23,6 +28,16 @@ const INITIAL_RESOLVER = new AssetResolver(
 
 let cachedManifestResolver: AssetResolver | null = null;
 
+export interface ManifestAnimationRegistry {
+  bodyKeys: readonly string[];
+  faceKeys: readonly string[];
+}
+
+export interface DebugAnimationSelection {
+  bodyKey: string;
+  faceKey?: string;
+}
+
 export interface CharacterRendererProps {
   expression?: CharacterExpression;
   theme?: CharacterTheme;
@@ -31,6 +46,9 @@ export interface CharacterRendererProps {
   isDragging?: boolean;
   tiltDeg?: number;
   animationIntent?: AnimationIntent;
+  debugAnimationSelection?: DebugAnimationSelection;
+  showAnchorPoint?: boolean;
+  onManifestAnimationsLoaded?: (registry: ManifestAnimationRegistry) => void;
   onClick?: () => void;
   onDoubleClick?: () => void;
   onMouseDown?: (e: React.MouseEvent) => void;
@@ -45,6 +63,9 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   isDragging = false,
   tiltDeg = 0,
   animationIntent,
+  debugAnimationSelection,
+  showAnchorPoint = false,
+  onManifestAnimationsLoaded,
   onClick,
   onDoubleClick,
   onMouseDown,
@@ -53,7 +74,13 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   const defaultIntent = useMemo(() => createSystemAnimationIntent('idle_blink'), []);
   const intent = animationIntent ?? defaultIntent;
   const [resolver, setResolver] = useState<AssetResolver>(() => cachedManifestResolver ?? INITIAL_RESOLVER);
-  const presentationState = useCharacterAnimation(resolver, intent);
+  const debugClip = useMemo(
+    () => debugAnimationSelection === undefined
+      ? undefined
+      : resolver.resolveDebugSelection(debugAnimationSelection.bodyKey, debugAnimationSelection.faceKey),
+    [debugAnimationSelection, resolver]
+  );
+  const presentationState = useCharacterAnimation(resolver, intent, debugClip);
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
 
   const activePresentationState = useMemo(() => {
@@ -67,6 +94,17 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       },
     };
   }, [presentationState, flipX]);
+
+  const faceAnchor = useMemo(() => {
+    return getFaceAnchorPoint(activePresentationState);
+  }, [activePresentationState]);
+
+  useEffect(() => {
+    onManifestAnimationsLoaded?.({
+      bodyKeys: resolver.getAnimationKeys('body'),
+      faceKeys: resolver.getAnimationKeys('face'),
+    });
+  }, [onManifestAnimationsLoaded, resolver]);
 
   useEffect(() => {
     let disposed = false;
@@ -122,6 +160,86 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       onContextMenu={onContextMenu}
     >
       <SpriteRenderer state={activePresentationState} />
+      {showAnchorPoint && faceAnchor && activePresentationState ? (
+        <AnchorVisualizer
+          anchor={faceAnchor}
+          viewport={activePresentationState.viewport}
+          rootPivot={activePresentationState.rootPivot}
+          renderedSize={renderedSize}
+          flipX={flipX}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+export interface AnchorProjectionInput {
+  anchor: SpritePoint;
+  viewport: { width: number; height: number };
+  rootPivot: SpritePoint;
+  renderedSize: { width: number; height: number };
+  flipX: boolean;
+}
+
+export function getFaceAnchorPoint(state: RenderPresentationState | undefined): SpritePoint | undefined {
+  const bodyLayer = state?.layers.find((layer) => layer.id === 'base_body');
+  return bodyLayer?.visible ? bodyLayer.frame.anchors?.face : undefined;
+}
+
+export function projectAnchorPoint({
+  anchor,
+  viewport,
+  rootPivot,
+  renderedSize,
+  flipX,
+}: AnchorProjectionInput): SpritePoint {
+  const meetScale = Math.min(
+    renderedSize.width / viewport.width,
+    renderedSize.height / viewport.height
+  );
+  const letterboxX = (renderedSize.width - viewport.width * meetScale) / 2;
+  const letterboxY = (renderedSize.height - viewport.height * meetScale) / 2;
+  const sourceX = flipX
+    ? rootPivot.x - (anchor.x - rootPivot.x)
+    : anchor.x;
+  return {
+    x: letterboxX + sourceX * meetScale,
+    y: letterboxY + anchor.y * meetScale,
+  };
+}
+
+export const AnchorVisualizer: React.FC<AnchorProjectionInput> = (props) => {
+  const projected = projectAnchorPoint(props);
+  return (
+    <div
+      data-testid="face-anchor-marker"
+      className="debug-anchor-point"
+      data-anchor-x={props.anchor.x}
+      data-anchor-y={props.anchor.y}
+      data-projected-x={projected.x}
+      data-projected-y={projected.y}
+      aria-label="Face anchor point"
+      style={{
+        position: 'absolute',
+        left: projected.x,
+        top: projected.y,
+        width: 16,
+        height: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: 'translate(-50%, -50%)',
+        border: '2px solid #ffffff',
+        borderRadius: '50%',
+        background: '#ef4444',
+        color: '#ffffff',
+        font: 'bold 14px/1 monospace',
+        boxShadow: '0 0 0 2px #000000',
+        pointerEvents: 'none',
+        zIndex: 200,
+      }}
+    >
+      +
     </div>
   );
 };

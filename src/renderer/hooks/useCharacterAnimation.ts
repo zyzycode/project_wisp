@@ -2,12 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import type { AnimationIntent } from '../../domain/animation/animation-intent';
 import { AnimationPlayer } from '../render-engine/animation-player';
 import { AssetResolver } from '../render-engine/asset-resolver';
-import type { AnimationLoopMode, ICharacterRenderer, RenderPresentationState } from '../render-engine/types';
+import type {
+  AnimationLoopMode,
+  ICharacterRenderer,
+  RenderPresentationState,
+  ResolvedAnimationClip,
+} from '../render-engine/types';
 
 /** Bridges an already-selected intent to render state; animation timing remains in AnimationPlayer. */
 export function useCharacterAnimation(
   resolver: AssetResolver,
-  intent: AnimationIntent
+  intent: AnimationIntent,
+  clipOverride?: ResolvedAnimationClip
 ): RenderPresentationState | undefined {
   const [presentationState, setPresentationState] = useState<RenderPresentationState>();
   const publishedSignatureRef = useRef<string | undefined>(undefined);
@@ -28,7 +34,10 @@ export function useCharacterAnimation(
     }
 
     const player = playerRef.current;
-    player.updateClip(resolver.resolve(intent), toPlayerLoopMode(intent.loop));
+    player.updateClip(
+      clipOverride ?? resolver.resolve(intent),
+      clipOverride === undefined ? toPlayerLoopMode(intent.loop) : { type: 'until_replaced' }
+    );
 
     let animationFrameId = 0;
     let previousNow: number | undefined;
@@ -42,7 +51,7 @@ export function useCharacterAnimation(
     return (): void => {
       animationFrames.cancelAnimationFrame(animationFrameId);
     };
-  }, [intent, resolver]);
+  }, [clipOverride, intent, resolver]);
 
   useEffect(() => {
     return (): void => {

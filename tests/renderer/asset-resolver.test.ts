@@ -194,4 +194,32 @@ describe('Renderer: AssetResolver', () => {
 
     expect(clip.face).toMatchObject({ animationKey: 'face_sad', anchorName: 'face' });
   });
+
+  it('resolves exact manifest body and face keys for the debug inspector', () => {
+    const body = manifest.animations.body_walk;
+    if (body === undefined) throw new Error('Test manifest must contain body_walk.');
+    const resolver = new AssetResolver({
+      schemaVersion: 1,
+      animations: {
+        ...manifest.animations,
+        body_walk: { ...body, faceOverlay: { mode: 'baked_in', fallback: 'none' } },
+      },
+    });
+
+    const clip = resolver.resolveDebugSelection('body_walk', 'face_angry');
+
+    expect(clip.body.animationKey).toBe('body_walk');
+    expect(clip.face).toMatchObject({ animationKey: 'face_angry', zIndex: 20 });
+    expect(clip.face?.anchorName).toBeUndefined();
+    expect(resolver.getAnimationKeys('body')).toEqual(['body_idle', 'body_walk']);
+    expect(resolver.getAnimationKeys('face')).toEqual([
+      'face_angry',
+      'face_happy',
+      'face_sad',
+      'face_shocked',
+      'face_sleep',
+      'face_talking',
+      'face_thinking',
+    ]);
+  });
 });

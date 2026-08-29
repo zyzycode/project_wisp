@@ -99,6 +99,38 @@ export class AssetResolver {
     };
   }
 
+  /** Exact-key playback for the Debug HUD inspector; production intent resolution remains unchanged. */
+  resolveDebugSelection(bodyKey: string, faceKey?: string): ResolvedAnimationClip {
+    const body = selectAnimation(this.manifest.animations[bodyKey], 'body')
+      ?? selectAnimation(this.manifest.animations.body_idle, 'body')
+      ?? systemBody();
+    const faceAnimation = faceKey === undefined
+      ? undefined
+      : selectAnimation(this.manifest.animations[faceKey], 'face');
+    const rootPivot = body.pivot ?? DEFAULT_SPRITE_PIVOT;
+    const face = faceAnimation === undefined
+      ? undefined
+      : toDebugFullCanvasFaceTrack(faceAnimation, rootPivot);
+
+    return {
+      key: faceAnimation === undefined ? body.key : `${body.key}::${faceAnimation.key}`,
+      viewport: body.canvasSize ?? DEFAULT_VIEWPORT,
+      rootPivot,
+      transform: { flipX: false, scale: 1 },
+      body: toBodyTrack(body),
+      ...(face === undefined
+        ? {}
+        : { face }),
+    };
+  }
+
+  getAnimationKeys(layer: SpriteLayerCategory): string[] {
+    return Object.values(this.manifest.animations)
+      .filter((animation) => animation.layer === layer)
+      .map((animation) => animation.key)
+      .sort((left, right) => left.localeCompare(right));
+  }
+
   private resolveBody(intent: AnimationIntent): NormalizedSpriteAnimationDef {
     const preferredKey = BODY_KEYS[intent.kind];
     const specialised = this.manifest.animations[`${preferredKey}_${intent.emotionalTone}`];
@@ -145,6 +177,19 @@ export class AssetResolver {
       ? undefined
       : toOverlayTrack(animation, 'props', config.id, config.zIndex, config.playbackMode, config.blendMode);
   }
+}
+
+function toDebugFullCanvasFaceTrack(
+  animation: NormalizedSpriteAnimationDef,
+  rootPivot: SpritePoint
+): ResolvedOverlayTrack & { readonly category: 'face' } {
+  const track = toOverlayTrack(animation, 'face', 'face', 20, 'loop', 'normal');
+  return {
+    ...track,
+    pivot: rootPivot,
+    offset: ZERO_POINT,
+    frames: track.frames.map((frame) => ({ ...frame, pivot: rootPivot })),
+  };
 }
 
 function selectAnimation(

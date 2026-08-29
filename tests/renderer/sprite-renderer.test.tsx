@@ -1,7 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { resolveSpriteSource, SpriteRenderer } from '../../src/renderer/components/Character/SpriteRenderer';
-import { BASE_CHARACTER_SIZE, CharacterRenderer } from '../../src/renderer/components/Character/CharacterRenderer';
+import {
+  AnchorVisualizer,
+  BASE_CHARACTER_SIZE,
+  CharacterRenderer,
+  getFaceAnchorPoint,
+  projectAnchorPoint,
+} from '../../src/renderer/components/Character/CharacterRenderer';
 import type { RenderPresentationState } from '../../src/renderer/render-engine';
 import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 
@@ -107,5 +113,64 @@ describe('Renderer: CharacterRenderer Visual Polish', () => {
     expect(markup).toContain('rotate(12deg)');
     expect(markup).toContain('drop-shadow(0 0 16px rgba(16, 185, 129, 0.65))');
     expect(markup).toContain('dragging');
+  });
+
+  it('projects the face anchor with scale and mirrors it around the root pivot', () => {
+    const common = {
+      anchor: { x: 160, y: 120 },
+      viewport: { width: 512, height: 512 },
+      rootPivot: { x: 256, y: 460 },
+      renderedSize: { width: 480, height: 480 },
+    };
+
+    expect(projectAnchorPoint({ ...common, flipX: false })).toEqual({ x: 150, y: 112.5 });
+    expect(projectAnchorPoint({ ...common, flipX: true })).toEqual({ x: 330, y: 112.5 });
+  });
+
+  it('matches xMidYMid meet projection for non-square viewports and containers', () => {
+    const common = {
+      anchor: { x: 100, y: 50 },
+      viewport: { width: 400, height: 200 },
+      rootPivot: { x: 200, y: 180 },
+      renderedSize: { width: 300, height: 300 },
+    };
+
+    expect(projectAnchorPoint({ ...common, flipX: false })).toEqual({ x: 75, y: 112.5 });
+    expect(projectAnchorPoint({ ...common, flipX: true })).toEqual({ x: 225, y: 112.5 });
+  });
+
+  it('reads the face anchor from the currently rendered body frame', () => {
+    const bodyLayer = state.layers[0];
+    if (bodyLayer === undefined || !bodyLayer.visible) throw new Error('Body layer fixture is required.');
+    const anchoredState: RenderPresentationState = {
+      ...state,
+      layers: [{
+        ...bodyLayer,
+        frame: { ...bodyLayer.frame, anchors: { face: { x: 254, y: 122 } } },
+      }],
+    };
+
+    expect(getFaceAnchorPoint(anchoredState)).toEqual({ x: 254, y: 122 });
+    expect(getFaceAnchorPoint({ ...anchoredState, layers: [] })).toBeUndefined();
+  });
+
+  it('renders a contrasting marker at the projected face anchor position', () => {
+    const markup = renderToStaticMarkup(
+      <AnchorVisualizer
+        anchor={{ x: 256, y: 126 }}
+        viewport={{ width: 512, height: 512 }}
+        rootPivot={{ x: 256, y: 460 }}
+        renderedSize={{ width: 240, height: 240 }}
+        flipX
+      />
+    );
+
+    expect(markup).toContain('data-testid="face-anchor-marker"');
+    expect(markup).toContain('class="debug-anchor-point"');
+    expect(markup).toContain('data-anchor-x="256"');
+    expect(markup).toContain('data-projected-x="120"');
+    expect(markup).toContain('data-projected-y="59.0625"');
+    expect(markup).toContain('background:#ef4444');
+    expect(markup).toContain('>+</div>');
   });
 });

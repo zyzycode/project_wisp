@@ -5,6 +5,7 @@ import type { AnimationEvent, AnimationState } from '../../../domain/animation/a
 import type { Needs, Relationship, SynthesizedEmotionalTone } from '../../../domain/character/types';
 import { LogViewer } from './LogViewer';
 import { NeedsIndicator } from './NeedsIndicator';
+import { AnimationInspector } from './AnimationInspector';
 
 export interface DebugHUDProps {
   needs: Needs;
@@ -18,9 +19,17 @@ export interface DebugHUDProps {
   isWandering?: boolean;
   flipX?: boolean;
   currentFace?: AnimationExpressionHint | null;
+  bodyAnimationKeys?: readonly string[];
+  faceAnimationKeys?: readonly string[];
+  selectedBodyAnimationKey?: string | null;
+  selectedFaceAnimationKey?: string | null;
+  showAnchorPoint?: boolean;
   onClearLogs: () => void;
   onPlayAnimation?: (anim: AnimationEvent) => void;
   onSelectFace?: (face: AnimationExpressionHint | null) => void;
+  onSelectBodyAnimation?: (key: string | null) => void;
+  onSelectManifestFace?: (key: string | null) => void;
+  onToggleAnchorPoint?: () => void;
 }
 
 const ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
@@ -61,9 +70,17 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
   isWandering = false,
   flipX = false,
   currentFace = null,
+  bodyAnimationKeys = [],
+  faceAnimationKeys = [],
+  selectedBodyAnimationKey = null,
+  selectedFaceAnimationKey = null,
+  showAnchorPoint = false,
   onClearLogs,
   onPlayAnimation,
   onSelectFace,
+  onSelectBodyAnimation,
+  onSelectManifestFace,
+  onToggleAnchorPoint,
 }) => {
   return (
     <section className="debug-hud" data-testid="debug-hud">
@@ -81,6 +98,19 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
         <div>🎯 Intent: <strong>{animationIntent.kind}</strong> ({animationIntent.loop})</div>
         <div>👁️ Expression: <strong>{animationIntent.expressionHint ?? 'default'}</strong></div>
       </section>
+
+      {onSelectBodyAnimation && onSelectManifestFace && onToggleAnchorPoint ? (
+        <AnimationInspector
+          bodyAnimationKeys={bodyAnimationKeys}
+          faceAnimationKeys={faceAnimationKeys}
+          selectedBodyKey={selectedBodyAnimationKey}
+          selectedFaceKey={selectedFaceAnimationKey}
+          showAnchorPoint={showAnchorPoint}
+          onSelectBody={onSelectBodyAnimation}
+          onSelectFace={onSelectManifestFace}
+          onToggleAnchorPoint={onToggleAnchorPoint}
+        />
+      ) : null}
 
       {onSelectFace ? (
         <section className="debug-hud-animations">

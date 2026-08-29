@@ -28,23 +28,6 @@
 
 ## 🔥 Активная очередь спринта (В работе и следующие)
 
-### [TASK: P14-UI02] — Animation & Anchor Visual Inspector (Debug HUD Tab)
-- **Статус:** `ready`
-- **Исполнитель:** `app-developer`
-- **Трек:** [`tracks/ui-desktop.md`](./tracks/ui-desktop.md)
-- **Цель:** Добавить вкладку инспектора анимаций в Debug HUD: ручной выбор и предпросмотр любого клипа из манифеста, селектор оверлея лиц и тумблер визуализации якорных точек (`anchors.face`).
-- **Читать:**
-  - `.agents/agents/app-developer/agent.md`
-  - `docs/engine/RENDER_ENGINE.md` (Раздел 1: Manifest & Layer Metadata)
-  - `src/renderer/components/Debug/`
-- **Менять:** `src/renderer/components/Debug/`, unit-тесты.
-- **Критерии приёмки:**
-  - [ ] Выбор анимации мгновенно отображает соответствующий клип.
-  - [ ] Визуальный маркер анкора отображается поверх персонажа при включенном чекбоксе.
-  - [ ] `npm test && npm run typecheck` проходят без ошибок.
-
----
-
 ### [TASK: P14-S03] — Procedural Gaze Tracking & Cursor Reactions
 - **Статус:** `ready`
 - **Исполнитель:** `domain-behavior` + `app-developer`
@@ -54,6 +37,10 @@
   - `.agents/agents/domain-behavior/agent.md`
   - `docs/engine/SHIMEJI_SPEC.md` (Раздел 4: Gaze Tracking & Reactions)
 - **Менять:** `src/renderer/render-engine/`, `src/domain/behavior/`, unit-тесты.
+- **Критерии приёмки:**
+  - [ ] Плавный расчет смещения зрачков без джиттера.
+  - [ ] Реакция `swat_cursor` при близком наведении мыши.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.
 
 ---
 
@@ -66,6 +53,25 @@
   - `.agents/agents/domain-behavior/agent.md`
   - `docs/engine/SHIMEJI_SPEC.md` (Разделы 5 и 6)
 - **Менять:** `src/domain/behavior/`, unit-тесты.
+- **Критерии приёмки:**
+  - [ ] Реализованы цепочки активностей с защитой от циклов.
+  - [ ] Шкала скуки и ивент Zoomies триггерятся по формулам спецификации.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.
+
+---
+
+### [TASK: P14-UI03] — Speech Bubble Auto-Dismiss & Polish
+- **Статус:** `ready`
+- **Исполнитель:** `app-developer`
+- **Трек:** [`tracks/ui-desktop.md`](./tracks/ui-desktop.md)
+- **Цель:** Настройка адаптивного позиционирования речевого облачка и таймингов автоматического скрытия сообщений.
+- **Читать:**
+  - `.agents/agents/app-developer/agent.md`
+  - `src/renderer/components/Chat/SpeechBubble.tsx`
+- **Менять:** `src/renderer/components/Chat/SpeechBubble.tsx`, тесты.
+- **Критерии приёмки:**
+  - [ ] Сообщения авто-скрываются через вычисленный интервал (3с + добавка за длину текста).
+  - [ ] Облачко не вылезает за пределы видимого экрана.
 
 ---
 
