@@ -64,8 +64,15 @@
 
 ---
 
-### [TASK: P13-F03] — Face & Body Asset Preparation Pack
+### [TASK: P13-F03a] — Face Overlay & Gaze Pupils Pack
 - **Статус:** `ready`
-- **Исполнитель:** `художник`
+- **Исполнитель:** `sprite-artist`
 - **Трек:** [`tracks/visual-sprites.md`](./tracks/visual-sprites.md)
-- **Цель:** Отрисовка прозрачных PNG лиц (`faces/`) и новых поз локомоции (`body/`).
+- **Цель:** Отрисовка недостающих PNG лиц (`face_curious`, `face_dizzy`, `face_surprised`, `face_blush`, `pupils_normal`) для оверлея и Gaze Tracking.
+- **Читать:**
+  - `.agents/agents/sprite-artist/agent.md`
+  - `docs/engine/RENDER_ENGINE.md` (Раздел 1)
+- **Менять:** `public/assets/sprites/faces/`
+- **Критерии приёмки:**
+  - [ ] Изолированные спрайты эмоций на прозрачном холсте 512x512.
+  - [ ] Отдельный спрайт зрачков `pupils_normal` для системы слежения за курсором.
