@@ -45,7 +45,6 @@ $$\text{UI / Presentation} \longrightarrow \text{Application (Use Cases)} \longr
 ---
 
 ## 5. Engine contracts
-
 - `docs/engine/*` являются source of truth для `IAIProvider`, `BehaviorIntent`, `AnimationIntent`, Character Engine, Animation Engine, Render Engine, Memory и Settings contracts.
 - Implementer-агенты читают engine contracts и следуют им, но не меняют public contracts без Architect review.
 - Render Engine отвечает за visual render props, layers, SVG/sprite sheets, hitbox, visual bounds и scaling. Он не является game engine и не принимает behavior decisions.
@@ -64,3 +63,10 @@ $$\text{UI / Presentation} \longrightarrow \text{Application (Use Cases)} \longr
 - Интерфейс объявляется **там, где он используется (потребителем)**, а не там, где он реализуется.
 - Интерфейс `IAIProvider` живёт в `application/ports/`, а его реализация `MockAIProvider` — в `infrastructure/ai/`.
 - Интерфейс `IPlatformAdapter` живёт в `application/ports/`, а реализации `LinuxPlatformAdapter`, `WindowsPlatformAdapter` — в `infrastructure/platform/`.
+
+---
+
+## 8. Бюджет контекста и лаконичность Engine Contracts (Contract Size Budget)
+- Документы архитектурных контрактов в `docs/engine/*.md` **ОБЯЗАНЫ быть предельно лаконичными: целевой размер — 250–400 строк (жесткий лимит: 450 строк)**.
+- Документ должен содержать только чистые TypeScript DTO/интерфейсы, математические формулы, диаграмму переходов (Mermaid) и компактную таблицу приоритетов/исходов.
+- **Запрещено:** многословные текстовые сочинения, дублирование соседних контрактов и раздувание псевдокода. Превышение лимита в 450 строк является основанием для немедленного возврата задачи архитектору.
