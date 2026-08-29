@@ -28,24 +28,6 @@
 
 ## 🔥 Активная очередь спринта (В работе и следующие)
 
-### [TASK: P14-S02] — Drag & Throw Ballistics Physics
-- **Статус:** `ready`
-- **Исполнитель:** `domain-behavior`
-- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Реализовать в domain чистую физику броска мышью по контракту из `SHIMEJI_SPEC.md` (вектор скорости, гравитация, сопротивление, упругие отскоки, исходы приземления).
-- **Читать:**
-  - `.agents/agents/domain-behavior/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md` (Разделы 1-3)
-- **Менять:** `src/domain/behavior/` (кинематика), unit-тесты.
-- **Критерии приёмки:**
-  - [ ] Скорость `(vx, vy)` рассчитывается по истории точек перетаскивания (sliding window).
-  - [ ] Симулируется полёт с гравитацией, сопротивлением воздуха и упругим отскоком.
-  - [ ] Приземление разделяется на `soft_landing`, `stumble`, `crash_landing` -> `recover`.
-  - [ ] `npm test && npm run typecheck` проходят без ошибок.
-- **Вне скоупа:** Не трогать Renderer и Electron API.
-
----
-
 ### [TASK: P14-UI01] — Context Menu & Interaction Polish
 - **Статус:** `ready`
 - **Исполнитель:** `app-developer`
@@ -64,6 +46,38 @@
 
 ---
 
+### [TASK: P14-S03] — Procedural Gaze Tracking & Cursor Reactions
+- **Статус:** `ready`
+- **Исполнитель:** `domain-behavior` + `app-developer`
+- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
+- **Цель:** Реализовать процедурное слежение взгляда за курсором мыши (расчет угла, сдвиг зрачков с `dead_zone` и `lerp`) и реакцию попытки поймать курсор `swat_cursor`.
+- **Читать:**
+  - `.agents/agents/domain-behavior/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 4: Gaze Tracking & Reactions)
+- **Менять:** `src/renderer/render-engine/`, `src/domain/behavior/`, unit-тесты.
+- **Критерии приёмки:**
+  - [ ] Плавный расчет смещения зрачков без джиттера.
+  - [ ] Реакция `swat_cursor` при близком наведении мыши.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.
+
+---
+
+### [TASK: P14-S04] — Activity Chains, Penalty & Zoomies Event
+- **Статус:** `ready`
+- **Исполнитель:** `domain-behavior`
+- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
+- **Цель:** Иерархические цепочки поведения (`ActivityChain`), штраф за повторение поз (`RepetitionPenalty`) и редкое событие `Zoomies` (спринт с заносом).
+- **Читать:**
+  - `.agents/agents/domain-behavior/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md` (Разделы 5 и 6)
+- **Менять:** `src/domain/behavior/`, unit-тесты.
+- **Критерии приёмки:**
+  - [ ] Реализованы цепочки активностей с защитой от циклов.
+  - [ ] Шкала скуки и ивент Zoomies триггерятся по формулам спецификации.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.
+
+---
+
 ### [TASK: P13-F03a] — Face Overlay & Gaze Pupils Pack
 - **Статус:** `ready`
 - **Исполнитель:** `sprite-artist`
@@ -73,6 +87,3 @@
   - `.agents/agents/sprite-artist/agent.md`
   - `docs/engine/RENDER_ENGINE.md` (Раздел 1)
 - **Менять:** `public/assets/sprites/faces/`
-- **Критерии приёмки:**
-  - [ ] Изолированные спрайты эмоций на прозрачном холсте 512x512.
-  - [ ] Отдельный спрайт зрачков `pupils_normal` для системы слежения за курсором.

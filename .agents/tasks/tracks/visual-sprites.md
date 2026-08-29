@@ -11,7 +11,7 @@
 - [x] **P13-F02:** Offline Sprite Manifest Generator & Validator (`process_sprites.py`). (`done`)
 - [x] **P13-F04:** Интеграция оверлея лиц и расчет смещения `anchors` в Renderer. (`done`)
 - [x] **P13-F05:** Ревью-гейт интеграции оверлея лиц. (`done`)
-- [ ] **P13-F03a:** Лица и зрачки (`face_curious`, `face_dizzy`, `face_surprised`, `face_blush`, `pupils_normal`). (`ready` / `sprite-artist`)
+- [ ] **P13-F03a:** Лица и зрачки (`face_curious`, `face_dizzy`, `face_surprised`, `face_blush`, `face_winking`, `face_pout`, `pupils_normal`). (`ready` / `sprite-artist`)
 - [ ] **P13-F03b:** Базовые Shimeji-позы (`body_sit`, `body_stand_up`, `body_lie`, `body_run`, `body_fall`, `body_crash_splat`, `body_recover`). (`ready` / `sprite-artist`)
 - [ ] **P13-F03c:** Реквизит, эффекты и очистка (`prop_pillow`, `prop_heart`, `prop_question`, `prop_sparkle`, чистка мусора). (`planned` / `sprite-artist`)
 - [ ] **P13-F06:** Sprite Ingestion & Manifest Bake (прогон скрипта `process_sprites.py` и верификация). (`planned` / `app-developer`)
