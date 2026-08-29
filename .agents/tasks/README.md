@@ -28,21 +28,21 @@
 
 ## 🔥 Активная очередь спринта (В работе и следующие)
 
-### [TASK: P14-A01] — Shimeji Engine Architecture & Contract Formalization
-- **Статус:** `in_progress`
-- **Исполнитель:** `architect`
+### [TASK: P14-S02] — Drag & Throw Ballistics Physics
+- **Статус:** `ready`
+- **Исполнитель:** `domain-behavior`
 - **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Спроектировать и зафиксировать в `docs/engine/SHIMEJI_SPEC.md` строгие архитектурные контракты Shimeji: DTO для кинематики броска (без утечек Electron в domain), интерфейсы Gaze Tracking (координаты мыши, lerp, dead_zone, swat) и цепочки поведения с `RepetitionPenalty`.
+- **Цель:** Реализовать в domain чистую физику броска мышью по контракту из `SHIMEJI_SPEC.md` (вектор скорости, гравитация, сопротивление, упругие отскоки, исходы приземления).
 - **Читать:**
-  - `.agents/agents/architect/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md`
-  - `docs/engine/CHARACTER_ENGINE.md`
-  - `docs/engine/ANIMATION_ENGINE.md`
-- **Менять:** `docs/engine/SHIMEJI_SPEC.md`, `docs/engine/README.md`.
+  - `.agents/agents/domain-behavior/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md` (Разделы 1-3)
+- **Менять:** `src/domain/behavior/` (кинематика), unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Описаны строгие TypeScript DTO для баллистики и исходов приземления.
-  - [ ] Описаны интерфейсы и формулы Gaze Tracking.
-  - [ ] Зафиксированы строгие правила изоляции (domain чистый от Electron/DOM).
+  - [ ] Скорость `(vx, vy)` рассчитывается по истории точек перетаскивания (sliding window).
+  - [ ] Симулируется полёт с гравитацией, сопротивлением воздуха и упругим отскоком.
+  - [ ] Приземление разделяется на `soft_landing`, `stumble`, `crash_landing` -> `recover`.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.
+- **Вне скоупа:** Не трогать Renderer и Electron API.
 
 ---
 
@@ -54,19 +54,13 @@
 - **Читать:**
   - `.agents/agents/app-developer/agent.md`
   - `.agents/tasks/tracks/ui-desktop.md` (Раздел 2, Task P14-UI01)
+  - `docs/engine/CHARACTER_ENGINE.md`
 - **Менять:** `src/renderer/` (модули контекстного меню), unit-тесты.
 - **Критерии приёмки:**
   - [ ] Меню открывается по правому клику и не выходит за пределы экрана.
   - [ ] Пункты меню триггерят соответствующие стимулы/действия.
   - [ ] `npm test && npm run typecheck` проходят без ошибок.
-
----
-
-### [TASK: P14-S02] — Drag & Throw Ballistics Physics
-- **Статус:** `blocked` (ждёт завершения P14-A01)
-- **Исполнитель:** `domain-behavior`
-- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Реализовать в domain чистую физику броска мышью по контракту из `SHIMEJI_SPEC.md`.
+- **Вне скоупа:** Не трогать чистую доменную логику в `src/domain/`.
 
 ---
 
