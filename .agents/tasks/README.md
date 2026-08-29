@@ -22,10 +22,9 @@
 ## Текущее состояние
 
 - Phase 0–13: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop, Animation & Reaction Pack, Render Engine, Sprites, Logger & Debug HUD.
-- Phase 13 Polish & UI Unification (`P13-P01`): `done` — объединённое меню с табами («Действия», «Внешний вид», «Debug»), динамический ресайз окна, роутинг реакций в Character Engine.
 - Phase 14 (Offline Memory & Relationship Persistence): `in_progress`
-  - `P14-A01` (Architecture Contract: MEMORY_ENGINE.md): `ready`
-  - `P14-T01` (SQLite Database Initialization & Migrations): `planned`
+  - `P14-A01` (Architecture Contract: MEMORY_ENGINE.md): `done`
+  - `P14-T01` (SQLite Database Initialization & Migrations): `in_progress`
   - `P14-T02` (Chat History Repository & Bounded Context Buffer): `planned`
   - `P14-T03` (User Facts & Character State Persistence): `planned`
   - `P14-T04` (Privacy Controls & Clear Memory Flow): `planned`
@@ -36,29 +35,27 @@
 
 ### P14-A01 — Architecture Contract: MEMORY_ENGINE.md
 
-- **Статус:** `ready`
+- **Статус:** `done`
 - **Исполнитель:** `architect`
 - **Зависит от:** none
-- **Цель:** Создать и специфицировать архитектурный контракт `docs/engine/MEMORY_ENGINE.md`: схему таблиц SQLite (`messages`, `user_facts`, `character_state`, `schema_migrations`), интерфейсы портов в Application layer (`IChatHistoryRepository`, `IUserFactsRepository`, `ICharacterStateRepository`), DTO, лимиты контекста (FIFO буфер реплик для Mock AI), offline-first границы, приватность и контракт сброса памяти (`ClearMemoryUseCase`).
-- **Читать:** `.agents/agents/architect/agent.md`, `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/AI_PROVIDER_CONTRACT.md`, `ARCHITECTURE.md`.
-- **Менять:** `docs/engine/MEMORY_ENGINE.md` (создать), `docs/engine/README.md`.
+- **Цель:** Создать архитектурный контракт `docs/engine/MEMORY_ENGINE.md`.
 - **Критерии приёмки:**
-  - [ ] Описана схема таблиц SQLite (`messages`, `user_facts`, `character_state`, `schema_migrations`).
-  - [ ] Специфицированы интерфейсы портов в Application layer без утечки SQL-типов.
-  - [ ] Определена политика ограничения истории (bounded context buffer для AI).
-  - [ ] Описан контракт безопасного удаления данных пользователя (Clear Memory).
-  - [ ] Сохранены строгие границы Clean Architecture (никаких прямых SQL-запросов из UI или Domain).
+  - [x] Описана схема таблиц SQLite (`conversation_sessions`, `messages`, `user_facts`, `memories`, `character_state`, `schema_migrations`).
+  - [x] Специфицированы интерфейсы портов в Application layer (`IChatHistoryRepository`, `IUserFactsRepository`, `ICharacterStateRepository`, `IClearMemoryStore`).
+  - [x] Определены лимиты контекста для AI и строгие offline-first границы.
+  - [x] Описан Use Case для Clear Memory.
 
 ### P14-T01 — SQLite Database Initialization & Migrations
 
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P14-A01`
-- **Цель:** Инициализация локальной базы SQLite (better-sqlite3 / sqlite3) в каталоге пользовательских данных Electron (`app.getPath('userData')`), система запуска миграций и транзакций.
+- **Цель:** Инициализация локальной базы SQLite (better-sqlite3 / sqlite3) в каталоге пользовательских данных Electron (`app.getPath('userData')`), система запуска миграций и транзакций по контракту `docs/engine/MEMORY_ENGINE.md`.
 - **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
 - **Менять:** `src/infrastructure/persistence/` (`database.ts`, `migrations/`, `index.ts`), unit-тесты.
 - **Критерии приёмки:**
   - [ ] База создаётся в изолированной директории пользователя.
+  - [ ] PRAGMA (foreign_keys, WAL, synchronous=FULL, busy_timeout=5000) включены.
   - [ ] Миграции накатываются идемпотентно.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
@@ -67,11 +64,11 @@
 - **Статус:** `planned`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P14-T01`
-- **Цель:** Реализация порта `IChatHistoryRepository`: сохранение сообщений пользователя и Wisp, выборка последних N реплик с ограничением контекста для AI.
+- **Цель:** Реализация порта `IChatHistoryRepository`: сохранение сессий и сообщений, выборка последних N реплик для AI.
 - **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
-- **Менять:** `src/infrastructure/persistence/chat-history.repository.ts`, unit-тесты.
+- **Менять:** `src/infrastructure/persistence/repositories/chat-history.repository.ts`, unit-тесты.
 - **Критерии приёмки:**
-  - [ ] Сообщения сохраняются и быстро запрашиваются с пагинацией/лимитом.
+  - [ ] Сессии и сообщения сохраняются с таймстемпами ISO-8601 UTC.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
 ### P14-T03 — User Facts & Character State Persistence
@@ -79,7 +76,7 @@
 - **Статус:** `planned`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P14-T01`
-- **Цель:** Сохранение состояния потребностей (`Needs`), уровня дружбы/любви (`Relationship`) и извлечённых фактов о пользователе между перезапусками.
+- **Цель:** Сохранение `character_state` (Needs, Relationship, Intimacy) и `user_facts` между перезапусками.
 - **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
 - **Менять:** `src/infrastructure/persistence/repositories/`, unit-тесты.
 - **Критерии приёмки:**
@@ -91,7 +88,7 @@
 - **Статус:** `planned`
 - **Исполнитель:** `app-developer`
 - **Зависит от:** `P14-T02`, `P14-T03`
-- **Цель:** Реализация Use Case `ClearMemoryUseCase` и IPC-метода очистки данных: сброс фактов, истории и отношений по требованию пользователя.
+- **Цель:** Реализация Use Case `ClearMemoryUseCase` и IPC-метода очистки данных: сброс фактов, истории и состояния.
 - **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
 - **Менять:** `src/application/use-cases/`, IPC-обработчики, unit-тесты.
 - **Критерии приёмки:**
@@ -102,7 +99,7 @@
 
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
-| 15 | Desktop Life Behaviors: quiet mode, cooldowns, habits | `domain-behavior` |
+| 15 | Shimeji & Autonomous Desktop Life (Boredom, Chains, Gaze, Physics, Window Climbing) | `domain-behavior` + `app-developer` |
 | 16 | Settings & Control Surface: behavior, appearance, memory controls, full debug panel | `app-developer` |
 | 17 | External AI Contract Readiness: future client-side adapter only | `architect` + `app-developer` |
 | 18 | Stability & Performance Hardening: long sessions, cleanup, Wayland/X11 | `reviewer` |
