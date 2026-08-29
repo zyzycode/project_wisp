@@ -153,8 +153,6 @@ describe('Application: Dialogue Loop Service & Intent Mapping', () => {
       const turn = await processDialogueTurn({
         aiProvider: provider,
         userText: 'Привет, Wisp!',
-        characterMood: 'content',
-        characterActivity: 'idle',
       });
 
       expect(turn.intent.kind).toBe('react_happy');
@@ -172,8 +170,6 @@ describe('Application: Dialogue Loop Service & Intent Mapping', () => {
       const turn = await processDialogueTurn({
         aiProvider: provider,
         userText: 'Пора спать, спокойной ночи',
-        characterMood: 'neutral',
-        characterActivity: 'idle',
       });
 
       expect(turn.intent.kind).toBe('sleep');
@@ -187,8 +183,6 @@ describe('Application: Dialogue Loop Service & Intent Mapping', () => {
       const turn = await processDialogueTurn({
         aiProvider: provider,
         userText: '   ',
-        characterMood: 'neutral',
-        characterActivity: 'idle',
       });
 
       expect(turn.intent.kind).toBe('react_confused');
@@ -201,8 +195,6 @@ describe('Application: Dialogue Loop Service & Intent Mapping', () => {
       const turn1 = await processDialogueTurn({
         aiProvider: provider,
         userText: 'Привет!',
-        characterMood: 'content',
-        characterActivity: 'idle',
       });
 
       const context = [
@@ -213,8 +205,6 @@ describe('Application: Dialogue Loop Service & Intent Mapping', () => {
       const turn2 = await processDialogueTurn({
         aiProvider: provider,
         userText: 'Как дела?',
-        characterMood: 'content',
-        characterActivity: 'idle',
         recentContext: context,
       });
 

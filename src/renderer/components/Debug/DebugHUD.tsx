@@ -17,7 +17,6 @@ export interface DebugHUDProps {
   position?: PetPositionDTO;
   isWandering?: boolean;
   flipX?: boolean;
-  mood?: string;
   onClearLogs: () => void;
 }
 
@@ -32,7 +31,6 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
   position,
   isWandering = false,
   flipX = false,
-  mood,
   onClearLogs,
 }) => {
   return (
@@ -46,7 +44,7 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
 
       <section className="debug-hud-state">
         <div className="debug-hud-section-title">🎬 Animation & FSM</div>
-        <div>🎭 Tone: <strong>{tone}</strong> {mood ? `· Mood: ${mood}` : ''}</div>
+        <div>🎭 Tone: <strong>{tone}</strong></div>
         <div>⚙️ FSM: <strong>{animationState}</strong></div>
         <div>🎯 Intent: <strong>{animationIntent.kind}</strong> ({animationIntent.loop})</div>
         <div>👁️ Expression: <strong>{animationIntent.expressionHint ?? 'default'}</strong></div>

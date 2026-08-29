@@ -3,12 +3,7 @@ import type { DebugTelemetryDTO, PetPositionDTO, ScreenBoundsDTO } from '../../s
 import { calculateDragInertia } from '../../domain/models/position';
 import type { CharacterExpression, CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
-import {
-  PetAffectionState,
-  INITIAL_AFFECTION_STATE,
-  recordPetInteraction,
-  calculateAffectionDecay,
-} from '../../domain/interaction/pet-interaction';
+import { defaultCharacterStateService } from '../../application/services/character-state.service';
 import type { ChatMessage } from '../../domain/chat/chat-message';
 import { createChatMessage } from '../../domain/chat/chat-message';
 import type { IAIProvider } from '../../application/ports/ai-provider.interface';
@@ -56,7 +51,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [chatOpen, setChatOpen] = useState<boolean>(false);
   const [currentMessage, setCurrentMessage] = useState<ChatMessage | null>(null);
   const [autoWanderEnabled, setAutoWanderEnabled] = useState<boolean>(true);
-  const [affection, setAffection] = useState<PetAffectionState>(INITIAL_AFFECTION_STATE);
   const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
     DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
   );
@@ -69,13 +63,47 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   // Animation State Machine Hook (FSM)
   const { state: animState, expression, dispatch: dispatchAnim } = useAnimationStateMachine('idle');
 
+  // Drag & Click reference trackers
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number; petX: number; petY: number }>({
+    mouseX: 0,
+    mouseY: 0,
+    petX: 300,
+    petY: 300,
+  });
+  const prevMoveRef = useRef<{ x: number; y: number; time: number }>({
+    x: 300,
+    y: 300,
+    time: Date.now(),
+  });
+  const clickTimeRef = useRef<number>(0);
+  const hasMovedRef = useRef<boolean>(false);
+  const landingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Notify Electron main process when menu expands or collapses and synchronize position
+  useEffect(() => {
+    if (window.wispAPI?.setMenuExpanded) {
+      window.wispAPI
+        .setMenuExpanded(menuOpen)
+        .then((newPos) => {
+          if (newPos) {
+            setPosition(newPos);
+            dragStartRef.current.petX = newPos.x;
+            dragStartRef.current.petY = newPos.y;
+            prevMoveRef.current.x = newPos.x;
+            prevMoveRef.current.y = newPos.y;
+          }
+        })
+        .catch((err) => console.error('Failed to update menu expanded state:', err));
+    }
+  }, [menuOpen]);
+
   // Autonomous Behavior Hook
   const { isWandering, flipX, triggerNap, wakeUp } = useAutonomousBehavior({
     currentPosition: position,
     screenBounds,
     animState,
     isDragging,
-    petSize: COMPACT_WINDOW_SIZE,
+    petSize: menuOpen ? { width: 620, height: 500 } : COMPACT_WINDOW_SIZE,
     enabled: autoWanderEnabled,
     onPositionChange: (newPos) => {
       setPosition(newPos);
@@ -150,30 +178,12 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const { handleSendMessage: handleUserSendMessage } = useDialogueLoop({
     aiProvider,
     animState,
-    affection,
-    setAffection,
     setCurrentMessage,
     dispatchAnim,
     locale: 'ru',
   });
 
-  // Drag & Click reference trackers
-  const dragStartRef = useRef<{ mouseX: number; mouseY: number; petX: number; petY: number }>({
-    mouseX: 0,
-    mouseY: 0,
-    petX: 300,
-    petY: 300,
-  });
-  const prevMoveRef = useRef<{ x: number; y: number; time: number }>({
-    x: 300,
-    y: 300,
-    time: Date.now(),
-  });
-  const clickTimeRef = useRef<number>(0);
-  const hasMovedRef = useRef<boolean>(false);
-  const landingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Fetch initial position, screen bounds, affection decay & welcome message
+  // Fetch initial position, screen bounds & welcome message
   useEffect(() => {
     if (window.wispAPI?.getScreenBounds) {
       window.wispAPI
@@ -198,14 +208,8 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       setCurrentMessage(createChatMessage('pet', 'Привет! Я Wisp ✨'));
     }, 1000);
 
-    // Affection decay interval
-    const decayInterval = setInterval(() => {
-      setAffection((prev) => calculateAffectionDecay(prev));
-    }, 60000);
-
     return () => {
       clearTimeout(welcomeTimer);
-      clearInterval(decayInterval);
       if (landingTimerRef.current) {
         clearTimeout(landingTimerRef.current);
       }
@@ -298,7 +302,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         setTiltDeg(0);
         dispatchAnim('RELEASE_DRAG');
 
-        setAffection((prev) => recordPetInteraction(prev, 'drag_end'));
+        defaultCharacterStateService.applyStimulus({ type: 'user_drag_end', source: 'user' });
 
         // Trigger landing animation after brief drop with managed timer
         if (landingTimerRef.current) {
@@ -328,7 +332,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       wakeUp();
       setCurrentMessage(createChatMessage('pet', 'Я проснулся! ☀️'));
     } else {
-      setAffection((prev) => recordPetInteraction(prev, 'single_click'));
+      defaultCharacterStateService.applyStimulus({ type: 'click', source: 'user' });
       dispatchAnim('PET');
       const phrases = ['Мурр! ✨', 'Ты лучший! 💖', 'Хи-хи, щекотно!', 'Что делаем? 🚀'];
       const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)] ?? 'Мурр!';
@@ -338,7 +342,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
   const handlePetDoubleClick = () => {
     if (hasMovedRef.current) return;
-    setAffection((prev) => recordPetInteraction(prev, 'double_click'));
+    defaultCharacterStateService.applyStimulus({ type: 'click', source: 'user', intensity: 2 });
     dispatchAnim('PET');
     setChatOpen(true);
     setMenuOpen(false);
@@ -369,7 +373,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       position={position}
       isWandering={isWandering}
       flipX={flipX}
-      mood={affection.mood}
       onClearLogs={() => {
         const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
         if (clearLogs !== undefined) void clearLogs();
@@ -379,7 +382,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
   return (
     <div
-      className={`pet-container ${isDragging ? 'is-dragging' : ''} ${isWandering ? 'is-wandering' : ''}`}
+      className={`pet-container ${isDragging ? 'is-dragging' : ''} ${isWandering ? 'is-wandering' : ''} ${menuOpen ? 'menu-is-open' : ''}`}
     >
       {/* Speech Bubble */}
       <SpeechBubble
@@ -397,7 +400,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       {/* Context Menu */}
       <ContextMenu
         isOpen={menuOpen}
-        affection={affection}
+        tone={debugTelemetry.character.synthesizedTone}
         currentTheme={currentTheme}
         scale={scale}
         autoWanderEnabled={autoWanderEnabled}
@@ -406,7 +409,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         debugContent={debugHudElement}
         onClose={() => setMenuOpen(false)}
         onPet={() => {
-          setAffection((prev) => recordPetInteraction(prev, 'petting'));
+          defaultCharacterStateService.applyStimulus({ type: 'pet', source: 'user' });
           dispatchAnim('PET');
           setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
         }}
@@ -451,7 +454,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         onContextMenu={handleContextMenu}
       />
 
-      {debugHudEnabled && debugHudVisible ? debugHudElement : null}
+      {debugHudEnabled && debugHudVisible && !menuOpen ? debugHudElement : null}
 
       <div
         className="pet-label"
@@ -461,7 +464,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
           setMenuOpen(false);
         }}
       >
-        💬 Wisp • {isWandering ? 'wandering' : animState} {affection.mood === 'delighted' ? '💖' : ''}
+        💬 Wisp • {isWandering ? 'wandering' : animState} {debugTelemetry.character.synthesizedTone === 'affectionate' ? '💖' : ''}
       </div>
     </div>
   );

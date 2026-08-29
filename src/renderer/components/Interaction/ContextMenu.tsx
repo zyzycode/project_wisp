@@ -1,11 +1,11 @@
 import React from 'react';
-import type { PetAffectionState } from '../../../domain/interaction/pet-interaction';
 import type { CharacterTheme } from '../../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../../domain/models/character-visuals';
+import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
 
 export interface ContextMenuProps {
   isOpen: boolean;
-  affection: PetAffectionState;
+  tone?: SynthesizedEmotionalTone;
   currentTheme: CharacterTheme;
   scale: number;
   autoWanderEnabled: boolean;
@@ -14,7 +14,7 @@ export interface ContextMenuProps {
   debugContent?: React.ReactNode;
   onClose: () => void;
   onPet: () => void;
-  onSpook: () => void;
+  onThink: () => void;
   onToggleSleep: () => void;
   onToggleWander: () => void;
   onSelectTheme: (theme: CharacterTheme) => void;
@@ -22,9 +22,19 @@ export interface ContextMenuProps {
   onQuit: () => void;
 }
 
+const TONE_LABELS_RU: Record<SynthesizedEmotionalTone, string> = {
+  shy: 'Скромное',
+  sleepy: 'Сонное',
+  playful: 'Игривое',
+  curious: 'Любопытное',
+  affectionate: 'Нежное',
+  flustered: 'Смущённое',
+  neutral: 'Спокойное',
+};
+
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
-  affection,
+  tone = 'neutral',
   currentTheme,
   scale,
   autoWanderEnabled,
@@ -33,7 +43,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   debugContent,
   onClose,
   onPet,
-  onSpook,
+  onThink,
   onToggleSleep,
   onToggleWander,
   onSelectTheme,
@@ -56,18 +66,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       </div>
 
       <div className="menu-canvas" aria-label="Wisp control panel">
-        <div className="menu-affection-bar">
-          <div className="affection-label">
-            <span>Настроение: <strong>{affection.mood}</strong></span>
-            <span>❤️ {affection.affectionScore}%</span>
-          </div>
-          <div className="affection-progress-bg"><div className="affection-progress-fill" style={{ width: `${affection.affectionScore}%` }} /></div>
+        <div className="menu-status-badge">
+          <span>Настроение: <strong>{TONE_LABELS_RU[tone] ?? tone}</strong></span>
         </div>
 
         <div className="menu-section-title">🎮 Действия</div>
         <div className="menu-btn-grid">
           <button className="menu-action-btn" onClick={onPet}>💖 Погладить</button>
-          <button className="menu-action-btn" onClick={onSpook}>👻 Напугать</button>
+          <button className="menu-action-btn" onClick={onThink}>💡 Подумать</button>
           <button className="menu-action-btn" onClick={onToggleSleep}>{isSleeping ? '☀️ Разбудить' : '🌙 Усыпить'}</button>
           <button className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`} onClick={onToggleWander}>
             {autoWanderEnabled ? '🐾 Прогулка: ВКЛ' : '🛑 Прогулка: ВЫКЛ'}
@@ -99,7 +105,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         ) : null}
 
         <div className="menu-divider" />
-        <button className="menu-quit-btn" onClick={onQuit}>Закрыть Wisp</button>
+        <button className="menu-quit-btn" onClick={onQuit}>✕ Закрыть Wisp</button>
       </div>
     </div>
   );

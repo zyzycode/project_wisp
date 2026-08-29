@@ -11,16 +11,12 @@ import type {
   AnimationState,
   AnimationEvent,
 } from '../../domain/animation/animation-state-machine';
-import type { PetAffectionState } from '../../domain/interaction/pet-interaction';
-import { recordPetInteraction } from '../../domain/interaction/pet-interaction';
 import type { ChatMessage } from '../../domain/chat/chat-message';
 import { createChatMessage } from '../../domain/chat/chat-message';
 
 export interface UseDialogueLoopOptions {
   aiProvider: IAIProvider;
   animState: AnimationState;
-  affection: PetAffectionState;
-  setAffection: React.Dispatch<React.SetStateAction<PetAffectionState>>;
   setCurrentMessage: (message: ChatMessage | null) => void;
   dispatchAnim: (event: AnimationEvent, force?: boolean) => boolean;
   locale?: string;
@@ -34,9 +30,6 @@ export { applyBehaviorIntentToAnimation };
  */
 export function useDialogueLoop({
   aiProvider,
-  animState,
-  affection,
-  setAffection,
   setCurrentMessage,
   dispatchAnim,
   locale = 'ru',
@@ -46,10 +39,7 @@ export function useDialogueLoop({
 
   const handleSendMessage = useCallback(
     async (userText: string) => {
-      // 1. Record interaction for affection calculation
-      setAffection((prev) => recordPetInteraction(prev, 'single_click'));
-
-      // 2. Immediately transition character into thinking state
+      // 1. Immediately transition character into thinking state
       dispatchAnim('THINK', true);
       setIsThinking(true);
 
@@ -57,8 +47,6 @@ export function useDialogueLoop({
         const turnResult = await processDialogueTurn({
           aiProvider,
           userText,
-          characterMood: affection.mood,
-          characterActivity: animState,
           recentContext: recentContextRef.current,
           locale,
         });
@@ -78,12 +66,12 @@ export function useDialogueLoop({
           recentContextRef.current = recentContextRef.current.slice(-10);
         }
 
-        // 3. Display reply in SpeechBubble
+        // 2. Display reply in SpeechBubble
         if (turnResult.replyText) {
           setCurrentMessage(createChatMessage('pet', turnResult.replyText));
         }
 
-        // 4. Update Animation FSM based on intent
+        // 3. Update Animation FSM based on intent
         applyBehaviorIntentToAnimation(turnResult.intent, dispatchAnim);
       } catch (err) {
         console.error('Dialogue error:', err);
@@ -95,7 +83,7 @@ export function useDialogueLoop({
         setIsThinking(false);
       }
     },
-    [aiProvider, animState, affection, setAffection, setCurrentMessage, dispatchAnim, locale]
+    [aiProvider, setCurrentMessage, dispatchAnim, locale]
   );
 
   return {

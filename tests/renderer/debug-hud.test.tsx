@@ -72,7 +72,7 @@ describe('Renderer: DebugHUD', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
-        affection={{ mood: 'content', affectionScore: 70, lastInteractionAt: 0 }}
+        tone="playful"
         currentTheme={DEFAULT_THEMES.cosmic!}
         scale={1}
         autoWanderEnabled
@@ -92,7 +92,7 @@ describe('Renderer: DebugHUD', () => {
         }
         onClose={vi.fn()}
         onPet={vi.fn()}
-        onSpook={vi.fn()}
+        onThink={vi.fn()}
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
         onSelectTheme={vi.fn()}

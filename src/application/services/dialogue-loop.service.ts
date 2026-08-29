@@ -18,8 +18,6 @@ import { mapProviderResponseToBehaviorIntent } from './provider-response-intent-
 export interface DialogueTurnParams {
   aiProvider: IAIProvider;
   userText: string;
-  characterMood?: string;
-  characterActivity?: string;
   characterSnapshot?: CharacterSnapshot;
   characterStateService?: CharacterStateService;
   recentContext?: AIProviderContextMessage[];
