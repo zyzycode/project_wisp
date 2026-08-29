@@ -28,9 +28,9 @@
 | 10 — Mock AI & Dialogue Loop | done | `app-developer` | Offline `MockAIProvider`, thinking state и reply flow. |
 | 11 — Character Engine v2 | done | `domain-behavior` + `architect` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
 | 12 — Animation & Reaction Pack | done | `architect` + `domain-behavior` | Синхронизация контракта с Character Engine v2, реакции, idle variety, sleep rules. |
-| 13 — Render Engine & Asset Pipeline | done | `architect` + `app-developer` | RENDER_ENGINE.md, спрайтовый пайплайн (ходьба), слои, fallback, структурированный логгер и Debug HUD. |
-| 14 — Offline Memory & Relationship | in_progress | `architect` + `app-developer` | SQLite memory, bounded history, local fact extraction и clear memory. |
-| 15 — Desktop Life Behaviors | later | `domain-behavior` | Quiet mode, cooldowns, habits и менее навязчивая автономность. |
+| 13 — Render Engine & Asset Pipeline | done | `architect` + `app-developer` | RENDER_ENGINE.md, спрайтовый пайплайн, слои, fallback, структурированный логгер и Debug HUD. |
+| 14 — Shimeji & Advanced Autonomy | in_progress | `domain-behavior` + `app-developer` | Базовая локомоция (сидеть/лежать/бег/прыжки), Boredom, кулдауны, физика броска, Gaze Tracking, Zoomies. |
+| 15 — Offline Memory & Persistence | later | `app-developer` | Контракт MEMORY_ENGINE.md готов. SQLite, bounded history, facts, state restore, clear memory. |
 | 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и расширенная dev-only debug panel. |
 | 17 — External AI Contract Readiness | future | `architect` + `app-developer` | Только client-side контракт будущего adapter; backend остаётся отдельно. |
 | 18 — Stability & Performance Hardening | future | `reviewer` | Long-session stability, cleanup checks и Linux Wayland/X11 fallbacks. |
@@ -38,7 +38,7 @@
 
 ## Текущий фокус
 
-Текущая фаза реализации — **Phase 14 (Offline Memory & Relationship)**.
+Текущая фаза реализации — **Phase 14 (Shimeji & Advanced Autonomy)**.
 
 Следующий рабочий шаг:
-- **`P14-A01` (`architect`):** Создание архитектурного контракта `docs/engine/MEMORY_ENGINE.md` (схема SQLite, таблицы facts/history/relationship, privacy defaults, offline boundaries, clear memory).
+- **`P14-S01` (`domain-behavior`):** Внедрение расширенных локомоций и состояний FSM (`sit`, `stand_up`, `lie_down`, `get_up`, `run`, `jump`, `fall`, `land`, `crawl`), шкалы `Needs.boredom` и кулдаунов `RepetitionPenalty`.

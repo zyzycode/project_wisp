@@ -22,84 +22,84 @@
 ## Текущее состояние
 
 - Phase 0–13: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop, Animation & Reaction Pack, Render Engine, Sprites, Logger & Debug HUD.
-- Phase 14 (Offline Memory & Relationship Persistence): `in_progress`
-  - `P14-A01` (Architecture Contract: MEMORY_ENGINE.md): `done`
-  - `P14-T01` (SQLite Database Initialization & Migrations): `in_progress`
-  - `P14-T02` (Chat History Repository & Bounded Context Buffer): `planned`
-  - `P14-T03` (User Facts & Character State Persistence): `planned`
-  - `P14-T04` (Privacy Controls & Clear Memory Flow): `planned`
-  - `P14-T05` (Integration Tests for Memory Engine): `planned`
+- Memory Contract (`MEMORY_ENGINE.md`): `done` — архитектурный контракт памяти утверждён и зафиксирован.
+- Phase 14 (Shimeji & Advanced Autonomy): `in_progress`
+  - `P14-S01` (FSM Locomotion Expansion & Boredom Need): `ready`
+  - `P14-S02` (Advanced Drag & Throw Physics with Velocity/Stumble): `planned`
+  - `P14-S03` (Procedural Gaze Tracking & Cursor Reactions): `planned`
+  - `P14-S04` (Activity Chains, Repetition Penalty & Zoomies Event): `planned`
   - `P14-G01` (Code Review Phase 14): `planned`
 
-## Активная очередь (Phase 14 — Offline Memory & Relationship Persistence)
+## Активная очередь (Phase 14 — Shimeji & Advanced Autonomy)
 
-### P14-A01 — Architecture Contract: MEMORY_ENGINE.md
+### P14-S01 — FSM Locomotion Expansion & Boredom Need
 
-- **Статус:** `done`
-- **Исполнитель:** `architect`
+- **Статус:** `ready`
+- **Исполнитель:** `domain-behavior`
 - **Зависит от:** none
-- **Цель:** Создать архитектурный контракт `docs/engine/MEMORY_ENGINE.md`.
+- **Цель:** Расширить стейт-машину анимаций и поведение новыми состояниями: `sit`, `stand_up`, `lie_down`, `get_up`, `run`, `jump`, `fall`, `land`, `crawl`. Добавить 5-ю шкалу в потребности `Needs.boredom` (скука растёт со временем, снижается при активных действиях).
+- **Читать:** `.agents/agents/domain-behavior/agent.md`, `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/RENDER_ENGINE.md`.
+- **Менять:** `src/domain/character/needs.ts`, `src/domain/animation/`, `src/domain/behavior/`, unit-тесты.
+- **🎨 Арт-ассеты (Художник):**
+  - `sit`/`stand_up`: `body_sit_00.png`, `face_sit_default.png`.
+  - `lie_down`/`get_up`: `body_lie_00.png`, `face_lie_comfy.png`.
+  - `run`: `body_run_00.png`..`03.png`.
+  - `jump`/`fall`/`land`: `body_jump_up.png`, `body_fall_down.png`, `body_land_impact.png`.
 - **Критерии приёмки:**
-  - [x] Описана схема таблиц SQLite (`conversation_sessions`, `messages`, `user_facts`, `memories`, `character_state`, `schema_migrations`).
-  - [x] Специфицированы интерфейсы портов в Application layer (`IChatHistoryRepository`, `IUserFactsRepository`, `ICharacterStateRepository`, `IClearMemoryStore`).
-  - [x] Определены лимиты контекста для AI и строгие offline-first границы.
-  - [x] Описан Use Case для Clear Memory.
-
-### P14-T01 — SQLite Database Initialization & Migrations
-
-- **Статус:** `in_progress`
-- **Исполнитель:** `app-developer`
-- **Зависит от:** `P14-A01`
-- **Цель:** Инициализация локальной базы SQLite (better-sqlite3 / sqlite3) в каталоге пользовательских данных Electron (`app.getPath('userData')`), система запуска миграций и транзакций по контракту `docs/engine/MEMORY_ENGINE.md`.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
-- **Менять:** `src/infrastructure/persistence/` (`database.ts`, `migrations/`, `index.ts`), unit-тесты.
-- **Критерии приёмки:**
-  - [ ] База создаётся в изолированной директории пользователя.
-  - [ ] PRAGMA (foreign_keys, WAL, synchronous=FULL, busy_timeout=5000) включены.
-  - [ ] Миграции накатываются идемпотентно.
+  - [ ] Новые интенты и состояния валидируются FSM.
+  - [ ] `boredom` корректно тикает в `tickNeeds`.
+  - [ ] Fallback-рендерер безопасно работает даже до появления всех PNG-файлов.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
-### P14-T02 — Chat History Repository & Bounded Context Buffer
+### P14-S02 — Advanced Drag & Throw Physics
 
 - **Статус:** `planned`
-- **Исполнитель:** `app-developer`
-- **Зависит от:** `P14-T01`
-- **Цель:** Реализация порта `IChatHistoryRepository`: сохранение сессий и сообщений, выборка последних N реплик для AI.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
-- **Менять:** `src/infrastructure/persistence/repositories/chat-history.repository.ts`, unit-тесты.
+- **Исполнитель:** `domain-behavior` + `app-developer`
+- **Зависит от:** `P14-S01`
+- **Цель:** Расчёт вектора скорости `(vx, vy)` при отпускании мыши, параболический полёт с гравитацией, разделение приземления на `soft_landing`, `stumble` (спотыкание) и `crash_landing` (плюхнулся) с фазой вставания `recover`.
+- **Читать:** `.agents/agents/domain-behavior/agent.md`, `src/application/services/pet-position.service.ts`.
+- **🎨 Арт-ассеты (Художник):**
+  - `body_dragged_hang.png`, `face_dragged_surprised.png` (удержание курсором).
+  - `body_crash_splat.png`, `face_crash_dizzy.png` (аварийное падение).
+  - `body_recover_00.png`, `01.png` (отряхивание и вставание).
 - **Критерии приёмки:**
-  - [ ] Сессии и сообщения сохраняются с таймстемпами ISO-8601 UTC.
+  - [ ] Плавный расчет физики броска и отскока/приземления.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
-### P14-T03 — User Facts & Character State Persistence
+### P14-S03 — Procedural Gaze Tracking & Cursor Reactions
 
 - **Статус:** `planned`
-- **Исполнитель:** `app-developer`
-- **Зависит от:** `P14-T01`
-- **Цель:** Сохранение `character_state` (Needs, Relationship, Intimacy) и `user_facts` между перезапусками.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
-- **Менять:** `src/infrastructure/persistence/repositories/`, unit-тесты.
+- **Исполнитель:** `app-developer` + `domain-behavior`
+- **Зависит от:** `P14-S01`
+- **Цель:** Вычисление угла к курсору, dead zone, сглаживание взгляда (`lerp`), смещение зрачков, следование за мышью (`cursor_chase`) и попытка поймать (`swat_cursor`).
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/RENDER_ENGINE.md`.
+- **🎨 Арт-ассеты (Художник):**
+  - `face_base_open_eyes.png`, `pupils_normal.png` (процедурные зрачки).
+  - `body_swat_00.png`, `01.png`, `face_playful_focus.png` (ловля курсора).
 - **Критерии приёмки:**
-  - [ ] При перезапуске приложения прогресс отношений и потребности восстанавливаются.
+  - [ ] Зрачки плавно смотрят на мышь без дрожания.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
-### P14-T04 — Privacy Controls & Clear Memory Flow
+### P14-S04 — Activity Chains, Repetition Penalty & Zoomies Event
 
 - **Статус:** `planned`
-- **Исполнитель:** `app-developer`
-- **Зависит от:** `P14-T02`, `P14-T03`
-- **Цель:** Реализация Use Case `ClearMemoryUseCase` и IPC-метода очистки данных: сброс фактов, истории и состояния.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
-- **Менять:** `src/application/use-cases/`, IPC-обработчики, unit-тесты.
+- **Исполнитель:** `domain-behavior`
+- **Зависит от:** `P14-S01`
+- **Цель:** Иерархические цепочки действий (`Explore`, `WindowWatching`, `Relax`, `Play`), кольцевой буфер `RepetitionPenalty` для предотвращения спама одинаковых действий и редкое безумное событие **Zoomies** (спринт-дрифт туда-сюда).
+- **Читать:** `.agents/agents/domain-behavior/agent.md`, `src/domain/behavior/`.
+- **🎨 Арт-ассеты (Художник):**
+  - `body_inspect_lean.png`, `face_inspect_curious.png` (осмотр/исследование).
+  - `body_skid_turn.png`, `face_zoomies_wild.png` (дрифт при Zoomies).
 - **Критерии приёмки:**
-  - [ ] Полная атомарная очистка памяти без поломки запущенного Wisp.
+  - [ ] Цепочки действий выполняются последовательно.
+  - [ ] `RepetitionPenalty` предотвращает спам анимаций.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
 ## Поздние фазы
 
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
-| 15 | Shimeji & Autonomous Desktop Life (Boredom, Chains, Gaze, Physics, Window Climbing) | `domain-behavior` + `app-developer` |
+| 15 | Offline Memory & Persistence: SQLite, bounded history, facts, state restore, clear memory (Контракт готов) | `app-developer` |
 | 16 | Settings & Control Surface: behavior, appearance, memory controls, full debug panel | `app-developer` |
 | 17 | External AI Contract Readiness: future client-side adapter only | `architect` + `app-developer` |
 | 18 | Stability & Performance Hardening: long sessions, cleanup, Wayland/X11 | `reviewer` |
