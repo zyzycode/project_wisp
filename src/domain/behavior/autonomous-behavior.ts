@@ -1,7 +1,6 @@
 /**
- * Domain Model: Character Autonomous Behavior
- * Pure domain logic for autonomous decision making, random wander target generation,
- * movement interpolation, and idle activity cycles.
+ * Autonomous Behavior Domain Engine
+ * Handles wander targets, movement pacing, timers, and autonomous intentions.
  */
 
 import type { Point2D, RectBounds, Size2D } from '../models/position';
@@ -15,7 +14,11 @@ export type AutonomousActionType =
   | 'idle_look_around'
   | 'wander'
   | 'take_nap'
-  | 'stretch';
+  | 'stretch'
+  | 'run'
+  | 'jump'
+  | 'sit'
+  | 'lie_down';
 
 export interface BehaviorConfig {
   minIdleDurationMs: number;
@@ -169,12 +172,29 @@ export function interpolatePosition(
 }
 
 /**
- * Decides the next autonomous action based on configuration probabilities.
+ * Decides the next autonomous action based on configuration probabilities and character needs.
  */
 export function decideNextAutonomousAction(
   config: BehaviorConfig = DEFAULT_BEHAVIOR_CONFIG,
-  randomVal: number = Math.random()
+  randomVal: number = Math.random(),
+  needs?: Needs
 ): AutonomousActionType {
+  // High boredom triggers active locomotion behaviors
+  if (needs && (needs.boredom ?? 0) >= 70 && needs.energy > 30) {
+    if (randomVal < 0.35) {
+      return 'run';
+    }
+    if (randomVal < 0.65) {
+      return 'jump';
+    }
+    return 'wander';
+  }
+
+  // Low energy triggers resting locomotion postures
+  if (needs && needs.energy <= 35 && needs.energy > 20) {
+    return randomVal < 0.5 ? 'sit' : 'lie_down';
+  }
+
   const napProb = Math.max(0, Math.min(1, config.napProbability));
   const remaining = 1 - napProb;
   const wanderThreshold = napProb + remaining * 0.7;
@@ -211,7 +231,12 @@ function toneToMoodHint(tone: SynthesizedEmotionalTone): BehaviorIntentMoodHint 
   }
 }
 
-function createTimerIntent(kind: BehaviorIntent['kind'], tone: SynthesizedEmotionalTone, priority: BehaviorIntent['priority'], reason: string): BehaviorIntent {
+function createTimerIntent(
+  kind: BehaviorIntent['kind'],
+  tone: SynthesizedEmotionalTone,
+  priority: BehaviorIntent['priority'],
+  reason: string
+): BehaviorIntent {
   return {
     kind,
     source: 'timer',
@@ -254,7 +279,7 @@ export function decideNextAutonomousBehaviorIntent(
   }
 
   const randomVal = context.randomVal ?? Math.random();
-  const action = decideNextAutonomousAction(config.behavior, randomVal);
+  const action = decideNextAutonomousAction(config.behavior, randomVal, context.needs);
 
   switch (action) {
     case 'take_nap':
@@ -263,6 +288,14 @@ export function decideNextAutonomousBehaviorIntent(
       return createTimerIntent('wander', context.tone, 'normal', 'autonomous_wander');
     case 'stretch':
       return createTimerIntent('play', context.tone, 'normal', 'autonomous_stretch');
+    case 'run':
+      return createTimerIntent('run', context.tone, 'normal', 'autonomous_run');
+    case 'jump':
+      return createTimerIntent('jump', context.tone, 'normal', 'autonomous_jump');
+    case 'sit':
+      return createTimerIntent('sit', context.tone, 'low', 'autonomous_sit');
+    case 'lie_down':
+      return createTimerIntent('lie_down', context.tone, 'low', 'autonomous_lie_down');
     case 'idle_look_around': {
       const microMotion = selectIdleMicroMotion(
         context.tone,

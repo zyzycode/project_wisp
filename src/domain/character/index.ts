@@ -1,4 +1,5 @@
 export * from './types';
+export * from './needs';
 export * from './personality-presets';
 export * from './derived-traits';
 export * from './intimacy-rules';

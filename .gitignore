@@ -99,16 +99,13 @@ env/
 *.sqlite3-shm
 *.sqlite3-wal
 
-# Local scripts, generated images, large binary sprites, and test gifs
-scripts/
+# Local generated images, large binary sprites, test gifs, and quarantine
 generated_images/
 new_generated/
 public/**/*.png
 public/*.png
 *.gif
 **/delete_me/
+.quarantine/
+**/manifest.json.tmp
 public/**/*.py
-
-# Personal human-only notes, not AI/project documentation
-docs/AI_STUDIO_PROMPTS.md
-docs/ARTIST_BRIEF.md

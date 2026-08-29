@@ -17,7 +17,15 @@ export type BehaviorIntentKind =
   | 'land'
   | 'wander'
   | 'idle'
-  | 'quiet';
+  | 'quiet'
+  | 'sit'
+  | 'stand_up'
+  | 'lie_down'
+  | 'get_up'
+  | 'run'
+  | 'jump'
+  | 'fall'
+  | 'crawl';
 
 export type BehaviorIntentSource = 'user' | 'provider' | 'timer' | 'memory' | 'system';
 

@@ -7,6 +7,7 @@ import {
   type SpriteAnimationCategory,
   type SpriteAnimationDef,
   type SpriteAnchors,
+  type BodyFaceOverlayCompatibility,
   type SpriteFrameMeta,
   type SpriteLayerCategory,
   type SpriteManifest,
@@ -87,6 +88,7 @@ function normalizeAnimation(key: string, definition: SpriteAnimationDef): Normal
   const canvasSize = normalizeCanvasSize(definition.canvasSize, `Animation "${key}" canvasSize`);
   const defaultAnchors = normalizeAnchors(definition.defaultAnchors, `Animation "${key}" defaultAnchors`);
   const frameMeta = normalizeFrameMeta(definition.frameMeta, key);
+  const faceOverlay = normalizeFaceOverlay(definition.faceOverlay, key, layer);
 
   const frames = definition.frames.map((frame, index) =>
     normalizeFrame(frame, key, index, fps, pivot, sourceRect, defaultAnchors, frameMeta?.[index])
@@ -104,9 +106,40 @@ function normalizeAnimation(key: string, definition: SpriteAnimationDef): Normal
     ...(typeof definition.sourceFile === 'string' ? { sourceFile: definition.sourceFile } : {}),
     ...(defaultAnchors === undefined ? {} : { defaultAnchors }),
     ...(frameMeta === undefined ? {} : { frameMeta }),
+    ...(faceOverlay === undefined ? {} : { faceOverlay }),
     ...(definition.emotionalTone === undefined ? {} : { emotionalTone: definition.emotionalTone }),
     tags: definition.tags === undefined ? [] : validateTags(definition.tags, key),
   };
+}
+
+function normalizeFaceOverlay(
+  value: unknown,
+  key: string,
+  layer: SpriteLayerCategory
+): BodyFaceOverlayCompatibility | undefined {
+  if (value === undefined) return undefined;
+  if (layer !== 'body') {
+    throw new ManifestValidationError(`Animation "${key}" faceOverlay is only allowed on body animations.`);
+  }
+  if (!isRecord(value) || (value.mode !== 'overlay' && value.mode !== 'baked_in' && value.mode !== 'none')) {
+    throw new ManifestValidationError(`Animation "${key}" faceOverlay must declare a valid mode.`);
+  }
+  if (value.fallback !== 'none' && typeof value.fallback !== 'string') {
+    throw new ManifestValidationError(`Animation "${key}" faceOverlay must declare a fallback.`);
+  }
+  if (value.mode === 'overlay') {
+    if (!Array.isArray(value.allowedFaceKeys) || value.allowedFaceKeys.length === 0 || !value.allowedFaceKeys.every((faceKey) => typeof faceKey === 'string') || typeof value.anchor !== 'string' || value.anchor.length === 0) {
+      throw new ManifestValidationError(`Animation "${key}" overlay faceOverlay requires allowedFaceKeys and anchor.`);
+    }
+    if (value.fallback !== 'none' && !value.allowedFaceKeys.includes(value.fallback)) {
+      throw new ManifestValidationError(`Animation "${key}" faceOverlay fallback must be allowed.`);
+    }
+    return { mode: 'overlay', allowedFaceKeys: [...value.allowedFaceKeys], fallback: value.fallback, anchor: value.anchor };
+  }
+  if (value.fallback !== 'none' || value.allowedFaceKeys !== undefined || value.anchor !== undefined) {
+    throw new ManifestValidationError(`Animation "${key}" ${value.mode} faceOverlay must only declare fallback: \"none\".`);
+  }
+  return { mode: value.mode, fallback: 'none' };
 }
 
 function normalizeFrame(

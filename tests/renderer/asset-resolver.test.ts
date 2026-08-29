@@ -49,6 +49,14 @@ function animation(
     framesCount: 4,
     fps: 8,
     pivot: { x: 256, y: 460 },
+    ...(layer === 'body' ? {
+      faceOverlay: {
+        mode: 'overlay' as const,
+        allowedFaceKeys: ['face_happy', 'face_angry', 'face_sad', 'face_shocked', 'face_sleep', 'face_talking', 'face_thinking'],
+        fallback: 'face_happy',
+        anchor: 'face',
+      },
+    } : {}),
     tags: [],
   } as const;
 }
@@ -144,5 +152,46 @@ describe('Renderer: AssetResolver', () => {
 
     expect(clip.body.frames[0]?.source).toBe('system://wisp/default_idle.svg');
     expect(clip.body.animationKey).toBe('system_default_idle');
+  });
+
+  it.each(['baked_in', 'none'] as const)('hides the full face track for %s body poses', (mode) => {
+    const bakedBody = manifest.animations.body_walk;
+    if (bakedBody === undefined) throw new Error('Test manifest must contain body_walk.');
+    const bakedManifest: NormalizedSpriteManifest = {
+      schemaVersion: 1,
+      animations: {
+        ...manifest.animations,
+        body_walk: { ...bakedBody, faceOverlay: { mode, fallback: 'none' } },
+      },
+    };
+
+    const clip = new AssetResolver(bakedManifest).resolve(
+      createSystemAnimationIntent('walk', 'neutral', { expressionHint: 'happy' })
+    );
+
+    expect(clip.face).toBeUndefined();
+  });
+
+  it('uses only an allowed face key and falls back safely when the requested face is disallowed', () => {
+    const body = manifest.animations.body_walk;
+    if (body === undefined) throw new Error('Test manifest must contain body_walk.');
+    const compatibleManifest: NormalizedSpriteManifest = {
+      schemaVersion: 1,
+      animations: {
+        ...manifest.animations,
+        body_walk: {
+          ...body,
+          faceOverlay: {
+            mode: 'overlay', allowedFaceKeys: ['face_sad'], fallback: 'face_sad', anchor: 'face',
+          },
+        },
+      },
+    };
+
+    const clip = new AssetResolver(compatibleManifest).resolve(
+      createSystemAnimationIntent('walk', 'neutral', { expressionHint: 'happy' })
+    );
+
+    expect(clip.face).toMatchObject({ animationKey: 'face_sad', anchorName: 'face' });
   });
 });

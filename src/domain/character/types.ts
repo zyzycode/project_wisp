@@ -1,20 +1,12 @@
 /**
- * Domain contracts for Character Engine v2.
+ * Domain Contracts for Character Engine v2.
  *
  * Pure serializable TypeScript types only: no UI, IPC channel, Electron,
  * storage, provider SDK, DOM, React, CSS, animation asset, or platform details.
  */
 
-export interface Needs {
-  /** 0-100, resource: 100 = energetic, 0 = exhausted. */
-  energy: number;
-  /** 0-100, unmet need: 100 = strong loneliness / contact need. */
-  attention: number;
-  /** 0-100, unmet need: 100 = boredom / stimulation need. */
-  play: number;
-  /** 0-100, unmet need: 100 = sensory overload / need for calm. */
-  comfort: number;
-}
+import type { Needs } from './needs';
+export type { Needs } from './needs';
 
 export interface Relationship {
   /** 0-1000, baseline trust, comfort, and familiarity. */

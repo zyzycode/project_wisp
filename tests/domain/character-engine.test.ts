@@ -20,6 +20,7 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
       attention: 20,
       play: 20,
       comfort: 20,
+      boredom: 15,
       ...overrides.needs,
     },
     relationship: {
@@ -136,15 +137,15 @@ describe('Domain: Character Engine v2', () => {
     expect(canExpressFlirt(createState({ relationship: { friendship: 499, love: 0, loveUnlocked: true } }))).toBe(
       false
     );
-    expect(canExpressFlirt(createState({ needs: { energy: 29, attention: 20, play: 20, comfort: 20 } }))).toBe(false);
-    expect(canExpressFlirt(createState({ needs: { energy: 70, attention: 20, play: 20, comfort: 61 } }))).toBe(false);
+    expect(canExpressFlirt(createState({ needs: { energy: 29, attention: 20, play: 20, comfort: 20, boredom: 15 } }))).toBe(false);
+    expect(canExpressFlirt(createState({ needs: { energy: 70, attention: 20, play: 20, comfort: 61, boredom: 15 } }))).toBe(false);
   });
 
   it('synthesizes emotional tone by contract priority', () => {
-    expect(synthesizeEmotionalTone(createState({ needs: { energy: 20, attention: 20, play: 100, comfort: 20 } }))).toBe(
+    expect(synthesizeEmotionalTone(createState({ needs: { energy: 20, attention: 20, play: 100, comfort: 20, boredom: 15 } }))).toBe(
       'sleepy'
     );
-    expect(synthesizeEmotionalTone(createState({ needs: { energy: 70, attention: 20, play: 20, comfort: 80 } }))).toBe(
+    expect(synthesizeEmotionalTone(createState({ needs: { energy: 70, attention: 20, play: 20, comfort: 80, boredom: 15 } }))).toBe(
       'sleepy'
     );
     expect(synthesizeEmotionalTone(createState({ relationship: { friendship: 399, love: 0, loveUnlocked: false } }))).toBe(
@@ -153,7 +154,7 @@ describe('Domain: Character Engine v2', () => {
     expect(synthesizeEmotionalTone(createState({ relationship: { friendship: 500, love: 500, loveUnlocked: true } }))).toBe(
       'affectionate'
     );
-    expect(synthesizeEmotionalTone(createState({ needs: { energy: 70, attention: 20, play: 70, comfort: 20 } }))).toBe(
+    expect(synthesizeEmotionalTone(createState({ needs: { energy: 70, attention: 20, play: 70, comfort: 20, boredom: 15 } }))).toBe(
       'playful'
     );
     expect(synthesizeEmotionalTone(createState())).toBe('neutral');
@@ -197,6 +198,7 @@ describe('Domain: Character Engine v2', () => {
       attention: 0,
       play: 0,
       comfort: 95,
+      boredom: 0,
     };
 
     const nextNeeds = metabolizeNeeds(needs, 30 * 24 * 60 * 60 * 1000, 'neutral');
@@ -205,11 +207,13 @@ describe('Domain: Character Engine v2', () => {
     expect(nextNeeds.attention).toBeLessThanOrEqual(56);
     expect(nextNeeds.play).toBeLessThanOrEqual(60);
     expect(nextNeeds.comfort).toBeLessThan(20);
+    expect(nextNeeds.boredom).toBeGreaterThan(50);
     expect(needs).toEqual({
       energy: 10,
       attention: 0,
       play: 0,
       comfort: 95,
+      boredom: 0,
     });
   });
 
@@ -283,7 +287,7 @@ describe('Domain: Character Engine v2', () => {
 
   it('processes click, pet, and chat message stimuli as bounded positive interactions', () => {
     const state = createState({
-      needs: { energy: 70, attention: 50, play: 50, comfort: 50 },
+      needs: { energy: 70, attention: 50, play: 50, comfort: 50, boredom: 50 },
       relationship: { friendship: 410, love: 10, loveUnlocked: true },
     });
 
@@ -293,18 +297,23 @@ describe('Domain: Character Engine v2', () => {
 
     expect(clicked.relationship.friendship).toBe(411);
     expect(clicked.relationship.love).toBe(10);
+    expect(clicked.needs.boredom ?? 0).toBeLessThan(state.needs.boredom ?? 0);
+
     expect(petted.relationship.friendship).toBe(415);
     expect(petted.relationship.love).toBe(12);
+    expect(petted.needs.boredom ?? 0).toBeLessThan(clicked.needs.boredom ?? 0);
+
     expect(chatted.relationship.friendship).toBe(421);
     expect(chatted.relationship.love).toBe(13);
     expect(chatted.needs.attention).toBeLessThan(state.needs.attention);
     expect(chatted.needs.play).toBeLessThan(state.needs.play);
     expect(chatted.needs.comfort).toBeLessThan(state.needs.comfort);
+    expect(chatted.needs.boredom ?? 0).toBeLessThan(petted.needs.boredom ?? 0);
   });
 
   it('catches up need metabolism before applying a non-idle stimulus', () => {
     const state = createState({
-      needs: { energy: 40, attention: 0, play: 0, comfort: 20 },
+      needs: { energy: 40, attention: 0, play: 0, comfort: 20, boredom: 0 },
       relationship: { friendship: 100, love: 0, loveUnlocked: false },
       lastUpdated: 1000,
     });
@@ -321,11 +330,12 @@ describe('Domain: Character Engine v2', () => {
     expect(next.needs.attention).toBeLessThan(56);
     expect(next.needs.play).toBeGreaterThan(0);
     expect(next.relationship.friendship).toBe(106);
-    expect(state.needs).toEqual({ energy: 40, attention: 0, play: 0, comfort: 20 });
+    expect(state.needs).toEqual({ energy: 40, attention: 0, play: 0, comfort: 20, boredom: 0 });
   });
 
   it('does not degrade relationship during idle ticks', () => {
     const state = createState({
+      needs: { energy: 70, attention: 20, play: 20, comfort: 20, boredom: 10 },
       relationship: { friendship: 300, love: 25, loveUnlocked: false },
       lastUpdated: 0,
     });
@@ -340,5 +350,6 @@ describe('Domain: Character Engine v2', () => {
     expect(next.relationship).toEqual(state.relationship);
     expect(next.needs.attention).toBeGreaterThan(state.needs.attention);
     expect(next.needs.attention).toBeLessThan(56);
+    expect(next.needs.boredom ?? 0).toBeGreaterThan(state.needs.boredom ?? 0);
   });
 });

@@ -10,6 +10,7 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
       attention: 50,
       play: 50,
       comfort: 50,
+      boredom: 15,
       ...overrides.needs,
     },
     relationship: {
@@ -53,7 +54,7 @@ describe('Application: CharacterStateService', () => {
   it('applies stimuli through the domain character reducer', () => {
     const service = new CharacterStateService({
       initialState: createState({
-        needs: { energy: 70, attention: 50, play: 50, comfort: 50 },
+        needs: { energy: 70, attention: 50, play: 50, comfort: 50, boredom: 50 },
       }),
     });
 
@@ -71,12 +72,13 @@ describe('Application: CharacterStateService', () => {
     expect(after.relationship.love).toBe(1);
     expect(after.needs.attention).toBeLessThan(before.needs.attention);
     expect(after.needs.play).toBeLessThan(before.needs.play);
+    expect(after.needs.boredom ?? 0).toBeLessThan(before.needs.boredom ?? 0);
   });
 
   it('ticks need metabolism in memory without relationship decay', () => {
     const service = new CharacterStateService({
       initialState: createState({
-        needs: { energy: 40, attention: 0, play: 0, comfort: 20 },
+        needs: { energy: 40, attention: 0, play: 0, comfort: 20, boredom: 10 },
         relationship: { friendship: 300, love: 25, loveUnlocked: false },
         lastUpdated: 1000,
       }),
@@ -87,6 +89,7 @@ describe('Application: CharacterStateService', () => {
     expect(after.lastUpdated).toBe(14 * 24 * 60 * 60 * 1000 + 1000);
     expect(after.needs.attention).toBeGreaterThan(0);
     expect(after.needs.play).toBeGreaterThan(0);
+    expect(after.needs.boredom ?? 0).toBeGreaterThan(10);
     expect(after.relationship).toEqual({
       friendship: 300,
       love: 25,
@@ -98,10 +101,12 @@ describe('Application: CharacterStateService', () => {
     const service = new CharacterStateService({ now: () => 1000 });
     const state = service.getState();
 
-    state.needs.energy = 0;
+    (state.needs as { energy: number; boredom?: number }).energy = 0;
+    (state.needs as { energy: number; boredom?: number }).boredom = 100;
     state.personality.axes.boldness.current = 1;
 
     expect(service.getState().needs.energy).toBe(85);
+    expect(service.getState().needs.boredom).toBe(15);
     expect(service.getState().personality.axes.boldness.current).toBe(0.18);
   });
 });

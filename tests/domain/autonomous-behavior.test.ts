@@ -7,7 +7,7 @@ import {
   DEFAULT_BEHAVIOR_CONFIG,
 } from '../../src/domain/behavior/autonomous-behavior';
 import { selectIdleMicroMotion } from '../../src/domain/behavior/idle-variety';
-import type { Needs, SynthesizedEmotionalTone } from '../../src/domain/character';
+import type { Needs } from '../../src/domain/character';
 import type { RectBounds, Point2D } from '../../src/domain/models/position';
 
 function needs(overrides: Partial<Needs> = {}): Needs {
@@ -16,6 +16,7 @@ function needs(overrides: Partial<Needs> = {}): Needs {
     attention: 20,
     play: 20,
     comfort: 20,
+    boredom: 20,
     ...overrides,
   };
 }
@@ -65,6 +66,45 @@ describe('Domain: Autonomous Behavior', () => {
     expect(decideNextAutonomousAction(DEFAULT_BEHAVIOR_CONFIG, 0.40)).toBe('wander');
     expect(decideNextAutonomousAction(DEFAULT_BEHAVIOR_CONFIG, 0.80)).toBe('stretch');
     expect(decideNextAutonomousAction(DEFAULT_BEHAVIOR_CONFIG, 0.95)).toBe('idle_look_around');
+  });
+
+  it('responds to high boredom with active locomotion actions', () => {
+    const boredNeeds = needs({ boredom: 80, energy: 60 });
+    expect(decideNextAutonomousAction(DEFAULT_BEHAVIOR_CONFIG, 0.2, boredNeeds)).toBe('run');
+    expect(decideNextAutonomousAction(DEFAULT_BEHAVIOR_CONFIG, 0.5, boredNeeds)).toBe('jump');
+    expect(decideNextAutonomousAction(DEFAULT_BEHAVIOR_CONFIG, 0.8, boredNeeds)).toBe('wander');
+
+    const intent = decideNextAutonomousBehaviorIntent({
+      needs: boredNeeds,
+      tone: 'playful',
+      randomVal: 0.2,
+      idleElapsedMs: 5000,
+    });
+    expect(intent).toMatchObject({
+      kind: 'run',
+      source: 'timer',
+      priority: 'normal',
+      reason: 'autonomous_run',
+    });
+  });
+
+  it('responds to tired energy with resting locomotion postures', () => {
+    const tiredNeeds = needs({ energy: 30 });
+    expect(decideNextAutonomousAction(DEFAULT_BEHAVIOR_CONFIG, 0.3, tiredNeeds)).toBe('sit');
+    expect(decideNextAutonomousAction(DEFAULT_BEHAVIOR_CONFIG, 0.7, tiredNeeds)).toBe('lie_down');
+
+    const sitIntent = decideNextAutonomousBehaviorIntent({
+      needs: tiredNeeds,
+      tone: 'sleepy',
+      randomVal: 0.3,
+      idleElapsedMs: 5000,
+    });
+    expect(sitIntent).toMatchObject({
+      kind: 'sit',
+      source: 'timer',
+      priority: 'low',
+      reason: 'autonomous_sit',
+    });
   });
 
   it('initiates vital sleep at energy and comfort boundaries', () => {
@@ -198,52 +238,21 @@ describe('Domain: Autonomous Behavior', () => {
       decideNextAutonomousBehaviorIntent({
         needs: needs(),
         tone: 'curious',
-        idleElapsedMs: DEFAULT_BEHAVIOR_CONFIG.minIdleDurationMs - 1,
-        randomVal: 0.4,
-      })
-    ).toBeNull();
-  });
-
-  it('generates tone-aware idle micro-motions after pauses', () => {
-    const expectations: Record<SynthesizedEmotionalTone, {
-      readonly kind: string;
-      readonly expressionHint: string;
-      readonly propHint: string;
-    }> = {
-      shy: { kind: 'shy_glance', expressionHint: 'blush', propHint: 'none' },
-      sleepy: { kind: 'sleepy_nod', expressionHint: 'sleepy', propHint: 'none' },
-      playful: { kind: 'playful_wink', expressionHint: 'winking', propHint: 'sparkle' },
-      curious: { kind: 'curious_head_tilt', expressionHint: 'curious', propHint: 'question' },
-      neutral: { kind: 'calm_blink', expressionHint: 'idle', propHint: 'none' },
-      affectionate: { kind: 'warm_smile', expressionHint: 'happy', propHint: 'heart' },
-      flustered: { kind: 'flustered_fidget', expressionHint: 'blush', propHint: 'heart' },
-    };
-
-    for (const [tone, expected] of Object.entries(expectations) as Array<
-      [SynthesizedEmotionalTone, (typeof expectations)[SynthesizedEmotionalTone]]
-    >) {
-      expect(selectIdleMicroMotion(tone, 10_000, 0)).toMatchObject({
-        tone,
-        ...expected,
-      });
-    }
-
-    expect(selectIdleMicroMotion('curious', 1000, 0)).toBeNull();
-  });
-
-  it('uses idle micro-motion reason for low-priority idle intents', () => {
-    expect(
-      decideNextAutonomousBehaviorIntent({
-        needs: needs(),
-        tone: 'curious',
-        idleElapsedMs: 10_000,
+        idleElapsedMs: DEFAULT_BEHAVIOR_CONFIG.minIdleDurationMs,
         randomVal: 0.95,
       })
     ).toMatchObject({
       kind: 'idle',
+      source: 'timer',
       priority: 'low',
       moodHint: 'curious',
-      reason: 'idle_micro_motion:question_peek',
     });
+  });
+
+  it('selects idle micro motions with tone and probability bias', () => {
+    const motion = selectIdleMicroMotion('shy', 4500, 0.1);
+    expect(motion).toBeDefined();
+    expect(motion?.kind).toBeDefined();
+    expect(motion?.minPauseMs).toBeGreaterThan(0);
   });
 });

@@ -1,6 +1,10 @@
 {
   "body_sleep_trans": {
     "category": "body/sleep_transition",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/sleep_transition/body_sleep_trans_00.png",
@@ -12,6 +16,10 @@
   },
   "body_idle": {
     "category": "body/idle",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 8,
     "frames": [
       "/assets/sprites/body/idle/body_idle_00.png",
@@ -52,6 +60,10 @@
   },
   "body_thinking": {
     "category": "body/thinking",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/thinking/body_thinking_00.png",
@@ -63,6 +75,10 @@
   },
   "body_dragged": {
     "category": "body/dragged",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/dragged/body_dragged_00.png",
@@ -74,6 +90,10 @@
   },
   "body_land": {
     "category": "body/land",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/land/body_land_00.png",
@@ -85,6 +105,10 @@
   },
   "body_walk": {
     "category": "body/walk",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/walk/body_walk_00.png",
@@ -96,6 +120,10 @@
   },
   "body_sleep": {
     "category": "body/sleep",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/sleep/body_sleep_00.png",
@@ -107,6 +135,10 @@
   },
   "body_petting": {
     "category": "body/petting",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/petting/body_petting_00.png",
@@ -118,6 +150,10 @@
   },
   "body_wave": {
     "category": "body/wave",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/wave/body_wave_00.png",
@@ -129,6 +165,10 @@
   },
   "body_celebrate": {
     "category": "body/celebrate",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/celebrate/body_celebrate_00.png",
@@ -140,6 +180,10 @@
   },
   "body_scared": {
     "category": "body/scared",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/scared/body_scared_00.png",
@@ -151,6 +195,10 @@
   },
   "body_bored": {
     "category": "body/bored",
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    },
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/bored/body_bored_00.png",

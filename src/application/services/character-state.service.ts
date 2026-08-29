@@ -18,6 +18,7 @@ const DEFAULT_INITIAL_NEEDS: Needs = {
   attention: 35,
   play: 30,
   comfort: 20,
+  boredom: 15,
 };
 
 export interface CharacterStateServiceOptions {

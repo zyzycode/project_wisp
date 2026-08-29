@@ -139,6 +139,52 @@ describe('Renderer: AnimationPlayer', () => {
     expect(layerSource(layers, 2)).toBe('prop_0.png');
   });
 
+  it('aligns the face pivot to the active body-frame anchor and falls back to a zero offset', () => {
+    const { renderer } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    const clip = createClip({
+      rootPivot: { x: 100, y: 200 },
+      body: {
+        ...createClip().body,
+        pivot: { x: 100, y: 200 },
+        frames: [
+          { source: 'body_0.png', pivot: { x: 100, y: 200 }, anchors: { face: { x: 100, y: 50 } } },
+          { source: 'body_1.png', pivot: { x: 110, y: 210 }, anchors: { face: { x: 114, y: 56 } } },
+          { source: 'body_2.png', pivot: { x: 100, y: 200 } },
+        ],
+        defaultAnchors: { face: { x: 100, y: 50 } },
+        frameMeta: [{}, { anchors: { face: { x: 999, y: 999 } } }, {}],
+      },
+      face: {
+        id: 'face', category: 'face', animationKey: 'face_happy', zIndex: 20, playbackMode: 'hold',
+        pivot: { x: 100, y: 50 }, anchorName: 'face', fps: 8,
+        frames: [
+          { source: 'face_0.png', pivot: { x: 100, y: 50 } },
+          { source: 'face_1.png', pivot: { x: 90, y: 40 } },
+        ],
+      },
+    });
+
+    player.play(clip, { type: 'until_replaced' });
+    expect(player.getPresentationState()?.layers[1]?.offset).toEqual({ x: 0, y: -150 });
+    expect(player.getPresentationState()?.layers[1]?.pivot).toEqual({ x: 100, y: 50 });
+    player.tick(125);
+    expect(player.getPresentationState()?.layers[1]?.offset).toEqual({ x: 4, y: -154 });
+    expect(player.getPresentationState()?.layers[0]?.pivot).toEqual({ x: 110, y: 210 });
+    expect(player.getPresentationState()?.layers[1]?.pivot).toEqual({ x: 90, y: 40 });
+    player.tick(125);
+    expect(player.getPresentationState()?.layers[1]?.offset).toEqual({ x: 0, y: -150 });
+
+    const missingAnchorClip = createClip({
+      face: {
+        id: 'face', category: 'face', animationKey: 'face_happy', zIndex: 20, playbackMode: 'hold',
+        pivot: { x: 100, y: 50 }, anchorName: 'face', frames: [{ source: 'face_0.png' }],
+      },
+    });
+    player.play(missingAnchorClip, { type: 'until_replaced' });
+    expect(player.getPresentationState()?.layers[1]?.offset).toEqual({ x: 0, y: 0 });
+  });
+
   it('preserves elapsed frame progress when updateClip is called with the same body clip', () => {
     const { renderer } = createRenderer();
     const player = new AnimationPlayer(renderer);

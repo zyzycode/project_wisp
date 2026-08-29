@@ -12,6 +12,7 @@ import {
   type SpritePoint,
   type TrackPlaybackMode,
   type VisibleRenderLayerDef,
+  getFrameAnchor,
 } from './types';
 
 const ZERO_POINT: SpritePoint = { x: 0, y: 0 };
@@ -114,10 +115,9 @@ export class AnimationPlayer implements IAnimationPlayer {
     const clip = this.clip;
     const loopMode = this.loopMode;
     if (clip === undefined || loopMode === undefined) return;
-    const layers: VisibleRenderLayerDef[] = [
-      createLayer(clip.body, getBodyFrame(clip.body, this.elapsedMs, loopMode, this.completed)),
-    ];
-    appendOverlayLayer(layers, clip.face, this.elapsedMs);
+    const bodyFrame = getBodyFrame(clip.body, this.elapsedMs, loopMode, this.completed);
+    const layers: VisibleRenderLayerDef[] = [createLayer(clip.body, bodyFrame.frame)];
+    appendOverlayLayer(layers, clip.face, this.elapsedMs, clip.body, bodyFrame);
     appendOverlayLayer(layers, clip.expression, this.elapsedMs);
     for (const prop of clip.props ?? []) appendOverlayLayer(layers, prop, this.elapsedMs);
 
@@ -158,16 +158,22 @@ function getBodyFrame(
   elapsedMs: number,
   loopMode: AnimationLoopMode,
   completed: boolean
-): RenderableFrameDef {
-  if (completed && loopMode.type !== 'until_replaced') return lastFrame(track);
+): { readonly frame: RenderableFrameDef; readonly index: number } {
+  if (completed && loopMode.type !== 'until_replaced') return { frame: lastFrame(track), index: track.frames.length - 1 };
   return getLoopFrame(track, elapsedMs);
 }
 
-function appendOverlayLayer(layers: VisibleRenderLayerDef[], track: ResolvedOverlayTrack | undefined, elapsedMs: number): void {
+function appendOverlayLayer(
+  layers: VisibleRenderLayerDef[],
+  track: ResolvedOverlayTrack | undefined,
+  elapsedMs: number,
+  bodyTrack?: ResolvedTrackBase,
+  bodyFrame?: { readonly frame: RenderableFrameDef; readonly index: number }
+): void {
   if (track === undefined || track.frames.length === 0) return;
   const playbackMode = track.playbackMode ?? 'hold';
   const frame = getOverlayFrame(track, elapsedMs, playbackMode);
-  if (frame !== undefined) layers.push(createLayer(track, frame));
+  if (frame !== undefined) layers.push(createLayer(track, frame, getFaceOffset(track, bodyTrack, bodyFrame)));
 }
 
 function getOverlayFrame(
@@ -178,21 +184,21 @@ function getOverlayFrame(
   const durationMs = getCycleDurationMs(track);
   if (playbackMode === 'once' && elapsedMs >= durationMs) return undefined;
   if (playbackMode === 'hold' && elapsedMs >= durationMs) return lastFrame(track);
-  return playbackMode === 'loop' ? getLoopFrame(track, elapsedMs) : getFrameAtElapsed(track, elapsedMs);
+  return (playbackMode === 'loop' ? getLoopFrame(track, elapsedMs) : getFrameAtElapsed(track, elapsedMs)).frame;
 }
 
-function getLoopFrame(track: ResolvedTrackBase, elapsedMs: number): RenderableFrameDef {
+function getLoopFrame(track: ResolvedTrackBase, elapsedMs: number): { readonly frame: RenderableFrameDef; readonly index: number } {
   return getFrameAtElapsed(track, elapsedMs % getCycleDurationMs(track));
 }
 
-function getFrameAtElapsed(track: ResolvedTrackBase, elapsedMs: number): RenderableFrameDef {
+function getFrameAtElapsed(track: ResolvedTrackBase, elapsedMs: number): { readonly frame: RenderableFrameDef; readonly index: number } {
   let remainingMs = elapsedMs;
-  for (const frame of track.frames) {
+  for (const [index, frame] of track.frames.entries()) {
     const durationMs = getFrameDurationMs(frame, track.fps);
-    if (remainingMs < durationMs) return frame;
+    if (remainingMs < durationMs) return { frame, index };
     remainingMs -= durationMs;
   }
-  return lastFrame(track);
+  return { frame: lastFrame(track), index: track.frames.length - 1 };
 }
 
 function getCycleDurationMs(track: ResolvedTrackBase): number {
@@ -209,19 +215,34 @@ function lastFrame(track: ResolvedTrackBase): RenderableFrameDef {
   return frame;
 }
 
-function createLayer(track: ResolvedTrackBase, frame: RenderableFrameDef): VisibleRenderLayerDef {
+function createLayer(track: ResolvedTrackBase, frame: RenderableFrameDef, offset: SpritePoint = track.offset ?? ZERO_POINT): VisibleRenderLayerDef {
   return {
     id: track.id,
     category: track.category,
     zIndex: track.zIndex,
     animationKey: track.animationKey,
-    pivot: track.pivot ?? frame.pivot ?? ZERO_POINT,
-    offset: track.offset ?? ZERO_POINT,
+    pivot: frame.pivot ?? track.pivot ?? ZERO_POINT,
+    offset,
     opacity: track.opacity ?? 1,
     blendMode: track.blendMode ?? 'normal',
     visible: true,
     frame,
   };
+}
+
+function getFaceOffset(
+  track: ResolvedOverlayTrack,
+  bodyTrack: ResolvedTrackBase | undefined,
+  bodyFrame: { readonly frame: RenderableFrameDef; readonly index: number } | undefined
+): SpritePoint {
+  if (track.category !== 'face' || track.anchorName === undefined || bodyTrack === undefined || bodyFrame === undefined) {
+    return track.offset ?? ZERO_POINT;
+  }
+  const anchor = bodyFrame.frame.anchors?.[track.anchorName]
+    ?? getFrameAnchor(bodyTrack, bodyFrame.index, track.anchorName);
+  if (anchor === null) return track.offset ?? ZERO_POINT;
+  const bodyPivot = bodyFrame.frame.pivot ?? bodyTrack.pivot ?? ZERO_POINT;
+  return { x: anchor.x - bodyPivot.x, y: anchor.y - bodyPivot.y };
 }
 
 function isPositiveFinite(value: number): boolean {

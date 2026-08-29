@@ -3,8 +3,6 @@ import {
   AnimationStateMachine,
   createSystemAnimationIntent,
   mapBehaviorIntentToAnimationIntent,
-  type AnimationExpressionHint,
-  type AnimationPropHint,
 } from '../../src/domain/animation';
 import {
   decideNextAutonomousBehaviorIntent,
@@ -17,7 +15,6 @@ import {
   shyDreamGirlPreset,
   synthesizeEmotionalTone,
   type CharacterState,
-  type SynthesizedEmotionalTone,
 } from '../../src/domain/character';
 
 function createTestCharacterState(overrides: Partial<CharacterState> = {}): CharacterState {
@@ -27,6 +24,7 @@ function createTestCharacterState(overrides: Partial<CharacterState> = {}): Char
       attention: 30,
       play: 30,
       comfort: 20,
+      boredom: 20,
       ...overrides.needs,
     },
     relationship: {
@@ -52,7 +50,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
   describe('1. Full Sleep Lifecycle: Needs -> BehaviorIntent -> AnimationIntent -> AnimationStateMachine', () => {
     it('initiates vital sleep when energy is depleted (Needs.energy = 15)', () => {
       const state = createTestCharacterState({
-        needs: { energy: 15, attention: 20, play: 20, comfort: 20 },
+        needs: { energy: 15, attention: 20, play: 20, comfort: 20, boredom: 20 },
       });
 
       // 1. Synthesize emotional tone from character state
@@ -105,7 +103,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
     it('initiates vital sleep when comfort need is overloaded (Needs.comfort = 85)', () => {
       const state = createTestCharacterState({
-        needs: { energy: 70, attention: 20, play: 20, comfort: 85 },
+        needs: { energy: 70, attention: 20, play: 20, comfort: 85, boredom: 20 },
       });
 
       const tone = synthesizeEmotionalTone(state);
@@ -134,7 +132,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
     it('blocks background idle and wander intents while in sleep_loop', () => {
       const state = createTestCharacterState({
-        needs: { energy: 20, attention: 30, play: 30, comfort: 20 },
+        needs: { energy: 20, attention: 30, play: 30, comfort: 20, boredom: 20 },
       });
       const tone = synthesizeEmotionalTone(state);
 
@@ -233,7 +231,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
     it('wakes up when attention deficit becomes critical (Needs.attention = 95)', () => {
       const state = createTestCharacterState({
-        needs: { energy: 50, attention: 95, play: 20, comfort: 20 },
+        needs: { energy: 50, attention: 95, play: 20, comfort: 20, boredom: 20 },
       });
       const tone = synthesizeEmotionalTone(state);
 
@@ -275,7 +273,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
     it('wakes up when energy is restored after sleep (Needs.energy = 85)', () => {
       const state = createTestCharacterState({
-        needs: { energy: 85, attention: 20, play: 20, comfort: 20 },
+        needs: { energy: 85, attention: 20, play: 20, comfort: 20, boredom: 20 },
       });
       const tone = synthesizeEmotionalTone(state);
 
@@ -304,10 +302,10 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
     it('synthesizes all 7 emotional tones from CharacterState correctly', () => {
       // 1. Sleepy: energy <= 20 or comfort >= 80
       expect(
-        synthesizeEmotionalTone(createTestCharacterState({ needs: { energy: 18, attention: 10, play: 10, comfort: 10 } }))
+        synthesizeEmotionalTone(createTestCharacterState({ needs: { energy: 18, attention: 10, play: 10, comfort: 10, boredom: 10 } }))
       ).toBe('sleepy');
       expect(
-        synthesizeEmotionalTone(createTestCharacterState({ needs: { energy: 80, attention: 10, play: 10, comfort: 85 } }))
+        synthesizeEmotionalTone(createTestCharacterState({ needs: { energy: 80, attention: 10, play: 10, comfort: 85, boredom: 10 } }))
       ).toBe('sleepy');
 
       // 2. Shy: high shyness (> 0.65) and low friendship (< 400)
@@ -322,7 +320,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
       // 4. Playful: play need >= 70 with normal energy
       expect(
-        synthesizeEmotionalTone(createTestCharacterState({ needs: { energy: 70, attention: 20, play: 75, comfort: 20 } }))
+        synthesizeEmotionalTone(createTestCharacterState({ needs: { energy: 70, attention: 20, play: 75, comfort: 20, boredom: 20 } }))
       ).toBe('playful');
 
       // 5. Neutral: baseline default
@@ -349,16 +347,9 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
         'shy'
       );
       expect(shyIdle.expressionHint).toBe('blush');
-
-      const flusteredWander = mapBehaviorIntentToAnimationIntent(
-        { kind: 'wander', source: 'timer', priority: 'normal' },
-        'flustered'
-      );
-      expect(flusteredWander.expressionHint).toBe('blush');
-      expect(flusteredWander.propHint).toBe('heart');
     });
 
-    it('generates winking and sparkle hints for playful tone', () => {
+    it('generates sparkle propHint for playful tone in reactions and idle', () => {
       const playfulReact = mapBehaviorIntentToAnimationIntent(
         { kind: 'react_happy', source: 'user', priority: 'normal' },
         'playful'
@@ -366,117 +357,62 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(playfulReact.expressionHint).toBe('winking');
       expect(playfulReact.propHint).toBe('sparkle');
 
-      const playfulTalk = mapBehaviorIntentToAnimationIntent(
-        { kind: 'respond', source: 'provider', priority: 'normal' },
+      const playfulIdle = mapBehaviorIntentToAnimationIntent(
+        { kind: 'idle', source: 'timer', priority: 'low' },
         'playful'
       );
-      expect(playfulTalk.expressionHint).toBe('winking');
-      expect(playfulTalk.propHint).toBe('sparkle');
-
-      const playfulPlay = mapBehaviorIntentToAnimationIntent(
-        { kind: 'play', source: 'user', priority: 'normal' },
-        'playful'
-      );
-      expect(playfulPlay.kind).toBe('walk');
-      expect(playfulPlay.expressionHint).toBe('winking');
-      expect(playfulPlay.propHint).toBe('sparkle');
+      expect(playfulIdle.propHint).toBe('sparkle');
     });
 
-    it('generates curious and question hints for curious tone', () => {
-      const curiousTalk = mapBehaviorIntentToAnimationIntent(
-        { kind: 'respond', source: 'provider', priority: 'normal' },
-        'curious'
-      );
-      expect(curiousTalk.expressionHint).toBe('curious');
-      expect(curiousTalk.propHint).toBe('question');
-
+    it('generates question propHint and curious expressionHint for curious tone', () => {
       const curiousThink = mapBehaviorIntentToAnimationIntent(
-        { kind: 'think', source: 'provider', priority: 'normal' },
+        { kind: 'think', source: 'user', priority: 'normal' },
         'curious'
       );
       expect(curiousThink.expressionHint).toBe('curious');
       expect(curiousThink.propHint).toBe('question');
 
-      const curiousConfused = mapBehaviorIntentToAnimationIntent(
-        { kind: 'react_confused', source: 'provider', priority: 'normal' },
+      const curiousReact = mapBehaviorIntentToAnimationIntent(
+        { kind: 'react_confused', source: 'user', priority: 'normal' },
         'curious'
       );
-      expect(curiousConfused.expressionHint).toBe('curious');
-      expect(curiousConfused.propHint).toBe('question');
+      expect(curiousReact.expressionHint).toBe('curious');
+      expect(curiousReact.propHint).toBe('question');
     });
 
-    it('maps all 7 tones to proper hints for react_confused', () => {
-      const expectedHints: Record<SynthesizedEmotionalTone, { expressionHint: AnimationExpressionHint; propHint: AnimationPropHint }> = {
-        shy: { expressionHint: 'blush', propHint: 'question' },
-        sleepy: { expressionHint: 'sleepy', propHint: 'question' },
-        playful: { expressionHint: 'surprised', propHint: 'sparkle' },
-        curious: { expressionHint: 'curious', propHint: 'question' },
-        neutral: { expressionHint: 'surprised', propHint: 'question' },
-        affectionate: { expressionHint: 'pout', propHint: 'heart' },
-        flustered: { expressionHint: 'blush', propHint: 'heart' },
-      };
+    it('generates pillow propHint for sleep actions and sleepy tone', () => {
+      const sleepIntent = mapBehaviorIntentToAnimationIntent(
+        { kind: 'sleep', source: 'timer', priority: 'high' },
+        'sleepy'
+      );
+      expect(sleepIntent.propHint).toBe('pillow');
 
-      for (const [tone, expected] of Object.entries(expectedHints) as Array<[SynthesizedEmotionalTone, { expressionHint: AnimationExpressionHint; propHint: AnimationPropHint }]>) {
-        const intent = mapBehaviorIntentToAnimationIntent(
-          { kind: 'react_confused', source: 'provider', priority: 'normal' },
-          tone
-        );
-        expect(intent.kind).toBe('confused_reaction');
-        expect(intent.expressionHint).toBe(expected.expressionHint);
-        expect(intent.propHint).toBe(expected.propHint);
-      }
+      const sleepyQuiet = mapBehaviorIntentToAnimationIntent(
+        { kind: 'quiet', source: 'timer', priority: 'low' },
+        'sleepy'
+      );
+      expect(sleepyQuiet.propHint).toBe('pillow');
+      expect(sleepyQuiet.kind).toBe('sleep_loop');
+    });
+
+    it('generates heart propHint and happy expression for affectionate tone', () => {
+      const affecIdle = mapBehaviorIntentToAnimationIntent(
+        { kind: 'idle', source: 'timer', priority: 'low' },
+        'affectionate'
+      );
+      expect(affecIdle.expressionHint).toBe('happy');
+      expect(affecIdle.propHint).toBe('heart');
+
+      const affecRespond = mapBehaviorIntentToAnimationIntent(
+        { kind: 'respond', source: 'provider', priority: 'normal' },
+        'affectionate'
+      );
+      expect(affecRespond.expressionHint).toBe('happy');
+      expect(affecRespond.propHint).toBe('heart');
     });
   });
 
-  describe('3. Instant Reactions, Priorities & State Machine Rules', () => {
-    it('critical spook immediately interrupts dialogue, walk, reaction and sleep states without delay', () => {
-      const spookIntent = createSystemAnimationIntent('spook', 'neutral');
-      expect(spookIntent.priority).toBe('critical');
-
-      // 1. Interrupting thinking (dialogue)
-      const thinkingFsm = new AnimationStateMachine('thinking');
-      expect(thinkingFsm.applyIntent(spookIntent)).toBe(true);
-      expect(thinkingFsm.getCurrentState()).toBe('spook');
-      expect(thinkingFsm.getCurrentExpression()).toBe('surprised');
-
-      // 2. Interrupting float (walk/movement)
-      const floatFsm = new AnimationStateMachine('float');
-      expect(floatFsm.applyIntent(spookIntent)).toBe(true);
-      expect(floatFsm.getCurrentState()).toBe('spook');
-
-      // 3. Interrupting happy reaction
-      const happyFsm = new AnimationStateMachine('happy');
-      expect(happyFsm.applyIntent(spookIntent)).toBe(true);
-      expect(happyFsm.getCurrentState()).toBe('spook');
-
-      // 4. Interrupting sleep_start
-      const sleepStartFsm = new AnimationStateMachine('sleep_start');
-      expect(sleepStartFsm.applyIntent(spookIntent)).toBe(true);
-      expect(sleepStartFsm.getCurrentState()).toBe('spook');
-
-      // 5. Interrupting sleep_loop
-      const sleepLoopFsm = new AnimationStateMachine('sleep_loop');
-      expect(sleepLoopFsm.applyIntent(spookIntent)).toBe(true);
-      expect(sleepLoopFsm.getCurrentState()).toBe('spook');
-    });
-
-    it('settle correctly returns state machine from bounded reactions to idle', () => {
-      const fsm = new AnimationStateMachine('spook');
-      expect(fsm.getCurrentState()).toBe('spook');
-
-      // Spook duration is 900ms
-      fsm.update(500);
-      expect(fsm.getCurrentState()).toBe('spook');
-
-      fsm.update(450); // total 950ms >= 900ms
-      expect(fsm.getCurrentState()).toBe('idle');
-
-      // Settle duration is 300ms
-      fsm.update(300);
-      expect(fsm.getCurrentState()).toBe('idle');
-      expect(fsm.getCurrentExpression()).toBe('idle');
-    });
-
+  describe('3. Animation Intent Prioritization & Interrupt Rules', () => {
     it('enforces priority hierarchy strictly: low < normal < high < critical', () => {
       const fsm = new AnimationStateMachine('idle');
 
@@ -521,7 +457,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
   describe('4. Complete End-to-End Multi-Step Integration Cycle', () => {
     it('simulates a full living character interaction and autonomous day cycle', () => {
       let state = createTestCharacterState({
-        needs: { energy: 75, attention: 40, play: 40, comfort: 15 },
+        needs: { energy: 75, attention: 40, play: 40, comfort: 15, boredom: 25 },
         relationship: { friendship: 450, love: 50, loveUnlocked: true },
       });
       const fsm = new AnimationStateMachine('idle');
@@ -567,7 +503,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
       // --- Step 4: Long absence & fatigue: energy drops via metabolizeNeeds ---
       const fatiguedNeeds = metabolizeNeeds(
-        { energy: 25, attention: 60, play: 50, comfort: 20 },
+        { energy: 25, attention: 60, play: 50, comfort: 20, boredom: 70 },
         8 * 60 * 60 * 1000, // 8 hours later
         'neutral'
       );

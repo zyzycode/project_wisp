@@ -177,4 +177,85 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.transition('SETTLE', true, false)).toBe(true);
     expect(fsm.getCurrentState()).toBe('idle');
   });
+
+  describe('FSM Locomotion Expansion', () => {
+    it('supports sit and stand_up lifecycle', () => {
+      const fsm = new AnimationStateMachine('idle');
+
+      expect(fsm.transition('SIT')).toBe(true);
+      expect(fsm.getCurrentState()).toBe('sit');
+      expect(fsm.getCurrentExpression()).toBe('idle');
+
+      expect(fsm.transition('STAND_UP')).toBe(true);
+      expect(fsm.getCurrentState()).toBe('stand_up');
+      fsm.update(800);
+      expect(fsm.getCurrentState()).toBe('idle');
+    });
+
+    it('supports lie_down and get_up lifecycle', () => {
+      const fsm = new AnimationStateMachine('idle');
+
+      expect(fsm.transition('LIE_DOWN')).toBe(true);
+      expect(fsm.getCurrentState()).toBe('lie_down');
+      expect(fsm.getCurrentExpression()).toBe('sleepy');
+
+      expect(fsm.transition('GET_UP')).toBe(true);
+      expect(fsm.getCurrentState()).toBe('get_up');
+      fsm.update(900);
+      expect(fsm.getCurrentState()).toBe('idle');
+    });
+
+    it('supports run locomotion', () => {
+      const fsm = new AnimationStateMachine('idle');
+
+      expect(fsm.transition('RUN')).toBe(true);
+      expect(fsm.getCurrentState()).toBe('run');
+      expect(fsm.getCurrentExpression()).toBe('happy');
+      fsm.update(2000);
+      expect(fsm.getCurrentState()).toBe('idle');
+    });
+
+    it('supports jump -> fall -> land sequence', () => {
+      const fsm = new AnimationStateMachine('idle');
+
+      expect(fsm.transition('JUMP')).toBe(true);
+      expect(fsm.getCurrentState()).toBe('jump');
+      expect(fsm.getCurrentExpression()).toBe('happy');
+
+      // Jump automatically progresses to fall after duration
+      fsm.update(600);
+      expect(fsm.getCurrentState()).toBe('fall');
+
+      // Fall lands
+      expect(fsm.transition('LAND')).toBe(true);
+      expect(fsm.getCurrentState()).toBe('landing');
+      fsm.update(800);
+      expect(fsm.getCurrentState()).toBe('idle');
+    });
+
+    it('supports crawl locomotion', () => {
+      const fsm = new AnimationStateMachine('idle');
+
+      expect(fsm.transition('CRAWL')).toBe(true);
+      expect(fsm.getCurrentState()).toBe('crawl');
+      expect(fsm.getCurrentExpression()).toBe('idle');
+      fsm.update(2500);
+      expect(fsm.getCurrentState()).toBe('idle');
+    });
+
+    it('applies locomotion animation intents correctly', () => {
+      const fsm = new AnimationStateMachine('idle');
+      const sitIntent = createSystemAnimationIntent('sit', 'neutral');
+      expect(fsm.applyIntent(sitIntent)).toBe(true);
+      expect(fsm.getCurrentState()).toBe('sit');
+
+      const runIntent = createSystemAnimationIntent('run', 'playful');
+      expect(fsm.applyIntent(runIntent)).toBe(true);
+      expect(fsm.getCurrentState()).toBe('run');
+
+      const crawlIntent = createSystemAnimationIntent('crawl', 'curious');
+      expect(fsm.applyIntent(crawlIntent)).toBe(true);
+      expect(fsm.getCurrentState()).toBe('crawl');
+    });
+  });
 });

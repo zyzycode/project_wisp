@@ -81,7 +81,7 @@ export class AssetResolver {
 
   resolve(intent: AnimationIntent): ResolvedAnimationClip {
     const body = this.resolveBody(intent);
-    const face = this.resolveFace(intent);
+    const face = this.resolveFace(intent, body);
     const expression = this.resolveExpression(intent);
     const prop = this.resolveProp(intent);
     const rootPivot = body.pivot ?? DEFAULT_SPRITE_PIVOT;
@@ -107,11 +107,26 @@ export class AssetResolver {
     return selectAnimation(specialised, 'body') ?? selectAnimation(preferred, 'body') ?? selectAnimation(idle, 'body') ?? systemBody();
   }
 
-  private resolveFace(intent: AnimationIntent): (ResolvedOverlayTrack & { readonly category: 'face' }) | undefined {
+  private resolveFace(
+    intent: AnimationIntent,
+    body: NormalizedSpriteAnimationDef
+  ): (ResolvedOverlayTrack & { readonly category: 'face' }) | undefined {
     if (!this.enableFaceOverlays) return undefined;
-    const key = intent.expressionHint === undefined ? undefined : FACE_KEYS[intent.expressionHint];
-    const animation = key === undefined ? undefined : selectAnimation(this.manifest.animations[key], 'face');
-    return animation === undefined ? undefined : toOverlayTrack(animation, 'face', 'face', 20, 'loop', 'normal');
+    const compatibility = body.faceOverlay;
+    if (compatibility?.mode !== 'overlay' || compatibility.anchor === undefined) return undefined;
+
+    const requestedKey = intent.expressionHint === undefined ? undefined : FACE_KEYS[intent.expressionHint];
+    const allowedKeys = compatibility.allowedFaceKeys ?? [];
+    const requestedAnimation = requestedKey !== undefined && allowedKeys.includes(requestedKey)
+      ? selectAnimation(this.manifest.animations[requestedKey], 'face')
+      : undefined;
+    const fallbackAnimation = compatibility.fallback === 'none'
+      ? undefined
+      : selectAnimation(this.manifest.animations[compatibility.fallback], 'face');
+    const animation = requestedAnimation ?? fallbackAnimation;
+    return animation === undefined
+      ? undefined
+      : { ...toOverlayTrack(animation, 'face', 'face', 20, 'loop', 'normal'), anchorName: compatibility.anchor };
   }
 
   private resolveExpression(intent: AnimationIntent): (ResolvedOverlayTrack & { readonly category: 'expression' }) | undefined {

@@ -29,7 +29,8 @@
 | 11 — Character Engine v2 | done | `domain-behavior` + `architect` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
 | 12 — Animation & Reaction Pack | done | `architect` + `domain-behavior` | Синхронизация контракта с Character Engine v2, реакции, idle variety, sleep rules. |
 | 13 — Render Engine & Asset Pipeline | done | `architect` + `app-developer` | RENDER_ENGINE.md, спрайтовый пайплайн, слои, fallback, структурированный логгер и Debug HUD. |
-| 14 — Shimeji & Advanced Autonomy | in_progress | `domain-behavior` + `app-developer` | Базовая локомоция (сидеть/лежать/бег/прыжки), Boredom, кулдауны, физика броска, Gaze Tracking, Zoomies. |
+| 13-F — Face Overlay & Asset Completion | in_progress | `architect` + `app-developer` + художник | Карта body/face совместимости, генерация manifest, подготовка прозрачных лиц и визуальная проверка наложения. |
+| 14 — Shimeji & Advanced Autonomy | in_progress | `domain-behavior` + `app-developer` | Реализация шимиджи механик и анимаций (подробнее в `docs/engine/SHIMEJI_SPEC.md`). |
 | 15 — Offline Memory & Persistence | later | `app-developer` | Контракт MEMORY_ENGINE.md готов. SQLite, bounded history, facts, state restore, clear memory. |
 | 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и расширенная dev-only debug panel. |
 | 17 — External AI Contract Readiness | future | `architect` + `app-developer` | Только client-side контракт будущего adapter; backend остаётся отдельно. |
@@ -38,7 +39,5 @@
 
 ## Текущий фокус
 
-Текущая фаза реализации — **Phase 14 (Shimeji & Advanced Autonomy)**.
-
-Следующий рабочий шаг:
-- **`P14-S01` (`domain-behavior`):** Внедрение расширенных локомоций и состояний FSM (`sit`, `stand_up`, `lie_down`, `get_up`, `run`, `jump`, `fall`, `land`, `crawl`), шкалы `Needs.boredom` и кулдаунов `RepetitionPenalty`.
+1. **Phase 13-F (Face Overlay & Asset Completion):** активная задача `P13-F04` (`app-developer`) — позиционирование оверлея лиц по `anchors` в Renderer.
+2. **Phase 14 (Shimeji & Advanced Autonomy):** реализация шимиджи механик и анимаций (актуальный бэклог декомпозирован в [`docs/engine/SHIMEJI_SPEC.md`](docs/engine/SHIMEJI_SPEC.md)).

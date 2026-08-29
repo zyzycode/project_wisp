@@ -89,12 +89,22 @@ export interface SpriteRect {
   readonly height: number;
 }
 
+export interface SpriteAnchors {
+  readonly [anchorName: string]: SpritePoint | undefined;
+}
+
+export interface SpriteFrameMeta {
+  readonly anchors?: SpriteAnchors;
+}
+
 export interface SpriteFrameDef {
   readonly source: string;
   readonly sourceRect?: SpriteRect;
   readonly bounds?: SpriteRect;
   readonly durationMs?: number;
   readonly pivot?: SpritePoint;
+  readonly anchors?: SpriteAnchors;
+  readonly meta?: SpriteFrameMeta;
 }
 
 export interface SpriteAnimationDef {
@@ -107,8 +117,24 @@ export interface SpriteAnimationDef {
   readonly canvasSize?: { readonly width: number; readonly height: number };
   readonly sourceRect?: SpriteRect;
   readonly sourceFile?: string;
+  readonly defaultAnchors?: SpriteAnchors;
+  readonly frameMeta?: readonly SpriteFrameMeta[];
+  readonly faceOverlay?: BodyFaceOverlayCompatibility;
   readonly emotionalTone?: SynthesizedEmotionalTone;
   readonly tags?: readonly string[];
+}
+
+export type BodyFaceOverlayMode = 'overlay' | 'baked_in' | 'none';
+
+export interface BodyFaceOverlayCompatibility {
+  /** `overlay` requires a non-empty list; other modes require no face keys. */
+  readonly mode: BodyFaceOverlayMode;
+  /** Full face-layer keys permitted on this body animation. */
+  readonly allowedFaceKeys?: readonly SpriteAnimationKey[];
+  /** Key used when the requested allowed face is unavailable, or `none`. */
+  readonly fallback: SpriteAnimationKey | 'none';
+  /** Required only for `overlay`; names the body anchor used by the face layer. */
+  readonly anchor?: string;
 }
 
 export interface SpriteManifest {
@@ -131,6 +157,7 @@ Validation rules:
 - `pivot.x` and `pivot.y` are measured in source pixels.
 - Paths must be relative asset paths or public-root paths such as `/assets/sprites/body/walk/body_walk_00.png`; path traversal via `..` is invalid.
 - Missing `schemaVersion` does not invalidate the current MVP manifest. Loader must normalize the flat object into an internal `animations` registry before resolving assets.
+- `faceOverlay` is body-only metadata. It is intentionally ignored by the current resolver until P13-F04 consumes it; this keeps the contract and asset audit separate from Renderer implementation work.
 
 ### 1.3. Frame Timing
 
@@ -159,6 +186,74 @@ The Animation Player uses elapsed monotonic time, not wall-clock time. Large `de
 - `pivot` is resolved per frame as `frame.pivot -> animation.pivot -> layer default`.
 - Body layer default pivot is the root contact point of the character.
 - Non-body layers should define explicit pivots so face, expression and prop layers remain stable across body frames.
+
+### 1.5. Body-to-face compatibility
+
+Every `body_*` entry **must** declare `faceOverlay`. It is the machine-readable authority for whether a full `face_*` track may be composed over that body; neither an `AnimationIntent` nor a resolver fallback may infer this from key names.
+
+| Mode | Meaning | Required metadata | Render result |
+|---|---|---|---|
+| `overlay` | The body PNG has no complete face at the compatible location. | Non-empty `allowedFaceKeys`, `fallback`, and `anchor`. | Select only a listed `face_*` key; if it is missing, use `fallback`, or hide the face when it is `none`. |
+| `baked_in` | Every body frame already contains its own complete face. | `fallback: "none"`; no `allowedFaceKeys` or `anchor`. | Never draw a full face overlay. Partial `expression_*` remains a separate, explicitly opted-in layer. |
+| `none` | This pose has no safe full-face composition and does not contain a usable baked face. | `fallback: "none"`; no `allowedFaceKeys` or `anchor`. | Hide the full face layer. The asset must appear in the artist-action list below. |
+
+Validation rules for a future manifest generator/validator:
+
+- `faceOverlay` is required for every `body_*` animation and forbidden for `face_*`, `expression_*`, and `prop_*` animations.
+- `overlay` accepts only keys whose manifest category normalizes to `face/*`. `allowedFaceKeys` is a compatibility allow-list, not a request to play every key.
+- `overlay` requires exactly one named body anchor. Its `fallback` is either one member of `allowedFaceKeys` or `none`.
+- `baked_in` and `none` must set `fallback` to `none` and must omit `allowedFaceKeys` and `anchor`; this makes accidental double faces and guessed placement invalid metadata.
+- A partial `expression_*` is not a `face_*` replacement. It may be composed only by its own future compatibility declaration and does not relax the rules above.
+
+Current audited compatibility map (PNG inspection, 2026-08-29):
+
+| Body key | Mode | Full-face fallback | Reason |
+|---|---|---|---|
+| `body_idle` | `baked_in` | `none` | Character face is present in all eight body frames. |
+| `body_walk` | `baked_in` | `none` | Face is painted into the walking pose. |
+| `body_thinking` | `baked_in` | `none` | Face is painted into the thinking pose. |
+| `body_dragged` | `baked_in` | `none` | Face is painted into the dragged pose. |
+| `body_land` | `baked_in` | `none` | Face is painted into the landing pose. |
+| `body_sleep_trans` | `baked_in` | `none` | Closed-eye face is painted into the transition. |
+| `body_sleep` | `baked_in` | `none` | Sleeping face is painted into the pose. |
+| `body_petting` | `baked_in` | `none` | Happy face is painted into the pose. |
+| `body_wave` | `baked_in` | `none` | Face is painted into the waving pose. |
+| `body_celebrate` | `baked_in` | `none` | Face is painted into the celebration pose. |
+| `body_scared` | `baked_in` | `none` | Scared face is painted into the pose. |
+| `body_bored` | `baked_in` | `none` | Face is painted into the bored pose. |
+
+The current `face_*` PNGs are transparent, full-canvas eye tracks. They are **not** compatible with the audited body files, because each body already contains eyes and a complete face. There are no current `none` bodies; therefore this audit creates no immediate artist-action item. Before changing any row to `overlay`, the artist must supply a body sequence without a complete face (or a verified removable face region) and record its compatible face keys and anchors.
+
+### 1.6. Face anchor and pivot coordinate system
+
+All coordinates are source-canvas pixels in one coordinate system: origin `(0, 0)` is the top-left of the unscaled frame canvas; `x` grows right and `y` grows down. They are never CSS pixels, cropped-display pixels, or normalized percentages. `canvasSize` describes that source canvas; frames in one composable body/face pair must have the same canvas dimensions unless the manifest explicitly supplies a conversion contract in a future schema.
+
+- A body `pivot` is the root/contact point used to place the body in world space. It resolves `frame.pivot -> animation.pivot -> body default`.
+- A body anchor named by `faceOverlay.anchor` is the target position for the face-layer pivot. It resolves `frameMeta[frameIndex].anchors[name] -> defaultAnchors[name]`; a missing anchor makes that overlay pair invalid rather than guessed.
+- A face frame's `pivot` is the local source-canvas point aligned with the selected body frame's anchor. It resolves `faceFrame.pivot -> faceAnimation.pivot`; overlay assets must provide an explicit value at one of these levels.
+- `frameMeta` is index-aligned to the body `frames` array. Empty objects are permitted to inherit `defaultAnchors`; the array may be shorter than `frames`, in which case absent entries also inherit. A generator must preserve existing manual entries and may add only the needed per-frame overrides.
+- A body frame and face frame need not have equal frame counts. The Animation Player chooses each track's frame by its own timing; placement always reads the currently selected body frame's anchor and face frame's pivot.
+
+Example of a future overlay-ready body entry (illustrative only; not present in the current asset pack):
+
+```json
+{
+  "category": "body/idle",
+  "canvasSize": { "width": 512, "height": 512 },
+  "pivot": { "x": 256, "y": 460 },
+  "defaultAnchors": { "face": { "x": 256, "y": 126 } },
+  "frameMeta": [
+    {},
+    { "anchors": { "face": { "x": 256, "y": 124 } } }
+  ],
+  "faceOverlay": {
+    "mode": "overlay",
+    "allowedFaceKeys": ["face_happy", "face_sad"],
+    "fallback": "face_happy",
+    "anchor": "face"
+  }
+}
+```
 
 ## 2. Layer Ordering & Blend
 

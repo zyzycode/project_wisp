@@ -53,6 +53,15 @@ export interface SpriteFrameDef {
   readonly meta?: SpriteFrameMeta;
 }
 
+export type BodyFaceOverlayMode = 'overlay' | 'baked_in' | 'none';
+
+export interface BodyFaceOverlayCompatibility {
+  readonly mode: BodyFaceOverlayMode;
+  readonly allowedFaceKeys?: readonly SpriteAnimationKey[];
+  readonly fallback: SpriteAnimationKey | 'none';
+  readonly anchor?: string;
+}
+
 export interface SpriteAnimationDef {
   readonly category: SpriteAnimationCategory;
   readonly layer?: SpriteLayerCategory;
@@ -65,6 +74,7 @@ export interface SpriteAnimationDef {
   readonly sourceFile?: string;
   readonly defaultAnchors?: SpriteAnchors;
   readonly frameMeta?: readonly SpriteFrameMeta[];
+  readonly faceOverlay?: BodyFaceOverlayCompatibility;
   readonly emotionalTone?: SynthesizedEmotionalTone;
   readonly tags?: readonly string[];
 }
@@ -94,6 +104,7 @@ export interface NormalizedSpriteAnimationDef {
   readonly sourceFile?: string;
   readonly defaultAnchors?: SpriteAnchors;
   readonly frameMeta?: readonly SpriteFrameMeta[];
+  readonly faceOverlay?: BodyFaceOverlayCompatibility;
   readonly emotionalTone?: SynthesizedEmotionalTone;
   readonly tags: readonly string[];
 }
@@ -188,6 +199,8 @@ export interface ResolvedBodyTrack extends ResolvedTrackBase {
 export interface ResolvedOverlayTrack extends ResolvedTrackBase {
   readonly category: 'face' | 'expression' | 'props';
   readonly playbackMode?: TrackPlaybackMode;
+  /** Body anchor that the face pivot is aligned to; face tracks only. */
+  readonly anchorName?: string;
 }
 
 export interface ResolvedAnimationClip {

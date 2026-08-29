@@ -1,42 +1,69 @@
-import { CharacterExpression } from '../models/character-visuals';
-import type { AnimationIntent, AnimationIntentKind, AnimationPriority } from './animation-intent';
+import type { CharacterExpression } from '../models/character-visuals';
+import type { AnimationIntent, AnimationPriority } from './animation-intent';
 
-export type AnimationState =
+export type CoreAnimationState =
   | 'idle'
+  | 'settle'
   | 'float'
   | 'dragged'
   | 'falling'
   | 'landing'
-  | 'sleep'
-  | 'happy'
-  | 'surprised'
-  | 'thinking'
-  | 'spook'
-  | 'wave'
-  | 'celebrate'
-  | 'bored'
   | 'sleep_start'
   | 'sleep_loop'
   | 'wake_up'
-  | 'settle';
+  | 'thinking'
+  | 'happy'
+  | 'surprised'
+  | 'bored'
+  | 'wave'
+  | 'celebrate'
+  | 'spook'
+  | 'sleep';
 
-export type AnimationEvent =
-  | 'START_DRAG'
-  | 'RELEASE_DRAG'
-  | 'LAND'
+export type LocomotionAnimationState =
+  | 'sit'
+  | 'stand_up'
+  | 'lie_down'
+  | 'get_up'
+  | 'run'
+  | 'jump'
+  | 'fall'
+  | 'land'
+  | 'crawl';
+
+export type AnimationState = CoreAnimationState;
+export type AnyAnimationState = CoreAnimationState | LocomotionAnimationState;
+
+export type CoreAnimationEvent =
+  | 'TICK'
   | 'START_FLOAT'
   | 'STOP_FLOAT'
+  | 'START_DRAG'
+  | 'RELEASE_DRAG'
   | 'START_SLEEP'
   | 'WAKE_UP'
-  | 'PET'
-  | 'SPOOK'
-  | 'THINK'
-  | 'WAVE'
-  | 'CELEBRATE'
-  | 'BORED'
   | 'REACT_HAPPY'
   | 'REACT_CONFUSED'
-  | 'SETTLE';
+  | 'THINK'
+  | 'BORED'
+  | 'WAVE'
+  | 'CELEBRATE'
+  | 'SPOOK'
+  | 'SETTLE'
+  | 'PET'
+  | 'LAND';
+
+export type LocomotionAnimationEvent =
+  | 'SIT'
+  | 'STAND_UP'
+  | 'LIE_DOWN'
+  | 'GET_UP'
+  | 'RUN'
+  | 'JUMP'
+  | 'FALL'
+  | 'CRAWL';
+
+export type AnimationEvent = CoreAnimationEvent | LocomotionAnimationEvent;
 
 export interface StateConfig {
   defaultExpression: CharacterExpression;
@@ -44,50 +71,58 @@ export interface StateConfig {
   priority: AnimationPriority;
   stable: boolean;
   durationMs?: number;
-  autoNextState?: AnimationState;
-  allowedTransitions: AnimationState[];
+  autoNextState?: AnyAnimationState;
+  allowedTransitions: AnyAnimationState[];
 }
 
-export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
+export const ANIMATION_STATES: Record<AnyAnimationState, StateConfig> = {
   idle: {
     defaultExpression: 'idle',
     interruptible: true,
     priority: 'low',
     stable: true,
     allowedTransitions: [
+      'settle',
       'float',
       'dragged',
-      'sleep',
-      'sleep_start',
+      'spook',
       'happy',
       'surprised',
-      'falling',
       'thinking',
-      'spook',
+      'sleep',
+      'sleep_start',
       'wave',
       'celebrate',
       'bored',
+      'sit',
+      'stand_up',
+      'lie_down',
+      'get_up',
+      'run',
+      'jump',
+      'crawl',
     ],
   },
   float: {
     defaultExpression: 'idle',
     interruptible: true,
     priority: 'normal',
-    stable: false,
+    stable: true,
     allowedTransitions: [
       'settle',
       'idle',
       'dragged',
-      'falling',
-      'happy',
-      'surprised',
-      'sleep',
-      'sleep_start',
-      'thinking',
       'spook',
+      'happy',
+      'thinking',
+      'sleep_start',
       'wave',
       'celebrate',
       'bored',
+      'sit',
+      'run',
+      'jump',
+      'crawl',
     ],
   },
   dragged: {
@@ -99,10 +134,10 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
   },
   falling: {
     defaultExpression: 'surprised',
-    interruptible: true,
-    priority: 'normal',
-    stable: false,
-    allowedTransitions: ['landing', 'dragged', 'float', 'idle'],
+    interruptible: false,
+    priority: 'critical',
+    stable: true,
+    allowedTransitions: ['landing', 'dragged', 'spook', 'fall'],
   },
   landing: {
     defaultExpression: 'happy',
@@ -113,9 +148,18 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     autoNextState: 'idle',
     allowedTransitions: ['settle', 'idle', 'dragged', 'spook'],
   },
+  sleep: {
+    defaultExpression: 'sleepy',
+    interruptible: true,
+    priority: 'high',
+    stable: false,
+    durationMs: 0,
+    autoNextState: 'sleep_start',
+    allowedTransitions: ['sleep_start', 'wake_up', 'dragged', 'spook', 'idle'],
+  },
   happy: {
     defaultExpression: 'happy',
-    interruptible: false,
+    interruptible: true,
     priority: 'normal',
     stable: false,
     durationMs: 1500,
@@ -125,18 +169,21 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
       'idle',
       'dragged',
       'spook',
-      'surprised',
+      'happy',
       'thinking',
       'sleep',
       'sleep_start',
       'wave',
       'celebrate',
       'bored',
+      'sit',
+      'run',
+      'crawl',
     ],
   },
   surprised: {
     defaultExpression: 'surprised',
-    interruptible: false,
+    interruptible: true,
     priority: 'normal',
     stable: false,
     durationMs: 1200,
@@ -146,42 +193,29 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
       'idle',
       'dragged',
       'spook',
-      'falling',
       'thinking',
       'happy',
       'sleep',
       'sleep_start',
-      'wave',
-      'celebrate',
       'bored',
     ],
-  },
-  sleep: {
-    defaultExpression: 'sleepy',
-    interruptible: true,
-    priority: 'high',
-    stable: true,
-    allowedTransitions: ['wake_up', 'idle', 'dragged', 'spook', 'sleep_start', 'sleep_loop'],
   },
   thinking: {
     defaultExpression: 'curious',
     interruptible: true,
     priority: 'normal',
     stable: false,
-    durationMs: 2500,
+    durationMs: 4000,
     autoNextState: 'idle',
     allowedTransitions: [
       'settle',
       'idle',
+      'dragged',
+      'spook',
       'happy',
       'surprised',
       'sleep',
       'sleep_start',
-      'float',
-      'dragged',
-      'falling',
-      'thinking',
-      'spook',
       'wave',
       'celebrate',
       'bored',
@@ -214,7 +248,6 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
       'sleep_start',
       'celebrate',
       'bored',
-      'wave',
     ],
   },
   celebrate: {
@@ -257,6 +290,11 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
       'wave',
       'celebrate',
       'bored',
+      'sit',
+      'lie_down',
+      'run',
+      'jump',
+      'crawl',
     ],
   },
   sleep_start: {
@@ -304,38 +342,136 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
       'wave',
       'celebrate',
       'bored',
+      'sit',
+      'lie_down',
+      'run',
+      'jump',
+      'crawl',
     ],
+  },
+  sit: {
+    defaultExpression: 'idle',
+    interruptible: true,
+    priority: 'low',
+    stable: true,
+    allowedTransitions: [
+      'idle',
+      'stand_up',
+      'lie_down',
+      'dragged',
+      'spook',
+      'happy',
+      'run',
+      'crawl',
+    ],
+  },
+  stand_up: {
+    defaultExpression: 'idle',
+    interruptible: false,
+    priority: 'normal',
+    stable: false,
+    durationMs: 800,
+    autoNextState: 'idle',
+    allowedTransitions: ['idle', 'float', 'dragged', 'spook', 'run', 'jump', 'crawl'],
+  },
+  lie_down: {
+    defaultExpression: 'sleepy',
+    interruptible: true,
+    priority: 'low',
+    stable: true,
+    allowedTransitions: ['get_up', 'sleep_start', 'dragged', 'spook', 'idle'],
+  },
+  get_up: {
+    defaultExpression: 'idle',
+    interruptible: false,
+    priority: 'normal',
+    stable: false,
+    durationMs: 800,
+    autoNextState: 'idle',
+    allowedTransitions: ['idle', 'sit', 'stand_up', 'dragged', 'spook', 'run', 'crawl'],
+  },
+  run: {
+    defaultExpression: 'happy',
+    interruptible: true,
+    priority: 'normal',
+    stable: false,
+    durationMs: 2000,
+    autoNextState: 'idle',
+    allowedTransitions: ['idle', 'float', 'jump', 'dragged', 'spook', 'falling', 'fall', 'crawl', 'sit'],
+  },
+  jump: {
+    defaultExpression: 'happy',
+    interruptible: false,
+    priority: 'normal',
+    stable: false,
+    durationMs: 600,
+    autoNextState: 'fall',
+    allowedTransitions: ['fall', 'falling', 'landing', 'land', 'dragged', 'spook'],
+  },
+  fall: {
+    defaultExpression: 'surprised',
+    interruptible: false,
+    priority: 'high',
+    stable: true,
+    allowedTransitions: ['landing', 'land', 'dragged', 'spook'],
+  },
+  land: {
+    defaultExpression: 'happy',
+    interruptible: false,
+    priority: 'high',
+    stable: false,
+    durationMs: 800,
+    autoNextState: 'idle',
+    allowedTransitions: ['idle', 'settle', 'dragged', 'spook'],
+  },
+  crawl: {
+    defaultExpression: 'idle',
+    interruptible: true,
+    priority: 'normal',
+    stable: false,
+    durationMs: 2500,
+    autoNextState: 'idle',
+    allowedTransitions: ['idle', 'settle', 'sit', 'stand_up', 'dragged', 'spook', 'run'],
   },
 };
 
-export type AnimationStateListener = (
-  state: AnimationState,
+export type AnimationStateListener<TState extends string = AnimationState> = (
+  state: TState,
   expression: CharacterExpression
 ) => void;
 
-export class AnimationStateMachine {
-  private currentState: AnimationState;
+function priorityValue(priority: AnimationPriority): number {
+  switch (priority) {
+    case 'low': return 0;
+    case 'normal': return 1;
+    case 'high': return 2;
+    case 'critical': return 3;
+  }
+}
+
+export class AnimationStateMachine<TState extends string = AnimationState> {
+  private currentState: AnyAnimationState;
   private currentExpression: CharacterExpression;
   private stateElapsedTimeMs = 0;
   private isStateLocked = false;
-  private listeners: Set<AnimationStateListener> = new Set();
+  private listeners: Set<AnimationStateListener<TState>> = new Set();
 
-  constructor(initialState: AnimationState = 'idle') {
+  constructor(initialState: AnyAnimationState = 'idle') {
     this.currentState = initialState;
     this.currentExpression = ANIMATION_STATES[initialState]?.defaultExpression ?? 'idle';
   }
 
-  getCurrentState(): AnimationState {
-    return this.currentState;
+  getCurrentState(): TState {
+    return this.currentState as TState;
   }
 
   getCurrentExpression(): CharacterExpression {
     return this.currentExpression;
   }
 
-  subscribe(listener: AnimationStateListener): () => void {
+  subscribe(listener: AnimationStateListener<TState>): () => void {
     this.listeners.add(listener);
-    listener(this.currentState, this.currentExpression);
+    listener(this.currentState as TState, this.currentExpression);
     return () => {
       this.listeners.delete(listener);
     };
@@ -343,16 +479,17 @@ export class AnimationStateMachine {
 
   private notify(): void {
     for (const listener of this.listeners) {
-      listener(this.currentState, this.currentExpression);
+      listener(this.currentState as TState, this.currentExpression);
     }
   }
 
-  private canTransitionTo(targetState: AnimationState, priority: AnimationPriority, force: boolean): boolean {
+  private canTransitionTo(targetState: AnyAnimationState, priority: AnimationPriority, force: boolean): boolean {
     if (force) {
       return true;
     }
 
     const config = ANIMATION_STATES[this.currentState];
+    if (!config) return true;
 
     if (priority === 'critical') {
       return config.allowedTransitions.includes(targetState) || targetState === 'dragged' || targetState === 'spook';
@@ -384,7 +521,7 @@ export class AnimationStateMachine {
     return config.allowedTransitions.includes(targetState);
   }
 
-  private moveTo(targetState: AnimationState): void {
+  private moveTo(targetState: AnyAnimationState): void {
     this.currentState = targetState;
     this.currentExpression = ANIMATION_STATES[targetState]?.defaultExpression ?? 'idle';
     this.stateElapsedTimeMs = 0;
@@ -395,7 +532,7 @@ export class AnimationStateMachine {
     const config = ANIMATION_STATES[this.currentState];
     if (!config) return false;
 
-    let targetState: AnimationState | null = null;
+    let targetState: AnyAnimationState | null = null;
     let priority: AnimationPriority = 'normal';
 
     switch (event) {
@@ -457,6 +594,38 @@ export class AnimationStateMachine {
         targetState = 'bored';
         priority = 'normal';
         break;
+      case 'SIT':
+        targetState = 'sit';
+        priority = 'normal';
+        break;
+      case 'STAND_UP':
+        targetState = 'stand_up';
+        priority = 'normal';
+        break;
+      case 'LIE_DOWN':
+        targetState = 'lie_down';
+        priority = 'normal';
+        break;
+      case 'GET_UP':
+        targetState = 'get_up';
+        priority = 'normal';
+        break;
+      case 'RUN':
+        targetState = 'run';
+        priority = 'normal';
+        break;
+      case 'JUMP':
+        targetState = 'jump';
+        priority = 'normal';
+        break;
+      case 'FALL':
+        targetState = 'fall';
+        priority = 'high';
+        break;
+      case 'CRAWL':
+        targetState = 'crawl';
+        priority = 'normal';
+        break;
       default:
         break;
     }
@@ -474,8 +643,8 @@ export class AnimationStateMachine {
     return true;
   }
 
-  applyIntent(intent: AnimationIntent, force = false, loop = false): boolean {
-    const targetState = animationIntentKindToState(intent.kind);
+  applyIntent(intent: AnimationIntent<any>, force = false, loop = false): boolean {
+    const targetState = this.animationIntentKindToState(intent.kind);
 
     if (!this.canTransitionTo(targetState, intent.priority, force)) {
       return false;
@@ -484,6 +653,59 @@ export class AnimationStateMachine {
     this.isStateLocked = loop;
     this.moveTo(targetState);
     return true;
+  }
+
+  private animationIntentKindToState(kind: string): AnyAnimationState {
+    switch (kind) {
+      case 'idle_blink':
+      case 'settle':
+        return 'idle';
+      case 'walk':
+        return 'float';
+      case 'dragged':
+        return 'dragged';
+      case 'land':
+        return 'landing';
+      case 'happy_reaction':
+        return 'happy';
+      case 'confused_reaction':
+        return 'surprised';
+      case 'thinking_loop':
+      case 'talking':
+        return 'thinking';
+      case 'spook':
+        return 'spook';
+      case 'wave':
+        return 'wave';
+      case 'celebrate':
+        return 'celebrate';
+      case 'bored':
+        return 'bored';
+      case 'sleep_start':
+        return 'sleep_start';
+      case 'sleep_loop':
+        return 'sleep_loop';
+      case 'wake_up':
+        return 'wake_up';
+      case 'sit':
+        return 'sit';
+      case 'stand_up':
+        return 'stand_up';
+      case 'lie_down':
+        return 'lie_down';
+      case 'get_up':
+        return 'get_up';
+      case 'run':
+        return 'run';
+      case 'jump':
+        return 'jump';
+      case 'fall':
+        return 'fall';
+      case 'crawl':
+        return 'crawl';
+      default:
+        return 'idle';
+    }
   }
 
   update(deltaTimeMs: number): void {
@@ -499,53 +721,5 @@ export class AnimationStateMachine {
         this.notify();
       }
     }
-  }
-}
-
-function priorityValue(priority: AnimationPriority): number {
-  switch (priority) {
-    case 'low':
-      return 0;
-    case 'normal':
-      return 1;
-    case 'high':
-      return 2;
-    case 'critical':
-      return 3;
-  }
-}
-
-function animationIntentKindToState(kind: AnimationIntentKind): AnimationState {
-  switch (kind) {
-    case 'idle_blink':
-    case 'settle':
-      return 'idle';
-    case 'walk':
-      return 'float';
-    case 'dragged':
-      return 'dragged';
-    case 'land':
-      return 'landing';
-    case 'happy_reaction':
-      return 'happy';
-    case 'confused_reaction':
-      return 'surprised';
-    case 'thinking_loop':
-    case 'talking':
-      return 'thinking';
-    case 'spook':
-      return 'spook';
-    case 'wave':
-      return 'wave';
-    case 'celebrate':
-      return 'celebrate';
-    case 'bored':
-      return 'bored';
-    case 'sleep_start':
-      return 'sleep_start';
-    case 'sleep_loop':
-      return 'sleep_loop';
-    case 'wake_up':
-      return 'wake_up';
   }
 }

@@ -1,8 +1,8 @@
-import { synthesizeEmotionalTone } from './emotional-tone';
 import { DEFAULT_INTIMACY_THRESHOLDS } from './intimacy-rules';
-import { metabolizeNeeds } from './metabolism';
 import { adaptPersonalityAxes, type PersonalityAxisDeltas } from './personality-plasticity';
 import { trackPreference } from './preferences';
+import { synthesizeEmotionalTone } from './emotional-tone';
+import { metabolizeNeeds } from './metabolism';
 import type {
   CharacterState,
   IntimacyState,
@@ -10,14 +10,21 @@ import type {
   PreferenceTrack,
   Relationship,
   StimulusEvent,
+  StimulusType,
   SynthesizedEmotionalTone,
 } from './types';
 
 export type CharacterStimulusType =
-  | StimulusEvent['type']
+  | StimulusType
   | 'click'
+  | 'user_click'
+  | 'user_double_click'
+  | 'user_right_click'
   | 'pet'
+  | 'user_pet'
   | 'chat_message'
+  | 'user_message'
+  | 'provider_response'
   | 'idle_tick'
   | 'topic_dialogue';
 
@@ -142,6 +149,7 @@ function applyNeedShift(needs: Needs, shift: Partial<Needs>): Needs {
     attention: clampNeed(needs.attention + (shift.attention ?? 0)),
     play: clampNeed(needs.play + (shift.play ?? 0)),
     comfort: clampNeed(needs.comfort + (shift.comfort ?? 0)),
+    boredom: clampNeed((needs.boredom ?? 15) + (shift.boredom ?? 0)),
   };
 }
 
@@ -211,7 +219,12 @@ function interactionDeltas(
   switch (type) {
     case 'click':
       return {
-        needs: { attention: -4 * intensity, play: -2 * intensity, energy: -0.4 * intensity },
+        needs: {
+          attention: -4 * intensity,
+          play: -2 * intensity,
+          energy: -0.4 * intensity,
+          boredom: -6 * intensity,
+        },
         friendship: 1 * intensity,
         love: 0,
         intimacy: {},
@@ -219,7 +232,12 @@ function interactionDeltas(
       };
     case 'pet':
       return {
-        needs: { attention: -9 * intensity, comfort: -6 * intensity, energy: -0.6 * intensity },
+        needs: {
+          attention: -9 * intensity,
+          comfort: -6 * intensity,
+          energy: -0.6 * intensity,
+          boredom: -5 * intensity,
+        },
         friendship: 4 * intensity,
         love: 2 * intensity,
         intimacy: { romanticCharge: 1.5 * intensity },
@@ -227,7 +245,12 @@ function interactionDeltas(
       };
     case 'chat_message':
       return {
-        needs: { attention: -12 * intensity, play: -4 * intensity, comfort: -1 * intensity },
+        needs: {
+          attention: -12 * intensity,
+          play: -4 * intensity,
+          comfort: -1 * intensity,
+          boredom: -12 * intensity,
+        },
         friendship: 6 * intensity,
         love: 1 * intensity,
         intimacy: { flirtiness: -0.5 * intensity },
@@ -235,7 +258,12 @@ function interactionDeltas(
       };
     case 'topic_dialogue':
       return {
-        needs: { attention: -8 * intensity, play: -7 * intensity, comfort: -1 * intensity },
+        needs: {
+          attention: -8 * intensity,
+          play: -7 * intensity,
+          comfort: -1 * intensity,
+          boredom: -15 * intensity,
+        },
         friendship: 8 * intensity,
         love: 2 * intensity,
         intimacy: { romanticCharge: 0.8 * intensity },

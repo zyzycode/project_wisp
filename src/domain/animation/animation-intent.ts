@@ -1,62 +1,70 @@
+import type { SynthesizedEmotionalTone } from '../character/types';
 import type { BehaviorIntent, BehaviorIntentKind } from '../behavior/behavior-intent';
-import type { SynthesizedEmotionalTone } from '../character';
 
-export interface AnimationIntent {
-  kind: AnimationIntentKind;
-  category: AnimationIntentCategory;
-  priority: AnimationPriority;
-  interrupt: AnimationInterruptMode;
-  loop: AnimationLoopMode;
-  requestedBy: BehaviorIntentKind | 'system';
-  emotionalTone: SynthesizedEmotionalTone;
-  expressionHint?: AnimationExpressionHint;
-  propHint?: AnimationPropHint;
-}
-
-export type AnimationIntentKind =
+export type CoreAnimationIntentKind =
   | 'idle_blink'
-  | 'thinking_loop'
-  | 'talking'
-  | 'happy_reaction'
-  | 'confused_reaction'
+  | 'walk'
+  | 'settle'
   | 'sleep_start'
   | 'sleep_loop'
   | 'wake_up'
-  | 'dragged'
-  | 'spook'
-  | 'land'
-  | 'walk'
-  | 'settle'
+  | 'happy_reaction'
+  | 'confused_reaction'
+  | 'thinking_loop'
+  | 'talking'
+  | 'bored'
   | 'wave'
   | 'celebrate'
-  | 'bored';
+  | 'spook'
+  | 'dragged'
+  | 'land';
 
-export type AnimationIntentCategory =
+export type LocomotionAnimationIntentKind =
+  | 'sit'
+  | 'stand_up'
+  | 'lie_down'
+  | 'get_up'
+  | 'run'
+  | 'jump'
+  | 'fall'
+  | 'crawl';
+
+export type AnimationIntentKind = CoreAnimationIntentKind | LocomotionAnimationIntentKind;
+export type AnyAnimationIntentKind = AnimationIntentKind;
+
+export type AnimationCategory =
   | 'idle'
-  | 'reaction'
   | 'movement'
+  | 'reaction'
   | 'dialogue'
   | 'sleep'
-  | 'transition';
+  | 'gesture'
+  | 'transition'
+  | 'physics';
+
+export type AnimationIntentCategory = AnimationCategory;
 
 export type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
-export type AnimationInterruptMode = 'yes' | 'no' | 'limited';
+
+export type AnimationInterruptPolicy = 'yes' | 'no' | 'limited';
+
 export type AnimationLoopMode = 'none' | 'until_replaced' | 'bounded';
 
 export type AnimationExpressionHint =
-  | 'blush'
-  | 'sleepy'
-  | 'happy'
-  | 'surprised'
-  | 'curious'
   | 'idle'
+  | 'blush'
+  | 'happy'
   | 'winking'
   | 'pout'
-  | 'angry'
-  | 'sad'
-  | 'talking'
+  | 'curious'
+  | 'thinking'
+  | 'sleepy'
+  | 'surprised'
   | 'shocked'
-  | 'thinking';
+  | 'sad'
+  | 'angry'
+  | 'talking'
+  | 'flying';
 
 export type AnimationPropHint =
   | 'pillow'
@@ -64,6 +72,18 @@ export type AnimationPropHint =
   | 'question'
   | 'sparkle'
   | 'none';
+
+export interface AnimationIntent<TKind extends string = CoreAnimationIntentKind> {
+  readonly kind: TKind;
+  readonly category: AnimationCategory;
+  readonly priority: AnimationPriority;
+  readonly interrupt: AnimationInterruptPolicy;
+  readonly loop: AnimationLoopMode;
+  readonly requestedBy: string;
+  readonly emotionalTone: SynthesizedEmotionalTone;
+  readonly expressionHint?: AnimationExpressionHint;
+  readonly propHint?: AnimationPropHint;
+}
 
 type ToneHints = {
   readonly expressionHint: AnimationExpressionHint;
@@ -116,6 +136,14 @@ const INTENT_POLICIES: Record<AnimationIntentKind, IntentPolicy> = {
   wave: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
   celebrate: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
   bored: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
+  sit: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
+  stand_up: { category: 'transition', priority: 'normal', interrupt: 'yes', loop: 'none' },
+  lie_down: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
+  get_up: { category: 'transition', priority: 'normal', interrupt: 'yes', loop: 'none' },
+  run: { category: 'movement', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
+  jump: { category: 'movement', priority: 'normal', interrupt: 'limited', loop: 'none' },
+  fall: { category: 'movement', priority: 'normal', interrupt: 'no', loop: 'until_replaced' },
+  crawl: { category: 'movement', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
 };
 
 function hints(overrides: Partial<Record<SynthesizedEmotionalTone, HintOverride>>): Record<SynthesizedEmotionalTone, HintOverride> {
@@ -224,6 +252,54 @@ const BEHAVIOR_MAPPINGS: Record<BehaviorIntentKind, BehaviorMapping> = {
       flustered: { propHint: 'none' },
     }),
   },
+  sit: {
+    kind: 'sit',
+    hintsByTone: hints({}),
+  },
+  stand_up: {
+    kind: 'stand_up',
+    hintsByTone: hints({
+      playful: { expressionHint: 'happy' },
+    }),
+  },
+  lie_down: {
+    kind: 'lie_down',
+    hintsByTone: hints({}),
+  },
+  get_up: {
+    kind: 'get_up',
+    hintsByTone: hints({}),
+  },
+  run: {
+    kind: 'run',
+    hintsByTone: hints({
+      neutral: { expressionHint: 'happy' },
+    }),
+  },
+  jump: {
+    kind: 'jump',
+    hintsByTone: hints({
+      neutral: { expressionHint: 'happy' },
+    }),
+  },
+  fall: {
+    kind: 'fall',
+    hintsByTone: hints({
+      shy: { expressionHint: 'surprised', propHint: 'none' },
+      sleepy: { expressionHint: 'surprised', propHint: 'none' },
+      playful: { expressionHint: 'surprised', propHint: 'sparkle' },
+      curious: { expressionHint: 'surprised', propHint: 'question' },
+      neutral: { expressionHint: 'surprised', propHint: 'none' },
+      affectionate: { expressionHint: 'surprised', propHint: 'heart' },
+      flustered: { expressionHint: 'surprised', propHint: 'heart' },
+    }),
+  },
+  crawl: {
+    kind: 'crawl',
+    hintsByTone: hints({
+      neutral: { expressionHint: 'curious' },
+    }),
+  },
 };
 
 function resolvePlayKind(tone: SynthesizedEmotionalTone): AnimationIntentKind {
@@ -238,7 +314,10 @@ function resolveBehaviorMapping(
   intent: BehaviorIntent,
   tone: SynthesizedEmotionalTone
 ): BehaviorMapping {
-  const mapping = BEHAVIOR_MAPPINGS[intent.kind];
+  const mapping = BEHAVIOR_MAPPINGS[intent.kind] ?? {
+    kind: 'idle_blink',
+    hintsByTone: hints({}),
+  };
 
   if (intent.kind === 'play') {
     return {
@@ -260,7 +339,7 @@ function resolveBehaviorMapping(
 export function mapBehaviorIntentToAnimationIntent(
   intent: BehaviorIntent,
   tone: SynthesizedEmotionalTone
-): AnimationIntent {
+): AnimationIntent<any> {
   const mapping = resolveBehaviorMapping(intent, tone);
   const policy = INTENT_POLICIES[mapping.kind];
   const toneHints = DEFAULT_TONE_HINTS[tone];
@@ -283,7 +362,7 @@ export function createSystemAnimationIntent(
   kind: AnimationIntentKind,
   emotionalTone: SynthesizedEmotionalTone = 'neutral',
   overrides: Partial<Omit<AnimationIntent, 'kind' | 'requestedBy' | 'emotionalTone'>> = {}
-): AnimationIntent {
+): AnimationIntent<any> {
   const policy = INTENT_POLICIES[kind];
   const toneHints = DEFAULT_TONE_HINTS[emotionalTone];
 

@@ -98,6 +98,24 @@ describe('Renderer: ManifestLoader', () => {
     expect(getFrameAnchor(idle, 2, 'head')).toEqual({ x: 256, y: 100 });
   });
 
+  it('preserves body face-overlay compatibility for the resolver', () => {
+    const manifest = loader.load({
+      schemaVersion: 1,
+      animations: {
+        body_idle: {
+          category: 'body/idle', frames: ['idle.png'],
+          faceOverlay: {
+            mode: 'overlay', allowedFaceKeys: ['face_happy'], fallback: 'face_happy', anchor: 'face',
+          },
+        },
+      },
+    });
+
+    expect(manifest.animations.body_idle?.faceOverlay).toEqual({
+      mode: 'overlay', allowedFaceKeys: ['face_happy'], fallback: 'face_happy', anchor: 'face',
+    });
+  });
+
   it('returns null when anchor is absent on both frame and default', () => {
     const manifest = loader.load({
       schemaVersion: 1,

@@ -35,6 +35,14 @@ function animation(
     framesCount: 4,
     fps: 8,
     pivot: { x: 256, y: 460 },
+    ...(layer === 'body' ? {
+      faceOverlay: {
+        mode: 'overlay' as const,
+        allowedFaceKeys: ['face_sleep'],
+        fallback: 'face_sleep',
+        anchor: 'face',
+      },
+    } : {}),
     tags: [],
   } as const;
 }
