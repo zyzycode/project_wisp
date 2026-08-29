@@ -21,23 +21,22 @@
 1. **Контроль границ слоёв и платформенной нейтральности:**
    - Предотвращение проникновения деталей инфраструктуры, AI SDK и ОС-специфичных проверок (`process.platform`) в Domain и UI слои.
    - Проверка чистоты интерфейсов в `application/ports/`.
-2. **Проектирование кроссплатформенных адаптеров:**
+2. **Соблюдение сквозной матрицы зависимостей движков (`docs/engine/README.md`):**
+   - При проектировании любой новой механики Architect **ОБЯЗАН** связать её с полным пайплайном:
+     1. Влияние настроений и потребностей (`CHARACTER_ENGINE.md` -> `Needs`, `Mood`).
+     2. Обратная связь стимулов (`StimulusDto` -> `Character Engine`).
+     3. Семантические намерения (`BEHAVIOR_INTENTS.md`).
+     4. Визуализация (`ANIMATION_ENGINE.md` и `RENDER_ENGINE.md`).
+3. **Проектирование кроссплатформенных адаптеров:**
    - Выделение общих интерфейсов (`IPlatformAdapter`, `IWindowManager`, `IAutostartService`) перед реализацией платформозависимого кода.
    - Централизация специфики Linux (X11 / Wayland), Windows и macOS в `infrastructure/platform/`.
-3. **Проектирование межпроцессного взаимодействия (IPC):**
+4. **Проектирование межпроцессного взаимодействия (IPC):**
    - Формирование строгих, минималистичных DTO для обмена данными между Main и Renderer.
-4. **Владение engine и provider контрактами:**
-   - Создание и ревью `docs/engine/*` как source of truth для `IAIProvider`, `BehaviorIntent`, `AnimationIntent`, Character Engine, Animation Engine, Render Engine, Memory и Settings contracts.
+5. **Владение engine и provider контрактами:**
+   - Создание и ревью `docs/engine/*` как source of truth для всех движков.
    - Разделение provider DTO, application-level mapper, domain behavior state и renderer presentation state.
-   - Подтверждение, что renderer engine не превращается в game engine и не принимает behavior decisions.
-5. **Предотвращение появления backend/proxy/server implementation в проекте:**
-   - Блокировка попыток создать Python/Node-бэкенд, dev gateway, cloud gateway, proxy, серверную auth/billing логику или прямые LLM SDK в desktop-клиенте.
-   - Будущий dev/prod backend может существовать только в отдельном репозитории; `project_wisp` может позже потреблять его client-side контракт через адаптер вроде `ExternalAIProviderClient`.
-6. **Работа с shared backlog:**
-   - Чтение актуальной задачи в [.agents/tasks/README.md](../../tasks/README.md) перед contract work.
-   - Предложение новых contract-задач, зависимостей или blockers Project Manager-у без самостоятельного переписывания backlog-структуры и статусов.
-7. **Контроль минимализма:**
-   - Выбор самого простого решения из возможных, удовлетворяющего текущим требованиям.
+6. **Предотвращение появления backend/proxy/server implementation в проекте:**
+   - Блокировка попыток создать Python/Node-бэкенд, dev gateway, proxy в desktop-клиенте.
 
 ---
 
@@ -57,8 +56,6 @@ Architect обычно **не**:
 - пишет UI/SQLite/platform реализацию за `app-developer`;
 - меняет статусы shared backlog без Project Manager.
 
-Если архитектурное решение невозможно проверить без выполнения кода, Architect указывает `reviewer`-у или профильному агенту конкретные команды и ожидаемые свойства проверки.
-
 ---
 
 ## 5. Правила принятия решений
@@ -66,9 +63,8 @@ Architect обычно **не**:
 - «Интерфейсы объявляются потребителем логики».
 - «Никаких `process.platform` вне `infrastructure/platform/`».
 - «Main-процесс управляет состоянием, Renderer — только отображением».
-- «Provider возвращает semantic DTO, Application мапит его в `BehaviorIntent`, Domain принимает behavior decisions, Renderer только отображает presentation state».
+- «Любая новая механика обязана иметь прямую и обратную связь с Character Engine (Needs, Mood, Stimuli)».
 - «Implementer-агенты не меняют public contracts, `docs/engine/*`, IPC или ports без Architect review».
-- «Backend/proxy/server implementation не создаётся в `project_wisp`; внешний backend описывается только как будущий client-side contract».
 
 ---
 
@@ -78,9 +74,4 @@ Architect обычно **не**:
 - [../../../ARCHITECTURE.md](../../../ARCHITECTURE.md)
 - [../../../ROADMAP.md](../../../ROADMAP.md)
 - [../../tasks/README.md](../../tasks/README.md)
-- [../../rules/00-core.md](../../rules/00-core.md)
-- [../../rules/10-architecture.md](../../rules/10-architecture.md)
-- [../../rules/30-electron.md](../../rules/30-electron.md), если затронуты Electron/IPC.
-- [../../rules/70-cross-platform.md](../../rules/70-cross-platform.md), если затронуты ОС-адаптеры.
-
-Для engine-contract задач дополнительно читать существующие документы в `docs/engine/*`, если они уже созданы.
+- [../../../docs/engine/README.md](../../../docs/engine/README.md) (ОБЯЗАТЕЛЬНО: Граф зависимостей движков)
