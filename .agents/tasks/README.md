@@ -22,37 +22,86 @@
 ## Текущее состояние
 
 - Phase 0–13: `done` — архитектура, оверлей, FSM, Character Engine v2, AI dialogue loop, Animation & Reaction Pack, Render Engine, Sprites, Logger & Debug HUD.
-- Phase 13 Polish & UI Unification: `in_progress`
-  - `P13-P01` (Unified Pet Menu & Expanded Dev Telemetry Panel): `in_progress`
-- Phase 14 (Offline Memory & Relationship Persistence): `planned`
-  - `P14-A01` (Architecture Contract: MEMORY_ENGINE.md): `planned`
+- Phase 13 Polish & UI Unification (`P13-P01`): `done` — объединённое меню с табами («Действия», «Внешний вид», «Debug»), динамический ресайз окна, роутинг реакций в Character Engine.
+- Phase 14 (Offline Memory & Relationship Persistence): `in_progress`
+  - `P14-A01` (Architecture Contract: MEMORY_ENGINE.md): `ready`
   - `P14-T01` (SQLite Database Initialization & Migrations): `planned`
   - `P14-T02` (Chat History Repository & Bounded Context Buffer): `planned`
   - `P14-T03` (User Facts & Character State Persistence): `planned`
   - `P14-T04` (Privacy Controls & Clear Memory Flow): `planned`
+  - `P14-T05` (Integration Tests for Memory Engine): `planned`
   - `P14-G01` (Code Review Phase 14): `planned`
 
-## Активная очередь (Phase 13 Polish — Unified Control & Debug UI)
+## Активная очередь (Phase 14 — Offline Memory & Relationship Persistence)
 
-### P13-P01 — Unified Pet Menu & Expanded Dev Telemetry Panel
+### P14-A01 — Architecture Contract: MEMORY_ENGINE.md
 
-- **Статус:** `in_progress`
-- **Исполнитель:** `app-developer`
-- **Зависит от:** Phase 13
-- **Цель:** Объединить контекстное меню и Dev Debug HUD в единую удобную панель управления (`UnifiedPetMenu` / `ContextMenu`) с табами («Действия», «Внешний вид», «🛠️ Debug»), исключив конфликт двух спорящих оверлеев. Сделать секцию дебага просторной и читаемой (шкалы потребностей, дружба, тон, FSM, FPS, логгер). Хоткей `Ctrl+D` открывает меню сразу на вкладке «Debug».
-- **Читать:** `.agents/agents/app-developer/agent.md`, `src/renderer/components/`.
-- **Менять:** `src/renderer/components/Interaction/ContextMenu.tsx`, `src/renderer/components/Debug/`, `src/renderer/components/DesktopPet.tsx`, `src/renderer/index.css`, unit/component тесты.
+- **Статус:** `ready`
+- **Исполнитель:** `architect`
+- **Зависит от:** none
+- **Цель:** Создать и специфицировать архитектурный контракт `docs/engine/MEMORY_ENGINE.md`: схему таблиц SQLite (`messages`, `user_facts`, `character_state`, `schema_migrations`), интерфейсы портов в Application layer (`IChatHistoryRepository`, `IUserFactsRepository`, `ICharacterStateRepository`), DTO, лимиты контекста (FIFO буфер реплик для Mock AI), offline-first границы, приватность и контракт сброса памяти (`ClearMemoryUseCase`).
+- **Читать:** `.agents/agents/architect/agent.md`, `docs/engine/CHARACTER_ENGINE.md`, `docs/engine/AI_PROVIDER_CONTRACT.md`, `ARCHITECTURE.md`.
+- **Менять:** `docs/engine/MEMORY_ENGINE.md` (создать), `docs/engine/README.md`.
 - **Критерии приёмки:**
-  - [ ] Контекстное меню и Debug HUD объединены в один стильный табовый интерфейс.
-  - [ ] Хоткей `Ctrl+D` открывает меню сразу на вкладке «Debug».
-  - [ ] Панель просторная, с комфортными отступами и прокруткой логов, не перекрывает экран вторым дублирующим окном.
+  - [ ] Описана схема таблиц SQLite (`messages`, `user_facts`, `character_state`, `schema_migrations`).
+  - [ ] Специфицированы интерфейсы портов в Application layer без утечки SQL-типов.
+  - [ ] Определена политика ограничения истории (bounded context buffer для AI).
+  - [ ] Описан контракт безопасного удаления данных пользователя (Clear Memory).
+  - [ ] Сохранены строгие границы Clean Architecture (никаких прямых SQL-запросов из UI или Domain).
+
+### P14-T01 — SQLite Database Initialization & Migrations
+
+- **Статус:** `planned`
+- **Исполнитель:** `app-developer`
+- **Зависит от:** `P14-A01`
+- **Цель:** Инициализация локальной базы SQLite (better-sqlite3 / sqlite3) в каталоге пользовательских данных Electron (`app.getPath('userData')`), система запуска миграций и транзакций.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
+- **Менять:** `src/infrastructure/persistence/` (`database.ts`, `migrations/`, `index.ts`), unit-тесты.
+- **Критерии приёмки:**
+  - [ ] База создаётся в изолированной директории пользователя.
+  - [ ] Миграции накатываются идемпотентно.
+  - [ ] `npm test` и `npm run typecheck` зелёные.
+
+### P14-T02 — Chat History Repository & Bounded Context Buffer
+
+- **Статус:** `planned`
+- **Исполнитель:** `app-developer`
+- **Зависит от:** `P14-T01`
+- **Цель:** Реализация порта `IChatHistoryRepository`: сохранение сообщений пользователя и Wisp, выборка последних N реплик с ограничением контекста для AI.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
+- **Менять:** `src/infrastructure/persistence/chat-history.repository.ts`, unit-тесты.
+- **Критерии приёмки:**
+  - [ ] Сообщения сохраняются и быстро запрашиваются с пагинацией/лимитом.
+  - [ ] `npm test` и `npm run typecheck` зелёные.
+
+### P14-T03 — User Facts & Character State Persistence
+
+- **Статус:** `planned`
+- **Исполнитель:** `app-developer`
+- **Зависит от:** `P14-T01`
+- **Цель:** Сохранение состояния потребностей (`Needs`), уровня дружбы/любви (`Relationship`) и извлечённых фактов о пользователе между перезапусками.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
+- **Менять:** `src/infrastructure/persistence/repositories/`, unit-тесты.
+- **Критерии приёмки:**
+  - [ ] При перезапуске приложения прогресс отношений и потребности восстанавливаются.
+  - [ ] `npm test` и `npm run typecheck` зелёные.
+
+### P14-T04 — Privacy Controls & Clear Memory Flow
+
+- **Статус:** `planned`
+- **Исполнитель:** `app-developer`
+- **Зависит от:** `P14-T02`, `P14-T03`
+- **Цель:** Реализация Use Case `ClearMemoryUseCase` и IPC-метода очистки данных: сброс фактов, истории и отношений по требованию пользователя.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/MEMORY_ENGINE.md`.
+- **Менять:** `src/application/use-cases/`, IPC-обработчики, unit-тесты.
+- **Критерии приёмки:**
+  - [ ] Полная атомарная очистка памяти без поломки запущенного Wisp.
   - [ ] `npm test` и `npm run typecheck` зелёные.
 
 ## Поздние фазы
 
 | Фаза | Тема | Исполнитель по умолчанию |
 |---|---|---|
-| 14 | Offline Memory & Relationship: SQLite memory, facts, history, clear memory | `architect` + `app-developer` |
 | 15 | Desktop Life Behaviors: quiet mode, cooldowns, habits | `domain-behavior` |
 | 16 | Settings & Control Surface: behavior, appearance, memory controls, full debug panel | `app-developer` |
 | 17 | External AI Contract Readiness: future client-side adapter only | `architect` + `app-developer` |
