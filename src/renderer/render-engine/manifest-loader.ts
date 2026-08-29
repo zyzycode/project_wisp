@@ -6,6 +6,8 @@ import {
   type NormalizedSpriteManifest,
   type SpriteAnimationCategory,
   type SpriteAnimationDef,
+  type SpriteAnchors,
+  type SpriteFrameMeta,
   type SpriteLayerCategory,
   type SpriteManifest,
   type SpritePoint,
@@ -83,8 +85,11 @@ function normalizeAnimation(key: string, definition: SpriteAnimationDef): Normal
   const pivot = normalizePoint(definition.pivot, `Animation "${key}" pivot`) ?? DEFAULT_SPRITE_PIVOT;
   const sourceRect = normalizeRect(definition.sourceRect, `Animation "${key}" sourceRect`);
   const canvasSize = normalizeCanvasSize(definition.canvasSize, `Animation "${key}" canvasSize`);
+  const defaultAnchors = normalizeAnchors(definition.defaultAnchors, `Animation "${key}" defaultAnchors`);
+  const frameMeta = normalizeFrameMeta(definition.frameMeta, key);
+
   const frames = definition.frames.map((frame, index) =>
-    normalizeFrame(frame, key, index, fps, pivot, sourceRect)
+    normalizeFrame(frame, key, index, fps, pivot, sourceRect, defaultAnchors, frameMeta?.[index])
   );
 
   return {
@@ -97,6 +102,8 @@ function normalizeAnimation(key: string, definition: SpriteAnimationDef): Normal
     pivot,
     ...(canvasSize === undefined ? {} : { canvasSize }),
     ...(typeof definition.sourceFile === 'string' ? { sourceFile: definition.sourceFile } : {}),
+    ...(defaultAnchors === undefined ? {} : { defaultAnchors }),
+    ...(frameMeta === undefined ? {} : { frameMeta }),
     ...(definition.emotionalTone === undefined ? {} : { emotionalTone: definition.emotionalTone }),
     tags: definition.tags === undefined ? [] : validateTags(definition.tags, key),
   };
@@ -108,7 +115,9 @@ function normalizeFrame(
   index: number,
   fps: number,
   animationPivot: SpritePoint,
-  animationSourceRect: SpriteRect | undefined
+  animationSourceRect: SpriteRect | undefined,
+  defaultAnchors: SpriteAnchors | undefined,
+  itemFrameMeta: SpriteFrameMeta | undefined
 ): NormalizedSpriteFrameDef {
   const definition = typeof frame === 'string' ? { source: frame } : frame;
   if (!isRecord(definition) || typeof definition.source !== 'string') {
@@ -119,12 +128,20 @@ function normalizeFrame(
   const pivot = normalizePoint(definition.pivot, `Animation "${key}" frame ${index} pivot`) ?? animationPivot;
   const sourceRect = normalizeRect(definition.sourceRect, `Animation "${key}" frame ${index} sourceRect`) ?? animationSourceRect;
   const bounds = normalizeRect(definition.bounds, `Animation "${key}" frame ${index} bounds`);
+
+  // Frame anchors priority: explicit frameMeta[index].anchors -> definition.anchors -> defaultAnchors
+  const frameLevelAnchors = normalizeAnchors(definition.anchors, `Animation "${key}" frame ${index} anchors`);
+  const meta = itemFrameMeta ?? (definition.meta ? { anchors: normalizeAnchors(definition.meta.anchors, `Animation "${key}" frame ${index} meta.anchors`) } : undefined);
+  const resolvedAnchors = meta?.anchors ?? frameLevelAnchors ?? defaultAnchors;
+
   return {
     source: definition.source,
     durationMs,
     pivot,
     ...(sourceRect === undefined ? {} : { sourceRect }),
     ...(bounds === undefined ? {} : { bounds }),
+    ...(resolvedAnchors === undefined ? {} : { anchors: resolvedAnchors }),
+    ...(meta === undefined ? {} : { meta }),
   };
 }
 
@@ -181,6 +198,39 @@ function normalizePoint(value: unknown, context: string): SpritePoint | undefine
   return { x: value.x, y: value.y };
 }
 
+function normalizeAnchors(value: unknown, context: string): SpriteAnchors | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    throw new ManifestValidationError(`${context} must be an object.`);
+  }
+  const anchors: Record<string, SpritePoint> = {};
+  for (const [name, point] of Object.entries(value)) {
+    if (point !== undefined) {
+      const normalized = normalizePoint(point, `${context}.${name}`);
+      if (normalized !== undefined) {
+        anchors[name] = normalized;
+      }
+    }
+  }
+  return anchors;
+}
+
+function normalizeFrameMeta(value: unknown, key: string): readonly SpriteFrameMeta[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    throw new ManifestValidationError(`Animation "${key}" frameMeta must be an array.`);
+  }
+  return value.map((item, index) => {
+    if (!isRecord(item)) {
+      throw new ManifestValidationError(`Animation "${key}" frameMeta[${index}] must be an object.`);
+    }
+    const anchors = normalizeAnchors(item.anchors, `Animation "${key}" frameMeta[${index}].anchors`);
+    return {
+      ...(anchors === undefined ? {} : { anchors }),
+    };
+  });
+}
+
 function normalizeRect(value: unknown, context: string): SpriteRect | undefined {
   if (value === undefined) return undefined;
   if (!isRecord(value) || !isFiniteNumber(value.x) || !isFiniteNumber(value.y) || !isPositiveNumber(value.width) || !isPositiveNumber(value.height)) {
@@ -213,5 +263,5 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function isPositiveNumber(value: unknown): value is number {
-  return isFiniteNumber(value) && value > 0;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }

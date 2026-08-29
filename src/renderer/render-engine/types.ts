@@ -31,12 +31,26 @@ export interface SpriteRect {
   readonly height: number;
 }
 
+export interface SpriteAnchors {
+  readonly face?: SpritePoint;
+  readonly head?: SpritePoint;
+  readonly leftHand?: SpritePoint;
+  readonly rightHand?: SpritePoint;
+  readonly [anchorName: string]: SpritePoint | undefined;
+}
+
+export interface SpriteFrameMeta {
+  readonly anchors?: SpriteAnchors;
+}
+
 export interface SpriteFrameDef {
   readonly source: string;
   readonly sourceRect?: SpriteRect;
   readonly bounds?: SpriteRect;
   readonly durationMs?: number;
   readonly pivot?: SpritePoint;
+  readonly anchors?: SpriteAnchors;
+  readonly meta?: SpriteFrameMeta;
 }
 
 export interface SpriteAnimationDef {
@@ -49,6 +63,8 @@ export interface SpriteAnimationDef {
   readonly canvasSize?: { readonly width: number; readonly height: number };
   readonly sourceRect?: SpriteRect;
   readonly sourceFile?: string;
+  readonly defaultAnchors?: SpriteAnchors;
+  readonly frameMeta?: readonly SpriteFrameMeta[];
   readonly emotionalTone?: SynthesizedEmotionalTone;
   readonly tags?: readonly string[];
 }
@@ -62,6 +78,8 @@ export interface SpriteManifest {
 export interface NormalizedSpriteFrameDef extends SpriteFrameDef {
   readonly durationMs: number;
   readonly pivot: SpritePoint;
+  readonly anchors?: SpriteAnchors;
+  readonly meta?: SpriteFrameMeta;
 }
 
 export interface NormalizedSpriteAnimationDef {
@@ -74,6 +92,8 @@ export interface NormalizedSpriteAnimationDef {
   readonly pivot: SpritePoint;
   readonly canvasSize?: { readonly width: number; readonly height: number };
   readonly sourceFile?: string;
+  readonly defaultAnchors?: SpriteAnchors;
+  readonly frameMeta?: readonly SpriteFrameMeta[];
   readonly emotionalTone?: SynthesizedEmotionalTone;
   readonly tags: readonly string[];
 }
@@ -96,6 +116,8 @@ export type NonProceduralRenderLayerId = Exclude<RenderLayerId, 'procedural_blus
 export type RenderBlendMode = 'normal' | 'multiply' | 'screen' | 'additive';
 export interface RenderableFrameDef extends SpriteFrameDef {
   readonly source: string;
+  readonly anchors?: SpriteAnchors;
+  readonly meta?: SpriteFrameMeta;
 }
 
 export interface RenderLayerBase {
@@ -147,6 +169,8 @@ export interface ResolvedTrackBase {
   readonly category: SpriteLayerCategory;
   readonly animationKey: SpriteAnimationKey;
   readonly frames: readonly RenderableFrameDef[];
+  readonly defaultAnchors?: SpriteAnchors;
+  readonly frameMeta?: readonly SpriteFrameMeta[];
   readonly fps?: number;
   readonly zIndex: number;
   readonly pivot?: SpritePoint;
@@ -200,6 +224,33 @@ export interface ICharacterRenderer {
 export interface IAnimationPlayer {
   play(clip: ResolvedAnimationClip, loopMode: AnimationLoopMode): void;
   tick(deltaMs: number): void;
+  getPresentationState(): RenderPresentationState | undefined;
   onCompleted(listener: AnimationCompletedListener): () => void;
   destroy(): void;
+}
+
+/**
+ * Resolves an anchor point for a specific animation frame index with fallback to defaultAnchors.
+ *
+ * Evaluation order:
+ * 1. animation.frameMeta[frameIndex]?.anchors?.[anchorKey]
+ * 2. animation.defaultAnchors?.[anchorKey]
+ * 3. null
+ */
+export function getFrameAnchor(
+  animationOrTrack:
+    | {
+        readonly defaultAnchors?: SpriteAnchors;
+        readonly frameMeta?: readonly SpriteFrameMeta[];
+      }
+    | undefined,
+  frameIndex: number,
+  anchorKey: string = 'face'
+): SpritePoint | null {
+  if (!animationOrTrack) return null;
+  const frameAnchor = animationOrTrack.frameMeta?.[frameIndex]?.anchors?.[anchorKey];
+  if (frameAnchor !== undefined) return frameAnchor;
+  const defaultAnchor = animationOrTrack.defaultAnchors?.[anchorKey];
+  if (defaultAnchor !== undefined) return defaultAnchor;
+  return null;
 }

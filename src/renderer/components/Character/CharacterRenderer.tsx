@@ -18,7 +18,7 @@ export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
 const manifestLoader = new ManifestLoader();
 const INITIAL_RESOLVER = new AssetResolver(
   manifestLoader.load({ schemaVersion: 1, animations: {} }),
-  { enableFaceOverlays: false }
+  { enableFaceOverlays: true }
 );
 
 let cachedManifestResolver: AssetResolver | null = null;
@@ -79,7 +79,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
         .then((manifest) => {
           if (!disposed) {
             const loaded = new AssetResolver(manifestLoader.load(manifest), {
-              enableFaceOverlays: false,
+              enableFaceOverlays: true,
             });
             cachedManifestResolver = loaded;
             setResolver(loaded);
@@ -99,7 +99,9 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
         })
         .catch(() => undefined);
     }
-    return (): void => { disposed = true; };
+    return (): void => {
+      disposed = true;
+    };
   }, []);
 
   return (

@@ -45,6 +45,7 @@ describe('Renderer: ContextMenu', () => {
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
         onPlayAnimation={vi.fn()}
+        onSelectFace={vi.fn()}
         onSelectTheme={vi.fn()}
         onSelectScale={vi.fn()}
         onQuit={vi.fn()}
@@ -57,7 +58,11 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Подумать');
     expect(markup).toContain('Усыпить');
     expect(markup).toContain('Прогулка: ВКЛ');
-    expect(markup).toContain('🎬 Анимации');
+    expect(markup).toContain('🎬 Анимации тела');
+    expect(markup).toContain('🎭 Выражения лица');
+    expect(markup).toContain('😊 Радость');
+    expect(markup).toContain('😢 Грусть');
+    expect(markup).toContain('😠 Злость');
     expect(markup).toContain('🌿 Дыхание');
     expect(markup).toContain('🐾 Ходьба');
     expect(markup).toContain('💖 Радость');
@@ -88,7 +93,7 @@ describe('Renderer: ContextMenu', () => {
       />
     );
 
-    expect(markup).toContain('Разбудить');
+    expect(markup).toContain('☀️ Разбудить');
   });
 
   it('renders debug content when activeTab is debug', () => {
@@ -101,7 +106,7 @@ describe('Renderer: ContextMenu', () => {
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled
-        debugContent={<div className="custom-debug-root">Custom Debug Details</div>}
+        debugContent={<div data-testid="telemetry-panel">Active Telemetry Panel</div>}
         onClose={vi.fn()}
         onPet={vi.fn()}
         onThink={vi.fn()}
@@ -113,7 +118,6 @@ describe('Renderer: ContextMenu', () => {
       />
     );
 
-    expect(markup).toContain('custom-debug-root');
-    expect(markup).toContain('Custom Debug Details');
+    expect(markup).toContain('Active Telemetry Panel');
   });
 });

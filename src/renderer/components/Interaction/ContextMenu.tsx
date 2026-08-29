@@ -3,6 +3,7 @@ import type { CharacterTheme } from '../../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../../domain/models/character-visuals';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
 import type { AnimationEvent } from '../../../domain/animation/animation-state-machine';
+import type { AnimationExpressionHint } from '../../../domain/animation/animation-intent';
 
 export type ContextMenuTab = 'main' | 'debug';
 
@@ -16,6 +17,7 @@ export interface ContextMenuProps {
   isSleeping: boolean;
   debugHudEnabled: boolean;
   debugContent?: React.ReactNode;
+  currentFace?: AnimationExpressionHint | null;
   onTabChange?: (tab: ContextMenuTab) => void;
   onClose: () => void;
   onPet: () => void;
@@ -23,6 +25,7 @@ export interface ContextMenuProps {
   onToggleSleep: () => void;
   onToggleWander: () => void;
   onPlayAnimation?: (anim: AnimationEvent) => void;
+  onSelectFace?: (face: AnimationExpressionHint | null) => void;
   onSelectTheme: (theme: CharacterTheme) => void;
   onSelectScale: (scale: number) => void;
   onQuit: () => void;
@@ -53,6 +56,17 @@ const ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
   { event: 'LAND', label: '🛫 Посадка' },
 ];
 
+const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = [
+  { face: null, label: '🔄 Авто' },
+  { face: 'happy', label: '😊 Радость' },
+  { face: 'sad', label: '😢 Грусть' },
+  { face: 'shocked', label: '😲 Шок' },
+  { face: 'sleepy', label: '😴 Сон' },
+  { face: 'talking', label: '💬 Речь' },
+  { face: 'thinking', label: '🤔 Мысли' },
+  { face: 'angry', label: '😠 Злость' },
+];
+
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
   activeTab,
@@ -63,6 +77,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   isSleeping,
   debugHudEnabled,
   debugContent,
+  currentFace = null,
   onTabChange,
   onClose,
   onPet,
@@ -70,6 +85,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onToggleSleep,
   onToggleWander,
   onPlayAnimation,
+  onSelectFace,
   onSelectTheme,
   onSelectScale,
   onQuit,
@@ -142,10 +158,29 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               </button>
             </div>
 
+            {onSelectFace ? (
+              <>
+                <div className="menu-divider" />
+                <div className="menu-section-title">🎭 Выражения лица</div>
+                <div className="menu-anim-btn-grid">
+                  {FACE_BUTTONS.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      className={`menu-anim-btn ${currentFace === item.face ? 'active' : ''}`}
+                      onClick={() => onSelectFace(item.face)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
             {onPlayAnimation ? (
               <>
                 <div className="menu-divider" />
-                <div className="menu-section-title">🎬 Анимации</div>
+                <div className="menu-section-title">🎬 Анимации тела</div>
                 <div className="menu-anim-btn-grid">
                   {ANIMATION_BUTTONS.map((item) => (
                     <button

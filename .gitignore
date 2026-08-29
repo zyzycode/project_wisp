@@ -106,6 +106,8 @@ new_generated/
 public/**/*.png
 public/*.png
 *.gif
+**/delete_me/
+public/**/*.py
 
 # Personal human-only notes, not AI/project documentation
 docs/AI_STUDIO_PROMPTS.md

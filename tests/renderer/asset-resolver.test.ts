@@ -8,6 +8,12 @@ const manifest: NormalizedSpriteManifest = {
     body_walk: animation('body_walk', 'body/walk', 'body'),
     body_idle: animation('body_idle', 'body/idle', 'body'),
     face_happy: animation('face_happy', 'face/happy', 'face'),
+    face_angry: animation('face_angry', 'face/angry', 'face'),
+    face_sad: animation('face_sad', 'face/sad', 'face'),
+    face_shocked: animation('face_shocked', 'face/shocked', 'face'),
+    face_sleep: animation('face_sleep', 'face/sleep', 'face'),
+    face_talking: animation('face_talking', 'face/talking', 'face'),
+    face_thinking: animation('face_thinking', 'face/thinking', 'face'),
     expression_wink: animation('expression_wink', 'expression/wink', 'expression'),
     prop_pillow: animation('prop_pillow', 'props/pillow', 'props'),
     prop_heart: animation('prop_heart', 'props/heart', 'props'),
@@ -18,7 +24,21 @@ const manifest: NormalizedSpriteManifest = {
 
 function animation(
   key: string,
-  category: 'body/walk' | 'body/idle' | 'face/happy' | 'expression/wink' | 'props/pillow' | 'props/heart' | 'props/question' | 'props/sparkle',
+  category:
+    | 'body/walk'
+    | 'body/idle'
+    | 'face/happy'
+    | 'face/angry'
+    | 'face/sad'
+    | 'face/shocked'
+    | 'face/sleep'
+    | 'face/talking'
+    | 'face/thinking'
+    | 'expression/wink'
+    | 'props/pillow'
+    | 'props/heart'
+    | 'props/question'
+    | 'props/sparkle',
   layer: 'body' | 'face' | 'expression' | 'props'
 ) {
   return {
@@ -56,6 +76,28 @@ describe('Renderer: AssetResolver', () => {
     expect(blushHeart.proceduralBlush?.id).toBe('procedural_blush');
     expect(blushHeart.props?.[0]).toMatchObject({ id: 'prop_heart', zIndex: 41, blendMode: 'additive' });
     expect(sparkle.props?.[0]).toMatchObject({ id: 'prop_sparkle', zIndex: 43, playbackMode: 'loop' });
+  });
+
+  it.each([
+    ['happy', 'face_happy'],
+    ['angry', 'face_angry'],
+    ['sad', 'face_sad'],
+    ['shocked', 'face_shocked'],
+    ['sleepy', 'face_sleep'],
+    ['talking', 'face_talking'],
+    ['thinking', 'face_thinking'],
+  ] as const)('resolves face expression hint %s to %s with looping mode and zIndex 20', (expressionHint, expectedKey) => {
+    const clip = new AssetResolver(manifest).resolve(
+      createSystemAnimationIntent('idle_blink', 'neutral', { expressionHint })
+    );
+
+    expect(clip.face).toMatchObject({
+      id: 'face',
+      category: 'face',
+      animationKey: expectedKey,
+      zIndex: 20,
+      playbackMode: 'loop',
+    });
   });
 
   it.each([

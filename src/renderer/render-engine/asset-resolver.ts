@@ -38,7 +38,12 @@ const FACE_KEYS: Readonly<Partial<Record<NonNullable<AnimationIntent['expression
   happy: 'face_happy',
   sleepy: 'face_sleep',
   surprised: 'face_shocked',
+  shocked: 'face_shocked',
   curious: 'face_thinking',
+  thinking: 'face_thinking',
+  angry: 'face_angry',
+  sad: 'face_sad',
+  talking: 'face_talking',
 };
 
 const EXPRESSION_KEYS: Readonly<Partial<Record<NonNullable<AnimationIntent['expressionHint']>, string>>> = {
@@ -106,7 +111,7 @@ export class AssetResolver {
     if (!this.enableFaceOverlays) return undefined;
     const key = intent.expressionHint === undefined ? undefined : FACE_KEYS[intent.expressionHint];
     const animation = key === undefined ? undefined : selectAnimation(this.manifest.animations[key], 'face');
-    return animation === undefined ? undefined : toOverlayTrack(animation, 'face', 'face', 20, 'hold', 'normal');
+    return animation === undefined ? undefined : toOverlayTrack(animation, 'face', 'face', 20, 'loop', 'normal');
   }
 
   private resolveExpression(intent: AnimationIntent): (ResolvedOverlayTrack & { readonly category: 'expression' }) | undefined {
@@ -146,6 +151,8 @@ function toBodyTrack(animation: NormalizedSpriteAnimationDef): ResolvedBodyTrack
     offset: ZERO_POINT,
     opacity: 1,
     blendMode: 'normal',
+    ...(animation.defaultAnchors === undefined ? {} : { defaultAnchors: animation.defaultAnchors }),
+    ...(animation.frameMeta === undefined ? {} : { frameMeta: animation.frameMeta }),
   };
 }
 
@@ -169,6 +176,8 @@ function toOverlayTrack<TCategory extends 'face' | 'expression' | 'props'>(
     pivot: animation.pivot,
     offset: ZERO_POINT,
     opacity: 1,
+    ...(animation.defaultAnchors === undefined ? {} : { defaultAnchors: animation.defaultAnchors }),
+    ...(animation.frameMeta === undefined ? {} : { frameMeta: animation.frameMeta }),
   };
 }
 

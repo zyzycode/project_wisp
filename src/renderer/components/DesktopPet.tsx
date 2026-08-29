@@ -51,6 +51,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [chatOpen, setChatOpen] = useState<boolean>(false);
   const [currentMessage, setCurrentMessage] = useState<ChatMessage | null>(null);
   const [autoWanderEnabled, setAutoWanderEnabled] = useState<boolean>(true);
+  const [customFace, setCustomFace] = useState<AnimationExpressionHint | null>(null);
   const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
     DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
   );
@@ -89,8 +90,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
             setPosition(newPos);
             dragStartRef.current.petX = newPos.x;
             dragStartRef.current.petY = newPos.y;
-            prevMoveRef.current.x = newPos.x;
-            prevMoveRef.current.y = newPos.y;
           }
         })
         .catch((err) => console.error('Failed to update menu expanded state:', err));
@@ -116,11 +115,12 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
   const characterAnimationIntent = useMemo(() => {
     const kind = isWandering ? 'walk' : animationStateToIntentKind(animState);
-    const expressionHint = expressionToHint(expression);
+    const defaultHint = expressionToHint(expression);
+    const expressionHint = customFace ?? defaultHint;
     return createSystemAnimationIntent(kind, 'neutral', {
       expressionHint,
     });
-  }, [animState, expression, isWandering]);
+  }, [animState, expression, isWandering, customFace]);
 
   useEffect(() => {
     if (!debugHudEnabled || (!debugHudVisible && !menuOpen)) return undefined;
@@ -218,6 +218,21 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
   const handleDismissMessage = useCallback(() => {
     setCurrentMessage(null);
+  }, []);
+
+  const handleSelectFace = useCallback((face: AnimationExpressionHint | null) => {
+    setCustomFace(face);
+    const faceMessages: Record<string, string> = {
+      happy: 'Улыбаюсь! 😊',
+      sad: 'Мне немного грустно... 🥺',
+      shocked: 'Ого, ничего себе! 😲',
+      sleepy: 'Глазки слипаются... 😴',
+      talking: 'Что-то рассказываю! 💬',
+      thinking: 'Хм, интересно... 🤔',
+      angry: 'Я сержусь! 😠',
+    };
+    const text = face ? (faceMessages[face] ?? `Выражение: ${face}`) : 'Обычное выражение ✨';
+    setCurrentMessage(createChatMessage('thought', text));
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -415,11 +430,13 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       position={position}
       isWandering={isWandering}
       flipX={flipX}
+      currentFace={customFace}
       onClearLogs={() => {
         const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
         if (clearLogs !== undefined) void clearLogs();
       }}
       onPlayAnimation={handlePlayAnimation}
+      onSelectFace={handleSelectFace}
     />
   );
 
@@ -450,6 +467,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         isSleeping={animState === 'sleep'}
         debugHudEnabled={debugHudEnabled}
         debugContent={debugHudElement}
+        currentFace={customFace}
         onClose={() => setMenuOpen(false)}
         onPet={() => {
           defaultCharacterStateService.applyStimulus({ type: 'pet', source: 'user' });
@@ -481,6 +499,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         }}
         onToggleWander={() => setAutoWanderEnabled((prev) => !prev)}
         onPlayAnimation={handlePlayAnimation}
+        onSelectFace={handleSelectFace}
         onSelectTheme={(t) => setCurrentTheme(t)}
         onSelectScale={(s) => setScale(s)}
         onQuit={handleClose}

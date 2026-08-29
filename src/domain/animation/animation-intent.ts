@@ -51,7 +51,12 @@ export type AnimationExpressionHint =
   | 'curious'
   | 'idle'
   | 'winking'
-  | 'pout';
+  | 'pout'
+  | 'angry'
+  | 'sad'
+  | 'talking'
+  | 'shocked'
+  | 'thinking';
 
 export type AnimationPropHint =
   | 'pillow'

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { DebugLogEntryDTO, PetPositionDTO } from '../../../shared/ipc-contracts';
-import type { AnimationIntent } from '../../../domain/animation/animation-intent';
+import type { AnimationExpressionHint, AnimationIntent } from '../../../domain/animation/animation-intent';
 import type { AnimationEvent, AnimationState } from '../../../domain/animation/animation-state-machine';
 import type { Needs, Relationship, SynthesizedEmotionalTone } from '../../../domain/character/types';
 import { LogViewer } from './LogViewer';
@@ -17,8 +17,10 @@ export interface DebugHUDProps {
   position?: PetPositionDTO;
   isWandering?: boolean;
   flipX?: boolean;
+  currentFace?: AnimationExpressionHint | null;
   onClearLogs: () => void;
   onPlayAnimation?: (anim: AnimationEvent) => void;
+  onSelectFace?: (face: AnimationExpressionHint | null) => void;
 }
 
 const ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
@@ -32,8 +34,19 @@ const ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
   { event: 'BORED', label: '🥱 Скука (Bored)' },
   { event: 'START_SLEEP', label: '🌙 Сон (Sleep)' },
   { event: 'WAKE_UP', label: '☀️ Подъём (Wake)' },
-  { event: 'START_DRAG', label: '🪂 Полёт (Drag)' },
-  { event: 'LAND', label: '🛬 Посадка (Land)' },
+  { event: 'START_DRAG', label: '🪁 Полёт (Drag)' },
+  { event: 'LAND', label: '🛫 Посадка (Land)' },
+];
+
+const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = [
+  { face: null, label: '🔄 Авто' },
+  { face: 'happy', label: '😊 Радость' },
+  { face: 'sad', label: '😢 Грусть' },
+  { face: 'shocked', label: '😲 Шок' },
+  { face: 'sleepy', label: '😴 Сон' },
+  { face: 'talking', label: '💬 Речь' },
+  { face: 'thinking', label: '🤔 Мысли' },
+  { face: 'angry', label: '😠 Злость' },
 ];
 
 export const DebugHUD: React.FC<DebugHUDProps> = ({
@@ -47,8 +60,10 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
   position,
   isWandering = false,
   flipX = false,
+  currentFace = null,
   onClearLogs,
   onPlayAnimation,
+  onSelectFace,
 }) => {
   return (
     <section className="debug-hud" data-testid="debug-hud">
@@ -66,6 +81,24 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
         <div>🎯 Intent: <strong>{animationIntent.kind}</strong> ({animationIntent.loop})</div>
         <div>👁️ Expression: <strong>{animationIntent.expressionHint ?? 'default'}</strong></div>
       </section>
+
+      {onSelectFace ? (
+        <section className="debug-hud-animations">
+          <div className="debug-hud-section-title">🎭 Выражения лица</div>
+          <div className="debug-anim-btn-grid">
+            {FACE_BUTTONS.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                className={`debug-anim-btn ${currentFace === item.face ? 'active' : ''}`}
+                onClick={() => onSelectFace(item.face)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {onPlayAnimation ? (
         <section className="debug-hud-animations">

@@ -78,110 +78,100 @@ html, body {
   cursor: grabbing;
 }
 
-.wisp-sprite-canvas {
+.wisp-sprite-stage {
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+/* Speech & Thought Dialogue Bubbles */
+.speech-bubble {
   position: absolute;
-  inset: 0;
-  overflow: visible;
-}
-
-.wisp-sprite-canvas image {
-  image-rendering: auto;
-}
-
-.wisp-character-root.dragging .wisp-sprite-canvas {
-  transform: scale(1.06);
-}
-
-/* Speech Bubble */
-.wisp-speech-bubble {
-  position: absolute;
-  top: 15px;
-  max-width: 250px;
-  min-width: 100px;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 220px;
   padding: 8px 12px;
-  background: rgba(15, 23, 42, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 12px rgba(168, 85, 247, 0.2);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 12px;
   color: #f8fafc;
   font-size: 11px;
   line-height: 1.4;
-  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(168, 85, 247, 0.25);
+  z-index: 50;
   cursor: pointer;
-  z-index: 100;
-  text-align: center;
-  transition: transform 0.2s, opacity 0.2s;
+  animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.wisp-speech-bubble:hover {
-  transform: scale(1.03);
-}
-
-.wisp-speech-bubble.is-thought {
+.speech-bubble.thought {
   border-style: dashed;
-  border-color: rgba(56, 189, 248, 0.45);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 12px rgba(56, 189, 248, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(99, 102, 241, 0.2);
 }
 
-.speech-arrow {
+.speech-bubble-arrow {
   position: absolute;
-  bottom: -5px;
+  bottom: -6px;
   left: 50%;
   transform: translateX(-50%) rotate(45deg);
   width: 10px;
   height: 10px;
-  background: rgba(15, 23, 42, 0.96);
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.95);
+  border-right: 1px solid rgba(168, 85, 247, 0.4);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.4);
 }
 
-/* Chat Input Container */
-.wisp-chat-input-container {
+/* Interactive Chat Input Box */
+.chat-input-container {
   position: absolute;
-  top: 15px;
-  width: 260px;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  padding: 8px;
   background: rgba(15, 23, 42, 0.98);
   border: 1px solid rgba(168, 85, 247, 0.5);
-  border-radius: 14px;
-  padding: 5px 6px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 0 0 16px rgba(168, 85, 247, 0.3);
-  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 101;
-  cursor: default;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 16px rgba(168, 85, 247, 0.3);
+  z-index: 60;
+  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .chat-input-form {
   display: flex;
+  gap: 6px;
   align-items: center;
-  gap: 4px;
 }
 
 .chat-input-field {
   flex: 1;
-  background: rgba(30, 41, 59, 0.95);
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 11px;
+  border-radius: 6px;
+  padding: 6px 8px;
   color: #ffffff;
+  font-size: 11px;
   outline: none;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s;
 }
 
 .chat-input-field:focus {
   border-color: #a855f7;
-  background: rgba(30, 41, 59, 1);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .chat-send-btn {
   background: #a855f7;
   border: none;
   color: #ffffff;
-  padding: 5px 8px;
-  border-radius: 6px;
+  padding: 6px 10px;
   font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition: transform 0.1s, background 0.2s;
 }
 
 .chat-send-btn:hover:not(:disabled) {
@@ -332,6 +322,14 @@ html, body {
 .menu-anim-btn:active {
   transform: translateY(0);
   background: rgba(168, 85, 247, 0.45);
+}
+
+.debug-anim-btn.active,
+.menu-anim-btn.active {
+  background: rgba(168, 85, 247, 0.5);
+  border-color: #c084fc;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
 }
 
 .debug-log-viewer {
