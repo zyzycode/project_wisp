@@ -45,6 +45,24 @@ export class AnimationPlayer implements IAnimationPlayer {
     this.emitPresentation();
   }
 
+  updateClip(clip: ResolvedAnimationClip, loopMode?: AnimationLoopMode): void {
+    if (this.destroyed) return;
+    if (clip.body.frames.length === 0) {
+      throw new Error('Resolved animation clips must contain at least one body frame.');
+    }
+    const sameBody = this.clip?.key === clip.key;
+    this.clip = clip;
+    if (loopMode !== undefined) {
+      this.loopMode = normalizeLoopMode(loopMode);
+    }
+    if (!sameBody) {
+      this.elapsedMs = 0;
+      this.elapsedCompensationMs = 0;
+      this.completed = false;
+    }
+    this.emitPresentation();
+  }
+
   tick(deltaMs: number): void {
     if (this.destroyed || this.clip === undefined || this.loopMode === undefined || this.completed || !isPositiveFinite(deltaMs)) {
       return;

@@ -51,9 +51,9 @@ export function useAutonomousBehavior({
     durationMs: number;
   } | null>(null);
 
-  // Autonomous Behavior Loop
+  // Autonomous Behavior Loop - only wander when idle or floating
   useEffect(() => {
-    if (!enabled || isDragging || animState === 'sleep' || animState === 'dragged' || animState === 'falling') {
+    if (!enabled || isDragging || (animState !== 'idle' && animState !== 'float')) {
       setIsWandering(false);
       wanderStateRef.current = null;
       return;

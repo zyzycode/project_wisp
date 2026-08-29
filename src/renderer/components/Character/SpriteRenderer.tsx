@@ -39,7 +39,7 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
       <g transform={transformValue}>
         {primaryLayers.map((layer) => (
           <SpriteLayer
-            key={getLayerRenderKey(layer)}
+            key={layer.id}
             layer={layer}
             state={state}
             onLoad={() => controller.recordLoaded(layer)}
@@ -96,10 +96,6 @@ function SpriteLayer({
 
 function isVisibleLayer(layer: RenderLayerDef): layer is VisibleRenderLayerDef {
   return layer.visible;
-}
-
-function getLayerRenderKey(layer: VisibleRenderLayerDef): string {
-  return `${layer.id}:${layer.frame.source}`;
 }
 
 export function resolveSpriteSource(source: string): string {

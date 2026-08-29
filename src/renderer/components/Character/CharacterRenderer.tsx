@@ -9,17 +9,19 @@ import {
   DEFAULT_THEMES,
   calculateRenderedDimensions,
 } from '../../../domain/models/character-visuals';
-import defaultManifestData from '../../../../public/assets/sprites/manifest.json';
 import { AssetResolver, ManifestLoader } from '../../render-engine';
 import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { SpriteRenderer } from './SpriteRenderer';
 
 export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
 
+const manifestLoader = new ManifestLoader();
 const INITIAL_RESOLVER = new AssetResolver(
-  new ManifestLoader().load(defaultManifestData),
+  manifestLoader.load({ schemaVersion: 1, animations: {} }),
   { enableFaceOverlays: false }
 );
+
+let cachedManifestResolver: AssetResolver | null = null;
 
 export interface CharacterRendererProps {
   expression?: CharacterExpression;
@@ -50,7 +52,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
 }) => {
   const defaultIntent = useMemo(() => createSystemAnimationIntent('idle_blink'), []);
   const intent = animationIntent ?? defaultIntent;
-  const [resolver, setResolver] = useState<AssetResolver>(() => INITIAL_RESOLVER);
+  const [resolver, setResolver] = useState<AssetResolver>(() => cachedManifestResolver ?? INITIAL_RESOLVER);
   const presentationState = useCharacterAnimation(resolver, intent);
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
 
@@ -68,21 +70,35 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
 
   useEffect(() => {
     let disposed = false;
-    void fetch('/assets/sprites/manifest.json')
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Unable to load sprites: ${response.status}`);
-        return response.json() as Promise<unknown>;
-      })
-      .then((manifest) => {
-        if (!disposed) {
-          setResolver(
-            new AssetResolver(new ManifestLoader().load(manifest), {
+    if (typeof fetch === 'function') {
+      void fetch('/assets/sprites/manifest.json')
+        .then(async (response) => {
+          if (!response.ok) throw new Error(`Unable to load sprites: ${response.status}`);
+          return response.json() as Promise<unknown>;
+        })
+        .then((manifest) => {
+          if (!disposed) {
+            const loaded = new AssetResolver(manifestLoader.load(manifest), {
               enableFaceOverlays: false,
-            })
-          );
-        }
-      })
-      .catch(() => undefined);
+            });
+            cachedManifestResolver = loaded;
+            setResolver(loaded);
+
+            // Preload sprite frames into browser image decode cache to avoid micro-flashing
+            if (typeof Image !== 'undefined' && manifest && typeof manifest === 'object') {
+              for (const anim of Object.values(manifest as Record<string, { frames?: string[] }>)) {
+                if (Array.isArray(anim?.frames)) {
+                  for (const frameSrc of anim.frames) {
+                    const img = new Image();
+                    img.src = frameSrc;
+                  }
+                }
+              }
+            }
+          }
+        })
+        .catch(() => undefined);
+    }
     return (): void => { disposed = true; };
   }, []);
 
@@ -95,6 +111,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
         width: `${renderedSize.width}px`,
         height: `${renderedSize.height}px`,
         transform: `rotate(${tiltDeg}deg)`,
+        willChange: 'transform',
         filter: `drop-shadow(0 0 16px ${theme.palette.glow})`,
       }}
       onClick={onClick}

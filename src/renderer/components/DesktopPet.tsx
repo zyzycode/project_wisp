@@ -20,7 +20,7 @@ import {
   type AnimationExpressionHint,
   type AnimationIntentKind,
 } from '../../domain/animation/animation-intent';
-import type { AnimationState } from '../../domain/animation/animation-state-machine';
+import type { AnimationEvent, AnimationState } from '../../domain/animation/animation-state-machine';
 import { DebugHUD } from './Debug';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
@@ -361,6 +361,48 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     }
   };
 
+  const handlePlayAnimation = useCallback((event: AnimationEvent) => {
+    if (event === 'START_SLEEP') {
+      triggerNap();
+      dispatchAnim('START_SLEEP', true, true);
+      setCurrentMessage(createChatMessage('thought', 'Zzz... 🌙'));
+    } else if (event === 'WAKE_UP') {
+      wakeUp();
+      dispatchAnim('WAKE_UP', true, false);
+      setCurrentMessage(createChatMessage('pet', 'Доброе утро! ☀️'));
+    } else if (event === 'PET' || event === 'REACT_HAPPY') {
+      defaultCharacterStateService.applyStimulus({ type: 'pet', source: 'user' });
+      dispatchAnim('PET', true, true);
+      setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
+    } else if (event === 'THINK') {
+      dispatchAnim('THINK', true, true);
+      setCurrentMessage(createChatMessage('thought', 'Хм-м, о чём бы поразмышлять?.. 🤔'));
+    } else if (event === 'SPOOK' || event === 'REACT_CONFUSED') {
+      defaultCharacterStateService.applyStimulus({ type: 'user_click', source: 'user', intensity: 2 });
+      dispatchAnim('SPOOK', true, true);
+      setCurrentMessage(createChatMessage('pet', 'Ой! 😲'));
+    } else if (event === 'WAVE') {
+      dispatchAnim('WAVE', true, true);
+      setCurrentMessage(createChatMessage('pet', 'Привет-привет! 👋'));
+    } else if (event === 'CELEBRATE') {
+      dispatchAnim('CELEBRATE', true, true);
+      setCurrentMessage(createChatMessage('pet', 'Ура-а! Празднуем! 🎉'));
+    } else if (event === 'BORED') {
+      dispatchAnim('BORED', true, true);
+      setCurrentMessage(createChatMessage('thought', 'Эх, скучновато... 🥱'));
+    } else if (event === 'START_FLOAT') {
+      dispatchAnim('START_FLOAT', true, true);
+    } else if (event === 'START_DRAG') {
+      dispatchAnim('START_DRAG', true, true);
+    } else if (event === 'LAND') {
+      dispatchAnim('LAND', true, false);
+    } else if (event === 'SETTLE') {
+      dispatchAnim('SETTLE', true, false);
+    } else {
+      dispatchAnim(event, true, true);
+    }
+  }, [dispatchAnim, triggerNap, wakeUp]);
+
   const debugHudElement = (
     <DebugHUD
       needs={debugTelemetry.character.needs}
@@ -377,6 +419,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
         if (clearLogs !== undefined) void clearLogs();
       }}
+      onPlayAnimation={handlePlayAnimation}
     />
   );
 
@@ -410,11 +453,11 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         onClose={() => setMenuOpen(false)}
         onPet={() => {
           defaultCharacterStateService.applyStimulus({ type: 'pet', source: 'user' });
-          dispatchAnim('PET');
+          dispatchAnim('PET', true, true);
           setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
         }}
         onThink={() => {
-          dispatchAnim('THINK');
+          dispatchAnim('THINK', true, true);
           setMenuOpen(false);
           const thoughts = [
             'Хм-м, о чём бы поразмышлять?.. 🤔',
@@ -428,13 +471,16 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         onToggleSleep={() => {
           if (animState === 'sleep') {
             wakeUp();
+            dispatchAnim('WAKE_UP', true, false);
             setCurrentMessage(createChatMessage('pet', 'Доброе утро! ☀️'));
           } else {
             triggerNap();
+            dispatchAnim('START_SLEEP', true, true);
             setCurrentMessage(createChatMessage('thought', 'Zzz... 🌙'));
           }
         }}
         onToggleWander={() => setAutoWanderEnabled((prev) => !prev)}
+        onPlayAnimation={handlePlayAnimation}
         onSelectTheme={(t) => setCurrentTheme(t)}
         onSelectScale={(s) => setScale(s)}
         onQuit={handleClose}
@@ -484,6 +530,9 @@ function animationStateToIntentKind(state: AnimationState): AnimationIntentKind 
     case 'surprised': return 'confused_reaction';
     case 'thinking': return 'thinking_loop';
     case 'spook': return 'spook';
+    case 'wave': return 'wave';
+    case 'celebrate': return 'celebrate';
+    case 'bored': return 'bored';
     case 'settle': return 'settle';
     case 'idle': return 'idle_blink';
   }

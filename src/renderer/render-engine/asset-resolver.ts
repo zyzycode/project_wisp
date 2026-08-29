@@ -22,8 +22,11 @@ const BODY_KEYS: Readonly<Record<AnimationIntent['kind'], string>> = {
   thinking_loop: 'body_thinking',
   talking: 'body_thinking',
   happy_reaction: 'body_petting',
-  confused_reaction: 'body_thinking',
-  spook: 'body_thinking',
+  confused_reaction: 'body_scared',
+  spook: 'body_scared',
+  wave: 'body_wave',
+  celebrate: 'body_celebrate',
+  bored: 'body_bored',
   sleep_start: 'body_sleep_trans',
   sleep_loop: 'body_sleep',
   wake_up: 'body_land',
@@ -161,11 +164,11 @@ function toOverlayTrack<TCategory extends 'face' | 'expression' | 'props'>(
     frames: animation.frames,
     fps: animation.fps,
     zIndex,
+    playbackMode,
+    blendMode,
     pivot: animation.pivot,
     offset: ZERO_POINT,
     opacity: 1,
-    blendMode,
-    playbackMode,
   };
 }
 

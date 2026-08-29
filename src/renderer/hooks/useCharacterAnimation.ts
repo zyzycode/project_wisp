@@ -11,19 +11,24 @@ export function useCharacterAnimation(
 ): RenderPresentationState | undefined {
   const [presentationState, setPresentationState] = useState<RenderPresentationState>();
   const publishedSignatureRef = useRef<string | undefined>(undefined);
+  const playerRef = useRef<AnimationPlayer | null>(null);
 
   useEffect(() => {
-    const renderer: ICharacterRenderer = {
-      render: (state: RenderPresentationState): void => {
-        const signature = getPresentationSignature(state);
-        if (publishedSignatureRef.current === signature) return;
-        publishedSignatureRef.current = signature;
-        setPresentationState(state);
-      },
-      destroy: (): void => undefined,
-    };
-    const player = new AnimationPlayer(renderer);
-    player.play(resolver.resolve(intent), toPlayerLoopMode(intent.loop));
+    if (!playerRef.current) {
+      const renderer: ICharacterRenderer = {
+        render: (state: RenderPresentationState): void => {
+          const signature = getPresentationSignature(state);
+          if (publishedSignatureRef.current === signature) return;
+          publishedSignatureRef.current = signature;
+          setPresentationState(state);
+        },
+        destroy: (): void => undefined,
+      };
+      playerRef.current = new AnimationPlayer(renderer);
+    }
+
+    const player = playerRef.current;
+    player.updateClip(resolver.resolve(intent), toPlayerLoopMode(intent.loop));
 
     let animationFrameId = 0;
     let previousNow: number | undefined;
@@ -36,9 +41,15 @@ export function useCharacterAnimation(
 
     return (): void => {
       animationFrames.cancelAnimationFrame(animationFrameId);
-      player.destroy();
     };
   }, [intent, resolver]);
+
+  useEffect(() => {
+    return (): void => {
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
+  }, []);
 
   return presentationState;
 }
@@ -71,6 +82,5 @@ const animationFrames = globalThis as unknown as {
 
 function toPlayerLoopMode(loop: AnimationIntent['loop']): AnimationLoopMode {
   if (loop === 'none') return { type: 'none' };
-  if (loop === 'bounded') return { type: 'bounded', count: 1 };
   return { type: 'until_replaced' };
 }

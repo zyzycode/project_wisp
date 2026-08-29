@@ -17,7 +17,7 @@ export const PropsOverlay: React.FC<PropsOverlayProps> = ({ layers, viewport, ro
       const y = rootPivot.y + layer.offset.y - layer.pivot.y;
       return (
         <image
-          key={getLayerRenderKey(layer)}
+          key={layer.id}
           data-layer-id={layer.id}
           data-frame-source={layer.frame.source}
           href={resolveSpriteSource(layer.frame.source)}
@@ -35,7 +35,3 @@ export const PropsOverlay: React.FC<PropsOverlayProps> = ({ layers, viewport, ro
     })}
   </>
 );
-
-function getLayerRenderKey(layer: VisibleRenderLayerDef): string {
-  return `${layer.id}:${layer.frame.source}`;
-}

@@ -26,7 +26,10 @@ export type AnimationIntentKind =
   | 'spook'
   | 'land'
   | 'walk'
-  | 'settle';
+  | 'settle'
+  | 'wave'
+  | 'celebrate'
+  | 'bored';
 
 export type AnimationIntentCategory =
   | 'idle'
@@ -105,6 +108,9 @@ const INTENT_POLICIES: Record<AnimationIntentKind, IntentPolicy> = {
   land: { category: 'transition', priority: 'high', interrupt: 'no', loop: 'none' },
   walk: { category: 'movement', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
   settle: { category: 'transition', priority: 'low', interrupt: 'yes', loop: 'none' },
+  wave: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
+  celebrate: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
+  bored: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
 };
 
 function hints(overrides: Partial<Record<SynthesizedEmotionalTone, HintOverride>>): Record<SynthesizedEmotionalTone, HintOverride> {

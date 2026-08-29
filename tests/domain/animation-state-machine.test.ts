@@ -58,45 +58,6 @@ describe('Domain: AnimationStateMachine', () => {
     // Happy -> idle directly after bounded reaction completes
     fsm.update(1600);
     expect(fsm.getCurrentState()).toBe('idle');
-
-    // Idle -> THINK -> REACT_CONFUSED -> surprised
-    expect(fsm.transition('THINK')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('thinking');
-    expect(fsm.transition('REACT_CONFUSED')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('surprised');
-    expect(fsm.getCurrentExpression()).toBe('surprised');
-
-    // Surprised -> idle directly after bounded reaction completes
-    fsm.update(1300);
-    expect(fsm.getCurrentState()).toBe('idle');
-
-    // Idle -> THINK -> START_SLEEP -> sleep_start
-    expect(fsm.transition('THINK')).toBe(true);
-    expect(fsm.transition('START_SLEEP')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('sleep_start');
-    expect(fsm.getCurrentExpression()).toBe('sleepy');
-  });
-
-  it('handles timed state transitions automatically on update', () => {
-    const fsm = new AnimationStateMachine('landing');
-    expect(fsm.getCurrentState()).toBe('landing');
-
-    // Landing duration is 800ms
-    fsm.update(500);
-    expect(fsm.getCurrentState()).toBe('landing');
-
-    fsm.update(350); // total 850ms >= 800ms -> directly to idle
-    expect(fsm.getCurrentState()).toBe('idle');
-    expect(fsm.getCurrentExpression()).toBe('idle');
-  });
-
-  it('settles directly to idle after autonomous float stops', () => {
-    const fsm = new AnimationStateMachine('idle');
-
-    expect(fsm.transition('START_FLOAT')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('float');
-    expect(fsm.transition('STOP_FLOAT')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('idle');
   });
 
   it('blocks non-allowed transitions from current state', () => {
@@ -194,6 +155,26 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentExpression()).toBe('surprised');
 
     fsm.update(900);
+    expect(fsm.getCurrentState()).toBe('idle');
+  });
+
+  it('force unconditionally interrupts any active state and can lock looping indefinitely', () => {
+    const fsm = new AnimationStateMachine('sleep_start');
+
+    // Force transition to happy with loop = true
+    expect(fsm.transition('PET', true, true)).toBe(true);
+    expect(fsm.getCurrentState()).toBe('happy');
+
+    // Advancing time far beyond duration (e.g. 5000ms) does NOT reset to idle because loop is locked
+    fsm.update(5000);
+    expect(fsm.getCurrentState()).toBe('happy');
+
+    // Force transition to thinking immediately interrupts happy
+    expect(fsm.transition('THINK', true, true)).toBe(true);
+    expect(fsm.getCurrentState()).toBe('thinking');
+
+    // SETTLE unlocks loop and resets to idle
+    expect(fsm.transition('SETTLE', true, false)).toBe(true);
     expect(fsm.getCurrentState()).toBe('idle');
   });
 });

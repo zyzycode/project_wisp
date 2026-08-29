@@ -171,6 +171,9 @@ const EXPECTED_POLICY: Record<AnimationIntentKind, {
   land: { category: 'transition', priority: 'high' },
   walk: { category: 'movement', priority: 'normal' },
   settle: { category: 'transition', priority: 'low' },
+  wave: { category: 'reaction', priority: 'normal' },
+  celebrate: { category: 'reaction', priority: 'normal' },
+  bored: { category: 'idle', priority: 'low' },
 };
 
 function behaviorIntent(kind: BehaviorIntentKind): BehaviorIntent {

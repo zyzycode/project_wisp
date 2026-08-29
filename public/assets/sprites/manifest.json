@@ -1,7 +1,6 @@
 {
   "body_sleep_trans": {
     "category": "body/sleep_transition",
-    "fps": 2,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/sleep_transition/body_sleep_trans_00.png",
@@ -14,18 +13,21 @@
   "body_idle": {
     "category": "body/idle",
     "fps": 3,
-    "framesCount": 4,
+    "framesCount": 8,
     "frames": [
       "/assets/sprites/body/idle/body_idle_00.png",
       "/assets/sprites/body/idle/body_idle_01.png",
       "/assets/sprites/body/idle/body_idle_02.png",
-      "/assets/sprites/body/idle/body_idle_03.png"
+      "/assets/sprites/body/idle/body_idle_03.png",
+      "/assets/sprites/body/idle/body_idle_04.png",
+      "/assets/sprites/body/idle/body_idle_05.png",
+      "/assets/sprites/body/idle/body_idle_06.png",
+      "/assets/sprites/body/idle/body_idle_07.png"
     ],
     "sourceFile": "дыхание.png"
   },
   "body_thinking": {
     "category": "body/thinking",
-    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/thinking/body_thinking_00.png",
@@ -37,7 +39,6 @@
   },
   "body_dragged": {
     "category": "body/dragged",
-    "fps": 4,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/dragged/body_dragged_00.png",
@@ -49,7 +50,6 @@
   },
   "body_land": {
     "category": "body/land",
-    "fps": 4,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/land/body_land_00.png",
@@ -58,18 +58,6 @@
       "/assets/sprites/body/land/body_land_03.png"
     ],
     "sourceFile": "приземлен.png"
-  },
-  "face_happy": {
-    "category": "faces/happy",
-    "fps": 3,
-    "framesCount": 4,
-    "frames": [
-      "/assets/sprites/faces/happy/face_happy_00.png",
-      "/assets/sprites/faces/happy/face_happy_01.png",
-      "/assets/sprites/faces/happy/face_happy_02.png",
-      "/assets/sprites/faces/happy/face_happy_03.png"
-    ],
-    "sourceFile": "счаст.png"
   },
   "body_sleep": {
     "category": "body/sleep",
@@ -85,7 +73,7 @@
   },
   "body_petting": {
     "category": "body/petting",
-    "fps": 3,
+    "fps": 2,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/petting/body_petting_00.png",
@@ -97,7 +85,6 @@
   },
   "body_walk": {
     "category": "body/walk",
-    "fps": 3,
     "framesCount": 4,
     "frames": [
       "/assets/sprites/body/walk/body_walk_00.png",
@@ -107,64 +94,48 @@
     ],
     "sourceFile": "ходьба.png"
   },
-  "face_talking": {
-    "category": "faces/talking",
+  "body_wave": {
+    "category": "body/wave",
     "fps": 3,
     "framesCount": 4,
     "frames": [
-      "/assets/sprites/faces/talking/face_talking_00.png",
-      "/assets/sprites/faces/talking/face_talking_01.png",
-      "/assets/sprites/faces/talking/face_talking_02.png",
-      "/assets/sprites/faces/talking/face_talking_03.png"
-    ],
-    "sourceFile": "лицо_разговор.png"
+      "/assets/sprites/body/wave/body_wave_00.png",
+      "/assets/sprites/body/wave/body_wave_01.png",
+      "/assets/sprites/body/wave/body_wave_02.png",
+      "/assets/sprites/body/wave/body_wave_03.png"
+    ]
   },
-  "face_sleep": {
-    "category": "faces/sleep",
-    "fps": 1,
-    "framesCount": 4,
-    "frames": [
-      "/assets/sprites/faces/sleep/face_sleep_00.png",
-      "/assets/sprites/faces/sleep/face_sleep_01.png",
-      "/assets/sprites/faces/sleep/face_sleep_02.png",
-      "/assets/sprites/faces/sleep/face_sleep_03.png"
-    ],
-    "sourceFile": "сон.png"
-  },
-  "face_shocked": {
-    "category": "faces/shocked",
+  "body_celebrate": {
+    "category": "body/celebrate",
     "fps": 3,
     "framesCount": 4,
     "frames": [
-      "/assets/sprites/faces/shocked/face_shocked_00.png",
-      "/assets/sprites/faces/shocked/face_shocked_01.png",
-      "/assets/sprites/faces/shocked/face_shocked_02.png",
-      "/assets/sprites/faces/shocked/face_shocked_03.png"
-    ],
-    "sourceFile": "растерянность.png"
+      "/assets/sprites/body/celebrate/body_celebrate_00.png",
+      "/assets/sprites/body/celebrate/body_celebrate_01.png",
+      "/assets/sprites/body/celebrate/body_celebrate_02.png",
+      "/assets/sprites/body/celebrate/body_celebrate_03.png"
+    ]
   },
-  "face_sad": {
-    "category": "faces/sad",
+  "body_scared": {
+    "category": "body/scared",
     "fps": 3,
     "framesCount": 4,
     "frames": [
-      "/assets/sprites/faces/sad/face_sad_00.png",
-      "/assets/sprites/faces/sad/face_sad_01.png",
-      "/assets/sprites/faces/sad/face_sad_02.png",
-      "/assets/sprites/faces/sad/face_sad_03.png"
-    ],
-    "sourceFile": "лицо_грусть.png"
+      "/assets/sprites/body/scared/body_scared_00.png",
+      "/assets/sprites/body/scared/body_scared_01.png",
+      "/assets/sprites/body/scared/body_scared_02.png",
+      "/assets/sprites/body/scared/body_scared_03.png"
+    ]
   },
-  "face_thinking": {
-    "category": "faces/thinking",
-    "fps": 3,
+  "body_bored": {
+    "category": "body/bored",
+    "fps": 2,
     "framesCount": 4,
     "frames": [
-      "/assets/sprites/faces/thinking/face_thinking_00.png",
-      "/assets/sprites/faces/thinking/face_thinking_01.png",
-      "/assets/sprites/faces/thinking/face_thinking_02.png",
-      "/assets/sprites/faces/thinking/face_thinking_03.png"
-    ],
-    "sourceFile": "лицо_думает.png"
+      "/assets/sprites/body/bored/body_bored_00.png",
+      "/assets/sprites/body/bored/body_bored_01.png",
+      "/assets/sprites/body/bored/body_bored_02.png",
+      "/assets/sprites/body/bored/body_bored_03.png"
+    ]
   }
 }

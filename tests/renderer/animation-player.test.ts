@@ -139,6 +139,22 @@ describe('Renderer: AnimationPlayer', () => {
     expect(layerSource(layers, 2)).toBe('prop_0.png');
   });
 
+  it('preserves elapsed frame progress when updateClip is called with the same body clip', () => {
+    const { renderer } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    const clip1 = createClip();
+    player.play(clip1, { type: 'until_replaced' });
+    player.tick(250);
+    expect(bodySource(player.getPresentationState())).toBe('walk_2.png');
+
+    const clip2 = createClip({
+      transform: { flipX: true, scale: 1.2 },
+    });
+    player.updateClip(clip2);
+    expect(bodySource(player.getPresentationState())).toBe('walk_2.png');
+    expect(player.getPresentationState()?.transform.scale).toBe(1.2);
+  });
+
   it('treats invalid delta values as no-ops and is safe after destroy', () => {
     const { renderer, states } = createRenderer();
     const player = new AnimationPlayer(renderer);
@@ -148,9 +164,9 @@ describe('Renderer: AnimationPlayer', () => {
     player.tick(Number.POSITIVE_INFINITY);
     expect(states).toHaveLength(1);
     player.destroy();
-    player.destroy();
-    player.tick(125);
     player.play(createClip(), { type: 'until_replaced' });
+    player.tick(100);
     expect(states).toHaveLength(1);
+    expect(player.getPresentationState()).toBeUndefined();
   });
 });

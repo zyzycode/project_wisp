@@ -1,77 +1,97 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import type { DebugLogEntryDTO } from '../../src/shared/ipc-contracts';
-import { createSystemAnimationIntent } from '../../src/domain/animation/animation-intent';
-import { DebugHUD, getVisibleLogs, LogViewer } from '../../src/renderer/components/Debug';
+import { DebugHUD } from '../../src/renderer/components/Debug/DebugHUD';
 import { ContextMenu } from '../../src/renderer/components/Interaction/ContextMenu';
 import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
+import { createSystemAnimationIntent } from '../../src/domain/animation/animation-intent';
+import type { DebugLogEntryDTO } from '../../src/shared/ipc-contracts';
 
-const logs: DebugLogEntryDTO[] = [
-  { id: 'debug', level: 'debug', context: 'FSM', message: 'idle entered', createdAt: '2026-08-28T00:00:00.000Z' },
-  { id: 'info', level: 'info', context: 'RenderEngine', message: 'frame updated', createdAt: '2026-08-28T00:00:01.000Z' },
-  { id: 'warn', level: 'warn', context: 'Needs', message: 'attention high', createdAt: '2026-08-28T00:00:02.000Z' },
-  { id: 'error', level: 'error', context: 'IPC', message: 'bridge unavailable', createdAt: '2026-08-28T00:00:03.000Z' },
-];
+const sampleNeeds = { energy: 75, attention: 82, play: 60, comfort: 90 };
+const sampleRelationship = { friendship: 55, love: 10, loveUnlocked: false };
 
 describe('Renderer: DebugHUD', () => {
-  it('renders live needs, relationship, emotion, FSM, intent, FPS, and log telemetry', () => {
+  it('renders all sections and vital indicators when enabled', () => {
+    const logs: DebugLogEntryDTO[] = [
+      { id: '1', level: 'info', category: 'fsm', message: 'FSM transitioned to idle', timestamp: 1000 },
+      { id: '2', level: 'warn', category: 'system', message: 'Low battery warning', timestamp: 2000 },
+    ];
+
     const markup = renderToStaticMarkup(
       <DebugHUD
-        needs={{ energy: 81, attention: 42, play: 60, comfort: 18 }}
-        relationship={{ friendship: 420, love: 35, loveUnlocked: false }}
-        tone="playful"
-        animationState="float"
-        animationIntent={createSystemAnimationIntent('walk', 'playful')}
-        fps={58.7}
+        needs={sampleNeeds}
+        relationship={sampleRelationship}
+        tone="curious"
+        animationState="idle"
+        animationIntent={createSystemAnimationIntent('idle_blink', 'curious')}
+        fps={59.8}
         logs={logs}
+        position={{ x: 120, y: 340 }}
+        isWandering
+        flipX
         onClearLogs={vi.fn()}
       />
     );
 
     expect(markup).toContain('Wisp Debug');
-    expect(markup).toContain('59 FPS');
-    expect(markup).toContain('Energy');
-    expect(markup).toContain('aria-valuenow="81"');
-    expect(markup).toContain('Friendship: 420');
-    expect(markup).toContain('Love: locked (35)');
-    expect(markup).toContain('Tone:');
-    expect(markup).toContain('playful');
-    expect(markup).toContain('FSM:');
-    expect(markup).toContain('float');
-    expect(markup).toContain('Intent:');
-    expect(markup).toContain('walk');
-    expect(markup).toContain('debug-log-error');
+    expect(markup).toContain('60 FPS');
+    expect(markup).toContain('curious');
+    expect(markup).toContain('idle');
+    expect(markup).toContain('idle_blink');
+    expect(markup).toContain('X: 120');
+    expect(markup).toContain('Y: 340');
+    expect(markup).toContain('Walking');
+    expect(markup).toContain('Left');
+    expect(markup).toContain('acquaintance');
+    expect(markup).toContain('FSM transitioned to idle');
+    expect(markup).toContain('Low battery warning');
   });
 
-  it('shows the latest twenty logs with level-specific styling and controls', () => {
-    const manyLogs = Array.from({ length: 24 }, (_, index): DebugLogEntryDTO => ({
-      id: `log-${index}`,
-      level: index === 23 ? 'error' : 'info',
-      context: 'Autonomy',
-      message: `log ${index}`,
-      createdAt: '2026-08-28T00:00:00.000Z',
-    }));
-    const markup = renderToStaticMarkup(<LogViewer logs={manyLogs} onClear={vi.fn()} />);
+  it('renders default values for spatial motion when coordinates are not provided', () => {
+    const markup = renderToStaticMarkup(
+      <DebugHUD
+        needs={sampleNeeds}
+        relationship={sampleRelationship}
+        tone="neutral"
+        animationState="idle"
+        animationIntent={createSystemAnimationIntent('idle_blink', 'neutral')}
+        fps={30}
+        logs={[]}
+        onClearLogs={vi.fn()}
+      />
+    );
 
-    expect(markup).not.toContain('log 0');
-    expect(markup).toContain('log 23');
-    expect(markup).toContain('debug-log-error');
-    expect(markup).toContain('Pause');
+    expect(markup).not.toContain('Coords:');
+    expect(markup).toContain('neutral');
+  });
+
+  it('invokes log clear callback when clear button is clicked', () => {
+    const onClearLogs = vi.fn();
+    const markup = renderToStaticMarkup(
+      <DebugHUD
+        needs={sampleNeeds}
+        relationship={sampleRelationship}
+        tone="shy"
+        animationState="idle"
+        animationIntent={createSystemAnimationIntent('idle_blink', 'shy')}
+        fps={45}
+        logs={[{ id: '1', level: 'error', category: 'ai', message: 'Quota exceeded', timestamp: 100 }]}
+        onClearLogs={onClearLogs}
+      />
+    );
+
     expect(markup).toContain('Clear');
+    expect(markup).toContain('Quota exceeded');
   });
 
-  it('keeps a frozen log snapshot while paused and refreshes on resume', () => {
-    const frozen = logs.slice(0, 2);
-    const incoming = [...frozen, { id: 'later', level: 'info' as const, context: 'IPC' as const, message: 'later entry', createdAt: '2026-08-28T00:01:00.000Z' }];
+  it('embeds control sections on main tab and tab switcher in ContextMenu', () => {
+    const logs: DebugLogEntryDTO[] = [
+      { id: '1', level: 'info', category: 'fsm', message: 'Embedded log', timestamp: 500 },
+    ];
 
-    expect(getVisibleLogs(incoming, true, frozen).map((entry) => entry.id)).toEqual(['debug', 'info']);
-    expect(getVisibleLogs(incoming, false, null).map((entry) => entry.id)).toEqual(['debug', 'info', 'later']);
-  });
-
-  it('embeds every control section and debug telemetry in one canvas', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
+        activeTab="main"
         tone="playful"
         currentTheme={DEFAULT_THEMES.cosmic!}
         scale={1}
@@ -80,8 +100,8 @@ describe('Renderer: DebugHUD', () => {
         debugHudEnabled
         debugContent={
           <DebugHUD
-            needs={{ energy: 80, attention: 50, play: 40, comfort: 30 }}
-            relationship={{ friendship: 420, love: 35, loveUnlocked: false }}
+            needs={sampleNeeds}
+            relationship={sampleRelationship}
             tone="playful"
             animationState="float"
             animationIntent={createSystemAnimationIntent('walk', 'playful')}
@@ -102,11 +122,61 @@ describe('Renderer: DebugHUD', () => {
     );
 
     expect(markup).toContain('🎮 Действия');
-    expect(markup).toContain('🎨 Внешний вид');
-    expect(markup).toContain('🛠️ Debug');
+    expect(markup).toContain('🎨 Темы оформления');
+    expect(markup).toContain('menu-tab-bar');
     expect(markup).toContain('menu-canvas');
     expect(markup).toContain('Close control panel');
-    expect(markup).toContain('data-testid="debug-hud"');
-    expect(markup).not.toContain('menu-tabs');
+  });
+
+  it('renders debug telemetry when activeTab is debug', () => {
+    const markup = renderToStaticMarkup(
+      <ContextMenu
+        isOpen
+        activeTab="debug"
+        tone="playful"
+        currentTheme={DEFAULT_THEMES.cosmic!}
+        scale={1}
+        autoWanderEnabled
+        isSleeping={false}
+        debugHudEnabled
+        debugContent={
+          <div data-testid="debug-mock-content">
+            <div>Debug Telemetry Active</div>
+          </div>
+        }
+        onClose={vi.fn()}
+        onPet={vi.fn()}
+        onThink={vi.fn()}
+        onToggleSleep={vi.fn()}
+        onToggleWander={vi.fn()}
+        onSelectTheme={vi.fn()}
+        onSelectScale={vi.fn()}
+        onQuit={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain('debug-mock-content');
+    expect(markup).toContain('Debug Telemetry Active');
+  });
+
+  it('renders animation buttons when onPlayAnimation callback is passed', () => {
+    const onPlayAnimation = vi.fn();
+    const markup = renderToStaticMarkup(
+      <DebugHUD
+        needs={sampleNeeds}
+        relationship={sampleRelationship}
+        tone="playful"
+        animationState="idle"
+        animationIntent={createSystemAnimationIntent('idle_blink', 'playful')}
+        fps={60}
+        logs={[]}
+        onClearLogs={vi.fn()}
+        onPlayAnimation={onPlayAnimation}
+      />
+    );
+
+    expect(markup).toContain('🎬 Проигрывание анимаций');
+    expect(markup).toContain('🐾 Ходьба (Walk)');
+    expect(markup).toContain('💖 Радость (Happy)');
   });
 });

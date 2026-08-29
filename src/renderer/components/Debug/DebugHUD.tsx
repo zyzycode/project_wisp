@@ -1,7 +1,7 @@
 import React from 'react';
 import type { DebugLogEntryDTO, PetPositionDTO } from '../../../shared/ipc-contracts';
 import type { AnimationIntent } from '../../../domain/animation/animation-intent';
-import type { AnimationState } from '../../../domain/animation/animation-state-machine';
+import type { AnimationEvent, AnimationState } from '../../../domain/animation/animation-state-machine';
 import type { Needs, Relationship, SynthesizedEmotionalTone } from '../../../domain/character/types';
 import { LogViewer } from './LogViewer';
 import { NeedsIndicator } from './NeedsIndicator';
@@ -18,7 +18,23 @@ export interface DebugHUDProps {
   isWandering?: boolean;
   flipX?: boolean;
   onClearLogs: () => void;
+  onPlayAnimation?: (anim: AnimationEvent) => void;
 }
+
+const ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
+  { event: 'SETTLE', label: '🌿 Дыхание (Idle)' },
+  { event: 'START_FLOAT', label: '🐾 Ходьба (Walk)' },
+  { event: 'PET', label: '💖 Радость (Happy)' },
+  { event: 'WAVE', label: '👋 Привет (Wave)' },
+  { event: 'CELEBRATE', label: '🎉 Праздник (Party)' },
+  { event: 'THINK', label: '💡 Мысли (Think)' },
+  { event: 'SPOOK', label: '😲 Испуг (Scared)' },
+  { event: 'BORED', label: '🥱 Скука (Bored)' },
+  { event: 'START_SLEEP', label: '🌙 Сон (Sleep)' },
+  { event: 'WAKE_UP', label: '☀️ Подъём (Wake)' },
+  { event: 'START_DRAG', label: '🪂 Полёт (Drag)' },
+  { event: 'LAND', label: '🛬 Посадка (Land)' },
+];
 
 export const DebugHUD: React.FC<DebugHUDProps> = ({
   needs,
@@ -32,6 +48,7 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
   isWandering = false,
   flipX = false,
   onClearLogs,
+  onPlayAnimation,
 }) => {
   return (
     <section className="debug-hud" data-testid="debug-hud">
@@ -43,12 +60,30 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
       <NeedsIndicator needs={needs} />
 
       <section className="debug-hud-state">
-        <div className="debug-hud-section-title">🎬 Animation & FSM</div>
+        <div className="debug-hud-section-title">🎭 Animation & FSM</div>
         <div>🎭 Tone: <strong>{tone}</strong></div>
         <div>⚙️ FSM: <strong>{animationState}</strong></div>
         <div>🎯 Intent: <strong>{animationIntent.kind}</strong> ({animationIntent.loop})</div>
         <div>👁️ Expression: <strong>{animationIntent.expressionHint ?? 'default'}</strong></div>
       </section>
+
+      {onPlayAnimation ? (
+        <section className="debug-hud-animations">
+          <div className="debug-hud-section-title">🎬 Проигрывание анимаций</div>
+          <div className="debug-anim-btn-grid">
+            {ANIMATION_BUTTONS.map((item) => (
+              <button
+                key={item.event}
+                type="button"
+                className="debug-anim-btn"
+                onClick={() => onPlayAnimation(item.event)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {position ? (
         <section className="debug-hud-state">

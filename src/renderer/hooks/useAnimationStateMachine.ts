@@ -40,8 +40,8 @@ export function useAnimationStateMachine(initialState: AnimationState = 'idle') 
   }, [fsm]);
 
   const dispatch = useCallback(
-    (event: AnimationEvent, force?: boolean) => {
-      return fsm.transition(event, force);
+    (event: AnimationEvent, force?: boolean, loop?: boolean) => {
+      return fsm.transition(event, force, loop);
     },
     [fsm]
   );
