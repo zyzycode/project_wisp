@@ -217,8 +217,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
       // Landing duration is 800ms -> automatically goes to settle
       fsm.update(800);
-      expect(fsm.getCurrentState()).toBe('settle');
-      expect(fsm.getCurrentExpression()).toBe('idle');
+      expect(fsm.getCurrentState()).toBe('idle');
 
       // Settle duration is 300ms -> returns to idle base state
       fsm.update(300);
@@ -228,7 +227,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(listener).toHaveBeenCalledWith('sleep_loop', 'sleepy');
       expect(listener).toHaveBeenCalledWith('dragged', 'flying');
       expect(listener).toHaveBeenCalledWith('landing', 'happy');
-      expect(listener).toHaveBeenCalledWith('settle', 'idle');
+      
       expect(listener).toHaveBeenCalledWith('idle', 'idle');
     });
 
@@ -270,8 +269,6 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
       // wake_up auto-advances to settle (900ms) then idle (300ms)
       fsm.update(900);
-      expect(fsm.getCurrentState()).toBe('settle');
-      fsm.update(300);
       expect(fsm.getCurrentState()).toBe('idle');
       expect(fsm.getCurrentExpression()).toBe('idle');
     });
@@ -299,8 +296,6 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(fsm.getCurrentState()).toBe('wake_up');
 
       fsm.update(900);
-      expect(fsm.getCurrentState()).toBe('settle');
-      fsm.update(300);
       expect(fsm.getCurrentState()).toBe('idle');
     });
   });
@@ -474,8 +469,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(fsm.getCurrentState()).toBe('spook');
 
       fsm.update(450); // total 950ms >= 900ms
-      expect(fsm.getCurrentState()).toBe('settle');
-      expect(fsm.getCurrentExpression()).toBe('idle');
+      expect(fsm.getCurrentState()).toBe('idle');
 
       // Settle duration is 300ms
       fsm.update(300);
@@ -551,8 +545,6 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
       // Transition to settle -> idle
       fsm.transition('SETTLE');
-      expect(fsm.getCurrentState()).toBe('settle');
-      fsm.update(300);
       expect(fsm.getCurrentState()).toBe('idle');
 
       // --- Step 3: Autonomous wander cycle triggered by idle timer ---
@@ -571,8 +563,6 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(fsm.getCurrentState()).toBe('float');
 
       fsm.transition('SETTLE');
-      expect(fsm.getCurrentState()).toBe('settle');
-      fsm.update(300);
       expect(fsm.getCurrentState()).toBe('idle');
 
       // --- Step 4: Long absence & fatigue: energy drops via metabolizeNeeds ---
@@ -634,8 +624,6 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(fsm.getCurrentState()).toBe('landing');
 
       fsm.update(800);
-      expect(fsm.getCurrentState()).toBe('settle');
-      fsm.update(300);
       expect(fsm.getCurrentState()).toBe('idle');
 
       // --- Step 7: Petting restores affection and comfort ---
@@ -651,8 +639,6 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(fsm.getCurrentExpression()).toBe('happy');
 
       fsm.update(1500);
-      expect(fsm.getCurrentState()).toBe('settle');
-      fsm.update(300);
       expect(fsm.getCurrentState()).toBe('idle');
     });
   });

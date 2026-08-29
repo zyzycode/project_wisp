@@ -31,12 +31,12 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentState()).toBe('dragged');
     expect(fsm.getCurrentExpression()).toBe('flying');
 
-    // Dragged -> RELEASE_DRAG -> Falling (expression: surprised)
+    // Dragged -> RELEASE_DRAG -> falling (expression: surprised)
     expect(fsm.transition('RELEASE_DRAG')).toBe(true);
     expect(fsm.getCurrentState()).toBe('falling');
     expect(fsm.getCurrentExpression()).toBe('surprised');
 
-    // Falling -> LAND -> Landing (expression: happy)
+    // Falling -> LAND -> landing (expression: happy)
     expect(fsm.transition('LAND')).toBe(true);
     expect(fsm.getCurrentState()).toBe('landing');
     expect(fsm.getCurrentExpression()).toBe('happy');
@@ -55,10 +55,8 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentState()).toBe('happy');
     expect(fsm.getCurrentExpression()).toBe('happy');
 
-    // Happy -> settle -> idle after bounded reaction completes
+    // Happy -> idle directly after bounded reaction completes
     fsm.update(1600);
-    expect(fsm.getCurrentState()).toBe('settle');
-    fsm.update(300);
     expect(fsm.getCurrentState()).toBe('idle');
 
     // Idle -> THINK -> REACT_CONFUSED -> surprised
@@ -68,10 +66,8 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentState()).toBe('surprised');
     expect(fsm.getCurrentExpression()).toBe('surprised');
 
-    // Surprised -> settle -> idle after bounded reaction completes
+    // Surprised -> idle directly after bounded reaction completes
     fsm.update(1300);
-    expect(fsm.getCurrentState()).toBe('settle');
-    fsm.update(300);
     expect(fsm.getCurrentState()).toBe('idle');
 
     // Idle -> THINK -> START_SLEEP -> sleep_start
@@ -89,24 +85,17 @@ describe('Domain: AnimationStateMachine', () => {
     fsm.update(500);
     expect(fsm.getCurrentState()).toBe('landing');
 
-    fsm.update(350); // total 850ms >= 800ms
-    expect(fsm.getCurrentState()).toBe('settle');
-    expect(fsm.getCurrentExpression()).toBe('idle');
-
-    fsm.update(300);
+    fsm.update(350); // total 850ms >= 800ms -> directly to idle
     expect(fsm.getCurrentState()).toBe('idle');
     expect(fsm.getCurrentExpression()).toBe('idle');
   });
 
-  it('settles after autonomous float stops', () => {
+  it('settles directly to idle after autonomous float stops', () => {
     const fsm = new AnimationStateMachine('idle');
 
     expect(fsm.transition('START_FLOAT')).toBe(true);
     expect(fsm.getCurrentState()).toBe('float');
     expect(fsm.transition('STOP_FLOAT')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('settle');
-
-    fsm.update(300);
     expect(fsm.getCurrentState()).toBe('idle');
   });
 
@@ -166,8 +155,6 @@ describe('Domain: AnimationStateMachine', () => {
     expect(wakeFsm.transition('REACT_CONFUSED')).toBe(false);
 
     wakeFsm.update(900);
-    expect(wakeFsm.getCurrentState()).toBe('settle');
-    wakeFsm.update(300);
     expect(wakeFsm.getCurrentState()).toBe('idle');
 
     const dragFsm = new AnimationStateMachine('sleep_loop');
@@ -198,7 +185,7 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentState()).toBe('thinking');
   });
 
-  it('lets critical spook interrupt any state and settle afterward', () => {
+  it('lets critical spook interrupt any state and settle directly to idle afterward', () => {
     const fsm = new AnimationStateMachine('sleep_start');
     const spook = createSystemAnimationIntent('spook', 'neutral');
 
@@ -207,6 +194,6 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentExpression()).toBe('surprised');
 
     fsm.update(900);
-    expect(fsm.getCurrentState()).toBe('settle');
+    expect(fsm.getCurrentState()).toBe('idle');
   });
 });

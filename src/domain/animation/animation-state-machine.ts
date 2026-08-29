@@ -83,7 +83,7 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     priority: 'high',
     stable: false,
     durationMs: 800,
-    autoNextState: 'settle',
+    autoNextState: 'idle',
     allowedTransitions: ['settle', 'idle', 'dragged', 'spook'],
   },
   happy: {
@@ -92,7 +92,7 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     priority: 'normal',
     stable: false,
     durationMs: 1500,
-    autoNextState: 'settle',
+    autoNextState: 'idle',
     allowedTransitions: ['settle', 'idle', 'dragged', 'spook', 'surprised', 'thinking', 'sleep', 'sleep_start'],
   },
   surprised: {
@@ -101,7 +101,7 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     priority: 'normal',
     stable: false,
     durationMs: 1200,
-    autoNextState: 'settle',
+    autoNextState: 'idle',
     allowedTransitions: ['settle', 'idle', 'dragged', 'spook', 'falling', 'thinking', 'happy', 'sleep', 'sleep_start'],
   },
   sleep: {
@@ -117,7 +117,7 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     priority: 'normal',
     stable: false,
     durationMs: 2500,
-    autoNextState: 'settle',
+    autoNextState: 'idle',
     allowedTransitions: ['settle', 'idle', 'happy', 'surprised', 'sleep', 'sleep_start', 'float', 'dragged', 'falling', 'thinking', 'spook'],
   },
   spook: {
@@ -126,7 +126,7 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     priority: 'critical',
     stable: false,
     durationMs: 900,
-    autoNextState: 'settle',
+    autoNextState: 'idle',
     allowedTransitions: ['settle', 'idle', 'dragged'],
   },
   sleep_start: {
@@ -151,7 +151,7 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     priority: 'high',
     stable: false,
     durationMs: 900,
-    autoNextState: 'settle',
+    autoNextState: 'idle',
     allowedTransitions: ['settle', 'idle', 'dragged', 'spook', 'sleep_start'],
   },
   settle: {
@@ -159,7 +159,7 @@ export const ANIMATION_STATES: Record<AnimationState, StateConfig> = {
     interruptible: true,
     priority: 'low',
     stable: false,
-    durationMs: 300,
+    durationMs: 0,
     autoNextState: 'idle',
     allowedTransitions: ['idle', 'dragged', 'spook', 'sleep_start', 'sleep_loop', 'thinking', 'happy', 'surprised', 'float'],
   },
@@ -269,7 +269,7 @@ export class AnimationStateMachine {
         break;
       case 'STOP_FLOAT':
       case 'SETTLE':
-        targetState = 'settle';
+        targetState = 'idle';
         priority = 'normal';
         break;
       case 'WAKE_UP':
@@ -380,6 +380,6 @@ function animationIntentKindToState(kind: AnimationIntentKind): AnimationState {
     case 'spook':
       return 'spook';
     case 'settle':
-      return 'settle';
+      return 'idle';
   }
 }
