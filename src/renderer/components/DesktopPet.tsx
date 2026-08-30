@@ -75,28 +75,44 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [scale, setScale] = useState<number>(1.0);
   const [debugHudVisible, setDebugHudVisible] = useState<boolean>(false);
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState<boolean>(true);
-  const [manifestAnimations, setManifestAnimations] = useState<ManifestAnimationRegistry>({
-    bodyKeys: [],
-    faceKeys: [],
-  });
+  const [manifestAnimations, setManifestAnimations] = useState<ManifestAnimationRegistry>(
+    {
+      bodyKeys: [],
+      faceKeys: [],
+    }
+  );
   const [inspectorBodyKey, setInspectorBodyKey] = useState<string | null>(null);
   const [inspectorFaceKey, setInspectorFaceKey] = useState<string | null>(null);
   const [showAnchorPoint, setShowAnchorPoint] = useState<boolean>(false);
-  const [debugTelemetry, setDebugTelemetry] = useState<DebugTelemetryDTO>(EMPTY_DEBUG_TELEMETRY);
+  const [debugTelemetry, setDebugTelemetry] =
+    useState<DebugTelemetryDTO>(EMPTY_DEBUG_TELEMETRY);
   const [renderFps, setRenderFps] = useState<number>(0);
   const debugHudEnabled = window.wispAPI.debugEnabled;
   const environmentSnapshot = useEnvironmentSnapshot();
 
-  const sendCharacterInteraction = useCallback((interaction: CharacterInteractionDTO): void => {
-    void window.wispAPI.interactWithCharacter(interaction)
-      .catch((err) => console.error('Character interaction failed:', err));
-  }, []);
+  const sendCharacterInteraction = useCallback(
+    (interaction: CharacterInteractionDTO): void => {
+      void window.wispAPI
+        .interactWithCharacter(interaction)
+        .catch((err) => console.error('Character interaction failed:', err));
+    },
+    []
+  );
 
   // Animation State Machine Hook (FSM)
-  const { state: animState, expression, dispatch: dispatchAnim } = useAnimationStateMachine('idle');
+  const {
+    state: animState,
+    expression,
+    dispatch: dispatchAnim,
+  } = useAnimationStateMachine('idle');
 
   // Drag & Click reference trackers
-  const dragStartRef = useRef<{ mouseX: number; mouseY: number; petX: number; petY: number }>({
+  const dragStartRef = useRef<{
+    mouseX: number;
+    mouseY: number;
+    petX: number;
+    petY: number;
+  }>({
     mouseX: 0,
     mouseY: 0,
     petX: 300,
@@ -112,32 +128,41 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const motionEngineRef = useRef(new MotionEngine());
   const surfaceKinematicsRef = useRef(new SurfaceKinematics());
   const motionStateRef = useRef<MotionState>({
-    phase: 'grounded', position: { x: 300, y: 300 }, velocityPxPerSec: { x: 0, y: 0 },
-    activeBoundsId: 'initial', airborneElapsedSec: 0, peakGroundImpactSeverity: 0,
+    phase: 'grounded',
+    position: { x: 300, y: 300 },
+    velocityPxPerSec: { x: 0, y: 0 },
+    activeBoundsId: 'initial',
+    airborneElapsedSec: 0,
+    peakGroundImpactSeverity: 0,
   });
   const surfaceStateRef = useRef<SurfaceKinematicsState>({
-    phase: 'grounded', updatedAtMs: performance.now(), locomotionVelocityPxPerSec: { x: 0, y: 0 },
+    phase: 'grounded',
+    updatedAtMs: performance.now(),
+    locomotionVelocityPxPerSec: { x: 0, y: 0 },
   });
-  const pointerSamplesRef = useRef<Array<{ position: { x: number; y: number }; capturedAtMs: number }>>([]);
+  const pointerSamplesRef = useRef<
+    Array<{ position: { x: number; y: number }; capturedAtMs: number }>
+  >([]);
   const environmentSnapshotRef = useRef(environmentSnapshot);
   environmentSnapshotRef.current = environmentSnapshot;
 
   const commitMotionState = useCallback((nextState: MotionState): void => {
     motionStateRef.current = nextState;
     setPosition(nextState.position);
-    // Main owns the native window, but its asynchronous clamp result must not
-    // replace Domain state while forced motion owns the world position.
-    void window.wispAPI.updatePosition(nextState.position)
-      .catch((err) => console.error('Position update error:', err));
   }, []);
 
-  const applyMotionEvents = useCallback((events: readonly MotionEvent[]): void => {
-    for (const event of events) {
-      if (event.type === 'drag_started') dispatchAnim('START_DRAG', true, true);
-      if (event.type === 'airborne_started') dispatchAnim('FALL', true, true);
-      if (event.type === 'landed') dispatchAnim('LAND', true, false);
-    }
-  }, [dispatchAnim]);
+  const applyMotionEvents = useCallback(
+    (events: readonly MotionEvent[]): void => {
+      for (const event of events) {
+        if (event.type === 'drag_started')
+          dispatchAnim('START_DRAG', true, true);
+        if (event.type === 'airborne_started')
+          dispatchAnim('FALL', true, true);
+        if (event.type === 'landed') dispatchAnim('LAND', true, false);
+      }
+    },
+    [dispatchAnim]
+  );
 
   // Notify Electron main process when menu expands or collapses and synchronize position
   useEffect(() => {
@@ -145,14 +170,23 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.wispAPI
         .setMenuExpanded(menuOpen)
         .then((newPos) => {
-          if (newPos && motionStateRef.current.phase === 'grounded' && surfaceStateRef.current.phase === 'grounded') {
+          if (
+            newPos &&
+            motionStateRef.current.phase === 'grounded' &&
+            surfaceStateRef.current.phase === 'grounded'
+          ) {
             setPosition(newPos);
-            motionStateRef.current = { ...motionStateRef.current, position: newPos };
+            motionStateRef.current = {
+              ...motionStateRef.current,
+              position: newPos,
+            };
             dragStartRef.current.petX = newPos.x;
             dragStartRef.current.petY = newPos.y;
           }
         })
-        .catch((err) => console.error('Failed to update menu expanded state:', err));
+        .catch((err) =>
+          console.error('Failed to update menu expanded state:', err)
+        );
     }
   }, [menuOpen]);
 
@@ -166,11 +200,14 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     enabled: autoWanderEnabled && !menuOpen,
     onPositionChange: (newPos) => {
       setPosition(newPos);
-      if (motionStateRef.current.phase === 'grounded' && surfaceStateRef.current.phase === 'grounded') {
-        motionStateRef.current = { ...motionStateRef.current, position: newPos };
-      }
-      if (window.wispAPI?.updatePosition) {
-        void window.wispAPI.updatePosition(newPos);
+      if (
+        motionStateRef.current.phase === 'grounded' &&
+        surfaceStateRef.current.phase === 'grounded'
+      ) {
+        motionStateRef.current = {
+          ...motionStateRef.current,
+          position: newPos,
+        };
       }
     },
     dispatchAnim,
@@ -185,7 +222,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     });
   }, [animState, expression, isWandering, customFace]);
 
-  const debugAnimationSelection = useMemo<DebugAnimationSelection | undefined>(() => {
+  const debugAnimationSelection = useMemo<
+    DebugAnimationSelection | undefined
+  >(() => {
     if (inspectorBodyKey === null) return undefined;
     return {
       bodyKey: inspectorBodyKey,
@@ -193,23 +232,31 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     };
   }, [inspectorBodyKey, inspectorFaceKey]);
 
-  const handleManifestAnimationsLoaded = useCallback((registry: ManifestAnimationRegistry): void => {
-    setManifestAnimations(registry);
-  }, []);
+  const handleManifestAnimationsLoaded = useCallback(
+    (registry: ManifestAnimationRegistry): void => {
+      setManifestAnimations(registry);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!debugHudEnabled || (!debugHudVisible && !menuOpen)) return undefined;
     const getDebugTelemetry = window.wispAPI.getDebugTelemetry;
     const onDebugTelemetry = window.wispAPI.onDebugTelemetry;
-    if (getDebugTelemetry === undefined || onDebugTelemetry === undefined) return undefined;
+    if (getDebugTelemetry === undefined || onDebugTelemetry === undefined)
+      return undefined;
     let active = true;
     const refreshTelemetry = (): void => {
       void getDebugTelemetry()
-        .then((telemetry) => { if (active) setDebugTelemetry(telemetry); })
+        .then((telemetry) => {
+          if (active) setDebugTelemetry(telemetry);
+        })
         .catch(() => undefined);
     };
     refreshTelemetry();
-    const unsubscribe = onDebugTelemetry((telemetry) => setDebugTelemetry(telemetry));
+    const unsubscribe = onDebugTelemetry((telemetry) =>
+      setDebugTelemetry(telemetry)
+    );
     const intervalId = window.setInterval(refreshTelemetry, 1000);
     return (): void => {
       active = false;
@@ -265,9 +312,16 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.wispAPI
         .getPosition()
         .then((pos) => {
-          if (motionStateRef.current.phase !== 'grounded' || surfaceStateRef.current.phase !== 'grounded') return;
+          if (
+            motionStateRef.current.phase !== 'grounded' ||
+            surfaceStateRef.current.phase !== 'grounded'
+          )
+            return;
           setPosition(pos);
-          motionStateRef.current = { ...motionStateRef.current, position: pos };
+          motionStateRef.current = {
+            ...motionStateRef.current,
+            position: pos,
+          };
           dragStartRef.current.petX = pos.x;
           dragStartRef.current.petY = pos.y;
         })
@@ -294,20 +348,25 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     setCurrentMessage(null);
   }, []);
 
-  const handleSelectFace = useCallback((face: AnimationExpressionHint | null) => {
-    setCustomFace(face);
-    const faceMessages: Record<string, string> = {
-      happy: 'Улыбаюсь! 😊',
-      sad: 'Мне немного грустно... 🥺',
-      shocked: 'Ого, ничего себе! 😲',
-      sleepy: 'Глазки слипаются... 😴',
-      talking: 'Что-то рассказываю! 💬',
-      thinking: 'Хм, интересно... 🤔',
-      angry: 'Я сержусь! 😠',
-    };
-    const text = face ? (faceMessages[face] ?? `Выражение: ${face}`) : 'Обычное выражение ✨';
-    setCurrentMessage(createChatMessage('thought', text));
-  }, []);
+  const handleSelectFace = useCallback(
+    (face: AnimationExpressionHint | null) => {
+      setCustomFace(face);
+      const faceMessages: Record<string, string> = {
+        happy: 'Улыбаюсь! 😊',
+        sad: 'Мне немного грустно... 🥺',
+        shocked: 'Ого, ничего себе! 😲',
+        sleepy: 'Глазки слипаются... 😴',
+        talking: 'Что-то рассказываю! 💬',
+        thinking: 'Хм, интересно... 🤔',
+        angry: 'Я сержусь! 😠',
+      };
+      const text = face
+        ? (faceMessages[face] ?? `Выражение: ${face}`)
+        : 'Обычное выражение ✨';
+      setCurrentMessage(createChatMessage('thought', text));
+    },
+    []
+  );
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Left click only for dragging / gestures
@@ -327,7 +386,12 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       y: position.y,
       time: performance.now(),
     };
-    pointerSamplesRef.current = [{ position: { x: position.x, y: position.y }, capturedAtMs: performance.now() }];
+    pointerSamplesRef.current = [
+      {
+        position: { x: position.x, y: position.y },
+        capturedAtMs: performance.now(),
+      },
+    ];
   };
 
   useEffect(() => {
@@ -336,13 +400,17 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       const deltaY = e.screenY - dragStartRef.current.mouseY;
 
       // Threshold to detect start of drag
-      if (motionStateRef.current.phase !== 'dragged' && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
+      if (
+        motionStateRef.current.phase !== 'dragged' &&
+        (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)
+      ) {
         if (clickTimeRef.current > 0) {
           const environment = environmentSnapshotRef.current;
           const started = motionEngineRef.current.beginDrag(
             motionStateRef.current,
             motionStateRef.current.position,
-            environment?.screenBounds.id ?? motionStateRef.current.activeBoundsId,
+            environment?.screenBounds.id ??
+              motionStateRef.current.activeBoundsId,
             performance.now()
           );
           setIsDragging(true);
@@ -378,11 +446,22 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       }
 
       const nextPosition = { x: rawTargetX, y: rawTargetY };
-      pointerSamplesRef.current.push({ position: nextPosition, capturedAtMs: performance.now() });
-      if (pointerSamplesRef.current.length > DEFAULT_MOTION_CONSTRAINTS.throwSampling.maxSamples) {
+      pointerSamplesRef.current.push({
+        position: nextPosition,
+        capturedAtMs: performance.now(),
+      });
+      if (
+        pointerSamplesRef.current.length >
+        DEFAULT_MOTION_CONSTRAINTS.throwSampling.maxSamples
+      ) {
         pointerSamplesRef.current.shift();
       }
-      commitMotionState(motionEngineRef.current.updateDraggedPosition(motionStateRef.current, nextPosition));
+      commitMotionState(
+        motionEngineRef.current.updateDraggedPosition(
+          motionStateRef.current,
+          nextPosition
+        )
+      );
     };
 
     const handleMouseUp = () => {
@@ -390,8 +469,14 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
       if (motionStateRef.current.phase === 'dragged') {
         const releaseAtMs = performance.now();
-        const throwVector = motionEngineRef.current.estimateThrow(pointerSamplesRef.current, releaseAtMs);
-        const released = motionEngineRef.current.release(motionStateRef.current, throwVector);
+        const throwVector = motionEngineRef.current.estimateThrow(
+          pointerSamplesRef.current,
+          releaseAtMs
+        );
+        const released = motionEngineRef.current.release(
+          motionStateRef.current,
+          throwVector
+        );
         setIsDragging(false);
         setTiltDeg(0);
         commitMotionState(released.state);
@@ -424,23 +509,36 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         let motion = motionStateRef.current;
         let events: readonly MotionEvent[] = [];
         const surfaceState = surfaceStateRef.current;
-        if (surfaceState.phase === 'climbing_wall' || surfaceState.phase === 'hanging_ceiling') {
-          const surfaceResult = surfaceKinematicsRef.current.step({
-            state: surfaceState,
-            motion,
-            environment,
-            nowMs: now,
-          }, motionEngineRef.current);
+        if (
+          surfaceState.phase === 'climbing_wall' ||
+          surfaceState.phase === 'hanging_ceiling'
+        ) {
+          const surfaceResult = surfaceKinematicsRef.current.step(
+            {
+              state: surfaceState,
+              motion,
+              environment,
+              nowMs: now,
+            },
+            motionEngineRef.current
+          );
           surfaceStateRef.current = surfaceResult.state;
           motion = surfaceResult.motion.state;
           events = surfaceResult.motion.events;
         }
 
-        const deltaSec = previousNow === undefined
-          ? 0
-          : Math.min((now - previousNow) / 1000, DEFAULT_MOTION_CONSTRAINTS.maxFrameDeltaSec);
+        const deltaSec =
+          previousNow === undefined
+            ? 0
+            : Math.min(
+                (now - previousNow) / 1000,
+                DEFAULT_MOTION_CONSTRAINTS.maxFrameDeltaSec
+              );
         accumulatorSec += Math.max(0, deltaSec);
-        while (motion.phase === 'airborne' && accumulatorSec >= DEFAULT_MOTION_CONSTRAINTS.fixedStepSec) {
+        while (
+          motion.phase === 'airborne' &&
+          accumulatorSec >= DEFAULT_MOTION_CONSTRAINTS.fixedStepSec
+        ) {
           const stepped = motionEngineRef.current.step({
             state: motion,
             stepSec: DEFAULT_MOTION_CONSTRAINTS.fixedStepSec,
@@ -470,8 +568,14 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     } else {
       sendCharacterInteraction({ type: 'click' });
       dispatchAnim('PET');
-      const phrases = ['Мурр! ✨', 'Ты лучший! 💖', 'Хи-хи, щекотно!', 'Что делаем? 🚀'];
-      const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)] ?? 'Мурр!';
+      const phrases = [
+        'Мурр! ✨',
+        'Ты лучший! 💖',
+        'Хи-хи, щекотно!',
+        'Что делаем? 🚀',
+      ];
+      const randomPhrase =
+        phrases[Math.floor(Math.random() * phrases.length)] ?? 'Мурр!';
       setCurrentMessage(createChatMessage('pet', randomPhrase));
     }
   };
@@ -495,25 +599,33 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const handleResetPosition = useCallback(() => {
     const resetToCenter = (bounds: ScreenBoundsDTO): void => {
       const centeredPosition = {
-        x: Math.round(bounds.x + (bounds.width - COMPACT_WINDOW_SIZE.width) / 2),
-        y: Math.round(bounds.y + (bounds.height - COMPACT_WINDOW_SIZE.height) / 2),
+        x: Math.round(
+          bounds.x + (bounds.width - COMPACT_WINDOW_SIZE.width) / 2
+        ),
+        y: Math.round(
+          bounds.y + (bounds.height - COMPACT_WINDOW_SIZE.height) / 2
+        ),
       };
 
-      void window.wispAPI.updatePosition(centeredPosition).then((nextPosition) => {
-        setPosition(nextPosition);
-        motionStateRef.current = { ...motionStateRef.current, position: nextPosition };
-        dragStartRef.current.petX = nextPosition.x;
-        dragStartRef.current.petY = nextPosition.y;
-        setMenuOpen(false);
-      }).catch((err) => console.error('Failed to reset position:', err));
+      setPosition(centeredPosition);
+      motionStateRef.current = {
+        ...motionStateRef.current,
+        position: centeredPosition,
+      };
+      dragStartRef.current.petX = centeredPosition.x;
+      dragStartRef.current.petY = centeredPosition.y;
+      setMenuOpen(false);
     };
 
-    void window.wispAPI.getEnvironmentSnapshot()
+    void window.wispAPI
+      .getEnvironmentSnapshot()
       .then((bounds) => {
         setScreenBounds(bounds.screenBounds);
         resetToCenter(bounds.screenBounds);
       })
-      .catch((err) => console.error('Failed to get environment snapshot:', err));
+      .catch((err: unknown) =>
+        console.error('Failed to get environment snapshot:', err)
+      );
   }, []);
 
   const handleClose = () => {
@@ -522,47 +634,56 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     }
   };
 
-  const handlePlayAnimation = useCallback((event: AnimationEvent) => {
-    if (event === 'START_SLEEP') {
-      triggerNap();
-      dispatchAnim('START_SLEEP', true, true);
-      setCurrentMessage(createChatMessage('thought', 'Zzz... 🌙'));
-    } else if (event === 'WAKE_UP') {
-      wakeUp();
-      dispatchAnim('WAKE_UP', true, false);
-      setCurrentMessage(createChatMessage('pet', 'Доброе утро! ☀️'));
-    } else if (event === 'PET' || event === 'REACT_HAPPY') {
-      sendCharacterInteraction({ type: 'pet' });
-      dispatchAnim('PET', true, true);
-      setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
-    } else if (event === 'THINK') {
-      dispatchAnim('THINK', true, true);
-      setCurrentMessage(createChatMessage('thought', 'Хм-м, о чём бы поразмышлять?.. 🤔'));
-    } else if (event === 'SPOOK' || event === 'REACT_CONFUSED') {
-      sendCharacterInteraction({ type: 'click', intensity: 2 });
-      dispatchAnim('SPOOK', true, true);
-      setCurrentMessage(createChatMessage('pet', 'Ой! 😲'));
-    } else if (event === 'WAVE') {
-      dispatchAnim('WAVE', true, true);
-      setCurrentMessage(createChatMessage('pet', 'Привет-привет! 🖐️'));
-    } else if (event === 'CELEBRATE') {
-      dispatchAnim('CELEBRATE', true, true);
-      setCurrentMessage(createChatMessage('pet', 'Ура-а! Празднуем! 🎉'));
-    } else if (event === 'BORED') {
-      dispatchAnim('BORED', true, true);
-      setCurrentMessage(createChatMessage('thought', 'Эх, скучновато... 🥱'));
-    } else if (event === 'START_FLOAT') {
-      dispatchAnim('START_FLOAT', true, true);
-    } else if (event === 'START_DRAG') {
-      dispatchAnim('START_DRAG', true, true);
-    } else if (event === 'LAND') {
-      dispatchAnim('LAND', true, false);
-    } else if (event === 'SETTLE') {
-      dispatchAnim('SETTLE', true, false);
-    } else {
-      dispatchAnim(event, true, true);
-    }
-  }, [dispatchAnim, sendCharacterInteraction, triggerNap, wakeUp]);
+  const handlePlayAnimation = useCallback(
+    (event: AnimationEvent) => {
+      if (event === 'START_SLEEP') {
+        triggerNap();
+        dispatchAnim('START_SLEEP', true, true);
+        setCurrentMessage(createChatMessage('thought', 'Zzz... 🌙'));
+      } else if (event === 'WAKE_UP') {
+        wakeUp();
+        dispatchAnim('WAKE_UP', true, false);
+        setCurrentMessage(createChatMessage('pet', 'Доброе утро! ☀️'));
+      } else if (event === 'PET' || event === 'REACT_HAPPY') {
+        sendCharacterInteraction({ type: 'pet' });
+        dispatchAnim('PET', true, true);
+        setCurrentMessage(
+          createChatMessage('pet', 'Люблю, когда гладят! 💖')
+        );
+      } else if (event === 'THINK') {
+        dispatchAnim('THINK', true, true);
+        setCurrentMessage(
+          createChatMessage('thought', 'Хм-м, о чём бы поразмышлять?.. 🤔')
+        );
+      } else if (event === 'SPOOK' || event === 'REACT_CONFUSED') {
+        sendCharacterInteraction({ type: 'click', intensity: 2 });
+        dispatchAnim('SPOOK', true, true);
+        setCurrentMessage(createChatMessage('pet', 'Ой! 😲'));
+      } else if (event === 'WAVE') {
+        dispatchAnim('WAVE', true, true);
+        setCurrentMessage(createChatMessage('pet', 'Привет-привет! 🖐️'));
+      } else if (event === 'CELEBRATE') {
+        dispatchAnim('CELEBRATE', true, true);
+        setCurrentMessage(createChatMessage('pet', 'Ура-а! Празднуем! 🎉'));
+      } else if (event === 'BORED') {
+        dispatchAnim('BORED', true, true);
+        setCurrentMessage(
+          createChatMessage('thought', 'Эх, скучновато... 🥱')
+        );
+      } else if (event === 'START_FLOAT') {
+        dispatchAnim('START_FLOAT', true, true);
+      } else if (event === 'START_DRAG') {
+        dispatchAnim('START_DRAG', true, true);
+      } else if (event === 'LAND') {
+        dispatchAnim('LAND', true, false);
+      } else if (event === 'SETTLE') {
+        dispatchAnim('SETTLE', true, false);
+      } else {
+        dispatchAnim(event, true, true);
+      }
+    },
+    [dispatchAnim, sendCharacterInteraction, triggerNap, wakeUp]
+  );
 
   const debugHudElement = (
     <DebugHUD
@@ -629,17 +750,23 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         onPet={() => {
           sendCharacterInteraction({ type: 'pet' });
           dispatchAnim('PET', true, true);
-          setCurrentMessage(createChatMessage('pet', 'Люблю, когда гладят! 💖'));
+          setCurrentMessage(
+            createChatMessage('pet', 'Люблю, когда гладят! 💖')
+          );
         }}
         onPlay={() => {
           sendCharacterInteraction({ type: 'play' });
           dispatchAnim('RUN', true, false);
-          setCurrentMessage(createChatMessage('pet', 'Давай играть! Догони меня! 🎮'));
+          setCurrentMessage(
+            createChatMessage('pet', 'Давай играть! Догони меня! 🎮')
+          );
         }}
         onFeed={() => {
           sendCharacterInteraction({ type: 'feed' });
           dispatchAnim('REACT_HAPPY', true, false);
-          setCurrentMessage(createChatMessage('pet', 'Спасибо за угощение! Вкусно! 🍪'));
+          setCurrentMessage(
+            createChatMessage('pet', 'Спасибо за угощение! Вкусно! 🍪')
+          );
         }}
         onThink={() => {
           dispatchAnim('THINK', true, true);
@@ -650,7 +777,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
             'А звёзды сегодня такие яркие... 💭',
             'Думаю о чём-то приятном! 🌸',
           ];
-          const randomThought = thoughts[Math.floor(Math.random() * thoughts.length)] ?? 'Хм-м... 🤔';
+          const randomThought =
+            thoughts[Math.floor(Math.random() * thoughts.length)] ??
+            'Хм-м... 🤔';
           setCurrentMessage(createChatMessage('thought', randomThought));
         }}
         onToggleSleep={() => {
@@ -668,9 +797,12 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         onToggleDebugHud={() => setDebugHudVisible((visible) => !visible)}
         onToggleAlwaysOnTop={() => {
           const nextValue = !isAlwaysOnTop;
-          void window.wispAPI.setAlwaysOnTop(nextValue)
+          void window.wispAPI
+            .setAlwaysOnTop(nextValue)
             .then(setIsAlwaysOnTop)
-            .catch((err) => console.error('Failed to toggle always-on-top:', err));
+            .catch((err: unknown) =>
+              console.error('Failed to toggle always-on-top:', err)
+            );
         }}
         onResetPosition={handleResetPosition}
         onPlayAnimation={handlePlayAnimation}
@@ -707,53 +839,92 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
           setMenuOpen(false);
         }}
       >
-        💬 Wisp • {isWandering ? 'wandering' : animState} {debugTelemetry.character.synthesizedTone === 'affectionate' ? '💖' : ''}
+        💬 Wisp • {isWandering ? 'wandering' : animState}{' '}
+        {debugTelemetry.character.synthesizedTone === 'affectionate'
+          ? '💖'
+          : ''}
       </div>
     </div>
   );
 };
 
-function animationStateToIntentKind(state: AnyAnimationState): AnimationIntentKind {
+function animationStateToIntentKind(
+  state: AnyAnimationState
+): AnimationIntentKind {
   switch (state) {
-    case 'float': return 'walk';
-    case 'dragged': return 'dragged';
-    case 'falling': return 'dragged';
-    case 'landing': return 'land';
+    case 'float':
+      return 'walk';
+    case 'dragged':
+      return 'dragged';
+    case 'falling':
+      return 'fall';
+    case 'landing':
+      return 'land';
     case 'sleep':
-    case 'sleep_loop': return 'sleep_loop';
-    case 'sleep_start': return 'sleep_start';
-    case 'wake_up': return 'wake_up';
-    case 'happy': return 'happy_reaction';
-    case 'surprised': return 'confused_reaction';
-    case 'thinking': return 'thinking_loop';
-    case 'spook': return 'spook';
-    case 'wave': return 'wave';
-    case 'celebrate': return 'celebrate';
-    case 'bored': return 'bored';
-    case 'settle': return 'settle';
-    case 'sit': return 'sit';
-    case 'stand_up': return 'stand_up';
-    case 'lie_down': return 'lie_down';
-    case 'get_up': return 'get_up';
-    case 'run': return 'run';
-    case 'jump': return 'jump';
-    case 'fall': return 'fall';
-    case 'land': return 'land';
-    case 'crawl': return 'crawl';
+    case 'sleep_loop':
+      return 'sleep_loop';
+    case 'sleep_start':
+      return 'sleep_start';
+    case 'wake_up':
+      return 'wake_up';
+    case 'happy':
+      return 'happy_reaction';
+    case 'surprised':
+      return 'confused_reaction';
+    case 'thinking':
+      return 'thinking_loop';
+    case 'spook':
+      return 'spook';
+    case 'wave':
+      return 'wave';
+    case 'celebrate':
+      return 'celebrate';
+    case 'bored':
+      return 'bored';
+    case 'settle':
+      return 'settle';
+    case 'sit':
+      return 'sit';
+    case 'stand_up':
+      return 'stand_up';
+    case 'lie_down':
+      return 'lie_down';
+    case 'get_up':
+      return 'get_up';
+    case 'run':
+      return 'run';
+    case 'jump':
+      return 'jump';
+    case 'fall':
+      return 'fall';
+    case 'land':
+      return 'land';
+    case 'crawl':
+      return 'crawl';
     case 'climb_wall':
-    case 'hang_ceiling': return 'crawl';
-    case 'idle': return 'idle_blink';
+      return 'climb_wall';
+    case 'hang_ceiling':
+      return 'hang_ceiling';
+    case 'idle':
+      return 'idle_blink';
   }
 }
 
-function expressionToHint(expr: CharacterExpression): AnimationExpressionHint {
+function expressionToHint(
+  expr: CharacterExpression
+): AnimationExpressionHint {
   switch (expr) {
-    case 'happy': return 'happy';
-    case 'sleepy': return 'sleepy';
+    case 'happy':
+      return 'happy';
+    case 'sleepy':
+      return 'sleepy';
     case 'surprised':
-    case 'flying': return 'surprised';
-    case 'curious': return 'curious';
+    case 'flying':
+      return 'surprised';
+    case 'curious':
+      return 'curious';
     case 'idle':
-    default: return 'idle';
+    default:
+      return 'idle';
   }
 }

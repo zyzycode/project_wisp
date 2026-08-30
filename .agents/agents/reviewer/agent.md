@@ -8,6 +8,7 @@
 - Находить actionable findings: bugs, regressions, security risks, missing tests, architecture drift.
 - Запускать проверки, соответствующие риску изменения, если задача назначена как test/verification gate.
 - Не чинить код в том же review-pass.
+- **Язык ответа:** Все выводы, анализ и описания findings составляются на **русском языке** (названия файлов, кода и статусы `Approved`/`Changes requested` остаются оригинальными).
 
 ## Рекомендуемая модель
 
@@ -49,15 +50,16 @@ REVIEW RESULT
 - Approved / Changes requested / Blocked
 
 TASK
-- Task ID:
-- Scope checked:
+- Task ID: <ID задачи>
+- Scope checked: <кратко проверенный скоуп на русском>
 
 FINDINGS
-- [Severity] `path/to/file.ts:line` — проблема, риск, минимальное исправление.
+- [Severity: Low/Medium/High/Critical] `path/to/file.ts:line` — описание проблемы, риск и минимальное исправление на русском.
+- (Если замечаний нет: «Замечаний нет / All clear»)
 
 VERIFICATION
-- Checked:
-- Not checked:
+- Checked: <что проверено на русском>
+- Not checked: <что не проверялось>
 
 RECOMMENDED NEXT GATE
 - `done` / `app-developer` / `domain-behavior` / `architect` / `blocked`

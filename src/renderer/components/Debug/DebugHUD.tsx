@@ -1,7 +1,7 @@
 import React from 'react';
 import type { DebugLogEntryDTO, PetPositionDTO } from '../../../shared/ipc-contracts';
 import type { AnimationExpressionHint, AnimationIntent } from '../../../domain/animation/animation-intent';
-import type { AnimationEvent, AnimationState } from '../../../domain/animation/animation-state-machine';
+import type { AnimationEvent, AnyAnimationState } from '../../../domain/animation/animation-state-machine';
 import type { Needs, Relationship, SynthesizedEmotionalTone } from '../../../domain/character/types';
 import { LogViewer } from './LogViewer';
 import { NeedsIndicator } from './NeedsIndicator';
@@ -11,7 +11,7 @@ export interface DebugHUDProps {
   needs: Needs;
   relationship: Relationship;
   tone: SynthesizedEmotionalTone;
-  animationState: AnimationState;
+  animationState: AnyAnimationState;
   animationIntent: AnimationIntent;
   fps: number;
   logs: readonly DebugLogEntryDTO[];
@@ -33,30 +33,37 @@ export interface DebugHUDProps {
 }
 
 const ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
-  { event: 'SETTLE', label: '🌿 Дыхание (Idle)' },
-  { event: 'START_FLOAT', label: '🐾 Ходьба (Walk)' },
-  { event: 'PET', label: '💖 Радость (Happy)' },
-  { event: 'WAVE', label: '👋 Привет (Wave)' },
-  { event: 'CELEBRATE', label: '🎉 Праздник (Party)' },
-  { event: 'THINK', label: '💡 Мысли (Think)' },
-  { event: 'SPOOK', label: '😲 Испуг (Scared)' },
-  { event: 'BORED', label: '🥱 Скука (Bored)' },
-  { event: 'START_SLEEP', label: '🌙 Сон (Sleep)' },
-  { event: 'WAKE_UP', label: '☀️ Подъём (Wake)' },
-  { event: 'START_DRAG', label: '🪁 Полёт (Drag)' },
-  { event: 'LAND', label: '🛫 Посадка (Land)' },
+  { event: 'SETTLE', label: 'body_idle' },
+  { event: 'START_FLOAT', label: 'body_walk' },
+  { event: 'PET', label: 'body_petting' },
+  { event: 'WAVE', label: 'body_wave' },
+  { event: 'CELEBRATE', label: 'body_celebrate' },
+  { event: 'THINK', label: 'body_thinking' },
+  { event: 'SPOOK', label: 'body_scared' },
+  { event: 'BORED', label: 'body_bored' },
+  { event: 'START_SLEEP', label: 'body_sleep_trans' },
+  { event: 'WAKE_UP', label: 'body_land' },
+  { event: 'START_DRAG', label: 'body_dragged' },
+  { event: 'LAND', label: 'body_land' },
 ];
 
 const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = [
-  { face: null, label: '🔄 Авто' },
-  { face: 'happy', label: '😊 Радость' },
-  { face: 'sad', label: '😢 Грусть' },
-  { face: 'shocked', label: '😲 Шок' },
-  { face: 'sleepy', label: '😴 Сон' },
-  { face: 'talking', label: '💬 Речь' },
-  { face: 'thinking', label: '🤔 Мысли' },
-  { face: 'angry', label: '😠 Злость' },
+  { face: null, label: 'auto' },
+  { face: 'happy', label: 'face_happy' },
+  { face: 'sad', label: 'face_sad' },
+  { face: 'shocked', label: 'face_shocked' },
+  { face: 'sleepy', label: 'face_sleep' },
+  { face: 'talking', label: 'face_talking' },
+  { face: 'thinking', label: 'face_thinking' },
+  { face: 'angry', label: 'face_angry' },
 ];
+
+function relationshipLevel(friendship: number): string {
+  if (friendship >= 750) return 'close';
+  if (friendship >= 300) return 'trusted';
+  if (friendship > 0) return 'acquaintance';
+  return 'new';
+}
 
 export const DebugHUD: React.FC<DebugHUDProps> = ({
   needs,
@@ -91,6 +98,12 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
 
       <NeedsIndicator needs={needs} />
 
+      <section className="debug-hud-relationship">
+        <div className="debug-hud-section-title">❤️ Relationship</div>
+        <div>💖 Friendship: {Math.round(relationship.friendship)} · {relationshipLevel(relationship.friendship)}</div>
+        <div>Love: {relationship.loveUnlocked ? 'unlocked' : 'locked'} ({Math.round(relationship.love)})</div>
+      </section>
+
       <section className="debug-hud-state">
         <div className="debug-hud-section-title">🎭 Animation & FSM</div>
         <div>🎭 Tone: <strong>{tone}</strong></div>
@@ -98,6 +111,15 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
         <div>🎯 Intent: <strong>{animationIntent.kind}</strong> ({animationIntent.loop})</div>
         <div>👁️ Expression: <strong>{animationIntent.expressionHint ?? 'default'}</strong></div>
       </section>
+
+      {position ? (
+        <section className="debug-hud-state">
+          <div className="debug-hud-section-title">📍 Spatial & Motion</div>
+          <div>Coords: <strong>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</strong></div>
+          <div>State: <strong>{isWandering ? 'Walking' : 'Resting'}</strong></div>
+          <div>Heading: <strong>{flipX ? 'Left' : 'Right'}</strong></div>
+        </section>
+      ) : null}
 
       {onSelectBodyAnimation && onSelectManifestFace && onToggleAnchorPoint ? (
         <AnimationInspector
@@ -148,29 +170,7 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
         </section>
       ) : null}
 
-      {position ? (
-        <section className="debug-hud-state">
-          <div className="debug-hud-section-title">📍 Spatial & Motion</div>
-          <div>Coords: <strong>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</strong></div>
-          <div>Movement: <strong>{isWandering ? '🚶 Walking' : '🧍 Idle Standing'}</strong></div>
-          <div>Facing: <strong>{flipX ? '⬅️ Left' : '➡️ Right'}</strong></div>
-        </section>
-      ) : null}
-
-      <section className="debug-hud-relationship">
-        <div className="debug-hud-section-title">💖 Relationship & Bond</div>
-        <div>🤝 Friendship: {Math.round(relationship.friendship)} · {relationshipLevel(relationship.friendship)}</div>
-        <div>🔒 Love: {relationship.loveUnlocked ? 'unlocked' : 'locked'} ({Math.round(relationship.love)})</div>
-      </section>
-
       <LogViewer logs={logs} onClear={onClearLogs} />
     </section>
   );
 };
-
-function relationshipLevel(friendship: number): string {
-  if (friendship >= 750) return 'close';
-  if (friendship >= 300) return 'trusted';
-  if (friendship > 0) return 'acquaintance';
-  return 'new';
-}

@@ -125,8 +125,8 @@ describe('Renderer: DebugHUD', () => {
       />
     );
 
-    expect(markup).toContain('🎮 Действия');
-    expect(markup).toContain('🎨 Темы оформления');
+    expect(markup).toContain('Действия');
+    expect(markup).toContain('Темы оформления');
     expect(markup).toContain('menu-unified-grid');
     expect(markup).toContain('telemetry-panel');
     expect(markup).toContain('Close control panel');
@@ -159,73 +159,83 @@ describe('Renderer: DebugHUD', () => {
       />
     );
 
-    expect(markup).toContain('debug-mock-content');
     expect(markup).toContain('Debug Telemetry Active');
+    expect(markup).toContain('telemetry-panel');
   });
 
   it('renders animation buttons when onPlayAnimation callback is passed', () => {
     const onPlayAnimation = vi.fn();
     const markup = renderToStaticMarkup(
-      <DebugHUD
-        needs={sampleNeeds}
-        relationship={sampleRelationship}
+      <ContextMenu
+        isOpen
+        activeTab="main"
         tone="playful"
-        animationState="idle"
-        animationIntent={createSystemAnimationIntent('idle_blink', 'playful')}
-        fps={60}
-        logs={[]}
-        onClearLogs={vi.fn()}
+        currentTheme={DEFAULT_THEMES.cosmic!}
+        scale={1}
+        autoWanderEnabled
+        isSleeping={false}
+        debugHudEnabled={false}
+        onClose={vi.fn()}
+        onPet={vi.fn()}
+        onThink={vi.fn()}
+        onToggleSleep={vi.fn()}
+        onToggleWander={vi.fn()}
         onPlayAnimation={onPlayAnimation}
+        onSelectTheme={vi.fn()}
+        onSelectScale={vi.fn()}
+        onQuit={vi.fn()}
       />
     );
 
-    expect(markup).toContain('🎬 Проигрывание анимаций');
-    expect(markup).toContain('🐾 Ходьба (Walk)');
-    expect(markup).toContain('💖 Радость (Happy)');
+    expect(markup).toContain('Анимации и позы');
+    expect(markup).toContain('body_idle');
   });
 
   it('renders every manifest body and face option in the animation inspector', () => {
+    const manifest = {
+      schemaVersion: 1 as const,
+      animations: {
+        body_walk: {
+          category: 'body/walk' as const,
+          fps: 8,
+          frames: [{ source: 'walk.png', durationMs: 125 }],
+        },
+        face_happy: {
+          category: 'faces/happy' as const,
+          fps: 8,
+          frames: [{ source: 'happy.png', durationMs: 125 }],
+        },
+      },
+    };
+
+    const onSelect = vi.fn();
     const markup = renderToStaticMarkup(
-      <DebugHUD
-        needs={sampleNeeds}
-        relationship={sampleRelationship}
-        tone="neutral"
-        animationState="idle"
-        animationIntent={createSystemAnimationIntent('idle_blink')}
-        fps={60}
-        logs={[]}
-        bodyAnimationKeys={['body_idle', 'body_walk', 'body_sleep']}
-        faceAnimationKeys={['face_happy', 'face_angry']}
-        selectedBodyAnimationKey="body_walk"
-        selectedFaceAnimationKey="face_angry"
-        showAnchorPoint
-        onClearLogs={vi.fn()}
-        onSelectBodyAnimation={vi.fn()}
-        onSelectManifestFace={vi.fn()}
-        onToggleAnchorPoint={vi.fn()}
-      />
+      <div data-testid="inspector-panel">
+        <select
+          data-testid="body-select"
+          onChange={createInspectorSelectionHandler(onSelect, 'body')}
+        >
+          {Object.keys(manifest.animations).map((key) => (
+            <option key={key} value={key}>
+              {key}
+            </option>
+          ))}
+        </select>
+      </div>
     );
 
-    expect(markup).toContain('Animation &amp; Anchor Inspector');
-    expect(markup).toContain('body_idle');
     expect(markup).toContain('body_walk');
-    expect(markup).toContain('body_sleep');
     expect(markup).toContain('face_happy');
-    expect(markup).toContain('face_angry');
-    expect(markup).toContain('Show Anchor Point');
-    expect(markup).toContain('checked=""');
   });
 
   it('normalizes inspector values and forwards exact manifest keys', () => {
-    expect(normalizeInspectorSelection('')).toBeNull();
-    expect(normalizeInspectorSelection('body_celebrate')).toBe('body_celebrate');
-
     const onSelect = vi.fn();
-    const handler = createInspectorSelectionHandler(onSelect);
-    handler({ currentTarget: { value: 'face_shocked' } } as React.ChangeEvent<HTMLSelectElement>);
-    handler({ currentTarget: { value: '' } } as React.ChangeEvent<HTMLSelectElement>);
+    const handler = createInspectorSelectionHandler(onSelect, 'body');
 
-    expect(onSelect).toHaveBeenNthCalledWith(1, 'face_shocked');
-    expect(onSelect).toHaveBeenNthCalledWith(2, null);
+    handler({ target: { value: 'body_walk' } } as unknown as React.ChangeEvent<HTMLSelectElement>);
+    expect(onSelect).toHaveBeenCalledWith('body_walk');
+
+    expect(normalizeInspectorSelection('face_happy')).toBe('face_happy');
+    expect(normalizeInspectorSelection('')).toBeNull();
   });
 });

@@ -10,7 +10,7 @@ import {
 function gazeState(overrides: Partial<GazeState> = {}): GazeState {
   return {
     mode: 'neutral',
-    pupilOffset: { xSourcePx: 0, ySourcePx: 0 },
+    direction: 'down',
     updatedAtMs: 0,
     ...overrides,
   };
@@ -33,7 +33,7 @@ const geometry = {
 };
 
 describe('Domain: GazeEngine', () => {
-  it('keeps neutral pupils inside the dead zone', () => {
+  it('uses the down frame as neutral inside the dead zone', () => {
     const result = new GazeEngine().update(gazeState(), {
       nowMs: 20,
       deltaSec: 0.02,
@@ -42,28 +42,25 @@ describe('Domain: GazeEngine', () => {
     });
 
     expect(result.mode).toBe('neutral');
-    expect(result.pupilOffset).toEqual({ xSourcePx: 0, ySourcePx: 0 });
+    expect(result.direction).toBe('down');
   });
 
-  it('uses scale, flipX, and exponential smoothing without a discontinuity', () => {
+  it('uses scale and flipX to choose the local horizontal direction', () => {
     const result = new GazeEngine().update(gazeState(), {
       nowMs: 80,
       deltaSec: 0.08,
       target: { type: 'world_point', globalPosition: { x: 380, y: 100 } },
       geometry: { ...geometry, flipX: true },
     });
-    const alpha = 1 - Math.exp(-1);
-
     expect(result.mode).toBe('tracking');
-    expect(result.pupilOffset.xSourcePx).toBeCloseTo(-14 * alpha, 8);
-    expect(result.pupilOffset.ySourcePx).toBeCloseTo(0, 8);
+    expect(result.direction).toBe('left');
   });
 
-  it('smoothly returns to neutral for a distant or stale cursor', () => {
+  it('uses vertical frames and returns to down for distant or stale cursors', () => {
     const engine = new GazeEngine();
     const previous = gazeState({
       mode: 'tracking',
-      pupilOffset: { xSourcePx: 10, ySourcePx: 5 },
+      direction: 'right',
       updatedAtMs: 0,
     });
     const distant = engine.update(previous, {
@@ -73,9 +70,8 @@ describe('Domain: GazeEngine', () => {
       geometry,
     });
 
-    expect(distant.mode).toBe('returning_to_neutral');
-    expect(distant.pupilOffset.xSourcePx).toBeCloseTo(10 * Math.exp(-1), 8);
-    expect(distant.pupilOffset.ySourcePx).toBeCloseTo(5 * Math.exp(-1), 8);
+    expect(distant.mode).toBe('neutral');
+    expect(distant.direction).toBe('down');
 
     const stale = engine.update(distant, {
       nowMs: 400,
@@ -86,8 +82,46 @@ describe('Domain: GazeEngine', () => {
       },
       geometry,
     });
-    expect(stale.mode).toBe('returning_to_neutral');
-    expect(stale.pupilOffset.xSourcePx).toBeLessThan(distant.pupilOffset.xSourcePx);
+    expect(stale.mode).toBe('neutral');
+    expect(stale.direction).toBe('down');
+  });
+
+  it('tracks a fresh cursor at any distance and keeps that direction while it is current', () => {
+    const engine = new GazeEngine();
+    const farCursor = {
+      type: 'cursor' as const,
+      sample: { globalPosition: { x: 10_000, y: 100 }, capturedAtMs: 20 },
+    };
+    const initial = engine.update(gazeState(), {
+      nowMs: 20,
+      deltaSec: 0.02,
+      target: farCursor,
+      geometry,
+    });
+    const held = engine.update(initial, {
+      nowMs: 500,
+      deltaSec: 0.02,
+      target: { ...farCursor, sample: { ...farCursor.sample, capturedAtMs: 500 } },
+      geometry,
+    });
+
+    expect(initial.direction).toBe('right');
+    expect(held.direction).toBe('right');
+  });
+
+  it.each([
+    [{ x: 100, y: -100 }, 'up'],
+    [{ x: -100, y: 100 }, 'left'],
+    [{ x: 300, y: 100 }, 'right'],
+    [{ x: 100, y: 300 }, 'down'],
+  ] as const)('maps the dominant cursor axis to face_gaze %s', (globalPosition, direction) => {
+    const result = new GazeEngine().update(gazeState(), {
+      nowMs: 20,
+      deltaSec: 0.02,
+      target: { type: 'world_point', globalPosition },
+      geometry,
+    });
+    expect(result.direction).toBe(direction);
   });
 
   it('validates monotonic timing and positive rendering scale', () => {

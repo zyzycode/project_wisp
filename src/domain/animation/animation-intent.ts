@@ -27,7 +27,10 @@ export type LocomotionAnimationIntentKind =
   | 'run'
   | 'jump'
   | 'fall'
-  | 'crawl';
+  | 'crawl'
+  | 'climb_wall'
+  | 'hang_ceiling'
+  | 'crash_landing';
 
 export type AnimationIntentKind = CoreAnimationIntentKind | LocomotionAnimationIntentKind;
 export type AnyAnimationIntentKind = AnimationIntentKind;
@@ -64,7 +67,12 @@ export type AnimationExpressionHint =
   | 'sad'
   | 'angry'
   | 'talking'
-  | 'flying';
+  | 'flying'
+  | 'gaze'
+  | 'dizzy'
+  | 'flirty';
+
+export type AnimationGazeDirection = 'left' | 'right' | 'up' | 'down';
 
 export type AnimationPropHint =
   | 'pillow'
@@ -82,6 +90,8 @@ export interface AnimationIntent<TKind extends string = CoreAnimationIntentKind>
   readonly requestedBy: string;
   readonly emotionalTone: SynthesizedEmotionalTone;
   readonly expressionHint?: AnimationExpressionHint;
+  /** Selected frame of the discrete `face_gaze` overlay, when requested. */
+  readonly gazeDirection?: AnimationGazeDirection;
   readonly propHint?: AnimationPropHint;
 }
 
@@ -144,6 +154,9 @@ const INTENT_POLICIES: Record<AnimationIntentKind, IntentPolicy> = {
   jump: { category: 'movement', priority: 'normal', interrupt: 'limited', loop: 'none' },
   fall: { category: 'movement', priority: 'normal', interrupt: 'no', loop: 'until_replaced' },
   crawl: { category: 'movement', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
+  climb_wall: { category: 'movement', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
+  hang_ceiling: { category: 'movement', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
+  crash_landing: { category: 'physics', priority: 'critical', interrupt: 'no', loop: 'none' },
 };
 
 function hints(overrides: Partial<Record<SynthesizedEmotionalTone, HintOverride>>): Record<SynthesizedEmotionalTone, HintOverride> {
@@ -375,6 +388,7 @@ export function createSystemAnimationIntent(
     requestedBy: 'system',
     emotionalTone,
     expressionHint: overrides.expressionHint ?? toneHints.expressionHint,
+    ...(overrides.gazeDirection === undefined ? {} : { gazeDirection: overrides.gazeDirection }),
     propHint: overrides.propHint ?? toneHints.propHint,
   };
 }

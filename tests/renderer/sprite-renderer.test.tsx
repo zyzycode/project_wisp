@@ -1,11 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import {
-  getGazeRootGlobalPosition,
-  getPupilTransform,
-  resolveSpriteSource,
-  SpriteRenderer,
-} from '../../src/renderer/components/Character/SpriteRenderer';
+import { resolveSpriteSource, SpriteRenderer } from '../../src/renderer/components/Character/SpriteRenderer';
 import {
   AnchorVisualizer,
   BASE_CHARACTER_SIZE,
@@ -82,47 +77,9 @@ describe('Renderer: SpriteRenderer', () => {
     expect(markup).toContain('transform="translate(256 460) scale(-1.25 1.25) translate(-256 -460)"');
   });
 
-  it('composites the procedural pupil layer above face and below expression', () => {
-    const markup = renderToStaticMarkup(
-      <SpriteRenderer
-        state={state}
-        pupilOverlay={{ source: 'pupils_normal_00.png', anchor: { x: 254, y: 122 } }}
-      />
-    );
-
-    expect(markup).toContain('data-layer-id="pupils_normal"');
-    expect(markup).toContain('data-layer-z-index="20.5"');
-    expect(markup.indexOf('face_happy_02.png')).toBeLessThan(markup.indexOf('pupils_normal_00.png'));
-    expect(markup.indexOf('pupils_normal_00.png')).toBeLessThan(markup.indexOf('expression_wink.png'));
-  });
-
-  it('aligns the pupil pivot to the active face anchor before applying gaze offset', () => {
-    expect(getPupilTransform({ x: 256, y: 126 }, { xSourcePx: 4.5, ySourcePx: -2 }))
-      .toBe('translate(4.5 -2)');
-    expect(getPupilTransform({ x: 254, y: 122 }, { xSourcePx: 4.5, ySourcePx: -2 }))
-      .toBe('translate(2.5 -6)');
-  });
-
-  it('uses the mirrored source-canvas origin for flipped gaze geometry', () => {
-    const common = {
-      canvasGlobalTopLeft: { x: 100, y: 40 },
-      rootPivot: { x: 256, y: 460 },
-      canvasScale: 0.5,
-      transformScale: 1,
-    };
-    expect(getGazeRootGlobalPosition({ ...common, flipX: false })).toEqual({ x: 100, y: 40 });
-    expect(getGazeRootGlobalPosition({ ...common, flipX: true })).toEqual({ x: 356, y: 40 });
-  });
-
-  it('includes state transform scale in the gaze origin around rootPivot', () => {
-    const common = {
-      canvasGlobalTopLeft: { x: 100, y: 40 },
-      rootPivot: { x: 256, y: 460 },
-      canvasScale: 0.5,
-      transformScale: 1.5,
-    };
-    expect(getGazeRootGlobalPosition({ ...common, flipX: false })).toEqual({ x: 36, y: -75 });
-    expect(getGazeRootGlobalPosition({ ...common, flipX: true })).toEqual({ x: 420, y: -75 });
+  it('does not render the retired procedural pupil layer', () => {
+    const markup = renderToStaticMarkup(<SpriteRenderer state={state} />);
+    expect(markup).not.toContain('pupils_normal');
   });
 });
 

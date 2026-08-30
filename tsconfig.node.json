@@ -28,6 +28,7 @@
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
     "src/renderer/render-engine/**/*.ts",
+    "src/renderer/pet-main-bridge.ts",
     "src/renderer/hooks/useCharacterAnimation.ts",
     "src/shared/**/*.ts",
     "src/domain/**/*.ts",

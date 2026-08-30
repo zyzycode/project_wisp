@@ -55,33 +55,42 @@ const TONE_LABELS_RU: Record<SynthesizedEmotionalTone, string> = {
 };
 
 const ALL_ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
-  { event: 'SETTLE', label: '🌿 Дыхание' },
-  { event: 'START_FLOAT', label: '🐾 Ходьба' },
-  { event: 'PET', label: '💖 Радость' },
-  { event: 'WAVE', label: '🖐️ Привет' },
-  { event: 'CELEBRATE', label: '🎉 Праздник' },
-  { event: 'THINK', label: '💡 Мысли' },
-  { event: 'SPOOK', label: '😲 Испуг' },
-  { event: 'BORED', label: '🥱 Скука' },
-  { event: 'START_SLEEP', label: '🌙 Сон' },
-  { event: 'WAKE_UP', label: '☀️ Подъём' },
-  { event: 'SIT', label: '🪑 Сесть' },
-  { event: 'LIE_DOWN', label: '🛌 Лечь' },
-  { event: 'STAND_UP', label: '🧍 Встать' },
-  { event: 'RUN', label: '🏃 Бегать' },
-  { event: 'START_DRAG', label: '🪁 Полёт' },
-  { event: 'LAND', label: '🛬 Посадка' },
+  { event: 'SETTLE', label: 'body_idle' },
+  { event: 'START_FLOAT', label: 'body_walk' },
+  { event: 'PET', label: 'body_petting' },
+  { event: 'WAVE', label: 'body_wave' },
+  { event: 'CELEBRATE', label: 'body_celebrate' },
+  { event: 'THINK', label: 'body_thinking' },
+  { event: 'SPOOK', label: 'body_scared' },
+  { event: 'BORED', label: 'body_bored' },
+  { event: 'START_SLEEP', label: 'body_sleep_trans' },
+  { event: 'WAKE_UP', label: 'body_land' },
+  { event: 'SIT', label: 'body_sit' },
+  { event: 'LIE_DOWN', label: 'body_lie' },
+  { event: 'STAND_UP', label: 'body_stand_up' },
+  { event: 'RUN', label: 'body_run' },
+  { event: 'JUMP', label: 'body_jump' },
+  { event: 'FALL', label: 'body_fall' },
+  { event: 'CLIMB_WALL', label: 'body_climb_wall' },
+  { event: 'HANG_CEILING', label: 'body_ceiling_hang' },
+  { event: 'START_DRAG', label: 'body_dragged' },
+  { event: 'LAND', label: 'body_land' },
 ];
 
 const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = [
-  { face: null, label: '🔄 Авто' },
-  { face: 'happy', label: '😊 Радость' },
-  { face: 'sad', label: '😢 Грусть' },
-  { face: 'shocked', label: '😲 Шок' },
-  { face: 'sleepy', label: '😴 Сон' },
-  { face: 'talking', label: '💬 Речь' },
-  { face: 'thinking', label: '🤔 Мысли' },
-  { face: 'angry', label: '😠 Злость' },
+  { face: null, label: 'auto' },
+  { face: 'happy', label: 'face_happy' },
+  { face: 'sad', label: 'face_sad' },
+  { face: 'shocked', label: 'face_shocked' },
+  { face: 'sleepy', label: 'face_sleep' },
+  { face: 'talking', label: 'face_talking' },
+  { face: 'thinking', label: 'face_thinking' },
+  { face: 'angry', label: 'face_angry' },
+  { face: 'pout', label: 'face_pout' },
+  { face: 'winking', label: 'face_winking' },
+  { face: 'curious', label: 'face_curious' },
+  { face: 'dizzy', label: 'face_dizzy' },
+  { face: 'flirty', label: 'face_flirty' },
 ];
 
 export interface ContextMenuAction {
@@ -97,16 +106,16 @@ export function createInteractionMenuActions(callbacks: {
   onThink: () => void;
 }): ContextMenuAction[] {
   return [
-    { id: 'pet', label: '💖 Погладить', onSelect: callbacks.onPet },
-    ...(callbacks.onPlay ? [{ id: 'play', label: '🎮 Поиграть', onSelect: callbacks.onPlay }] : []),
-    ...(callbacks.onFeed ? [{ id: 'feed', label: '🍪 Покормить', onSelect: callbacks.onFeed }] : []),
-    { id: 'think', label: '💡 Подумать', onSelect: callbacks.onThink },
+    { id: 'pet', label: 'body_petting (Погладить)', onSelect: callbacks.onPet },
+    ...(callbacks.onPlay ? [{ id: 'play', label: 'body_celebrate (Поиграть)', onSelect: callbacks.onPlay }] : []),
+    ...(callbacks.onFeed ? [{ id: 'feed', label: 'prop_heart (Покормить)', onSelect: callbacks.onFeed }] : []),
+    { id: 'think', label: 'body_thinking (Подумать)', onSelect: callbacks.onThink },
   ];
 }
 
 export function createPoseMenuActions(onPlayAnimation: (event: AnimationEvent) => void): ContextMenuAction[] {
   return ALL_ANIMATION_BUTTONS.filter(({ event }) =>
-    ['SIT', 'LIE_DOWN', 'STAND_UP', 'RUN'].includes(event)
+    ['SIT', 'LIE_DOWN', 'STAND_UP', 'RUN', 'JUMP', 'FALL', 'CLIMB_WALL', 'HANG_CEILING'].includes(event)
   ).map(({ event, label }) => ({
     id: event,
     label,
@@ -129,7 +138,7 @@ export function subscribeToOutsideMouseDown(
 }
 
 const MENU_MARGIN = 12;
-const MENU_WIDTH = 580;
+const MENU_WIDTH = 760;
 const MENU_MAX_HEIGHT = 556;
 
 export function calculateContextMenuPosition(
@@ -182,7 +191,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     if (!isOpen) return undefined;
     const menuElement = menuRef.current;
     if (!menuElement) return undefined;
-    return subscribeToOutsideMouseDown(document, menuElement, onClose);
+    const cleanupOutside = subscribeToOutsideMouseDown(document, menuElement, onClose);
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      cleanupOutside();
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -212,7 +229,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     >
       <div className="menu-header">
         <div className="menu-header-left">
-          <span className="menu-title">✨ Wisp Companion</span>
+          <span className="menu-title">Wisp Companion</span>
           <span className="menu-status-pill">
             {TONE_LABELS_RU[tone] ?? tone}
           </span>
@@ -225,7 +242,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       <div className="menu-unified-grid" aria-label="Wisp control panel">
         {/* Column 1: Core Controls & Customization */}
         <div className="menu-column menu-column-controls">
-          <div className="menu-section-title">🎮 Действия</div>
+          <div className="menu-section-title">Действия</div>
           <div className="menu-btn-grid">
             {interactionActions.map((action) => (
               <button key={action.id} className="menu-action-btn" onClick={action.onSelect}>
@@ -233,15 +250,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               </button>
             ))}
             <button className="menu-action-btn" onClick={onToggleSleep}>
-              {isSleeping ? '☀️ Разбудить' : '🌙 Усыпить'}
+              {isSleeping ? 'body_land (Разбудить)' : 'body_sleep (Усыпить)'}
             </button>
             <button className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`} onClick={onToggleWander}>
-              {autoWanderEnabled ? '🐾 Прогулка: ВКЛ' : '🛑 Прогулка: ВЫКЛ'}
+              {autoWanderEnabled ? 'body_walk (Прогулка: ВКЛ)' : 'body_idle (Прогулка: ВЫКЛ)'}
             </button>
           </div>
 
           <div className="menu-divider" />
-          <div className="menu-section-title">🎨 Темы оформления</div>
+          <div className="menu-section-title">Темы оформления</div>
           <div className="menu-theme-grid">
             {Object.values(DEFAULT_THEMES).map((theme) => (
               <button
@@ -256,7 +273,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           </div>
 
           <div className="menu-divider" />
-          <div className="menu-section-title">🔍 Размер: {Math.round(scale * 100)}%</div>
+          <div className="menu-section-title">Размер: {Math.round(scale * 100)}%</div>
           <div className="menu-scale-controls">
             <button
               className="menu-scale-btn"
@@ -281,11 +298,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           </div>
 
           <div className="menu-divider" />
-          <div className="menu-section-title">🖥️ Окно и инструменты</div>
+          <div className="menu-section-title">Окно и инструменты</div>
           <div className="menu-btn-grid">
             {onResetPosition ? (
               <button type="button" className="menu-action-btn" onClick={onResetPosition}>
-                🎯 Сбросить позицию
+                Сбросить позицию
               </button>
             ) : null}
             {onToggleAlwaysOnTop ? (
@@ -295,7 +312,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 aria-pressed={isAlwaysOnTop}
                 onClick={onToggleAlwaysOnTop}
               >
-                📌 Поверх окон: {isAlwaysOnTop ? 'ВКЛ' : 'ВЫКЛ'}
+                Поверх окон: {isAlwaysOnTop ? 'ВКЛ' : 'ВЫКЛ'}
               </button>
             ) : null}
             {debugHudEnabled && onToggleDebugHud ? (
@@ -305,22 +322,22 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 aria-pressed={debugHudVisible}
                 onClick={onToggleDebugHud}
               >
-                🛠️ Debug HUD: {debugHudVisible ? 'ВКЛ' : 'ВЫКЛ'}
+                Debug HUD: {debugHudVisible ? 'ВКЛ' : 'ВЫКЛ'}
               </button>
             ) : null}
           </div>
 
           <div className="menu-divider" />
           <button className="menu-quit-btn" onClick={onQuit}>
-            🚪 Выйти из приложения
+            Выйти из приложения
           </button>
         </div>
 
-        {/* Column 2: Animations & Expressions (Consolidated, No Duplication) */}
+        {/* Column 2: Animations & Expressions (Full comfortable width) */}
         <div className="menu-column menu-column-animations">
           {onPlayAnimation ? (
             <>
-              <div className="menu-section-title">🎬 Анимации и позы</div>
+              <div className="menu-section-title">Анимации и позы</div>
               <div className="menu-anim-4col-grid">
                 {ALL_ANIMATION_BUTTONS.map((item) => (
                   <button
@@ -339,7 +356,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           {onSelectFace ? (
             <>
               <div className="menu-divider" />
-              <div className="menu-section-title">🎭 Выражения лица</div>
+              <div className="menu-section-title">Выражения лица</div>
               <div className="menu-anim-4col-grid">
                 {FACE_BUTTONS.map((item) => (
                   <button
@@ -356,9 +373,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           ) : null}
         </div>
 
-        {/* Column 3: Telemetry & Inspector & Logs (when debug is enabled) */}
         {showDebugPanel ? (
-          <div className="menu-column menu-column-debug" data-testid="telemetry-panel">
+          <div className="telemetry-panel">
             {debugContent}
           </div>
         ) : null}

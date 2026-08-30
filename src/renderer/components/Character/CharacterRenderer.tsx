@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AnimationIntent } from '../../../domain/animation/animation-intent';
 import { createSystemAnimationIntent } from '../../../domain/animation/animation-intent';
 import type {
@@ -16,10 +16,11 @@ import {
   type SpritePoint,
 } from '../../render-engine';
 import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
+import { useGaze } from '../../hooks/useGaze';
+import type { GazeDirection } from '../../../domain/behavior/gaze-engine';
 import { SpriteRenderer } from './SpriteRenderer';
 
 export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
-const PROCEDURAL_PUPIL_SOURCE = '/assets/sprites/faces/pupils/pupils_normal_00.png';
 
 const manifestLoader = new ManifestLoader();
 const INITIAL_RESOLVER = new AssetResolver(
@@ -74,6 +75,8 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
 }) => {
   const defaultIntent = useMemo(() => createSystemAnimationIntent('idle_blink'), []);
   const intent = animationIntent ?? defaultIntent;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [gazeDirection, setGazeDirection] = useState<GazeDirection>('down');
   const [resolver, setResolver] = useState<AssetResolver>(() => cachedManifestResolver ?? INITIAL_RESOLVER);
   const debugClip = useMemo(
     () => debugAnimationSelection === undefined
@@ -81,7 +84,11 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       : resolver.resolveDebugSelection(debugAnimationSelection.bodyKey, debugAnimationSelection.faceKey),
     [debugAnimationSelection, resolver]
   );
-  const presentationState = useCharacterAnimation(resolver, intent, debugClip);
+  const gazeIntent = useMemo(() => {
+    if (debugClip !== undefined || (intent.expressionHint !== undefined && intent.expressionHint !== 'idle')) return intent;
+    return { ...intent, expressionHint: 'gaze' as const, gazeDirection };
+  }, [debugClip, gazeDirection, intent]);
+  const presentationState = useCharacterAnimation(resolver, gazeIntent, debugClip);
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
 
   const activePresentationState = useMemo(() => {
@@ -100,7 +107,37 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
     return getFaceAnchorPoint(activePresentationState);
   }, [activePresentationState]);
 
-  const hasProceduralGaze = faceAnchor !== undefined && activePresentationState !== undefined;
+  const getGazeGeometry = useCallback(() => {
+    const root = rootRef.current;
+    const state = activePresentationState;
+    if (root === null || state === undefined || faceAnchor === undefined) return undefined;
+    const bounds = root.getBoundingClientRect();
+    const scaleX = bounds.width / state.viewport.width;
+    const scaleY = bounds.height / state.viewport.height;
+    if (scaleX <= 0 || scaleY <= 0) return undefined;
+    const rootX = state.transform.flipX
+      ? bounds.left + (state.viewport.width - state.rootPivot.x) * scaleX
+      : bounds.left + state.rootPivot.x * scaleX;
+    return {
+      rootGlobalPosition: { x: rootX, y: bounds.top + state.rootPivot.y * scaleY },
+      gazeOriginSourcePx: {
+        x: faceAnchor.x - state.rootPivot.x,
+        y: faceAnchor.y - state.rootPivot.y,
+      },
+      scale: (scaleX + scaleY) / 2,
+      flipX: state.transform.flipX,
+    };
+  }, [activePresentationState, faceAnchor]);
+
+  const handleGazeDirection = useCallback((direction: GazeDirection) => {
+    setGazeDirection((current) => current === direction ? current : direction);
+  }, []);
+
+  useGaze({
+    enabled: debugClip === undefined && faceAnchor !== undefined,
+    getGeometry: getGazeGeometry,
+    onGazeDirection: handleGazeDirection,
+  });
 
   useEffect(() => {
     onManifestAnimationsLoaded?.({
@@ -147,6 +184,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
 
   return (
     <div
+      ref={rootRef}
       className={`wisp-character-root ${isDragging ? 'dragging' : ''}`}
       data-testid="wisp-character-root"
       data-expression={expression}
@@ -162,10 +200,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
     >
-      <SpriteRenderer
-        state={activePresentationState}
-        pupilOverlay={hasProceduralGaze ? { source: PROCEDURAL_PUPIL_SOURCE, anchor: faceAnchor } : undefined}
-      />
+      <SpriteRenderer state={activePresentationState} />
       {showAnchorPoint && faceAnchor && activePresentationState ? (
         <AnchorVisualizer
           anchor={faceAnchor}

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import type { EnvironmentSnapshot } from '../../domain/behavior/surface-kinematics';
+import type { EnvironmentSnapshotDTO } from '../../shared/ipc-contracts';
 
 /**
  * Renderer-side view of Main-owned environment state. No Electron APIs leak
  * into React; future motion/surface orchestration can consume this DTO directly.
  */
-export function useEnvironmentSnapshot(): EnvironmentSnapshot | null {
-  const [snapshot, setSnapshot] = useState<EnvironmentSnapshot | null>(null);
+export function useEnvironmentSnapshot(): EnvironmentSnapshotDTO | null {
+  const [snapshot, setSnapshot] = useState<EnvironmentSnapshotDTO | null>(null);
 
   useEffect(() => {
     let active = true;

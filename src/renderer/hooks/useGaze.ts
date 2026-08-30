@@ -6,17 +6,17 @@ import {
   type CursorProximityState,
   type GazeGeometry,
   type GazeState,
-  type PupilOffset,
+  type GazeDirection,
 } from '../../domain/behavior/gaze-engine';
 
-const NEUTRAL_PUPIL_OFFSET: PupilOffset = { xSourcePx: 0, ySourcePx: 0 };
+const NEUTRAL_GAZE_DIRECTION: GazeDirection = 'down';
 
 export interface UseGazeOptions {
   readonly enabled: boolean;
   /** Returns the current source-canvas geometry, including its screen position. */
   readonly getGeometry: () => GazeGeometry | undefined;
-  /** Applies a source-pixel offset without requiring a React tree re-render. */
-  readonly onPupilOffset: (offset: PupilOffset) => void;
+  /** Selects a discrete frame from the face_gaze overlay. */
+  readonly onGazeDirection: (direction: GazeDirection) => void;
   /** Semantic cursor signal for the behavior/activity orchestration boundary. */
   readonly onCursorSignal?: (signal: CursorProximitySignal | undefined) => void;
 }
@@ -25,11 +25,11 @@ export interface UseGazeOptions {
  * Keeps cursor sampling and gaze animation in the renderer. The domain engine
  * owns all gaze math; this hook only supplies browser time and coordinates.
  */
-export function useGaze({ enabled, getGeometry, onPupilOffset, onCursorSignal }: UseGazeOptions): void {
+export function useGaze({ enabled, getGeometry, onGazeDirection, onCursorSignal }: UseGazeOptions): void {
   const cursorRef = useRef<{ x: number; y: number; capturedAtMs: number } | undefined>(undefined);
   const gazeStateRef = useRef<GazeState>({
     mode: 'neutral',
-    pupilOffset: NEUTRAL_PUPIL_OFFSET,
+    direction: NEUTRAL_GAZE_DIRECTION,
     updatedAtMs: 0,
   });
   const gazeEngineRef = useRef(new GazeEngine());
@@ -45,7 +45,7 @@ export function useGaze({ enabled, getGeometry, onPupilOffset, onCursorSignal }:
       cursorRef.current = undefined;
       gazeStateRef.current = {
         mode: 'neutral',
-        pupilOffset: NEUTRAL_PUPIL_OFFSET,
+        direction: NEUTRAL_GAZE_DIRECTION,
         updatedAtMs: 0,
       };
       proximityStateRef.current = {
@@ -53,7 +53,7 @@ export function useGaze({ enabled, getGeometry, onPupilOffset, onCursorSignal }:
         dwellWithinSwatRangeMs: 0,
         updatedAtMs: 0,
       };
-      onPupilOffset(NEUTRAL_PUPIL_OFFSET);
+      onGazeDirection(NEUTRAL_GAZE_DIRECTION);
       onCursorSignal?.(undefined);
       return undefined;
     }
@@ -67,8 +67,8 @@ export function useGaze({ enabled, getGeometry, onPupilOffset, onCursorSignal }:
         cursorFrameId = undefined;
         if (queuedCursor === undefined) return;
         cursorRef.current = {
-          x: queuedCursor.screenX,
-          y: queuedCursor.screenY,
+          x: queuedCursor.clientX,
+          y: queuedCursor.clientY,
           capturedAtMs: now,
         };
         queuedCursor = undefined;
@@ -90,13 +90,16 @@ export function useGaze({ enabled, getGeometry, onPupilOffset, onCursorSignal }:
               type: 'cursor',
               sample: {
                 globalPosition: { x: cursor.x, y: cursor.y },
-                capturedAtMs: cursor.capturedAtMs,
+                // The last observed cursor position remains the current
+                // target until another mousemove replaces it. This avoids a
+                // visible snap back after the stale-sample timeout.
+                capturedAtMs: now,
               },
             },
           geometry,
         });
         gazeStateRef.current = nextState;
-        onPupilOffset(nextState.pupilOffset);
+        onGazeDirection(nextState.direction);
         const proximity = proximityEngineRef.current.update(proximityStateRef.current, {
           nowMs: now,
           rootGlobalPosition: geometry.rootGlobalPosition,
@@ -119,5 +122,5 @@ export function useGaze({ enabled, getGeometry, onPupilOffset, onCursorSignal }:
       window.cancelAnimationFrame(gazeFrameId);
       if (cursorFrameId !== undefined) window.cancelAnimationFrame(cursorFrameId);
     };
-  }, [enabled, getGeometry, onCursorSignal, onPupilOffset]);
+  }, [enabled, getGeometry, onCursorSignal, onGazeDirection]);
 }

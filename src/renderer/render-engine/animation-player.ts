@@ -172,7 +172,9 @@ function appendOverlayLayer(
 ): void {
   if (track === undefined || track.frames.length === 0) return;
   const playbackMode = track.playbackMode ?? 'hold';
-  const frame = getOverlayFrame(track, elapsedMs, playbackMode);
+  const frame = track.fixedFrameIndex === undefined
+    ? getOverlayFrame(track, elapsedMs, playbackMode)
+    : track.frames[Math.min(track.frames.length - 1, Math.max(0, track.fixedFrameIndex))];
   if (frame !== undefined) layers.push(createLayer(track, frame, getFaceOffset(track, bodyTrack, bodyFrame)));
 }
 
@@ -235,7 +237,13 @@ function getFaceOffset(
   bodyTrack: ResolvedTrackBase | undefined,
   bodyFrame: { readonly frame: RenderableFrameDef; readonly index: number } | undefined
 ): SpritePoint {
-  if (track.category !== 'face' || track.anchorName === undefined || bodyTrack === undefined || bodyFrame === undefined) {
+  if (
+    track.category !== 'face' ||
+    track.anchorName === undefined ||
+    track.followBodyAnchor === false ||
+    bodyTrack === undefined ||
+    bodyFrame === undefined
+  ) {
     return track.offset ?? ZERO_POINT;
   }
   const anchor = bodyFrame.frame.anchors?.[track.anchorName]

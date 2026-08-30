@@ -8,7 +8,7 @@ import {
   applyBehaviorIntentToAnimation,
 } from '../../application/services/dialogue-loop.service';
 import type {
-  AnimationState,
+  AnyAnimationState,
   AnimationEvent,
 } from '../../domain/animation/animation-state-machine';
 import type { ChatMessage } from '../../domain/chat/chat-message';
@@ -16,7 +16,7 @@ import { createChatMessage } from '../../domain/chat/chat-message';
 
 export interface UseDialogueLoopOptions {
   aiProvider: IAIProvider;
-  animState: AnimationState;
+  animState: AnyAnimationState;
   setCurrentMessage: (message: ChatMessage | null) => void;
   dispatchAnim: (event: AnimationEvent, force?: boolean) => boolean;
   locale?: string;

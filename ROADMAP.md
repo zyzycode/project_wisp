@@ -29,9 +29,9 @@
 | 11 — Character Engine v2 | done | `domain-behavior` + `architect` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
 | 12 — Animation & Reaction Pack | done | `architect` + `domain-behavior` | Синхронизация контракта с Character Engine v2, реакции, idle variety, sleep rules. |
 | 13 — Render Engine & Asset Pipeline | done | `architect` + `app-developer` | RENDER_ENGINE.md, спрайтовый пайплайн, слои, fallback, структурированный логгер и Debug HUD. |
-| 13-F — Face Overlay & Asset Completion | in_progress | `architect` + `app-developer` + художник | Карта body/face совместимости, генерация manifest, подготовка прозрачных лиц и визуальная проверка наложения. |
-| 14 — Shimeji & Advanced Autonomy | in_progress | `domain-behavior` + `app-developer` | Реализация шимиджи механик и анимаций (подробнее в `docs/engine/SHIMEJI_SPEC.md`). |
-| 15 — Offline Memory & Persistence | later | `app-developer` | Контракт MEMORY_ENGINE.md готов. SQLite, bounded history, facts, state restore, clear memory. |
+| 13-F — Face Overlay & Asset Completion | in_progress | `architect` + `app-developer` + художник | Базовые анимации тел и Shimeji-поз готовы (34 анимации). В работе: расширенный пак эмоций/лиц и реквизит. |
+| 14 — Shimeji & Autonomy (Stabilization) | in_progress | `domain-behavior` + `app-developer` | Калибровка физики, привязка всех запеченных спрайтов к FSM, фикс оверлея лиц, пул фраз и редизайн меню. |
+| 15 — Offline Memory & Persistence | next | `app-developer` | Контракт MEMORY_ENGINE.md готов. SQLite, bounded history, facts, state restore, clear memory. |
 | 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и расширенная dev-only debug panel. |
 | 17 — External AI Contract Readiness | future | `architect` + `app-developer` | Только client-side контракт будущего adapter; backend остаётся отдельно. |
 | 18 — Stability & Performance Hardening | future | `reviewer` | Long-session stability, cleanup checks и Linux Wayland/X11 fallbacks. |
@@ -39,5 +39,9 @@
 
 ## Текущий фокус
 
-1. **Phase 13-F (Face Overlay & Asset Completion):** активная задача `P13-F04` (`app-developer`) — позиционирование оверлея лиц по `anchors` в Renderer.
-2. **Phase 14 (Shimeji & Advanced Autonomy):** реализация шимиджи механик и анимаций (актуальный бэклог декомпозирован в [`docs/engine/SHIMEJI_SPEC.md`](docs/engine/SHIMEJI_SPEC.md)).
+1. **Phase 14 (Shimeji Stabilization & Polish):**
+   - **P14-P01:** Привязка всех 34 спрайт-сетов тел к состояниям FSM, исправление наложения сгенерированных лиц и анкоров.
+   - **P14-P02:** Калибровка физики падения, инерции, отскоков и трения скольжения по полу.
+   - **P14-P03:** Существенное расширение пула реплик и мыслей персонажа.
+   - **P14-P04:** Редизайн контекстного меню (ПКМ) в компактный и красивый Desktop Pet стиль.
+2. **Phase 13-F (Asset Completion):** Параллельная отрисовка недостающих лиц/эмоций художником.

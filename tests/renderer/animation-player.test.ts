@@ -54,6 +54,24 @@ describe('Renderer: AnimationPlayer', () => {
     expect(states).toHaveLength(5);
   });
 
+  it('loops an eight-frame manifest track through its final frame back to zero', () => {
+    const { renderer } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    const clip = createClip({
+      key: 'body_idle',
+      body: {
+        ...createClip().body,
+        animationKey: 'body_idle',
+        frames: Array.from({ length: 8 }, (_, index) => ({ source: `idle_${index}.png` })),
+      },
+    });
+    player.play(clip, { type: 'until_replaced' });
+    player.tick(7 * 125);
+    expect(bodySource(player.getPresentationState())).toBe('idle_7.png');
+    player.tick(125);
+    expect(bodySource(player.getPresentationState())).toBe('idle_0.png');
+  });
+
   it('uses per-frame timings and resolves large deltas without stepping frame by frame', () => {
     const { renderer } = createRenderer();
     const player = new AnimationPlayer(renderer);
@@ -183,6 +201,29 @@ describe('Renderer: AnimationPlayer', () => {
     });
     player.play(missingAnchorClip, { type: 'until_replaced' });
     expect(player.getPresentationState()?.layers[1]?.offset).toEqual({ x: 0, y: 0 });
+  });
+
+  it('keeps a fixed face_gaze overlay at its baseline anchor during body bobbing', () => {
+    const { renderer } = createRenderer();
+    const player = new AnimationPlayer(renderer);
+    const clip = createClip({
+      body: {
+        ...createClip().body,
+        frames: [
+          { source: 'body_0.png', anchors: { face: { x: 256, y: 126 } } },
+          { source: 'body_1.png', anchors: { face: { x: 256, y: 122 } } },
+        ],
+      },
+      face: {
+        id: 'face', category: 'face', animationKey: 'face_gaze', zIndex: 20, playbackMode: 'hold',
+        fixedFrameIndex: 3, followBodyAnchor: false, anchorName: 'face', pivot: { x: 256, y: 126 },
+        offset: { x: 0, y: -334 }, frames: [{ source: 'gaze_0.png' }, { source: 'gaze_3.png' }],
+      },
+    });
+    player.play(clip, { type: 'until_replaced' });
+    expect(player.getPresentationState()?.layers[1]?.offset).toEqual({ x: 0, y: -334 });
+    player.tick(125);
+    expect(player.getPresentationState()?.layers[1]?.offset).toEqual({ x: 0, y: -334 });
   });
 
   it('preserves elapsed frame progress when updateClip is called with the same body clip', () => {

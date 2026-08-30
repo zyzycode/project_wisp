@@ -6,7 +6,12 @@ import type {
   IgnoreMouseEventsDTO,
   PetPositionDTO,
   ScreenBoundsDTO,
-  EnvironmentSnapshot,
+  EnvironmentSnapshotDTO,
+  BeginPetDragDTO,
+  BeginPetDragResultDTO,
+  MovePetDragDTO,
+  ReleasePetDragDTO,
+  PetPresentationStateDTO,
   InteractiveBoundsDTO,
   DebugTelemetryDTO,
   CharacterInteractionDTO,
@@ -27,20 +32,33 @@ const api: WispApiBridge = {
   getPosition: (): Promise<PetPositionDTO> => {
     return ipcRenderer.invoke('wisp:get-position');
   },
-  updatePosition: (pos: PetPositionDTO): Promise<PetPositionDTO> => {
-    return ipcRenderer.invoke('wisp:update-position', pos);
-  },
   getScreenBounds: (): Promise<ScreenBoundsDTO> => {
     return ipcRenderer.invoke('wisp:get-screen-bounds');
   },
-  getEnvironmentSnapshot: (): Promise<EnvironmentSnapshot> => {
+  getEnvironmentSnapshot: (): Promise<EnvironmentSnapshotDTO> => {
     return ipcRenderer.invoke('wisp:get-environment-snapshot');
   },
-  onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshot) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, snapshot: EnvironmentSnapshot): void => callback(snapshot);
+  onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshotDTO) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, snapshot: EnvironmentSnapshotDTO): void => callback(snapshot);
     ipcRenderer.on('wisp:environment-changed', handler);
     return (): void => {
       ipcRenderer.removeListener('wisp:environment-changed', handler);
+    };
+  },
+  beginPetDrag: (payload: BeginPetDragDTO): Promise<BeginPetDragResultDTO> => {
+    return ipcRenderer.invoke('pet:begin-drag', payload);
+  },
+  movePetDrag: (payload: MovePetDragDTO): Promise<void> => {
+    return ipcRenderer.invoke('pet:move-drag', payload);
+  },
+  releasePetDrag: (payload: ReleasePetDragDTO): Promise<void> => {
+    return ipcRenderer.invoke('pet:release-drag', payload);
+  },
+  onPetPresentationState: (listener: (state: PetPresentationStateDTO) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: PetPresentationStateDTO): void => listener(state);
+    ipcRenderer.on('pet:presentation-state', handler);
+    return (): void => {
+      ipcRenderer.removeListener('pet:presentation-state', handler);
     };
   },
   interactWithCharacter: (interaction: CharacterInteractionDTO): Promise<void> => {

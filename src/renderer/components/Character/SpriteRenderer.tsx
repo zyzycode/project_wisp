@@ -1,28 +1,15 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ProceduralBlush } from './ProceduralBlush';
 import { PropsOverlay } from './PropsOverlay';
 import type { RenderLayerDef, RenderPresentationState, VisibleRenderLayerDef } from '../../render-engine/types';
 import { TechnicalFallbackController } from '../../render-engine/technical-fallback-controller';
-import type { GazeGeometry, PupilOffset } from '../../../domain/behavior/gaze-engine';
-import { useGaze } from '../../hooks/useGaze';
-
-const PUPIL_PIVOT = { x: 256, y: 126 };
-// `pupils_normal` is a procedural RenderLayerId positioned between the full
-// face overlay (20) and partial expression overlays (21+).
-const PUPIL_LAYER_Z_INDEX = 20.5;
 
 export interface SpriteRendererProps {
   state?: RenderPresentationState;
-  /** A procedural full-canvas pupil layer, placed directly above the face layer. */
-  pupilOverlay?: {
-    readonly source: string;
-    /** Active body-frame face anchor in source pixels. */
-    readonly anchor: { readonly x: number; readonly y: number };
-  };
 }
 
 /** Displays already-resolved layers only; it never chooses clips or assets. */
-export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state, pupilOverlay }) => {
+export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
   const controllerRef = useRef(new TechnicalFallbackController());
   const [, setTechnicalRevision] = useState(0);
   if (state === undefined) return null;
@@ -32,8 +19,6 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state, pupilOver
     .filter((layer): layer is VisibleRenderLayerDef => layer !== undefined && isVisibleLayer(layer))
     .sort((left, right) => left.zIndex - right.zIndex);
   const primaryLayers = visibleLayers.filter((layer) => layer.category !== 'props');
-  const layersBelowPupils = primaryLayers.filter((layer) => layer.zIndex <= PUPIL_LAYER_Z_INDEX);
-  const layersAbovePupils = primaryLayers.filter((layer) => layer.zIndex > PUPIL_LAYER_Z_INDEX);
   const propLayers = visibleLayers.filter((layer) => layer.category === 'props');
   const { viewport, rootPivot, transform } = state;
   const transformValue = [
@@ -52,19 +37,7 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state, pupilOver
       aria-label="Wisp sprite animation"
     >
       <g transform={transformValue}>
-        {layersBelowPupils.map((layer) => (
-          <SpriteLayer
-            key={layer.id}
-            layer={layer}
-            state={state}
-            onLoad={() => controller.recordLoaded(layer)}
-            onError={(failedSource) => {
-              if (controller.recordFailed(layer, failedSource)) setTechnicalRevision((revision) => revision + 1);
-            }}
-          />
-        ))}
-        {pupilOverlay === undefined ? null : <PupilLayer state={state} overlay={pupilOverlay} />}
-        {layersAbovePupils.map((layer) => (
+        {primaryLayers.map((layer) => (
           <SpriteLayer
             key={layer.id}
             layer={layer}
@@ -89,93 +62,6 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state, pupilOver
     </svg>
   );
 };
-
-function PupilLayer({
-  state,
-  overlay,
-}: {
-  readonly state: RenderPresentationState;
-  readonly overlay: NonNullable<SpriteRendererProps['pupilOverlay']>;
-}): React.ReactElement {
-  const imageRef = useRef<SVGImageElement>(null);
-  const applyOffset = useCallback((offset: PupilOffset): void => {
-    const image = imageRef.current;
-    if (image === null) return;
-    image.setAttribute('transform', getPupilTransform(overlay.anchor, offset));
-    image.setAttribute('data-pupil-offset-x', String(offset.xSourcePx));
-    image.setAttribute('data-pupil-offset-y', String(offset.ySourcePx));
-  }, [overlay.anchor]);
-  const getGeometry = useCallback((): GazeGeometry | undefined => {
-    const svg = imageRef.current?.ownerSVGElement;
-    if (svg === null || svg === undefined) return undefined;
-    const rect = svg.getBoundingClientRect();
-    const sourceScale = Math.min(rect.width / state.viewport.width, rect.height / state.viewport.height);
-    if (!Number.isFinite(sourceScale) || sourceScale <= 0) return undefined;
-    const letterboxX = (rect.width - state.viewport.width * sourceScale) / 2;
-    const letterboxY = (rect.height - state.viewport.height * sourceScale) / 2;
-    return {
-      rootGlobalPosition: getGazeRootGlobalPosition({
-        canvasGlobalTopLeft: { x: window.screenX + rect.left + letterboxX, y: window.screenY + rect.top + letterboxY },
-        rootPivot: state.rootPivot,
-        canvasScale: sourceScale,
-        transformScale: state.transform.scale,
-        flipX: state.transform.flipX,
-      }),
-      gazeOriginSourcePx: overlay.anchor,
-      scale: sourceScale * state.transform.scale,
-      flipX: state.transform.flipX,
-    };
-  }, [overlay.anchor, state.rootPivot, state.transform.flipX, state.transform.scale, state.viewport.height, state.viewport.width]);
-  useGaze({ enabled: true, getGeometry, onPupilOffset: applyOffset });
-
-  return (
-    <image
-      ref={imageRef}
-      data-layer-id="pupils_normal"
-      data-layer-z-index={PUPIL_LAYER_Z_INDEX}
-      data-frame-source={overlay.source}
-      data-pupil-offset-x="0"
-      data-pupil-offset-y="0"
-      href={resolveSpriteSource(overlay.source)}
-      x={0}
-      y={0}
-      width={state.viewport.width}
-      height={state.viewport.height}
-      transform={getPupilTransform(overlay.anchor, { xSourcePx: 0, ySourcePx: 0 })}
-      preserveAspectRatio="xMidYMid meet"
-      pointerEvents="none"
-      style={{ mixBlendMode: 'normal' }}
-    />
-  );
-}
-
-export function getPupilTransform(
-  anchor: { readonly x: number; readonly y: number },
-  offset: PupilOffset
-): string {
-  return `translate(${anchor.x - PUPIL_PIVOT.x + offset.xSourcePx} ${anchor.y - PUPIL_PIVOT.y + offset.ySourcePx})`;
-}
-
-export function getGazeRootGlobalPosition({
-  canvasGlobalTopLeft,
-  rootPivot,
-  canvasScale,
-  transformScale,
-  flipX,
-}: {
-  readonly canvasGlobalTopLeft: { readonly x: number; readonly y: number };
-  readonly rootPivot: { readonly x: number; readonly y: number };
-  /** CSS pixels per source pixel before the character's SVG group transform. */
-  readonly canvasScale: number;
-  /** The animation state's scale around rootPivot. */
-  readonly transformScale: number;
-  readonly flipX: boolean;
-}): { x: number; y: number } {
-  return {
-    x: canvasGlobalTopLeft.x + rootPivot.x * canvasScale * (flipX ? 1 + transformScale : 1 - transformScale),
-    y: canvasGlobalTopLeft.y + rootPivot.y * canvasScale * (1 - transformScale),
-  };
-}
 
 function SpriteLayer({
   layer,

@@ -1,4 +1,5 @@
-export const DEFAULT_SPRITE_FPS = 3;
+/** The manifest may override this per animation or frame. */
+export const DEFAULT_SPRITE_FPS = 8;
 export const DEFAULT_SPRITE_PIVOT: SpritePoint = { x: 256, y: 460 };
 
 export type SpriteLayerCategory = 'body' | 'face' | 'expression' | 'props';
@@ -117,14 +118,13 @@ export interface NormalizedSpriteManifest {
 export type RenderLayerId =
   | 'base_body'
   | 'face'
-  | 'pupils_normal'
   | 'expression'
   | 'procedural_blush'
   | 'prop_pillow'
   | 'prop_heart'
   | 'prop_question'
   | 'prop_sparkle';
-export type NonProceduralRenderLayerId = Exclude<RenderLayerId, 'procedural_blush' | 'pupils_normal'>;
+export type NonProceduralRenderLayerId = Exclude<RenderLayerId, 'procedural_blush'>;
 export type RenderBlendMode = 'normal' | 'multiply' | 'screen' | 'additive';
 export interface RenderableFrameDef extends SpriteFrameDef {
   readonly source: string;
@@ -202,6 +202,10 @@ export interface ResolvedOverlayTrack extends ResolvedTrackBase {
   readonly playbackMode?: TrackPlaybackMode;
   /** Body anchor that the face pivot is aligned to; face tracks only. */
   readonly anchorName?: string;
+  /** False keeps the overlay at its baseline anchor instead of following body-frame bobbing. */
+  readonly followBodyAnchor?: boolean;
+  /** Holds an explicit frame instead of advancing the overlay timeline. */
+  readonly fixedFrameIndex?: number;
 }
 
 export interface ResolvedAnimationClip {

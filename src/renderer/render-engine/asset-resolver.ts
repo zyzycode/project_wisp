@@ -1,4 +1,4 @@
-import type { AnimationIntent } from '../../domain/animation/animation-intent';
+import type { AnimationIntent, AnyAnimationIntentKind } from '../../domain/animation/animation-intent';
 import {
   DEFAULT_SPRITE_PIVOT,
   type NormalizedSpriteAnimationDef,
@@ -15,7 +15,7 @@ import {
 const DEFAULT_VIEWPORT = { width: 512, height: 512 };
 const ZERO_POINT: SpritePoint = { x: 0, y: 0 };
 
-const BODY_KEYS: Readonly<Record<AnimationIntent['kind'], string>> = {
+const BODY_KEYS: Readonly<Record<AnyAnimationIntentKind, string>> = {
   walk: 'body_walk',
   idle_blink: 'body_idle',
   settle: 'body_idle',
@@ -32,6 +32,17 @@ const BODY_KEYS: Readonly<Record<AnimationIntent['kind'], string>> = {
   wake_up: 'body_land',
   land: 'body_land',
   dragged: 'body_dragged',
+  sit: 'body_sit',
+  stand_up: 'body_stand_up',
+  lie_down: 'body_lie',
+  get_up: 'body_stand_up',
+  run: 'body_run',
+  jump: 'body_jump',
+  fall: 'body_fall',
+  crawl: 'body_climb_wall',
+  climb_wall: 'body_climb_wall',
+  hang_ceiling: 'body_ceiling_hang',
+  crash_landing: 'body_crash_splat',
 };
 
 const FACE_KEYS: Readonly<Partial<Record<NonNullable<AnimationIntent['expressionHint']>, string>>> = {
@@ -39,11 +50,16 @@ const FACE_KEYS: Readonly<Partial<Record<NonNullable<AnimationIntent['expression
   sleepy: 'face_sleep',
   surprised: 'face_shocked',
   shocked: 'face_shocked',
-  curious: 'face_thinking',
+  curious: 'face_curious',
   thinking: 'face_thinking',
   angry: 'face_angry',
   sad: 'face_sad',
   talking: 'face_talking',
+  gaze: 'face_gaze',
+  pout: 'face_pout',
+  winking: 'face_winking',
+  dizzy: 'face_dizzy',
+  flirty: 'face_flirty',
 };
 
 const EXPRESSION_KEYS: Readonly<Partial<Record<NonNullable<AnimationIntent['expressionHint']>, string>>> = {
@@ -85,6 +101,7 @@ export class AssetResolver {
     const expression = this.resolveExpression(intent);
     const prop = this.resolveProp(intent);
     const rootPivot = body.pivot ?? DEFAULT_SPRITE_PIVOT;
+    const hasBlush = intent.expressionHint === 'blush' || intent.emotionalTone === 'flustered' || intent.emotionalTone === 'shy';
 
     return {
       key: body.key,
@@ -94,7 +111,7 @@ export class AssetResolver {
       body: toBodyTrack(body),
       ...(face === undefined ? {} : { face }),
       ...(expression === undefined ? {} : { expression }),
-      ...(intent.expressionHint === 'blush' ? { proceduralBlush: createBlush(rootPivot) } : {}),
+      ...(hasBlush ? { proceduralBlush: createBlush(rootPivot) } : {}),
       ...(prop === undefined ? {} : { props: [prop] }),
     };
   }
@@ -132,7 +149,7 @@ export class AssetResolver {
   }
 
   private resolveBody(intent: AnimationIntent): NormalizedSpriteAnimationDef {
-    const preferredKey = BODY_KEYS[intent.kind];
+    const preferredKey = BODY_KEYS[intent.kind] ?? 'body_idle';
     const specialised = this.manifest.animations[`${preferredKey}_${intent.emotionalTone}`];
     const preferred = this.manifest.animations[preferredKey];
     const idle = this.manifest.animations.body_idle;
@@ -156,9 +173,17 @@ export class AssetResolver {
       ? undefined
       : selectAnimation(this.manifest.animations[compatibility.fallback], 'face');
     const animation = requestedAnimation ?? fallbackAnimation;
-    return animation === undefined
-      ? undefined
-      : { ...toOverlayTrack(animation, 'face', 'face', 20, 'loop', 'normal'), anchorName: compatibility.anchor };
+    if (animation === undefined) return undefined;
+    const isDiscreteGaze = animation.key === 'face_gaze';
+    return {
+      ...toOverlayTrack(animation, 'face', 'face', 20, isDiscreteGaze ? 'hold' : 'loop', 'normal'),
+      anchorName: compatibility.anchor,
+      ...(isDiscreteGaze ? {
+        fixedFrameIndex: gazeFrameIndex(intent.gazeDirection),
+        followBodyAnchor: false,
+        offset: { x: 0, y: -334 },
+      } : {}),
+    };
   }
 
   private resolveExpression(intent: AnimationIntent): (ResolvedOverlayTrack & { readonly category: 'expression' }) | undefined {
@@ -176,6 +201,16 @@ export class AssetResolver {
     return animation === undefined
       ? undefined
       : toOverlayTrack(animation, 'props', config.id, config.zIndex, config.playbackMode, config.blendMode);
+  }
+}
+
+function gazeFrameIndex(direction: AnimationIntent['gazeDirection']): number {
+  switch (direction) {
+    case 'left': return 0;
+    case 'right': return 1;
+    case 'up': return 2;
+    case 'down':
+    default: return 3;
   }
 }
 
@@ -207,25 +242,25 @@ function toBodyTrack(animation: NormalizedSpriteAnimationDef): ResolvedBodyTrack
     frames: animation.frames,
     fps: animation.fps,
     zIndex: 10,
-    pivot: animation.pivot,
+    blendMode: 'normal',
+    pivot: animation.pivot ?? DEFAULT_SPRITE_PIVOT,
     offset: ZERO_POINT,
     opacity: 1,
-    blendMode: 'normal',
-    ...(animation.defaultAnchors === undefined ? {} : { defaultAnchors: animation.defaultAnchors }),
-    ...(animation.frameMeta === undefined ? {} : { frameMeta: animation.frameMeta }),
+    defaultAnchors: animation.defaultAnchors,
+    frameMeta: animation.frameMeta,
   };
 }
 
 function toOverlayTrack<TCategory extends 'face' | 'expression' | 'props'>(
   animation: NormalizedSpriteAnimationDef,
   category: TCategory,
-  id: 'face' | 'expression' | 'prop_pillow' | 'prop_heart' | 'prop_question' | 'prop_sparkle',
+  id: string,
   zIndex: number,
   playbackMode: 'hold' | 'loop',
   blendMode: RenderBlendMode
 ): ResolvedOverlayTrack & { readonly category: TCategory } {
   return {
-    id,
+    id: id as ResolvedOverlayTrack['id'],
     category,
     animationKey: animation.key,
     frames: animation.frames,
@@ -233,24 +268,24 @@ function toOverlayTrack<TCategory extends 'face' | 'expression' | 'props'>(
     zIndex,
     playbackMode,
     blendMode,
-    pivot: animation.pivot,
+    pivot: animation.pivot ?? DEFAULT_SPRITE_PIVOT,
     offset: ZERO_POINT,
     opacity: 1,
-    ...(animation.defaultAnchors === undefined ? {} : { defaultAnchors: animation.defaultAnchors }),
-    ...(animation.frameMeta === undefined ? {} : { frameMeta: animation.frameMeta }),
+    defaultAnchors: animation.defaultAnchors,
+    frameMeta: animation.frameMeta,
   };
 }
 
 function createBlush(rootPivot: SpritePoint): ProceduralBlushDef {
   return {
     id: 'procedural_blush',
-    intensity: 0.65,
+    intensity: 1,
+    radius: 18,
+    opacity: 0.8,
+    color: '#ff4d8d',
     blendMode: 'normal',
-    color: '#ff8fab',
-    leftCheek: { x: rootPivot.x - 70, y: rootPivot.y - 115 },
-    rightCheek: { x: rootPivot.x + 70, y: rootPivot.y - 115 },
-    radius: 26,
-    opacity: 0.5,
+    leftCheek: { x: rootPivot.x - 48, y: rootPivot.y - 12 },
+    rightCheek: { x: rootPivot.x + 48, y: rootPivot.y - 12 },
   };
 }
 
@@ -263,6 +298,7 @@ function systemBody(): NormalizedSpriteAnimationDef {
     framesCount: 1,
     fps: 1,
     pivot: DEFAULT_SPRITE_PIVOT,
+    canvasSize: DEFAULT_VIEWPORT,
     tags: [],
   };
 }

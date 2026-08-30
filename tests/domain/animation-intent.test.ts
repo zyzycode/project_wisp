@@ -262,6 +262,9 @@ const EXPECTED_POLICY: Record<AnimationIntentKind, {
   jump: { category: 'movement', priority: 'normal' },
   fall: { category: 'movement', priority: 'normal' },
   crawl: { category: 'movement', priority: 'normal' },
+  climb_wall: { category: 'movement', priority: 'normal' },
+  hang_ceiling: { category: 'movement', priority: 'normal' },
+  crash_landing: { category: 'physics', priority: 'critical' },
 };
 
 function behaviorIntent(kind: BehaviorIntentKind): BehaviorIntent {

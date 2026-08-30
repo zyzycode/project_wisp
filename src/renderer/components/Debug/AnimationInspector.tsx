@@ -16,9 +16,13 @@ export function normalizeInspectorSelection(value: string): string | null {
 }
 
 export function createInspectorSelectionHandler(
-  onSelect: (key: string | null) => void
+  onSelect: (key: string | null) => void,
+  _targetType?: 'body' | 'face'
 ): (event: React.ChangeEvent<HTMLSelectElement>) => void {
-  return (event) => onSelect(normalizeInspectorSelection(event.currentTarget.value));
+  return (event) => {
+    const rawVal = event.currentTarget?.value ?? event.target?.value ?? '';
+    onSelect(normalizeInspectorSelection(rawVal));
+  };
 }
 
 export const AnimationInspector: React.FC<AnimationInspectorProps> = ({
@@ -38,37 +42,42 @@ export const AnimationInspector: React.FC<AnimationInspectorProps> = ({
       <label>
         Body clip
         <select
-          aria-label="Body animation clip"
-          className="debug-animation-select"
+          data-testid="body-select"
           value={selectedBodyKey ?? ''}
-          onChange={createInspectorSelectionHandler(onSelectBody)}
+          onChange={createInspectorSelectionHandler(onSelectBody, 'body')}
         >
-          <option value="">FSM / Auto</option>
-          {bodyAnimationKeys.map((key) => <option key={key} value={key}>{key}</option>)}
+          <option value="">(None / Reset)</option>
+          {bodyAnimationKeys.map((key) => (
+            <option key={key} value={key}>
+              {key}
+            </option>
+          ))}
         </select>
       </label>
 
       <label>
-        Face layer
+        Face overlay
         <select
-          aria-label="Face animation layer"
-          className="debug-animation-select"
+          data-testid="face-select"
           value={selectedFaceKey ?? ''}
-          disabled={selectedBodyKey === null}
-          onChange={createInspectorSelectionHandler(onSelectFace)}
+          onChange={createInspectorSelectionHandler(onSelectFace, 'face')}
         >
-          <option value="">No forced face</option>
-          {faceAnimationKeys.map((key) => <option key={key} value={key}>{key}</option>)}
+          <option value="">(Auto from state)</option>
+          {faceAnimationKeys.map((key) => (
+            <option key={key} value={key}>
+              {key}
+            </option>
+          ))}
         </select>
       </label>
 
-      <label className="debug-anchor-toggle">
+      <label className="checkbox-label">
         <input
           type="checkbox"
           checked={showAnchorPoint}
           onChange={onToggleAnchorPoint}
         />
-        Show Anchor Point
+        Show anchor crosshair
       </label>
     </section>
   );

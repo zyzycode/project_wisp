@@ -1,51 +1,96 @@
-# Трек: Shimeji & Advanced Autonomy (Phase 14)
+# Трек: Shimeji & Advanced Autonomy (Phase 14 / Stabilization & Polish)
 
-Файл бэклога поведения, локомоции, физики и автономии персонажа в стиле Desktop Pet (Shimeji).
+Файл бэклога поведения, локомоции, физики, анимаций и UX персонажа на рабочем столе.
 Архитектурная спецификация: [`docs/engine/SHIMEJI_SPEC.md`](../../../docs/engine/SHIMEJI_SPEC.md)
+Спецификация рендера: [`docs/engine/RENDER_ENGINE.md`](../../../docs/engine/RENDER_ENGINE.md)
 
 ---
 
 ## 1. Текущий статус
 
-- [x] **P14-S01:** Расширение FSM новыми локомоциями (`sit`, `stand_up`, `lie_down`, `get_up`, `run`, `jump`, `fall`, `land`, `crawl`) и шкала `Needs.boredom`. (`done`)
-- [x] **P14-S01-REV:** Ревью-гейт FSM локомоции и шкалы скуки. (`done`)
-- [x] **P14-A01:** Архитектурная формализация Shimeji-движка и контрактов в `SHIMEJI_SPEC.md`. (`done` / `architect`)
-- [x] **P14-S02:** Физика перетаскивания и баллистика броска мышью (`MotionEngine`). (`done` / `domain-behavior`)
-- [x] **P14-S02-REV:** Ревью-гейт кинематики броска и баллистики (`Approved`). (`done` / `reviewer`)
-- [x] **P14-S04:** Цепочки активностей (`ActivityChain`), `RepetitionPenalty` и ивент `Zoomies`. (`done` / `domain-behavior`)
-- [x] **P14-S04-REV:** Ревью-гейт цепочек активностей, штрафов повторов и зумис (`Approved`). (`done` / `reviewer`)
-- [x] **P14-S05a:** Domain Surface Kinematics & Climbing FSM (лазание по бокам, свисание). (`done` / `domain-behavior`)
-- [x] **P14-S05a-REV:** Ревью-гейт кинематики поверхностей и FSM лазания (`Approved`). (`done` / `reviewer`)
-- [x] **P14-S03a:** Gaze & Cursor Proximity Math (`GazeEngine`, `CursorProximityEngine`). (`done` / `domain-behavior`)
-- [x] **P14-S03a-REV:** Ревью-гейт математики взгляда и реакции на мышь (`Approved`). (`done` / `reviewer`)
-- [x] **P14-S05b:** Platform Environment Adapter & WorkArea Provider. (`done` / `app-developer`)
-- [x] **P14-S05b-REV:** Ревью-гейт адаптера окружения и IPC-провайдера рабочей области (`Approved`). (`done` / `reviewer`)
-- [x] **P14-S03b:** Renderer Gaze Layer Compositor (позиционирование зрачков поверх лица). (`done` / `app-developer`)
-- [x] **P14-S03b-REV:** Ревью-гейт композера слоя зрачков и взгляда (`Approved`). (`done` / `reviewer`)
-- [x] **P14-A02:** Architectural Decision (ADR-014) & IPC Orchestration Spec for Main Physics Loop. (`done` / `architect`)
-- [x] **P14-A02-REV:** Ревью-гейт архитектурной спецификации Main Physics Loop (`Approved`). (`done` / `reviewer`)
-- [ ] **P14-G01:** Shimeji Motion Orchestrator & Main Physics Loop Migration. (`in_progress` / `app-developer`)
+- [x] **P14-S01..P14-S05b:** Архитектура, математика Shimeji, FSM, Gaze Engine, Surface Kinematics. (`done`)
+- [x] **P14-G01 (a, b, c, REV):** Перенос физического цикла в Main Process и очистка Renderer. (`done`)
+- [ ] **P14-P01:** Интеграция спрайтов из `manifest.json`, дискретный оверлей взгляда (`face_gaze`) и настройка рендерера. (`in_progress` / `app-developer`)
+- [ ] **P14-P02:** Physics Calibration (гравитация, трение пола, отскоки и баллистика). (`pending` / `domain-behavior`)
+- [ ] **P14-P03:** Dialogue & Speech Phrases Pool Expansion. (`pending` / `domain-behavior`)
+- [ ] **P14-P04:** Context Menu UI/UX Redesign. (`pending` / `app-developer`)
+- [ ] **P14-P-REV:** Shimeji Polish & Hands-On UX Review Gate. (`pending` / `reviewer`)
 
 ---
 
-## 2. Подробные карточки задач
+## 2. Подробные карточки задач стабилизации
 
-### [TASK: P14-G01] — Shimeji Motion Orchestrator & Main Physics Loop Migration
+### [TASK: P14-P01] — Интеграция спрайтов из manifest.json, дискретный оверлей взгляда (face_gaze) и настройка рендерера
 - **Исполнитель:** `app-developer`
-- **Зависит от:** `P14-A02`, `P14-S01`..`P14-S05b`
-- **Цель:** Реализовать `ShimejiMotionOrchestrator` и перенести физический цикл в Main согласно спецификации `docs/engine/SHIMEJI_SPEC.md` (Разделы 7–10):
-  1. Создать сервис `ShimejiMotionOrchestrator` в Application слое (`src/application/services/`).
-  2. Реализовать порт `PetPositionPort` и адаптер `ElectronPetPositionAdapter` в Infrastructure слое.
-  3. Добавить DTO и типизированный IPC в `src/shared/ipc-contracts.ts` и `src/preload/`:
-     - `beginPetDrag`, `movePetDrag`, `releasePetDrag`, `onPetPresentationState`.
-  4. Запустить `fixed-step` физический цикл в Main с трансляцией `PetPresentationStateDTO`.
-  5. Очистить `DesktopPet.tsx`: удалить локальный `MotionEngine`, `MotionState`, RAF loop, прямой вызов `setPosition`.
+- **Зависит от:** `P14-G01c`
+- **Цель:**
+  1. **Связать FSM-состояния движения со спрайтами из manifest.json:**
+     - `idle` / `rest` -> `body_idle` (8 кадров, overlay)
+     - `walk` / `wander` -> `body_walk` (4 кадра, baked_in)
+     - `run` / `sprint` -> `body_run` (4 кадра, baked_in)
+     - `fall` / `falling` / `drop` -> `body_fall` (4 кадра, baked_in)
+     - `land` / `landing` -> `body_land` (4 кадра, baked_in)
+     - `crash` / `splat` / `crash_landing` -> `body_crash_splat` (8 кадров, baked_in)
+     - `sit` -> `body_sit` (4 кадра, overlay)
+     - `stand_up` / `get_up` -> `body_stand_up` (4 кадра, overlay)
+     - `lie` / `lie_down` -> `body_lie` (4 кадра, overlay)
+     - `sleep_start` / `sleep_transition` -> `body_sleep_trans` (4 кадра, baked_in)
+     - `sleep` / `sleep_loop` -> `body_sleep` (4 кадра, baked_in)
+     - `climb_wall` -> `body_climb_wall` (4 кадра, baked_in)
+     - `ceiling_hang` / `hang_ceiling` -> `body_ceiling_hang` (4 кадра, baked_in)
+     - `jump` -> `body_jump` (4 кадра, baked_in)
+     - `petting` / `pet` -> `body_petting` (4 кадра, baked_in)
+     - `dragged` / `drag` -> `body_dragged` (4 кадра, baked_in)
+     - `wave` -> `body_wave` (4 кадра, baked_in)
+     - `celebrate` -> `body_celebrate` (4 кадра, baked_in)
+     - `scared` -> `body_scared` (4 кадра, baked_in)
+     - `bored` -> `body_bored` (4 кадра, baked_in)
+     - `thinking` -> `body_thinking` (4 кадра, baked_in)
+  2. **Настроить оверлей лиц и дискретный взгляд (face_gaze):**
+     - Проверять `manifest[bodyKey].faceOverlay.mode`: если `"overlay"` -> рендерить лицо, если `"baked_in"` -> не рендерить лицо.
+     - Отключить процедурный слой отдельных зрачков (`pupils_*` / `pupilOffsetSourcePx`).
+     - Использовать 4-кадровый `face_gaze` по положению курсора (Кадр 0: ←, Кадр 1: →, Кадр 2: ↑, Кадр 3: ↓/нейтрально).
+     - Позиционировать лицо по `defaultAnchors.face` + компенсация покадрового смещения `frameMeta[frameIndex]?.anchors?.face`.
+  3. **Покадровое воспроизведение (AnimationPlayer):**
+     - Динамически определять длину из `framesCount` (4 и 8 кадров), цикл кадров с FPS из манифеста (по умолчанию 8 FPS).
 - **Читать:**
-  - `.agents/agents/app-developer/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md` (Разделы 7, 8, 9, 10)
-  - `src/shared/ipc-contracts.ts`
-- **Менять:** `src/application/`, `src/infrastructure/`, `src/main/`, `src/preload/`, `src/shared/`, `src/renderer/`, тесты.
-- **Критерии приёмки:**
-  - [ ] Main является единственным владельцем координат окна и физики.
-  - [ ] Renderer работает только как презентационный View.
+  - `public/assets/sprites/manifest.json`
+  - `docs/engine/RENDER_ENGINE.md`
+  - `docs/AI_STUDIO_PROMPTS.md`
+  - `src/renderer/components/Character/`
+  - `src/domain/behavior/animation-state-machine.ts` и `gaze-engine.ts`
+- **Менять:** `src/renderer/components/Character/`, `src/renderer/components/DesktopPet.tsx`, `tests/renderer/`, `tests/domain/`.
+- **Критерии приёмки (DoD):**
+  - [ ] Все FSM-состояния воспроизводят правильные анимации тела из `manifest.json`.
+  - [ ] Оверлей лица рендерится только на телах с режимом `overlay`.
+  - [ ] Взгляд переключает кадры `face_gaze_00..03` при движении мыши.
   - [ ] `npm test && npm run typecheck` проходят со 100% успехом.
+
+---
+
+### [TASK: P14-P02] — Physics Calibration & Motion Tuning
+- **Исполнитель:** `domain-behavior` (или `app-developer`)
+- **Зависит от:** `P14-P01`
+- **Цель:** Откалибровать параметры физики в `DEFAULT_MOTION_CONSTRAINTS` (`src/domain/behavior/`):
+  1. Настроить плавность и скорость падения (`gravityPxPerSec2`, `linearDampingYPerSec`).
+  2. Настроить скольжение и трение по полу (`floorTangentialRetention`, `linearDampingXPerSec`).
+  3. Откалибровать отскоки от стен (`wallRestitution`, `floorRestitution`) и пороги исходов (`softLandingMaxSeverity`, `stumbleMaxSeverity`).
+  4. Протестировать приятность бросков и перемещения курсором.
+- **Читать:** `docs/engine/SHIMEJI_SPEC.md` (Разделы 2, 2.1–2.3).
+- **Менять:** `src/domain/behavior/motion-engine.ts` (или `src/domain/behavior/models.ts`), тесты.
+
+---
+
+### [TASK: P14-P03] — Dialogue & Speech Phrases Pool Expansion
+- **Исполнитель:** `domain-behavior`
+- **Зависит от:** none
+- **Цель:** Существенно расширить пул текстовых реплик и мыслей персонажа.
+- **Читать:** `docs/engine/BEHAVIOR_INTENTS.md`.
+
+---
+
+### [TASK: P14-P04] — Context Menu UI/UX Redesign
+- **Исполнитель:** `app-developer`
+- **Зависит от:** none
+- **Цель:** Полный редизайн контекстного меню (ПКМ) в компактный и красивый Desktop Pet стиль.
+- **Читать:** `docs/engine/RENDER_ENGINE.md`.

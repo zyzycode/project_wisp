@@ -31,34 +31,30 @@
         "face_winking",
         "face_curious",
         "face_dizzy",
-        "face_flirty"
+        "face_flirty",
+        "face_gaze"
       ],
       "fallback": "face_happy"
     },
-    "framesCount": 8,
+    "framesCount": 4,
     "frames": [
       "/assets/sprites/body/idle/body_idle_00.png",
       "/assets/sprites/body/idle/body_idle_01.png",
       "/assets/sprites/body/idle/body_idle_02.png",
-      "/assets/sprites/body/idle/body_idle_03.png",
-      "/assets/sprites/body/idle/body_idle_04.png",
-      "/assets/sprites/body/idle/body_idle_05.png",
-      "/assets/sprites/body/idle/body_idle_06.png",
-      "/assets/sprites/body/idle/body_idle_07.png"
+      "/assets/sprites/body/idle/body_idle_03.png"
     ],
     "defaultAnchors": {
       "face": {
         "x": 256,
-        "y": 126
+        "y": 180
       }
     },
     "frameMeta": [
-      {},
       {
         "anchors": {
           "face": {
             "x": 256,
-            "y": 124
+            "y": 180
           }
         }
       },
@@ -66,7 +62,23 @@
         "anchors": {
           "face": {
             "x": 256,
-            "y": 122
+            "y": 176
+          }
+        }
+      },
+      {
+        "anchors": {
+          "face": {
+            "x": 256,
+            "y": 174
+          }
+        }
+      },
+      {
+        "anchors": {
+          "face": {
+            "x": 256,
+            "y": 181
           }
         }
       }
@@ -391,14 +403,15 @@
         "face_winking",
         "face_curious",
         "face_dizzy",
-        "face_flirty"
+        "face_flirty",
+        "face_gaze"
       ],
       "fallback": "face_happy"
     },
     "defaultAnchors": {
       "face": {
         "x": 256,
-        "y": 130
+        "y": 180
       }
     }
   },
@@ -476,14 +489,15 @@
         "face_winking",
         "face_curious",
         "face_dizzy",
-        "face_flirty"
+        "face_flirty",
+        "face_gaze"
       ],
       "fallback": "face_happy"
     },
     "defaultAnchors": {
       "face": {
         "x": 256,
-        "y": 140
+        "y": 180
       }
     }
   },
@@ -557,15 +571,27 @@
         "face_winking",
         "face_curious",
         "face_dizzy",
-        "face_flirty"
+        "face_flirty",
+        "face_gaze"
       ],
       "fallback": "face_happy"
     },
     "defaultAnchors": {
       "face": {
         "x": 256,
-        "y": 320
+        "y": 280
       }
     }
+  },
+  "face_gaze": {
+    "category": "faces/gaze",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/gaze/face_gaze_00.png",
+      "/assets/sprites/faces/gaze/face_gaze_01.png",
+      "/assets/sprites/faces/gaze/face_gaze_02.png",
+      "/assets/sprites/faces/gaze/face_gaze_03.png"
+    ],
+    "sourceFile": "face_gaze.png"
   }
 }

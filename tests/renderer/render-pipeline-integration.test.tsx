@@ -14,6 +14,7 @@ const manifest: NormalizedSpriteManifest = {
     body_idle: animation('body_idle', 'body/idle', 'body'),
     body_sleep: animation('body_sleep', 'body/sleep', 'body'),
     face_sleep: animation('face_sleep', 'face/sleep', 'face'),
+    face_winking: animation('face_winking', 'face/winking', 'face'),
     expression_wink: animation('expression_wink', 'expression/wink', 'expression'),
     prop_pillow: animation('prop_pillow', 'props/pillow', 'props'),
     prop_sparkle: animation('prop_sparkle', 'props/sparkle', 'props'),
@@ -38,7 +39,7 @@ function animation(
     ...(layer === 'body' ? {
       faceOverlay: {
         mode: 'overlay' as const,
-        allowedFaceKeys: ['face_sleep'],
+        allowedFaceKeys: ['face_sleep', 'face_winking'],
         fallback: 'face_sleep',
         anchor: 'face',
       },
@@ -135,7 +136,7 @@ describe('Phase 13: render and telemetry pipeline', () => {
     const levelThreeClip = new AssetResolver({ schemaVersion: 1, animations: {} }).resolve(createSystemAnimationIntent('dragged'));
 
     expect(levelOneClip.body.animationKey).toBe('body_walk_playful');
-    expect(levelOneClip.expression?.animationKey).toBe('expression_wink');
+    expect(levelOneClip.face?.animationKey).toBe('face_winking');
     expect(levelOneClip.props?.[0]?.animationKey).toBe('prop_sparkle');
     expect(levelThreeClip.body.frames[0]?.source).toBe('system://wisp/default_idle.svg');
   });

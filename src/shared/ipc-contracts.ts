@@ -1,7 +1,3 @@
-import type { EnvironmentSnapshot } from '../domain/behavior/surface-kinematics';
-
-export type { EnvironmentSnapshot } from '../domain/behavior/surface-kinematics';
-
 /**
  * Shared IPC Contracts and DTOs for Project Wisp
  * This file is shared between Main, Preload and Renderer layers.
@@ -37,6 +33,68 @@ export interface ScreenBoundsDTO {
   y: number;
   width: number;
   height: number;
+}
+
+export interface EnvironmentScreenBoundsDTO extends ScreenBoundsDTO {
+  readonly id: string;
+}
+
+export interface EnvironmentSurfaceDTO {
+  readonly id: string;
+  readonly kind: 'screen_floor' | 'window_top' | 'unknown';
+  readonly bounds: ScreenBoundsDTO;
+  readonly supportY?: number;
+  readonly isValidSupport: boolean;
+}
+
+export interface EnvironmentSnapshotDTO {
+  readonly capturedAtMs: number;
+  readonly screenBounds: EnvironmentScreenBoundsDTO;
+  readonly currentSurface?: EnvironmentSurfaceDTO;
+}
+
+export interface PetDragPointerDTO {
+  readonly pointerId: number;
+  readonly sequence: number;
+  readonly screenPosition: PetPositionDTO;
+}
+
+export interface BeginPetDragDTO extends PetDragPointerDTO {}
+
+export interface BeginPetDragResultDTO {
+  readonly dragSessionId: string;
+}
+
+export interface MovePetDragDTO extends PetDragPointerDTO {
+  readonly dragSessionId: string;
+}
+
+export interface ReleasePetDragDTO extends MovePetDragDTO {}
+
+export type PetMotionPhaseDTO = 'dragged' | 'airborne' | 'grounded';
+
+export type PetAnimationStateDTO =
+  | 'idle'
+  | 'walk'
+  | 'run'
+  | 'dragged'
+  | 'fall'
+  | 'land'
+  | 'stumble'
+  | 'crash_landing'
+  | 'recover'
+  | 'settle'
+  | 'sleep_start'
+  | 'sleep_loop'
+  | 'wake_up';
+
+export interface PetPresentationStateDTO {
+  readonly revision: number;
+  readonly motionPhase: PetMotionPhaseDTO;
+  readonly rootScreenPosition: PetPositionDTO;
+  readonly velocityPxPerSec: PetPositionDTO;
+  readonly positionAuthority: 'forced' | 'voluntary';
+  readonly animationState: PetAnimationStateDTO;
 }
 
 export type CharacterInteractionTypeDTO =
@@ -89,10 +147,13 @@ export interface WispApiBridge {
   getSystemInfo: () => Promise<SystemInfoDTO>;
   setIgnoreMouseEvents: (payload: IgnoreMouseEventsDTO) => Promise<void>;
   getPosition: () => Promise<PetPositionDTO>;
-  updatePosition: (pos: PetPositionDTO) => Promise<PetPositionDTO>;
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
-  getEnvironmentSnapshot: () => Promise<EnvironmentSnapshot>;
-  onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshot) => void) => () => void;
+  getEnvironmentSnapshot: () => Promise<EnvironmentSnapshotDTO>;
+  onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshotDTO) => void) => () => void;
+  beginPetDrag: (payload: BeginPetDragDTO) => Promise<BeginPetDragResultDTO>;
+  movePetDrag: (payload: MovePetDragDTO) => Promise<void>;
+  releasePetDrag: (payload: ReleasePetDragDTO) => Promise<void>;
+  onPetPresentationState: (listener: (state: PetPresentationStateDTO) => void) => () => void;
   interactWithCharacter: (interaction: CharacterInteractionDTO) => Promise<void>;
   setAlwaysOnTop: (enabled: boolean) => Promise<boolean>;
   setInteractiveBounds?: (bounds: InteractiveBoundsDTO) => Promise<void>;

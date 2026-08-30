@@ -11,7 +11,7 @@ import type {
   DebugTelemetryDTO,
   CharacterInteractionDTO,
   CharacterInteractionTypeDTO,
-  EnvironmentSnapshot,
+  EnvironmentSnapshotDTO,
 } from '../shared/ipc-contracts';
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
 import { PlatformEnvironmentAdapter } from '../infrastructure/platform/platform-environment.adapter';
@@ -20,6 +20,27 @@ import { defaultCharacterStateService } from '../application/services/character-
 import { defaultCharacterInteractionUseCase } from '../application/services/character-interaction.use-case';
 import { AppLogger, LogBuffer } from '../infrastructure/logging';
 import { isDebugMode } from '../shared/debug-mode';
+import { performance } from 'node:perf_hooks';
+import {
+  DEFAULT_MOTION_CONSTRAINTS,
+  MotionEngine,
+  SurfaceKinematics,
+  type MotionState,
+  type SurfaceKinematicsState,
+} from '../domain/behavior';
+import type { EnvironmentSnapshot } from '../domain/behavior/surface-kinematics';
+import { ShimejiMotionOrchestrator } from '../application/services/shimeji-motion-orchestrator';
+import { ElectronPetPositionAdapter } from '../infrastructure/adapters/electron-pet-position-adapter';
+import {
+  toEnvironmentSnapshotDTO,
+  toPetPresentationStateDTO,
+} from './mappers/shimeji-ipc.mapper';
+import {
+  handleBeginPetDrag,
+  handleMovePetDrag,
+  handleReleasePetDrag,
+} from './shimeji-ipc-handlers';
+import { startShimejiMotionLoop } from './shimeji-motion-loop';
 
 process.env.APP_ROOT = path.join(__dirname, '../..');
 
@@ -32,8 +53,8 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
 
 export const COMPACT_WINDOW_WIDTH = 280;
 export const COMPACT_WINDOW_HEIGHT = 320;
-export const EXPANDED_WINDOW_WIDTH = 880;
-export const EXPANDED_WINDOW_HEIGHT = 580;
+export const EXPANDED_WINDOW_WIDTH = 1140;
+export const EXPANDED_WINDOW_HEIGHT = 620;
 
 export const WINDOW_WIDTH = COMPACT_WINDOW_WIDTH;
 export const WINDOW_HEIGHT = COMPACT_WINDOW_HEIGHT;
@@ -43,6 +64,8 @@ const platformAdapter = createPlatformAdapter();
 const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
 let positionService: PetPositionService | null = null;
 let unsubscribeEnvironmentChanges: (() => void) | null = null;
+let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
+let stopShimejiMotionLoopHandle: (() => void) | null = null;
 const debugLogBuffer = new LogBuffer();
 const appLogger = new AppLogger({
   level: 'debug',
@@ -107,16 +130,66 @@ function publishDebugTelemetry(): void {
 }
 
 function publishEnvironmentSnapshot(snapshot: EnvironmentSnapshot): void {
-  if (positionService) {
-    const currentPosition = positionService.getPosition();
-    const clampedPosition = positionService.updatePosition(currentPosition, snapshot.screenBounds);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setPosition(Math.round(clampedPosition.x), Math.round(clampedPosition.y));
-    }
-  }
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('wisp:environment-changed', snapshot);
+    mainWindow.webContents.send('wisp:environment-changed', toEnvironmentSnapshotDTO(snapshot));
   }
+}
+
+function publishPetPresentationState(): void {
+  if (mainWindow === null || mainWindow.isDestroyed() || shimejiMotionOrchestrator === null) return;
+  const motion = shimejiMotionOrchestrator.getMotionState();
+  const animationState = motion.phase === 'dragged' ? 'dragged' : motion.phase === 'airborne' ? 'fall' : 'idle';
+  mainWindow.webContents.send(
+    'pet:presentation-state',
+    toPetPresentationStateDTO({
+      revision: shimejiMotionOrchestrator.getPresentationRevision(),
+      motion,
+      animationState,
+    })
+  );
+}
+
+function stopShimejiMotionLoop(): void {
+  stopShimejiMotionLoopHandle?.();
+  stopShimejiMotionLoopHandle = null;
+  shimejiMotionOrchestrator = null;
+}
+
+function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): void {
+  stopShimejiMotionLoop();
+  const environment = platformEnvironmentAdapter.getSnapshot();
+  const pivotOffset = {
+    x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
+    y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
+  };
+  const initialMotion: MotionState = {
+    phase: 'grounded',
+    position: { x: initialWindowPosition.x + pivotOffset.x, y: initialWindowPosition.y + pivotOffset.y },
+    velocityPxPerSec: { x: 0, y: 0 },
+    activeBoundsId: environment.screenBounds.id,
+    airborneElapsedSec: 0,
+    peakGroundImpactSeverity: 0,
+  };
+  const initialSurface: SurfaceKinematicsState = {
+    phase: 'grounded',
+    updatedAtMs: performance.now(),
+    locomotionVelocityPxPerSec: { x: 0, y: 0 },
+  };
+  shimejiMotionOrchestrator = new ShimejiMotionOrchestrator({
+    initialMotion,
+    initialSurface,
+    motionEngine: new MotionEngine(),
+    surfaceKinematics: new SurfaceKinematics(),
+    environment: () => platformEnvironmentAdapter.getSnapshot(),
+    positionPort: new ElectronPetPositionAdapter({ getWindow: () => mainWindow, pivotOffset }),
+    now: () => performance.now(),
+  });
+  stopShimejiMotionLoopHandle = startShimejiMotionLoop({
+    orchestrator: shimejiMotionOrchestrator,
+    getWindow: () => mainWindow,
+    publishPresentation: publishPetPresentationState,
+    intervalMs: Math.round(DEFAULT_MOTION_CONSTRAINTS.fixedStepSec * 1000),
+  });
 }
 
 const CHARACTER_INTERACTION_TYPES: readonly CharacterInteractionTypeDTO[] = [
@@ -197,12 +270,7 @@ function registerIpcHandlers(): void {
         const updated = positionService.updatePosition(currentPos, bounds);
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.setResizable(true);
-          mainWindow.setBounds({
-            x: Math.round(updated.x),
-            y: Math.round(updated.y),
-            width,
-            height,
-          });
+          mainWindow.setSize(width, height);
         }
         return updated;
       }
@@ -214,44 +282,27 @@ function registerIpcHandlers(): void {
     return positionService ? positionService.getPosition() : calculateInitialPosition();
   });
 
-  ipcMain.handle(
-    'wisp:update-position',
-    async (_event, targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
-      const currentPos = positionService
-        ? positionService.getPosition()
-        : calculateInitialPosition();
-
-      const validX =
-        typeof targetPos?.x === 'number' && Number.isFinite(targetPos.x)
-          ? targetPos.x
-          : currentPos.x;
-      const validY =
-        typeof targetPos?.y === 'number' && Number.isFinite(targetPos.y)
-          ? targetPos.y
-          : currentPos.y;
-
-      const safePos: PetPositionDTO = { x: validX, y: validY };
-      const bounds = platformAdapter.getDisplayWorkArea(safePos);
-      const updated = positionService
-        ? positionService.updatePosition(safePos, bounds)
-        : safePos;
-
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.setPosition(Math.round(updated.x), Math.round(updated.y));
-      }
-
-      appLogger.debug('IPC', 'Pet position updated', { x: updated.x, y: updated.y });
-
-      return updated;
-    }
-  );
-
   ipcMain.handle('wisp:get-screen-bounds', async (): Promise<ScreenBoundsDTO> => {
     return platformAdapter.getDisplayWorkArea();
   });
 
-  ipcMain.handle('wisp:get-environment-snapshot', async (): Promise<EnvironmentSnapshot> => {
-    return platformEnvironmentAdapter.getSnapshot();
+  ipcMain.handle('wisp:get-environment-snapshot', async (): Promise<EnvironmentSnapshotDTO> => {
+    return toEnvironmentSnapshotDTO(platformEnvironmentAdapter.getSnapshot());
+  });
+
+  ipcMain.handle('pet:begin-drag', async (_event, payload: unknown) => {
+    if (shimejiMotionOrchestrator === null) throw new Error('Shimeji motion is unavailable');
+    return handleBeginPetDrag(shimejiMotionOrchestrator, payload);
+  });
+
+  ipcMain.handle('pet:move-drag', async (_event, payload: unknown): Promise<void> => {
+    if (shimejiMotionOrchestrator === null) return;
+    handleMovePetDrag(shimejiMotionOrchestrator, payload);
+  });
+
+  ipcMain.handle('pet:release-drag', async (_event, payload: unknown): Promise<void> => {
+    if (shimejiMotionOrchestrator === null) return;
+    handleReleasePetDrag(shimejiMotionOrchestrator, payload);
   });
 
   ipcMain.handle(
@@ -321,6 +372,7 @@ function createWindow(): void {
 
   // Apply platform-specific overlay configuration
   platformAdapter.configureOverlayWindow(mainWindow);
+  initializeShimejiMotionLoop(initialPos);
 
   // Prevent desktop minimization from hiding overlay
   mainWindow.on('minimize', () => {
@@ -350,6 +402,7 @@ function createWindow(): void {
   }
 
   mainWindow.on('closed', () => {
+    stopShimejiMotionLoop();
     mainWindow = null;
   });
 }
@@ -389,6 +442,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();
   unsubscribeEnvironmentChanges = null;
 });

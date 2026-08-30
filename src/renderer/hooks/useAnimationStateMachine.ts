@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   AnimationStateMachine,
-  AnimationState,
-  AnimationEvent,
+  type AnyAnimationState,
+  type AnimationEvent,
 } from '../../domain/animation/animation-state-machine';
 import type { CharacterExpression } from '../../domain/models/character-visuals';
 
-export function useAnimationStateMachine(initialState: AnimationState = 'idle') {
+export function useAnimationStateMachine(initialState: AnyAnimationState = 'idle') {
   const fsm = useMemo(() => new AnimationStateMachine(initialState), []);
-  const [animState, setAnimState] = useState<AnimationState>(fsm.getCurrentState());
+  const [animState, setAnimState] = useState<AnyAnimationState>(fsm.getCurrentState());
   const [expression, setExpression] = useState<CharacterExpression>(fsm.getCurrentExpression());
   const lastTimeRef = useRef<number>(performance.now());
 

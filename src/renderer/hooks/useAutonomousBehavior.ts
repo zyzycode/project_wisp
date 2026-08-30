@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Point2D, RectBounds, Size2D } from '../../domain/models/position';
-import type { AnimationState, AnimationEvent } from '../../domain/animation/animation-state-machine';
+import type { AnyAnimationState, AnimationEvent } from '../../domain/animation/animation-state-machine';
 import {
   calculateNextWanderTarget,
   interpolatePosition,
@@ -12,7 +12,7 @@ import {
 interface UseAutonomousBehaviorProps {
   currentPosition: Point2D;
   screenBounds: RectBounds | null;
-  animState: AnimationState;
+  animState: AnyAnimationState;
   isDragging: boolean;
   petSize?: Size2D;
   onPositionChange: (pos: Point2D) => void;

@@ -26,24 +26,20 @@ export interface GazeInput {
   readonly geometry: GazeGeometry;
 }
 
-export interface PupilOffset {
-  readonly xSourcePx: SourcePx;
-  readonly ySourcePx: SourcePx;
-}
+/** Frame order in the `face_gaze` manifest animation. */
+export type GazeDirection = 'left' | 'right' | 'up' | 'down';
 
 export interface GazeConstraints {
   readonly attentionRadiusWorldPx: number;
   readonly deadZoneSourcePx: number;
-  readonly maxPupilOffsetXSourcePx: number;
-  readonly maxPupilOffsetYSourcePx: number;
-  readonly smoothingTimeSec: number;
   readonly maxCursorAgeMs: number;
 }
 
 export interface GazeState {
   readonly mode: 'tracking' | 'returning_to_neutral' | 'neutral';
   readonly target?: GazeTarget;
-  readonly pupilOffset: PupilOffset;
+  /** Discrete direction consumed by face_gaze_00..03; down is neutral. */
+  readonly direction: GazeDirection;
   readonly updatedAtMs: MonotonicMs;
 }
 
@@ -97,9 +93,6 @@ export interface ICursorProximityEngine {
 export const DEFAULT_GAZE_CONSTRAINTS: GazeConstraints = {
   attentionRadiusWorldPx: 280,
   deadZoneSourcePx: 12,
-  maxPupilOffsetXSourcePx: 14,
-  maxPupilOffsetYSourcePx: 10,
-  smoothingTimeSec: 0.08,
   maxCursorAgeMs: 250,
 };
 
@@ -110,8 +103,6 @@ export const DEFAULT_CURSOR_REACTION_CONSTRAINTS: CursorReactionConstraints = {
   signalMaxAgeMs: 250,
   swatCooldownKey: 'swat_cursor',
 };
-
-const EPSILON = 1e-9;
 
 function requireFinite(value: number, name: string): void {
   if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite`);
@@ -130,9 +121,6 @@ function requirePositive(value: number, name: string): void {
 function validateGazeConstraints(constraints: GazeConstraints): void {
   requirePositive(constraints.attentionRadiusWorldPx, 'attentionRadiusWorldPx');
   requireNonNegative(constraints.deadZoneSourcePx, 'deadZoneSourcePx');
-  requirePositive(constraints.maxPupilOffsetXSourcePx, 'maxPupilOffsetXSourcePx');
-  requirePositive(constraints.maxPupilOffsetYSourcePx, 'maxPupilOffsetYSourcePx');
-  requirePositive(constraints.smoothingTimeSec, 'smoothingTimeSec');
   requireNonNegative(constraints.maxCursorAgeMs, 'maxCursorAgeMs');
 }
 
@@ -148,21 +136,13 @@ function isFresh(sample: CursorSample, nowMs: MonotonicMs, maxAgeMs: number): bo
   return ageMs >= 0 && ageMs <= maxAgeMs;
 }
 
-function neutralOffset(): PupilOffset {
-  return { xSourcePx: 0, ySourcePx: 0 };
-}
-
-function isNeutral(offset: PupilOffset): boolean {
-  return Math.abs(offset.xSourcePx) <= EPSILON && Math.abs(offset.ySourcePx) <= EPSILON;
-}
-
-function desiredOffset(input: GazeInput, constraints: GazeConstraints): PupilOffset | null {
-  if (input.target.type === 'neutral') return neutralOffset();
+function desiredDirection(input: GazeInput, constraints: GazeConstraints): GazeDirection {
+  if (input.target.type === 'neutral') return 'down';
   if (
     input.target.type === 'cursor' &&
     !isFresh(input.target.sample, input.nowMs, constraints.maxCursorAgeMs)
   ) {
-    return neutralOffset();
+    return 'down';
   }
 
   const targetPosition =
@@ -180,29 +160,17 @@ function desiredOffset(input: GazeInput, constraints: GazeConstraints): PupilOff
     ? 0
     : constraints.attentionRadiusWorldPx / input.geometry.scale;
 
-  if (distance > attentionRadiusSourcePx || distance <= constraints.deadZoneSourcePx) {
-    return neutralOffset();
+  // Cursor gaze is deliberately global: once a cursor is known, the face
+  // holds its direction even when the pointer is far from the character.
+  // World points retain the bounded-attention policy used by domain callers.
+  if (
+    (input.target.type !== 'cursor' && distance > attentionRadiusSourcePx) ||
+    distance <= constraints.deadZoneSourcePx
+  ) {
+    return 'down';
   }
-
-  const strength = Math.min(
-    1,
-    Math.max(
-      0,
-      (distance - constraints.deadZoneSourcePx) /
-        Math.max(attentionRadiusSourcePx - constraints.deadZoneSourcePx, EPSILON)
-    )
-  );
-  let x = (dxLocal / distance) * constraints.maxPupilOffsetXSourcePx * strength;
-  let y = (dyLocal / distance) * constraints.maxPupilOffsetYSourcePx * strength;
-  const normalizedRadius = Math.hypot(
-    x / constraints.maxPupilOffsetXSourcePx,
-    y / constraints.maxPupilOffsetYSourcePx
-  );
-  if (normalizedRadius > 1) {
-    x /= normalizedRadius;
-    y /= normalizedRadius;
-  }
-  return { xSourcePx: x, ySourcePx: y };
+  if (Math.abs(dxLocal) >= Math.abs(dyLocal)) return dxLocal < 0 ? 'left' : 'right';
+  return dyLocal < 0 ? 'up' : 'down';
 }
 
 export class GazeEngine implements IGazeEngine {
@@ -221,20 +189,12 @@ export class GazeEngine implements IGazeEngine {
       throw new RangeError('nowMs must not precede the previous gaze update');
     }
 
-    const desired = desiredOffset(input, constraints);
-    if (desired === null) return { ...previous, updatedAtMs: input.nowMs };
-    const alpha = 1 - Math.exp(-input.deltaSec / constraints.smoothingTimeSec);
-    const pupilOffset = {
-      xSourcePx: previous.pupilOffset.xSourcePx + alpha * (desired.xSourcePx - previous.pupilOffset.xSourcePx),
-      ySourcePx: previous.pupilOffset.ySourcePx + alpha * (desired.ySourcePx - previous.pupilOffset.ySourcePx),
-    };
-    const mode = isNeutral(desired)
-      ? (isNeutral(pupilOffset) ? 'neutral' : 'returning_to_neutral')
-      : 'tracking';
+    const direction = desiredDirection(input, constraints);
+    const mode = direction === 'down' ? 'neutral' : 'tracking';
     return {
       mode,
       ...(mode === 'tracking' ? { target: input.target } : {}),
-      pupilOffset,
+      direction,
       updatedAtMs: input.nowMs,
     };
   }
