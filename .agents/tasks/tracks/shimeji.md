@@ -22,24 +22,22 @@
 - [x] **P14-S05b-REV:** Ревью-гейт адаптера окружения и IPC-провайдера рабочей области (`Approved`). (`done` / `reviewer`)
 - [x] **P14-S03b:** Renderer Gaze Layer Compositor (позиционирование зрачков поверх лица). (`done` / `app-developer`)
 - [x] **P14-S03b-REV:** Ревью-гейт композера слоя зрачков и взгляда (`Approved`). (`done` / `reviewer`)
-- [ ] **P14-G01:** Финальный интеграционный Review Gate Phase 14. (`ready` / `reviewer`)
+- [ ] **P14-A02:** Architectural Decision & IPC Orchestration Spec for Main Physics Loop. (`in_progress` / `architect`)
+- [ ] **P14-G01:** Shimeji Motion Orchestrator & Main Physics Loop Migration. (`planned` / `app-developer`)
 
 ---
 
 ## 2. Подробные карточки задач
 
-### [TASK: P14-G01] — Final Integration Review Gate Phase 14 (Shimeji & Autonomy)
-- **Исполнитель:** `reviewer`
+### [TASK: P14-A02] — Architectural Decision & IPC Orchestration Spec for Main Physics Loop
+- **Исполнитель:** `architect`
 - **Зависит от:** `P14-S01`..`P14-S05b`
-- **Цель:** Сквозная верификация всей Phase 14: кинематики броска, физики гравитации/отскока, зацепления за стены/потолок, срыва `support_lost`, процедурного взгляда (`GazeEngine`), цепочек активностей (`ActivityRunner`), штрафов повторов и зумис.
+- **Цель:**
+  1. Дать окончательное архитектурное заключение (ADR) по вопросу сторонних игровых/физических движков (Matter.js, PixiJS, Godot и т.д.) в контексте легковесного Desktop Pet.
+  2. Детально специфицировать контракт и схему `ShimejiMotionOrchestrator` в Application/Main слое, typed IPC поток презентации и разделение обязанностей между Main и Renderer.
 - **Читать:**
-  - `.agents/agents/reviewer/agent.md`
+  - `.agents/agents/architect/agent.md`
   - `docs/engine/SHIMEJI_SPEC.md`
-  - `docs/engine/RENDER_ENGINE.md`
-  - `src/domain/behavior/`
-  - `src/infrastructure/platform/`
-  - `src/renderer/`
-- **Критерии приёмки:**
-  - [ ] Чистая изоляция: Domain не импортирует React/Electron/DOM/Node.
-  - [ ] Renderer и Infrastructure строго соблюдают архитектурные границы и типизацию IPC.
-  - [ ] Все тесты кодовой базы (`npm test`) и тайпчек (`npm run typecheck`) проходят на 100%.
+  - `docs/engine/CHARACTER_ENGINE.md`
+  - `src/shared/ipc-contracts.ts`
+- **Менять:** `docs/engine/SHIMEJI_SPEC.md`, `docs/engine/ARCHITECTURE.md` (или соответствующий ADR).

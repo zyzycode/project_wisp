@@ -29,19 +29,25 @@
 
 ## 🔥 Активная очередь спринта (В работе и следующие)
 
-### [TASK: P14-G01] — Final Integration Review Gate Phase 14
-- **Статус:** `ready`
-- **Исполнитель:** `reviewer`
+### [TASK: P14-A02] — Architectural Decision & IPC Orchestration Spec for Main Physics Loop
+- **Статус:** `in_progress`
+- **Исполнитель:** `architect`
 - **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Финальная сквозная верификация всей автономной физики Shimeji (броски, отскоки, зацепление за поверхности, срыв `support_lost`, gaze tracking, цепочки активностей, зумис).
+- **Цель:** Анализ целесообразности сторонних движков (ADR) и формальная спецификация контракта `ShimejiMotionOrchestrator` и IPC-потока в Main-процессе.
 - **Читать:**
-  - `.agents/agents/reviewer/agent.md`
+  - `.agents/agents/architect/agent.md`
   - `docs/engine/SHIMEJI_SPEC.md`
-  - `docs/engine/RENDER_ENGINE.md`
-- **Критерии приёмки:**
-  - [ ] Полное соответствие контракту `SHIMEJI_SPEC.md`.
-  - [ ] Чистая изоляция Domain, Application и Infrastructure слоёв.
-  - [ ] Все тесты `npm test` и `npm run typecheck` проходят (100%).
+  - `src/shared/ipc-contracts.ts`
+- **Менять:** `docs/engine/SHIMEJI_SPEC.md`
+
+---
+
+### [TASK: P14-G01] — Shimeji Motion Orchestrator & Main Physics Loop Migration
+- **Статус:** `planned`
+- **Исполнитель:** `app-developer`
+- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
+- **Цель:** Реализация миграции физического цикла в Main согласно спецификации архитектора.
+- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/SHIMEJI_SPEC.md`
 
 ---
 
@@ -49,8 +55,5 @@
 - **Статус:** `in_progress`
 - **Исполнитель:** `sprite-artist`
 - **Трек:** [`tracks/visual-sprites.md`](./tracks/visual-sprites.md)
-- **Цель:** Отрисовка недостающих PNG лиц (`face_curious`, `face_dizzy`, `face_surprised`, `face_blush`, `face_winking`, `face_pout`) и отдельного спрайта зрачков (`pupils_normal`) для оверлея и Gaze Tracking.
-- **Читать:**
-  - `.agents/agents/sprite-artist/agent.md`
-  - `docs/engine/RENDER_ENGINE.md` (Раздел 1: Manifest & Asset Metadata)
-- **Менять:** `public/assets/sprites/faces/`
+- **Цель:** Отрисовка недостающих PNG лиц и зрачков `pupils_normal`.
+- **Читать:** `.agents/agents/sprite-artist/agent.md`, `docs/engine/RENDER_ENGINE.md`
