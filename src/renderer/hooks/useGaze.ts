@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import {
   GazeEngine,
+  CursorProximityEngine,
+  type CursorProximitySignal,
+  type CursorProximityState,
   type GazeGeometry,
   type GazeState,
   type PupilOffset,
@@ -14,13 +17,15 @@ export interface UseGazeOptions {
   readonly getGeometry: () => GazeGeometry | undefined;
   /** Applies a source-pixel offset without requiring a React tree re-render. */
   readonly onPupilOffset: (offset: PupilOffset) => void;
+  /** Semantic cursor signal for the behavior/activity orchestration boundary. */
+  readonly onCursorSignal?: (signal: CursorProximitySignal | undefined) => void;
 }
 
 /**
  * Keeps cursor sampling and gaze animation in the renderer. The domain engine
  * owns all gaze math; this hook only supplies browser time and coordinates.
  */
-export function useGaze({ enabled, getGeometry, onPupilOffset }: UseGazeOptions): void {
+export function useGaze({ enabled, getGeometry, onPupilOffset, onCursorSignal }: UseGazeOptions): void {
   const cursorRef = useRef<{ x: number; y: number; capturedAtMs: number } | undefined>(undefined);
   const gazeStateRef = useRef<GazeState>({
     mode: 'neutral',
@@ -28,6 +33,12 @@ export function useGaze({ enabled, getGeometry, onPupilOffset }: UseGazeOptions)
     updatedAtMs: 0,
   });
   const gazeEngineRef = useRef(new GazeEngine());
+  const proximityEngineRef = useRef(new CursorProximityEngine());
+  const proximityStateRef = useRef<CursorProximityState>({
+    withinSwatRange: false,
+    dwellWithinSwatRangeMs: 0,
+    updatedAtMs: 0,
+  });
 
   useEffect(() => {
     if (!enabled) {
@@ -37,7 +48,13 @@ export function useGaze({ enabled, getGeometry, onPupilOffset }: UseGazeOptions)
         pupilOffset: NEUTRAL_PUPIL_OFFSET,
         updatedAtMs: 0,
       };
+      proximityStateRef.current = {
+        withinSwatRange: false,
+        dwellWithinSwatRangeMs: 0,
+        updatedAtMs: 0,
+      };
       onPupilOffset(NEUTRAL_PUPIL_OFFSET);
+      onCursorSignal?.(undefined);
       return undefined;
     }
 
@@ -80,6 +97,16 @@ export function useGaze({ enabled, getGeometry, onPupilOffset }: UseGazeOptions)
         });
         gazeStateRef.current = nextState;
         onPupilOffset(nextState.pupilOffset);
+        const proximity = proximityEngineRef.current.update(proximityStateRef.current, {
+          nowMs: now,
+          rootGlobalPosition: geometry.rootGlobalPosition,
+          cursor: cursor === undefined
+            ? undefined
+            : { globalPosition: { x: cursor.x, y: cursor.y }, capturedAtMs: cursor.capturedAtMs },
+          compatible: true,
+        });
+        proximityStateRef.current = proximity.state;
+        onCursorSignal?.(proximity.signal);
       }
       previousNow = now;
       gazeFrameId = window.requestAnimationFrame(tick);
@@ -92,5 +119,5 @@ export function useGaze({ enabled, getGeometry, onPupilOffset }: UseGazeOptions)
       window.cancelAnimationFrame(gazeFrameId);
       if (cursorFrameId !== undefined) window.cancelAnimationFrame(cursorFrameId);
     };
-  }, [enabled, getGeometry, onPupilOffset]);
+  }, [enabled, getGeometry, onCursorSignal, onPupilOffset]);
 }

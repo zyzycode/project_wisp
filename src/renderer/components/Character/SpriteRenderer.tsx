@@ -7,6 +7,9 @@ import type { GazeGeometry, PupilOffset } from '../../../domain/behavior/gaze-en
 import { useGaze } from '../../hooks/useGaze';
 
 const PUPIL_PIVOT = { x: 256, y: 126 };
+// `pupils_normal` is a procedural RenderLayerId positioned between the full
+// face overlay (20) and partial expression overlays (21+).
+const PUPIL_LAYER_Z_INDEX = 20.5;
 
 export interface SpriteRendererProps {
   state?: RenderPresentationState;
@@ -29,8 +32,8 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state, pupilOver
     .filter((layer): layer is VisibleRenderLayerDef => layer !== undefined && isVisibleLayer(layer))
     .sort((left, right) => left.zIndex - right.zIndex);
   const primaryLayers = visibleLayers.filter((layer) => layer.category !== 'props');
-  const layersBelowPupils = primaryLayers.filter((layer) => layer.zIndex <= 20);
-  const layersAbovePupils = primaryLayers.filter((layer) => layer.zIndex > 20);
+  const layersBelowPupils = primaryLayers.filter((layer) => layer.zIndex <= PUPIL_LAYER_Z_INDEX);
+  const layersAbovePupils = primaryLayers.filter((layer) => layer.zIndex > PUPIL_LAYER_Z_INDEX);
   const propLayers = visibleLayers.filter((layer) => layer.category === 'props');
   const { viewport, rootPivot, transform } = state;
   const transformValue = [
@@ -129,6 +132,7 @@ function PupilLayer({
     <image
       ref={imageRef}
       data-layer-id="pupils_normal"
+      data-layer-z-index={PUPIL_LAYER_Z_INDEX}
       data-frame-source={overlay.source}
       data-pupil-offset-x="0"
       data-pupil-offset-y="0"

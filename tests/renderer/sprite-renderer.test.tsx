@@ -91,6 +91,7 @@ describe('Renderer: SpriteRenderer', () => {
     );
 
     expect(markup).toContain('data-layer-id="pupils_normal"');
+    expect(markup).toContain('data-layer-z-index="20.5"');
     expect(markup.indexOf('face_happy_02.png')).toBeLessThan(markup.indexOf('pupils_normal_00.png'));
     expect(markup.indexOf('pupils_normal_00.png')).toBeLessThan(markup.indexOf('expression_wink.png'));
   });

@@ -57,7 +57,6 @@ export interface CursorReactionConstraints {
   readonly swatDwellMs: number;
   readonly signalMaxAgeMs: number;
   readonly swatCooldownKey: string;
-  readonly swatCooldownMs: number;
 }
 
 export interface CursorProximitySignal {
@@ -67,14 +66,12 @@ export interface CursorProximitySignal {
   readonly withinSwatRange: boolean;
   readonly dwellWithinSwatRangeMs: number;
   readonly emittedAtMs: MonotonicMs;
-  readonly isSwatReady: boolean;
 }
 
 export interface CursorProximityState {
   readonly withinSwatRange: boolean;
   readonly dwellWithinSwatRangeMs: number;
   readonly updatedAtMs: MonotonicMs;
-  readonly swatCooldownUntilMs: MonotonicMs;
 }
 
 export interface CursorProximityInput {
@@ -95,11 +92,6 @@ export interface ICursorProximityEngine {
     input: CursorProximityInput,
     constraints?: CursorReactionConstraints
   ): CursorProximityUpdate;
-  beginSwatCooldown(
-    state: CursorProximityState,
-    nowMs: MonotonicMs,
-    constraints?: CursorReactionConstraints
-  ): CursorProximityState;
 }
 
 export const DEFAULT_GAZE_CONSTRAINTS: GazeConstraints = {
@@ -117,7 +109,6 @@ export const DEFAULT_CURSOR_REACTION_CONSTRAINTS: CursorReactionConstraints = {
   swatDwellMs: 450,
   signalMaxAgeMs: 250,
   swatCooldownKey: 'swat_cursor',
-  swatCooldownMs: 15_000,
 };
 
 const EPSILON = 1e-9;
@@ -150,7 +141,6 @@ function validateCursorConstraints(constraints: CursorReactionConstraints): void
   requireNonNegative(constraints.swatRadiusWorldPx, 'swatRadiusWorldPx');
   requireNonNegative(constraints.swatDwellMs, 'swatDwellMs');
   requireNonNegative(constraints.signalMaxAgeMs, 'signalMaxAgeMs');
-  requireNonNegative(constraints.swatCooldownMs, 'swatCooldownMs');
 }
 
 function isFresh(sample: CursorSample, nowMs: MonotonicMs, maxAgeMs: number): boolean {
@@ -288,10 +278,6 @@ export class CursorProximityEngine implements ICursorProximityEngine {
       dwellWithinSwatRangeMs,
       updatedAtMs: input.nowMs,
     };
-    const isSwatReady =
-      withinSwatRange &&
-      dwellWithinSwatRangeMs >= constraints.swatDwellMs &&
-      input.nowMs >= state.swatCooldownUntilMs;
     return {
       state,
       signal: {
@@ -301,20 +287,7 @@ export class CursorProximityEngine implements ICursorProximityEngine {
         withinSwatRange,
         dwellWithinSwatRangeMs,
         emittedAtMs: input.nowMs,
-        isSwatReady,
       },
     };
-  }
-
-  public beginSwatCooldown(
-    state: CursorProximityState,
-    nowMs: MonotonicMs,
-    constraints: CursorReactionConstraints = DEFAULT_CURSOR_REACTION_CONSTRAINTS
-  ): CursorProximityState {
-    validateCursorConstraints(constraints);
-    if (nowMs < state.updatedAtMs) {
-      throw new RangeError('nowMs must not precede the previous cursor update');
-    }
-    return { ...state, updatedAtMs: nowMs, swatCooldownUntilMs: nowMs + constraints.swatCooldownMs };
   }
 }

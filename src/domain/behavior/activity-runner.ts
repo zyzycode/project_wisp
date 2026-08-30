@@ -1,6 +1,7 @@
 import type { AnimationIntent, AnimationIntentKind } from '../animation';
 import type { CharacterState, SynthesizedEmotionalTone } from '../character';
 import type { MonotonicMs } from './motion-engine';
+import type { EnvironmentSnapshot } from './surface-kinematics';
 
 export type ActivityId = string;
 export type ActivityStepId = string;
@@ -162,7 +163,7 @@ export function isCooldownEligible(state: CooldownState, key: CooldownKey, nowMs
 export type CooldownTrigger = 'start' | 'completion' | 'cancelled';
 export function triggerCooldown(state: CooldownState, rule: CooldownRule, trigger: CooldownTrigger, nowMs: MonotonicMs): CooldownState { const applies = rule.startsOn === trigger || (rule.startsOn === 'any_finish' && trigger !== 'start'); if (!validateCooldownRule(rule) || !applies) return state; return { entries: [...state.entries.filter((entry) => entry.key !== rule.key), { key: rule.key, nextEligibleAtMs: nowMs + rule.durationMs }] }; }
 
-export interface ActivitySelectionContext { readonly character: Readonly<CharacterState>; readonly synthesizedTone: SynthesizedEmotionalTone; readonly repetition: RepetitionHistory; readonly cooldowns: CooldownState }
+export interface ActivitySelectionContext { readonly character: Readonly<CharacterState>; readonly synthesizedTone: SynthesizedEmotionalTone; readonly environment: EnvironmentSnapshot; readonly repetition: RepetitionHistory; readonly cooldowns: CooldownState; readonly activePriority?: ActivityPriorityClass }
 function unit(value: number | undefined): number { return Math.max(0, Math.min(1, (value ?? 0) / 100)); }
 export function isZoomiesEligible(context: ActivitySelectionContext, cooldownKey = 'zoomies', nowMs = 0): boolean { const needs = context.character.needs; return unit(needs.energy) >= .65 && unit(needs.boredom) >= .75 && unit(needs.play) >= .5 && unit(needs.comfort) < .8 && isCooldownEligible(context.cooldowns, cooldownKey, nowMs); }
 export function zoomiesNeedModifier(character: Readonly<CharacterState>): number { const needs = character.needs; const b = unit(needs.boredom); const e = unit(needs.energy); const p = unit(needs.play); return (.5 + 2.5 * b ** 2) * (.5 + 1.5 * e ** 2) * (.5 + p); }

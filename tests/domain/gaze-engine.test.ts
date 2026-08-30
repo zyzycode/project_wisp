@@ -21,7 +21,6 @@ function proximityState(overrides: Partial<CursorProximityState> = {}): CursorPr
     withinSwatRange: false,
     dwellWithinSwatRangeMs: 0,
     updatedAtMs: 0,
-    swatCooldownUntilMs: 0,
     ...overrides,
   };
 }
@@ -113,7 +112,7 @@ describe('Domain: GazeEngine', () => {
 });
 
 describe('Domain: CursorProximityEngine', () => {
-  it('accumulates dwell, exposes readiness, and honors an explicit cooldown', () => {
+  it('accumulates dwell as a pure signal; Activity cooldown owns swat eligibility', () => {
     const engine = new CursorProximityEngine();
     const cursorAtRoot = (capturedAtMs: number) => ({
       globalPosition: { x: 100, y: 100 },
@@ -134,7 +133,7 @@ describe('Domain: CursorProximityEngine', () => {
       compatible: true,
     });
     expect(update.state.dwellWithinSwatRangeMs).toBe(449);
-    expect(update.signal?.isSwatReady).toBe(false);
+    expect(update.signal?.dwellWithinSwatRangeMs).toBe(449);
 
     update = engine.update(update.state, {
       nowMs: 450,
@@ -142,17 +141,7 @@ describe('Domain: CursorProximityEngine', () => {
       cursor: cursorAtRoot(450),
       compatible: true,
     });
-    expect(update.signal?.isSwatReady).toBe(true);
-
-    const coolingDown = engine.beginSwatCooldown(update.state, 450);
-    const suppressed = engine.update(coolingDown, {
-      nowMs: 900,
-      rootGlobalPosition: { x: 100, y: 100 },
-      cursor: cursorAtRoot(900),
-      compatible: true,
-    });
-    expect(suppressed.signal?.isSwatReady).toBe(false);
-    expect(coolingDown.swatCooldownUntilMs).toBe(450 + DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatCooldownMs);
+    expect(update.signal?.dwellWithinSwatRangeMs).toBe(450);
   });
 
   it('resets dwell for an out-of-range, incompatible, missing, or stale cursor', () => {
@@ -186,13 +175,12 @@ describe('Domain: CursorProximityEngine', () => {
     expect(stale.state.dwellWithinSwatRangeMs).toBe(0);
   });
 
-  it('uses the configured distance, dwell, and cooldown values', () => {
+  it('uses the configured distance and dwell values', () => {
     const engine = new CursorProximityEngine();
     const constraints = {
       ...DEFAULT_CURSOR_REACTION_CONSTRAINTS,
       swatRadiusWorldPx: 10,
       swatDwellMs: 20,
-      swatCooldownMs: 30,
     };
     const state = engine.update(proximityState(), {
       nowMs: 0,
@@ -207,7 +195,6 @@ describe('Domain: CursorProximityEngine', () => {
       compatible: true,
     }, constraints);
 
-    expect(ready.signal?.isSwatReady).toBe(true);
-    expect(engine.beginSwatCooldown(ready.state, 20, constraints).swatCooldownUntilMs).toBe(50);
+    expect(ready.signal?.dwellWithinSwatRangeMs).toBe(20);
   });
 });

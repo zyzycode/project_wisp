@@ -22,12 +22,17 @@ import {
   zoomiesNeedModifier,
 } from '../../src/domain/behavior';
 import type { CharacterState } from '../../src/domain/character';
+import type { EnvironmentSnapshot } from '../../src/domain/behavior';
 
 function character(needs: Partial<CharacterState['needs']> = {}): CharacterState {
   return { needs: { energy: 70, attention: 10, play: 60, comfort: 20, boredom: 80, ...needs }, relationship: { friendship: 0, love: 0, loveUnlocked: false }, personality: { id: 'test', displayName: 'Test', aiSelfConcept: 'test', axes: { openness: axis(), extraversion: axis(), agreeableness: axis(), sensitivity: axis(), playfulness: axis(), boldness: axis(), independence: axis() } }, intimacy: { flirtiness: 0, romanticCharge: 0, userConsentEnabled: false, boundariesKnown: false }, preferences: {}, lastUpdated: 0 };
 }
 function axis() { return { base: .5, current: .5, softMin: 0, softMax: 1, hardMin: 0, hardMax: 1, plasticity: .5 }; }
-function context(overrides: Partial<ActivitySelectionContext> = {}): ActivitySelectionContext { return { character: character(), synthesizedTone: 'playful', repetition: { activities: [], actions: [] }, cooldowns: EMPTY_COOLDOWNS, ...overrides }; }
+const environment: EnvironmentSnapshot = {
+  capturedAtMs: 0,
+  screenBounds: { id: 'primary', x: 0, y: 0, width: 1000, height: 800 },
+};
+function context(overrides: Partial<ActivitySelectionContext> = {}): ActivitySelectionContext { return { character: character(), synthesizedTone: 'playful', environment, repetition: { activities: [], actions: [] }, cooldowns: EMPTY_COOLDOWNS, ...overrides }; }
 
 describe('Domain: Activity Runner', () => {
   it('provides the specified Explore and Rest chains', () => {

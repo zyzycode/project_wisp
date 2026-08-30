@@ -163,74 +163,16 @@ Behavior Brain never decides whether Wisp falls, collides or lands. Application 
 
 ## 4. Activity Runner, repetition и cooldown
 
-```typescript
-export type ActivityId = string; export type ActivityStepId = string; export type ActivityActionId = string; export type ActivityConditionId = string; export type CooldownKey = string;
-export type ActivityStepTarget = ActivityStepId | 'complete' | 'cancel';
-export type ActivityPriorityClass = 'P0_forced_physics' | 'P1_user_interaction' | 'P2_critical_need' | 'P3_reactive' | 'P4_autonomous' | 'P5_ambient';
-export type RunnableActivityPriorityClass = Exclude<ActivityPriorityClass, 'P0_forced_physics'>;
-export interface AnimationIntentTemplate { readonly kind: AnimationIntent['kind']; readonly category?: AnimationIntent['category']; readonly expressionHint?: AnimationIntent['expressionHint']; readonly propHint?: AnimationIntent['propHint']; readonly loop?: AnimationIntent['loop'] }
-export type ActivityStepCompletion = { readonly type: 'animation_completed'; readonly timeoutMs: number } | { readonly type: 'state_entered'; readonly state: AnyAnimationState; readonly timeoutMs: number } | { readonly type: 'elapsed'; readonly durationMs: number };
-export interface ActivityStepBase { readonly id: ActivityStepId; readonly actionId: ActivityActionId; readonly guard?: ActivityConditionId; readonly next?: ActivityStepId | 'complete'; readonly onGuardFalse?: ActivityStepTarget }
-export interface AnimationActivityStep extends ActivityStepBase { readonly type: 'animation'; readonly intent: AnimationIntentTemplate; readonly completion: ActivityStepCompletion }
-export interface VoluntaryLocomotionStep extends ActivityStepBase { readonly type: 'locomotion'; readonly gait: 'walk' | 'run' | 'crawl'; readonly targetRef: string; readonly intent: AnimationIntentTemplate; readonly timeoutMs: number }
-export interface DelayActivityStep extends ActivityStepBase { readonly type: 'delay'; readonly durationMs: number }
-export interface BranchActivityStep extends ActivityStepBase { readonly type: 'branch'; readonly condition: ActivityConditionId; readonly whenTrue: ActivityStepId | 'complete'; readonly whenFalse: ActivityStepTarget }
-export type ActivityStep = AnimationActivityStep | VoluntaryLocomotionStep | DelayActivityStep | BranchActivityStep;
-export interface ActivityDefinition { readonly id: ActivityId; readonly priority: RunnableActivityPriorityClass; readonly baseWeight: number; readonly entryStepId: ActivityStepId; readonly steps: readonly ActivityStep[]; readonly cooldownKey?: CooldownKey; readonly tags?: readonly string[] }
-export interface ActivityContext { readonly nowMs: MonotonicMs; readonly character: Readonly<CharacterState>; readonly synthesizedTone: SynthesizedEmotionalTone; readonly environment: EnvironmentSnapshot; readonly cursorSignal?: CursorProximitySignal; readonly repetition: RepetitionHistory; readonly cooldowns: CooldownState }
-export type ActivityRuntimeStatus = 'running' | 'completed' | 'cancelled' | 'failed';
-export interface ActivityRuntimeState { readonly runId: string; readonly activityId: ActivityId; readonly status: ActivityRuntimeStatus; readonly currentStepId: ActivityStepId; readonly startedAtMs: MonotonicMs; readonly stepStartedAtMs: MonotonicMs; readonly activeAnimationRequestId?: string; readonly activeLocomotionRequestId?: string }
-export type ActivityCancelReason = 'forced_motion' | 'user_interaction' | 'critical_need' | 'higher_priority_activity' | 'environment_invalidated' | 'animation_rejected' | 'step_timeout' | 'explicit_cancel' | 'application_shutdown';
-export type ActivityResult = { readonly status: 'completed'; readonly activityId: ActivityId; readonly completedAtMs: MonotonicMs } | { readonly status: 'cancelled'; readonly activityId: ActivityId; readonly reason: ActivityCancelReason; readonly cancelledAtMs: MonotonicMs } | { readonly status: 'failed'; readonly activityId: ActivityId; readonly reason: 'invalid_definition' | 'unresolved_target'; readonly failedAtMs: MonotonicMs };
-```
-
-`ActivityChain` stores ordered `steps`, but control flow references only `ActivityStepId`. `entryStepId` and every target must resolve to a unique step; weights/timeouts are positive finite and unconditional branch cycles invalid. Guards/targets are domain tokens, not callbacks. One Activity runs at once. Runner emits intent/voluntary command, waits completion, records history/cooldown and cleans only its `runId`; no direct Render calls. `requestedBy` remains `BehaviorIntentKind | system`; correlation stays outside `AnimationIntent`.
+`ActivityDefinition` is an ordered chain of typed animation, locomotion, delay or guarded branch steps. Steps reference only unique `ActivityStepId`; positive finite weights/timeouts are required and unconditional branch cycles are invalid. One run owns a `runId`, emits `AnimationIntent`/voluntary commands, and never calls Render or Electron. Interruption is always cancel+new run.
 
 ```text
 Explore: walk(target) -> observe -> sit -> look_around -> stand_up
 Rest: yawn -> lie_down -> sleep_start -> sleep_loop (complete on stable state)
+finalWeight = baseWeight × environment × need × tone × personality × repetition
+P(candidate) = finalWeight(candidate) / Σ finalWeight(eligible candidates)
 ```
 
-Semantic `observe/look_around/yawn` action ids use current AnimationIntent fallback until separately added; Runner never creates FSM states dynamically. Branch steps allow future conditions without a Behavior Tree framework.
-
-### 4.1. RepetitionPenalty
-
-```typescript
-export interface RecentActivityEntry { readonly activityId: ActivityId; readonly selectedAtMs: MonotonicMs; readonly result: 'completed' | 'cancelled' }
-export interface RecentActionEntry { readonly actionId: ActivityActionId; readonly animationKind: AnimationIntent['kind']; readonly shownAtMs: MonotonicMs }
-export interface RepetitionHistory { readonly activities: readonly RecentActivityEntry[]; readonly actions: readonly RecentActionEntry[] }
-export interface RepetitionPenalty { readonly activityHistorySize: number; readonly actionHistorySize: number; readonly activityHalfLifeMs: number; readonly actionHalfLifeMs: number; readonly activityStrength: number; readonly actionStrength: number; readonly minActivityMultiplier: number; readonly minActionMultiplier: number }
-```
-
-Ring sizes: Activity `8`, action `16`; cancelled run is recorded only after a step starts. Starting policy: half-lives `5 min`/`90 s`, strengths `0.9`/`0.6`, minima `0.15`/`0.25`.
-
-```text
-activityScore(c) = Σ exp(-ln(2) × (now-entry.selectedAt) / activityHalfLife), matching activityId
-q(c,e) = matching actionId-or-animationKind steps / max(1, visual steps in c)
-actionScore(c) = Σ q(c,e) × exp(-ln(2) × (now-entry.shownAt) / actionHalfLife)
-activityModifier = max(minActivityMultiplier, exp(-activityStrength × activityScore))
-actionModifier = max(minActionMultiplier, exp(-actionStrength × actionScore))
-repetitionModifier = activityModifier × actionModifier
-finalWeight = baseWeight × environmentModifier × needModifier × toneModifier × personalityModifier × repetitionModifier
-P(c) = finalWeight(c) / Σ finalWeight(eligible candidates)
-```
-
-Penalty never bans: a sole candidate uses minimum multiplier; zero total weight falls back to P5 idle. History sizes are positive integers, half-lives/strengths positive, minima in `(0,1]`.
-
-### 4.2. Cooldown
-
-```typescript
-export interface CooldownRule { readonly key: CooldownKey; readonly durationMs: number; readonly startsOn: 'start' | 'completion' | 'any_finish' }
-export interface CooldownEntry { readonly key: CooldownKey; readonly nextEligibleAtMs: MonotonicMs }
-export interface CooldownState { readonly entries: readonly CooldownEntry[] }
-```
-
-```text
-eligible(rule, now) = no entry(rule.key) OR now >= nextEligibleAtMs
-nextEligibleAtMs = triggerTime + durationMs
-```
-
-Cooldown is a hard gate, penalty is a weight. Zoomies/rare/Stretch/Swat have separate keys; wake sets `sleep_after_wake` (P2 emergency may explicitly bypass it). Expensive visible events normally start cooldown on `start`. Durations are non-negative tuning data; one entry per key.
+Repetition history is bounded (initially Activity 8, action 16) and decays exponentially; its multiplier has a positive configured floor, so it never bans the sole eligible candidate. `CooldownEntry { key, nextEligibleAtMs }` is a hard gate, separate from the probability penalty. Zoomies/rare/Stretch/Swat use separate keys; `sleep_after_wake` may be bypassed only by P2. All durations and thresholds are tuning data.
 
 ## 5. Gaze, cursor и environment
 
@@ -288,61 +230,9 @@ Snapshot is immutable. Adapter selects usable work area and normalizes OS limita
 
 ## 6. Character Engine: Needs, Mood, Stimuli
 
-`Mood` means derived `SynthesizedEmotionalTone`, never mutable state. Shimeji reads a snapshot; Character Engine alone clamps/metabolizes Needs, progresses Relationship/Personality/Intimacy and resynthesizes tone.
+`Mood` is derived `SynthesizedEmotionalTone`, never mutable state. Shimeji reads a Character snapshot; Character Engine alone clamps/metabolizes Needs, changes Relationship/Personality/Intimacy and resynthesizes tone. Needs/tone/personality coefficients are configured tuning, not hard-coded selector rules: their positive modifiers affect probability only, never P0/P1 safety gates.
 
-Все числовые gates/коэффициенты Needs, tone, Personality и stimulus intensity/delta в §6 — стартовый tuning-профиль, передаваемый конфигурацией, а не неизменная архитектура. Инварианты контракта — диапазоны, формы формул, категории, ownership и idempotency; реализация не hardcode-ит эти числа в ветвях selector/reducer.
-
-```typescript
-export interface ActivitySelectionContext { readonly character: Readonly<CharacterState>; readonly synthesizedTone: SynthesizedEmotionalTone; readonly environment: EnvironmentSnapshot; readonly repetition: RepetitionHistory; readonly cooldowns: CooldownState; readonly activePriority?: ActivityPriorityClass }
-```
-
-```text
-E=clamp(energy/100,0,1); B=clamp((boredom??15)/100,0,1)
-P=clamp(play/100,0,1); C=clamp(comfort/100,0,1)
-stimulationNeed=max(B,P); restNeed=max(1-E,C)
-```
-
-| Activity | Eligibility | `needModifier` |
-|---|---|---|
-| Explore/walk | `E>0.20`, no forced/critical sleep | `(0.35+1.25B)×(0.40+0.60E)` |
-| Run | `E>0.30`, no forced/critical sleep | `(0.20+1.80×stimulationNeed)×(0.30+1.20E)` |
-| Sit/lie | no P0/P1; below P2 Sleep | `(0.35+1.65(1-E))×(0.80+0.40C)` |
-| Optional Rest | `sleep_after_wake` expired; no P0/P1 | `0.10+2.40×restNeed²` |
-| Zoomies | `E>=.65 AND B>=.75 AND P>=.50 AND C<.80`, cooldown expired | `(0.50+2.50B²)×(0.50+1.50E²)×(0.50+P)` |
-
-`energy<=20 OR comfort>=80` creates deterministic P2 Sleep; P0/P1 may delay it. Otherwise Rest is weighted and rechecks sleep permission at its sleep step. Zoomies rarity comes from gates, low base weight, P3, cooldown and penalty.
-
-| Tone | Explore | Run | Sit | Rest | Zoomies | Swat |
-|---|---:|---:|---:|---:|---:|---:|
-| shy | .85 | .65 | 1.35 | 1.10 | .45 | .55 |
-| sleepy | .35 | .15 | 1.40 | 2.00 | .05 | .10 |
-| playful | 1.15 | 1.45 | .65 | .45 | 1.80 | 1.50 |
-| curious | 1.40 | 1.05 | .90 | .75 | .85 | 1.10 |
-| neutral | 1 | 1 | 1 | 1 | 1 | 1 |
-| affectionate | .90 | .85 | 1.10 | 1 | .65 | 1.15 |
-| flustered | .75 | .55 | 1.35 | 1.10 | .30 | .35 |
-
-```text
-personalityExplore=.50+.60×openness+.25×independence
-personalityRun=.60+.55×playfulness+.25×extraversion
-personalitySit=.75+.25×sensitivity+.20×(1-extraversion)
-personalityRest=.80+.25×sensitivity+.20×independence
-personalityZoomies=.25+.90×playfulness+.45×boldness
-personalitySwat=.40+.70×playfulness+.35×boldness
-```
-
-Axes use clamped `.current`; positive personality/tone modifiers alter probability, not safety gates.
-
-| Brain decision | Canonical `BehaviorIntent` | Activity detail |
-|---|---|---|
-| Explore/walk/run | `wander` | gait/target |
-| Sit/observe | `idle` | pose/steps |
-| Rest/Sleep | `sleep` | lie -> sleep start/loop |
-| Zoomies/Swat/chase | `play` | P3 Activity |
-| direct drag | `drag` | P1 + forced authority |
-| landing | `land` | outcome presentation chain |
-
-Activity-specific public intent kinds require coordinated update of `BEHAVIOR_INTENTS.md`; provider/timer cannot forge physics/user stimuli.
+`energy <= 20 OR comfort >= 80` selects deterministic P2 Sleep after P0/P1; otherwise Explore, Run, Sit, Rest and Zoomies are weighted candidates. Zoomies requires sufficient energy/stimulation, low overload and an expired cooldown. Brain maps Explore/Run to `wander`, Sit to `idle`, Rest/Sleep to `sleep`, Zoomies/Swat to P3 `play`; direct drag and landing map to `drag`/`land`. New public intent kinds require the coordinated `BEHAVIOR_INTENTS.md` change.
 
 ### 6.1. Feedback stimuli
 
@@ -357,36 +247,122 @@ export interface ShimejiStimulusMappingContext { readonly createdAtIso: string; 
 export interface IShimejiStimulusMapper { map(event: ShimejiFeedbackEvent, context: ShimejiStimulusMappingContext): StimulusDto | null }
 ```
 
-Domain emits semantic event/monotonic duration. Configured mapper/reducer attach stable id, ISO time, source, primitive metadata and tuning deltas using the same landing/stimulus profile; Application deduplicates `StimulusDto.id`.
+Application maps semantic events once (deduplicate `StimulusDto.id`): drag start/hold/end are user stimuli; `stumble`/`crash_landing` are system stimuli; petting and completed Swat apply their configured deltas. Soft landing creates no extra stimulus. `drag_hold` occurs once per run after the configured hold; raw pointer/DOM/OS data never enters Character Engine. It clamps Needs `[0,100]` and Relationship `[0,1000]`, derives tone itself, and exposes a new selection snapshot only after landing `settle`/`recover`. Frames, substeps and bounces never multiply a stimulus.
 
-| Feedback | `StimulusDto.type/source` | Intensity | metadata `shimejiEvent` |
-|---|---|---:|---|
-| drag start | `user_drag_start/user` | 1 | `drag_started` |
-| drag hold | `system_event/user` | `clamp(heldMs/1000,1,3)` | `drag_hold`, run id, held ms |
-| drag end | `user_drag_end/user` | 1 | `drag_ended`, run id, held ms |
-| soft landing | none | — | drag end covers it |
-| stumble | `system_event/system` | 1 | `stumble`, severity |
-| crash | `system_event/system` | `clamp(severity/stumbleMaxSeverity,1,3)` | `crash_landing`, severity |
-| pet | `user_pet/user` | `clamp(event.intensity,0,3)` | `petting` |
-| swat completed | `system_event/system` | 1 | `swat_cursor_completed`, run id, `initiatedBy=user_cursor` |
+## 7. ADR-014: выбор движка для системного окна
 
-`drag_hold` emits once per run after `heldMs>=1000`; swat rewards only successful completion after cooldown. Raw pointer/DOM/OS data never enters stimulus.
+**Статус: accepted (P14-A02).** Для движения Wisp сохраняется чистая TypeScript дискретная кинематика (`MotionEngine` + `SurfaceKinematics`), а не game/physics engine. Объект движения — позиция системного окна, применяемая `BrowserWindow.setPosition`, а не тело сцены или DOM/canvas node.
 
-| Event delta per intensity | energy | attention | play | comfort | boredom | friendship | love/intimacy |
-|---|---:|---:|---:|---:|---:|---:|---|
-| drag_started | -.2 | -2 | — | — | -2 | — | — |
-| drag_hold | -.5 | -2 | — | +3 | -3 | — | — |
-| drag_ended | — | — | — | — | — | — | lifecycle |
-| stumble | -2 | — | — | +3 | -3 | — | — |
-| crash_landing | -6 | — | — | +10 | -4 | — | — |
-| petting | -.6 | -9 | — | -6 | -5 | +4 | love +2, charge +1.5 |
-| swat_cursor_completed | -2 | -2 | -10 | — | -12 | +1 | — |
+| Вариант | Решение | Архитектурная причина |
+|---|---|---|
+| Текущая fixed-step кинематика | принять | O(1) state/step, детерминирована входами, не создаёт render loop, scene graph, body registry или runtime-зависимость |
+| Game/physics engine | отклонить | добавляет отдельные clock, spatial ownership и collision model, которые не управляют native window; bridge всё равно обязан вызвать `setPosition` |
+| PixiJS / WebGL | условно допустим | решает только compositor/View задачу, не physics или window management |
 
-Character Engine clamps Needs `[0,100]`/Relationship `[0,1000]`. Pet retains personality deltas `agreeableness +.002`, `sensitivity -.001`; love uses `loveUnlocked`, while consent gates expression. Other events do not mutate Personality; crash/drag do not reduce Relationship. Mapper never forces `metadata.tone`: tone is resynthesized. `surprised` remains presentation-only.
+Таким образом, для данной задачи лёгкий solver имеет на порядок меньшую операционную поверхность: один state и несколько чисел на тик вместо render runtime, мира тел, синхронизации scene graph и ещё одного цикла. Это архитектурная оценка, не benchmark; измерения требуются, если появится новый workload. Фиксированный шаг также сохраняет воспроизводимость при нестабильном FPS Renderer и фоновых окнах.
 
-Order: landing chain is accepted, stimulus applied once, new tone becomes visible to Brain only after settle/recover. For pet/drag start, apply stimulus before building reaction tone. Frames/substeps/bounces never create extra stimuli.
+PixiJS допускается только после подтверждённой потребности: React/CSS renderer не выдерживает целевой visual frame budget при профилировании, либо нужны GPU-композиция многих слоёв, частицы, маски/фильтры или high-DPI sprite batching. Он должен быть optional Renderer View-adapter: получает `PetPresentationStateDTO`, может иметь свой visual ticker и canvas, но не импортирует domain motion, не вызывает IPC, не читает OS/BrowserWindow и не меняет world/window position. Его добавление требует отдельного ADR, измерений и не меняет этот ownership contract.
 
-## 7. Animation, Render и изоляция
+## 8. `ShimejiMotionOrchestrator` — Main/Application contract
+
+```mermaid
+flowchart LR
+  R[Renderer pointer events] -->|typed IPC| O[ShimejiMotionOrchestrator: Main/Application]
+  E[Environment + monotonic clock adapters] --> O
+  O --> M[MotionEngine / SurfaceKinematics]
+  O --> P[PetPositionPort]
+  P --> W[Infrastructure Electron window adapter -> BrowserWindow.setPosition]
+  O -->|PetPresentationStateDTO| R
+  O --> F[Feedback mapper -> Character Engine]
+  O --> A[Animation FSM / Activity Runner]
+```
+
+`ShimejiMotionOrchestrator` is the sole Main/Application coordinator. It owns the mutable aggregate `{ motion: MotionState, surface: SurfaceKinematicsState, accumulatorSec, dragSession?, lastTickAtMs, presentationRevision }`, scheduler lifecycle and the decision to commit a position. `MotionEngine` and `SurfaceKinematics` remain pure services; the accumulator and timer never enter Domain state.
+
+| Owner | Must own | Must not own |
+|---|---|---|
+| Main/Application | motion/surface state, Main monotonic clock, fixed step, drag samples, environment refresh, `PetPositionService`, `PetPositionPort`, feedback/FSM dispatch | Electron `BrowserWindow`, platform conversion or `setPosition` |
+| Infrastructure | `PetPositionPort` implementation, native coordinate conversion and `BrowserWindow.setPosition` | motion, fixed-step clock, drag/physics state |
+| Renderer | input capture and View of presentation DTO: sprites, chat bubbles, gaze/animation layers | timers for physics, authoritative coordinates, velocity, collision, direct window movement |
+| Preload | typed narrow bridge and event unsubscribe | validation policy or state |
+
+Lifecycle: `start()` records the Main monotonic time and schedules a Main-owned tick; `stop()` cancels future ticks and emits no later work. For a tick, read `now`, clamp `deltaSec` by `MotionConstraints.maxFrameDeltaSec`, add to accumulator and consume exact `fixedStepSec` iterations. Per iteration: refresh a normalized `EnvironmentSnapshot` only at the step boundary; apply queued input in increasing `sequence`; call surface/motion services; route Motion/Surface events atomically to Activity/FSM and feedback; then request a changed root-position commit through `PetPositionPort`. Never run a catch-up step after shutdown/window destruction. The renderer receives at most one immutable presentation snapshot for a committed tick, not a substep stream.
+
+`PetPositionService` is Application state/service: it validates and retains the logical root position. The Application-owned port is declared by its consumer:
+
+```typescript
+export interface PetPositionPort {
+  commitRootPosition(input: { readonly rootPosition: Vector2Dto; readonly bounds: ScreenBoundsDto }): void;
+}
+```
+
+An Infrastructure `ElectronPetPositionAdapter` implements this port: it converts the root/contact pivot to integer native window coordinates using the registered static pivot offset, clamps through the selected bounds and calls `BrowserWindow.setPosition` only when the integer coordinate changed. It is the only Electron boundary. Main maintains the grab offset `rootPosition - pointerScreenPosition`; Renderer never supplies a root position. If focus/window state invalidates the session, Main cancels it; stale, duplicate, out-of-order or foreign-session pointer messages are ignored without changing physics.
+
+Position authority is `forced` for `dragged`/`airborne` and through landing animation until stable `settle`; only then may voluntary locomotion regain authority. Begin drag cancels the active Activity as `user_interaction`; release estimates throw from Main-stamped samples; support loss calls explicit `beginAirborne`. `MotionEvent` is dispatched before the corresponding presentation snapshot, so the visual FSM and `MotionState` cannot disagree for a revision.
+
+## 9. Typed IPC contract
+
+`src/shared/ipc-contracts.ts` is a dependency leaf: it **must not import or re-export Domain/Application/Infrastructure types**. The current `EnvironmentSnapshot` Domain import is transitional debt and must be removed in the P14 implementation before exposing this stream. Shared IPC shapes are standalone serializable forms; a Main boundary mapper converts `EnvironmentSnapshotDTO <-> EnvironmentSnapshot` and drag/presentation DTOs <-> domain/application inputs. Renderer imports only shared DTOs and never a Domain type.
+
+```typescript
+export interface EnvironmentScreenBoundsDTO extends ScreenBoundsDTO {
+  readonly id: string;
+}
+export interface EnvironmentSurfaceDTO {
+  readonly id: string;
+  readonly kind: 'screen_floor' | 'window_top' | 'unknown';
+  readonly bounds: ScreenBoundsDTO;
+  readonly supportY?: number;
+  readonly isValidSupport: boolean;
+}
+export interface EnvironmentSnapshotDTO {
+  readonly capturedAtMs: number;
+  readonly screenBounds: EnvironmentScreenBoundsDTO;
+  readonly currentSurface?: EnvironmentSurfaceDTO;
+}
+```
+
+All following serializable DTOs also belong in `src/shared/ipc-contracts.ts`; their names are deliberately separate from domain types. `screenPosition` is Electron screen/DIP coordinates from the pointer event. `sequence` is a strictly increasing non-negative integer per `pointerId`; Main, not Renderer, supplies authoritative `receivedAtMs` for sampling.
+
+```typescript
+export interface PetDragPointerDTO {
+  readonly pointerId: number;
+  readonly sequence: number;
+  readonly screenPosition: PetPositionDTO;
+}
+export interface BeginPetDragDTO extends PetDragPointerDTO {}
+export interface BeginPetDragResultDTO { readonly dragSessionId: string }
+export interface MovePetDragDTO extends PetDragPointerDTO {
+  readonly dragSessionId: string;
+}
+export interface ReleasePetDragDTO extends MovePetDragDTO {}
+export type PetMotionPhaseDTO = 'dragged' | 'airborne' | 'grounded';
+export type PetAnimationStateDTO =
+  | 'idle' | 'walk' | 'run' | 'dragged' | 'fall' | 'land' | 'stumble'
+  | 'crash_landing' | 'recover' | 'settle' | 'sleep_start' | 'sleep_loop' | 'wake_up';
+export interface PetPresentationStateDTO {
+  readonly revision: number;
+  readonly motionPhase: PetMotionPhaseDTO;
+  readonly rootScreenPosition: PetPositionDTO;
+  readonly velocityPxPerSec: PetPositionDTO;
+  readonly positionAuthority: 'forced' | 'voluntary';
+  readonly animationState: PetAnimationStateDTO;
+  readonly pupilOffsetSourcePx: { readonly x: number; readonly y: number };
+}
+```
+
+Preload exposes exactly:
+
+```typescript
+beginPetDrag(payload: BeginPetDragDTO): Promise<BeginPetDragResultDTO>;
+movePetDrag(payload: MovePetDragDTO): Promise<void>;
+releasePetDrag(payload: ReleasePetDragDTO): Promise<void>;
+onPetPresentationState(listener: (state: PetPresentationStateDTO) => void): () => void;
+```
+
+`beginPetDrag` may only start a fresh valid pointer session; it snapshots the grab offset, clears previous samples and returns an opaque session id. `movePetDrag` queues a valid sample and does not synchronously move a window. `releasePetDrag` queues the final sample, finalizes only its session, and emits release/airborne during the next Main transaction. Invalid DTOs (non-finite coordinates, invalid pointer/sequence/session) are rejected at the IPC handler; delivery race after a normal cancellation is a no-op. `onPetPresentationState` is Main-to-Renderer only, sends snapshots in increasing `revision`, and its unsubscribe must remove the Electron listener. The DTO contains no OS handles, DOM event, raw timestamps, asset paths, Character state or writable callback.
+
+## 10. Animation, Render и изоляция
 
 ```text
 Behavior/Activity -> AnimationIntent -> one Animation FSM -> Resolver/Player -> RenderPresentationState

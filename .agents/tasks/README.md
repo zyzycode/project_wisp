@@ -29,25 +29,20 @@
 
 ## 🔥 Активная очередь спринта (В работе и следующие)
 
-### [TASK: P14-A02] — Architectural Decision & IPC Orchestration Spec for Main Physics Loop
-- **Статус:** `in_progress`
-- **Исполнитель:** `architect`
-- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Анализ целесообразности сторонних движков (ADR) и формальная спецификация контракта `ShimejiMotionOrchestrator` и IPC-потока в Main-процессе.
-- **Читать:**
-  - `.agents/agents/architect/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md`
-  - `src/shared/ipc-contracts.ts`
-- **Менять:** `docs/engine/SHIMEJI_SPEC.md`
-
----
-
 ### [TASK: P14-G01] — Shimeji Motion Orchestrator & Main Physics Loop Migration
-- **Статус:** `planned`
+- **Статус:** `in_progress`
 - **Исполнитель:** `app-developer`
 - **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Реализация миграции физического цикла в Main согласно спецификации архитектора.
-- **Читать:** `.agents/agents/app-developer/agent.md`, `docs/engine/SHIMEJI_SPEC.md`
+- **Цель:** Реализовать `ShimejiMotionOrchestrator` в Application, `PetPositionPort` в Infrastructure, типизированный IPC стрим в Preload и очистить `DesktopPet.tsx` от вычислений физики по спецификации `docs/engine/SHIMEJI_SPEC.md` (Разделы 7–10).
+- **Читать:**
+  - `.agents/agents/app-developer/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md` (Разделы 7, 8, 9, 10)
+  - `src/shared/ipc-contracts.ts`
+- **Менять:** `src/application/`, `src/infrastructure/`, `src/main/`, `src/preload/`, `src/shared/`, `src/renderer/`, тесты.
+- **Критерии приёмки:**
+  - [ ] Main является единственным владельцем координат окна и физики.
+  - [ ] Renderer работает только как презентационный View.
+  - [ ] `npm test && npm run typecheck` проходят со 100% успехом.
 
 ---
 

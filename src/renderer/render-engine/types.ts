@@ -117,13 +117,14 @@ export interface NormalizedSpriteManifest {
 export type RenderLayerId =
   | 'base_body'
   | 'face'
+  | 'pupils_normal'
   | 'expression'
   | 'procedural_blush'
   | 'prop_pillow'
   | 'prop_heart'
   | 'prop_question'
   | 'prop_sparkle';
-export type NonProceduralRenderLayerId = Exclude<RenderLayerId, 'procedural_blush'>;
+export type NonProceduralRenderLayerId = Exclude<RenderLayerId, 'procedural_blush' | 'pupils_normal'>;
 export type RenderBlendMode = 'normal' | 'multiply' | 'screen' | 'additive';
 export interface RenderableFrameDef extends SpriteFrameDef {
   readonly source: string;

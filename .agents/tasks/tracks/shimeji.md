@@ -22,22 +22,30 @@
 - [x] **P14-S05b-REV:** Ревью-гейт адаптера окружения и IPC-провайдера рабочей области (`Approved`). (`done` / `reviewer`)
 - [x] **P14-S03b:** Renderer Gaze Layer Compositor (позиционирование зрачков поверх лица). (`done` / `app-developer`)
 - [x] **P14-S03b-REV:** Ревью-гейт композера слоя зрачков и взгляда (`Approved`). (`done` / `reviewer`)
-- [ ] **P14-A02:** Architectural Decision & IPC Orchestration Spec for Main Physics Loop. (`in_progress` / `architect`)
-- [ ] **P14-G01:** Shimeji Motion Orchestrator & Main Physics Loop Migration. (`planned` / `app-developer`)
+- [x] **P14-A02:** Architectural Decision (ADR-014) & IPC Orchestration Spec for Main Physics Loop. (`done` / `architect`)
+- [x] **P14-A02-REV:** Ревью-гейт архитектурной спецификации Main Physics Loop (`Approved`). (`done` / `reviewer`)
+- [ ] **P14-G01:** Shimeji Motion Orchestrator & Main Physics Loop Migration. (`in_progress` / `app-developer`)
 
 ---
 
 ## 2. Подробные карточки задач
 
-### [TASK: P14-A02] — Architectural Decision & IPC Orchestration Spec for Main Physics Loop
-- **Исполнитель:** `architect`
-- **Зависит от:** `P14-S01`..`P14-S05b`
-- **Цель:**
-  1. Дать окончательное архитектурное заключение (ADR) по вопросу сторонних игровых/физических движков (Matter.js, PixiJS, Godot и т.д.) в контексте легковесного Desktop Pet.
-  2. Детально специфицировать контракт и схему `ShimejiMotionOrchestrator` в Application/Main слое, typed IPC поток презентации и разделение обязанностей между Main и Renderer.
+### [TASK: P14-G01] — Shimeji Motion Orchestrator & Main Physics Loop Migration
+- **Исполнитель:** `app-developer`
+- **Зависит от:** `P14-A02`, `P14-S01`..`P14-S05b`
+- **Цель:** Реализовать `ShimejiMotionOrchestrator` и перенести физический цикл в Main согласно спецификации `docs/engine/SHIMEJI_SPEC.md` (Разделы 7–10):
+  1. Создать сервис `ShimejiMotionOrchestrator` в Application слое (`src/application/services/`).
+  2. Реализовать порт `PetPositionPort` и адаптер `ElectronPetPositionAdapter` в Infrastructure слое.
+  3. Добавить DTO и типизированный IPC в `src/shared/ipc-contracts.ts` и `src/preload/`:
+     - `beginPetDrag`, `movePetDrag`, `releasePetDrag`, `onPetPresentationState`.
+  4. Запустить `fixed-step` физический цикл в Main с трансляцией `PetPresentationStateDTO`.
+  5. Очистить `DesktopPet.tsx`: удалить локальный `MotionEngine`, `MotionState`, RAF loop, прямой вызов `setPosition`.
 - **Читать:**
-  - `.agents/agents/architect/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md`
-  - `docs/engine/CHARACTER_ENGINE.md`
+  - `.agents/agents/app-developer/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md` (Разделы 7, 8, 9, 10)
   - `src/shared/ipc-contracts.ts`
-- **Менять:** `docs/engine/SHIMEJI_SPEC.md`, `docs/engine/ARCHITECTURE.md` (или соответствующий ADR).
+- **Менять:** `src/application/`, `src/infrastructure/`, `src/main/`, `src/preload/`, `src/shared/`, `src/renderer/`, тесты.
+- **Критерии приёмки:**
+  - [ ] Main является единственным владельцем координат окна и физики.
+  - [ ] Renderer работает только как презентационный View.
+  - [ ] `npm test && npm run typecheck` проходят со 100% успехом.

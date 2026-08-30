@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import electron from 'vite-plugin-electron/simple';
 import react from '@vitejs/plugin-react';
+
+const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
@@ -33,7 +36,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      '@': path.resolve(configDirectory, 'src'),
     },
   },
   build: {

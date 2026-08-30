@@ -6,6 +6,14 @@ import type {
   ScreenBoundsDTO,
 } from '../../shared/ipc-contracts';
 import { calculateDragInertia } from '../../domain/models/position';
+import {
+  DEFAULT_MOTION_CONSTRAINTS,
+  MotionEngine,
+  SurfaceKinematics,
+  type MotionEvent,
+  type MotionState,
+  type SurfaceKinematicsState,
+} from '../../domain/behavior';
 import type { CharacterExpression, CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
 import type { ChatMessage } from '../../domain/chat/chat-message';
@@ -97,11 +105,39 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const prevMoveRef = useRef<{ x: number; y: number; time: number }>({
     x: 300,
     y: 300,
-    time: Date.now(),
+    time: performance.now(),
   });
   const clickTimeRef = useRef<number>(0);
   const hasMovedRef = useRef<boolean>(false);
-  const landingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const motionEngineRef = useRef(new MotionEngine());
+  const surfaceKinematicsRef = useRef(new SurfaceKinematics());
+  const motionStateRef = useRef<MotionState>({
+    phase: 'grounded', position: { x: 300, y: 300 }, velocityPxPerSec: { x: 0, y: 0 },
+    activeBoundsId: 'initial', airborneElapsedSec: 0, peakGroundImpactSeverity: 0,
+  });
+  const surfaceStateRef = useRef<SurfaceKinematicsState>({
+    phase: 'grounded', updatedAtMs: performance.now(), locomotionVelocityPxPerSec: { x: 0, y: 0 },
+  });
+  const pointerSamplesRef = useRef<Array<{ position: { x: number; y: number }; capturedAtMs: number }>>([]);
+  const environmentSnapshotRef = useRef(environmentSnapshot);
+  environmentSnapshotRef.current = environmentSnapshot;
+
+  const commitMotionState = useCallback((nextState: MotionState): void => {
+    motionStateRef.current = nextState;
+    setPosition(nextState.position);
+    // Main owns the native window, but its asynchronous clamp result must not
+    // replace Domain state while forced motion owns the world position.
+    void window.wispAPI.updatePosition(nextState.position)
+      .catch((err) => console.error('Position update error:', err));
+  }, []);
+
+  const applyMotionEvents = useCallback((events: readonly MotionEvent[]): void => {
+    for (const event of events) {
+      if (event.type === 'drag_started') dispatchAnim('START_DRAG', true, true);
+      if (event.type === 'airborne_started') dispatchAnim('FALL', true, true);
+      if (event.type === 'landed') dispatchAnim('LAND', true, false);
+    }
+  }, [dispatchAnim]);
 
   // Notify Electron main process when menu expands or collapses and synchronize position
   useEffect(() => {
@@ -109,8 +145,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.wispAPI
         .setMenuExpanded(menuOpen)
         .then((newPos) => {
-          if (newPos) {
+          if (newPos && motionStateRef.current.phase === 'grounded' && surfaceStateRef.current.phase === 'grounded') {
             setPosition(newPos);
+            motionStateRef.current = { ...motionStateRef.current, position: newPos };
             dragStartRef.current.petX = newPos.x;
             dragStartRef.current.petY = newPos.y;
           }
@@ -129,6 +166,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     enabled: autoWanderEnabled && !menuOpen,
     onPositionChange: (newPos) => {
       setPosition(newPos);
+      if (motionStateRef.current.phase === 'grounded' && surfaceStateRef.current.phase === 'grounded') {
+        motionStateRef.current = { ...motionStateRef.current, position: newPos };
+      }
       if (window.wispAPI?.updatePosition) {
         void window.wispAPI.updatePosition(newPos);
       }
@@ -225,7 +265,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.wispAPI
         .getPosition()
         .then((pos) => {
+          if (motionStateRef.current.phase !== 'grounded' || surfaceStateRef.current.phase !== 'grounded') return;
           setPosition(pos);
+          motionStateRef.current = { ...motionStateRef.current, position: pos };
           dragStartRef.current.petX = pos.x;
           dragStartRef.current.petY = pos.y;
         })
@@ -239,9 +281,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
     return () => {
       clearTimeout(welcomeTimer);
-      if (landingTimerRef.current) {
-        clearTimeout(landingTimerRef.current);
-      }
     };
   }, []);
 
@@ -273,13 +312,8 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Left click only for dragging / gestures
 
-    if (landingTimerRef.current) {
-      clearTimeout(landingTimerRef.current);
-      landingTimerRef.current = null;
-    }
-
     hasMovedRef.current = false;
-    clickTimeRef.current = Date.now();
+    clickTimeRef.current = performance.now();
 
     dragStartRef.current = {
       mouseX: e.screenX,
@@ -291,8 +325,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     prevMoveRef.current = {
       x: position.x,
       y: position.y,
-      time: Date.now(),
+      time: performance.now(),
     };
+    pointerSamplesRef.current = [{ position: { x: position.x, y: position.y }, capturedAtMs: performance.now() }];
   };
 
   useEffect(() => {
@@ -301,22 +336,30 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       const deltaY = e.screenY - dragStartRef.current.mouseY;
 
       // Threshold to detect start of drag
-      if (!isDragging && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
+      if (motionStateRef.current.phase !== 'dragged' && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
         if (clickTimeRef.current > 0) {
+          const environment = environmentSnapshotRef.current;
+          const started = motionEngineRef.current.beginDrag(
+            motionStateRef.current,
+            motionStateRef.current.position,
+            environment?.screenBounds.id ?? motionStateRef.current.activeBoundsId,
+            performance.now()
+          );
           setIsDragging(true);
           hasMovedRef.current = true;
           setMenuOpen(false);
           setChatOpen(false);
-          dispatchAnim('START_DRAG');
+          commitMotionState(started.state);
+          applyMotionEvents(started.events);
         }
       }
 
-      if (!isDragging) return;
+      if (motionStateRef.current.phase !== 'dragged') return;
 
       const rawTargetX = dragStartRef.current.petX + deltaX;
       const rawTargetY = dragStartRef.current.petY + deltaY;
 
-      const now = Date.now();
+      const now = performance.now();
       const dt = now - prevMoveRef.current.time;
 
       if (dt > 16) {
@@ -334,34 +377,27 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         };
       }
 
-      if (window.wispAPI?.updatePosition) {
-        window.wispAPI
-          .updatePosition({ x: rawTargetX, y: rawTargetY })
-          .then((clamped) => {
-            setPosition(clamped);
-          })
-          .catch((err) => console.error('Position update error:', err));
+      const nextPosition = { x: rawTargetX, y: rawTargetY };
+      pointerSamplesRef.current.push({ position: nextPosition, capturedAtMs: performance.now() });
+      if (pointerSamplesRef.current.length > DEFAULT_MOTION_CONSTRAINTS.throwSampling.maxSamples) {
+        pointerSamplesRef.current.shift();
       }
+      commitMotionState(motionEngineRef.current.updateDraggedPosition(motionStateRef.current, nextPosition));
     };
 
     const handleMouseUp = () => {
       clickTimeRef.current = 0;
 
-      if (isDragging) {
+      if (motionStateRef.current.phase === 'dragged') {
+        const releaseAtMs = performance.now();
+        const throwVector = motionEngineRef.current.estimateThrow(pointerSamplesRef.current, releaseAtMs);
+        const released = motionEngineRef.current.release(motionStateRef.current, throwVector);
         setIsDragging(false);
         setTiltDeg(0);
-        dispatchAnim('RELEASE_DRAG');
+        commitMotionState(released.state);
+        applyMotionEvents(released.events);
 
         sendCharacterInteraction({ type: 'drag_end' });
-
-        // Trigger landing animation after brief drop with managed timer
-        if (landingTimerRef.current) {
-          clearTimeout(landingTimerRef.current);
-        }
-        landingTimerRef.current = setTimeout(() => {
-          dispatchAnim('LAND');
-          landingTimerRef.current = null;
-        }, 180);
       }
     };
 
@@ -372,7 +408,57 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dispatchAnim, sendCharacterInteraction]);
+  }, [applyMotionEvents, commitMotionState, sendCharacterInteraction]);
+
+  // The renderer supplies time and environment DTOs only. During dragged and
+  // airborne phases, MotionEngine is the single position owner; an attached
+  // surface is resolved before the fixed-step loop so support_lost reaches the
+  // very same airborne state and FSM transition as a thrown character.
+  useEffect(() => {
+    let frameId = 0;
+    let previousNow: number | undefined;
+    let accumulatorSec = 0;
+    const tick = (now: number): void => {
+      const environment = environmentSnapshotRef.current;
+      if (environment !== null && environment !== undefined) {
+        let motion = motionStateRef.current;
+        let events: readonly MotionEvent[] = [];
+        const surfaceState = surfaceStateRef.current;
+        if (surfaceState.phase === 'climbing_wall' || surfaceState.phase === 'hanging_ceiling') {
+          const surfaceResult = surfaceKinematicsRef.current.step({
+            state: surfaceState,
+            motion,
+            environment,
+            nowMs: now,
+          }, motionEngineRef.current);
+          surfaceStateRef.current = surfaceResult.state;
+          motion = surfaceResult.motion.state;
+          events = surfaceResult.motion.events;
+        }
+
+        const deltaSec = previousNow === undefined
+          ? 0
+          : Math.min((now - previousNow) / 1000, DEFAULT_MOTION_CONSTRAINTS.maxFrameDeltaSec);
+        accumulatorSec += Math.max(0, deltaSec);
+        while (motion.phase === 'airborne' && accumulatorSec >= DEFAULT_MOTION_CONSTRAINTS.fixedStepSec) {
+          const stepped = motionEngineRef.current.step({
+            state: motion,
+            stepSec: DEFAULT_MOTION_CONSTRAINTS.fixedStepSec,
+            bounds: environment.screenBounds,
+          });
+          motion = stepped.state;
+          events = [...events, ...stepped.events];
+          accumulatorSec -= DEFAULT_MOTION_CONSTRAINTS.fixedStepSec;
+        }
+        if (motion !== motionStateRef.current) commitMotionState(motion);
+        if (events.length > 0) applyMotionEvents(events);
+      }
+      previousNow = now;
+      frameId = requestAnimationFrame(tick);
+    };
+    frameId = requestAnimationFrame(tick);
+    return (): void => cancelAnimationFrame(frameId);
+  }, [applyMotionEvents, commitMotionState]);
 
   // Click & Double Click Interaction Handlers
   const handlePetClick = () => {
@@ -415,6 +501,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
       void window.wispAPI.updatePosition(centeredPosition).then((nextPosition) => {
         setPosition(nextPosition);
+        motionStateRef.current = { ...motionStateRef.current, position: nextPosition };
         dragStartRef.current.petX = nextPosition.x;
         dragStartRef.current.petY = nextPosition.y;
         setMenuOpen(false);
