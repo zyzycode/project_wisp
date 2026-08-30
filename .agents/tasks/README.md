@@ -40,19 +40,16 @@
 
 ---
 
-### [TASK: P14-S03a] — Gaze & Cursor Proximity Math Engine
+### [TASK: P14-S03b] — Renderer Gaze Layer Compositor
 - **Статус:** `ready`
-- **Исполнитель:** `domain-behavior`
+- **Исполнитель:** `app-developer`
 - **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Реализовать в чистом Domain слое `GazeEngine` (сглаженное слежение зрачками за курсором) и `CursorProximityEngine` (dwell-таймер и готовность реакции `swat_cursor`).
+- **Цель:** Подключить слой зрачков `pupils_normal` в композер рендерера (`CharacterRenderer.tsx`) со смещением по координатам `pupilOffset` от `GazeEngine`.
 - **Читать:**
-  - `.agents/agents/domain-behavior/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 5: Gaze, cursor и environment)
-- **Менять:** `src/domain/behavior/`, `tests/domain/`.
-- **Критерии приёмки:**
-  - [ ] Чистый TypeScript без DOM/Electron.
-  - [ ] Плавный расчет смещения зрачков без джиттера.
-  - [ ] `npm test && npm run typecheck` проходят без ошибок.
+  - `.agents/agents/app-developer/agent.md`
+  - `docs/engine/RENDER_ENGINE.md` (Разделы 1.5, 2.1)
+  - `src/domain/behavior/gaze-engine.ts`
+- **Менять:** `src/renderer/`, unit-тесты.
 
 ---
 
@@ -66,6 +63,3 @@
   - `src/infrastructure/platform/`
   - `src/shared/ipc-contracts.ts`
 - **Менять:** `src/infrastructure/platform/`, `src/main/`, `src/preload/`, тесты.
-- **Критерии приёмки:**
-  - [ ] Корректное формирование `EnvironmentSnapshot` по IPC.
-  - [ ] `npm test && npm run typecheck` проходят без ошибок.
