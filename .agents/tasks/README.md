@@ -44,21 +44,6 @@
 
 ---
 
-### [TASK: P14-UI03] — Speech Bubble Auto-Dismiss & Polish
-- **Статус:** `ready`
-- **Исполнитель:** `app-developer`
-- **Трек:** [`tracks/ui-desktop.md`](./tracks/ui-desktop.md)
-- **Цель:** Настройка адаптивного позиционирования речевого облачка и таймингов автоматического скрытия сообщений.
-- **Читать:**
-  - `.agents/agents/app-developer/agent.md`
-  - `src/renderer/components/Chat/SpeechBubble.tsx`
-- **Менять:** `src/renderer/components/Chat/SpeechBubble.tsx`, тесты.
-- **Критерии приёмки:**
-  - [ ] Сообщения авто-скрываются через вычисленный интервал (3с + добавка за длину текста).
-  - [ ] Облачко не вылезает за пределы видимого экрана.
-
----
-
 ### [TASK: P13-F03a] — Face Overlay & Gaze Pupils Pack
 - **Статус:** `ready`
 - **Исполнитель:** `sprite-artist`
@@ -71,3 +56,18 @@
 - **Критерии приёмки:**
   - [ ] Изолированные лица на прозрачном фоне 512x512.
   - [ ] Отдельный спрайт зрачков `pupils_normal`.
+
+---
+
+### [TASK: P14-S05] — Environment Snapshots & Window Boundaries Interaction
+- **Статус:** `ready`
+- **Исполнитель:** `domain-behavior` + `app-developer`
+- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
+- **Цель:** Поддержка взаимодействия с границами окон и панелью задач (лазание по бокам, свисание с верхней границы) через `EnvironmentSnapshot`.
+- **Читать:**
+  - `.agents/agents/domain-behavior/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 5: Environment & Surfaces)
+- **Менять:** `src/domain/behavior/`, `src/infrastructure/platform/`, unit-тесты.
+- **Критерии приёмки:**
+  - [ ] Адаптеры окон передают корректный `EnvironmentSnapshot`.
+  - [ ] Персонаж корректно цепляется за верх/бок активной рабочей области.

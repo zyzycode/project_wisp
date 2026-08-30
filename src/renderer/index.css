@@ -88,11 +88,15 @@ html, body {
 /* Speech & Thought Dialogue Bubbles */
 .speech-bubble {
   position: absolute;
-  top: -8px;
+  top: 8px;
   left: 50%;
-  transform: translateX(-50%);
-  max-width: 220px;
-  padding: 8px 12px;
+  width: max-content;
+  max-width: min(240px, calc(100% - 24px));
+  max-height: min(144px, calc(100% - 24px));
+  padding: 9px 13px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  word-break: normal;
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(168, 85, 247, 0.4);
   border-radius: 12px;
@@ -102,13 +106,43 @@ html, body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(168, 85, 247, 0.25);
   z-index: 50;
   cursor: pointer;
-  animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+  transform-origin: 50% 100%;
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.speech-bubble.thought {
+.speech-bubble.is-entering,
+.speech-bubble.is-exiting {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-4px) scale(0.96);
+}
+
+.speech-bubble.is-exiting {
+  pointer-events: none;
+}
+
+.speech-bubble.is-thought {
   border-style: dashed;
   border-color: rgba(99, 102, 241, 0.5);
+  border-radius: 18px;
+  background: rgba(30, 27, 75, 0.96);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(99, 102, 241, 0.2);
+}
+
+.speech-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.thought-icon {
+  flex: 0 0 auto;
+}
+
+.speech-text {
+  min-width: 0;
+  white-space: pre-wrap;
 }
 
 .speech-bubble-arrow {
@@ -121,6 +155,25 @@ html, body {
   background: rgba(15, 23, 42, 0.95);
   border-right: 1px solid rgba(168, 85, 247, 0.4);
   border-bottom: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.speech-bubble.is-thought .speech-bubble-arrow {
+  bottom: -9px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.55);
+  border-radius: 50%;
+  background: rgba(30, 27, 75, 0.96);
+}
+
+.pet-container.menu-is-open .speech-bubble {
+  left: 140px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .speech-bubble {
+    transition-duration: 1ms;
+  }
 }
 
 /* Interactive Chat Input Box */

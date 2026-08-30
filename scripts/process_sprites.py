@@ -7,8 +7,8 @@ Project Wisp — Multi-Category Sprite & Face Overlay Processor
    - В первую очередь читает manifest.json как источник истины для маппинга
      файлов sourceFile -> категория (category), префикс (key) и папка назначения.
    - Если файл уже прописан в manifest.json, скрипт строго следует манифесту.
-   - Поддержка префиксов: `body_<name>`, `face_<name>`, `prop_<name>` автоматически
-     раскладываются по соответствующим папкам (`body/<name>`, `faces/<name>`, `props/<name>`).
+   - Поддержка префиксов: `body_<name>`, `face_<name>`, `prop_<name>`, `pupils_<name>` автоматически
+     раскладываются по соответствующим папкам (`body/<name>`, `faces/<name>`, `props/<name>`, `faces/pupils/`).
 2. Тело (body/*):
    - Объектная нарезка (Connected Component Object Islands) — 100% сохранение волос, рук, ног.
    - Масштабирование по эталонному росту (Target Body Height = 390px).
@@ -59,34 +59,53 @@ except AttributeError:
     RESAMPLE_FILTER = Image.LANCZOS
 
 CATEGORY_RULES = [
-    # --- Эмоции / Оверлеи лиц (Faces) ---
-    (["злост", "злой", "сердит", "ярост", "гнев", "angry", "rage", "mad", "grumpy"], "faces/angry", "face_angry", (1, 4)),
+    # --- Эмоции / Оверлеи лиц и зрачков (Faces & Pupils) ---
+    (["зрач", "pupil", "pupils", "iris"], "faces/pupils", "pupils_normal", (1, 4)),
+    (["морга", "blink"], "faces/blink", "face_blink", (1, 4)),
+    (["взгляд", "look", "gaze", "directional"], "faces/gaze", "face_gaze", (1, 4)),
+    (["подмиг", "winking", "wink"], "faces/winking", "face_winking", (1, 4)),
+    (["наду", "обид", "pout", "grumpy_face"], "faces/pout", "face_pout", (1, 4)),
+    (["головокруж", "спирал", "dizzy"], "faces/dizzy", "face_dizzy", (1, 4)),
+    (["любопыт", "интерес", "curious"], "faces/curious", "face_curious", (1, 4)),
+    (["ухмыл", "smug", "smirk", "хитр"], "faces/smug", "face_smug", (1, 4)),
+    (["слез", "плач", "cry", "crying", "tears"], "faces/crying", "face_crying", (1, 4)),
+    (["злост", "злой", "сердит", "ярост", "гнев", "angry", "rage", "mad"], "faces/angry", "face_angry", (1, 4)),
     (["счаст", "радост_лиц", "happy", "joy", "smile", "улыбк"], "faces/happy", "face_happy", (1, 4)),
-    (["груст", "печал", "плач", "слез", "расстро", "sad", "distress", "cry", "crying", "tear"], "faces/sad", "face_sad", (1, 4)),
+    (["груст", "печал", "расстро", "sad", "distress"], "faces/sad", "face_sad", (1, 4)),
     (["удивл", "шок", "испуг_лиц", "shock", "shocked", "surpris", "gasp", "panic"], "faces/shocked", "face_shocked", (1, 4)),
     (["разговор", "речь", "говорит", "рот", "talk", "talking", "lipsync", "lip_sync", "speak"], "faces/talking", "face_talking", (1, 4)),
     (["озадачен", "сомнен", "растерян", "думает_лиц", "confus", "skeptic", "puzzl", "curious_face"], "faces/thinking", "face_thinking", (1, 4)),
     (["зевот", "дремот", "сон_лиц", "сонн", "drowsy", "yawn", "sleepy", "slumber"], "faces/sleep", "face_sleep", (1, 4)),
     (["смущен", "румян", "красне", "стыд", "хорни", "blush", "flirt", "seduce", "erotic"], "faces/flirty", "face_flirty", (1, 4)),
     (["нейтрал", "спокойн_лиц", "neutral", "calm_face", "base_face"], "faces/neutral", "face_neutral", (1, 4)),
-    (["лиц", "эмоци", "face", "expression", "eyes", "взгляд"], "faces/base", "face", (1, 4)),
+    (["лиц", "эмоци", "face", "expression", "eyes"], "faces/base", "face", (1, 4)),
 
     # --- Анимации тела (Body) ---
+    (["стена", "лаза", "полз", "climb", "wall_climb"], "body/climb_wall", "body_climb_wall", (1, 4)),
+    (["потолок", "вис", "ceiling", "hang", "ceiling_hang"], "body/ceiling_hang", "body_ceiling_hang", (1, 4)),
+    (["сидит", "сидеть", "посадка_тело", "sit", "sitting"], "body/sit", "body_sit", (1, 4)),
+    (["встает", "встать", "подъем", "stand_up", "standup", "rise"], "body/stand_up", "body_stand_up", (1, 4)),
+    (["лежит", "лежать", "отдых", "lie", "lying"], "body/lie", "body_lie", (1, 4)),
+    (["шлепок", "расплющ", "падение_пол", "splat", "crash", "crash_splat"], "body/crash_splat", "body_crash_splat", (1, 4)),
+    (["отряхив", "встает_после_падения", "recover", "dust_off"], "body/recover", "body_recover", (1, 4)),
     (["машет", "маха", "привет", "рука_машет", "wave", "waving", "hello", "hi"], "body/wave", "body_wave", (1, 4)),
     (["побед", "ура", "праздн", "радост_прыж", "celebrate", "celebration", "cheer", "victory", "win"], "body/celebrate", "body_celebrate", (1, 4)),
     (["испуг", "страх", "боит", "паник_тело", "scared", "afraid", "fear", "tremble"], "body/scared", "body_scared", (1, 4)),
     (["скук", "скуч", "тоск", "зева", "bored", "boring", "idle_bored", "tedious"], "body/bored", "body_bored", (1, 4)),
     (["укладыва", "готов_спать", "sleep_trans", "bed", "ложит"], "body/sleep_transition", "body_sleep_trans", (1, 4)),
     (["спит", "сон", "засып", "sleep", "zzz", "nap"], "body/sleep", "body_sleep", (1, 4)),
-    (["ходьб", "шаг", "бег", "walk", "run", "step", "move"], "body/walk", "body_walk", (1, 4)),
+    (["ходьб", "шаг", "walk", "step"], "body/walk", "body_walk", (1, 4)),
+    (["бег", "бежит", "run", "running", "sprint"], "body/run", "body_run", (1, 4)),
+    (["прыжок", "прыг", "jump", "hop", "bounce"], "body/jump", "body_jump", (1, 4)),
+    (["падение", "падает", "летит_вниз", "fall", "falling", "drop"], "body/fall", "body_fall", (1, 4)),
     (["перетаск", "курсор", "тащ", "подхват", "перенос", "хват", "взят", "тян", "drag", "pick", "dangle", "carry", "grab", "hold"], "body/dragged", "body_dragged", (1, 4)),
-    (["приземлен", "паден", "пада", "прыж", "land", "landing", "fall", "drop", "jump"], "body/land", "body_land", (1, 4)),
-    (["думает", "дума", "отвеча", "размышл", "think", "ponder", "curious"], "body/thinking", "body_thinking", (1, 4)),
+    (["приземлен", "посадк", "land", "landing"], "body/land", "body_land", (1, 4)),
+    (["думает", "дума", "отвеча", "размышл", "think", "ponder"], "body/thinking", "body_thinking", (1, 4)),
     (["радост", "поглаж", "клик", "ласк", "тиск", "глад", "pet", "love", "heart", "click", "pat"], "body/petting", "body_petting", (1, 4)),
     (["стояни", "поко", "дыхан", "idle", "rest", "stand", "breath"], "body/idle", "body_idle", (1, 4)),
 
     # --- Предметы и FX (Props) ---
-    (["предмет", "вещ", "prop", "pillow", "shadow", "подушк", "тень", "heart_fx", "эффект"], "props", "prop", (1, 1)),
+    (["предмет", "вещ", "prop", "pillow", "shadow", "подушк", "тень", "heart_fx", "эффект", "emote", "icon"], "props", "prop", (1, 4)),
 ]
 
 TARGET_CANVAS_SIZE = 512
@@ -107,13 +126,13 @@ def get_file_hash(filepath: str) -> str:
 
 def parse_filename_grid_hint(filename: str):
     base = os.path.splitext(filename)[0].lower()
-    m = re.search(r'(\\d+)\\s*[xX*]\\s*(\\d+)', base)
+    m = re.search(r'(\d+)\s*[xX*]\s*(\d+)', base)
     if m:
         r, c = int(m.group(1)), int(m.group(2))
         if 1 <= r <= 8 and 1 <= c <= 12 and r * c <= 36:
             return (r, c)
             
-    m_f = re.search(r'(\\d+)\\s*(?:frames?|кадр|f\b|_f)', base)
+    m_f = re.search(r'(\d+)\s*(?:frames?|кадр|f\b|_f)', base)
     if m_f:
         total = int(m_f.group(1))
         grid_map = {
@@ -144,7 +163,7 @@ def detect_grid_dimensions(img: Image.Image, default_grid=(1, 4), filename: str 
         arr = np.array(img.convert("RGBA"))
         alpha = arr[:, :, 3] if arr.shape[2] == 4 else np.full((h, w), 255, dtype=np.uint8)
         row_density = (alpha > 25).sum(axis=1).astype(float)
-        max_rd = max(1.0, float(np.max(row_density)))
+        max_rd = max(1.0, float(np.max(row_density)))\
         mid_y = h // 2
         win_y = max(4, int(h * 0.08))
         v_mid = float(np.min(row_density[mid_y - win_y : mid_y + win_y])) / max_rd
@@ -168,8 +187,8 @@ def detect_grid_dimensions(img: Image.Image, default_grid=(1, 4), filename: str 
         (6, 4)
     ]
 
-    best_grid = default_grid
     best_score = -1e9
+    best_grid = default_grid
 
     for r, c in candidates:
         if r * c > 32:
@@ -271,6 +290,11 @@ def get_target_info(filename: str, manifest: dict = None) -> tuple:
     if m_face:
         emotion = m_face.group(1).strip(" _-")
         return f"faces/{emotion}", f"face_{emotion}", (1, 4)
+
+    m_pupils = re.match(r'^pupils?[_\-\s]+(.+)$', clean_name)
+    if m_pupils:
+        sub = m_pupils.group(1).strip(" _-")
+        return "faces/pupils", f"pupils_{sub}", (1, 4)
 
     m_prop = re.match(r'^prop[_\-\s]+(.+)$', clean_name)
     if m_prop:

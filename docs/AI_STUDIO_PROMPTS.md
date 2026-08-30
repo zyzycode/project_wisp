@@ -17,7 +17,8 @@
 1. **Слой 0 (`props / shadows`):** тень персонажа под ногами, подушка для сна.
 2. **Слой 1 (`base_body`):** тело персонажа с прической и одеждой. **Область лица остаётся чистой (цвет кожи без глаз и рта)** под оверлей.
 3. **Слой 2 (`face`):** летающие черты лица (глаза, брови, рот) на прозрачном фоне.
-4. **Слой 3 (`procedural_blush / fx`):** процедурный румянец, иконки эмоций (`fx_heart`, `fx_question`).
+4. **Слой 2.5 (`pupils`):** процедурно смещаемые зрачки (для слежения глазами за курсором мыши).
+5. **Слой 3 (`procedural_blush / fx`):** процедурный румянец, иконки эмоций (`fx_heart`, `fx_question`, `fx_sweat`, `fx_zzz`).
 
 ---
 
@@ -38,7 +39,7 @@
 
 ---
 
-# 🎭 БЛОК 1: Оверлеи лиц и эмоций (Face Overlays — True Alpha PNG)
+# 🎭 БЛОК 1: Оверлеи лиц и зрачков (Face & Pupils Overlays — True Alpha PNG)
 
 ---
 
@@ -192,7 +193,7 @@ Animation Breakdown:
 
 ---
 
-### F07. `pupils_normal` | Изолированные зрачки (для Gaze Tracking)
+### F07. `pupils_normal` | Изолированные зрачки (Центральный взгляд)
 * **Папка в игре:** `public/assets/sprites/faces/pupils/`
 * **Файлы:** `pupils_normal_00.png`, `pupils_normal_01.png`
 
@@ -210,6 +211,100 @@ CRITICAL RULES:
 Breakdown:
 - Frame 1: Standard isolated pupil pair looking straight forward with specular highlights.
 - Frame 2: Same isolated pupil pair with an extra subtle star glint highlight.
+```
+
+---
+
+### F08. `pupils_directional` | Направленный взгляд зрачков (Влево, Вправо, Вверх, Вниз)
+* **Папка в игре:** `public/assets/sprites/faces/pupils/`
+* **Файлы:** `pupils_directional_00.png` — `pupils_directional_03.png`
+
+```text
+Using the EXACT eye color, iris gradient, pupil core, specular highlights, and eye-spacing from the ATTACHED REFERENCE IMAGE, generate a set of isolated pupil pairs looking in 4 distinct cardinal directions as a PNG with true alpha transparency.
+
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+CRITICAL RULES:
+- ONLY draw the isolated pair of pupils and irises (left pupil and right pupil).
+- DO NOT draw eyelashes, eyelids, sclera (white of eye), skin, eyebrows, head, or body.
+- Maintain the exact eye-spacing distance matching the reference image.
+- 100% transparent alpha background.
+
+Directional Breakdown:
+- Frame 1 (Looking Left): Both pupils and irises shifted toward the left side of the eye zone.
+- Frame 2 (Looking Right): Both pupils and irises shifted toward the right side of the eye zone.
+- Frame 3 (Looking Up): Both pupils and irises shifted upward (looking up toward cursor or sky).
+- Frame 4 (Looking Down): Both pupils and irises shifted downward (looking down at floor).
+```
+
+---
+
+### F09. `face_blink` | Цикл моргания глазами (для живого Idle)
+* **Папка в игре:** `public/assets/sprites/faces/blink/`
+* **Файлы:** `face_blink_00.png` — `face_blink_03.png`
+
+```text
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a natural 4-frame eye blink animation overlay sheet as a PNG with true alpha transparency.
+
+Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+CRITICAL OVERLAY RULES:
+- ONLY draw facial features: eyes, eyelashes, eyebrows, nose, and mouth.
+- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- 100% transparent background alpha.
+- Keep exact facial alignment and dimensions (X:176-336, Y:110-220 within 512x512 canvas).
+
+Animation Breakdown (Natural Blink):
+- Frame 1: Fully open calm eyes, relaxed gentle smile.
+- Frame 2: Half-closed eyelids descending (50% closed), eyelashes lowering.
+- Frame 3: Fully closed eyes in cute clean curved eyelash lines (^_^) with relaxed eyebrows and smile.
+- Frame 4: Eyes reopening back to 70% open, ready to smoothly return to Frame 1.
+```
+
+---
+
+### F10. `face_smug` | Довольная ухмылка / Хитрая моська
+* **Папка в игре:** `public/assets/sprites/faces/smug/`
+* **Файлы:** `face_smug_00.png` — `face_smug_03.png`
+
+```text
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a cute anime smug / cheeky facial feature overlay sheet as a PNG with true alpha transparency.
+
+Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+CRITICAL OVERLAY RULES:
+- ONLY draw facial features: eyes, eyebrows, nose, mouth, and cheek blush.
+- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- 100% transparent background alpha.
+
+Animation Breakdown:
+- Frame 1: Playful side-glance, confident arched eyebrows, small playful smirk mouth.
+- Frame 2: Half-lidded proud eyes looking at viewer, smug cat-like ':3' mouth, slight blush.
+- Frame 3: Cheerful closed curved eyes (^ω^), wide proud cheeky grin, small blush accents.
+- Frame 4: Reopening eyes with sparkling confident glint, satisfied cute smile.
+```
+
+---
+
+### F11. `face_crying` | Сильное огорчение / Аниме-слёзки
+* **Папка в игре:** `public/assets/sprites/faces/crying/`
+* **Файлы:** `face_crying_00.png` — `face_crying_03.png`
+
+```text
+Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a comical / dramatic cute crying face overlay sheet as a PNG with true alpha transparency.
+
+Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+CRITICAL OVERLAY RULES:
+- ONLY draw facial features: eyes, eyebrows, nose, mouth, and translucent blue anime tear streams.
+- DO NOT draw head silhouette, face skin shape, skull outline, ears, hair, neck, or body.
+- 100% transparent background alpha.
+
+Animation Breakdown:
+- Frame 1: Big watery wobbly eyes full of tears, quivering sad mouth, furrowed distressed brows.
+- Frame 2: Tear drops welling up and spilling from corner of eyes, open crying mouth (D:).
+- Frame 3: Comical stream of anime waterfall tears flowing from eyes, wide wailing mouth, blush.
+- Frame 4: Sniffling, half-closed teary eyes with cute cheek teardrops, trembling small pout mouth.
 ```
 
 ---
@@ -404,11 +499,87 @@ Frame 4: Stands tall on both feet, quick final shake/dust-off, transitioning bac
 
 ---
 
+### B08. `body_climb_wall` | Ползание вверх по границе экрана
+* **Папка в игре:** `public/assets/sprites/body/climb_wall/`
+* **Файлы:** `body_climb_wall_00.png` — `body_climb_wall_03.png`
+
+```text
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
+
+Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+Stability rules:
+- Character is clinging to a vertical wall on the LEFT edge of the frame, climbing UPWARDS.
+- Hands and feet grip the vertical left plane.
+- CRITICAL: The face area on the head is clean skin without baked facial features.
+- 100% transparent background alpha.
+
+Animation Goal: Vertical wall climbing loop.
+
+Frame 1: Right hand reaches high up the wall, left knee bent grabbing wall lower, body close to wall.
+Frame 2: Pulls body upward with right arm, left foot pushes off.
+Frame 3: Left hand reaches high up to next grab point, right foot steps up.
+Frame 4: Pulls body up with left arm, transitioning smoothly back to Frame 1.
+```
+
+---
+
+### B09. `body_ceiling_hang` | Висение на потолке (Верхняя кромка экрана)
+* **Папка в игре:** `public/assets/sprites/body/ceiling_hang/`
+* **Файлы:** `body_ceiling_hang_00.png` — `body_ceiling_hang_03.png`
+
+```text
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
+
+Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+Stability rules:
+- Character is hanging from the top edge of the frame by both hands.
+- Legs dangle cutely in mid-air below.
+- Hair and dress hang downward with gravity.
+- CRITICAL: The face area on the head is clean skin without baked facial features.
+- 100% transparent background alpha.
+
+Animation Goal: Ceiling hanging and swaying loop.
+
+Frame 1: Hanging straight down with both hands gripping the ceiling, legs dangling together.
+Frame 2: Gentle sway to the left, legs swing slightly to left side.
+Frame 3: Centered hang, slight pull-up bend in elbows (+4px lift).
+Frame 4: Gentle sway to the right, legs swing slightly to right side.
+```
+
+---
+
+### B10. `body_jump` | Радостный прыжок / Подскок
+* **Папка в игре:** `public/assets/sprites/body/jump/`
+* **Файлы:** `body_jump_00.png` — `body_jump_03.png`
+
+```text
+Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
+
+Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
+
+Stability rules:
+- Character is centered horizontally (X=256).
+- Floor baseline is Y=460.
+- CRITICAL: The face area on the head is clean skin without baked facial features.
+- 100% transparent background alpha.
+
+Animation Goal: Jump anticipation, peak, and landing.
+
+Frame 1 (Crouch Prep): Knees bent low (crouch), arms swinging back, storing energy.
+Frame 2 (Ascent Launch): Pushes hard off the ground, body launching upward into the air (+40px), toes pointed down.
+Frame 3 (Apex Flight): High airborne pose, arms spread out happily, dress and hair floating in mid-air.
+Frame 4 (Landing Cushion): Feet contact floor baseline, knees bending to absorb the jump landing.
+```
+
+---
+
 # 🎁 БЛОК 3: Реквизит и спецэффекты (Props & FX — True Alpha PNG)
 
 ---
 
-### P01. `props_pack` | Пак предметов и эмоций
+### P01. `props_pack` | Базовый пак предметов
 * **Папка в игре:** `public/assets/sprites/props/`
 * **Файлы:** `prop_shadow.png`, `prop_pillow.png`, `prop_heart.png`, `prop_question.png`
 
@@ -426,4 +597,26 @@ Items breakdown:
 Rules:
 - 100% transparent background (true alpha PNG).
 - No solid background boxes, no fake checkerboards, no characters, no scenery.
+```
+
+---
+
+### P02. `fx_emotes_pack` | Дополнительные иконки эмоций
+* **Папка в игре:** `public/assets/sprites/props/`
+* **Файлы:** `prop_sweat.png`, `prop_zzz.png`, `prop_anger.png`, `prop_music.png`
+
+```text
+Using the EXACT pastel cute anime art style and color palette from the ATTACHED REFERENCE IMAGE, generate a set of 4 floating anime emotion icons as a PNG with true alpha transparency.
+
+Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns).
+
+Items breakdown:
+- Cell 1 (prop_sweat): A big cute cartoon anime sweat drop (💧) with soft specular shine.
+- Cell 2 (prop_zzz): Three floating cozy sleeping letters "Z z z" in cute rounded bubble font with sparkles.
+- Cell 3 (prop_anger): A cute red anime anger / irritation vein pop icon (💢).
+- Cell 4 (prop_music): A pair of cute cheerful anime musical notes (🎵 🎶) with pastel sparkle accents.
+
+Rules:
+- 100% transparent background (true alpha PNG).
+- Crisp vector-like outlines, no shadows, no backgrounds.
 ```
