@@ -15,6 +15,7 @@ const manifest: NormalizedSpriteManifest = {
     body_sleep: animation('body_sleep', 'body/sleep', 'body'),
     face_sleep: animation('face_sleep', 'face/sleep', 'face'),
     face_winking: animation('face_winking', 'face/winking', 'face'),
+    face_happy: animation('face_happy', 'face/happy', 'face'),
     expression_wink: animation('expression_wink', 'expression/wink', 'expression'),
     prop_pillow: animation('prop_pillow', 'props/pillow', 'props'),
     prop_sparkle: animation('prop_sparkle', 'props/sparkle', 'props'),
@@ -26,23 +27,31 @@ function animation(
   category: `body/${string}` | `face/${string}` | `expression/${string}` | `props/${string}`,
   layer: 'body' | 'face' | 'expression' | 'props'
 ) {
+  const pivot = layer === 'face' || layer === 'expression' ? { x: 256, y: 180 } : { x: 256, y: 460 };
   return {
     key,
     category,
     layer,
     frames: [0, 1, 2, 3].map((index) => ({
-      source: `${key}_${index}.png`, durationMs: 125, pivot: { x: 256, y: 460 },
+      source: `${key}_${index}.png`, durationMs: 125, pivot,
     })),
     framesCount: 4,
     fps: 8,
-    pivot: { x: 256, y: 460 },
+    pivot,
     ...(layer === 'body' ? {
       faceOverlay: {
         mode: 'overlay' as const,
-        allowedFaceKeys: ['face_sleep', 'face_winking'],
+        allowedFaceKeys: ['face_sleep', 'face_winking', 'face_happy'],
         fallback: 'face_sleep',
         anchor: 'face',
       },
+      defaultAnchors: { face: { x: 256, y: 180 } },
+      frameMeta: [
+        { anchors: { face: { x: 256, y: 180 } } },
+        { anchors: { face: { x: 256, y: 176 } } },
+        { anchors: { face: { x: 256, y: 174 } } },
+        { anchors: { face: { x: 256, y: 181 } } },
+      ],
     } : {}),
     tags: [],
   } as const;
@@ -100,6 +109,22 @@ describe('Phase 13: render and telemetry pipeline', () => {
     expect(markup.indexOf('body_sleep_0.png')).toBeLessThan(markup.indexOf('prop_pillow_0.png'));
     expect(markup.indexOf('body_sleep_0.png')).toBeLessThan(markup.indexOf('face_sleep_0.png'));
     expect(markup.indexOf('face_sleep_0.png')).toBeLessThan(markup.indexOf('prop_pillow_0.png'));
+  });
+
+  it('renders face overlay aligned to body anchor in idle and bobs with body frames', () => {
+    const intent = createSystemAnimationIntent('idle_blink', 'neutral', { expressionHint: 'happy' });
+    const { renderer, states } = createRecordingRenderer();
+    const player = new AnimationPlayer(renderer);
+    player.play(new AssetResolver(manifest).resolve(intent), { type: 'until_replaced' });
+
+    // Frame 0: anchor y=180 -> face offset y = 180 - 460 = -280 -> render y = 460 + (-280) - 180 = 0
+    let markup = renderToStaticMarkup(<SpriteRenderer state={states[0]!} />);
+    expect(markup).toMatch(/data-layer-id="face"[^>]*x="0" y="0"/);
+
+    // Frame 1: anchor y=176 -> face offset y = 176 - 460 = -284 -> render y = 460 + (-284) - 180 = -4
+    player.tick(125);
+    markup = renderToStaticMarkup(<SpriteRenderer state={states[states.length - 1]!} />);
+    expect(markup).toMatch(/data-layer-id="face"[^>]*x="0" y="-4"/);
   });
 
   it('composes shy blush above the body without creating a semantic expression layer', () => {

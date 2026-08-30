@@ -147,6 +147,7 @@ export interface WispApiBridge {
   getSystemInfo: () => Promise<SystemInfoDTO>;
   setIgnoreMouseEvents: (payload: IgnoreMouseEventsDTO) => Promise<void>;
   getPosition: () => Promise<PetPositionDTO>;
+  updatePosition?: (targetPos: PetPositionDTO) => Promise<PetPositionDTO>;
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
   getEnvironmentSnapshot: () => Promise<EnvironmentSnapshotDTO>;
   onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshotDTO) => void) => () => void;

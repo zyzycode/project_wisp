@@ -36,19 +36,20 @@ function animation(
   category: NormalizedSpriteAnimationDef['category'],
   layer: 'body' | 'face' | 'expression' | 'props'
 ): NormalizedSpriteAnimationDef {
+  const pivot = layer === 'face' || layer === 'expression' ? { x: 256, y: 180 } : { x: 256, y: 460 };
   return {
     key,
     category,
     layer,
     frames: [
-      { source: `${key}_0.png`, durationMs: 100, pivot: { x: 256, y: 460 } },
-      { source: `${key}_1.png`, durationMs: 100, pivot: { x: 256, y: 460 } },
-      { source: `${key}_2.png`, durationMs: 100, pivot: { x: 256, y: 460 } },
-      { source: `${key}_3.png`, durationMs: 100, pivot: { x: 256, y: 460 } },
+      { source: `${key}_0.png`, durationMs: 100, pivot },
+      { source: `${key}_1.png`, durationMs: 100, pivot },
+      { source: `${key}_2.png`, durationMs: 100, pivot },
+      { source: `${key}_3.png`, durationMs: 100, pivot },
     ],
     framesCount: 4,
     fps: 10,
-    pivot: { x: 256, y: 460 },
+    pivot,
     tags: [],
     ...(layer === 'body' ? {
       faceOverlay: {
@@ -159,11 +160,10 @@ describe('Renderer: AssetResolver', () => {
     }));
 
     expect(idle.face).toMatchObject({
-      animationKey: 'face_gaze', fixedFrameIndex: 2, anchorName: 'face', followBodyAnchor: false,
-      offset: { x: 0, y: -334 },
+      animationKey: 'face_gaze', fixedFrameIndex: 2, anchorName: 'face',
     });
-    expect(idle.face?.pivot).toEqual({ x: 256, y: 460 });
-    expect(idle.face?.frames[2]?.pivot).toEqual({ x: 256, y: 460 });
+    expect(idle.face?.pivot).toEqual({ x: 256, y: 180 });
+    expect(idle.face?.frames[2]?.pivot).toEqual({ x: 256, y: 180 });
     expect(walk.face).toBeUndefined();
   });
 

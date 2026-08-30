@@ -1,6 +1,7 @@
 /** The manifest may override this per animation or frame. */
 export const DEFAULT_SPRITE_FPS = 8;
 export const DEFAULT_SPRITE_PIVOT: SpritePoint = { x: 256, y: 460 };
+export const DEFAULT_FACE_PIVOT: SpritePoint = { x: 256, y: 180 };
 
 export type SpriteLayerCategory = 'body' | 'face' | 'expression' | 'props';
 export type SpriteAnimationCategory =

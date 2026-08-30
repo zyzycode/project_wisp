@@ -5,15 +5,6 @@ import type {
   PetPositionDTO,
   ScreenBoundsDTO,
 } from '../../shared/ipc-contracts';
-import { calculateDragInertia } from '../../domain/models/position';
-import {
-  DEFAULT_MOTION_CONSTRAINTS,
-  MotionEngine,
-  SurfaceKinematics,
-  type MotionEvent,
-  type MotionState,
-  type SurfaceKinematicsState,
-} from '../../domain/behavior';
 import type { CharacterExpression, CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
 import type { ChatMessage } from '../../domain/chat/chat-message';
@@ -39,6 +30,11 @@ import {
 } from '../../domain/animation/animation-intent';
 import type { AnimationEvent, AnyAnimationState } from '../../domain/animation/animation-state-machine';
 import { DebugHUD } from './Debug';
+import {
+  PetDragController,
+  PetPresentationRevisionGate,
+  subscribeToPetPresentation,
+} from '../pet-main-bridge';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
 
@@ -87,14 +83,14 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [debugTelemetry, setDebugTelemetry] =
     useState<DebugTelemetryDTO>(EMPTY_DEBUG_TELEMETRY);
   const [renderFps, setRenderFps] = useState<number>(0);
-  const debugHudEnabled = window.wispAPI.debugEnabled;
+  const debugHudEnabled = window.wispAPI?.debugEnabled ?? false;
   const environmentSnapshot = useEnvironmentSnapshot();
 
   const sendCharacterInteraction = useCallback(
     (interaction: CharacterInteractionDTO): void => {
       void window.wispAPI
-        .interactWithCharacter(interaction)
-        .catch((err) => console.error('Character interaction failed:', err));
+        ?.interactWithCharacter(interaction)
+        ?.catch((err) => console.error('Character interaction failed:', err));
     },
     []
   );
@@ -106,63 +102,100 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     dispatch: dispatchAnim,
   } = useAnimationStateMachine('idle');
 
-  // Drag & Click reference trackers
-  const dragStartRef = useRef<{
-    mouseX: number;
-    mouseY: number;
-    petX: number;
-    petY: number;
-  }>({
-    mouseX: 0,
-    mouseY: 0,
-    petX: 300,
-    petY: 300,
-  });
-  const prevMoveRef = useRef<{ x: number; y: number; time: number }>({
-    x: 300,
-    y: 300,
-    time: performance.now(),
-  });
-  const clickTimeRef = useRef<number>(0);
-  const hasMovedRef = useRef<boolean>(false);
-  const motionEngineRef = useRef(new MotionEngine());
-  const surfaceKinematicsRef = useRef(new SurfaceKinematics());
-  const motionStateRef = useRef<MotionState>({
-    phase: 'grounded',
-    position: { x: 300, y: 300 },
-    velocityPxPerSec: { x: 0, y: 0 },
-    activeBoundsId: 'initial',
-    airborneElapsedSec: 0,
-    peakGroundImpactSeverity: 0,
-  });
-  const surfaceStateRef = useRef<SurfaceKinematicsState>({
-    phase: 'grounded',
-    updatedAtMs: performance.now(),
-    locomotionVelocityPxPerSec: { x: 0, y: 0 },
-  });
-  const pointerSamplesRef = useRef<
-    Array<{ position: { x: number; y: number }; capturedAtMs: number }>
-  >([]);
-  const environmentSnapshotRef = useRef(environmentSnapshot);
-  environmentSnapshotRef.current = environmentSnapshot;
+  // Drag & Presentation State handling via Preload IPC bridge
+  const dragControllerRef = useRef<PetDragController | null>(null);
+  if (!dragControllerRef.current && Boolean(window.wispAPI)) {
+    dragControllerRef.current = new PetDragController(window.wispAPI);
+  }
 
-  const commitMotionState = useCallback((nextState: MotionState): void => {
-    motionStateRef.current = nextState;
-    setPosition(nextState.position);
-  }, []);
+  const isMouseDownRef = useRef(false);
+  const dragStartPosRef = useRef<{ screenX: number; screenY: number }>({ screenX: 0, screenY: 0 });
+  const isDraggingRef = useRef(false);
+  const hasMovedRef = useRef(false);
+  const prevMotionPhaseRef = useRef<string>('grounded');
 
-  const applyMotionEvents = useCallback(
-    (events: readonly MotionEvent[]): void => {
-      for (const event of events) {
-        if (event.type === 'drag_started')
-          dispatchAnim('START_DRAG', true, true);
-        if (event.type === 'airborne_started')
-          dispatchAnim('FALL', true, true);
-        if (event.type === 'landed') dispatchAnim('LAND', true, false);
+  // Subscribe to Main Process presentation stream (fixed-step physics & authoritative position)
+  useEffect(() => {
+    if (!window.wispAPI?.onPetPresentationState) return undefined;
+    const revisionGate = new PetPresentationRevisionGate();
+    return subscribeToPetPresentation(window.wispAPI, (state) => {
+      if (!revisionGate.accept(state)) return;
+      setPosition(state.rootScreenPosition);
+      const isNowDragging = state.motionPhase === 'dragged';
+      setIsDragging(isNowDragging);
+
+      if (state.motionPhase === 'dragged') {
+        dispatchAnim('START_DRAG', true, true);
+      } else if (state.motionPhase === 'airborne') {
+        dispatchAnim('FALL', true, true);
+      } else if (
+        prevMotionPhaseRef.current === 'airborne' &&
+        state.motionPhase === 'grounded'
+      ) {
+        dispatchAnim('LAND', true, false);
       }
-    },
-    [dispatchAnim]
-  );
+      prevMotionPhaseRef.current = state.motionPhase;
+
+      if (state.velocityPxPerSec) {
+        const vx = state.velocityPxPerSec.x;
+        const tilt = Math.max(-25, Math.min(25, vx * 0.02));
+        setTiltDeg(tilt);
+      }
+    });
+  }, [dispatchAnim]);
+
+  // Pointer drag event handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Left click only for dragging / gestures
+    isMouseDownRef.current = true;
+    hasMovedRef.current = false;
+    isDraggingRef.current = false;
+    dragStartPosRef.current = { screenX: e.screenX, screenY: e.screenY };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isMouseDownRef.current) return;
+      const deltaX = e.screenX - dragStartPosRef.current.screenX;
+      const deltaY = e.screenY - dragStartPosRef.current.screenY;
+
+      // Threshold to detect start of drag
+      if (
+        !isDraggingRef.current &&
+        (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)
+      ) {
+        isDraggingRef.current = true;
+        hasMovedRef.current = true;
+        setMenuOpen(false);
+        setChatOpen(false);
+        dragControllerRef.current?.begin(1, { x: e.screenX, y: e.screenY });
+      }
+
+      if (isDraggingRef.current) {
+        dragControllerRef.current?.move({ x: e.screenX, y: e.screenY });
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!isMouseDownRef.current) return;
+      isMouseDownRef.current = false;
+
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        dragControllerRef.current?.release({ x: e.screenX, y: e.screenY });
+        setTiltDeg(0);
+        sendCharacterInteraction({ type: 'drag_end' });
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [sendCharacterInteraction]);
 
   // Notify Electron main process when menu expands or collapses and synchronize position
   useEffect(() => {
@@ -170,18 +203,8 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.wispAPI
         .setMenuExpanded(menuOpen)
         .then((newPos) => {
-          if (
-            newPos &&
-            motionStateRef.current.phase === 'grounded' &&
-            surfaceStateRef.current.phase === 'grounded'
-          ) {
+          if (newPos) {
             setPosition(newPos);
-            motionStateRef.current = {
-              ...motionStateRef.current,
-              position: newPos,
-            };
-            dragStartRef.current.petX = newPos.x;
-            dragStartRef.current.petY = newPos.y;
           }
         })
         .catch((err) =>
@@ -200,14 +223,8 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     enabled: autoWanderEnabled && !menuOpen,
     onPositionChange: (newPos) => {
       setPosition(newPos);
-      if (
-        motionStateRef.current.phase === 'grounded' &&
-        surfaceStateRef.current.phase === 'grounded'
-      ) {
-        motionStateRef.current = {
-          ...motionStateRef.current,
-          position: newPos,
-        };
+      if (window.wispAPI?.updatePosition) {
+        void window.wispAPI.updatePosition(newPos);
       }
     },
     dispatchAnim,
@@ -241,8 +258,8 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
   useEffect(() => {
     if (!debugHudEnabled || (!debugHudVisible && !menuOpen)) return undefined;
-    const getDebugTelemetry = window.wispAPI.getDebugTelemetry;
-    const onDebugTelemetry = window.wispAPI.onDebugTelemetry;
+    const getDebugTelemetry = window.wispAPI?.getDebugTelemetry;
+    const onDebugTelemetry = window.wispAPI?.onDebugTelemetry;
     if (getDebugTelemetry === undefined || onDebugTelemetry === undefined)
       return undefined;
     let active = true;
@@ -312,18 +329,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       window.wispAPI
         .getPosition()
         .then((pos) => {
-          if (
-            motionStateRef.current.phase !== 'grounded' ||
-            surfaceStateRef.current.phase !== 'grounded'
-          )
-            return;
           setPosition(pos);
-          motionStateRef.current = {
-            ...motionStateRef.current,
-            position: pos,
-          };
-          dragStartRef.current.petX = pos.x;
-          dragStartRef.current.petY = pos.y;
         })
         .catch((err) => console.error('Failed to get position:', err));
     }
@@ -367,196 +373,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     },
     []
   );
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Left click only for dragging / gestures
-
-    hasMovedRef.current = false;
-    clickTimeRef.current = performance.now();
-
-    dragStartRef.current = {
-      mouseX: e.screenX,
-      mouseY: e.screenY,
-      petX: position.x,
-      petY: position.y,
-    };
-
-    prevMoveRef.current = {
-      x: position.x,
-      y: position.y,
-      time: performance.now(),
-    };
-    pointerSamplesRef.current = [
-      {
-        position: { x: position.x, y: position.y },
-        capturedAtMs: performance.now(),
-      },
-    ];
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.screenX - dragStartRef.current.mouseX;
-      const deltaY = e.screenY - dragStartRef.current.mouseY;
-
-      // Threshold to detect start of drag
-      if (
-        motionStateRef.current.phase !== 'dragged' &&
-        (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)
-      ) {
-        if (clickTimeRef.current > 0) {
-          const environment = environmentSnapshotRef.current;
-          const started = motionEngineRef.current.beginDrag(
-            motionStateRef.current,
-            motionStateRef.current.position,
-            environment?.screenBounds.id ??
-              motionStateRef.current.activeBoundsId,
-            performance.now()
-          );
-          setIsDragging(true);
-          hasMovedRef.current = true;
-          setMenuOpen(false);
-          setChatOpen(false);
-          commitMotionState(started.state);
-          applyMotionEvents(started.events);
-        }
-      }
-
-      if (motionStateRef.current.phase !== 'dragged') return;
-
-      const rawTargetX = dragStartRef.current.petX + deltaX;
-      const rawTargetY = dragStartRef.current.petY + deltaY;
-
-      const now = performance.now();
-      const dt = now - prevMoveRef.current.time;
-
-      if (dt > 16) {
-        const inertia = calculateDragInertia(
-          { x: rawTargetX, y: rawTargetY },
-          { x: prevMoveRef.current.x, y: prevMoveRef.current.y },
-          dt
-        );
-        setTiltDeg(inertia.tiltDeg);
-
-        prevMoveRef.current = {
-          x: rawTargetX,
-          y: rawTargetY,
-          time: now,
-        };
-      }
-
-      const nextPosition = { x: rawTargetX, y: rawTargetY };
-      pointerSamplesRef.current.push({
-        position: nextPosition,
-        capturedAtMs: performance.now(),
-      });
-      if (
-        pointerSamplesRef.current.length >
-        DEFAULT_MOTION_CONSTRAINTS.throwSampling.maxSamples
-      ) {
-        pointerSamplesRef.current.shift();
-      }
-      commitMotionState(
-        motionEngineRef.current.updateDraggedPosition(
-          motionStateRef.current,
-          nextPosition
-        )
-      );
-    };
-
-    const handleMouseUp = () => {
-      clickTimeRef.current = 0;
-
-      if (motionStateRef.current.phase === 'dragged') {
-        const releaseAtMs = performance.now();
-        const throwVector = motionEngineRef.current.estimateThrow(
-          pointerSamplesRef.current,
-          releaseAtMs
-        );
-        const released = motionEngineRef.current.release(
-          motionStateRef.current,
-          throwVector
-        );
-        setIsDragging(false);
-        setTiltDeg(0);
-        commitMotionState(released.state);
-        applyMotionEvents(released.events);
-
-        sendCharacterInteraction({ type: 'drag_end' });
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [applyMotionEvents, commitMotionState, sendCharacterInteraction]);
-
-  // The renderer supplies time and environment DTOs only. During dragged and
-  // airborne phases, MotionEngine is the single position owner; an attached
-  // surface is resolved before the fixed-step loop so support_lost reaches the
-  // very same airborne state and FSM transition as a thrown character.
-  useEffect(() => {
-    let frameId = 0;
-    let previousNow: number | undefined;
-    let accumulatorSec = 0;
-    const tick = (now: number): void => {
-      const environment = environmentSnapshotRef.current;
-      if (environment !== null && environment !== undefined) {
-        let motion = motionStateRef.current;
-        let events: readonly MotionEvent[] = [];
-        const surfaceState = surfaceStateRef.current;
-        if (
-          surfaceState.phase === 'climbing_wall' ||
-          surfaceState.phase === 'hanging_ceiling'
-        ) {
-          const surfaceResult = surfaceKinematicsRef.current.step(
-            {
-              state: surfaceState,
-              motion,
-              environment,
-              nowMs: now,
-            },
-            motionEngineRef.current
-          );
-          surfaceStateRef.current = surfaceResult.state;
-          motion = surfaceResult.motion.state;
-          events = surfaceResult.motion.events;
-        }
-
-        const deltaSec =
-          previousNow === undefined
-            ? 0
-            : Math.min(
-                (now - previousNow) / 1000,
-                DEFAULT_MOTION_CONSTRAINTS.maxFrameDeltaSec
-              );
-        accumulatorSec += Math.max(0, deltaSec);
-        while (
-          motion.phase === 'airborne' &&
-          accumulatorSec >= DEFAULT_MOTION_CONSTRAINTS.fixedStepSec
-        ) {
-          const stepped = motionEngineRef.current.step({
-            state: motion,
-            stepSec: DEFAULT_MOTION_CONSTRAINTS.fixedStepSec,
-            bounds: environment.screenBounds,
-          });
-          motion = stepped.state;
-          events = [...events, ...stepped.events];
-          accumulatorSec -= DEFAULT_MOTION_CONSTRAINTS.fixedStepSec;
-        }
-        if (motion !== motionStateRef.current) commitMotionState(motion);
-        if (events.length > 0) applyMotionEvents(events);
-      }
-      previousNow = now;
-      frameId = requestAnimationFrame(tick);
-    };
-    frameId = requestAnimationFrame(tick);
-    return (): void => cancelAnimationFrame(frameId);
-  }, [applyMotionEvents, commitMotionState]);
 
   // Click & Double Click Interaction Handlers
   const handlePetClick = () => {
@@ -607,23 +423,29 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         ),
       };
 
-      setPosition(centeredPosition);
-      motionStateRef.current = {
-        ...motionStateRef.current,
-        position: centeredPosition,
-      };
-      dragStartRef.current.petX = centeredPosition.x;
-      dragStartRef.current.petY = centeredPosition.y;
-      setMenuOpen(false);
+      if (window.wispAPI?.updatePosition) {
+        void window.wispAPI
+          .updatePosition(centeredPosition)
+          .then((nextPosition) => {
+            setPosition(nextPosition);
+            setMenuOpen(false);
+          })
+          .catch((err: unknown) =>
+            console.error('Failed to reset position:', err)
+          );
+      } else {
+        setPosition(centeredPosition);
+        setMenuOpen(false);
+      }
     };
 
     void window.wispAPI
-      .getEnvironmentSnapshot()
-      .then((bounds) => {
+      ?.getEnvironmentSnapshot?.()
+      ?.then((bounds) => {
         setScreenBounds(bounds.screenBounds);
         resetToCenter(bounds.screenBounds);
       })
-      .catch((err: unknown) =>
+      ?.catch((err: unknown) =>
         console.error('Failed to get environment snapshot:', err)
       );
   }, []);
@@ -704,7 +526,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       selectedFaceAnimationKey={inspectorFaceKey}
       showAnchorPoint={showAnchorPoint}
       onClearLogs={() => {
-        const clearLogs = window.wispAPI.clearDebugTelemetryLogs;
+        const clearLogs = window.wispAPI?.clearDebugTelemetryLogs;
         if (clearLogs !== undefined) void clearLogs();
       }}
       onSelectBodyAnimation={(key) => {
@@ -798,9 +620,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         onToggleAlwaysOnTop={() => {
           const nextValue = !isAlwaysOnTop;
           void window.wispAPI
-            .setAlwaysOnTop(nextValue)
-            .then(setIsAlwaysOnTop)
-            .catch((err: unknown) =>
+            ?.setAlwaysOnTop(nextValue)
+            ?.then(setIsAlwaysOnTop)
+            ?.catch((err: unknown) =>
               console.error('Failed to toggle always-on-top:', err)
             );
         }}
@@ -857,8 +679,10 @@ function animationStateToIntentKind(
     case 'dragged':
       return 'dragged';
     case 'falling':
+    case 'fall':
       return 'fall';
     case 'landing':
+    case 'land':
       return 'land';
     case 'sleep':
     case 'sleep_loop':
@@ -895,10 +719,6 @@ function animationStateToIntentKind(
       return 'run';
     case 'jump':
       return 'jump';
-    case 'fall':
-      return 'fall';
-    case 'land':
-      return 'land';
     case 'crawl':
       return 'crawl';
     case 'climb_wall':
@@ -906,13 +726,12 @@ function animationStateToIntentKind(
     case 'hang_ceiling':
       return 'hang_ceiling';
     case 'idle':
+    default:
       return 'idle_blink';
   }
 }
 
-function expressionToHint(
-  expr: CharacterExpression
-): AnimationExpressionHint {
+function expressionToHint(expr: CharacterExpression): AnimationExpressionHint {
   switch (expr) {
     case 'happy':
       return 'happy';

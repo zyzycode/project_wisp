@@ -1,5 +1,6 @@
 import type { AnimationIntent, AnyAnimationIntentKind } from '../../domain/animation/animation-intent';
 import {
+  DEFAULT_FACE_PIVOT,
   DEFAULT_SPRITE_PIVOT,
   type NormalizedSpriteAnimationDef,
   type NormalizedSpriteManifest,
@@ -180,8 +181,6 @@ export class AssetResolver {
       anchorName: compatibility.anchor,
       ...(isDiscreteGaze ? {
         fixedFrameIndex: gazeFrameIndex(intent.gazeDirection),
-        followBodyAnchor: false,
-        offset: { x: 0, y: -334 },
       } : {}),
     };
   }
@@ -259,6 +258,7 @@ function toOverlayTrack<TCategory extends 'face' | 'expression' | 'props'>(
   playbackMode: 'hold' | 'loop',
   blendMode: RenderBlendMode
 ): ResolvedOverlayTrack & { readonly category: TCategory } {
+  const defaultPivot = category === 'face' || category === 'expression' ? DEFAULT_FACE_PIVOT : DEFAULT_SPRITE_PIVOT;
   return {
     id: id as ResolvedOverlayTrack['id'],
     category,
@@ -268,7 +268,7 @@ function toOverlayTrack<TCategory extends 'face' | 'expression' | 'props'>(
     zIndex,
     playbackMode,
     blendMode,
-    pivot: animation.pivot ?? DEFAULT_SPRITE_PIVOT,
+    pivot: animation.pivot ?? defaultPivot,
     offset: ZERO_POINT,
     opacity: 1,
     defaultAnchors: animation.defaultAnchors,

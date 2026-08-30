@@ -222,6 +222,15 @@ export class ShimejiMotionOrchestrator {
     return this.presentationRevision;
   }
 
+  public syncRootPosition(position: Vector2Dto): void {
+    if (this.dragSession === undefined && this.motion.phase !== 'dragged' && this.motion.phase !== 'airborne') {
+      this.motion = {
+        ...this.motion,
+        position: { x: position.x, y: position.y },
+      };
+    }
+  }
+
   private constraints(): Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling'> {
     return this.options.constraints ?? DEFAULT_MOTION_CONSTRAINTS;
   }

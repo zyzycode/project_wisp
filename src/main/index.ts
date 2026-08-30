@@ -272,6 +272,16 @@ function registerIpcHandlers(): void {
           mainWindow.setResizable(true);
           mainWindow.setSize(width, height);
         }
+        if (shimejiMotionOrchestrator) {
+          const pivotOffset = {
+            x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
+            y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
+          };
+          shimejiMotionOrchestrator.syncRootPosition({
+            x: updated.x + pivotOffset.x,
+            y: updated.y + pivotOffset.y,
+          });
+        }
         return updated;
       }
       return calculateInitialPosition();
@@ -281,6 +291,47 @@ function registerIpcHandlers(): void {
   ipcMain.handle('wisp:get-position', async (): Promise<PetPositionDTO> => {
     return positionService ? positionService.getPosition() : calculateInitialPosition();
   });
+
+  ipcMain.handle(
+    'wisp:update-position',
+    async (_event, targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
+      const currentPos = positionService
+        ? positionService.getPosition()
+        : calculateInitialPosition();
+
+      const validX =
+        typeof targetPos?.x === 'number' && Number.isFinite(targetPos.x)
+          ? targetPos.x
+          : currentPos.x;
+      const validY =
+        typeof targetPos?.y === 'number' && Number.isFinite(targetPos.y)
+          ? targetPos.y
+          : currentPos.y;
+
+      const safePos: PetPositionDTO = { x: validX, y: validY };
+      const bounds = platformAdapter.getDisplayWorkArea(safePos);
+      const updated = positionService
+        ? positionService.updatePosition(safePos, bounds)
+        : safePos;
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setPosition(Math.round(updated.x), Math.round(updated.y));
+      }
+
+      if (shimejiMotionOrchestrator) {
+        const pivotOffset = {
+          x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
+          y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
+        };
+        shimejiMotionOrchestrator.syncRootPosition({
+          x: updated.x + pivotOffset.x,
+          y: updated.y + pivotOffset.y,
+        });
+      }
+
+      return updated;
+    }
+  );
 
   ipcMain.handle('wisp:get-screen-bounds', async (): Promise<ScreenBoundsDTO> => {
     return platformAdapter.getDisplayWorkArea();
@@ -444,5 +495,4 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();
-  unsubscribeEnvironmentChanges = null;
 });

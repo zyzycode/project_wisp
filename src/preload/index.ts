@@ -32,6 +32,9 @@ const api: WispApiBridge = {
   getPosition: (): Promise<PetPositionDTO> => {
     return ipcRenderer.invoke('wisp:get-position');
   },
+  updatePosition: (targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
+    return ipcRenderer.invoke('wisp:update-position', targetPos);
+  },
   getScreenBounds: (): Promise<ScreenBoundsDTO> => {
     return ipcRenderer.invoke('wisp:get-screen-bounds');
   },
