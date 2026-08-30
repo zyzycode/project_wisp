@@ -1,55 +1,62 @@
 # AI Studio & GPT Image Generation Prompts — Project Wisp
 
-> [!NOTE]
-> Документ содержит полную спецификацию и готовые к копированию промпты для генерации спрайтов Project Wisp (AI Studio / GPT / DALL-E) с **нативной поддержкой прозрачности (PNG-32 true alpha)** в соответствии с архитектурным контрактом [RENDER_ENGINE.md](file:///home/zybz/code/project_wisp/docs/engine/RENDER_ENGINE.md).
->
-> **Ключевой стандарт проекта:**
-> 1. **Стандарт кадров:** ровно **4 кадра в горизонтальный ряд** (`1 row × 4 columns wide strip` / `_00.png`..`_03.png`) для всех анимаций (и `2 × 4` на 8 кадров для `body_idle`).
-> 2. **Широкий отступ между кадрами (Wide Spacing & Padding):** между кадрами должно быть **щедрое свободное прозрачное пространство**, каждый персонаж/лицо строго центрирован в своей квадратной ячейке с полями, чтобы спрайты не слипались и не касались друг друга.
-> 3. **Правило безликого тела (Faceless Base Body):** все спрайты тела генерируются **с чистым овалом лица цвета кожи (NO baked eyes, NO baked mouth)**, чтобы поверх них динамически накладывались оверлеи лиц (`face_*`) и зрачков (`pupils_*`).
-> 4. **Правило оверлея лица (Floating Facial Features):** оверлеи лиц генерируют **только черты лица** (глаза, брови, рот) на 100% прозрачном фоне без контура головы и волос.
+> [!IMPORTANT]
+> **ЖЁСТКИЙ СТАНДАРТ КАДРОВ И ПРАВИЛА ПРОЕКТА:**
+> 1. **СТРОГО 4 КАДРА В СТРОКУ (1 row × 4 columns):** В проекте **ЗАПРЕЩЕНЫ 2-кадровые и 3-кадровые анимации**. Все тела, оверлеи лиц, зрачки и эффекты строго генерируются и нарезаются ровно по **4 кадра** (`_00.png`, `_01.png`, `_02.png`, `_03.png`). Единственное исключение — базовый `body_idle` на **8 кадров** (сетка `2 rows × 4 columns`).
+> 2. **Широкий отступ между кадрами (Wide Spacing & Padding):** Между кадрами должно быть щедрое свободное прозрачное пространство. Каждый персонаж или оверлей строго центрирован в своей квадратной ячейке, чтобы спрайты не слипались при автоматической нарезке.
+> 3. **Разделение режимов наложения (`overlay` vs `baked_in`):**
+>    - **Диалоговые базовые позы (`overlay`, БЕЗ ЛИЦА):** `body_idle` (основная стойка) и `body_sit` (сидение) — персонаж находится в длительном статическом контакте с пользователем. Лицо **полностью чистое (blank smooth skin)** для процедурного наложения эмоций диалога (`face_*`), моргания (`face_blink`), разговора (`face_talking`) и взгляда зрачков за курсором (`pupils_*`).
+>    - **Контекстные, кинематические и сюжетные позы (`baked_in`, С ГОТОВЫМ ЛИЦОМ):** Все остальные позы генерируются **С ГОТОВЫМ ЗАПЕЧЁННЫМ ЛИЦОМ**, идеально передающим эмоцию действия:
+>      - *Реакции:* `body_petting` (блаженство/румянец от поглаживания), `body_wave` (приветливая улыбка), `body_bored` (скучающий вздох), `body_celebrate` (триумф/радость), `body_scared` (испуг/дрожь), `body_thinking` (палец у подбородка).
+>      - *Физика и перемещение Shimeji:* `body_dragged` (подхват мышью), `body_fall` (испуг при падении), `body_land` (зажмуривание при ударе), `body_recover` (потирает шишку), `body_jump` (радостный прыжок), `body_ceiling_hang` (висение на потолке), `body_crash_splat` (шлёпок о пол 'x_x'), `body_walk` (ходьба в 3/4), `body_run` (быстрый бег в 3/4), `body_climb_wall` (ползание по стене), `body_sleep` / `body_sleep_trans` (сон), `body_lie` (отдых на животе).
+> 4. **Нативная поддержка альфа-канала:** Все файлы генерируются и сохраняются как PNG-32 с истинной прозрачностью.
 
 ---
 
 ## 🎯 План первоочередных задач генерации
 
-### 🔥 Очередь 1: Перегенерация существующих поз тела БЕЗ ЛИЦА (Faceless Base Body)
-> [!WARNING]
-> Текущие PNG тела на диске содержат запечённые глаза и рот (`baked_in`). Из-за этого оверлеи лиц поверх них дают артефакт двойного лица.
-> **Их необходимо перегенерировать по промптам ниже строго без черт лица (чистая гладкая кожа на лице) и с увеличенным расстоянием между кадрами:**
+### 🔥 Очередь 1: Диалоговые позы тела БЕЗ ЛИЦА (Faceless Base Body)
+> [!NOTE]
+> Только 2 позы требуют генерации без лица — на них персонаж общается с пользователем через чат-бокс и следит за курсором!
 
-1. 🔄 `B00. body_idle` — перегенерировать без лица (8 кадров, `2x4`)
-2. 🔄 `B01. body_walk` — перегенерировать без лица (4 кадра, `1x4`)
-3. 🔄 `B02. body_thinking` — перегенерировать без лица (4 кадра, `1x4`)
-4. 🔄 `B03. body_dragged` — перегенерировать без лица (4 кадра, `1x4`)
-5. 🔄 `B04. body_land` — перегенерировать без лица (4 кадра, `1x4`)
-6. 🔄 `B05. body_petting` — перегенерировать без лица (4 кадра, `1x4`)
-7. 🔄 `B06. body_sleep` — перегенерировать без лица (4 кадра, `1x4`)
-8. 🔄 `B07. body_sleep_trans` — перегенерировать без лица (4 кадра, `1x4`)
-9. 🔄 `B08. body_wave` — перегенерировать без лица (4 кадра, `1x4`)
-10. 🔄 `B09. body_celebrate` — перегенерировать без лица (4 кадра, `1x4`)
-11. 🔄 `B10. body_scared` — перегенерировать без лица (4 кадра, `1x4`)
-12. 🔄 `B11. body_bored` — перегенерировать без лица (4 кадра, `1x4`)
+1. 🔄 `B00. body_idle` — без лица (**8 кадров**, `2x4`) — *основная стойка 80% времени*
+2. ⏳ `B12. body_sit` — без лица (**4 кадра**, `1x4`) — *сидение на панели задач / окнах*
+3. ⏳ `B13. body_stand_up` — без лица или нейтральная (**4 кадра**, `1x4`) — *вставание из сидения*
 
 ---
 
-### ⏳ Очередь 2: Генерация новых поз тела (Shimeji Faceless Actions)
-* `B12. body_sit`, `B13. body_stand_up`, `B14. body_lie`, `B15. body_run`, `B16. body_fall`, `B17. body_crash_splat`, `B18. body_recover`, `B19. body_climb_wall`, `B20. body_ceiling_hang`, `B21. body_jump` — все генерируются сразу **без лица** и с **широким отступом между кадрами**.
+### 🏃 Очередь 2: Новые физические позы Shimeji С ГОТОВЫМ ЛИЦОМ (`baked_in`, строго 4 кадра)
+> [!NOTE]
+> Лицо рисуется прямо в кадре под конкретную анимацию и ракурс.
+
+1. ⏳ `B14. body_lie` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *лежит на животике, качает ножками, смотрит снизу вверх*
+2. ⏳ `B15. body_run` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *быстрый бег в профиль 3/4*
+3. ⏳ `B16. body_fall` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *паническое падение в воздухе с кричащим ротиком*
+4. ⏳ `B17. body_crash_splat` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *комичный шлёпок о пол 'x_x'*
+5. ⏳ `B18. body_recover` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *подъём с пола, потирает шишку на голове*
+6. ⏳ `B19. body_climb_wall` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *карабканье по стене в профиль*
+7. ⏳ `B20. body_ceiling_hang` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *висение на кромке экрана, смотрит вниз*
+8. ⏳ `B21. body_jump` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *радостный подскок «Хопа!»*
+
+*(Уже полностью готовы на диске с запечённым лицом: `body_petting`, `body_wave`, `body_bored`, `body_land`, `body_dragged`, `body_walk`, `body_thinking`, `body_sleep`, `body_sleep_trans`, `body_celebrate`, `body_scared`)*.
 
 ---
 
-### 🎭 Очередь 3: Генерация оверлеев лиц и зрачков (4 кадра на прозрачном фоне)
-* `F08. pupils_directional` (L, R, U, D)
-* `F09. face_blink` (моргание 4 кадра)
-* `F10. face_smug` (ухмылка 4 кадра)
-* `F11. face_crying` (слёзки 4 кадра)
-* Доведение до 4 кадров оверлеев: `F01` (`curious`), `F02` (`dizzy`), `F03` (`shocked`), `F04` (`flirty`), `F05` (`winking`), `F06` (`pout`), `F07` (`pupils_normal`).
+### 🎭 Очередь 3: Оверлеи лиц и зрачков для `body_idle` и `body_sit` (СТРОГО 4 кадра на прозрачном фоне)
+> [!IMPORTANT]
+> Все оверлеи эмоций и зрачков накладываются на `body_idle` и `body_sit` и содержат ровно 4 кадра (`_00`..`_03`).
+
+* `F01. face_curious` (**4 кадра**) — интерес и любопытство
+* `F07. pupils_normal` (**4 кадра**) — изолированные зрачки со сменой бликов (для слежения за курсором)
+* `F08. pupils_directional` (**4 кадра**) — изолированные зрачки (L, R, U, D)
+* `F09. face_blink` (**4 кадра**) — моргание в idle
+* `F10. face_smug` (**4 кадра**) — ухмылка
+* `F11. face_crying` (**4 кадра**) — аниме-слёзки
+* `F12` (`happy`), `F13` (`sad`), `F14` (`angry`), `F15` (`sleep`), `F16` (`thinking`), `F17` (`talking`), `F02` (`dizzy`), `F03` (`shocked`), `F04` (`flirty`), `F05` (`winking`), `F06` (`pout`).
 
 ---
 
 ## 🏗️ Архитектура слоёв (Layer Stacking Architecture)
-
-В соответствии с `RENDER_ENGINE.md` персонаж собирается из независимых слоёв на холсте **$512 \times 512\text{ px}$**:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -64,28 +71,41 @@
 
 ---
 
-## 📐 1. Технический контракт спрайтовой системы (Sprite Contract)
+## 📋 Сводная матрица поз тела
 
-### 1.1. Базовые параметры холста и отступов
-* **Размер итогового холста одного кадра:** строго **`512 × 512 px`** (в игре рендерится как $256 \times 256\text{ px}$ на экранах Retina/High-DPI с двукратной чёткостью).
-* **Формат файлов:** `PNG-32` с полноценным альфа-каналом (100% прозрачный фон RGBA).
-* **Расположение кадров при генерации:** строго **в один горизонтальный ряд (1 row × 4 columns wide strip)**.
-* **Широкие отступы между кадрами (Wide Frame Padding):** каждый персонаж центрируется строго в середине своей квадратной ячейки ($X = 256\text{ px}$ от левого края ячейки). Вокруг персонажа оставляется свободное прозрачное поле (минимум 40–60 px от краев ячейки), чтобы волосы, пальцы и подол платья не касались соседнего кадра.
+| ID | Ключ анимации | Описание позы | Ракурс | Режим в движке | Кадров | Текущий статус |
+|---|---|---|---|---|---|---|
+| **B00** | `body_idle` | Базовая стойка (дыхание) | Анфас | `overlay` (без лица) | 8 (2x4) | 🔄 **Перегенерировать БЕЗ ЛИЦА** |
+| **B01** | `body_walk` | Шаги / Ходьба | Профиль 3/4 | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B02** | `body_thinking` | Размышление / Мысли | Анфас/3/4 | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B03** | `body_dragged` | Перетаскивание мышью | Анфас | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B04** | `body_land` | Приземление (зажмуривание) | Анфас | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B05** | `body_petting` | Реакция на поглаживание | Анфас | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B06** | `body_sleep` | Поза сна на полу | Профиль | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B07** | `body_sleep_trans` | Укладывание спать | Профиль | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B08** | `body_wave` | Взмах ручкой (приветствие) | Анфас | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B09** | `body_celebrate` | Празднование / Радость | Анфас | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B10** | `body_scared` | Дрожь / Испуг тела | Анфас | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B11** | `body_bored` | Скука / Вздох | Анфас | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
+| **B12** | `body_sit` | Сидит на полу / окне | Анфас | `overlay` (без лица) | 4 (1x4) | ⏳ **В очереди (БЕЗ ЛИЦА)** |
+| **B13** | `body_stand_up` | Вставание на ноги | Анфас | `overlay` (без лица) | 4 (1x4) | ⏳ **В очереди (БЕЗ ЛИЦА)** |
+| **B14** | `body_lie` | Лежит на животе | Анфас/3/4 | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
+| **B15** | `body_run` | Быстрый бег | Профиль 3/4 | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
+| **B16** | `body_fall` | Паническое падение | Анфас | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
+| **B17** | `body_crash_splat` | Шлёпок о пол 'x_x' | Анфас | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
+| **B18** | `body_recover` | Подъём (трёт шишку) | Анфас | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
+| **B19** | `body_climb_wall` | Ползание по краю экрана | Профиль | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
+| **B20** | `body_ceiling_hang` | Висение на потолке | Анфас | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
+| **B21** | `body_jump` | Радостный подскок | Анфас | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
 
 ---
 
-# 🏃 БЛОК 1: Промпты для безликих поз тела (Faceless Base Body)
-
-> [!IMPORTANT]
-> **ГЛАВНОЕ ПРАВИЛО БЕЗЛИКИХ СПРАЙТОВ ТЕЛА (Faceless Base Body):**
-> Голова, прическа, чёлка, ушки, тело, одежда и позы рисуются полноценно.
-> **Однако область лица внутри головы остаётся чистой кожей (BLANK SMOOTH SKIN — NO eyes, NO eyebrows, NO mouth, NO nose)!**
-> **Отступы:** кадры расположены с широким свободным расстоянием между собой, без наползания и касаний.
+# 🏃 БЛОК 1: Промпты поз тела (Base Body Prompts)
 
 ---
 
 ### B00. `body_idle` | Базовое стояние / Дыхание (8 кадров, 2 строки × 4 колонки)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+* **Ракурс:** Анфас | **Тип:** Модульная (`overlay`) | **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
 * **Папка:** `public/assets/sprites/body/idle/` | **Файлы:** `body_idle_00.png` — `body_idle_07.png`
 
 ```text
@@ -99,7 +119,7 @@ SPACING & PADDING (CRITICAL):
 - Absolutely NO overlapping, crowding, or touching between adjacent frames (hair, limbs, and dress must stay strictly inside each cell).
 
 CRITICAL FACELESS RULE:
-- The head silhouette, long hair, bangs, hair accessories, dress, and limbs must be fully rendered.
+- The head silhouette, long hair, bangs, hair accessories, dress, and limbs must be fully rendered facing front toward viewer.
 - THE FACE AREA ON THE HEAD MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (ABSOLUTELY NO EYES, NO EYEBROWS, NO NOSE, NO MOUTH). This body sprite is designed to have modular face overlays rendered on top.
 
 Stability rules:
@@ -121,291 +141,74 @@ Animation Breakdown (Gentle Breathing Loop):
 
 ---
 
-### B01. `body_walk` | Шаги / Ходьба (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B01. `body_walk` | Шаги / Ходьба (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Профиль 3/4 | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/walk/` | **Файлы:** `body_walk_00.png` — `body_walk_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Each character must be strictly centered within its own square cell with ample transparent padding around it.
-- Absolutely NO overlapping, crowding, or touching between adjacent frames (flowing hair and dress must stay strictly inside each cell).
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-- Full hair, clothing, and body movement rendered normally.
-
-Stability rules:
-- Character facing 3/4 side-view moving forward.
-- Feet contact floor baseline (Y=460).
-- 100% transparent background alpha.
-
-Animation Breakdown (Walking Cycle):
-- Frame 1 (Left Leg Contact): Left foot steps forward onto baseline, right arm forward, hair trails back.
-- Frame 2 (Passing Step): Right leg lifts and passes forward, body lifts +3px at step peak.
-- Frame 3 (Right Leg Contact): Right foot steps down onto baseline, left arm forward.
-- Frame 4 (Passing Step): Left leg lifts and swings forward, body lifts +3px, ready to loop to Frame 1.
-```
-
 ---
 
-### B02. `body_thinking` | Поза размышления (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B02. `body_thinking` | Поза размышления (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас/3/4 | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/thinking/` | **Файлы:** `body_thinking_00.png` — `body_thinking_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Each character must be strictly centered within its own square cell with ample transparent padding around it.
-- No overlapping or touching between adjacent frames.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
-- Frame 1: Stands with one finger/hand gently touching chin, head tilted slightly, other arm across waist.
-- Frame 2: Slight contemplative bob (+1px), head tilting a touch more, hair swaying softly.
-- Frame 3: Finger taps chin thoughtfully, slight shoulder lift.
-- Frame 4: Arm lowers slightly, returning smoothly to Frame 1.
-```
-
 ---
 
-### B03. `body_dragged` | Перетаскивание курсором (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B03. `body_dragged` | Перетаскивание мышью (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/dragged/` | **Файлы:** `body_dragged_00.png` — `body_dragged_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Each character must be strictly centered within its own square cell with ample transparent padding around it.
-- Dangling arms and swinging legs must not cross or touch cell borders.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown (Picked up by collar/shoulders):
-- Frame 1: Character lifted in mid-air, arms and legs dangling down cutely, dress hanging down.
-- Frame 2: Legs swing slightly to the left, arms flail softly, hair sways left.
-- Frame 3: Character centered in suspension, slight upward elastic bob (+3px).
-- Frame 4: Legs swing slightly to the right, arms flail softly, hair sways right.
-```
-
 ---
 
-### B04. `body_land` | Приземление на пол (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B04. `body_land` | Приземление на пол (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/land/` | **Файлы:** `body_land_00.png` — `body_land_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- In squashed/crouched frames, flare of dress and hair must remain fully inside the cell with clear margins.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown (Impact and Cushion):
-- Frame 1: Feet touch floor baseline (Y=460), body beginning to compress.
-- Frame 2: Deep soft crouch (squash), knees bent wide, arms out for balance, dress and hair flare outward.
-- Frame 3: Rising out of crouch, straightening knees, hair settling downward.
-- Frame 4: Fully standing tall and balanced, ready to transition to idle.
-```
-
 ---
 
-### B05. `body_petting` | Реакция на поглаживание (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B05. `body_petting` | Реакция на поглаживание (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/petting/` | **Файлы:** `body_petting_00.png` — `body_petting_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Each frame strictly centered in its square cell.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown (Melting into headpats):
-- Frame 1: Head tilts slightly up into the gentle pat, shoulders relax down.
-- Frame 2: Cheerful happy body wiggle, shoulders sway slightly left, hands clutched near chest.
-- Frame 3: Soft purring posture, body presses gently upward (+2px) enjoying the pat.
-- Frame 4: Gentle settling sway, transitioning back to Frame 1.
-```
-
 ---
 
-### B06. `body_sleep` | Поза сна на полу (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B06. `body_sleep` | Поза сна на полу (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Профиль | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/sleep/` | **Файлы:** `body_sleep_00.png` — `body_sleep_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Lying character and pooled hair must stay fully centered inside each cell with clear margins.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown (Curled up asleep):
-- Frame 1: Curled up cutely on side on the floor baseline (Y=460), hands tucked near cheek, hair pooled on ground.
-- Frame 2: Slow sleeping inhale, chest and curled shoulders rise +2px.
-- Frame 3: Sleeping breath peak, cozy relaxed curl.
-- Frame 4: Slow sleeping exhale, sinking gently back to Frame 1.
-```
-
 ---
 
-### B07. `body_sleep_trans` | Укладывание спать (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B07. `body_sleep_trans` | Укладывание спать (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Профиль | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/sleep_transition/` | **Файлы:** `body_sleep_trans_00.png` — `body_sleep_trans_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Raised arms in stretch pose must not touch upper or side frame boundaries.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown (Transition from Standing to Sleeping):
-- Frame 1: Standing yawn stretch, arms raised high above head, back arched cutely.
-- Frame 2: Kneeling down onto the floor, hands supporting weight on baseline.
-- Frame 3: Lowering upper body onto side/elbow, tucking legs comfortably.
-- Frame 4: Fully curled up on side on floor, hands tucked under cheek, resting.
-```
-
 ---
 
-### B08. `body_wave` | Взмах ручкой (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B08. `body_wave` | Взмах ручкой / Приветствие (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/wave/` | **Файлы:** `body_wave_00.png` — `body_wave_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Waving hand must stay inside the cell with clear margin from neighboring frame.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown (Friendly Hand Wave):
-- Frame 1: Right hand raised near shoulder level, open palm.
-- Frame 2: Hand waves outward to the right, slight body lean left.
-- Frame 3: Hand waves inward to the left, fingers open cutely.
-- Frame 4: Hand waves back right, completing the wave arc to loop smoothly.
-```
-
 ---
 
-### B09. `body_celebrate` | Празднование / Радость (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B09. `body_celebrate` | Празднование / Радость (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/celebrate/` | **Файлы:** `body_celebrate_00.png` — `body_celebrate_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Raised V-arms and jumping character must stay comfortably within the square cell boundaries.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown (Victory Cheer):
-- Frame 1: Arms raise eagerly from sides, knees bend in anticipation.
-- Frame 2: Both arms thrown high in the air (V-pose victory), body lifted on tiptoes (+4px).
-- Frame 3: Excited hop at apex, dress and hair bouncing upward joyfully.
-- Frame 4: Lands softly on feet, arms held high in celebration.
-```
-
 ---
 
-### B10. `body_scared` | Дрожь тела / Испуг (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B10. `body_scared` | Дрожь тела / Испуг (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/scared/` | **Файлы:** `body_scared_00.png` — `body_scared_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-- Trembling jitter must remain centered inside each cell.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown (Shivering in fear):
-- Frame 1: Crouched defense pose, hands held tight to chest, knees knocking.
-- Frame 2: Rapid jitter shift 2px to the left, trembling shoulders.
-- Frame 3: Rapid jitter shift 2px to the right, hair shivering.
-- Frame 4: Tucked tight in frightened shivering stance, ready to loop.
-```
-
 ---
 
-### B11. `body_bored` | Скука / Переминание с ноги на ногу (4 кадра)
-* **Статус:** 🔄 **Требуется перегенерация БЕЗ ЛИЦА**
+### B11. `body_bored` | Скука / Вздох (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ✅ **Готово (Запечённое лицо)**
 * **Папка:** `public/assets/sprites/body/bored/` | **Файлы:** `body_bored_00.png` — `body_bored_03.png`
 
-```text
-Using the EXACT character design, hair style, chibi body proportions, clothing, and color palette from the ATTACHED REFERENCE IMAGE, create a clean 2D game sprite sheet as a PNG with true alpha transparency.
-
-Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip).
-
-SPACING & PADDING (CRITICAL):
-- Ensure generous empty transparent spacing and wide margins between all frames.
-
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
-- Frame 1: Slouched idle stance, hands tucked behind back, head drooping slightly.
-- Frame 2: Weight shifts onto left hip, right toe taps lazily on floor.
-- Frame 3: Heavy bored sigh, shoulders sag slightly.
-- Frame 4: Weight shifts back center, ready to loop.
-```
-
 ---
 
-### B12. `body_sit` | Сидит на полу (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B12. `body_sit` | Сидит на полу / окне (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Модульная (`overlay`) | **Статус:** ⏳ **В очереди на генерацию (БЕЗ ЛИЦА)**
 * **Папка:** `public/assets/sprites/body/sit/` | **Файлы:** `body_sit_00.png` — `body_sit_03.png`
 
 ```text
@@ -418,7 +221,8 @@ SPACING & PADDING (CRITICAL):
 - Seated character centered in each cell with clear empty padding.
 
 CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
+- Character facing front.
+- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH) for modular dialog overlays.
 
 Animation Breakdown:
 - Frame 1: Sits comfortably on the ground facing forward, hands resting softly on knees, legs folded cutely.
@@ -429,8 +233,8 @@ Animation Breakdown:
 
 ---
 
-### B13. `body_stand_up` | Вставание на ноги (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B13. `body_stand_up` | Вставание на ноги (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Модульная (`overlay`) | **Статус:** ⏳ **В очереди на генерацию (БЕЗ ЛИЦА)**
 * **Папка:** `public/assets/sprites/body/stand_up/` | **Файлы:** `body_stand_up_00.png` — `body_stand_up_03.png`
 
 ```text
@@ -442,6 +246,7 @@ SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing and wide margins between all frames.
 
 CRITICAL FACELESS RULE:
+- Character facing front.
 - The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
 
 Animation Breakdown:
@@ -453,8 +258,8 @@ Animation Breakdown:
 
 ---
 
-### B14. `body_lie` | Лежит на полу (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B14. `body_lie` | Лежит на животе / боку (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас / 3/4 | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ)**
 * **Папка:** `public/assets/sprites/body/lie/` | **Файлы:** `body_lie_00.png` — `body_lie_03.png`
 
 ```text
@@ -466,20 +271,21 @@ SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing and wide margins between all frames.
 - Horizontally lying body must fit cleanly inside each square cell without touching edges.
 
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
+EXPRESSIVE LYING POSE WITH BAKED-IN FACE (CRITICAL):
+- Face turned toward viewer with cute expressive anime face (warm eyes looking up at viewer, sweet smile).
+- Character lying cute and cozy on the floor baseline (Y=460).
 
-Animation Breakdown:
-- Frame 1: Lying on tummy/side resting on elbows, legs slightly raised behind.
-- Frame 2: Gentle leg sway, one foot kicks up cutely in the air.
-- Frame 3: Other foot kicks up, chest rises slightly with gentle breathing.
+Animation Breakdown (Lying on stomach with cute kicking feet):
+- Frame 1: Lying on tummy/side resting on elbows, legs slightly raised behind, cute sweet smile looking toward viewer.
+- Frame 2: Gentle leg sway, one foot kicks up cutely in the air, playful cheerful expression.
+- Frame 3: Other foot kicks up, chest rises slightly with gentle breathing, peaceful happy face.
 - Frame 4: Feet lower softly, returning smoothly to Frame 1.
 ```
 
 ---
 
-### B15. `body_run` | Быстрый бег (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B15. `body_run` | Быстрый бег (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Профиль 3/4 | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ)**
 * **Папка:** `public/assets/sprites/body/run/` | **Файлы:** `body_run_00.png` — `body_run_03.png`
 
 ```text
@@ -491,20 +297,17 @@ SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing and wide margins between all frames.
 - Running strides and trailing hair must stay strictly inside each square cell.
 
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
+Animation Breakdown (Fast Run in 3/4 Profile with Determined Energetic Eyes):
 - Frame 1 (Left Leg Contact): Left leg takes a long forward running stride, right leg trailing back, right arm forward, hair flying backward with inertia.
 - Frame 2 (Passing Flight): Both feet off the floor, body lifted (+6px) in airborne phase, legs passing each other.
-- Frame 3 (Right Leg Contact): Right leg takes a long forward running stride, left leg trailing back, left arm forward, hair flowing backward.
+- Frame 3 (Right Leg Contact): Right foot takes a long forward running stride, left leg trailing back, left arm forward, hair flowing backward.
 - Frame 4 (Second Flight): Both feet off the floor, body lifted in airborne phase, ready to loop into Frame 1.
 ```
 
 ---
 
-### B16. `body_fall` | Падение в воздухе (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B16. `body_fall` | Паническое падение в воздухе (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ)**
 * **Папка:** `public/assets/sprites/body/fall/` | **Файлы:** `body_fall_00.png` — `body_fall_03.png`
 
 ```text
@@ -516,20 +319,17 @@ SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing and wide margins between all frames.
 - Upward billowing hair and dress must not touch top or side boundaries of the cell.
 
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
-- Frame 1: Falling pose, arms reaching upward, legs dangling slightly, hair billowing up.
-- Frame 2: Flails left arm and kicks right leg, hair swaying to one side.
-- Frame 3: Flails right arm and kicks left leg, hair swaying to the other side.
-- Frame 4: Arms spread out for wind balance, hair billowing high, loops back to Frame 1.
+Animation Breakdown (Panicked Airborne Fall with Expressive Face):
+- Frame 1: Falling pose, wide startled eyes (O_O), shouting open mouth, arms reaching upward, legs dangling slightly, hair billowing up.
+- Frame 2: Flails left arm and kicks right leg, frightened expression with tear glints, hair swaying left.
+- Frame 3: Flails right arm and kicks left leg, wide gasping mouth, hair swaying right.
+- Frame 4: Arms spread out for wind balance, wide frightened eyes, hair billowing high, loops back to Frame 1.
 ```
 
 ---
 
-### B17. `body_crash_splat` | Шлепок о пол / Расплющивание (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B17. `body_crash_splat` | Шлёпок о пол / Расплющивание (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ 'x_x')**
 * **Папка:** `public/assets/sprites/body/crash_splat/` | **Файлы:** `body_crash_splat_00.png` — `body_crash_splat_03.png`
 
 ```text
@@ -541,20 +341,17 @@ SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing and wide margins between all frames.
 - Fully flattened pancake pose must remain centered in each square cell without touching borders.
 
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
-- Frame 1 (Anticipation): Just 10px above floor, toes pointed down, bracing for impact.
-- Frame 2 (Hard Impact): Extreme squashed pose flat on the floor, knees bent wide, hair and dress splayed outward.
-- Frame 3 (Flat Splat): Comical flat pancake starfish pose completely flat on the floor baseline, arms and legs spread out wide.
+Animation Breakdown (Hard Impact with Comical Flat Face):
+- Frame 1 (Anticipation): Just 10px above floor, toes pointed down, bracing for impact with squeezed shut eyes.
+- Frame 2 (Hard Impact): Extreme squashed pose flat on the floor, knees bent wide, hair and dress splayed outward, dazed spiral eyes (@_@).
+- Frame 3 (Flat Splat): Comical flat pancake starfish pose completely flat on the floor baseline, arms and legs spread out wide, flat 'x_x' face with tongue out.
 - Frame 4 (Squished Wobble): Flat on floor, slight dazed jiggle vibration.
 ```
 
 ---
 
-### B18. `body_recover` | Подъём и отряхивание (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B18. `body_recover` | Подъём и отряхивание / Потирает шишку (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ)**
 * **Папка:** `public/assets/sprites/body/recover/` | **Файлы:** `body_recover_00.png` — `body_recover_03.png`
 
 ```text
@@ -565,20 +362,17 @@ Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 c
 SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing and wide margins between all frames.
 
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
-- Frame 1: Pushes upper body off the floor on hands, knees still on ground.
-- Frame 2: Gets onto knees, rubs head or dusts off dress with one hand.
-- Frame 3: Steps up onto one foot, rising upward.
-- Frame 4: Stands tall on both feet, quick final shake/dust-off, transitioning back to idle.
+Animation Breakdown (Recovering with Cute Pout Face):
+- Frame 1: Pushes upper body off the floor on hands, knees still on ground, dizzy half-closed eyes.
+- Frame 2: Gets onto knees, rubs bump/head with one hand, cute grumpy pout face (>_<).
+- Frame 3: Steps up onto one foot, rising upward, dusting off dress with other hand.
+- Frame 4: Stands tall on both feet, quick final shake/dust-off, proud cute determined smile, transitioning back to idle.
 ```
 
 ---
 
-### B19. `body_climb_wall` | Ползание по краю экрана (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B19. `body_climb_wall` | Ползание по краю экрана (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Профиль | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ)**
 * **Папка:** `public/assets/sprites/body/climb_wall/` | **Файлы:** `body_climb_wall_00.png` — `body_climb_wall_03.png`
 
 ```text
@@ -588,13 +382,9 @@ Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 c
 
 SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing between all frames.
-- Character stays cleanly inside each cell.
 
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
-- Frame 1: Right hand reaches high up the wall, left knee bent grabbing wall lower, body close to wall.
+Animation Breakdown (Climbing wall vertically in side profile with focused eyes looking up):
+- Frame 1: Right hand reaches high up the wall, left knee bent grabbing wall lower, body close to wall, focused eyes looking up.
 - Frame 2: Pulls body upward with right arm, left foot pushes off.
 - Frame 3: Left hand reaches high up to next grab point, right foot steps up.
 - Frame 4: Pulls body up with left arm, transitioning smoothly back to Frame 1.
@@ -602,8 +392,8 @@ Animation Breakdown:
 
 ---
 
-### B20. `body_ceiling_hang` | Висение на верхней кромке (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B20. `body_ceiling_hang` | Висение на верхнем краю (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ)**
 * **Папка:** `public/assets/sprites/body/ceiling_hang/` | **Файлы:** `body_ceiling_hang_00.png` — `body_ceiling_hang_03.png`
 
 ```text
@@ -614,20 +404,17 @@ Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 c
 SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing between all frames.
 
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
-- Frame 1: Hanging straight down with both hands gripping the ceiling, legs dangling together.
-- Frame 2: Gentle sway to the left, legs swing slightly to left side.
-- Frame 3: Centered hang, slight pull-up bend in elbows (+4px lift).
+Animation Breakdown (Hanging from ceiling with cute strained/curious face):
+- Frame 1: Hanging straight down gripping ceiling, curious eyes looking down at desktop, legs dangling together.
+- Frame 2: Gentle sway to the left, legs swing slightly to left side, cute small smile.
+- Frame 3: Centered hang, slight pull-up bend in elbows (+4px lift), cute concentrated look.
 - Frame 4: Gentle sway to the right, legs swing slightly to right side.
 ```
 
 ---
 
-### B21. `body_jump` | Радостный прыжок / Подскок (4 кадра)
-* **Статус:** ⏳ **Не готово (в очереди на генерацию)**
+### B21. `body_jump` | Радостный прыжок / Подскок (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ)**
 * **Папка:** `public/assets/sprites/body/jump/` | **Файлы:** `body_jump_00.png` — `body_jump_03.png`
 
 ```text
@@ -637,21 +424,17 @@ Layout: Exactly 4 equal square frames in ONE SINGLE HORIZONTAL ROW (1 row × 4 c
 
 SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing and wide margins between all frames.
-- Peak jump pose must remain fully inside the upper margin of the cell.
 
-CRITICAL FACELESS RULE:
-- The face area on the head MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (NO EYES, NO NOSE, NO MOUTH).
-
-Animation Breakdown:
-- Frame 1 (Crouch Prep): Knees bent low (crouch), arms swinging back, storing energy.
-- Frame 2 (Ascent Launch): Pushes hard off the ground, body launching upward into the air (+40px), toes pointed down.
-- Frame 3 (Apex Flight): High airborne pose, arms spread out happily, dress and hair floating in mid-air.
-- Frame 4 (Landing Cushion): Feet contact floor baseline, knees bending to absorb the jump landing.
+Animation Breakdown (Joyful Jump with Cheerful Face):
+- Frame 1 (Crouch Prep): Knees bent low (crouch), arms swinging back, happy excited smile.
+- Frame 2 (Ascent Launch): Pushes hard off the ground, body launching upward into the air (+40px), laughing open mouth.
+- Frame 3 (Apex Flight): High airborne pose, arms spread out happily, dress and hair floating in mid-air, bright sparkling happy eyes.
+- Frame 4 (Landing Cushion): Feet contact floor baseline, knees bending to absorb the jump landing, satisfied warm smile.
 ```
 
 ---
 
-# 🎭 БЛОК 2: Промпты оверлеев лиц и зрачков (Face Overlays)
+# 🎭 БЛОК 2: Промпты оверлеев лиц и зрачков (Face Overlays, СТРОГО 4 кадра)
 
 > [!IMPORTANT]
 > **ПРАВИЛО ОВЕРЛЕЕВ ЛИЦ:**
@@ -661,7 +444,7 @@ Animation Breakdown:
 
 ---
 
-### F01. `face_curious` | Любопытство / Интерес
+### F01. `face_curious` | Любопытство / Интерес (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/curious/` | **Файлы:** `face_curious_00.png` — `face_curious_03.png`
 
 ```text
@@ -688,7 +471,7 @@ Animation Breakdown:
 
 ---
 
-### F02. `face_dizzy` | Спиральки в глазах / Головокружение
+### F02. `face_dizzy` | Спиральки в глазах / Головокружение (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/dizzy/` | **Файлы:** `face_dizzy_00.png` — `face_dizzy_03.png`
 
 ```text
@@ -698,7 +481,6 @@ Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 co
 
 SPACING & PADDING (CRITICAL):
 - Ensure generous transparent empty padding between all 4 cells.
-- Each face feature set must be strictly centered in its respective square cell with wide transparent margins.
 
 CRITICAL OVERLAY RULES:
 - ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (sweat drops, stars).
@@ -714,7 +496,7 @@ Animation Breakdown:
 
 ---
 
-### F03. `face_shocked` | Испуг / Внезапный подхват мышью / Шок
+### F03. `face_shocked` | Испуг / Шок (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/shocked/` | **Файлы:** `face_shocked_00.png` — `face_shocked_03.png`
 
 ```text
@@ -724,7 +506,6 @@ Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 co
 
 SPACING & PADDING (CRITICAL):
 - Ensure generous transparent empty padding between all 4 cells.
-- Each face feature set must be strictly centered in its respective square cell with wide margins.
 
 CRITICAL OVERLAY RULES:
 - ONLY draw facial features: eyes, eyebrows, nose, mouth, and small expression FX (sweat drops).
@@ -740,7 +521,7 @@ Animation Breakdown:
 
 ---
 
-### F04. `face_flirty` | Смущение / Нежный румянец / Флирт
+### F04. `face_flirty` | Смущение / Нежный румянец / Флирт (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/flirty/` | **Файлы:** `face_flirty_00.png` — `face_flirty_03.png`
 
 ```text
@@ -750,7 +531,6 @@ Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 co
 
 SPACING & PADDING (CRITICAL):
 - Ensure generous transparent empty padding between all 4 cells.
-- Each face feature set must be strictly centered in its respective square cell with wide margins.
 
 CRITICAL OVERLAY RULES:
 - ONLY draw facial features: eyes, eyebrows, nose, mouth, and pink blush with cute diagonal blush hatch lines.
@@ -766,7 +546,7 @@ Animation Breakdown:
 
 ---
 
-### F05. `face_winking` | Игривое подмигивание
+### F05. `face_winking` | Игривое подмигивание (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/winking/` | **Файлы:** `face_winking_00.png` — `face_winking_03.png`
 
 ```text
@@ -776,7 +556,6 @@ Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 co
 
 SPACING & PADDING (CRITICAL):
 - Ensure generous transparent empty padding between all 4 cells.
-- Each face feature set must be strictly centered in its respective square cell with wide margins.
 
 CRITICAL OVERLAY RULES:
 - ONLY draw facial features: eyes, eyebrows, nose, mouth, and small sparkle FX.
@@ -792,7 +571,7 @@ Animation Breakdown:
 
 ---
 
-### F06. `face_pout` | Надутые щёчки / Милая обида
+### F06. `face_pout` | Надутые щёчки / Милая обида (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/pout/` | **Файлы:** `face_pout_00.png` — `face_pout_03.png`
 
 ```text
@@ -802,7 +581,6 @@ Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 co
 
 SPACING & PADDING (CRITICAL):
 - Ensure generous transparent empty padding between all 4 cells.
-- Each face feature set must be strictly centered in its respective square cell with wide margins.
 
 CRITICAL OVERLAY RULES:
 - ONLY draw facial features: eyes, eyebrows, nose, mouth, and puffed cheek blush.
@@ -818,7 +596,7 @@ Animation Breakdown:
 
 ---
 
-### F07. `pupils_normal` | Изолированные зрачки (Центральный взгляд для Gaze Tracking)
+### F07. `pupils_normal` | Изолированные зрачки (Центральный взгляд для Gaze Tracking, 4 кадра)
 * **Папка:** `public/assets/sprites/faces/pupils/` | **Файлы:** `pupils_normal_00.png` — `pupils_normal_03.png`
 
 ```text
@@ -833,8 +611,7 @@ SPACING & PADDING (CRITICAL):
 CRITICAL RULES:
 - ONLY draw the isolated pair of pupils and irises (left pupil and right pupil).
 - DO NOT draw eyelashes, eyelids, sclera (white of eye), skin, eyebrows, head, or body.
-- The two pupils must be positioned at the exact distance and vertical height matching the eyes in the reference image.
-- Background must be 100% transparent alpha (no background, no white box, no fake checkerboard).
+- 100% transparent background alpha.
 
 Breakdown:
 - Frame 1: Standard isolated pupil pair looking straight forward with specular highlights.
@@ -845,7 +622,7 @@ Breakdown:
 
 ---
 
-### F08. `pupils_directional` | Направленный взгляд зрачков (Влево, Вправо, Вверх, Вниз)
+### F08. `pupils_directional` | Направленный взгляд зрачков (Влево, Вправо, Вверх, Вниз, 4 кадра)
 * **Папка:** `public/assets/sprites/faces/pupils/` | **Файлы:** `pupils_directional_00.png` — `pupils_directional_03.png`
 
 ```text
@@ -871,7 +648,7 @@ Directional Breakdown:
 
 ---
 
-### F09. `face_blink` | Цикл моргания глазами (для живого Idle)
+### F09. `face_blink` | Цикл моргания глазами (для живого Idle, 4 кадра)
 * **Папка:** `public/assets/sprites/faces/blink/` | **Файлы:** `face_blink_00.png` — `face_blink_03.png`
 
 ```text
@@ -881,7 +658,6 @@ Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 co
 
 SPACING & PADDING (CRITICAL):
 - Ensure generous transparent empty padding between all 4 cells.
-- Each frame strictly centered with wide margins.
 
 CRITICAL OVERLAY RULES:
 - ONLY draw facial features: eyes, eyelashes, eyebrows, nose, and mouth.
@@ -897,7 +673,7 @@ Animation Breakdown (Natural Blink):
 
 ---
 
-### F10. `face_smug` | Довольная ухмылка / Хитрая моська
+### F10. `face_smug` | Довольная ухмылка / Хитрая моська (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/smug/` | **Файлы:** `face_smug_00.png` — `face_smug_03.png`
 
 ```text
@@ -922,7 +698,7 @@ Animation Breakdown:
 
 ---
 
-### F11. `face_crying` | Сильное огорчение / Аниме-слёзки
+### F11. `face_crying` | Сильное огорчение / Аниме-слёзки (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/crying/` | **Файлы:** `face_crying_00.png` — `face_crying_03.png`
 
 ```text
@@ -947,7 +723,7 @@ Animation Breakdown:
 
 ---
 
-### F12. `face_happy` | Радостная улыбка (4 кадра)
+### F12. `face_happy` | Радостная улыбка (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/happy/` | **Файлы:** `face_happy_00.png` — `face_happy_03.png`
 
 ```text
@@ -972,7 +748,7 @@ Animation Breakdown:
 
 ---
 
-### F13. `face_sad` | Грусть / Печаль (4 кадра)
+### F13. `face_sad` | Грусть / Печаль (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/sad/` | **Файлы:** `face_sad_00.png` — `face_sad_03.png`
 
 ```text
@@ -997,7 +773,7 @@ Animation Breakdown:
 
 ---
 
-### F14. `face_angry` | Раздражение / Злость (4 кадра)
+### F14. `face_angry` | Раздражение / Злость (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/angry/` | **Файлы:** `face_angry_00.png` — `face_angry_03.png`
 
 ```text
@@ -1022,7 +798,7 @@ Animation Breakdown:
 
 ---
 
-### F15. `face_sleep` | Спящее лицо (4 кадра)
+### F15. `face_sleep` | Спящее лицо (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/sleep/` | **Файлы:** `face_sleep_00.png` — `face_sleep_03.png`
 
 ```text
@@ -1047,7 +823,7 @@ Animation Breakdown:
 
 ---
 
-### F16. `face_thinking` | Задумчивость / Сомнение (4 кадра)
+### F16. `face_thinking` | Задумчивость / Сомнение (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/thinking/` | **Файлы:** `face_thinking_00.png` — `face_thinking_03.png`
 
 ```text
@@ -1072,7 +848,7 @@ Animation Breakdown:
 
 ---
 
-### F17. `face_talking` | Движение рта / Разговор (4 кадра)
+### F17. `face_talking` | Движение рта / Разговор (4 кадра, 1 строка × 4 колонки)
 * **Папка:** `public/assets/sprites/faces/talking/` | **Файлы:** `face_talking_00.png` — `face_talking_03.png`
 
 ```text
@@ -1097,7 +873,7 @@ Animation Breakdown:
 
 ---
 
-# 🎁 БЛОК 3: Промпты для реквизита и спецэффектов (Props & FX)
+# 🎁 БЛОК 3: Промпты для реквизита и спецэффектов (Props & FX, 4 кадра)
 
 ---
 

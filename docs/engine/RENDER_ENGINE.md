@@ -151,8 +151,7 @@ export interface SpriteManifest {
 Validation rules:
 
 - `frames` must be non-empty.
-- If `framesCount` is present, it must equal `frames.length`.
-- `fps` and `durationMs`, when present, must be greater than `0`.
+- If `framesCount` is present, it must equal `frames.length`.\n- `fps` and `durationMs`, when present, must be greater than `0`.
 - `sourceRect` and `canvasSize`, when present, must have positive width and height.
 - `pivot.x` and `pivot.y` are measured in source pixels.
 - Paths must be relative asset paths or public-root paths such as `/assets/sprites/body/walk/body_walk_00.png`; path traversal via `..` is invalid.
@@ -254,6 +253,17 @@ Example of a future overlay-ready body entry (illustrative only; not present in 
   }
 }
 ```
+
+### 1.7. Стандарт количества кадров (Frame Count Contract)
+
+> [!IMPORTANT]
+> **ПРАВИЛО КОЛИЧЕСТВА КАДРОВ В АНИМАЦИЯХ:**
+> 1. **Минимум 4 кадра на анимацию:** Любая анимация персонажа (`body_*`), оверлея лица (`face_*`), изолированных зрачков (`pupils_*`) и эффектов должна содержать **4 или более кадров** (`>= 4 frames`).
+> 2. **Запрет 2- и 3-кадровых анимаций:** Короткие 2- и 3-кадровые анимации **не допускаются**, так как они вызывают стробоскопический эффект и визуальные рывки при интерполяции слоёв.
+> 3. **Стандартная раскладка спрайт-шитов:**
+>    - **4 кадра (базовый стандарт):** 1 горизонтальный ряд × 4 колонки (`1 row × 4 columns wide strip` / файлы `_00.png`..`_03.png`).
+>    - **8 кадров (расширенный стандарт, например `body_idle`):** 2 ряда × 4 колонки (`2 rows × 4 columns` / файлы `_00.png`..`_07.png`).
+>    - Допускаются более длинные последовательности (>= 4 кадров), если это требуется для плавности сложного перехода или действия.
 
 ## 2. Layer Ordering & Blend
 
