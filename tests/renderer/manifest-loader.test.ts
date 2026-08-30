@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ManifestLoader } from '../../src/renderer/render-engine/manifest-loader';
-import { DEFAULT_SPRITE_PIVOT } from '../../src/renderer/render-engine/types';
+import { DEFAULT_FACE_FPS, DEFAULT_FACE_PIVOT, DEFAULT_SPRITE_FPS, DEFAULT_SPRITE_PIVOT } from '../../src/renderer/render-engine/types';
 
 describe('Renderer: ManifestLoader', () => {
   const loader = new ManifestLoader();
@@ -16,15 +16,19 @@ describe('Renderer: ManifestLoader', () => {
     const walk = manifest.animations.body_walk;
     const idle = manifest.animations.body_idle;
     const petting = manifest.animations.body_petting;
+    const happyFace = manifest.animations.face_happy;
     expect(manifest.schemaVersion).toBe(1);
-    expect(walk?.fps).toBe(8);
-    expect(idle?.fps).toBe(8);
-    expect(idle?.frames.map((frame) => Math.round(frame.durationMs))).toEqual([125, 125, 125, 125]);
+    expect(walk?.fps).toBe(DEFAULT_SPRITE_FPS);
+    expect(idle?.fps).toBe(DEFAULT_SPRITE_FPS);
+    expect(idle?.frames.map((frame) => Math.round(frame.durationMs))).toEqual([200, 200, 200, 200]);
     expect(walk?.pivot).toEqual(DEFAULT_SPRITE_PIVOT);
-    expect(walk?.frames.map((frame) => Math.round(frame.durationMs))).toEqual([125, 125, 125, 125]);
+    expect(walk?.frames.map((frame) => Math.round(frame.durationMs))).toEqual([200, 200, 200, 200]);
     expect(idle?.frameMeta?.map((meta) => meta.anchors?.face?.y ?? 180)).toEqual([180, 176, 174, 181]);
     expect(petting?.category).toBe('body/petting');
     expect(petting?.layer).toBe('body');
+    expect(happyFace?.fps).toBe(DEFAULT_FACE_FPS);
+    expect(happyFace?.pivot).toEqual(DEFAULT_FACE_PIVOT);
+    expect(happyFace?.frames.map((frame) => Math.round(frame.durationMs))).toEqual([333, 333, 333, 333]);
   });
 
   it('accepts canonical animations registry and preserves per-frame metadata', () => {
@@ -63,9 +67,9 @@ describe('Renderer: ManifestLoader', () => {
     });
 
     const idle = manifest.animations.body_idle;
-    expect(idle?.fps).toBe(8);
+    expect(idle?.fps).toBe(DEFAULT_SPRITE_FPS);
     expect(idle?.framesCount).toBe(1);
-    expect(idle?.frames[0]?.durationMs).toBe(125);
+    expect(idle?.frames[0]?.durationMs).toBe(200);
     expect(idle?.frames[0]?.pivot).toEqual(DEFAULT_SPRITE_PIVOT);
   });
 });

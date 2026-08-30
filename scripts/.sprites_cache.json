@@ -4,7 +4,7 @@
   "body_bored.png": "0814a7e7930e1b36a110042cdf910fe7",
   "face_удивление.png": "d626042d3664c8c1d9a49814eb45d86e",
   "body_sleep_trans.png": "78e7c25f708c9afbda0addf42ae3f128",
-  "body_fall.png": "ab6cb7e92485a948854e099d1e5da2dc",
+  "body_fall.png": "385591ab961f66183f9a33af0e0d81c2",
   "face_gaze.png": "b72cdfe0a2f7a536a2c0092ec5b78536",
   "body_crash_splat.png": "38904438524475e87e95eb72b7c34e28",
   "face_растерянность.png": "df03b7cc3c77aa7dd2b839d0183aaf9c",
@@ -34,5 +34,6 @@
   "body_thinking.png": "d00e3b340d80924f99bb0771ef9f499b",
   "face_озадаченност.png": "500cf89af2cb56c6701cf59df2bc9381",
   "ходьба.png": "b77e72596b5cb9aa986581febb672dee",
-  "body_celebrate.png": "f6906ee2faef6121384f4851f1bcfa84"
+  "body_celebrate.png": "f6906ee2faef6121384f4851f1bcfa84",
+  "body_land.png": "948e5ddf3b4300d866cabb2188141d69"
 }

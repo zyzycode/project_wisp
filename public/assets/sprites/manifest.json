@@ -128,7 +128,7 @@
       "/assets/sprites/body/land/body_land_02.png",
       "/assets/sprites/body/land/body_land_03.png"
     ],
-    "sourceFile": "приземлен.png"
+    "sourceFile": "body_land.png"
   },
   "body_walk": {
     "category": "body/walk",

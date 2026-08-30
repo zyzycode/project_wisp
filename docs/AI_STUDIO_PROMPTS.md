@@ -21,6 +21,27 @@
 
 ## 🎯 План задач генерации
 
+### 🚨 Очередь 0: Срочная перегенерация дефектных и нарушающих масштаб поз тела (Fix Scaling & Defects)
+> [!WARNING]
+> **Причина перегенерации:** В результате аппаратного аудита размеров спрайтов выявлены критические отклонения в размерах и целостности:
+> - **`body_wave`** — уменьшена на $\approx 15-20\%$ (ширина $197-212\text{ px}$ вместо эталонных $255-275\text{ px}$, пикселей всего $46\,000$ вместо $55\,000$). Из-за поднятой руки нейросеть уменьшила всё тело целиком!
+> - **`body_jump`** — **критический дефект в кадре `01`** (размер всего $63\times100\text{ px}$, $966$ пикселей).
+> - **`body_celebrate`** — сильная пульсация масштаба между кадрами (от $194\text{ px}$ до $276\text{ px}$).
+> - **`body_bored`** — силуэт слишком худой и узкий ($196-205\text{ px}$).
+> - **`body_scared`** — сжата по общей массе ($42\,000$ пикселей).
+> - **`body_fall`** — вытянута и сужена ($204-213\text{ px}$).
+> - **`body_land`** — **нарушен порядок фаз и стыковка с `idle`**: в кадре `02` персонаж уже встал в полный рост ($Y=70\text{ px}$), а в кадре `03` внезапно снова просел в полуприсед ($Y=103\text{ px}$), из-за чего при переключении на `idle_00` ($Y=75\text{ px}$) происходит резкий рывок/скачок тела вверх на 28px.
+
+1. 🔴 `B08. body_wave` (**4 кадра**, `1x4`, `baked_in`) — *взмах рукой без сжатия тела, голова $190-200\text{ px}$, торс $255-275\text{ px}$*
+2. 🔴 `B21. body_jump` (**4 кадра**, `1x4`, `baked_in`) — *исправление повреждённого кадра 01 и прыжок в полном чиби-масштабе*
+3. 🔴 `B09. body_celebrate` (**4 кадра**, `1x4`, `baked_in`) — *радостный танец со строго одинаковым масштабом во всех 4 кадрах*
+4. 🔴 `B11. body_bored` (**4 кадра**, `1x4`, `baked_in`) — *вздох и переминание с ноги на ногу с полным объёмом платья ($255-265\text{ px}$)*
+5. 🟡 `B10. body_scared` (**4 кадра**, `1x4`, `baked_in`) — *дрожь от испуга в полном чиби-объёме без уменьшения массы*
+6. ✅ `B16. body_fall` (**4 кадра**, `1x4`, `baked_in`) — *перегенерировано и нарезано, ширина 273-304px, полный масштаб*
+7. ✅ `B04. body_land` (**4 кадра**, `1x4`, `baked_in`) — *перегенерировано и нарезано: 4-й кадр 100% бесшовно переходит в idle_00*
+
+---
+
 ### 🔥 Очередь 1: Диалоговые позы тела БЕЗ ЛИЦА (Faceless Base Body) — ВСЕ ГОТОВЫ И ЗАПЕЧЕНЫ ✅
 1. ✅ `B00. body_idle` — без лица (**8 кадров**, `2x4`) — *нарезано и запечено*
 2. ✅ `B12. body_sit` — без лица (**4 кадра**, `1x4`) — *нарезано и запечено*
@@ -36,7 +57,8 @@
 4. ✅ `B19. body_climb_wall` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *нарезано и запечено*
 5. ✅ `B20. body_ceiling_hang` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *нарезано и запечено*
 6. ✅ `B21. body_jump` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *нарезано и запечено*
-7. ✅ `B01..B11` (`body_petting`, `body_wave`, `body_bored`, `body_land`, `body_dragged`, `body_walk`, `body_thinking`, `body_sleep`, `body_sleep_trans`, `body_celebrate`, `body_scared`) — *нарезаны и запечены*.
+7. ✅ Готовы и стабильны: `body_petting`, `body_dragged`, `body_walk`, `body_thinking`, `body_sleep`, `body_sleep_trans`.
+8. 🔄 Отправлены на перегенерацию в Очередь 0: `body_wave`, `body_celebrate`, `body_jump`, `body_bored`, `body_scared`, `body_fall`, `body_land`.
 
 ---
 
@@ -94,19 +116,19 @@
 | **B01** | `body_walk` | Шаги / Ходьба | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
 | **B02** | `body_thinking` | Размышление / Мысли | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
 | **B03** | `body_dragged` | Перетаскивание мышью | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
-| **B04** | `body_land` | Приземление (зажмуривание) | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
+| **B04** | `body_land` | Приземление (зажмуривание) | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово (бесшовная стыковка с idle)** |
 | **B05** | `body_petting` | Реакция на поглаживание | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
 | **B06** | `body_sleep` | Поза сна на полу | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
 | **B07** | `body_sleep_trans` | Укладывание спать | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
-| **B08** | `body_wave` | Взмах ручкой (приветствие) | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
-| **B09** | `body_celebrate` | Празднование / Радость | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
-| **B10** | `body_scared` | Дрожь / Испуг тела | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
-| **B11** | `body_bored` | Скука / Вздох | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
+| **B08** | `body_wave` | Взмах ручкой (приветствие) | `baked_in` (с лицом) | 4 | 1x4 | 🔄 **Перегенерировать (мала на 20%)** |
+| **B09** | `body_celebrate` | Празднование / Радость | `baked_in` (с лицом) | 4 | 1x4 | 🔄 **Перегенерировать (скачки масштаба)** |
+| **B10** | `body_scared` | Дрожь / Испуг тела | `baked_in` (с лицом) | 4 | 1x4 | 🔄 **Перегенерировать (мало пикселей)** |
+| **B11** | `body_bored` | Скука / Вздох | `baked_in` (с лицом) | 4 | 1x4 | 🔄 **Перегенерировать (слишком узкая)** |
 | **B12** | `body_sit` | Сидит на полу / окне | `overlay` (без лица) | 4 | 1x4 | ✅ **Готово** |
 | **B13** | `body_stand_up` | Вставание на ноги | `overlay` (без лица) | 4 | 1x4 | ✅ **Готово** |
 | **B14** | `body_lie` | Лежит на животе | `overlay` (без лица) | 4 | 1x4 | ✅ **Готово** |
 | **B15** | `body_run` | Быстрый бег | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
-| **B16** | `body_fall` | Паническое падение | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
+| **B16** | `body_fall` | Паническое падение | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово (полный чиби-масштаб)** |
 | **B17** | `body_crash_splat` | Удар о пол + 'x_x' + подъём | `baked_in` (с лицом) | 8 | 2x4 | ✅ **Готово** |
 | **B19** | `body_climb_wall` | Ползание по стене | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
 | **B20** | `body_ceiling_hang` | Висение на потолке | `baked_in` (с лицом) | 4 | 1x4 | ✅ **Готово** |
@@ -145,6 +167,212 @@
 > 2. Скопируйте блок промпта из поля `text`.
 > 3. Вставьте в **Google AI Studio (Imagen 3 / Gemini 2.0 Pro)** или **ChatGPT (DALL-E 3)**.
 > 4. Сохраните полученное изображение в папку проекта `generated_images/<имя_файла>.png`.
+
+---
+
+## 🛠️ Раздел 0: Исправление масштаба и перегенерация поз тела (Fix Scaling & Defects)
+
+> [!IMPORTANT]
+> **ГЛАВНЫЕ ТРЕБОВАНИЯ ДЛЯ ИСПРАВЛЕНИЯ МАСШТАБА:**
+> 1. **НЕ СЖИМАТЬ ТЕЛО ПРИ ПОДНЯТЫХ РУКАХ:** Рука, машущая или поднятая вверх, должна двигаться на уровне головы/плеча сбоку, **НЕ заставляя нейросеть пропорционально уменьшать фигурку персонажа**. Масштаб головы ($190-210\text{ px}$ ширина) и платья ($250-275\text{ px}$ ширина) обязан совпадать с референсом `body_idle` пиксель-в-пиксель!
+> 2. **ЕДИНЫЙ МАСШТАБ ВО ВСЕХ 4 КАДРАХ:** Персонаж не должен пульсировать по ширине.
+> 3. **ПОЛНАЯ ПРОЗРАЧНОСТЬ И ОТСТУПЫ:** 1 горизонтальный ряд $\times$ 4 квадратных ячейки (`1x4`), широкие прозрачные поля между кадрами.
+
+---
+
+### [PROMPT: B08] `body_wave` — Взмах ручкой / Приветствие (Waving Hand — Full Scale Fix)
+* **📌 Что исправлено в промпте:** Жесткое требование сохранения 100% масштаба тела (Head Width 190–200px, Torso Width 260–275px). Рука машет сбоку от головы, не уменьшая туловище.
+* **🎬 Раскадровка:** Кадр 1: правая ручка поднимается к плечу с приветливой улыбкой; Кадр 2: ладошка поднята на уровне щеки/ушка, взмах вправо; Кадр 3: ладошка наклоняется влево; Кадр 4: плавный возврат ладошки в центр с милым подмигиванием.
+* **📋 Режим движка:** `baked_in` (полноценное готовое лицо с эмоцией приветствия).
+* **📁 Файл:** `generated_images/body_wave.png`
+* **Формат:** 1 горизонтальный ряд × 4 колонки (`1x4`, 4 кадра).
+
+```text
+Based on the reference image, using the EXACT character design, hair style, chibi proportions, clothing, and pastel palette:
+Create a 2D game sprite sheet with 4 animation frames arranged in ONE SINGLE HORIZONTAL ROW (1 row by 4 columns) on a 100% transparent PNG background.
+
+CRITICAL SCALE & PROPORTION CONTRACT (MUST MATCH REFERENCE EXACTLY):
+- DO NOT SHRINK OR SCALE DOWN THE CHARACTER. The body, head, and dress MUST remain at 100% full scale (head width 190-200px, torso/dress width 260-275px, standing height 385-390px).
+- When the character raises her hand to wave, the hand stays at cheek/shoulder level to the side. The head and body DO NOT shrink.
+- Centered horizontally in each cell (X=256), feet aligned to floor baseline (Y=460).
+- Generous empty transparent spacing between all 4 frames.
+
+Pose & Animation (Friendly Cheerful Waving Hand):
+- Character has a baked-in sweet friendly smiling face with sparkling eyes and soft blush.
+- Frame 1: Natural standing posture, right hand lifted up to shoulder level, friendly welcoming expression.
+- Frame 2: Open palm tilted outward to the right with fingers waving, pleasant smile.
+- Frame 3: Open palm waved back toward the left, cheerful twinkle in eyes.
+- Frame 4: Palm returning to center wave position with playful slight head tilt.
+
+100% transparent background, clean 2D anime cel-shaded style, sharp lineart, master game asset quality.
+```
+
+---
+
+### [PROMPT: B21] `body_jump` — Радостный прыжок / Подскок (Jump Hop — Frame 01 Defect Fix)
+* **📌 Что исправлено в промпте:** Устранена ошибка битого кадра. Полная 4-кадровая фаза прыжка: Подготовка/Присед $	o$ Взлёт/Пик $	o$ Парение в воздухе $	o$ Мягкое приземление. Все 4 кадра содержат цельного персонажа в полном масштабе.
+* **🎬 Раскадровка:** Кадр 1: легкий пружинистый присед перед толчком; Кадр 2: подскок в воздух, ножки оторваны от пола, ручки взлетают вверх; Кадр 3: пик парения в воздухе с радостным личиком; Кадр 4: мягкое касание стопами пола с пружинящими коленями.
+* **📋 Режим движка:** `baked_in` (радостное сияющее личико `^ o ^`).
+* **📁 Файл:** `generated_images/body_jump.png`
+* **Формат:** 1 горизонтальный ряд × 4 колонки (`1x4`, 4 кадра).
+
+```text
+Based on the reference image, using the EXACT character design, chibi anatomy, hair, dress, and pastel color scheme:
+Create a clean 2D game sprite sheet with 4 animation frames in ONE SINGLE HORIZONTAL ROW (1 row by 4 columns) on a transparent PNG background.
+
+CRITICAL INTEGRITY & SCALE CONTRACT:
+- All 4 frames MUST contain the FULL, complete character body rendered at identical scale and thickness (no cropped frames, no tiny fragments).
+- Head width ~190-210px, dress width ~260-280px.
+- Generous transparent margins around each cell. No touching between frames.
+
+Animation Sequence (Energetic Happy Chibi Jump):
+- Frame 1 (Anticipation / Crouch): Slight knee bend downward on floor baseline, arms pulling back, excited smiling eyes.
+- Frame 2 (Airborne Jump Peak): Character actively leaps into the air with feet lifted off the ground, dress hem and hair flowing upwards dynamically, arms raised in pure joy with open mouth smile.
+- Frame 3 (Floating Descent): Hair and dress floating softly at the apex of the hop, hands spread out happily.
+- Frame 4 (Landing Cushion): Feet touch back down to floor baseline (Y=460), knees softly bending to absorb landing, radiant happy face.
+
+Clean transparent background, high-definition 2D anime sprite sheet, 1x4 horizontal layout.
+```
+
+---
+
+### [PROMPT: B09] `body_celebrate` — Празднование / Радостный танец (Celebrate — Scale Stability Fix)
+* **📌 Что исправлено в промпте:** Строгая фиксация ширины ($260-275\text{ px}$) во всех 4 кадрах, устранены скачки размера ($194\text{ px} \leftrightarrow 276\text{ px}$).
+* **🎬 Раскадровка:** Кадр 1: победный жест кулачками у груди; Кадр 2: радостный взмах ручками вверх `\( > o < )/`; Кадр 3: игривое покачивание бедрами вправо с подмигиванием; Кадр 4: победная стойка с сиянием в глазах.
+* **📋 Режим движка:** `baked_in` (триумфальное лицо счастья).
+* **📁 Файл:** `generated_images/body_celebrate.png`
+* **Формат:** 1 горизонтальный ряд × 4 колонки (`1x4`, 4 кадра).
+
+```text
+Based on the reference image, keeping EXACT chibi proportions, clothing details, and color palette:
+Create a 2D game sprite sheet with 4 animation frames arranged horizontally in 1 row by 4 columns on a transparent background PNG.
+
+SCALE STABILITY RULE (CRITICAL):
+- Character MUST keep constant volume and scale across all 4 frames (body width 260-275px, head width 190-205px).
+- DO NOT narrow or widen the character between frames.
+- Center X=256, Feet floor line Y=460. Wide transparent gaps between cells.
+
+Animation Sequence (Victory Celebrate Dance):
+- Baked-in joyful celebratory facial expressions.
+- Frame 1: Pumping fists excitedly near chest, sparkling determined happy eyes, body balanced.
+- Frame 2: Throwing both hands up in victory Yay!, cheerful open smile `\( > o < )/`, dress hem flaring slightly.
+- Frame 3: Playful hip sway to the right, one hand on hip, other waving a peace sign with winking eye.
+- Frame 4: Dynamic celebration pose with radiant beaming smile, hair floating gently.
+
+100% transparent background, crisp anime outlines, 1x4 strip.
+```
+
+---
+
+### [PROMPT: B11] `body_bored` — Скука / Переминание с ноги на ногу (Boredom Sigh — Width & Volume Fix)
+* **📌 Что исправлено в промпте:** Восстановлена стандартная пышность платья и причёски ($255-265\text{ px}$ вместо зауженных $196\text{ px}$).
+* **🎬 Раскадровка:** Кадр 1: стоит, перенеся вес на левую ногу, слегка надув щёчки; Кадр 2: забавный глубокий вздох, плечики поднимаются; Кадр 3: выдох с прикрытыми сонными глазками; Кадр 4: перенос веса на правую ногу с лёгким покачиванием косичек.
+* **📋 Режим движка:** `baked_in` (комичное скучающее личико `(- 3 -)`).
+* **📁 Файл:** `generated_images/body_bored.png`
+* **Формат:** 1 горизонтальный ряд × 4 колонки (`1x4`, 4 кадра).
+
+```text
+Based on the reference image, retaining the EXACT character art style, pastel colors, and chibi volume:
+Create a 2D game sprite sheet with 4 animation frames in ONE SINGLE HORIZONTAL ROW (1 row by 4 columns) on a true transparent PNG background.
+
+PROPORTION RULE:
+- Maintain full chibi body fullness (dress width 255-265px, head width 185-195px, total height 385-390px).
+- Do not compress or thin out the silhouette. Keep generous transparent padding between cells.
+
+Animation Sequence (Cute Boredom & Sighing):
+- Baked-in comical cute bored expression `(- 3 -)`.
+- Frame 1: Weight resting on left hip, one hand hanging loose, slight cute pout on face.
+- Frame 2: Inhaling for a sigh, shoulders rising slightly, eyes looking up lazily.
+- Frame 3: Soft comical puff/sigh release, shoulders drooping comfortably, eyes half-closed in relaxed daze.
+- Frame 4: Weight softly shifting toward the right foot, hair tips settling down naturally.
+
+100% transparent PNG, no background artifacts, 1x4 horizontal layout.
+```
+
+---
+
+### [PROMPT: B10] `body_scared` — Дрожь / Испуг тела (Scared Shiver — Pixel Mass Fix)
+* **📌 Что исправлено в промпте:** Полный объем чиби-тела ($\sim 55\,000$ пикселей) при сохранении эффекта забавной аниме-дрожи.
+* **🎬 Раскадровка:** Кадр 1: испуганная стойка, ручки прижаты к груди; Кадр 2: микро-дрожь влево с расширенными глазами; Кадр 3: микро-дрожь вправо с приподнятыми плечиками; Кадр 4: дрожащий возврат с забавным трепетом подола платья.
+* **📋 Режим движка:** `baked_in` (комичный испуг с круглыми глазами `O _ O`).
+* **📁 Файл:** `generated_images/body_scared.png`
+* **Формат:** 1 горизонтальный ряд × 4 колонки (`1x4`, 4 кадра).
+
+```text
+Based on the reference image, with EXACT anime chibi character model, hair, outfit, and pastel palette:
+Create a 2D game sprite sheet with 4 animation frames in ONE SINGLE HORIZONTAL ROW (1 row by 4 columns) on a transparent PNG background.
+
+SCALE & SPACING:
+- Keep full character body mass (head width 190-205px, torso width 240-260px, height 385-390px).
+- Generous empty margins between all 4 frames.
+
+Animation Sequence (Anime Comical Shiver / Startled Tremble):
+- Baked-in scared/startled comical anime expression with wide startled eyes and nervous wavy mouth.
+- Frame 1: Shocked freeze posture, hands clutched close to chest, eyes wide `O _ O`.
+- Frame 2: Micro-jitter 2px to the left, trembling shoulders, hair vibrating subtly.
+- Frame 3: Micro-jitter 2px to the right, dress hem vibrating in nervous panic.
+- Frame 4: Recoil settle with cute teary startle, hands tucked tight.
+
+Clean 100% transparent alpha PNG, sharp 2D vector lineart, 1x4 horizontal grid.
+```
+
+---
+
+### [PROMPT: B16] `body_fall` — Паническое падение в воздухе (Air Fall — Width Fix)
+* **📌 Что исправлено в промпте:** Нормальная ширина тела и платья в свободном падении ($250-270\text{ px}$ вместо суженных $204\text{ px}$).
+* **🎬 Раскадровка:** Кадр 1: испуганно зависает в воздухе, ручки в стороны; Кадр 2: падение вниз, подол платья и волосы развеваются вверх; Кадр 3: панические взмахи ручками в воздухе; Кадр 4: аэродинамический полёт с кричащим ротиком.
+* **📋 Режим движка:** `baked_in` (панический крик `( > < )` / `D:`).
+* **📁 Файл:** `generated_images/body_fall.png`
+* **Формат:** 1 горизонтальный ряд × 4 колонки (`1x4`, 4 кадра).
+
+```text
+Based on the reference image, maintaining EXACT character proportions, dress design, and colors:
+Create a 2D game sprite sheet with 4 animation frames in ONE SINGLE HORIZONTAL ROW (1 row by 4 columns) on a transparent PNG background.
+
+PROPORTIONS & VOLUME:
+- Keep full chibi width and volume (width 250-275px across flowing hair and billowing dress).
+- Do not compress the character into a narrow stick. Ample spacing between frames.
+
+Animation Sequence (Comical Mid-Air Falling Panic):
+- Baked-in comical panicked falling expression with wide screaming mouth and anime worry eyes.
+- Frame 1: Initial drop into the air, arms flailing outward, hair starting to billow upwards.
+- Frame 2: Full airborne fall, dress skirt and long hair floating dynamically upward from air resistance.
+- Frame 3: Panicked flailing of limbs in mid-air, cute frantic expression.
+- Frame 4: Streamlined falling pose, arms reaching upward as gravity pulls down.
+
+100% transparent background, crisp 2D anime aesthetic, 1x4 horizontal layout.
+```
+
+---
+
+### [PROMPT: B04] `body_land` — Мягкое приземление на пол (Land Impact & Seamless Idle Transition)
+* **📌 Что исправлено в промпте:** Исправлена последовательность фаз движения и устранена просадка в кадре 4. Кадр 4 формирует **полностью выпрямленную стоячую позу, которая геометрически и эмоционально бесшовно перетекает в `body_idle_00`** (Head Top $Y \approx 75\text{ px}$, Height $\approx 385\text{ px}$, Width $\approx 250\text{ px}$).
+* **🎬 Раскадровка:**
+  - **Кадр 1 (Touchdown):** Касание носочками пола ($Y=460$), начало амортизации, глаза зажмурены от скорости `( > < )`, ручки разведены в стороны.
+  - **Кадр 2 (Deep Squash Cushion):** Глубокий мягкий присед, колени согнуты, подол платья и хвостики пышно расправляются в стороны (Top $Y \approx 190\text{ px}$), максимальное поглощение импульса падения.
+  - **Кадр 3 (Rebound / Rising):** Разгибание колен, туловище поднимается вверх (Top $Y \approx 120\text{ px}$), ручки опускаются, глаза начинают приоткрываться.
+  - **Кадр 4 (Full Upright Standing — Idle Settle):** Полный рост на двух ножках (Top $Y \approx 75\text{ px}$, Height $385\text{ px}$), устойчивая вертикальная стойка с открытыми ясными глазками и мягкой улыбкой облегчения, готовая на 100% бесшовно перейти в `body_idle`.
+* **📋 Режим движка:** `baked_in` (готовое динамическое лицо: от зажмуривания к открытым глазам облегчения).
+* **📁 Файл:** `generated_images/body_land.png`
+* **Формат:** 1 горизонтальный ряд × 4 колонки (`1x4`, 4 кадра).
+
+```text
+Based on the reference image (body_idle_00.png), maintaining the EXACT character design, hair style, chibi proportions, outfit, and pastel palette:
+Create a 2D game sprite sheet with 4 animation frames arranged in ONE SINGLE HORIZONTAL ROW (1 row by 4 columns) on a 100% transparent PNG background.
+
+CRITICAL MOTION & TRANSITION CONTRACT:
+- Frame 4 MUST transition seamlessly into body_idle_00. In Frame 4, the character MUST be standing upright at full height (head top Y~75px, standing height 385-390px, dress width ~250px) with open bright eyes and a sweet relieved smile.
+- Strict height progression: Frame 1 (Touchdown Y~130px) -> Frame 2 (Deep Crouch Y~190px) -> Frame 3 (Rising Y~125px) -> Frame 4 (Fully Standing Upright Y~75px). DO NOT crouch again in Frame 4!
+- Center X=256 in each cell, feet on baseline Y=460. Generous transparent spacing between cells.
+
+Animation Sequence (Landing Impact to Standing Rest):
+- Frame 1 (Touchdown): Toes touch floor baseline, knees bending, arms spread for balance, face wincing/worry with closed eyes `( > < )`.
+- Frame 2 (Squash / Impact Absorption): Deep cute crouch, knees wide, dress skirt and hair flares outward softly, eyes squeezed tight `> <`.
+- Frame 3 (Rebounding Upward): Knees straightening up, torso lifting, hair settling down, eyes gently beginning to open with relief.
+- Frame 4 (Full Standing Rest — Matches Idle): Character fully standing upright on both feet, hands resting naturally at sides, wide bright open eyes with gentle smile, 100% matching the idle baseline posture.
+
+Clean 100% transparent background PNG, sharp 2D anime vector style, 1x4 horizontal strip.
+```
 
 ---
 

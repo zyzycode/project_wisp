@@ -1,4 +1,5 @@
 import {
+  DEFAULT_FACE_FPS,
   DEFAULT_FACE_PIVOT,
   DEFAULT_SPRITE_FPS,
   DEFAULT_SPRITE_PIVOT,
@@ -84,7 +85,8 @@ function normalizeAnimation(key: string, definition: SpriteAnimationDef): Normal
     throw new ManifestValidationError(`Animation "${key}" framesCount must equal frames.length.`);
   }
   const defaultPivot = layer === 'face' || layer === 'expression' ? DEFAULT_FACE_PIVOT : DEFAULT_SPRITE_PIVOT;
-  const fps = validatePositiveNumber(definition.fps, `Animation "${key}" fps`) ?? DEFAULT_SPRITE_FPS;
+  const defaultFps = layer === 'face' || layer === 'expression' ? DEFAULT_FACE_FPS : DEFAULT_SPRITE_FPS;
+  const fps = validatePositiveNumber(definition.fps, `Animation "${key}" fps`) ?? defaultFps;
   const pivot = normalizePoint(definition.pivot, `Animation "${key}" pivot`) ?? defaultPivot;
   const sourceRect = normalizeRect(definition.sourceRect, `Animation "${key}" sourceRect`);
   const canvasSize = normalizeCanvasSize(definition.canvasSize, `Animation "${key}" canvasSize`);
