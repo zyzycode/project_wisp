@@ -29,7 +29,9 @@ export type LocomotionAnimationState =
   | 'jump'
   | 'fall'
   | 'land'
-  | 'crawl';
+  | 'crawl'
+  | 'climb_wall'
+  | 'hang_ceiling';
 
 export type AnimationState = CoreAnimationState;
 export type AnyAnimationState = CoreAnimationState | LocomotionAnimationState;
@@ -61,7 +63,9 @@ export type LocomotionAnimationEvent =
   | 'RUN'
   | 'JUMP'
   | 'FALL'
-  | 'CRAWL';
+  | 'CRAWL'
+  | 'CLIMB_WALL'
+  | 'HANG_CEILING';
 
 export type AnimationEvent = CoreAnimationEvent | LocomotionAnimationEvent;
 
@@ -101,6 +105,8 @@ export const ANIMATION_STATES: Record<AnyAnimationState, StateConfig> = {
       'run',
       'jump',
       'crawl',
+      'climb_wall',
+      'hang_ceiling',
     ],
   },
   float: {
@@ -123,6 +129,8 @@ export const ANIMATION_STATES: Record<AnyAnimationState, StateConfig> = {
       'run',
       'jump',
       'crawl',
+      'climb_wall',
+      'hang_ceiling',
     ],
   },
   dragged: {
@@ -431,7 +439,21 @@ export const ANIMATION_STATES: Record<AnyAnimationState, StateConfig> = {
     stable: false,
     durationMs: 2500,
     autoNextState: 'idle',
-    allowedTransitions: ['idle', 'settle', 'sit', 'stand_up', 'dragged', 'spook', 'run'],
+    allowedTransitions: ['idle', 'settle', 'sit', 'stand_up', 'dragged', 'spook', 'run', 'fall', 'falling'],
+  },
+  climb_wall: {
+    defaultExpression: 'curious',
+    interruptible: true,
+    priority: 'normal',
+    stable: true,
+    allowedTransitions: ['idle', 'settle', 'dragged', 'spook', 'fall', 'falling', 'hang_ceiling'],
+  },
+  hang_ceiling: {
+    defaultExpression: 'curious',
+    interruptible: true,
+    priority: 'normal',
+    stable: true,
+    allowedTransitions: ['idle', 'settle', 'dragged', 'spook', 'fall', 'falling', 'climb_wall'],
   },
 };
 
@@ -492,7 +514,15 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
     if (!config) return true;
 
     if (priority === 'critical') {
-      return config.allowedTransitions.includes(targetState) || targetState === 'dragged' || targetState === 'spook';
+      return (
+        config.allowedTransitions.includes(targetState) ||
+        targetState === 'dragged' ||
+        targetState === 'spook' ||
+        targetState === 'falling' ||
+        targetState === 'fall' ||
+        targetState === 'landing' ||
+        targetState === 'land'
+      );
     }
 
     if (!config.interruptible) {
@@ -542,7 +572,7 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
         break;
       case 'RELEASE_DRAG':
         targetState = 'falling';
-        priority = 'normal';
+        priority = 'critical';
         break;
       case 'LAND':
         targetState = 'landing';
@@ -620,10 +650,18 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
         break;
       case 'FALL':
         targetState = 'fall';
-        priority = 'high';
+        priority = 'critical';
         break;
       case 'CRAWL':
         targetState = 'crawl';
+        priority = 'normal';
+        break;
+      case 'CLIMB_WALL':
+        targetState = 'climb_wall';
+        priority = 'normal';
+        break;
+      case 'HANG_CEILING':
+        targetState = 'hang_ceiling';
         priority = 'normal';
         break;
       default:
@@ -703,6 +741,10 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
         return 'fall';
       case 'crawl':
         return 'crawl';
+      case 'climb_wall':
+        return 'climb_wall';
+      case 'hang_ceiling':
+        return 'hang_ceiling';
       default:
         return 'idle';
     }

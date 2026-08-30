@@ -12,6 +12,7 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "sprites:process": "python3 scripts/process_sprites.py",
+    "sprites:preview": "python3 scripts/preview_sprites.py",
     "sprites:validate": "python3 scripts/validate_manifest.py --check",
     "sprites:update": "python3 scripts/validate_manifest.py --write",
     "sprites:sync": "python3 scripts/validate_manifest.py --write",

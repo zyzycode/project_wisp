@@ -137,7 +137,7 @@ function normalizeFaceOverlay(
     return { mode: 'overlay', allowedFaceKeys: [...value.allowedFaceKeys], fallback: value.fallback, anchor: value.anchor };
   }
   if (value.fallback !== 'none' || value.allowedFaceKeys !== undefined || value.anchor !== undefined) {
-    throw new ManifestValidationError(`Animation "${key}" ${value.mode} faceOverlay must only declare fallback: \"none\".`);
+    throw new ManifestValidationError(`Animation "${key}" ${value.mode} faceOverlay must only declare fallback: "none".`);
   }
   return { mode: value.mode, fallback: 'none' };
 }
@@ -204,7 +204,7 @@ function isLayer(value: string | undefined): value is SpriteLayerCategory {
 }
 
 function validateAnimationKey(key: string): void {
-  if (!/^(body|face|expression|prop|fx)_[a-z0-9]+(?:_[a-z0-9]+)*$/.test(key)) {
+  if (!/^(body|face|expression|prop|fx|pupils)_[a-z0-9]+(?:_[a-z0-9]+)*$/.test(key)) {
     throw new ManifestValidationError(`Animation key "${key}" must be a stable snake_case asset key.`);
   }
 }

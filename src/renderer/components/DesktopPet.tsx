@@ -651,6 +651,8 @@ function animationStateToIntentKind(state: AnyAnimationState): AnimationIntentKi
     case 'fall': return 'fall';
     case 'land': return 'land';
     case 'crawl': return 'crawl';
+    case 'climb_wall':
+    case 'hang_ceiling': return 'crawl';
     case 'idle': return 'idle_blink';
   }
 }

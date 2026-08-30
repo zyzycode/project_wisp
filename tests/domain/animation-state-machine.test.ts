@@ -243,6 +243,25 @@ describe('Domain: AnimationStateMachine', () => {
       expect(fsm.getCurrentState()).toBe('idle');
     });
 
+    it('supports wall climbing and ceiling hanging, while P0 fall and P1 drag interrupt both', () => {
+      const climb = new AnimationStateMachine('idle');
+      expect(climb.transition('CLIMB_WALL')).toBe(true);
+      expect(climb.getCurrentState()).toBe('climb_wall');
+      expect(climb.transition('FALL')).toBe(true);
+      expect(climb.getCurrentState()).toBe('fall');
+
+      const hang = new AnimationStateMachine('idle');
+      expect(hang.transition('HANG_CEILING')).toBe(true);
+      expect(hang.getCurrentState()).toBe('hang_ceiling');
+      expect(hang.transition('START_DRAG')).toBe(true);
+      expect(hang.getCurrentState()).toBe('dragged');
+
+      const crawl = new AnimationStateMachine('idle');
+      expect(crawl.transition('CRAWL')).toBe(true);
+      expect(crawl.transition('FALL')).toBe(true);
+      expect(crawl.getCurrentState()).toBe('fall');
+    });
+
     it('applies locomotion animation intents correctly', () => {
       const fsm = new AnimationStateMachine('idle');
       const sitIntent = createSystemAnimationIntent('sit', 'neutral');

@@ -101,7 +101,7 @@
       "/assets/sprites/body/land/body_land_02.png",
       "/assets/sprites/body/land/body_land_03.png"
     ],
-    "sourceFile": "посадка.png"
+    "sourceFile": "приземлен.png"
   },
   "body_walk": {
     "category": "body/walk",
@@ -116,7 +116,7 @@
       "/assets/sprites/body/walk/body_walk_02.png",
       "/assets/sprites/body/walk/body_walk_03.png"
     ],
-    "sourceFile": "полет.png"
+    "sourceFile": "ходьба.png"
   },
   "body_sleep": {
     "category": "body/sleep",
@@ -146,7 +146,7 @@
       "/assets/sprites/body/petting/body_petting_02.png",
       "/assets/sprites/body/petting/body_petting_03.png"
     ],
-    "sourceFile": "счастлив.png"
+    "sourceFile": "радость.png"
   },
   "body_wave": {
     "category": "body/wave",
@@ -154,14 +154,12 @@
       "mode": "baked_in",
       "fallback": "none"
     },
-    "framesCount": 4,
+    "framesCount": 2,
     "frames": [
       "/assets/sprites/body/wave/body_wave_00.png",
-      "/assets/sprites/body/wave/body_wave_01.png",
-      "/assets/sprites/body/wave/body_wave_02.png",
-      "/assets/sprites/body/wave/body_wave_03.png"
+      "/assets/sprites/body/wave/body_wave_01.png"
     ],
-    "sourceFile": "машет_рукой.png"
+    "sourceFile": "body_wave.png"
   },
   "body_celebrate": {
     "category": "body/celebrate",
@@ -169,14 +167,11 @@
       "mode": "baked_in",
       "fallback": "none"
     },
-    "framesCount": 4,
+    "framesCount": 1,
     "frames": [
-      "/assets/sprites/body/celebrate/body_celebrate_00.png",
-      "/assets/sprites/body/celebrate/body_celebrate_01.png",
-      "/assets/sprites/body/celebrate/body_celebrate_02.png",
-      "/assets/sprites/body/celebrate/body_celebrate_03.png"
+      "/assets/sprites/body/celebrate/body_celebrate_00.png"
     ],
-    "sourceFile": "празднует.png"
+    "sourceFile": "body_celebrate.png"
   },
   "body_scared": {
     "category": "body/scared",
@@ -184,14 +179,12 @@
       "mode": "baked_in",
       "fallback": "none"
     },
-    "framesCount": 4,
+    "framesCount": 2,
     "frames": [
       "/assets/sprites/body/scared/body_scared_00.png",
-      "/assets/sprites/body/scared/body_scared_01.png",
-      "/assets/sprites/body/scared/body_scared_02.png",
-      "/assets/sprites/body/scared/body_scared_03.png"
+      "/assets/sprites/body/scared/body_scared_01.png"
     ],
-    "sourceFile": "испуг.png"
+    "sourceFile": "body_scared.png"
   },
   "body_bored": {
     "category": "body/bored",
@@ -199,90 +192,138 @@
       "mode": "baked_in",
       "fallback": "none"
     },
-    "framesCount": 4,
+    "framesCount": 2,
     "frames": [
       "/assets/sprites/body/bored/body_bored_00.png",
-      "/assets/sprites/body/bored/body_bored_01.png",
-      "/assets/sprites/body/bored/body_bored_02.png",
-      "/assets/sprites/body/bored/body_bored_03.png"
+      "/assets/sprites/body/bored/body_bored_01.png"
     ],
-    "sourceFile": "скучает.png"
+    "sourceFile": "body_bored.png"
   },
   "face_happy": {
-    "category": "face/happy",
-    "framesCount": 4,
+    "category": "faces/happy",
+    "framesCount": 3,
     "frames": [
       "/assets/sprites/faces/happy/face_happy_00.png",
       "/assets/sprites/faces/happy/face_happy_01.png",
-      "/assets/sprites/faces/happy/face_happy_02.png",
-      "/assets/sprites/faces/happy/face_happy_03.png"
+      "/assets/sprites/faces/happy/face_happy_02.png"
     ],
-    "sourceFile": "happy.png"
+    "sourceFile": "face_счаст.png"
   },
   "face_sad": {
-    "category": "face/sad",
-    "framesCount": 4,
+    "category": "faces/sad",
+    "framesCount": 3,
     "frames": [
       "/assets/sprites/faces/sad/face_sad_00.png",
       "/assets/sprites/faces/sad/face_sad_01.png",
-      "/assets/sprites/faces/sad/face_sad_02.png",
-      "/assets/sprites/faces/sad/face_sad_03.png"
+      "/assets/sprites/faces/sad/face_sad_02.png"
     ],
-    "sourceFile": "sad.png"
+    "sourceFile": "face_грусть.png"
   },
   "face_shocked": {
-    "category": "face/shocked",
-    "framesCount": 4,
+    "category": "faces/shocked",
+    "framesCount": 3,
     "frames": [
       "/assets/sprites/faces/shocked/face_shocked_00.png",
       "/assets/sprites/faces/shocked/face_shocked_01.png",
-      "/assets/sprites/faces/shocked/face_shocked_02.png",
-      "/assets/sprites/faces/shocked/face_shocked_03.png"
+      "/assets/sprites/faces/shocked/face_shocked_02.png"
     ],
-    "sourceFile": "shocked.png"
+    "sourceFile": "face_surprised.png"
   },
   "face_sleep": {
-    "category": "face/sleep",
-    "framesCount": 4,
+    "category": "faces/sleep",
+    "framesCount": 3,
     "frames": [
       "/assets/sprites/faces/sleep/face_sleep_00.png",
       "/assets/sprites/faces/sleep/face_sleep_01.png",
-      "/assets/sprites/faces/sleep/face_sleep_02.png",
-      "/assets/sprites/faces/sleep/face_sleep_03.png"
+      "/assets/sprites/faces/sleep/face_sleep_02.png"
     ],
-    "sourceFile": "sleep.png"
+    "sourceFile": "face_сон_лиц.png"
   },
   "face_talking": {
-    "category": "face/talking",
-    "framesCount": 4,
+    "category": "faces/talking",
+    "framesCount": 2,
     "frames": [
       "/assets/sprites/faces/talking/face_talking_00.png",
-      "/assets/sprites/faces/talking/face_talking_01.png",
-      "/assets/sprites/faces/talking/face_talking_02.png",
-      "/assets/sprites/faces/talking/face_talking_03.png"
+      "/assets/sprites/faces/talking/face_talking_01.png"
     ],
-    "sourceFile": "talking.png"
+    "sourceFile": "face_речь.png"
   },
   "face_thinking": {
-    "category": "face/thinking",
-    "framesCount": 4,
+    "category": "faces/thinking",
+    "framesCount": 3,
     "frames": [
       "/assets/sprites/faces/thinking/face_thinking_00.png",
       "/assets/sprites/faces/thinking/face_thinking_01.png",
-      "/assets/sprites/faces/thinking/face_thinking_02.png",
-      "/assets/sprites/faces/thinking/face_thinking_03.png"
+      "/assets/sprites/faces/thinking/face_thinking_02.png"
     ],
-    "sourceFile": "thinking.png"
+    "sourceFile": "face_озадаченност.png"
   },
   "face_angry": {
-    "category": "face/angry",
-    "framesCount": 4,
+    "category": "faces/angry",
+    "framesCount": 3,
     "frames": [
       "/assets/sprites/faces/angry/face_angry_00.png",
       "/assets/sprites/faces/angry/face_angry_01.png",
-      "/assets/sprites/faces/angry/face_angry_02.png",
-      "/assets/sprites/faces/angry/face_angry_03.png"
+      "/assets/sprites/faces/angry/face_angry_02.png"
     ],
-    "sourceFile": "angry.png"
+    "sourceFile": "face_angry.png"
+  },
+  "face_pout": {
+    "category": "faces/pout",
+    "framesCount": 3,
+    "frames": [
+      "/assets/sprites/faces/pout/face_pout_00.png",
+      "/assets/sprites/faces/pout/face_pout_01.png",
+      "/assets/sprites/faces/pout/face_pout_02.png"
+    ],
+    "sourceFile": "face_pout.png"
+  },
+  "face_winking": {
+    "category": "faces/winking",
+    "framesCount": 3,
+    "frames": [
+      "/assets/sprites/faces/winking/face_winking_00.png",
+      "/assets/sprites/faces/winking/face_winking_01.png",
+      "/assets/sprites/faces/winking/face_winking_02.png"
+    ],
+    "sourceFile": "face_winking.png"
+  },
+  "face_curious": {
+    "category": "faces/curious",
+    "framesCount": 2,
+    "frames": [
+      "/assets/sprites/faces/curious/face_curious_00.png",
+      "/assets/sprites/faces/curious/face_curious_01.png"
+    ],
+    "sourceFile": "face_curious.png"
+  },
+  "face_dizzy": {
+    "category": "faces/dizzy",
+    "framesCount": 3,
+    "frames": [
+      "/assets/sprites/faces/dizzy/face_dizzy_00.png",
+      "/assets/sprites/faces/dizzy/face_dizzy_01.png",
+      "/assets/sprites/faces/dizzy/face_dizzy_02.png"
+    ],
+    "sourceFile": "face_dizzy.png"
+  },
+  "face_flirty": {
+    "category": "faces/flirty",
+    "framesCount": 3,
+    "frames": [
+      "/assets/sprites/faces/flirty/face_flirty_00.png",
+      "/assets/sprites/faces/flirty/face_flirty_01.png",
+      "/assets/sprites/faces/flirty/face_flirty_02.png"
+    ],
+    "sourceFile": "face_blush.png"
+  },
+  "pupils_normal": {
+    "category": "faces/pupils",
+    "framesCount": 2,
+    "frames": [
+      "/assets/sprites/faces/pupils/pupils_normal_00.png",
+      "/assets/sprites/faces/pupils/pupils_normal_01.png"
+    ],
+    "sourceFile": "pupils_normal.png"
   }
 }

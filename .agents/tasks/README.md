@@ -28,46 +28,44 @@
 
 ## 🔥 Активная очередь спринта (В работе и следующие)
 
-### [TASK: P14-S03] — Procedural Gaze Tracking & Cursor Reactions
+### [TASK: P13-F03a] — Face Overlay & Gaze Pupils Pack
+- **Статус:** `in_progress`
+- **Исполнитель:** `sprite-artist`
+- **Трек:** [`tracks/visual-sprites.md`](./tracks/visual-sprites.md)
+- **Цель:** Отрисовка недостающих PNG лиц (`face_curious`, `face_dizzy`, `face_surprised`, `face_blush`, `face_winking`, `face_pout`) и отдельного спрайта зрачков (`pupils_normal`) для оверлея и Gaze Tracking.
+- **Читать:**
+  - `.agents/agents/sprite-artist/agent.md`
+  - `docs/engine/RENDER_ENGINE.md` (Раздел 1: Manifest & Asset Metadata)
+- **Менять:** `public/assets/sprites/faces/`
+
+---
+
+### [TASK: P14-S03a] — Gaze & Cursor Proximity Math Engine
 - **Статус:** `ready`
-- **Исполнитель:** `domain-behavior` + `app-developer`
+- **Исполнитель:** `domain-behavior`
 - **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Реализовать процедурное слежение взгляда за курсором мыши (расчет угла, сдвиг зрачков с `dead_zone` и `lerp`) и реакцию попытки поймать курсор `swat_cursor`.
+- **Цель:** Реализовать в чистом Domain слое `GazeEngine` (сглаженное слежение зрачками за курсором) и `CursorProximityEngine` (dwell-таймер и готовность реакции `swat_cursor`).
 - **Читать:**
   - `.agents/agents/domain-behavior/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 4: Gaze Tracking & Reactions)
-- **Менять:** `src/renderer/render-engine/`, `src/domain/behavior/`, unit-тесты.
+  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 5: Gaze, cursor и environment)
+- **Менять:** `src/domain/behavior/`, `tests/domain/`.
 - **Критерии приёмки:**
+  - [ ] Чистый TypeScript без DOM/Electron.
   - [ ] Плавный расчет смещения зрачков без джиттера.
-  - [ ] Реакция `swat_cursor` при близком наведении мыши.
   - [ ] `npm test && npm run typecheck` проходят без ошибок.
 
 ---
 
-### [TASK: P13-F03a] — Face Overlay & Gaze Pupils Pack
+### [TASK: P14-S05b] — Platform Environment Adapter & WorkArea Provider
 - **Статус:** `ready`
-- **Исполнитель:** `sprite-artist`
-- **Трек:** [`tracks/visual-sprites.md`](./tracks/visual-sprites.md)
-- **Цель:** Отрисовка недостающих PNG лиц (`face_curious`, `face_dizzy`, `face_surprised`, `face_blush`, `pupils_normal`) для оверлея и Gaze Tracking.
-- **Читать:**
-  - `.agents/agents/sprite-artist/agent.md`
-  - `docs/engine/RENDER_ENGINE.md` (Раздел 1)
-- **Менять:** `public/assets/sprites/faces/`
-- **Критерии приёмки:**
-  - [ ] Изолированные лица на прозрачном фоне 512x512.
-  - [ ] Отдельный спрайт зрачков `pupils_normal`.
-
----
-
-### [TASK: P14-S05] — Environment Snapshots & Window Boundaries Interaction
-- **Статус:** `ready`
-- **Исполнитель:** `domain-behavior` + `app-developer`
+- **Исполнитель:** `app-developer`
 - **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Поддержка взаимодействия с границами окон и панелью задач (лазание по бокам, свисание с верхней границы) через `EnvironmentSnapshot`.
+- **Цель:** Реализовать сбор `EnvironmentSnapshot` в infrastructure слое (через Electron `screen.getPrimaryDisplay().workArea` и границы окон) и проброс через IPC.
 - **Читать:**
-  - `.agents/agents/domain-behavior/agent.md`
-  - `docs/engine/SHIMEJI_SPEC.md` (Раздел 5: Environment & Surfaces)
-- **Менять:** `src/domain/behavior/`, `src/infrastructure/platform/`, unit-тесты.
+  - `.agents/agents/app-developer/agent.md`
+  - `src/infrastructure/platform/`
+  - `src/shared/ipc-contracts.ts`
+- **Менять:** `src/infrastructure/platform/`, `src/main/`, `src/preload/`, тесты.
 - **Критерии приёмки:**
-  - [ ] Адаптеры окон передают корректный `EnvironmentSnapshot`.
-  - [ ] Персонаж корректно цепляется за верх/бок активной рабочей области.
+  - [ ] Корректное формирование `EnvironmentSnapshot` по IPC.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.

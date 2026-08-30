@@ -1,7 +1,72 @@
 # AI Studio & GPT Image Generation Prompts — Project Wisp
 
 > [!NOTE]
-> Документ с техническим контрактом спрайтовой системы и готовыми к копированию промптами для генерации (GPT / DALL-E / AI Studio) с **нативной поддержкой прозрачности (PNG with true alpha transparency)**.
+> Документ содержит эталонные промпты для генерации спрайт-листов Project Wisp (AI Studio / GPT / DALL-E) с **нативной поддержкой прозрачности (PNG-32 true alpha)**.
+> **Единый стандарт проекта:** **4 кадра** в один горизонтальный ряд (`1 row × 4 columns wide strip` / `_00.png`..`_03.png`) для всех анимаций (и `2 × 4` на 8 кадров для `body_idle`).
+
+---
+
+## 📋 Сводная таблица наличия ассетов в `public/`
+
+### 🎭 Блок 1: Оверлеи лиц и зрачков
+
+| ID | Ключ анимации | Описание | Сетка промпта | Путь в public/ | Статус в `public/` |
+|---|---|---|---|---|---|
+| **F01** | `face_curious` | Любопытство / Интерес | 1 row × 4 cols | `faces/curious/` | ✅ **Есть в public/** (2 кадра) |
+| **F02** | `face_dizzy` | Спиральки / Головокружение | 1 row × 4 cols | `faces/dizzy/` | ✅ **Есть в public/** (3 кадра) |
+| **F03** | `face_shocked` | Удивление / Шок / Подхват | 1 row × 4 cols | `faces/shocked/` | ✅ **Есть в public/** (3 кадра) |
+| **F04** | `face_flirty` | Смущение / Нежный румянец | 1 row × 4 cols | `faces/flirty/` | ✅ **Есть в public/** (3 кадра) |
+| **F05** | `face_winking` | Игривое подмигивание | 1 row × 4 cols | `faces/winking/` | ✅ **Есть в public/** (3 кадра) |
+| **F06** | `face_pout` | Надутые щёчки / Обида | 1 row × 4 cols | `faces/pout/` | ✅ **Есть в public/** (3 кадра) |
+| **F07** | `pupils_normal` | Изолированные зрачки (центр) | 1 row × 4 cols | `faces/pupils/` | ✅ **Есть в public/** (2 кадра) |
+| **F08** | `pupils_directional` | Взгляд в 4 стороны (L/R/U/D) | 1 row × 4 cols | `faces/pupils/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **F09** | `face_blink` | Моргание глазами (Idle) | 1 row × 4 cols | `faces/blink/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **F10** | `face_smug` | Довольная ухмылка | 1 row × 4 cols | `faces/smug/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **F11** | `face_crying` | Сильное огорчение / Слёзки | 1 row × 4 cols | `faces/crying/` | ❌ **Нет в public/** *(требуется генерация)* |
+| — | `face_happy` | Радость / Улыбка | 1 row × 4 cols | `faces/happy/` | ✅ **Есть в public/** (3 кадра) |
+| — | `face_sad` | Грусть / Печаль | 1 row × 4 cols | `faces/sad/` | ✅ **Есть в public/** (3 кадра) |
+| — | `face_angry` | Злость / Раздражение | 1 row × 4 cols | `faces/angry/` | ✅ **Есть в public/** (3 кадра) |
+| — | `face_sleep` | Спящее лицо / Дремота | 1 row × 4 cols | `faces/sleep/` | ✅ **Есть в public/** (3 кадра) |
+| — | `face_thinking` | Задумчивость / Сомнение | 1 row × 4 cols | `faces/thinking/` | ✅ **Есть в public/** (3 кадра) |
+| — | `face_talking` | Разговор / Движение рта | 1 row × 4 cols | `faces/talking/` | ✅ **Есть в public/** (2 кадра) |
+
+---
+
+### 🏃 Блок 2: Shimeji-позы тела
+
+| ID | Ключ анимации | Описание | Сетка промпта | Путь в public/ | Статус в `public/` |
+|---|---|---|---|---|---|
+| — | `body_idle` | Базовое стояние (покой) | 2 rows × 4 cols | `body/idle/` | ✅ **Есть в public/** (8 кадров) |
+| — | `body_walk` | Шаги / Ходьба | 1 row × 4 cols | `body/walk/` | ✅ **Есть в public/** (4 кадра) |
+| — | `body_thinking` | Поза размышления | 1 row × 4 cols | `body/thinking/` | ✅ **Есть в public/** (4 кадра) |
+| — | `body_dragged` | Перетаскивание курсором | 1 row × 4 cols | `body/dragged/` | ✅ **Есть в public/** (4 кадра) |
+| — | `body_land` | Приземление на лапки | 1 row × 4 cols | `body/land/` | ✅ **Есть в public/** (4 кадра) |
+| — | `body_petting` | Реакция на поглаживание | 1 row × 4 cols | `body/petting/` | ✅ **Есть в public/** (4 кадра) |
+| — | `body_sleep` | Поза сна | 1 row × 4 cols | `body/sleep/` | ✅ **Есть в public/** (4 кадра) |
+| — | `body_sleep_trans` | Укладывание спать | 1 row × 4 cols | `body/sleep_transition/` | ✅ **Есть в public/** (4 кадра) |
+| — | `body_wave` | Машет ручкой | 1 row × 4 cols | `body/wave/` | ✅ **Есть в public/** (2 кадра) |
+| — | `body_celebrate` | Празднование / Победа | 1 row × 4 cols | `body/celebrate/` | ✅ **Есть в public/** (1 кадр) |
+| — | `body_scared` | Испуг / Дрожь тела | 1 row × 4 cols | `body/scared/` | ✅ **Есть в public/** (2 кадра) |
+| — | `body_bored` | Скука / Тоска | 1 row × 4 cols | `body/bored/` | ✅ **Есть в public/** (2 кадра) |
+| **B01** | `body_sit` | Сидит на полу | 1 row × 4 cols | `body/sit/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B02** | `body_stand_up` | Вставание на ноги | 1 row × 4 cols | `body/stand_up/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B03** | `body_lie` | Лежит на полу | 1 row × 4 cols | `body/lie/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B04** | `body_run` | Быстрый бег | 1 row × 4 cols | `body/run/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B05** | `body_fall` | Падение в воздухе | 1 row × 4 cols | `body/fall/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B06** | `body_crash_splat` | Шлепок о пол / Расплющивание | 1 row × 4 cols | `body/crash_splat/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B07** | `body_recover` | Подъём и отряхивание | 1 row × 4 cols | `body/recover/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B08** | `body_climb_wall` | Ползание по краю экрана | 1 row × 4 cols | `body/climb_wall/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B09** | `body_ceiling_hang` | Висение на верхней кромке | 1 row × 4 cols | `body/ceiling_hang/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **B10** | `body_jump` | Радостный прыжок / Подскок | 1 row × 4 cols | `body/jump/` | ❌ **Нет в public/** *(требуется генерация)* |
+
+---
+
+### 🎁 Блок 3: Реквизит и спецэффекты (Props & FX)
+
+| ID | Ключ анимации | Описание | Сетка промпта | Путь в public/ | Статус в `public/` |
+|---|---|---|---|---|---|
+| **P01** | `props_pack` | Подушка, сердечко, вопрос, искра | 1 row × 4 cols | `props/` | ❌ **Нет в public/** *(требуется генерация)* |
+| **P02** | `fx_emotes_pack` | Капля пота, Zzz, злость, ноты | 1 row × 4 cols | `props/` | ❌ **Нет в public/** *(требуется генерация)* |
 
 ---
 
@@ -11,6 +76,7 @@
 * **Размер итогового холста (Canvas Size):** строго **`512 × 512 px`** (в игре рендерится как $256 \times 256\text{ px}$ на экранах Retina/High-DPI с двукратной чёткостью).
 * **Формат файлов:** `PNG-32` с полноценным альфа-каналом (100% прозрачный фон RGBA).
 * **Расположение кадров при генерации:** строго **в один горизонтальный ряд (1 row × 4 columns wide strip)**, чтобы скрипт нарезки автоматически делил полоску на 4 равных кадра.
+* **Стандарт кадров:** ровно **4 кадра** на каждую анимационную дорожку.
 
 ### 1.2. Слоёная архитектура персонажа (Layer Stacking)
 Персонаж рендерится послойно в едином холсте $512 \times 512\text{ px}$:
@@ -18,7 +84,7 @@
 2. **Слой 1 (`base_body`):** тело персонажа с прической и одеждой. **Область лица остаётся чистой (цвет кожи без глаз и рта)** под оверлей.
 3. **Слой 2 (`face`):** летающие черты лица (глаза, брови, рот) на прозрачном фоне.
 4. **Слой 2.5 (`pupils`):** процедурно смещаемые зрачки (для слежения глазами за курсором мыши).
-5. **Слой 3 (`procedural_blush / fx`):** процедурный румянец, иконки эмоций (`fx_heart`, `fx_question`, `fx_sweat`, `fx_zzz`).
+5. **Слой 3 (`procedural_blush / fx`):** процедурный векторный румянец (`procedural_blush` на z-index 30), иконки эмоций (`prop_heart`, `prop_question`, `prop_sparkle`).
 
 ---
 
@@ -33,7 +99,7 @@
 ### 2.2. Контракт оверлеев лиц (Face Overlay Contract)
 > [!IMPORTANT]
 > **ПРАВИЛО ОВЕРЛЕЕВ ЛИЦ:**
-> Нейросеть генерирует **только черты лица** (глаза, брови, нос, рот, румянец).
+> Нейросеть генерирует **только черты лица** (глаза, брови, нос, рот).
 > **Строго запрещено рисовать контур головы, волосы, уши, шею и овал лица!**
 > Черты лица занимают центральную зону головы ($X \in [176, 336]$, $Y \in [110, 220]$ внутри квадрата $512 \times 512$). Всё остальное пространство — 100% прозрачный фон.
 
@@ -44,6 +110,7 @@
 ---
 
 ### F01. `face_curious` | Любопытство / Интерес
+* **Статус в `public/`:** ✅ **Есть в public/** (`face_curious_00.png`, `face_curious_01.png`)
 * **Папка в игре:** `public/assets/sprites/faces/curious/`
 * **Файлы:** `face_curious_00.png` — `face_curious_03.png`
 
@@ -69,6 +136,7 @@ Animation Breakdown:
 ---
 
 ### F02. `face_dizzy` | Спиральки в глазах / Головокружение
+* **Статус в `public/`:** ✅ **Есть в public/** (`face_dizzy_00.png` — `face_dizzy_02.png`)
 * **Папка в игре:** `public/assets/sprites/faces/dizzy/`
 * **Файлы:** `face_dizzy_00.png` — `face_dizzy_03.png`
 
@@ -93,9 +161,10 @@ Animation Breakdown:
 
 ---
 
-### F03. `face_surprised` | Испуг / Внезапный подхват мышью
-* **Папка в игре:** `public/assets/sprites/faces/surprised/`
-* **Файлы:** `face_surprised_00.png` — `face_surprised_03.png`
+### F03. `face_shocked` | Испуг / Внезапный подхват мышью / Шок
+* **Статус в `public/`:** ✅ **Есть в public/** (`face_shocked_00.png` — `face_shocked_02.png`)
+* **Папка в игре:** `public/assets/sprites/faces/shocked/`
+* **Файлы:** `face_shocked_00.png` — `face_shocked_03.png`
 
 ```text
 Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
@@ -118,9 +187,11 @@ Animation Breakdown:
 
 ---
 
-### F04. `face_blush` | Смущение / Нежный румянец
-* **Папка в игре:** `public/assets/sprites/faces/blush/`
-* **Файлы:** `face_blush_00.png` — `face_blush_03.png`
+### F04. `face_flirty` | Смущение / Нежный румянец / Флирт
+* **Статус в `public/`:** ✅ **Есть в public/** (`face_flirty_00.png` — `face_flirty_02.png`)
+* **Папка в игре:** `public/assets/sprites/faces/flirty/`
+* **Файлы:** `face_flirty_00.png` — `face_flirty_03.png`
+* *(Примечание: процедурный векторный румянец на щеках также может активироваться поверх слоя лица)*
 
 ```text
 Using the EXACT art style, eye design, eye color, line art weight, and facial proportions from the ATTACHED REFERENCE IMAGE, generate a clean 2D facial feature overlay sprite sheet as a PNG with true alpha transparency.
@@ -144,6 +215,7 @@ Animation Breakdown:
 ---
 
 ### F05. `face_winking` | Игривое подмигивание
+* **Статус в `public/`:** ✅ **Есть в public/** (`face_winking_00.png` — `face_winking_02.png`)
 * **Папка в игре:** `public/assets/sprites/faces/winking/`
 * **Файлы:** `face_winking_00.png` — `face_winking_03.png`
 
@@ -169,6 +241,7 @@ Animation Breakdown:
 ---
 
 ### F06. `face_pout` | Надутые щёчки / Милая обида
+* **Статус в `public/`:** ✅ **Есть в public/** (`face_pout_00.png` — `face_pout_02.png`)
 * **Папка в игре:** `public/assets/sprites/faces/pout/`
 * **Файлы:** `face_pout_00.png` — `face_pout_03.png`
 
@@ -194,13 +267,14 @@ Animation Breakdown:
 ---
 
 ### F07. `pupils_normal` | Изолированные зрачки (Центральный взгляд)
+* **Статус в `public/`:** ✅ **Есть в public/** (`pupils_normal_00.png`, `pupils_normal_01.png`)
 * **Папка в игре:** `public/assets/sprites/faces/pupils/`
-* **Файлы:** `pupils_normal_00.png`, `pupils_normal_01.png`
+* **Файлы:** `pupils_normal_00.png` — `pupils_normal_03.png`
 
 ```text
 Using the EXACT eye color, iris gradient, pupil core, specular highlights, and eye-spacing from the ATTACHED REFERENCE IMAGE, generate an isolated pair of pupils for procedural eye tracking as a PNG with true alpha transparency.
 
-Layout: Exactly 2 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 2 columns wide strip).
+Layout: Exactly 4 equal square frames arranged side-by-side in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns wide strip), read left-to-right as Frame 1, Frame 2, Frame 3, Frame 4.
 
 CRITICAL RULES:
 - ONLY draw the isolated pair of pupils and irises (left pupil and right pupil).
@@ -211,11 +285,14 @@ CRITICAL RULES:
 Breakdown:
 - Frame 1: Standard isolated pupil pair looking straight forward with specular highlights.
 - Frame 2: Same isolated pupil pair with an extra subtle star glint highlight.
+- Frame 3: Slightly enlarged soft pupils with warm gentle specular reflection.
+- Frame 4: Normal focused pupil pair ready to loop back to Frame 1.
 ```
 
 ---
 
 ### F08. `pupils_directional` | Направленный взгляд зрачков (Влево, Вправо, Вверх, Вниз)
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/faces/pupils/`
 * **Файлы:** `pupils_directional_00.png` — `pupils_directional_03.png`
 
@@ -240,6 +317,7 @@ Directional Breakdown:
 ---
 
 ### F09. `face_blink` | Цикл моргания глазами (для живого Idle)
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/faces/blink/`
 * **Файлы:** `face_blink_00.png` — `face_blink_03.png`
 
@@ -264,6 +342,7 @@ Animation Breakdown (Natural Blink):
 ---
 
 ### F10. `face_smug` | Довольная ухмылка / Хитрая моська
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/faces/smug/`
 * **Файлы:** `face_smug_00.png` — `face_smug_03.png`
 
@@ -287,6 +366,7 @@ Animation Breakdown:
 ---
 
 ### F11. `face_crying` | Сильное огорчение / Аниме-слёзки
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/faces/crying/`
 * **Файлы:** `face_crying_00.png` — `face_crying_03.png`
 
@@ -316,6 +396,7 @@ Animation Breakdown:
 ---
 
 ### B01. `body_sit` | Сидит на полу
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/sit/`
 * **Файлы:** `body_sit_00.png` — `body_sit_03.png`
 
@@ -343,6 +424,7 @@ Frame 4: Exhale and settle smoothly back into Frame 1 position.
 ---
 
 ### B02. `body_stand_up` | Вставание на ноги
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/stand_up/`
 * **Файлы:** `body_stand_up_00.png` — `body_stand_up_03.png`
 
@@ -370,6 +452,7 @@ Frame 4: Standard upright standing idle posture, fully balanced on feet.
 ---
 
 ### B03. `body_lie` | Лежит на полу
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/lie/`
 * **Файлы:** `body_lie_00.png` — `body_lie_03.png`
 
@@ -396,6 +479,7 @@ Frame 4: Feet lower softly, returning smoothly to Frame 1.
 ---
 
 ### B04. `body_run` | Быстрый бег
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/run/`
 * **Файлы:** `body_run_00.png` — `body_run_03.png`
 
@@ -423,6 +507,7 @@ Frame 4 (Second Flight): Both feet off the floor, body lifted in airborne phase,
 ---
 
 ### B05. `body_fall` | Падение в воздухе
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/fall/`
 * **Файлы:** `body_fall_00.png` — `body_fall_03.png`
 
@@ -449,6 +534,7 @@ Frame 4: Arms spread out for wind balance, hair billowing high, loops back to Fr
 ---
 
 ### B06. `body_crash_splat` | Шлепок о пол / Расплющивание
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/crash_splat/`
 * **Файлы:** `body_crash_splat_00.png` — `body_crash_splat_03.png`
 
@@ -475,6 +561,7 @@ Frame 4 (Squished Wobble): Flat on floor, slight dazed jiggle vibration.
 ---
 
 ### B07. `body_recover` | Подъём и отряхивание после падения
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/recover/`
 * **Файлы:** `body_recover_00.png` — `body_recover_03.png`
 
@@ -500,6 +587,7 @@ Frame 4: Stands tall on both feet, quick final shake/dust-off, transitioning bac
 ---
 
 ### B08. `body_climb_wall` | Ползание вверх по границе экрана
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/climb_wall/`
 * **Файлы:** `body_climb_wall_00.png` — `body_climb_wall_03.png`
 
@@ -525,6 +613,7 @@ Frame 4: Pulls body up with left arm, transitioning smoothly back to Frame 1.
 ---
 
 ### B09. `body_ceiling_hang` | Висение на потолке (Верхняя кромка экрана)
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/ceiling_hang/`
 * **Файлы:** `body_ceiling_hang_00.png` — `body_ceiling_hang_03.png`
 
@@ -551,6 +640,7 @@ Frame 4: Gentle sway to the right, legs swing slightly to right side.
 ---
 
 ### B10. `body_jump` | Радостный прыжок / Подскок
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/body/jump/`
 * **Файлы:** `body_jump_00.png` — `body_jump_03.png`
 
@@ -580,8 +670,9 @@ Frame 4 (Landing Cushion): Feet contact floor baseline, knees bending to absorb 
 ---
 
 ### P01. `props_pack` | Базовый пак предметов
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/props/`
-* **Файлы:** `prop_shadow.png`, `prop_pillow.png`, `prop_heart.png`, `prop_question.png`
+* **Файлы:** `prop_pillow_00..03.png`, `prop_heart_00..03.png`, `prop_question_00..03.png`, `prop_sparkle_00..03.png`
 
 ```text
 Using the EXACT pastel cute anime art style and color palette from the ATTACHED REFERENCE IMAGE, generate a clean 2D game props and FX sheet on a transparent background PNG.
@@ -589,10 +680,10 @@ Using the EXACT pastel cute anime art style and color palette from the ATTACHED 
 Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns).
 
 Items breakdown:
-- Cell 1 (prop_shadow): A clean, soft semi-transparent oval floor shadow seen from top-down 3/4 perspective, smooth soft gradient edge.
-- Cell 2 (prop_pillow): A small, soft cozy pastel sleeping pillow with subtle creases.
-- Cell 3 (prop_heart): A cute floating anime heart icon with soft sparkle highlights.
-- Cell 4 (prop_question): A cute question mark "?" icon with a subtle exclamation mark sparkle.
+- Cell 1 (prop_pillow): A small, soft cozy pastel sleeping pillow with subtle creases.
+- Cell 2 (prop_heart): A cute floating anime heart icon with soft sparkle highlights.
+- Cell 3 (prop_question): A cute question mark "?" icon with a subtle exclamation mark sparkle.
+- Cell 4 (prop_sparkle): A magical twinkling star sparkle effect.
 
 Rules:
 - 100% transparent background (true alpha PNG).
@@ -602,6 +693,7 @@ Rules:
 ---
 
 ### P02. `fx_emotes_pack` | Дополнительные иконки эмоций
+* **Статус в `public/`:** ❌ **Нет в public/** *(требуется генерация)*
 * **Папка в игре:** `public/assets/sprites/props/`
 * **Файлы:** `prop_sweat.png`, `prop_zzz.png`, `prop_anger.png`, `prop_music.png`
 
@@ -611,7 +703,7 @@ Using the EXACT pastel cute anime art style and color palette from the ATTACHED 
 Layout: Exactly 4 equal square cells in ONE SINGLE HORIZONTAL ROW (1 row × 4 columns).
 
 Items breakdown:
-- Cell 1 (prop_sweat): A big cute cartoon anime sweat drop (💧) with soft specular shine.
+- Cell 1 (prop_sweat): A big cute cartoon anime sweat drop (💦) with soft specular shine.
 - Cell 2 (prop_zzz): Three floating cozy sleeping letters "Z z z" in cute rounded bubble font with sparkles.
 - Cell 3 (prop_anger): A cute red anime anger / irritation vein pop icon (💢).
 - Cell 4 (prop_music): A pair of cute cheerful anime musical notes (🎵 🎶) with pastel sparkle accents.
