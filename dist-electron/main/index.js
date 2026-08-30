@@ -26,6 +26,7 @@ let node_path = require("node:path");
 node_path = __toESM(node_path);
 let node_fs = require("node:fs");
 node_fs = __toESM(node_fs);
+let node_perf_hooks = require("node:perf_hooks");
 //#region src/infrastructure/platform/linux-platform.adapter.ts
 /**
 * LinuxPlatformAdapter handles platform-specific window features for Linux.
@@ -163,6 +164,49 @@ function createPlatformAdapter() {
 			return new LinuxPlatformAdapter();
 	}
 }
+//#endregion
+//#region src/infrastructure/platform/platform-environment.adapter.ts
+/**
+* Main-process adapter for the primary display's usable desktop geometry.
+* Electron owns display discovery; callers only receive serializable domain DTOs.
+*/
+var PlatformEnvironmentAdapter = class {
+	lastCapturedAtMs = 0;
+	getSnapshot() {
+		const workArea = electron.screen.getPrimaryDisplay().workArea;
+		const capturedAtMs = Math.max(node_perf_hooks.performance.now(), this.lastCapturedAtMs);
+		this.lastCapturedAtMs = capturedAtMs;
+		return {
+			capturedAtMs,
+			screenBounds: {
+				id: "primary_screen",
+				x: workArea.x,
+				y: workArea.y,
+				width: workArea.width,
+				height: workArea.height
+			},
+			currentSurface: {
+				id: "primary_screen_floor",
+				kind: "screen_floor",
+				bounds: {
+					x: workArea.x,
+					y: workArea.y,
+					width: workArea.width,
+					height: workArea.height
+				},
+				supportY: workArea.y + workArea.height,
+				isValidSupport: true
+			}
+		};
+	}
+	onEnvironmentChanged(listener) {
+		const handler = () => listener(this.getSnapshot());
+		electron.screen.on("display-metrics-changed", handler);
+		return () => {
+			electron.screen.removeListener("display-metrics-changed", handler);
+		};
+	}
+};
 //#endregion
 //#region src/domain/models/position.ts
 /**
@@ -1015,7 +1059,9 @@ var WINDOW_WIDTH = 280;
 var WINDOW_HEIGHT = 320;
 var mainWindow = null;
 var platformAdapter = createPlatformAdapter();
+var platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
 var positionService = null;
+var unsubscribeEnvironmentChanges = null;
 var appLogger = new AppLogger({
 	level: "debug",
 	buffer: new LogBuffer(),
@@ -1064,6 +1110,14 @@ function getDebugTelemetry() {
 }
 function publishDebugTelemetry() {
 	if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("wisp:debug-telemetry", getDebugTelemetry());
+}
+function publishEnvironmentSnapshot(snapshot) {
+	if (positionService) {
+		const currentPosition = positionService.getPosition();
+		const clampedPosition = positionService.updatePosition(currentPosition, snapshot.screenBounds);
+		if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setPosition(Math.round(clampedPosition.x), Math.round(clampedPosition.y));
+	}
+	if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("wisp:environment-changed", snapshot);
 }
 var CHARACTER_INTERACTION_TYPES = [
 	"click",
@@ -1150,6 +1204,9 @@ function registerIpcHandlers() {
 	electron.ipcMain.handle("wisp:get-screen-bounds", async () => {
 		return platformAdapter.getDisplayWorkArea();
 	});
+	electron.ipcMain.handle("wisp:get-environment-snapshot", async () => {
+		return platformEnvironmentAdapter.getSnapshot();
+	});
 	electron.ipcMain.handle("wisp:character-interact", async (_event, interaction) => {
 		if (!isCharacterInteractionDTO(interaction)) throw new TypeError("Invalid character interaction payload");
 		defaultCharacterInteractionUseCase.execute(interaction);
@@ -1228,6 +1285,7 @@ else {
 		initializeServices();
 		registerIpcHandlers();
 		createWindow();
+		unsubscribeEnvironmentChanges = platformEnvironmentAdapter.onEnvironmentChanged(publishEnvironmentSnapshot);
 		electron.app.on("activate", () => {
 			if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();
 		});
@@ -1235,6 +1293,10 @@ else {
 }
 electron.app.on("window-all-closed", () => {
 	if (platformAdapter.getPlatformName() !== "darwin") electron.app.quit();
+});
+electron.app.on("before-quit", () => {
+	unsubscribeEnvironmentChanges?.();
+	unsubscribeEnvironmentChanges = null;
 });
 //#endregion
 exports.COMPACT_WINDOW_HEIGHT = COMPACT_WINDOW_HEIGHT;

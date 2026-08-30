@@ -26,6 +26,16 @@ var api = {
 	getScreenBounds: () => {
 		return electron.ipcRenderer.invoke("wisp:get-screen-bounds");
 	},
+	getEnvironmentSnapshot: () => {
+		return electron.ipcRenderer.invoke("wisp:get-environment-snapshot");
+	},
+	onEnvironmentChanged: (callback) => {
+		const handler = (_event, snapshot) => callback(snapshot);
+		electron.ipcRenderer.on("wisp:environment-changed", handler);
+		return () => {
+			electron.ipcRenderer.removeListener("wisp:environment-changed", handler);
+		};
+	},
 	interactWithCharacter: (interaction) => {
 		return electron.ipcRenderer.invoke("wisp:character-interact", interaction);
 	},

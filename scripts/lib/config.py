@@ -2,7 +2,7 @@
 Project Wisp — Sprite Pipeline Configuration & Constants
 ========================================================
 Centralized definitions of canvas dimensions, layout anchors, category rules, and paths.
-Standard: 4 frames minimum (1x4 grid) for all animations; 8 frames (2x4) for idle.
+Standard: 4 frames minimum (1x4 grid) for all animations; 8 frames (2x4) for idle & crash_splat.
 """
 
 import os
@@ -33,7 +33,7 @@ TARGET_FACE_CENTER_Y: int = 180
 # Rule Definition: (Keywords, Target Subfolder, Animation Prefix, Default Grid)
 CategoryRuleType = Tuple[List[str], str, str, Tuple[int, int]]
 
-CATEGORY_RULES: List[CategoryRuleType] = [
+CATEGORY_RULES: List[CategoryRuleType] = [\
     # --- Эмоции / Оверлеи лиц и зрачков (Faces & Pupils) - Standard 1x4 (4 frames) ---
     (["pupils_normal", "зрач_обыч", "pupil_normal"], "faces/pupils", "pupils_normal", (1, 4)),
     (["зрач", "pupil", "pupils", "iris"], "faces/pupils", "pupils_directional", (1, 4)),
@@ -56,15 +56,15 @@ CATEGORY_RULES: List[CategoryRuleType] = [
     (["нейтрал", "спокойн_лиц", "neutral", "calm_face", "base_face"], "faces/neutral", "face_neutral", (1, 4)),
     (["лиц", "эмоци", "face", "expression", "eyes"], "faces/base", "face", (1, 4)),
 
-    # --- Анимации тела (Body) - Standard 1x4 (4 frames) / 2x4 for idle ---
+    # --- Анимации тела (Body) - Standard 1x4 (4 frames) / 2x4 for idle & crash_splat ---
     (["стена", "лаза", "полз", "climb", "wall_climb"], "body/climb_wall", "body_climb_wall", (1, 4)),
     (["потолок", "вис", "ceiling", "hang", "ceiling_hang"], "body/ceiling_hang", "body_ceiling_hang", (1, 4)),
     (["сидит", "сидеть", "посадка_тело", "sit", "sitting"], "body/sit", "body_sit", (1, 4)),
     (["встает", "встать", "подъем", "stand_up", "standup", "rise"], "body/stand_up", "body_stand_up", (1, 4)),
     (["лежит", "лежать", "отдых", "lie", "lying"], "body/lie", "body_lie", (1, 4)),
-    (["шлепок", "расплющ", "падение_пол", "splat", "crash", "crash_splat"], "body/crash_splat", "body_crash_splat", (1, 4)),
+    (["шлепок", "расплющ", "падение_пол", "splat", "crash", "crash_splat"], "body/crash_splat", "body_crash_splat", (2, 4)),
     (["отряхив", "встает_после_падения", "recover", "dust_off"], "body/recover", "body_recover", (1, 4)),
-    (["машет", "маха", "привет", "рука_машет", "wave", "waving", "hello", "hi"], "body/wave", "body_wave", (1, 4)),
+    (["машет", "маха", "привет", "рука_машет", "wave", "waving", "hello"], "body/wave", "body_wave", (1, 4)),
     (["побед", "ура", "праздн", "радост_прыж", "celebrate", "celebration", "cheer", "victory", "win"], "body/celebrate", "body_celebrate", (1, 4)),
     (["испуг", "страх", "боит", "паник_тело", "scared", "afraid", "fear", "tremble"], "body/scared", "body_scared", (1, 4)),
     (["скук", "скуч", "тоска", "зева", "bored", "boring", "idle_bored", "tedious"], "body/bored", "body_bored", (1, 4)),

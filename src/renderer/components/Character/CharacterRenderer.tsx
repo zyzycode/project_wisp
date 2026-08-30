@@ -19,6 +19,7 @@ import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { SpriteRenderer } from './SpriteRenderer';
 
 export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
+const PROCEDURAL_PUPIL_SOURCE = '/assets/sprites/faces/pupils/pupils_normal_00.png';
 
 const manifestLoader = new ManifestLoader();
 const INITIAL_RESOLVER = new AssetResolver(
@@ -99,6 +100,8 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
     return getFaceAnchorPoint(activePresentationState);
   }, [activePresentationState]);
 
+  const hasProceduralGaze = faceAnchor !== undefined && activePresentationState !== undefined;
+
   useEffect(() => {
     onManifestAnimationsLoaded?.({
       bodyKeys: resolver.getAnimationKeys('body'),
@@ -159,7 +162,10 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
     >
-      <SpriteRenderer state={activePresentationState} />
+      <SpriteRenderer
+        state={activePresentationState}
+        pupilOverlay={hasProceduralGaze ? { source: PROCEDURAL_PUPIL_SOURCE, anchor: faceAnchor } : undefined}
+      />
       {showAnchorPoint && faceAnchor && activePresentationState ? (
         <AnchorVisualizer
           anchor={faceAnchor}

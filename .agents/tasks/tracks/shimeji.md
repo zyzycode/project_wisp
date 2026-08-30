@@ -20,25 +20,26 @@
 - [x] **P14-S03a-REV:** Ревью-гейт математики взгляда и реакции на мышь (`Approved`). (`done` / `reviewer`)
 - [x] **P14-S05b:** Platform Environment Adapter & WorkArea Provider. (`done` / `app-developer`)
 - [x] **P14-S05b-REV:** Ревью-гейт адаптера окружения и IPC-провайдера рабочей области (`Approved`). (`done` / `reviewer`)
-- [ ] **P14-S03b:** Renderer Gaze Layer Compositor (позиционирование зрачков поверх лица). (`ready` / `app-developer`)
-- [ ] **P14-G01:** Финальный интеграционный Review Gate Phase 14. (`planned`)
+- [x] **P14-S03b:** Renderer Gaze Layer Compositor (позиционирование зрачков поверх лица). (`done` / `app-developer`)
+- [x] **P14-S03b-REV:** Ревью-гейт композера слоя зрачков и взгляда (`Approved`). (`done` / `reviewer`)
+- [ ] **P14-G01:** Финальный интеграционный Review Gate Phase 14. (`ready` / `reviewer`)
 
 ---
 
 ## 2. Подробные карточки задач
 
-### [TASK: P14-S03b] — Renderer Gaze Layer Compositor
-- **Исполнитель:** `app-developer`
-- **Зависит от:** `P14-S03a`, `P13-F03a`
-- **Цель:** Подключить слой зрачков `pupils_normal` в композер рендерера (`CharacterRenderer.tsx`):
-  - Смещение зрачков по координатам `pupilOffset` от `GazeEngine`.
-  - Трекинг глобальных координат курсора в Renderer и проброс в движок.
+### [TASK: P14-G01] — Final Integration Review Gate Phase 14 (Shimeji & Autonomy)
+- **Исполнитель:** `reviewer`
+- **Зависит от:** `P14-S01`..`P14-S05b`
+- **Цель:** Сквозная верификация всей Phase 14: кинематики броска, физики гравитации/отскока, зацепления за стены/потолок, срыва `support_lost`, процедурного взгляда (`GazeEngine`), цепочек активностей (`ActivityRunner`), штрафов повторов и зумис.
 - **Читать:**
-  - `.agents/agents/app-developer/agent.md`
-  - `docs/engine/RENDER_ENGINE.md` (Разделы 1.5, 2.1)
-  - `src/domain/behavior/gaze-engine.ts`
-- **Менять:** `src/renderer/`, тесты в `tests/renderer/`.
+  - `.agents/agents/reviewer/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md`
+  - `docs/engine/RENDER_ENGINE.md`
+  - `src/domain/behavior/`
+  - `src/infrastructure/platform/`
+  - `src/renderer/`
 - **Критерии приёмки:**
-  - [ ] Зрачки плавно смещаются за курсором в реальном времени.
-  - [ ] Автоматический возврат в центр при выходе за радиус внимания.
-  - [ ] `npm test && npm run typecheck` проходят без ошибок.
+  - [ ] Чистая изоляция: Domain не импортирует React/Electron/DOM/Node.
+  - [ ] Renderer и Infrastructure строго соблюдают архитектурные границы и типизацию IPC.
+  - [ ] Все тесты кодовой базы (`npm test`) и тайпчек (`npm run typecheck`) проходят на 100%.

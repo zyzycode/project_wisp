@@ -29,6 +29,22 @@
 
 ## 🔥 Активная очередь спринта (В работе и следующие)
 
+### [TASK: P14-G01] — Final Integration Review Gate Phase 14
+- **Статус:** `ready`
+- **Исполнитель:** `reviewer`
+- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
+- **Цель:** Финальная сквозная верификация всей автономной физики Shimeji (броски, отскоки, зацепление за поверхности, срыв `support_lost`, gaze tracking, цепочки активностей, зумис).
+- **Читать:**
+  - `.agents/agents/reviewer/agent.md`
+  - `docs/engine/SHIMEJI_SPEC.md`
+  - `docs/engine/RENDER_ENGINE.md`
+- **Критерии приёмки:**
+  - [ ] Полное соответствие контракту `SHIMEJI_SPEC.md`.
+  - [ ] Чистая изоляция Domain, Application и Infrastructure слоёв.
+  - [ ] Все тесты `npm test` и `npm run typecheck` проходят (100%).
+
+---
+
 ### [TASK: P13-F03a] — Face Overlay & Gaze Pupils Pack
 - **Статус:** `in_progress`
 - **Исполнитель:** `sprite-artist`
@@ -38,19 +54,3 @@
   - `.agents/agents/sprite-artist/agent.md`
   - `docs/engine/RENDER_ENGINE.md` (Раздел 1: Manifest & Asset Metadata)
 - **Менять:** `public/assets/sprites/faces/`
-
----
-
-### [TASK: P14-S03b] — Renderer Gaze Layer Compositor
-- **Статус:** `ready`
-- **Исполнитель:** `app-developer`
-- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Подключить слой зрачков `pupils_normal` в композер рендерера (`CharacterRenderer.tsx`) со смещением по координатам `pupilOffset` от `GazeEngine`.
-- **Читать:**
-  - `.agents/agents/app-developer/agent.md`
-  - `docs/engine/RENDER_ENGINE.md` (Разделы 1.5, 2.1)
-  - `src/domain/behavior/gaze-engine.ts`
-- **Менять:** `src/renderer/`, unit-тесты.
-- **Критерии приёмки:**
-  - [ ] Зрачки плавно смещаются за курсором в реальном времени.
-  - [ ] `npm test && npm run typecheck` проходят без ошибок.
