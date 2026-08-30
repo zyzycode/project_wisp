@@ -13,7 +13,7 @@
 - [x] **P13-F04:** Интеграция оверлея лиц и расчет смещения `anchors` в Renderer. (`done`)
 - [x] **P13-F05:** Ревью-гейт интеграции оверлея лиц. (`done`)
 - [ ] **P13-F03a:** Лица и зрачки (Стандарт: 4 кадра `1x4`, оверлеи на прозрачном фоне `face_*` и `pupils_*`). (`in_progress` / `sprite-artist`)
-- [ ] **P13-F03b:** Диалоговые безликие тела (`body_idle`, `body_sit`, `body_stand_up`) и новые физические Shimeji-позы с запечённым лицом. (`in_progress` / `sprite-artist`)
+- [ ] **P13-F03b:** Диалоговые и статические безликие тела (`body_idle`, `body_sit`, `body_stand_up`, `body_lie`) и новые физические Shimeji-позы с запечённым лицом. (`in_progress` / `sprite-artist`)
 - [ ] **P13-F03c:** Реквизит, эффекты и очистка (`prop_pillow`, `prop_heart`, `prop_question`, `prop_sparkle`, чистка мусора). (`planned` / `sprite-artist`)
 - [ ] **P13-F06:** Sprite Ingestion & Manifest Bake (прогон скрипта `process_sprites.py` и верификация). (`planned` / `app-developer`)
 
@@ -55,14 +55,14 @@
 - **Зависит от:** none
 - **Стандарт анимаций:** Минимум 4 кадра на анимацию (сетка `1x4` / `_00.png`..`_03.png`, `2x4` для `body_idle`), холст 512x512 PNG-32.
 - **Главное архитектурное правило:**
-  - **Диалоговые позы (`overlay`):** `body_idle` (8 кадров), `body_sit` (4 кадра), `body_stand_up` (4 кадра) — выполняются **БЕЗ ЛИЦА** (чистая кожа) для наложения эмоций, моргания и взгляда за курсором.
-  - **Контекстные, кинематические и эмоциональные позы (`baked_in`):** `body_petting`, `body_wave`, `body_bored`, `body_scared`, `body_celebrate`, `body_thinking`, `body_sleep`, `body_sleep_trans`, `body_dragged`, `body_walk`, `body_run`, `body_lie`, `body_fall`, `body_land`, `body_recover`, `body_climb_wall`, `body_ceiling_hang`, `body_jump`, `body_crash_splat` — выполняются **С ГОТОВЫМ ЗАПЕЧЁННЫМ ЛИЦОМ**.
+  - **Диалоговые и статические позы (`overlay`):** `body_idle` (8 кадров), `body_sit` (4 кадра), `body_stand_up` (4 кадра), `body_lie` (4 кадра) — выполняются **БЕЗ ЛИЦА** (чистая кожа) для наложения эмоций, моргания и взгляда за курсором.
+  - **Контекстные, кинематические и эмоциональные позы (`baked_in`):** `body_petting`, `body_wave`, `body_bored`, `body_scared`, `body_celebrate`, `body_thinking`, `body_sleep`, `body_sleep_trans`, `body_dragged`, `body_walk`, `body_run`, `body_fall`, `body_land`, `body_recover`, `body_climb_wall`, `body_ceiling_hang`, `body_jump`, `body_crash_splat` — выполняются **С ГОТОВЫМ ЗАПЕЧЁННЫМ ЛИЦОМ**.
 - **Цель:**
   1. **Сгенерировать диалоговые позы БЕЗ ЛИЦА (`overlay`):**
      - `body_idle` (8 кадров `2x4`)
-     - `body_sit`, `body_stand_up` (по 4 кадра `1x4`).
+     - `body_sit`, `body_stand_up`, `body_lie` (по 4 кадра `1x4`).
   2. **Отрисовать недостающие позы Shimeji С ГОТОВЫМ ЛИЦОМ (`baked_in`):**
-     - `body_lie`, `body_run`, `body_fall`, `body_crash_splat`, `body_recover`, `body_climb_wall`, `body_ceiling_hang`, `body_jump` (по 4 кадра `1x4`).
+     - `body_run`, `body_fall`, `body_crash_splat`, `body_recover`, `body_climb_wall`, `body_ceiling_hang`, `body_jump` (по 4 кадра `1x4`).
   3. **Сохранить готовые позы на диске с запечённым лицом:**
      - `body_petting`, `body_wave`, `body_bored`, `body_land`, `body_dragged`, `body_walk`, `body_thinking`, `body_sleep`, `body_sleep_trans`, `body_celebrate`, `body_scared`.
 - **Читать:**
@@ -72,7 +72,7 @@
   - `docs/engine/SHIMEJI_SPEC.md` (Раздел 1: Kinematics & States)
 - **Менять:** `public/assets/sprites/body/`
 - **Критерии приёмки:**
-  - [ ] Диалоговые спрайты тела (`idle`, `sit`, `stand_up`) выполнены с чистой кожей в области лица.
+  - [ ] Диалоговые спрайты тела (`idle`, `sit`, `stand_up`, `lie`) выполнены с чистой кожей в области лица.
   - [ ] Кинематические и физические позы выполнены с выразительными готовыми лицами.
   - [ ] Каждая анимация содержит минимум 4 кадра с единым pivot по низу персонажа.
   - [ ] Файлы распределены по папкам `public/assets/sprites/body/<поза>/body_<поза>_00..03.png`.

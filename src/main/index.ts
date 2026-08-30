@@ -11,8 +11,10 @@ import type {
   DebugTelemetryDTO,
   CharacterInteractionDTO,
   CharacterInteractionTypeDTO,
+  EnvironmentSnapshot,
 } from '../shared/ipc-contracts';
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
+import { PlatformEnvironmentAdapter } from '../infrastructure/platform/platform-environment.adapter';
 import { PetPositionService } from '../application/services/pet-position.service';
 import { defaultCharacterStateService } from '../application/services/character-state.service';
 import { defaultCharacterInteractionUseCase } from '../application/services/character-interaction.use-case';
@@ -38,7 +40,9 @@ export const WINDOW_HEIGHT = COMPACT_WINDOW_HEIGHT;
 
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
+const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
 let positionService: PetPositionService | null = null;
+let unsubscribeEnvironmentChanges: (() => void) | null = null;
 const debugLogBuffer = new LogBuffer();
 const appLogger = new AppLogger({
   level: 'debug',
@@ -99,6 +103,19 @@ function getDebugTelemetry(): DebugTelemetryDTO {
 function publishDebugTelemetry(): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('wisp:debug-telemetry', getDebugTelemetry());
+  }
+}
+
+function publishEnvironmentSnapshot(snapshot: EnvironmentSnapshot): void {
+  if (positionService) {
+    const currentPosition = positionService.getPosition();
+    const clampedPosition = positionService.updatePosition(currentPosition, snapshot.screenBounds);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setPosition(Math.round(clampedPosition.x), Math.round(clampedPosition.y));
+    }
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('wisp:environment-changed', snapshot);
   }
 }
 
@@ -233,6 +250,10 @@ function registerIpcHandlers(): void {
     return platformAdapter.getDisplayWorkArea();
   });
 
+  ipcMain.handle('wisp:get-environment-snapshot', async (): Promise<EnvironmentSnapshot> => {
+    return platformEnvironmentAdapter.getSnapshot();
+  });
+
   ipcMain.handle(
     'wisp:character-interact',
     async (_event, interaction: unknown): Promise<void> => {
@@ -349,6 +370,9 @@ if (!gotTheLock) {
     initializeServices();
     registerIpcHandlers();
     createWindow();
+    unsubscribeEnvironmentChanges = platformEnvironmentAdapter.onEnvironmentChanged(
+      publishEnvironmentSnapshot
+    );
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -362,4 +386,9 @@ app.on('window-all-closed', () => {
   if (platformAdapter.getPlatformName() !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  unsubscribeEnvironmentChanges?.();
+  unsubscribeEnvironmentChanges = null;
 });

@@ -23,6 +23,7 @@
 1. Агенту в prompt передаётся **только одна изолированная карточка**.
 2. Первая строка в `Читать:` — всегда `.agents/agents/<роль>/agent.md`.
 3. Агент читает **только** свой файл трека и релевантный `docs/engine/*.md`.
+4. Менеджер формирует сразу **пару промптов: Исполнитель + Ревьюер**.
 
 ---
 
@@ -50,16 +51,6 @@
   - `docs/engine/RENDER_ENGINE.md` (Разделы 1.5, 2.1)
   - `src/domain/behavior/gaze-engine.ts`
 - **Менять:** `src/renderer/`, unit-тесты.
-
----
-
-### [TASK: P14-S05b] — Platform Environment Adapter & WorkArea Provider
-- **Статус:** `ready`
-- **Исполнитель:** `app-developer`
-- **Трек:** [`tracks/shimeji.md`](./tracks/shimeji.md)
-- **Цель:** Реализовать сбор `EnvironmentSnapshot` в infrastructure слое (через Electron `screen.getPrimaryDisplay().workArea` и границы окон) и проброс через IPC.
-- **Читать:**
-  - `.agents/agents/app-developer/agent.md`
-  - `src/infrastructure/platform/`
-  - `src/shared/ipc-contracts.ts`
-- **Менять:** `src/infrastructure/platform/`, `src/main/`, `src/preload/`, тесты.
+- **Критерии приёмки:**
+  - [ ] Зрачки плавно смещаются за курсором в реальном времени.
+  - [ ] `npm test && npm run typecheck` проходят без ошибок.

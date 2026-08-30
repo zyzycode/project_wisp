@@ -22,6 +22,7 @@ import { SpeechBubble } from './Chat/SpeechBubble';
 import { ChatInput } from './Chat/ChatInput';
 import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
 import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
+import { useEnvironmentSnapshot } from '../hooks/useEnvironmentSnapshot';
 import { useDialogueLoop } from '../hooks/useDialogueLoop';
 import {
   createSystemAnimationIntent,
@@ -76,6 +77,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [debugTelemetry, setDebugTelemetry] = useState<DebugTelemetryDTO>(EMPTY_DEBUG_TELEMETRY);
   const [renderFps, setRenderFps] = useState<number>(0);
   const debugHudEnabled = window.wispAPI.debugEnabled;
+  const environmentSnapshot = useEnvironmentSnapshot();
 
   const sendCharacterInteraction = useCallback((interaction: CharacterInteractionDTO): void => {
     void window.wispAPI.interactWithCharacter(interaction)
@@ -216,15 +218,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     locale: 'ru',
   });
 
-  // Fetch initial position, screen bounds & welcome message
+  // Fetch initial position & welcome message. Screen geometry is Main-owned and
+  // continuously supplied by useEnvironmentSnapshot.
   useEffect(() => {
-    if (window.wispAPI?.getScreenBounds) {
-      window.wispAPI
-        .getScreenBounds()
-        .then((bounds) => setScreenBounds(bounds))
-        .catch((err) => console.error('Failed to get screen bounds:', err));
-    }
-
     if (window.wispAPI?.getPosition) {
       window.wispAPI
         .getPosition()
@@ -248,6 +244,12 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (environmentSnapshot) {
+      setScreenBounds(environmentSnapshot.screenBounds);
+    }
+  }, [environmentSnapshot]);
 
   const handleDismissMessage = useCallback(() => {
     setCurrentMessage(null);
@@ -419,12 +421,12 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       }).catch((err) => console.error('Failed to reset position:', err));
     };
 
-    void window.wispAPI.getScreenBounds()
+    void window.wispAPI.getEnvironmentSnapshot()
       .then((bounds) => {
-        setScreenBounds(bounds);
-        resetToCenter(bounds);
+        setScreenBounds(bounds.screenBounds);
+        resetToCenter(bounds.screenBounds);
       })
-      .catch((err) => console.error('Failed to get screen bounds:', err));
+      .catch((err) => console.error('Failed to get environment snapshot:', err));
   }, []);
 
   const handleClose = () => {

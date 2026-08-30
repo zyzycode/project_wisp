@@ -18,8 +18,9 @@
 - [x] **P14-S05a-REV:** Ревью-гейт кинематики поверхностей и FSM лазания (`Approved`). (`done` / `reviewer`)
 - [x] **P14-S03a:** Gaze & Cursor Proximity Math (`GazeEngine`, `CursorProximityEngine`). (`done` / `domain-behavior`)
 - [x] **P14-S03a-REV:** Ревью-гейт математики взгляда и реакции на мышь (`Approved`). (`done` / `reviewer`)
+- [x] **P14-S05b:** Platform Environment Adapter & WorkArea Provider. (`done` / `app-developer`)
+- [x] **P14-S05b-REV:** Ревью-гейт адаптера окружения и IPC-провайдера рабочей области (`Approved`). (`done` / `reviewer`)
 - [ ] **P14-S03b:** Renderer Gaze Layer Compositor (позиционирование зрачков поверх лица). (`ready` / `app-developer`)
-- [ ] **P14-S05b:** Platform Environment Adapter & WorkArea Provider. (`ready` / `app-developer`)
 - [ ] **P14-G01:** Финальный интеграционный Review Gate Phase 14. (`planned`)
 
 ---
@@ -38,19 +39,6 @@
   - `src/domain/behavior/gaze-engine.ts`
 - **Менять:** `src/renderer/`, тесты в `tests/renderer/`.
 - **Критерии приёмки:**
-  - [ ] Зрачки плавно двигаются вслед за курсором мыши без джиттера.
-  - [ ] При отсутствии курсора или уходе за пределы радиуса зрачки возвращаются в центр.
-  - [ ] `npm test && npm run typecheck` проходят без ошибок.
-
-### [TASK: P14-S05b] — Platform Environment Adapter & WorkArea Provider
-- **Исполнитель:** `app-developer`
-- **Зависит от:** `P14-S05a`
-- **Цель:** Реализовать сбор `EnvironmentSnapshot` в infrastructure слое (через Electron `screen.getPrimaryDisplay().workArea` и детекцию границ окон), передачу через IPC в Renderer/Application orchestrator.
-- **Читать:**
-  - `.agents/agents/app-developer/agent.md`
-  - `src/infrastructure/platform/`
-  - `src/shared/ipc-contracts.ts`
-- **Менять:** `src/infrastructure/platform/`, `src/main/`, `src/preload/`, тесты.
-- **Критерии приёмки:**
-  - [ ] Корректное формирование `EnvironmentSnapshot` по IPC.
+  - [ ] Зрачки плавно смещаются за курсором в реальном времени.
+  - [ ] Автоматический возврат в центр при выходе за радиус внимания.
   - [ ] `npm test && npm run typecheck` проходят без ошибок.

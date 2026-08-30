@@ -5,10 +5,15 @@
 > 1. **СТРОГО 4 КАДРА В СТРОКУ (1 row × 4 columns):** В проекте **ЗАПРЕЩЕНЫ 2-кадровые и 3-кадровые анимации**. Все тела, оверлеи лиц, зрачки и эффекты строго генерируются и нарезаются ровно по **4 кадра** (`_00.png`, `_01.png`, `_02.png`, `_03.png`). Единственное исключение — базовый `body_idle` на **8 кадров** (сетка `2 rows × 4 columns`).
 > 2. **Широкий отступ между кадрами (Wide Spacing & Padding):** Между кадрами должно быть щедрое свободное прозрачное пространство. Каждый персонаж или оверлей строго центрирован в своей квадратной ячейке, чтобы спрайты не слипались при автоматической нарезке.
 > 3. **Разделение режимов наложения (`overlay` vs `baked_in`):**
->    - **Диалоговые базовые позы (`overlay`, БЕЗ ЛИЦА):** `body_idle` (основная стойка) и `body_sit` (сидение) — персонаж находится в длительном статическом контакте с пользователем. Лицо **полностью чистое (blank smooth skin)** для процедурного наложения эмоций диалога (`face_*`), моргания (`face_blink`), разговора (`face_talking`) и взгляда зрачков за курсором (`pupils_*`).
->    - **Контекстные, кинематические и сюжетные позы (`baked_in`, С ГОТОВЫМ ЛИЦОМ):** Все остальные позы генерируются **С ГОТОВЫМ ЗАПЕЧЁННЫМ ЛИЦОМ**, идеально передающим эмоцию действия:
+>    - **Диалоговые и статические позы (`overlay`, БЕЗ ЛИЦА):** 
+>      - `body_idle` (основная стойка на ногах, 8 кадров, `2x4`)
+>      - `body_sit` (сидение на полу / окне, 4 кадра, `1x4`)
+>      - `body_stand_up` (вставание на ноги, 4 кадра, `1x4`)
+>      - `body_lie` (лежит на животе, качает ножками, голова анфас, 4 кадра, `1x4`)
+>      *Персонаж находится в длительном визуальном контакте с пользователем. Лицо **полностью чистое (blank smooth skin)** для процедурного наложения эмоций (`face_*`), моргания (`face_blink`), разговора (`face_talking`) и взгляда зрачков за курсором (`pupils_*`).*
+>    - **Контекстные, кинематические и динамические позы (`baked_in`, С ГОТОВЫМ ЛИЦОМ):** Все остальные позы генерируются **С ГОТОВЫМ ЗАПЕЧЁННЫМ ЛИЦОМ**, идеально передающим эмоцию действия:
 >      - *Реакции:* `body_petting` (блаженство/румянец от поглаживания), `body_wave` (приветливая улыбка), `body_bored` (скучающий вздох), `body_celebrate` (триумф/радость), `body_scared` (испуг/дрожь), `body_thinking` (палец у подбородка).
->      - *Физика и перемещение Shimeji:* `body_dragged` (подхват мышью), `body_fall` (испуг при падении), `body_land` (зажмуривание при ударе), `body_recover` (потирает шишку), `body_jump` (радостный прыжок), `body_ceiling_hang` (висение на потолке), `body_crash_splat` (шлёпок о пол 'x_x'), `body_walk` (ходьба в 3/4), `body_run` (быстрый бег в 3/4), `body_climb_wall` (ползание по стене), `body_sleep` / `body_sleep_trans` (сон), `body_lie` (отдых на животе).
+>      - *Физика и перемещение Shimeji:* `body_dragged` (подхват мышью), `body_fall` (испуг при падении), `body_land` (зажмуривание при ударе), `body_recover` (потирает шишку), `body_jump` (радостный прыжок), `body_ceiling_hang` (висение на потолке), `body_crash_splat` (шлёпок о пол 'x_x'), `body_walk` (ходьба в 3/4), `body_run` (быстрый бег в 3/4), `body_climb_wall` (ползание по стене), `body_sleep` / `body_sleep_trans` (сон).
 > 4. **Нативная поддержка альфа-канала:** Все файлы генерируются и сохраняются как PNG-32 с истинной прозрачностью.
 
 ---
@@ -17,11 +22,12 @@
 
 ### 🔥 Очередь 1: Диалоговые позы тела БЕЗ ЛИЦА (Faceless Base Body)
 > [!NOTE]
-> Только 2 позы требуют генерации без лица — на них персонаж общается с пользователем через чат-бокс и следит за курсором!
+> 4 позы с чистой кожей в области лица — на них персонаж общается с пользователем через чат-бокс, моргает и следит за курсором!
 
 1. 🔄 `B00. body_idle` — без лица (**8 кадров**, `2x4`) — *основная стойка 80% времени*
 2. ⏳ `B12. body_sit` — без лица (**4 кадра**, `1x4`) — *сидение на панели задач / окнах*
-3. ⏳ `B13. body_stand_up` — без лица или нейтральная (**4 кадра**, `1x4`) — *вставание из сидения*
+3. ⏳ `B13. body_stand_up` — без лица (**4 кадра**, `1x4`) — *вставание из сидения*
+4. ⏳ `B14. body_lie` — без лица (**4 кадра**, `1x4`) — *лежит на животе, качает ножками, голова анфас*
 
 ---
 
@@ -29,27 +35,26 @@
 > [!NOTE]
 > Лицо рисуется прямо в кадре под конкретную анимацию и ракурс.
 
-1. ⏳ `B14. body_lie` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *лежит на животике, качает ножками, смотрит снизу вверх*
-2. ⏳ `B15. body_run` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *быстрый бег в профиль 3/4*
-3. ⏳ `B16. body_fall` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *паническое падение в воздухе с кричащим ротиком*
-4. ⏳ `B17. body_crash_splat` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *комичный шлёпок о пол 'x_x'*
-5. ⏳ `B18. body_recover` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *подъём с пола, потирает шишку на голове*
-6. ⏳ `B19. body_climb_wall` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *карабканье по стене в профиль*
-7. ⏳ `B20. body_ceiling_hang` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *висение на кромке экрана, смотрит вниз*
-8. ⏳ `B21. body_jump` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *радостный подскок «Хопа!»*
+1. ⏳ `B15. body_run` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *быстрый бег в профиль 3/4*
+2. ⏳ `B16. body_fall` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *паническое падение в воздухе с кричащим ротиком*
+3. ⏳ `B17. body_crash_splat` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *комичный шлёпок о пол 'x_x'*
+4. ⏳ `B18. body_recover` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *подъём с пола, потирает шишку на голове*
+5. ⏳ `B19. body_climb_wall` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *карабканье по стене в профиль*
+6. ⏳ `B20. body_ceiling_hang` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *висение на кромке экрана, смотрит вниз*
+7. ⏳ `B21. body_jump` — **С ЛИЦОМ** (**4 кадра**, `1x4`) — *радостный подскок «Хопа!»*
 
 *(Уже полностью готовы на диске с запечённым лицом: `body_petting`, `body_wave`, `body_bored`, `body_land`, `body_dragged`, `body_walk`, `body_thinking`, `body_sleep`, `body_sleep_trans`, `body_celebrate`, `body_scared`)*.
 
 ---
 
-### 🎭 Очередь 3: Оверлеи лиц и зрачков для `body_idle` и `body_sit` (СТРОГО 4 кадра на прозрачном фоне)
+### 🎭 Очередь 3: Оверлеи лиц и зрачков для `body_idle`, `body_sit`, `body_lie` (СТРОГО 4 кадра на прозрачном фоне)
 > [!IMPORTANT]
-> Все оверлеи эмоций и зрачков накладываются на `body_idle` и `body_sit` и содержат ровно 4 кадра (`_00`..`_03`).
+> Все оверлеи эмоций и зрачков накладываются на `body_idle`, `body_sit`, `body_lie` и содержат ровно 4 кадра (`_00`..`_03`).
 
 * `F01. face_curious` (**4 кадра**) — интерес и любопытство
 * `F07. pupils_normal` (**4 кадра**) — изолированные зрачки со сменой бликов (для слежения за курсором)
 * `F08. pupils_directional` (**4 кадра**) — изолированные зрачки (L, R, U, D)
-* `F09. face_blink` (**4 кадра**) — моргание в idle
+* `F09. face_blink` (**4 кадра**) — моргание в idle/sit/lie
 * `F10. face_smug` (**4 кадра**) — ухмылка
 * `F11. face_crying` (**4 кадра**) — аниме-слёзки
 * `F12` (`happy`), `F13` (`sad`), `F14` (`angry`), `F15` (`sleep`), `F16` (`thinking`), `F17` (`talking`), `F02` (`dizzy`), `F03` (`shocked`), `F04` (`flirty`), `F05` (`winking`), `F06` (`pout`).
@@ -89,7 +94,7 @@
 | **B11** | `body_bored` | Скука / Вздох | Анфас | `baked_in` (с лицом) | 4 (1x4) | ✅ **Готово (Запечённое лицо)** |
 | **B12** | `body_sit` | Сидит на полу / окне | Анфас | `overlay` (без лица) | 4 (1x4) | ⏳ **В очереди (БЕЗ ЛИЦА)** |
 | **B13** | `body_stand_up` | Вставание на ноги | Анфас | `overlay` (без лица) | 4 (1x4) | ⏳ **В очереди (БЕЗ ЛИЦА)** |
-| **B14** | `body_lie` | Лежит на животе | Анфас/3/4 | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
+| **B14** | `body_lie` | Лежит на животе | Анфас | `overlay` (без лица) | 4 (1x4) | ⏳ **В очереди (БЕЗ ЛИЦА)** |
 | **B15** | `body_run` | Быстрый бег | Профиль 3/4 | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
 | **B16** | `body_fall` | Паническое падение | Анфас | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
 | **B17** | `body_crash_splat` | Шлёпок о пол 'x_x' | Анфас | `baked_in` (с лицом) | 4 (1x4) | ⏳ **В очереди (С ГОТОВЫМ ЛИЦОМ)** |
@@ -258,8 +263,8 @@ Animation Breakdown:
 
 ---
 
-### B14. `body_lie` | Лежит на животе / боку (4 кадра, 1 строка × 4 колонки)
-* **Ракурс:** Анфас / 3/4 | **Тип:** Законченная (`baked_in`) | **Статус:** ⏳ **В очереди на генерацию (С ГОТОВЫМ ЛИЦОМ)**
+### B14. `body_lie` | Лежит на животе / Отдых (4 кадра, 1 строка × 4 колонки)
+* **Ракурс:** Анфас (лицом к зрителю) | **Тип:** Модульная (`overlay`) | **Статус:** ⏳ **В очереди на генерацию (БЕЗ ЛИЦА)**
 * **Папка:** `public/assets/sprites/body/lie/` | **Файлы:** `body_lie_00.png` — `body_lie_03.png`
 
 ```text
@@ -271,14 +276,14 @@ SPACING & PADDING (CRITICAL):
 - Ensure generous empty transparent spacing and wide margins between all frames.
 - Horizontally lying body must fit cleanly inside each square cell without touching edges.
 
-EXPRESSIVE LYING POSE WITH BAKED-IN FACE (CRITICAL):
-- Face turned toward viewer with cute expressive anime face (warm eyes looking up at viewer, sweet smile).
-- Character lying cute and cozy on the floor baseline (Y=460).
+CRITICAL FACELESS RULE (MODULAR DIALOG & GAZE OVERLAY):
+- Character is lying on her stomach on the floor baseline, propped up on her elbows with head raised facing DIRECTLY FORWARD TOWARD THE VIEWER.
+- THE FACE AREA ON THE HEAD MUST BE COMPLETELY BLANK SMOOTH SKIN COLOR (ABSOLUTELY NO EYES, NO NOSE, NO MOUTH). The game engine will project modular animated eyes, talking mouth, and pupil tracking onto this head.
 
-Animation Breakdown (Lying on stomach with cute kicking feet):
-- Frame 1: Lying on tummy/side resting on elbows, legs slightly raised behind, cute sweet smile looking toward viewer.
-- Frame 2: Gentle leg sway, one foot kicks up cutely in the air, playful cheerful expression.
-- Frame 3: Other foot kicks up, chest rises slightly with gentle breathing, peaceful happy face.
+Animation Breakdown (Lying on stomach facing viewer with cute kicking feet):
+- Frame 1: Lying on tummy resting on elbows, head raised facing directly front toward viewer, feet slightly raised behind.
+- Frame 2: Gentle leg sway, one foot kicks up cutely in the air, chest and shoulders lifted slightly on elbows (+1px).
+- Frame 3: Other foot kicks up in the air, torso resting comfortably on elbows, hair strands resting softly on shoulders.
 - Frame 4: Feet lower softly, returning smoothly to Frame 1.
 ```
 

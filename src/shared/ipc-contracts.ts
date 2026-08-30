@@ -1,3 +1,7 @@
+import type { EnvironmentSnapshot } from '../domain/behavior/surface-kinematics';
+
+export type { EnvironmentSnapshot } from '../domain/behavior/surface-kinematics';
+
 /**
  * Shared IPC Contracts and DTOs for Project Wisp
  * This file is shared between Main, Preload and Renderer layers.
@@ -87,6 +91,8 @@ export interface WispApiBridge {
   getPosition: () => Promise<PetPositionDTO>;
   updatePosition: (pos: PetPositionDTO) => Promise<PetPositionDTO>;
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
+  getEnvironmentSnapshot: () => Promise<EnvironmentSnapshot>;
+  onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshot) => void) => () => void;
   interactWithCharacter: (interaction: CharacterInteractionDTO) => Promise<void>;
   setAlwaysOnTop: (enabled: boolean) => Promise<boolean>;
   setInteractiveBounds?: (bounds: InteractiveBoundsDTO) => Promise<void>;

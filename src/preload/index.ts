@@ -6,6 +6,7 @@ import type {
   IgnoreMouseEventsDTO,
   PetPositionDTO,
   ScreenBoundsDTO,
+  EnvironmentSnapshot,
   InteractiveBoundsDTO,
   DebugTelemetryDTO,
   CharacterInteractionDTO,
@@ -31,6 +32,16 @@ const api: WispApiBridge = {
   },
   getScreenBounds: (): Promise<ScreenBoundsDTO> => {
     return ipcRenderer.invoke('wisp:get-screen-bounds');
+  },
+  getEnvironmentSnapshot: (): Promise<EnvironmentSnapshot> => {
+    return ipcRenderer.invoke('wisp:get-environment-snapshot');
+  },
+  onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshot) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, snapshot: EnvironmentSnapshot): void => callback(snapshot);
+    ipcRenderer.on('wisp:environment-changed', handler);
+    return (): void => {
+      ipcRenderer.removeListener('wisp:environment-changed', handler);
+    };
   },
   interactWithCharacter: (interaction: CharacterInteractionDTO): Promise<void> => {
     return ipcRenderer.invoke('wisp:character-interact', interaction);
