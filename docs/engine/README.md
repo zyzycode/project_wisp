@@ -13,6 +13,7 @@
 | [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md) | Автономия и физика: локомоция (сидеть/лежать/бег/прыжки), баллистика бросков, слежение зрачками, цепочки активностей, Zoomies. |
 | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md) | Визуальные намерения: `AnimationIntent`, FSM анимаций, приоритеты, прерывания, тайминги клипов. |
 | [`RENDER_ENGINE.md`](./RENDER_ENGINE.md) | Визуализация: схема `manifest.json`, слои (`RenderSlot`), смещения `anchors`/`pivot`, fallback, презентационный DTO. |
+| [`UI_SPEC.md`](./UI_SPEC.md) | Архитектура UI: структура компонентов `src/renderer/`, композиция персонажа, контекстное меню, правила изоляции от Main/бизнес-логики. |
 | [`MEMORY_ENGINE.md`](./MEMORY_ENGINE.md) | Оффлайн-память: сообщения, факты пользователя, эпизодическая память, JSON-снапшоты состояния. |
 | [`AI_PROVIDER_CONTRACT.md`](./AI_PROVIDER_CONTRACT.md) | AI-диалог: контракт `IAIProvider`, DTO реплик и Suggested Intent на основе `CharacterSnapshot`. |
 | `SETTINGS_CONTRACT.md` | Пользовательские настройки: DTO конфигурации поведения, внешности и отладки. |
@@ -42,6 +43,7 @@ flowchart TD
     subgraph Visual["3. Визуальный пайплайн"]
         AE["ANIMATION_ENGINE.md\n(AnimationIntent, FSM клипов)"]
         RE["RENDER_ENGINE.md\n(Слои, смещения Anchors, манифест)"]
+        UI["UI_SPEC.md\n(React UI, DesktopPet, ContextMenu)"]
     end
 
     %% Потоки стимулов
@@ -59,6 +61,7 @@ flowchart TD
     Shimeji -->|AnimationIntent| AE
     Shimeji -->|Gaze/Pupil Offset| RE
     AE -->|RenderPresentationState| RE
+    RE -->|Слои и спрайты| UI
 
     %% Обратная связь физики в психологию
     Shimeji -.->|Стимулы от падений/бросков/swat| CE
@@ -76,14 +79,5 @@ flowchart TD
 | **`SHIMEJI_SPEC`** | `BehaviorIntent`, `CharacterState` (Needs/Mood), ввод мыши | Запросы на анимацию, смещение зрачков, стимулы падений | `AnimationIntent`, `GazeOffsetDto`, `StimulusDto` |
 | **`ANIMATION_ENGINE`** | `AnimationIntent` (из Behavior/Shimeji) | Презентационный стейт клипа | `ActiveAnimationState`, приоритеты, прерывания |
 | **`RENDER_ENGINE`** | `ActiveAnimationState`, `GazeOffsetDto`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderPresentationState`, `anchors[face]`, `pivot` |
+| **`UI_SPEC`** | `PetPresentationStateDTO`, события пользователя | Сырые события ввода в Main Process | `window.electronAPI.*`, React Components |
 | **`MEMORY_ENGINE`** | Сообщения чата, `CharacterSnapshot`, факты | Исторический контекст для AI и восстановления | `EpisodeDto`, `UserFactDto`, `MemoryQuery` |
-
----
-
-## 4. Обязательный чеклист для Архитектора (При создании/расширении механик)
-
-Каждый раз при проектировании новой функциональности архитектор **обязан** проверить и явно описать 4 связи:
-1. [ ] **Связь с Character Engine:** как механика зависит от `Needs` (скука, энергия), `Mood` и черт характера?
-2. [ ] **Обратная связь (Feedback Stimuli):** какие стимулы (`StimulusDto`) отправляются назад в Character Engine при действиях пользователя?
-3. [ ] **Семантический слой:** зафиксирован ли `BehaviorIntent` в `BEHAVIOR_INTENTS.md` (до выбора конкретной анимации)?
-4. [ ] **Визуальный контракт:** как действие преобразуется в `AnimationIntent` и как оно отображается в `RENDER_ENGINE.md`?

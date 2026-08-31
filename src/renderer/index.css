@@ -91,12 +91,12 @@ html, body {
   top: 8px;
   left: 50%;
   width: max-content;
-  max-width: min(240px, calc(100% - 24px));
-  max-height: min(144px, calc(100% - 24px));
+  max-width: min(260px, calc(100% - 20px));
   padding: 9px 13px;
-  overflow-y: auto;
+  overflow: visible;
   overflow-wrap: anywhere;
   word-break: normal;
+  scrollbar-width: none;
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(168, 85, 247, 0.4);
   border-radius: 12px;
