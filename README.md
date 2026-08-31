@@ -10,7 +10,7 @@
 
 - Desktop-first / offline-first MVP.
 - Один основной персонаж Wisp с поведением, эмоциональным тоном, анимациями и props.
-- SVG сейчас; sprite sheets и будущий rigging должны идти через общий render contract, когда `RENDER_ENGINE.md` будет создан.
+- SVG сейчас; sprite sheets и будущий rigging должны идти через общий [render contract](docs/engine/RENDER_ENGINE.md).
 - Локальная persistence принадлежит Main-процессу; полноценная память через SQLite запланирована отдельной фазой.
 - Строгая изоляция Renderer от Node.js, Electron Main и SQLite.
 

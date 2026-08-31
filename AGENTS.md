@@ -52,7 +52,7 @@ Renderer UI -> typed preload/IPC -> Application use cases -> Domain -> Ports <- 
 
 Минимум для большинства задач приложения:
 
-- `AGENTS.md`;
+- `AGENTS.md` и инструкция назначенной роли;
 - одна назначенная GitHub Issue;
 - только документы-источники, названные в Issue;
 - только файлы кода, нужные для задачи.
@@ -64,24 +64,22 @@ Renderer UI -> typed preload/IPC -> Application use cases -> Domain -> Ports <- 
 Целевой размер markdown:
 
 - `AGENTS.md`: до 120 строк.
-- `ROADMAP.md`: до 140 строк.
-- Не дублировать детали задач между roadmap и backlog.
 
 ## Отдельный скоуп ассетов
 
-Создание и обработка спрайтов живут в [asset-pipeline/](asset-pipeline/README.md) со своим агентом, стандартом изображений и таблицей готовности. Задача приходит сообщением пользователя; читать [локальные инструкции](asset-pipeline/AGENTS.md), стандарт и нужные строки таблицы вместо основной очереди и ролей. Этот скоуп сам сохраняет готовые PNG в `public/assets/sprites/`; рабочий манифест и код приложения доступны только на чтение. Изменения регистрации и runtime выполняются в основном проекте только когда нужны.
+Генерация и обработка спрайтов — отдельный скоуп: следовать [asset-pipeline/AGENTS.md](asset-pipeline/AGENTS.md). Он размещает PNG, но не меняет манифест и runtime. Агент приложения не читает материалы генерации без необходимости.
 
-Общий навигатор — [docs/README.md](docs/README.md). Агент приложения не читает материалы генерации без явной необходимости.
+Общий навигатор — [docs/README.md](docs/README.md).
 
 ## Роли агентов
 
-Карта ролей находится в `.agents/agents/README.md`.
+Перед работой прочитать инструкцию назначенной роли по ссылке ниже, не остальные роли. «Ты менеджер» или «менеджер проекта» означает `project-manager`.
 
-- `project-manager`: scope, маршрутизация задач, roadmap/backlog docs. Не меняет продуктовый код.
-- `architect`: границы слоёв, IPC/ports, engine contracts, `docs/engine/*`.
-- `app-developer`: основной desktop implementation: Main/Preload, Renderer UI, IPC, platform adapters, persistence/provider adapters.
-- `domain-behavior`: character engine, behavior FSM, animation FSM.
-- `reviewer`: review, verification, test strategy. Не чинит findings в том же review-pass.
+- [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач, roadmap/backlog docs. Не меняет продуктовый код.
+- [architect](.agents/agents/architect/agent.md): границы слоёв, IPC/ports, engine contracts, `docs/engine/*`.
+- [app-developer](.agents/agents/app-developer/agent.md): основной desktop implementation: Main/Preload, Renderer UI, IPC, platform adapters, persistence/provider adapters.
+- [domain-behavior](.agents/agents/domain-behavior/agent.md): character engine, behavior FSM, animation FSM.
+- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Не чинит findings в том же review-pass.
 
 ## Рабочие правила
 
@@ -93,26 +91,6 @@ Renderer UI -> typed preload/IPC -> Application use cases -> Domain -> Ports <- 
 - Изменения только документации требуют проверки markdown/diff consistency.
 - Project Manager не запускает продуктовые тесты для обычной работы с документацией и планированием.
 
-## Формат задачи
+Общий отчёт исполнителя: `TASK` (Task ID, scope) → `CHANGES` → `BOUNDARIES` → `VERIFICATION` (результаты или `NOT RUN` с причиной) → `RECOMMENDED NEXT GATE` (`reviewer` / `architect` / `blocked` / `done`).
 
-```markdown
-Цель:
-<один конкретный результат>
-
-Контекст:
-<phase + только релевантные docs/files>
-
-Исполнитель:
-<одна роль агента>
-
-Ограничения:
-- <границы слоя>
-- <запрещённые области>
-
-Критерии приёмки:
-- [ ] <проверяемый результат>
-- [ ] <verification>
-
-Вне скоупа:
-<что задача точно не делает>
-```
+Шаблон постановки задачи — в [инструкции project-manager](.agents/agents/project-manager/agent.md#формат-задачи).

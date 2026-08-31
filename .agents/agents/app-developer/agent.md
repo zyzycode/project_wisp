@@ -49,4 +49,4 @@
 
 ## Формат результата
 
-Использовать общий формат из [../README.md](../README.md). В `CHANGES` назвать затронутый слой: Main, Preload, Renderer, platform, persistence, provider или packaging.
+Использовать общий формат отчёта из [AGENTS.md](../../../AGENTS.md#рабочие-правила). В `CHANGES` назвать затронутый слой: Main, Preload, Renderer, platform, persistence, provider или packaging.

@@ -6,7 +6,7 @@
 |---|---|
 | Ограничения и порядок работы | [AGENTS.md](../AGENTS.md) |
 | Фазы и активная работа | [ROADMAP.md](../ROADMAP.md), [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
-| Роли основного приложения | [Карта ролей](../.agents/agents/README.md) |
+| Роли основного приложения | [Роли и ссылки на инструкции](../AGENTS.md#роли-агентов) |
 | Обзор устройства приложения для людей | [ARCHITECTURE.md](../ARCHITECTURE.md) — объяснения и схемы, не технический контракт |
 | Правила слоёв и зависимостей | [10-architecture.md](../.agents/rules/10-architecture.md) |
 | Состояние и личность персонажа | [CHARACTER_ENGINE.md](engine/CHARACTER_ENGINE.md) |

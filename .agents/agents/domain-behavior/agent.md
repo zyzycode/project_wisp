@@ -51,11 +51,9 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 - `docs/engine/CHARACTER_ENGINE.md`, если задача касается характера, `SynthesizedEmotionalTone`/energy/needs или stimuli.
 - `docs/engine/BEHAVIOR_INTENTS.md`, если задача касается behavior intents.
 - `docs/engine/ANIMATION_ENGINE.md`, если задача касается animation intents, FSM, priority или interrupt rules.
-- [../../skills/character-behavior/SKILL.md](../../skills/character-behavior/SKILL.md)
-- [../../skills/animation-system/SKILL.md](../../skills/animation-system/SKILL.md)
 
 ---
 
 ## 6. Формат результата
 
-Использовать общий формат из [../README.md](../README.md). В `CHANGES` отдельно назвать изменения в Domain/Application behavior logic; в `BOUNDARIES` подтвердить независимость от React/Electron/SQLite/provider/renderer assets.
+Использовать общий формат отчёта из [AGENTS.md](../../../AGENTS.md#рабочие-правила). В `CHANGES` отдельно назвать изменения в Domain/Application behavior logic; в `BOUNDARIES` подтвердить независимость от React/Electron/SQLite/provider/renderer assets.
