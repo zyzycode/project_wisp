@@ -1,13 +1,13 @@
 # implement-feature.md — Процесс реализации новой функциональности
 
-Стандартный регламент для профильного Codex-агента при разработке новой фичи по конкретному `Task ID` из shared backlog.
+Стандартный регламент для профильного Codex-агента при разработке новой фичи по конкретной назначенной GitHub Issue.
 
 ---
 
 ## 1. Подготовка и исследование
 1. **Изучи контекст:**
    - Прочитай [AGENTS.md](../../AGENTS.md) и инструкцию назначенной роли из `.agents/agents/`.
-   - Найди текущий `Task ID`, `Owner`, `Scope`, `Depends on`, `Acceptance criteria` и `Out of scope` в [.agents/tasks/README.md](../tasks/README.md).
+   - Проверь в назначенной GitHub Issue её `Task ID`, `Owner role`, `Scope`, `Blocked by`, `Acceptance criteria` и `Out of scope`.
    - Сверься с актуальной фазой в [ROADMAP.md](../../ROADMAP.md), но не бери roadmap-фазу как готовую задачу.
    - Проверь границы по [10-architecture.md](../rules/10-architecture.md); прочитай остальные правила затронутого слоя и только нужные разделы контрактов, названных в карточке.
 2. **Найди существующий код:**
@@ -31,11 +31,11 @@
 ---
 
 ## 3. Имплементация (Vertical Slice)
-0. Работай только как owner-agent текущей задачи из [.agents/tasks/README.md](../tasks/README.md): обычно `app-developer` или `domain-behavior`.
+0. Работай только как owner-agent назначенной GitHub Issue: обычно `app-developer` или `domain-behavior`.
 1. Реализуй изменения минимальным изолированным срезом:
    - Меняй только файлы и слои, входящие в `Scope`.
    - Не расширяй соседние слои без согласованного контракта.
-   - Не меняй shared backlog-статусы; верни отчёт Project Manager-у.
+   - Не меняй Workflow или поля GitHub Project; верни отчёт Project Manager-у.
 
 ---
 

@@ -38,9 +38,4 @@
 
 ## Текущий фокус
 
-**Phase 14 (Shimeji Stabilization & Polish):**
-
-- **P14-P01:** Интеграция FSM с Renderer, композиция лица и управление взглядом.
-- **P14-P02:** Калибровка физики падения, инерции, отскоков и трения скольжения по полу.
-- **P14-P03:** Существенное расширение пула реплик и мыслей персонажа.
-- **P14-P04:** Редизайн контекстного меню (ПКМ) в компактный и красивый Desktop Pet стиль.
+**Phase 14 (Shimeji Stabilization & Polish):** текущие задачи ведутся в [GitHub Project](https://github.com/users/zyzycode/projects/1): [#1 P14-P01](https://github.com/zyzycode/project_wisp/issues/1), [#2 P14-P02](https://github.com/zyzycode/project_wisp/issues/2), [#3 P14-P03](https://github.com/zyzycode/project_wisp/issues/3), [#4 P14-P04](https://github.com/zyzycode/project_wisp/issues/4).

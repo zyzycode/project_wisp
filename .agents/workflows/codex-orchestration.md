@@ -19,7 +19,7 @@ Suggested agent:
 
 Если задача содержит backend/proxy/server implementation, dev/cloud gateway внутри этого repo, прямые LLM SDK, пользовательские AI API-ключи или server auth/billing, Project Manager обязан остановить этот scope и предложить вариант в рамках desktop-first/offline-first клиента. Будущий backend допускается только как отдельный проект с client-side контрактом для `project_wisp`.
 
-Перед назначением агента Project Manager сверяет задачу с [.agents/tasks/README.md](../tasks/README.md). Если пользовательская просьба соответствует крупной roadmap-фазе, Project Manager сначала дробит её на agent-ready задачи и только потом назначает owner-agent.
+Перед назначением агента Project Manager сверяет задачу с [GitHub Issues](https://github.com/zyzycode/project_wisp/issues) и [GitHub Project](https://github.com/users/zyzycode/projects/1). Если пользовательская просьба соответствует крупной roadmap-фазе, Project Manager сначала дробит её на agent-ready Issues и только потом назначает owner role.
 
 ---
 
@@ -37,26 +37,26 @@ Suggested agent:
 
 ## 3. Цикл выполнения
 
-1. **Project Manager** выбирает одну задачу из `.agents/tasks/README.md`, переводит её в `ready` / `in_progress` и назначает роль.
+1. **Project Manager** выбирает одну Issue с `Workflow: Ready` без открытых блокеров, переводит её в `In progress` и назначает роль.
 2. **Architect** подключается до реализации, если меняются границы слоёв, IPC, порты, `docs/engine/*` или platform contracts.
 3. **Feature agent** реализует только свой слой или согласованный вертикальный срез и возвращает результат Project Manager-у.
 4. **Reviewer** запускает проверки и/или проверяет diff, если для задачи есть review/test gate.
 5. **Project Manager** возвращает confirmed findings текущему owner-агенту как fix-pass или переводит следующий gate в `ready`.
-6. **Project Manager** обновляет статус задачи в `.agents/tasks/README.md`.
+6. **Project Manager** обновляет Workflow и связанные поля Issue в GitHub Project.
 7. **Project Manager** проверяет diff consistency и делает git commit связанных изменений, если рабочее дерево содержит только изменения текущего task/gate.
 
 ---
 
 ## 4. Shared backlog workflow
 
-`.agents/tasks/README.md` является общей доской задач для всех Codex-ролей.
+[GitHub Issues](https://github.com/zyzycode/project_wisp/issues) и [GitHub Project](https://github.com/users/zyzycode/projects/1) являются общей доской задач для всех Codex-ролей.
 
 Правила:
 
-- Все агенты могут читать backlog, чтобы видеть зависимости, текущий owner-agent и следующий gate.
-- Project Manager является основным владельцем изменения backlog: статусы, зависимости, owner-agent и порядок задач.
-- Project Manager делает commit после принятия результата и переключения статуса задачи; commit должен содержать только связанные изменения текущего task/gate.
-- Агент не берёт соседнюю задачу самостоятельно, даже если видит её как `ready`; назначение делает Project Manager.
+- Все агенты могут читать Issues и Project, чтобы видеть зависимости, текущий owner role и следующий gate.
+- Project Manager является основным владельцем изменения Project: Workflow, зависимости, owner role и порядок задач.
+- Project Manager делает commit после принятия результата и переключения Workflow задачи; commit должен содержать только связанные изменения текущего task/gate.
+- Агент не берёт соседнюю Issue самостоятельно, даже если видит её как `Ready`; назначение делает Project Manager.
 - Feature agent не закрывает фазу целиком, а возвращает результат только по своей задаче.
 - Reviewer не чинит findings в том же review-pass; он возвращает список проблем и рекомендует fix-pass owner-агенту.
 - Owner-agent не расширяет scope во время fix-pass; он чинит только подтверждённые findings.

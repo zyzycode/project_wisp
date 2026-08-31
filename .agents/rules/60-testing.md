@@ -26,7 +26,7 @@
 - Обработка граничных случаев (выход за пределы экрана, нулевая скорость, пустые сообщения).
 - Fallback-поведение при ошибках `IAIProvider`.
 - Миграции базы данных SQLite (применение миграций с $V_0$ до $V_n$).
-- Acceptance criteria текущего `Task ID` из [.agents/tasks/README.md](../tasks/README.md).
+- Acceptance criteria назначенной GitHub Issue.
 
 ---
 
@@ -56,4 +56,4 @@ npm test
 
 Docs-only задачи проверяются через markdown/diff consistency и не требуют запуска product tests, если пользователь, Project Manager или конкретный workflow не попросили иначе.
 
-Reviewer работает по конкретному test/verification gate из shared backlog и возвращает Project Manager-у `PASS`, `FAIL` или `BLOCKED` с recommended next gate.
+Reviewer работает по конкретному test/verification gate из GitHub Issue и возвращает Project Manager-у `PASS`, `FAIL` или `BLOCKED` с recommended next gate.

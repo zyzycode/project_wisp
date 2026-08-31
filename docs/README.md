@@ -5,7 +5,7 @@
 | Вопрос | Основной документ |
 |---|---|
 | Ограничения и порядок работы | [AGENTS.md](../AGENTS.md) |
-| Фазы и активная работа | [ROADMAP.md](../ROADMAP.md), [очередь задач](../.agents/tasks/README.md) |
+| Фазы и активная работа | [ROADMAP.md](../ROADMAP.md), [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
 | Роли основного приложения | [Карта ролей](../.agents/agents/README.md) |
 | Обзор устройства приложения для людей | [ARCHITECTURE.md](../ARCHITECTURE.md) — объяснения и схемы, не технический контракт |
 | Правила слоёв и зависимостей | [10-architecture.md](../.agents/rules/10-architecture.md) |
@@ -18,7 +18,7 @@
 | Память | [MEMORY_ENGINE.md](engine/MEMORY_ENGINE.md) |
 | Граница AI-провайдера | [AI_PROVIDER_CONTRACT.md](engine/AI_PROVIDER_CONTRACT.md) |
 | Создание, нарезка и обработка спрайтов | [Asset Pipeline](../asset-pipeline/README.md) — отдельный скоуп и локальный агент |
-| Регистрация ассетов и изменения runtime | [Очередь приложения](../.agents/tasks/README.md); текущая интеграция Renderer — P14-P01 в [Shimeji](../.agents/tasks/tracks/shimeji.md) |
+| Регистрация ассетов и изменения runtime | [GitHub Project](https://github.com/users/zyzycode/projects/1); текущая интеграция Renderer — [#1 P14-P01](https://github.com/zyzycode/project_wisp/issues/1) |
 
 ## Два маршрута
 

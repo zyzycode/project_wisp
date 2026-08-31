@@ -1,6 +1,6 @@
 # review.md — Регламент проведения код-ревью
 
-Чек-лист и стандарт анализа изменений перед интеграцией в кодовую базу Project Wisp. Review всегда привязывается к конкретному `Task ID` из shared backlog [.agents/tasks/README.md](../tasks/README.md).
+Чек-лист и стандарт анализа изменений перед интеграцией в кодовую базу Project Wisp. Review всегда привязывается к конкретной GitHub Issue.
 
 > [!IMPORTANT]
 > **Принцип Diff-Only Review:**
@@ -23,7 +23,7 @@
 
 ## 2. Направления проверки diff
 
-0. **Task scope и shared backlog:**
+0. **Task scope и GitHub Issue:**
    - Соответствует ли diff конкретному `Task ID`?
    - Выполнены ли acceptance criteria?
    - Не затронут ли out of scope?

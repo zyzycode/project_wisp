@@ -6,7 +6,7 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 
 ## 1. Основная миссия
 
-Делать Wisp живым и предсказуемым, сохраняя Domain/Application слои полностью независимыми от React, Electron, SQLite, Node.js и конкретных AI-провайдеров. Агент работает по конкретному `Task ID` из shared backlog и не захватывает renderer/provider/data слои.
+Делать Wisp живым и предсказуемым, сохраняя Domain/Application слои полностью независимыми от React, Electron, SQLite, Node.js и конкретных AI-провайдеров. Агент работает по конкретной назначенной GitHub Issue и не захватывает renderer/provider/data слои.
 
 ---
 
@@ -37,14 +37,14 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 - Не вызывает AI-провайдер напрямую и не видит raw provider DTO.
 - Не выбирает конкретные SVG/sprite assets, frame sizes, rows/columns или renderer coordinates.
 - Не меняет `docs/engine/*`, public contracts, IPC, ports или provider/render/behavior boundaries без Architect review.
-- Не меняет статусы или структуру shared backlog.
+- Не меняет Workflow, зависимости или структуру GitHub Project.
 
 ---
 
 ## 5. Контекст, который читать
 
 - [../../../AGENTS.md](../../../AGENTS.md)
-- [../../tasks/README.md](../../tasks/README.md)
+- Назначенную GitHub Issue из [Project Wisp Issues](https://github.com/zyzycode/project_wisp/issues)
 - [../../rules/10-architecture.md](../../rules/10-architecture.md)
 - [../../rules/20-typescript.md](../../rules/20-typescript.md)
 - [../../rules/60-testing.md](../../rules/60-testing.md)

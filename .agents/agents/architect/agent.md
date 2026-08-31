@@ -59,7 +59,7 @@ Architect обычно **не**:
 - запускает тесты как основной исполнитель;
 - чинит замечания review-gate;
 - пишет UI/SQLite/platform реализацию за `app-developer`;
-- меняет статусы shared backlog без Project Manager.
+- меняет Workflow, зависимости или owner-role в GitHub Project без Project Manager.
 
 ---
 
@@ -80,5 +80,5 @@ Architect обычно **не**:
 - [../../rules/10-architecture.md](../../rules/10-architecture.md)
 - Остальные `.agents/rules/*.md` и нужные разделы `docs/engine/*.md` только для затронутой области.
 - [../../../ROADMAP.md](../../../ROADMAP.md)
-- [../../tasks/README.md](../../tasks/README.md)
+- Назначенную GitHub Issue из [Project Wisp Issues](https://github.com/zyzycode/project_wisp/issues)
 - [../../../docs/engine/README.md](../../../docs/engine/README.md) (ОБЯЗАТЕЛЬНО: Граф зависимостей движков)

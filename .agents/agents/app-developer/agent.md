@@ -29,7 +29,7 @@
 ## Что читать
 
 - [../../../AGENTS.md](../../../AGENTS.md)
-- [../../tasks/README.md](../../tasks/README.md)
+- Назначенную GitHub Issue из [Project Wisp Issues](https://github.com/zyzycode/project_wisp/issues)
 - Релевантные `.agents/rules/*.md`:
   - `10-architecture.md`
   - `20-typescript.md`
@@ -38,14 +38,14 @@
   - `50-state-and-data.md` для persistence
   - `60-testing.md` для verification
   - `70-cross-platform.md` для OS behavior
-- Только те `docs/engine/*.md`, которые названы в карточке задачи.
+- Только те `docs/engine/*.md`, которые названы в Issue.
 
 ## Границы
 
 - Не реализует behavior/domain rules вместо `domain-behavior`.
 - Не создаёт или меняет public contracts без Architect review.
 - Не читает personal human-only docs как source of truth.
-- Не меняет backlog status или task ordering.
+- Не меняет Workflow, зависимости, owner role или порядок задач в GitHub Project.
 
 ## Формат результата
 
