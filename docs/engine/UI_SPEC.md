@@ -5,7 +5,7 @@
 >
 > - **Раздел 3.1, anchors:** ниже ошибочно указано сложение координат. По [render contract](RENDER_ENGINE.md) покадровый anchor заменяет `defaultAnchors`, а не прибавляется к нему.
 > - **Схема и раздел 6, IPC:** `window.electronAPI` не соответствует [preload](../../src/preload/index.ts), который предоставляет `window.wispAPI`. Поля DTO сверять с [ipc-contracts.ts](../../src/shared/ipc-contracts.ts): `lookDirection` в текущем `PetPresentationStateDTO` отсутствует.
-> - **Раздел 3.2, взгляд:** «вниз / нейтрально» расходится с требованием P14-P01 в [треке Shimeji](../../.agents/tasks/tracks/shimeji.md): кадр 3 — вниз.
+> - **Раздел 3.2, взгляд:** «вниз / нейтрально» расходится с требованием [#1 P14-P01](https://github.com/zyzycode/project_wisp/issues/1): кадр 3 — вниз.
 > - **Связанное изменение CSS:** в [index.css](../../src/renderer/index.css) сняты ограничение высоты и прокрутка облачка. Есть риск обрезания длинных реплик границами окна; визуальная проверка не выполнена.
 >
 > Замечания только зафиксированы, исправления не внесены. Спецификацию должен согласовать `architect`, CSS проверить `app-developer`, затем нужен повторный review.

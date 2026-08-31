@@ -65,7 +65,6 @@ Renderer UI -> typed preload/IPC -> Application use cases -> Domain -> Ports <- 
 
 - `AGENTS.md`: до 120 строк.
 - `ROADMAP.md`: до 140 строк.
-- `.agents/tasks/README.md`: до 100 строк; только навигация по GitHub Issues и историческим трекам.
 - Не дублировать детали задач между roadmap и backlog.
 
 ## Отдельный скоуп ассетов
