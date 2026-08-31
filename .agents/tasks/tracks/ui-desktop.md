@@ -1,6 +1,6 @@
 # Трек: UI & Desktop Interaction
 
-Исторический трек контекстного меню, Debug HUD, инспектора анимаций и визуальных интерфейсов. Новые задачи создаются в [GitHub Issues](https://github.com/zyzycode/project_wisp/issues) и добавляются в [Project Wisp — Delivery](https://github.com/users/zyzycode/projects/1).
+Исторический трек контекстного меню, Debug HUD, инспектора анимаций и визуальных интерфейсов. Новые задачи создаются в [GitHub Issues](https://github.com/zyzycode/project_wisp/issues) и добавляются в [Project Wisp — Задачи](https://github.com/users/zyzycode/projects/1).
 
 ---
 

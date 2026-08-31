@@ -3,7 +3,7 @@
 Исполнимые задачи, их статусы, приоритеты, зависимости и owner-role ведутся только в GitHub.
 
 - [Все Issues](https://github.com/zyzycode/project_wisp/issues)
-- [Project Wisp — Delivery](https://github.com/users/zyzycode/projects/1)
+- [Project Wisp — Задачи](https://github.com/users/zyzycode/projects/1)
 
 ---
 

@@ -10,11 +10,11 @@
 
 - [x] **P14-S01..P14-S05b:** Архитектура, математика Shimeji, FSM, Gaze Engine, Surface Kinematics. (`done`)
 - [x] **P14-G01 (a, b, c, REV):** Перенос физического цикла в Main Process и очистка Renderer. (`done`)
-- [#1 P14-P01 — FSM Renderer Integration & Gaze Control](https://github.com/zyzycode/project_wisp/issues/1) — `In progress`.
-- [#2 P14-P02 — Physics Calibration & Motion Tuning](https://github.com/zyzycode/project_wisp/issues/2) — blocked by #1.
-- [#3 P14-P03 — Dialogue & Speech Phrases Pool Expansion](https://github.com/zyzycode/project_wisp/issues/3) — `Ready`.
-- [#4 P14-P04 — Context Menu UI/UX Redesign](https://github.com/zyzycode/project_wisp/issues/4) — `Ready`.
-- [#5 P14-P-REV — Shimeji Polish & Hands-On UX Review Gate](https://github.com/zyzycode/project_wisp/issues/5) — waits for #1–#4.
+- [#1 P14-P01 — Интеграция FSM с Renderer и управление взглядом](https://github.com/zyzycode/project_wisp/issues/1) — `In progress`.
+- [#2 P14-P02 — Калибровка физики и настройка движения](https://github.com/zyzycode/project_wisp/issues/2) — блокируется #1.
+- [#3 P14-P03 — Расширение пула реплик и мыслей](https://github.com/zyzycode/project_wisp/issues/3) — `Ready`.
+- [#4 P14-P04 — Редизайн контекстного меню](https://github.com/zyzycode/project_wisp/issues/4) — `Ready`.
+- [#5 P14-P-REV — Review-gate Shimeji Polish и UX](https://github.com/zyzycode/project_wisp/issues/5) — ожидает #1–#4.
 
 ---
 
