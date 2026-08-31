@@ -21,7 +21,7 @@
 - [AGENTS.md](AGENTS.md) — главные правила разработки и ограничения репозитория.
 - [docs/README.md](docs/README.md) — навигатор по областям и минимальным маршрутам чтения.
 - [ROADMAP.md](ROADMAP.md) — фазовый план работ и ведущие агенты по фазам.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — слои, процессы Electron, provider/intent/render boundaries.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — обзор устройства приложения для людей: схемы, объяснения процессов и ссылки на технические источники.
 - [.agents/](.agents/) — правила, роли агентов, workflows и предметные skills.
 - `docs/engine/` — спецификации движков и индекс готовых/planned contract-документов.
 - [asset-pipeline/](asset-pipeline/README.md) — отдельная область создания и обработки спрайтов со своим локальным агентом; он сохраняет готовые PNG сразу в рабочие папки, не изменяя манифест и код приложения.

@@ -7,7 +7,8 @@
 | Ограничения и порядок работы | [AGENTS.md](../AGENTS.md) |
 | Фазы и активная работа | [ROADMAP.md](../ROADMAP.md), [очередь задач](../.agents/tasks/README.md) |
 | Роли основного приложения | [Карта ролей](../.agents/agents/README.md) |
-| Слои, процессы и IPC | [ARCHITECTURE.md](../ARCHITECTURE.md) |
+| Обзор устройства приложения для людей | [ARCHITECTURE.md](../ARCHITECTURE.md) — объяснения и схемы, не технический контракт |
+| Правила слоёв и зависимостей | [10-architecture.md](../.agents/rules/10-architecture.md) |
 | Состояние и личность персонажа | [CHARACTER_ENGINE.md](engine/CHARACTER_ENGINE.md) |
 | Намерения поведения | [BEHAVIOR_INTENTS.md](engine/BEHAVIOR_INTENTS.md) |
 | Физика и автономия | [SHIMEJI_SPEC.md](engine/SHIMEJI_SPEC.md) |

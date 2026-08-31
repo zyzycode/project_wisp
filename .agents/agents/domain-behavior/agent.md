@@ -44,7 +44,6 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 ## 5. Контекст, который читать
 
 - [../../../AGENTS.md](../../../AGENTS.md)
-- [../../../ARCHITECTURE.md](../../../ARCHITECTURE.md)
 - [../../tasks/README.md](../../tasks/README.md)
 - [../../rules/10-architecture.md](../../rules/10-architecture.md)
 - [../../rules/20-typescript.md](../../rules/20-typescript.md)

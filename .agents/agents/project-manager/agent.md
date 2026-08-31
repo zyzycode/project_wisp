@@ -21,7 +21,6 @@ Project Manager держит Project Wisp в понятном scope, поряд�
 
 Только когда релевантно:
 
-- `ARCHITECTURE.md`
 - один или несколько `docs/engine/*.md`
 - один или несколько `.agents/rules/*.md`
 - один workflow-документ

@@ -29,7 +29,6 @@
 ## Что читать
 
 - [../../../AGENTS.md](../../../AGENTS.md)
-- [../../../ARCHITECTURE.md](../../../ARCHITECTURE.md), если затронуты boundaries, IPC, platform, persistence или provider flow.
 - [../../tasks/README.md](../../tasks/README.md)
 - Релевантные `.agents/rules/*.md`:
   - `10-architecture.md`

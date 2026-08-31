@@ -27,7 +27,7 @@ Confirmed findings возвращаются текущему owner-агенту 
 ## Правила контекста
 
 - Начинать с `AGENTS.md`, этой карты ролей и назначенной карточки задачи.
-- Читать `ARCHITECTURE.md` только для architecture-affecting work.
+- Проверять архитектурные границы по `.agents/rules/10-architecture.md`; человеческий обзор не входит в обязательный контекст.
 - Читать `docs/engine/*.md` только если карточка задачи называет этот contract.
 - Читать `.agents/rules/*.md` только для слоя, который меняется.
 - Не читать все role, workflow, skill и rule docs по умолчанию.
