@@ -84,7 +84,7 @@ coverage/
 .agents/**/.cache/
 .agents/**/tmp/
 
-# Python (future backend)
+# Python asset preparation tools
 __pycache__/
 *.py[cod]
 .venv/
@@ -110,3 +110,7 @@ public/*.png
 .quarantine/
 **/manifest.json.tmp
 public/**/*.py
+
+# Local asset-pipeline inputs, generated candidates, previews and cache
+/asset-pipeline/input/
+/asset-pipeline/output/

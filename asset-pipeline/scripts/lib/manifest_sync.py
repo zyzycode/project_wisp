@@ -1,7 +1,7 @@
 """
-Project Wisp — Manifest Synchronization & Asset Routing Helper
+Project Wisp — Candidate Metadata & Asset Routing Helper
 ==============================================================
-Maps image files to canonical categories/prefixes and safely updates manifest.json.
+Maps source files to categories and proposes metadata for PNG exports; never writes the application manifest.
 """
 
 import hashlib
@@ -10,7 +10,9 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from .config import CATEGORY_RULES, MANIFEST_PATH
+from copy import deepcopy
+from .config import CATEGORY_RULES, PROPOSAL_PATH, EXPORT_TARGET
+from .output_paths import prepare_output_file
 
 
 def get_file_hash(filepath: str) -> str:
@@ -146,7 +148,7 @@ def sync_manifest_entry(
     category_parts = target_subfolder.split("/")
     main_cat = category_parts[0]
 
-    entry = manifest.get(anim_key, {})
+    entry = deepcopy(manifest.get(anim_key, {}))
     entry["category"] = target_subfolder
     entry["framesCount"] = len(frames)
     entry["frames"] = frames
@@ -155,14 +157,20 @@ def sync_manifest_entry(
     if main_cat == "body":
         if anim_key in OVERLAY_BODY_ANCHORS:
             for k, v in OVERLAY_BODY_ANCHORS[anim_key].items():
-                entry[k] = v
+                entry[k] = deepcopy(v)
         elif "faceOverlay" not in entry:
             entry["faceOverlay"] = {"mode": "baked_in", "fallback": "none"}
 
     manifest[anim_key] = entry
 
 
-def save_manifest(manifest: Dict[str, Any]) -> None:
-    """Saves manifest to disk formatted with 2-space indentation."""
-    with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2, ensure_ascii=False)
+def save_proposal(entries: Dict[str, Any], path: str = PROPOSAL_PATH) -> None:
+    """Save metadata proposals with canonical asset URLs, never a live manifest."""
+    proposal = {
+        "kind": "wisp-asset-proposal",
+        "exportTarget": EXPORT_TARGET,
+        "note": "PNGs exported directly. Review metadata/anchors/grid; application manifest is unchanged.",
+        "entries": entries,
+    }
+    with prepare_output_file(path).open("w", encoding="utf-8") as f:
+        json.dump(proposal, f, indent=2, ensure_ascii=False)

@@ -2,12 +2,12 @@
 """
 Project Wisp — Sprite Animation & Composite Preview Tool
 ========================================================
-Generates animated GIFs and composite preview renders from sliced frames or folders.
+Reads sliced frames without changing them; writes GIFs only under asset-pipeline/output/.
 
 Usage:
-  python3 scripts/preview_sprites.py --all              # Generate GIFs for all categories in public/assets/sprites/
-  python3 scripts/preview_sprites.py path/to/folder     # Generate GIF for specific folder
-  python3 scripts/preview_sprites.py --composite        # Generate composite body+face preview
+  python3 asset-pipeline/scripts/preview_sprites.py --all              # Preview all application sprite categories
+  python3 asset-pipeline/scripts/preview_sprites.py path/to/folder     # Generate GIF for specific folder
+  python3 asset-pipeline/scripts/preview_sprites.py public/assets/sprites/body/idle  # Read production frames only
 """
 
 import argparse
@@ -18,7 +18,7 @@ import sys
 from typing import List, Optional, Tuple
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(SCRIPTS_DIR)
+ROOT_DIR = os.path.dirname(os.path.dirname(SCRIPTS_DIR))
 VENV_PYTHON = os.path.join(ROOT_DIR, ".venv", "bin", "python")
 
 if SCRIPTS_DIR not in sys.path:
@@ -39,7 +39,8 @@ ensure_proper_python_environment()
 
 from PIL import Image
 
-from lib.config import ROOT_DIR, SPRITES_DIR
+from lib.config import ROOT_DIR, SPRITES_DIR, PREVIEWS_DIR
+from lib.output_paths import output_path, prepare_output_file
 
 try:
     RESAMPLE_LANCZOS = Image.Resampling.LANCZOS
@@ -73,10 +74,12 @@ def frames_to_gif(
     bg_color: Optional[Tuple[int, int, int, int]] = None,
     scale: float = 1.0
 ) -> bool:
+    output_path(output_gif)
     if not frame_paths:
         print("❌ Ошибка: список кадров пуст.")
         return False
 
+    output_gif = str(prepare_output_file(output_gif, sources=frame_paths))
     sorted_paths = sorted(frame_paths, key=natural_sort_key)
     print(f"🎬 Сборка GIF из {len(sorted_paths)} кадров ({fps} FPS)...")
 
@@ -143,7 +146,7 @@ def generate_all_project_gifs(fps: int = 8) -> None:
         if len(pngs) >= 2:
             rel_folder = os.path.relpath(root, SPRITES_DIR)
             cat_name = rel_folder.replace(os.sep, "_")
-            out_gif = os.path.join(root, f"preview_{cat_name}.gif")
+            out_gif = os.path.join(PREVIEWS_DIR, f"preview_{cat_name}.gif")
             if frames_to_gif(pngs, out_gif, fps=fps):
                 count += 1
 
@@ -153,7 +156,7 @@ def generate_all_project_gifs(fps: int = 8) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Project Wisp — Sprite Animation & Preview Generator")
     parser.add_argument("input", nargs="?", default=None, help="Folder or path with frames")
-    parser.add_argument("-o", "--output", default=None, help="Output GIF file path")
+    parser.add_argument("-o", "--output", default=None, help="GIF destination inside asset-pipeline/output/ (default: output/previews/)")
     parser.add_argument("--fps", type=int, default=8, help="Animation FPS (default: 8)")
     parser.add_argument("--scale", type=float, default=1.0, help="Resolution scale factor (default: 1.0)")
     parser.add_argument("--bg", default="transparent", help="Background: transparent, white, black, #hex")
@@ -161,7 +164,14 @@ def main():
 
     args = parser.parse_args()
 
+    if args.output:
+        try:
+            output_path(args.output)
+        except ValueError as exc:
+            parser.error(str(exc))
     if args.all or not args.input:
+        if args.output:
+            parser.error("--output requires a specific input folder or glob, not --all")
         generate_all_project_gifs(fps=args.fps)
         return
 
@@ -196,9 +206,12 @@ def main():
     output_gif = args.output
     if not output_gif:
         folder_base = os.path.basename(os.path.abspath(target_dir)) if target_dir else "animation"
-        output_gif = os.path.join(target_dir if target_dir else ".", f"preview_{folder_base}.gif")
+        output_gif = os.path.join(PREVIEWS_DIR, f"preview_{folder_base}.gif")
 
-    frames_to_gif(frame_paths, output_gif, fps=args.fps, bg_color=bg_color, scale=args.scale)
+    try:
+        frames_to_gif(frame_paths, output_gif, fps=args.fps, bg_color=bg_color, scale=args.scale)
+    except ValueError as exc:
+        parser.error(str(exc))
 
 
 if __name__ == "__main__":

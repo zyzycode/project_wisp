@@ -1,7 +1,7 @@
 """
 Project Wisp — Sprite Pipeline Core Library
 ===========================================
-Modular tools for grid detection, image processing, and manifest synchronization.
+Modular tools for grid detection, image processing, and candidate metadata preparation.
 """
 
 from .config import (

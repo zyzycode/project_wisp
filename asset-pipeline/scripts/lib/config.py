@@ -11,13 +11,20 @@ from typing import List, Tuple
 # Paths
 LIB_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_DIR = os.path.dirname(LIB_DIR)
-ROOT_DIR = os.path.dirname(SCRIPTS_DIR)
+PIPELINE_DIR = os.path.dirname(SCRIPTS_DIR)
+ROOT_DIR = os.path.dirname(PIPELINE_DIR)
 
 PUBLIC_DIR = os.path.join(ROOT_DIR, "public")
-SPRITES_DIR = os.path.join(PUBLIC_DIR, "assets", "sprites")
-GENERATED_DIR = os.path.join(ROOT_DIR, "generated_images")
-MANIFEST_PATH = os.path.join(SPRITES_DIR, "manifest.json")
-CACHE_PATH = os.path.join(SCRIPTS_DIR, ".sprites_cache.json")
+PRODUCTION_SPRITES_DIR = os.path.join(PUBLIC_DIR, "assets", "sprites")
+# The application manifest is read-only input; proposal metadata is never installed.
+MANIFEST_PATH = os.path.join(PRODUCTION_SPRITES_DIR, "manifest.json")
+GENERATED_DIR = os.path.join(PIPELINE_DIR, "input")
+OUTPUT_DIR = os.path.join(PIPELINE_DIR, "output")
+SPRITES_DIR = PRODUCTION_SPRITES_DIR
+PREVIEWS_DIR = os.path.join(OUTPUT_DIR, "previews")
+PROPOSAL_PATH = os.path.join(OUTPUT_DIR, "manifest-proposal.json")
+CACHE_PATH = os.path.join(OUTPUT_DIR, ".sprites_cache.json")
+EXPORT_TARGET = "public/assets/sprites"
 
 # Canvas Dimensions & Alignment (512x512 Sprite Contract)
 TARGET_CANVAS_SIZE: int = 512
