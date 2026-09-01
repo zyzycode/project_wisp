@@ -81,5 +81,5 @@ VERIFICATION
 - Not checked: <что не проверялось>
 
 RECOMMENDED NEXT GATE
-- `done` / `app-developer` / `domain-behavior` / `architect` / `blocked`
+- `done` / `app-developer` / `architect` / `blocked`
 ```

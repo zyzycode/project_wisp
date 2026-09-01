@@ -70,8 +70,7 @@
 
 - [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач, roadmap/backlog docs. Не меняет продуктовый код.
 - [architect](.agents/agents/architect/agent.md): границы слоёв, IPC/ports, engine contracts, `docs/engine/*`.
-- [app-developer](.agents/agents/app-developer/agent.md): основной desktop implementation: Main/Preload, Renderer UI, IPC, platform adapters, persistence/provider adapters.
-- [domain-behavior](.agents/agents/domain-behavior/agent.md): character engine, behavior FSM, animation FSM.
+- [app-developer](.agents/agents/app-developer/agent.md): весь product implementation: Domain/Application, Main/Preload, Renderer, adapters, persistence/provider и packaging.
 - [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Не чинит findings в том же review-pass.
 
 ## Рабочие правила
