@@ -74,7 +74,7 @@ flowchart TD
 
 | Модуль (Движок) | Входящие зависимости (От кого получает данные) | Исходящие данные (Кому передаёт) | Контракт обмена (DTO / Events) |
 |---|---|---|---|
-| **`AI_PROVIDER`** | `CharacterSnapshot` (из Character Engine) | Реплика + Suggested Behavior | `ProviderResponseDto` $\to$ `ProviderResponseIntentMapper` |
+| **`AI_PROVIDER`** | `CharacterSnapshot` (из Character Engine) | Реплика + Suggested Behavior | `ProviderResponseDto` → `ProviderResponseIntentMapper` |
 | **`CHARACTER_ENGINE`** | Внешние стимулы, таймеры, события из `SHIMEJI` | Текущее эмоциональное состояние, доступность действий | `CharacterState`, `Needs` (включая `boredom`), `StimulusDto` |
 | **`BEHAVIOR_INTENTS`** | `CharacterState` + Suggested Behavior | Выбранное намерение действия | `BehaviorIntent` (`wander`, `play`, `sleep`, `drag`, `land`...) |
 | **`SHIMEJI_SPEC`** | `BehaviorIntent`, `CharacterState` (Needs/Mood), ввод мыши | Запросы на анимацию, смещение зрачков, стимулы падений | `AnimationIntent`, `GazeOffsetDto`, `StimulusDto` |

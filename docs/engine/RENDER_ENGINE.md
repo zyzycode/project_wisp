@@ -151,7 +151,8 @@ export interface SpriteManifest {
 Validation rules:
 
 - `frames` must be non-empty.
-- If `framesCount` is present, it must equal `frames.length`.\n- `fps` and `durationMs`, when present, must be greater than `0`.
+- If `framesCount` is present, it must equal `frames.length`.
+- `fps` and `durationMs`, when present, must be greater than `0`.
 - `sourceRect` and `canvasSize`, when present, must have positive width and height.
 - `pivot.x` and `pivot.y` are measured in source pixels.
 - Paths must be relative asset paths or public-root paths such as `/assets/sprites/body/walk/body_walk_00.png`; path traversal via `..` is invalid.
