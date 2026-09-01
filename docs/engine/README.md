@@ -1,6 +1,6 @@
 # Индекс engine contracts
 
-`docs/engine/` является source of truth для engine contracts Project Wisp. Эти документы фиксируют границы между provider output, поведением персонажа, выбором анимации, рендером, памятью и настройками до начала implementation-задач.
+`docs/engine/` является source of truth для engine contracts Project Wisp. Эти документы фиксируют границы между provider output, поведением персонажа, выбором анимации, рендером и памятью до начала implementation-задач.
 
 Исключение: `UI_SPEC.md` пока содержит только продуктовые намерения и станет контрактом после architect gate.
 
@@ -18,7 +18,6 @@
 | [`UI_SPEC.md`](./UI_SPEC.md) | Намерения UI/Renderer; архитектурный контракт должен подготовить `architect`. |
 | [`MEMORY_ENGINE.md`](./MEMORY_ENGINE.md) | Оффлайн-память: сообщения, факты пользователя, эпизодическая память, JSON-снапшоты состояния. |
 | [`AI_PROVIDER_CONTRACT.md`](./AI_PROVIDER_CONTRACT.md) | AI-диалог: контракт `IAIProvider`, DTO реплик и Suggested Intent на основе `CharacterSnapshot`. |
-| `SETTINGS_CONTRACT.md` | Пользовательские настройки: DTO конфигурации поведения, внешности и отладки. |
 
 ---
 

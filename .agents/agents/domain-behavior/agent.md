@@ -33,25 +33,35 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 - Не решает, как именно UI рисует состояние.
 - Не решает, где и как данные сохраняются.
 - Не вызывает AI-провайдер напрямую и не видит raw provider DTO.
-- Не выбирает конкретные SVG/sprite assets, frame sizes, rows/columns или renderer coordinates.
-- Не меняет `docs/engine/*`, public contracts, IPC, ports или provider/render/behavior boundaries без Architect review.
-- Не меняет Workflow, зависимости или структуру GitHub Project.
+- Не выбирает конкретные ассеты, их геометрию или renderer coordinates.
+- Реализует существующие contracts, но не меняет `docs/engine/*`, public contracts, IPC, ports или границы слоёв.
 
 ---
 
-## 4. Контекст, который читать
+## 4. Architect gate
+
+Передать вопрос `architect` необходимо, если:
+
+- задача требует создать или изменить public engine contract, IPC DTO, Application port либо границу между behavior, animation, render, provider и persistence;
+- нужный контракт отсутствует либо противоречит Issue или другому действующему контракту;
+- реализация требует перенести ответственность между слоями или затронуть слой вне назначенного scope;
+- продолжение требует архитектурного выбора, который повлияет более чем на назначенную domain-задачу.
+
+При gate не придумывать обход и не продолжать затронутую часть реализации. Сразу сообщить в текущем чате точный файл, тип или раздел контракта, характер конфликта и его влияние; указать, что продолжение требует решения `architect`.
+
+---
+
+## 5. Контекст
 
 - `AGENTS.md`
-- Назначенную GitHub Issue из [Project Wisp Issues](https://github.com/zyzycode/project_wisp/issues)
+- Назначенная Issue.
 - `.agents/rules/10-architecture.md`
-- `.agents/rules/20-typescript.md`
-- `.agents/rules/60-testing.md`
-- `docs/engine/CHARACTER_ENGINE.md`, если задача касается характера, `SynthesizedEmotionalTone`/energy/needs или stimuli.
-- `docs/engine/BEHAVIOR_INTENTS.md`, если задача касается behavior intents.
-- `docs/engine/ANIMATION_ENGINE.md`, если задача касается animation intents, FSM, priority или interrupt rules.
+- Engine contract открывать только для затронутого состояния или перехода.
+- Остальные rules и документы читать только когда они названы в Issue или нужны для проверки конкретной границы.
+- Не читать соседние Issues, роли и contracts.
 
 ---
 
-## 5. Формат результата
+## 6. Формат результата
 
 Использовать общий формат проекта. В `CHANGES` отдельно назвать изменения в Domain/Application behavior logic; в `BOUNDARIES` подтвердить независимость от React/Electron/SQLite/provider/renderer assets.

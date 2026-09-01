@@ -39,6 +39,10 @@ tools: [view_file, replace_file_content, grep_search, run_command]
    - Разделение provider DTO, application-level mapper, domain behavior state и renderer presentation state.
 7. **Предотвращение появления backend/proxy/server implementation в проекте:**
    - Блокировка попыток создать Python/Node-бэкенд, dev gateway, proxy в desktop-клиенте.
+8. **Dependency Review:**
+   - Оценивает запрос по пяти критериям из `AGENTS.md` и сравнивает риски библиотеки с безопасностью, надёжностью и стоимостью поддержки самописного решения.
+   - Возвращает `approved` или `rejected` с обоснованием, альтернативой и ограничениями по слою и изоляции.
+   - Фиксирует решение в ADR или GitHub Issue; эти записи образуют реестр dependency-решений.
 
 ---
 
