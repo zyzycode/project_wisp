@@ -1,3 +1,9 @@
+---
+name: domain-behavior
+description: "Реализует чистую domain-логику персонажа, behavior rules, emotions, movement и animation FSM Project Wisp."
+tools: [view_file, replace_file_content, grep_search, run_command]
+---
+
 # AGENT: domain-behavior — Специалист поведения и анимационных состояний
 
 Domain Behavior отвечает за чистую TypeScript-логику персонажа: Character Engine, behavior rules, эмоции, автономные циклы, animation state machine, quiet/sleep mode и переходы FSM.
@@ -10,15 +16,7 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 
 ---
 
-## 2. Рекомендуемая модель
-
-- **Модель:** `gpt-5.6-terra`
-- **Reasoning:** `high`
-- **Когда повышать:** до `gpt-5.6-sol`, если меняется фундаментальная модель поведения или взаимодействие нескольких FSM.
-
----
-
-## 3. Зоны ответственности
+## 2. Зоны ответственности
 
 1. `BehaviorStateMachine`, `AnimationStateMachine`, transitions, priorities.
 2. Расчёт движения, границ, drag/land/sleep/wander состояний в чистой логике.
@@ -29,7 +27,7 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 
 ---
 
-## 4. Границы
+## 3. Границы
 
 - Не импортирует `electron`, `react`, `fs`, `path`, SQLite или `process.platform`.
 - Не решает, как именно UI рисует состояние.
@@ -41,19 +39,19 @@ Domain Behavior отвечает за чистую TypeScript-логику пе�
 
 ---
 
-## 5. Контекст, который читать
+## 4. Контекст, который читать
 
-- [../../../AGENTS.md](../../../AGENTS.md)
+- `AGENTS.md`
 - Назначенную GitHub Issue из [Project Wisp Issues](https://github.com/zyzycode/project_wisp/issues)
-- [../../rules/10-architecture.md](../../rules/10-architecture.md)
-- [../../rules/20-typescript.md](../../rules/20-typescript.md)
-- [../../rules/60-testing.md](../../rules/60-testing.md)
+- `.agents/rules/10-architecture.md`
+- `.agents/rules/20-typescript.md`
+- `.agents/rules/60-testing.md`
 - `docs/engine/CHARACTER_ENGINE.md`, если задача касается характера, `SynthesizedEmotionalTone`/energy/needs или stimuli.
 - `docs/engine/BEHAVIOR_INTENTS.md`, если задача касается behavior intents.
 - `docs/engine/ANIMATION_ENGINE.md`, если задача касается animation intents, FSM, priority или interrupt rules.
 
 ---
 
-## 6. Формат результата
+## 5. Формат результата
 
-Использовать общий формат отчёта из [AGENTS.md](../../../AGENTS.md#рабочие-правила). В `CHANGES` отдельно назвать изменения в Domain/Application behavior logic; в `BOUNDARIES` подтвердить независимость от React/Electron/SQLite/provider/renderer assets.
+Использовать общий формат проекта. В `CHANGES` отдельно назвать изменения в Domain/Application behavior logic; в `BOUNDARIES` подтвердить независимость от React/Electron/SQLite/provider/renderer assets.
