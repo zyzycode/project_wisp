@@ -1,72 +1,35 @@
-# 10-architecture.md — Архитектурные правила и границы ответственности
+# Архитектурные границы
 
-Правила структурирования кода, направления зависимостей и изоляции модулей в Project Wisp.
+## Направление зависимостей
 
----
+```text
+Renderer -> typed preload/IPC -> Application -> Domain
+Infrastructure adapters -> Application ports
+```
 
-## 1. Направление зависимостей (Dependency Direction)
+- Domain — чистый TypeScript без React, Electron, Node.js, SQLite, сети и `process.platform`.
+- Application зависит от Domain, содержит use cases и объявляет порты для внешнего мира.
+- Infrastructure реализует порты и инкапсулирует Electron, persistence, provider и OS APIs.
+- Main владеет окнами, IPC handlers, use cases и оркестрацией состояния.
+- Preload предоставляет только минимальный типизированный `window.wispAPI`.
+- Renderer отображает presentation state и отправляет пользовательские intents; бизнес-логики и прямого доступа к Main/хранилищу в нём нет.
 
-Зависимости должны быть направлены строго внутрь к ядру системы:
+## Контракты и границы
 
-$$\text{UI / Presentation} \longrightarrow \text{Application (Use Cases)} \longrightarrow \text{Domain (Entities \& State Machines)} \longleftarrow \text{Infrastructure (Adapters)}$$
+- Интерфейс объявляет потребитель: application port живёт рядом с use case, adapter — в Infrastructure.
+- Public contracts, IPC, ports, `docs/engine/*` и границы provider/render/behavior меняются только после Architect review.
+- Не допускай циклических зависимостей и общих модулей без одной понятной ответственности.
+- OS-specific поведение находится за platform adapters; `process.platform` допустим только внутри Infrastructure.
 
-- **Domain Layer** не зависит ни от чего. Это чистый TypeScript и полностью OS-neutral. В нём нет импортов из `electron`, `react`, `better-sqlite3`, Node.js или сетевых библиотек, а также вызовов `process.platform`.
-- **Application Layer** зависит только от Domain и объявляет абстрактные интерфейсы (Ports) для работы с внешним миром (хранилище, AI, платформа).
-- **Infrastructure Layer** реализует эти интерфейсы (Adapters) и инкапсулирует вызовы к сторонним библиотекам, базе данных и платформозависимым Electron APIs.
-- **UI / Presentation Layer** (Renderer) зависит от контрактов IPC и React, но не имеет прямого доступа к Domain/Infrastructure слоям Main-процесса.
+## Provider и движки
 
----
+- Provider возвращает semantic DTO по `IAIProvider` и не управляет React, DOM, ассетами или animation frames.
+- Application переводит provider DTO во внутренние intents; Domain не видит raw provider response.
+- `docs/engine/*` — source of truth для engine DTO, приоритетов и переходов.
+- Render Engine отвечает за visual props, layers, hitbox, bounds и scaling, но не принимает behavior decisions.
+- Animation Engine отвечает за clips, priority и interrupt rules, но не за нарезку ассетов.
 
-## 2. Кроссплатформенная изоляция (Cross-Platform Isolation)
-- Все вызовы, зависящие от ОС (управление окнами, прозрачность, Always-On-Top, пути к файлам данных, автозапуск, трей, уведомления), **обязаны быть изолированы за абстракциями `IPlatformAdapter` в слое инфраструктуры**.
-- Запрещено использовать `process.platform` напрямую в React, Use Cases или сущностях Domain.
-- Подробные правила описаны в [70-cross-platform.md](./70-cross-platform.md).
+## Размер контрактов
 
----
-
-## 3. Изоляция бизнес-логики от UI (No UI Business Logic)
-- React-компоненты являются исключительно презентационными.
-- Запрещено размещать в компонентах React:
-  - Расчёт физики и траекторий движения персонажа.
-  - Логику принятия решений поведения (какую анимацию включить, куда пойти).
-  - Прямые манипуляции с хранилищем или генерацию ответов AI.
-- Компонент React только **отображает переданное состояние** и **диспатчит намерения пользователя** через `window.wispAPI`.
-
----
-
-## 4. Принцип сменяемости провайдеров (No Provider Leakage)
-- Никакие типы данных от конкретных AI SDK (типы сообщений OpenAI, структуры Gemini и т.д.) не должны проникать в Domain, Application или UI слои.
-- Provider возвращает semantic DTO по контракту `IAIProvider`, но не управляет UI, DOM, React state, конкретными SVG/sprite assets или animation frames.
-- `ProviderResponseIntentMapper` в Application переводит provider DTO во внутренний `BehaviorIntent`.
-- Domain/Character Engine принимает behavior decisions и не видит raw provider DTO.
-- Текущая реализация — `MockAIProvider`. Будущая внешняя интеграция допускается только как client-side adapter к готовому backend-контракту из отдельного репозитория, например `ExternalAIProviderClient`.
-- Запрещено проектировать или реализовывать `WispBackendGateway`, cloud/dev AI gateway, backend/proxy/server implementation, прямые HTTP-клиенты к LLM или хранение пользовательских AI API-ключей в `project_wisp`.
-
----
-
-## 5. Engine contracts
-- `docs/engine/*` являются source of truth для `IAIProvider`, `BehaviorIntent`, `AnimationIntent`, Character Engine, Animation Engine, Render Engine, Memory и Settings contracts.
-- Implementer-агенты читают engine contracts и следуют им, но не меняют public contracts без Architect review.
-- Render Engine отвечает за visual render props, layers, SVG/sprite sheets, hitbox, visual bounds и scaling. Он не является game engine и не принимает behavior decisions.
-- Animation Engine отвечает за animation intents, clips, priority и interrupt rules. Детальные параметры sprite sheet нарезки принадлежат Render Engine / asset contract.
-
----
-
-## 6. Запрет на God-модули и циклические зависимости
-- Модули должны иметь одну чётко выраженную ответственность (Single Responsibility Principle).
-- Запрещены циклические зависимости (`A -> B -> A`). Структурируйте код так, чтобы общие типы и контракты лежали в выделенных модулях `shared/`.
-- Файлы размером более 300 строк кода должны рассматриваться как кандидаты на декомпозицию.
-
----
-
-## 7. Правило определения интерфейсов
-- Интерфейс объявляется **там, где он используется (потребителем)**, а не там, где он реализуется.
-- Интерфейс `IAIProvider` живёт в `application/ports/`, а его реализация `MockAIProvider` — в `infrastructure/ai/`.
-- Интерфейс `IPlatformAdapter` живёт в `application/ports/`, а реализации `LinuxPlatformAdapter`, `WindowsPlatformAdapter` — в `infrastructure/platform/`.
-
----
-
-## 8. Бюджет контекста и лаконичность Engine Contracts (Contract Size Budget)
-- Документы архитектурных контрактов в `docs/engine/*.md` **ОБЯЗАНЫ быть предельно лаконичными: целевой размер — 250–400 строк (жесткий лимит: 450 строк)**.
-- Документ должен содержать только чистые TypeScript DTO/интерфейсы, математические формулы, диаграмму переходов (Mermaid) и компактную таблицу приоритетов/исходов.
-- **Запрещено:** многословные текстовые сочинения, дублирование соседних контрактов и раздувание псевдокода. Превышение лимита в 450 строк является основанием для немедленного возврата задачи архитектору.
+- Цель для `docs/engine/*.md` — 250–400 строк, жёсткий предел — 450.
+- В контракте оставляй DTO, формулы, переходы и компактные таблицы; не дублируй соседние документы.

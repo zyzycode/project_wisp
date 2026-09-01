@@ -1,98 +1,23 @@
-# 30-electron.md — Стандарты разработки и безопасности Electron
+# Electron и IPC
 
-Безопасность архитектуры Electron и кроссплатформенная изоляция имеют абсолютный приоритет над удобством разработки.
+## BrowserWindow
 
----
+- Для Renderer обязательны `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true` и `allowRunningInsecureContent: false`.
+- Preload задаётся явно; удалённый контент не получает привилегированный preload.
+- Новые окна и непредусмотренную навигацию блокируй через `setWindowOpenHandler` и `will-navigate`.
+- Внешний URL разбирай через `URL` и проверяй допустимые protocol/host до `shell.openExternal`.
 
-## 1. Базовые настройки безопасности BrowserWindow
+## Preload и IPC
 
-При создании любых окон (`BrowserWindow`) обязательны следующие флаги `webPreferences`:
+- Не экспортируй `ipcRenderer`, общие `send/on/invoke` или произвольное имя channel.
+- `window.wispAPI` содержит только точечные типизированные методы конкретных use cases.
+- Валидируй channel, sender и payload в Main до вызова use case; ответ тоже должен соответствовать serializable DTO.
+- Подписка из preload возвращает функцию удаления точного listener; Renderer вызывает её в cleanup.
+- IPC handler не содержит domain rules: он валидирует, вызывает Application и переводит ошибку в безопасный контракт.
 
-```typescript
-const win = new BrowserWindow({
-  // ... параметры окна
-  webPreferences: {
-    nodeIntegration: false,          // КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО включать
-    nodeIntegrationInWorker: false,
-    contextIsolation: true,          // ОБЯЗАТЕЛЬНО включено
-    sandbox: true,                   // Включено для изоляции процесса рендера
-    webSecurity: true,               // Защита от опасных кросс-доменных запросов
-    allowRunningInsecureContent: false,
-    preload: path.join(__dirname, 'preload.js'),
-  },
-});
-```
+## Системный доступ
 
----
-
-## 2. Кроссплатформенное управление окнами (Window Management)
-- Создание и настройка свойств окон (`transparent`, `alwaysOnTop`, `setIgnoreMouseEvents`, `skipTaskbar`) производятся через платформенные адаптеры `infrastructure/platform/`.
-- **Linux (X11 / Wayland):**
-  - Обязательно проверять поддержку прозрачности и композитинга.
-  - При `setIgnoreMouseEvents` использовать `{ forward: true }`.
-  - В Wayland избегать жесткой зависимости от абсолютных экранных координат окна.
-- **Windows / macOS:**
-  - Использовать платформозависимые уровни `alwaysOnTop` (`screen-saver` на Windows, `floating` на macOS).
-
----
-
-## 3. Изоляция через Preload (Zero Raw IPC Leak)
-- **Категорически запрещено** экспортировать `ipcRenderer` или общие методы `.send()` / `.on()` в глобальный объект `window`.
-- Preload-скрипт обязан объявлять точечные типизированные методы:
-
-```typescript
-// preload.ts
-import { contextBridge, ipcRenderer } from 'electron';
-import { PetPosition, SendMessagePayload } from '../shared/ipc-contracts';
-
-contextBridge.exposeInMainWorld('wispAPI', {
-  sendUserMessage: (payload: SendMessagePayload): Promise<void> =>
-    ipcRenderer.invoke('chat:send-message', payload),
-
-  onCharacterStateChanged: (callback: (state: unknown) => void) => {
-    const subscription = (_event: Electron.IpcRendererEvent, value: unknown) => callback(value);
-    ipcRenderer.on('character:state-changed', subscription);
-    return () => ipcRenderer.removeListener('character:state-changed', subscription);
-  },
-
-  updatePosition: (pos: PetPosition): Promise<void> =>
-    ipcRenderer.invoke('window:set-position', pos),
-});
-```
-
----
-
-## 4. Защита файловой системы и системных вызовов
-- Renderer не имеет доступа к Node.js `fs`, `path`, `os`, `child_process`.
-- Любая работа с файлами (сохранение настроек, чтение спрайтов) происходит исключительно в Main-процессе через проверенные пути на базе `app.getPath('userData')`.
-- Категорически запрещено выполнять произвольные shell-команды (`child_process.exec`, `execSync`).
-- Открытие внешних ссылок (`shell.openExternal`) разрешено только после валидации протокола (`url.startsWith('https://')`).
-
----
-
-## 5. Защита от перехвата навигации
-- Все окна должны блокировать несанкционированную навигацию и открытие новых окон:
-```typescript
-win.webContents.setWindowOpenHandler(({ url }) => {
-  if (url.startsWith('https://')) {
-    shell.openExternal(url);
-  }
-  return { action: 'deny' };
-});
-
-win.webContents.on('will-navigate', (event, navigationUrl) => {
-  const parsedUrl = new URL(navigationUrl);
-  if (parsedUrl.origin !== 'app://wisp' && !navigationUrl.startsWith('file://')) {
-    event.preventDefault();
-  }
-});
-```
-
----
-
-## 6. Хранение секретов и конфиденциальных данных
-- Project Wisp не должен требовать пользовательских AI API-ключей, прямых LLM credentials или ручной настройки локального/удалённого сервера.
-- Backend/proxy/server implementation, dev gateway и server auth/billing не создаются в этом репозитории.
-- Будущий desktop-client adapter к внешнему backend-контракту может использовать только типизированные client-side session/auth DTO после Architect review; он не должен хранить пользовательские AI API-ключи.
-- Локальные чувствительные данные (например, приватные настройки пользователя или будущие локальные ключи шифрования памяти) никогда не передаются и не хранятся в DOM, `localStorage` или Zustand сторах Renderer-процесса.
-- Все чувствительные данные остаются в памяти Main-процесса или защищённом системном хранилище (`safeStorage`), если такая защита действительно требуется текущей задачей.
+- `fs`, `path`, `os`, SQLite, `safeStorage`, shell и управление окнами доступны только из Main/Infrastructure.
+- Пользовательские файлы и данные размещай через Electron paths, прежде всего `app.getPath('userData')`.
+- Не выполняй произвольные shell-команды и не передавай чувствительные данные в DOM, `localStorage` или Renderer store.
+- Window behavior, click-through, tray и autostart реализуются через platform adapters.
