@@ -2,6 +2,8 @@
 
 `docs/engine/` является source of truth для engine contracts Project Wisp. Эти документы фиксируют границы между provider output, поведением персонажа, выбором анимации, рендером, памятью и настройками до начала implementation-задач.
 
+Исключение: `UI_SPEC.md` пока содержит только продуктовые намерения и станет контрактом после architect gate.
+
 ---
 
 ## 1. Реестр контрактов
@@ -13,7 +15,7 @@
 | [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md) | Автономия и физика: локомоция (сидеть/лежать/бег/прыжки), баллистика бросков, слежение зрачками, цепочки активностей, Zoomies. |
 | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md) | Визуальные намерения: `AnimationIntent`, FSM анимаций, приоритеты, прерывания, тайминги клипов. |
 | [`RENDER_ENGINE.md`](./RENDER_ENGINE.md) | Визуализация: схема `manifest.json`, слои (`RenderSlot`), смещения `anchors`/`pivot`, fallback, презентационный DTO. |
-| [`UI_SPEC.md`](./UI_SPEC.md) | Архитектура UI: структура компонентов `src/renderer/`, композиция персонажа, контекстное меню, правила изоляции от Main/бизнес-логики. |
+| [`UI_SPEC.md`](./UI_SPEC.md) | Намерения UI/Renderer; архитектурный контракт должен подготовить `architect`. |
 | [`MEMORY_ENGINE.md`](./MEMORY_ENGINE.md) | Оффлайн-память: сообщения, факты пользователя, эпизодическая память, JSON-снапшоты состояния. |
 | [`AI_PROVIDER_CONTRACT.md`](./AI_PROVIDER_CONTRACT.md) | AI-диалог: контракт `IAIProvider`, DTO реплик и Suggested Intent на основе `CharacterSnapshot`. |
 | `SETTINGS_CONTRACT.md` | Пользовательские настройки: DTO конфигурации поведения, внешности и отладки. |
@@ -43,7 +45,7 @@ flowchart TD
     subgraph Visual["3. Визуальный пайплайн"]
         AE["ANIMATION_ENGINE.md\n(AnimationIntent, FSM клипов)"]
         RE["RENDER_ENGINE.md\n(Слои, смещения Anchors, манифест)"]
-        UI["UI_SPEC.md\n(React UI, DesktopPet, ContextMenu)"]
+        UI["UI_SPEC.md\n(UI intentions; architect gate)"]
     end
 
     %% Потоки стимулов
@@ -79,5 +81,5 @@ flowchart TD
 | **`SHIMEJI_SPEC`** | `BehaviorIntent`, `CharacterState` (Needs/Mood), ввод мыши | Запросы на анимацию, смещение зрачков, стимулы падений | `AnimationIntent`, `GazeOffsetDto`, `StimulusDto` |
 | **`ANIMATION_ENGINE`** | `AnimationIntent` (из Behavior/Shimeji) | Презентационный стейт клипа | `ActiveAnimationState`, приоритеты, прерывания |
 | **`RENDER_ENGINE`** | `ActiveAnimationState`, `GazeOffsetDto`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderPresentationState`, `anchors[face]`, `pivot` |
-| **`UI_SPEC`** | `PetPresentationStateDTO`, события пользователя | Сырые события ввода в Main Process | `window.electronAPI.*`, React Components |
+| **`UI_SPEC`** | Пока не определено | Пока не определено | Intent brief; требуется architect gate |
 | **`MEMORY_ENGINE`** | Сообщения чата, `CharacterSnapshot`, факты | Исторический контекст для AI и восстановления | `EpisodeDto`, `UserFactDto`, `MemoryQuery` |
