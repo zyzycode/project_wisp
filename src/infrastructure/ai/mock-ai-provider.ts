@@ -8,6 +8,21 @@ import type {
   ProviderSuggestedBehaviorKind,
   AIProviderFallbackReason,
 } from '../../application/ports/ai-provider.interface';
+import {
+  CARE_WORDS,
+  CATEGORY_TEMPLATES,
+  DEFAULT_FALLBACK_TEMPLATE,
+  GREETING_WORDS,
+  PLAY_WORDS,
+  QUESTION_WORDS,
+  SLEEP_WORDS,
+} from './mock-response-catalog';
+import type {
+  MockMessageCategory,
+  MockResponseTemplate,
+} from './mock-response-catalog';
+
+export type { MockMessageCategory } from './mock-response-catalog';
 
 export interface MockAIProviderOptions {
   /**
@@ -23,211 +38,10 @@ export interface MockAIProviderOptions {
   maxMessageLength?: number;
 }
 
-export type MockMessageCategory =
-  | 'greeting'
-  | 'question'
-  | 'care'
-  | 'play'
-  | 'sleep'
-  | 'unknown';
-
-interface MockResponseTemplate {
-  text: string;
-  tone: AIProviderTone;
-  suggestedMood: AIProviderSuggestedMood;
-  suggestedBehavior: ProviderSuggestedBehaviorKind;
-  confidence: number;
-}
-
-const DEFAULT_FALLBACK_TEMPLATE: MockResponseTemplate = {
-  text: '*Мерцает мягким светом* Я пока не всё знаю, но всегда рядом с тобой!',
-  tone: 'curious',
-  suggestedMood: 'curious',
-  suggestedBehavior: 'respond',
-  confidence: 0.7,
-};
-
-const CATEGORY_TEMPLATES: Record<MockMessageCategory, MockResponseTemplate[]> = {
-  greeting: [
-    {
-      text: 'Привет! Я Wisp, твой настольный компаньон. Рад тебя видеть!',
-      tone: 'warm',
-      suggestedMood: 'happy',
-      suggestedBehavior: 'react_happy',
-      confidence: 0.95,
-    },
-    {
-      text: 'Hello! Wisp is here and ready to hang out with you!',
-      tone: 'playful',
-      suggestedMood: 'happy',
-      suggestedBehavior: 'react_happy',
-      confidence: 0.95,
-    },
-  ],
-  question: [
-    {
-      text: 'Интересный вопрос! Я пока маленький огонёк, но внимательно тебя слушаю.',
-      tone: 'curious',
-      suggestedMood: 'curious',
-      suggestedBehavior: 'respond',
-      confidence: 0.9,
-    },
-    {
-      text: "That's an intriguing thought! Let me think about it with you.",
-      tone: 'curious',
-      suggestedMood: 'curious',
-      suggestedBehavior: 'respond',
-      confidence: 0.9,
-    },
-  ],
-  care: [
-    {
-      text: '*Мурчит и светится теплее* Спасибо за заботу и тепло!',
-      tone: 'warm',
-      suggestedMood: 'happy',
-      suggestedBehavior: 'react_happy',
-      confidence: 0.95,
-    },
-    {
-      text: '*Glows brightly and snuggles closer* You make me feel safe and happy!',
-      tone: 'warm',
-      suggestedMood: 'happy',
-      suggestedBehavior: 'react_happy',
-      confidence: 0.95,
-    },
-  ],
-  play: [
-    {
-      text: 'Ура, играем! *Радостно кружится и мерцает искорками*',
-      tone: 'playful',
-      suggestedMood: 'happy',
-      suggestedBehavior: 'play',
-      confidence: 0.95,
-    },
-    {
-      text: 'Yay, play time! *Bounces around cheerfully*',
-      tone: 'playful',
-      suggestedMood: 'happy',
-      suggestedBehavior: 'play',
-      confidence: 0.95,
-    },
-  ],
-  sleep: [
-    {
-      text: '*Тихо зевает* Кажется, пора немного отдохнуть... Спокойных снов!',
-      tone: 'sleepy',
-      suggestedMood: 'sleepy',
-      suggestedBehavior: 'sleep',
-      confidence: 0.95,
-    },
-    {
-      text: '*Yawns softly and dims glow* Getting sleepy... Time to rest.',
-      tone: 'sleepy',
-      suggestedMood: 'sleepy',
-      suggestedBehavior: 'sleep',
-      confidence: 0.95,
-    },
-  ],
-  unknown: [
-    DEFAULT_FALLBACK_TEMPLATE,
-    {
-      text: "*Flickers warmly* I'm still learning, but I love spending time with you!",
-      tone: 'warm',
-      suggestedMood: 'neutral',
-      suggestedBehavior: 'respond',
-      confidence: 0.7,
-    },
-  ],
-};
-
-const GREETING_WORDS = [
-  'hi',
-  'hello',
-  'hey',
-  'greetings',
-  'howdy',
-  'привет',
-  'здравствуй',
-  'здравствуйте',
-  'хай',
-  'добрый день',
-  'добрый вечер',
-  'доброе утро',
-  'салют',
-];
-
-const SLEEP_WORDS = [
-  'sleep',
-  'nap',
-  'bed',
-  'tired',
-  'goodnight',
-  'night',
-  'спать',
-  'дремать',
-  'устал',
-  'устала',
-  'спокойной ночи',
-  'баиньки',
-  'отдыхать',
-  'отдохни',
-  'засыпай',
-];
-
-const PLAY_WORDS = [
-  'play',
-  'game',
-  'jump',
-  'dance',
-  'fun',
-  'играть',
-  'поиграем',
-  'прыгай',
-  'танцуй',
-  'лови',
-  'веселье',
-  'мячик',
-  'поиграй',
-];
-
-const CARE_WORDS = [
-  'pet',
-  'pat',
-  'hug',
-  'love',
-  'care',
-  'snuggle',
-  'feed',
-  'cookie',
-  'погладить',
-  'гладить',
-  'обнять',
-  'люблю',
-  'хороший',
-  'умница',
-  'кушать',
-  'покормить',
-  'печенька',
-  'почесать',
-];
-
-const QUESTION_WORDS = [
-  'why',
-  'what',
-  'how',
-  'who',
-  'where',
-  'when',
-  'почему',
-  'что',
-  'как',
-  'кто',
-  'где',
-  'когда',
-  'зачем',
-];
-
-function containsAnyWord(normalizedText: string, words: string[]): boolean {
+function containsAnyWord(
+  normalizedText: string,
+  words: readonly string[]
+): boolean {
   for (const word of words) {
     if (word.includes(' ')) {
       if (normalizedText.includes(word)) {

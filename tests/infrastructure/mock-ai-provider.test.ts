@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { MockAIProvider } from '../../src/infrastructure/ai/mock-ai-provider';
+import {
+  CATEGORY_TEMPLATES,
+  DEFAULT_FALLBACK_TEMPLATE,
+} from '../../src/infrastructure/ai/mock-response-catalog';
 import type { AIProviderRequest } from '../../src/application/ports/ai-provider.interface';
 
 describe('Infrastructure: MockAIProvider', () => {
@@ -42,6 +46,23 @@ describe('Infrastructure: MockAIProvider', () => {
     },
     recentContext: [],
     locale: 'ru',
+  });
+
+  it('keeps stable category coverage, pool sizes, and default fallback', () => {
+    expect(Object.keys(CATEGORY_TEMPLATES)).toEqual([
+      'greeting',
+      'question',
+      'care',
+      'play',
+      'sleep',
+      'unknown',
+    ]);
+    for (const templates of Object.values(CATEGORY_TEMPLATES)) {
+      expect(templates).toHaveLength(2);
+    }
+    expect(DEFAULT_FALLBACK_TEMPLATE.text).toBe(
+      '*Мерцает мягким светом* Я пока не всё знаю, но всегда рядом с тобой!'
+    );
   });
 
   it('initializes with default status ready', async () => {

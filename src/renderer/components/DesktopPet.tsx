@@ -24,6 +24,15 @@ import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
 import { useEnvironmentSnapshot } from '../hooks/useEnvironmentSnapshot';
 import { useDialogueLoop } from '../hooks/useDialogueLoop';
 import {
+  CLICK_REPLIES,
+  CLICK_REPLY_FALLBACK,
+  FACE_PREVIEW_DEFAULT_REPLY,
+  FACE_PREVIEW_FALLBACK_PREFIX,
+  FACE_PREVIEW_REPLIES,
+  INTERACTION_REPLIES,
+} from '../content/interaction-replies';
+import { THOUGHT_FALLBACK, THOUGHTS } from '../content/thoughts';
+import {
   createSystemAnimationIntent,
   type AnimationExpressionHint,
   type AnimationIntentKind,
@@ -336,7 +345,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
     // Welcome speech with cleanup
     const welcomeTimer = setTimeout(() => {
-      setCurrentMessage(createChatMessage('pet', 'Привет! Я Wisp ✨'));
+      setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.welcome));
     }, 1000);
 
     return () => {
@@ -357,18 +366,10 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const handleSelectFace = useCallback(
     (face: AnimationExpressionHint | null) => {
       setCustomFace(face);
-      const faceMessages: Record<string, string> = {
-        happy: 'Улыбаюсь! 😊',
-        sad: 'Мне немного грустно... 🥺',
-        shocked: 'Ого, ничего себе! 😲',
-        sleepy: 'Глазки слипаются... 😴',
-        talking: 'Что-то рассказываю! 💬',
-        thinking: 'Хм, интересно... 🤔',
-        angry: 'Я сержусь! 😠',
-      };
       const text = face
-        ? (faceMessages[face] ?? `Выражение: ${face}`)
-        : 'Обычное выражение ✨';
+        ? (FACE_PREVIEW_REPLIES[face] ??
+          `${FACE_PREVIEW_FALLBACK_PREFIX}${face}`)
+        : FACE_PREVIEW_DEFAULT_REPLY;
       setCurrentMessage(createChatMessage('thought', text));
     },
     []
@@ -380,18 +381,15 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
 
     if (animState === 'sleep') {
       wakeUp();
-      setCurrentMessage(createChatMessage('pet', 'Я проснулся! ☀️'));
+      setCurrentMessage(
+        createChatMessage('pet', INTERACTION_REPLIES.wakeFromClick)
+      );
     } else {
       sendCharacterInteraction({ type: 'click' });
       dispatchAnim('PET');
-      const phrases = [
-        'Мурр! ✨',
-        'Ты лучший! 💖',
-        'Хи-хи, щекотно!',
-        'Что делаем? 🚀',
-      ];
       const randomPhrase =
-        phrases[Math.floor(Math.random() * phrases.length)] ?? 'Мурр!';
+        CLICK_REPLIES[Math.floor(Math.random() * CLICK_REPLIES.length)] ??
+        CLICK_REPLY_FALLBACK;
       setCurrentMessage(createChatMessage('pet', randomPhrase));
     }
   };
@@ -461,36 +459,40 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
       if (event === 'START_SLEEP') {
         triggerNap();
         dispatchAnim('START_SLEEP', true, true);
-        setCurrentMessage(createChatMessage('thought', 'Zzz... 🌙'));
+        setCurrentMessage(
+          createChatMessage('thought', INTERACTION_REPLIES.sleep)
+        );
       } else if (event === 'WAKE_UP') {
         wakeUp();
         dispatchAnim('WAKE_UP', true, false);
-        setCurrentMessage(createChatMessage('pet', 'Доброе утро! ☀️'));
+        setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.wake));
       } else if (event === 'PET' || event === 'REACT_HAPPY') {
         sendCharacterInteraction({ type: 'pet' });
         dispatchAnim('PET', true, true);
         setCurrentMessage(
-          createChatMessage('pet', 'Люблю, когда гладят! 💖')
+          createChatMessage('pet', INTERACTION_REPLIES.pet)
         );
       } else if (event === 'THINK') {
         dispatchAnim('THINK', true, true);
         setCurrentMessage(
-          createChatMessage('thought', 'Хм-м, о чём бы поразмышлять?.. 🤔')
+          createChatMessage('thought', INTERACTION_REPLIES.think)
         );
       } else if (event === 'SPOOK' || event === 'REACT_CONFUSED') {
         sendCharacterInteraction({ type: 'click', intensity: 2 });
         dispatchAnim('SPOOK', true, true);
-        setCurrentMessage(createChatMessage('pet', 'Ой! 😲'));
+        setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.spook));
       } else if (event === 'WAVE') {
         dispatchAnim('WAVE', true, true);
-        setCurrentMessage(createChatMessage('pet', 'Привет-привет! 🖐️'));
+        setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.wave));
       } else if (event === 'CELEBRATE') {
         dispatchAnim('CELEBRATE', true, true);
-        setCurrentMessage(createChatMessage('pet', 'Ура-а! Празднуем! 🎉'));
+        setCurrentMessage(
+          createChatMessage('pet', INTERACTION_REPLIES.celebrate)
+        );
       } else if (event === 'BORED') {
         dispatchAnim('BORED', true, true);
         setCurrentMessage(
-          createChatMessage('thought', 'Эх, скучновато... 🥱')
+          createChatMessage('thought', INTERACTION_REPLIES.bored)
         );
       } else if (event === 'START_FLOAT') {
         dispatchAnim('START_FLOAT', true, true);
@@ -573,46 +575,44 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
           sendCharacterInteraction({ type: 'pet' });
           dispatchAnim('PET', true, true);
           setCurrentMessage(
-            createChatMessage('pet', 'Люблю, когда гладят! 💖')
+            createChatMessage('pet', INTERACTION_REPLIES.pet)
           );
         }}
         onPlay={() => {
           sendCharacterInteraction({ type: 'play' });
           dispatchAnim('RUN', true, false);
           setCurrentMessage(
-            createChatMessage('pet', 'Давай играть! Догони меня! 🎮')
+            createChatMessage('pet', INTERACTION_REPLIES.play)
           );
         }}
         onFeed={() => {
           sendCharacterInteraction({ type: 'feed' });
           dispatchAnim('REACT_HAPPY', true, false);
           setCurrentMessage(
-            createChatMessage('pet', 'Спасибо за угощение! Вкусно! 🍪')
+            createChatMessage('pet', INTERACTION_REPLIES.feed)
           );
         }}
         onThink={() => {
           dispatchAnim('THINK', true, true);
           setMenuOpen(false);
-          const thoughts = [
-            'Хм-м, о чём бы поразмышлять?.. 🤔',
-            'Интересно, как устроен этот мир? ✨',
-            'А звёзды сегодня такие яркие... 💭',
-            'Думаю о чём-то приятном! 🌸',
-          ];
           const randomThought =
-            thoughts[Math.floor(Math.random() * thoughts.length)] ??
-            'Хм-м... 🤔';
+            THOUGHTS[Math.floor(Math.random() * THOUGHTS.length)] ??
+            THOUGHT_FALLBACK;
           setCurrentMessage(createChatMessage('thought', randomThought));
         }}
         onToggleSleep={() => {
           if (animState === 'sleep') {
             wakeUp();
             dispatchAnim('WAKE_UP', true, false);
-            setCurrentMessage(createChatMessage('pet', 'Доброе утро! ☀️'));
+            setCurrentMessage(
+              createChatMessage('pet', INTERACTION_REPLIES.wake)
+            );
           } else {
             triggerNap();
             dispatchAnim('START_SLEEP', true, true);
-            setCurrentMessage(createChatMessage('thought', 'Zzz... 🌙'));
+            setCurrentMessage(
+              createChatMessage('thought', INTERACTION_REPLIES.sleep)
+            );
           }
         }}
         onToggleWander={() => setAutoWanderEnabled((prev) => !prev)}
