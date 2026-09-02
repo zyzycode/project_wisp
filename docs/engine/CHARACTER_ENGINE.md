@@ -6,23 +6,25 @@
 
 ## Владение
 
-- **Domain Layer (`src/domain/models/`, `src/domain/behavior/`):** полностью владеет структурой `CharacterState`, расчетом метаболизма потребностей (`Needs`), шкал отношений (`Relationship`), осей личности (`Personality`), динамическим синтезом эмоционального тона и гейтингом романтики (`IntimacyState`).
-- **Application Layer:** передает внешние стимулы (поглаживание, клик, время, результат AI-диалога) в Character Engine и формирует актуальный снимок состояния (`CharacterSnapshot`) для запросов к `IAIProvider`.
+- **Domain Layer (`src/domain/models/`, `src/domain/behavior/`):** полностью владеет структурой `CharacterState`, расчетом метаболизма потребностей (`Needs`), шкал отношений (`Relationship`), осей личности (`Personality`), динамическим синтезом эмоционального тона, гейтингом романтики (`IntimacyState`) и semantic acceptance входного `BehaviorIntent`.
+- **Application Layer:** нормализует provider/user/timer/system input в candidate `BehaviorIntent`, передает внешние стимулы в Character Engine и формирует актуальный `CharacterSnapshot`; mapper не принимает behavior decision.
 - **Renderer / UI:** получает presentation-ready срез состояния через IPC (эмоциональный статус, уровни шкал для карточки питомца, доступные визуальные темы), но не вычисляет формулы и не меняет состояние напрямую.
 - **AI Provider:** получает сериализованный `CharacterSnapshot` и контекстные подсказки из пресета, но не имеет прямого доступа к мутабельным объектам домена.
 
 ## Поток ответственности
 
 ```text
-Входящий стимул / AI Response / Таймер
-  -> ProviderResponseIntentMapper (при наличии AI ответа)
-  -> BehaviorIntent
-  -> Character Engine (сверяет с Needs, Relationship, Personality, Cooldowns)
-  -> Решенное поведение (Resolved BehaviorIntent)
-  -> AnimationIntent
-  -> Animation Controller
-  -> Render Engine
+Provider hint / user, timer or system event
+  -> Application mapper
+  -> Candidate BehaviorIntent
+  -> Character Engine (gating / acceptance)
+  -> Resolved BehaviorIntent
+  -> Behavior Brain (Activity selection, если требуется)
+  -> Activity Runner
+  -> AnimationIntent -> Animation Controller -> Render Engine
 ```
+
+Character Engine — единственный owner semantic gating и resolved behavior, но не выбирает Activity, physics outcome, animation clip или frame. `Candidate` и `Resolved` — статусы одной формы `BehaviorIntent`, не новые DTO. Полная ownership-матрица и forced-motion исключение находятся в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности); связь с Activity и Motion Engine — в [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md#1-границы-и-поток-данных).
 
 ---
 
@@ -64,6 +66,27 @@ export interface Needs {
 - `attention >= 80`: Wisp хочет контакта, смотрит на пользователя, подходит ближе, мягко намекает.
 - `play >= 75`: Wisp скучает, ищет движение или реакцию на курсор.
 - `comfort >= 80`: Wisp перегружен, стремится к тишине, покою и спокойному idle.
+
+### 2.1. Каноническая семантика сна и пробуждения
+
+Character Engine — единственный source of truth для semantic sleep state, правил принятия `sleep` / `wake` и их порогов. Соседние движки получают уже resolved behavior и не повторяют эти условия.
+
+| Термин | Семантика и owner |
+|---|---|
+| `sleep` | `BehaviorIntentKind`, который Character Engine принимает или инициирует для входа в semantic sleep state. |
+| `quiet` | Отдельный `BehaviorIntentKind`: подавляет навязчивые автономные действия и реплики, но сам по себе не означает сон и не запускает sleep lifecycle. |
+| `wake` | `BehaviorIntentKind`, который Character Engine принимает или инициирует для выхода из semantic sleep state. |
+| `sleep_start` / `sleep_loop` / `wake_up` | Только visual lifecycle kinds Animation Engine; они не принимают behavior decision и не задают пороги. |
+
+Канонические правила:
+
+- `energy <= 20` **или** `comfort >= 80` инициирует deterministic P2 `sleep` после P0 forced physics и P1 direct user interaction;
+- прямой click, `attention >= 90` или восстановление `energy >= 80` разрешает `wake`;
+- прямой drag имеет P1 authority: он завершает активный сон через resolved `drag` и visual `dragged -> land -> settle`, не требуя отдельного `wake_up`;
+- provider-origin `respond`, `think`, `play`, `react_happy` и `react_confused`, а также timer-only `idle` / `wander`, сами по себе не создают `wake`;
+- если после выхода из сна условие входа всё ещё истинно, Character Engine может снова разрешить `sleep` после завершения более приоритетного interaction flow.
+
+Эти значения являются существующим runtime tuning contract: данный раздел не вводит новый DTO, state field или настройку.
 
 ---
 
@@ -213,6 +236,8 @@ export function canExpressFlirt(
 ## 8. Эмоциональный тон (Синтез настроения)
 
 Вместо плоского статического поля `mood` эмоциональное состояние синтезируется динамически на основе потребностей, характера и отношений:
+
+Этот раздел — единственный authoritative contract словаря и синтеза `SynthesizedEmotionalTone`. Consumer contracts ссылаются на тип и не переопределяют его значения.
 
 ```typescript
 export type SynthesizedEmotionalTone =

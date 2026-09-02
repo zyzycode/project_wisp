@@ -56,6 +56,8 @@ Animation key обязан быть стабильным snake_case иденти
 
 ### 1.2. TypeScript-интерфейсы манифеста
 
+Manifest field `emotionalTone` использует authoritative `SynthesizedEmotionalTone` из [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения). Render Engine не переопределяет словарь и не выводит tone или sleep state из visual assets.
+
 ```typescript
 export type SpriteLayerCategory = 'body' | 'face' | 'expression' | 'props';
 
@@ -68,14 +70,6 @@ export type SpriteAnimationCategory =
   | `fx/${string}`; // normalized to props
 
 export type SpriteAnimationKey = string;
-export type SynthesizedEmotionalTone =
-  | 'shy'
-  | 'sleepy'
-  | 'playful'
-  | 'curious'
-  | 'neutral'
-  | 'affectionate'
-  | 'flustered';
 
 export interface SpritePoint {
   readonly x: number;

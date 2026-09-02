@@ -5,26 +5,28 @@ Source of truth для Phase 14: Activity, drag/throw physics, gaze/cursor react
 ## 1. Границы и поток данных
 
 ```text
-Environment adapters -> EnvironmentSnapshot --------------------------+
-Character Engine -> Behavior Brain -> Activity Runner -> AnimationIntent -> FSM -> Render
-                                      -> voluntary locomotion ---------+
-Drag/release/support -> Motion Engine -> MotionEvent -> FSM -----------+-> world transform
-Environment + presentation geometry -> Gaze Engine -------------------+-> gaze presentation
+Provider/user/timer event -> Application mapper -> Candidate BehaviorIntent
+  -> Character Engine gate -> Resolved BehaviorIntent
+  -> Behavior Brain -> Activity Runner -> AnimationIntent -> FSM -> Render
+                                      -> voluntary locomotion ----------+
+Drag/release/support -> Motion Engine -> MotionEvent -> same FSM -------+-> world transform
+Environment adapters -> EnvironmentSnapshot ---------------------------+
+Environment + presentation geometry -> Gaze Engine --------------------+-> gaze presentation
 Gaze Engine -> CursorProximitySignal -> Behavior Brain
 Motion/Activity/user event -> ShimejiFeedbackEvent -> Application mapper -> StimulusDto -> Character Engine
 ```
 
 | Модуль | Владеет | Не владеет |
 |---|---|---|
-| Behavior Brain | eligibility и weighted Activity selection | physics, frames |
-| Activity Runner | lifecycle одной Activity, `AnimationIntent`, voluntary command | Render Engine |
+| Behavior Brain | eligibility и weighted Activity selection в рамках resolved `BehaviorIntent` | semantic acceptance, physics, frames |
+| Activity Runner | lifecycle одной выбранной Activity, `AnimationIntent`, voluntary command | behavior/Activity selection, Render Engine |
 | Animation FSM | pose/locomotion transitions и visual interrupt policy | behavior choice |
 | Motion Engine | forced position при drag/fall/collision | autonomous choice |
 | Gaze Engine | pupil presentation и proximity signal | Activity/locomotion launch |
-| Character Engine | Needs, Relationship, Personality, Intimacy, tone, stimulus reduction | physics/render |
-| Application/adapters | snapshots, clocks, mapping, OS data | domain decisions |
+| Character Engine | Needs, Relationship, Personality, Intimacy, tone, stimulus reduction, semantic gating/resolved behavior | Activity selection, physics/render |
+| Application/adapters | boundary normalization, snapshots, clocks, orchestration, OS data | behavior, Activity или physics decisions |
 
-В forced-motion run ровно один position owner — Motion Engine. Application возвращает authority voluntary locomotion только когда physics уже `grounded` **и** landing/recover FSM вошёл в стабильный `settle`; Renderer не владеет world-position.
+В forced-motion run ровно один position owner — Motion Engine. Forced physical facts обходят semantic/Activity selection, потому что не являются выбором поведения: они отменяют Activity и входят через `MotionEvent` в тот же FSM. Application возвращает authority voluntary locomotion только когда physics уже `grounded` **и** landing/recover FSM вошёл в стабильный `settle`; Renderer не владеет world-position. Каноническая ownership-матрица находится в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
 
 ## 2. Координаты и Motion Engine
 
@@ -135,10 +137,10 @@ Side/top collisions do not determine landing. Bounds update only between steps; 
 ## 3. Forced motion, FSM и приоритеты
 
 ```text
-Voluntary: Behavior Brain -> Activity -> AnimationIntent/FSM + voluntary locomotion
+Voluntary: Resolved BehaviorIntent -> Behavior Brain -> Activity Runner -> AnimationIntent/FSM + voluntary locomotion
 Forced: Drag/support/release/collision -> Motion Engine -> MotionEvent -> same FSM
 ```
-Behavior Brain never decides whether Wisp falls, collides or lands. Application converts approved `jump` and adapter-reported lost/invalid support into explicit `beginAirborne` launches. Forced motion suspends voluntary commands and cancels (never pauses) active Activity; `grounded` alone не возвращает position authority — требуется также стабильный `settle` после landing/recover.
+Behavior Brain never performs semantic acceptance and never decides whether Wisp falls, collides or lands. Application converts an Activity-approved `jump` and adapter-reported lost/invalid support into explicit `beginAirborne` launches. Forced motion suspends voluntary commands and cancels (never pauses) active Activity; `grounded` alone не возвращает position authority — требуется также стабильный `settle` после landing/recover. Direct `drag`/`land` intents describe the semantic user/system lifecycle, while the corresponding physical fact remains non-rejectable Motion Engine authority.
 
 | Motion event | FSM request | Policy |
 |---|---|---|
@@ -230,9 +232,9 @@ Snapshot is immutable. Adapter selects usable work area and normalizes OS limita
 
 ## 6. Character Engine: Needs, Mood, Stimuli
 
-`Mood` is derived `SynthesizedEmotionalTone`, never mutable state. Shimeji reads a Character snapshot; Character Engine alone clamps/metabolizes Needs, changes Relationship/Personality/Intimacy and resynthesizes tone. Needs/tone/personality coefficients are configured tuning, not hard-coded selector rules: their positive modifiers affect probability only, never P0/P1 safety gates.
+`Mood` is derived `SynthesizedEmotionalTone`, never mutable state. Его authoritative словарь и синтез определены в [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения). Shimeji reads a Character snapshot; Character Engine alone clamps/metabolizes Needs, changes Relationship/Personality/Intimacy and resynthesizes tone. Needs/tone/personality coefficients are configured tuning, not hard-coded selector rules: their positive modifiers affect probability only, never P0/P1 safety gates.
 
-`energy <= 20 OR comfort >= 80` selects deterministic P2 Sleep after P0/P1; otherwise Explore, Run, Sit, Rest and Zoomies are weighted candidates. Zoomies requires sufficient energy/stimulation, low overload and an expired cooldown. Brain maps Explore/Run to `wander`, Sit to `idle`, Rest/Sleep to `sleep`, Zoomies/Swat to P3 `play`; direct drag and landing map to `drag`/`land`. New public intent kinds require the coordinated `BEHAVIOR_INTENTS.md` change.
+Authoritative sleep/wake semantics и thresholds находятся в [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#21-каноническая-семантика-сна-и-пробуждения). Shimeji получает resolved intent и сохраняет только consumer constraint: P2 `sleep` / `wake` ждёт P0/P1, а direct `drag` и P0 physical facts bypass Activity selection. Behavior Brain selects only Activities compatible with resolved intent: `wander` constrains Explore/Run, `idle` constrains Sit, `sleep` constrains Rest/Sleep, and `play` constrains Zoomies/Swat. `quiet` не выбирает Rest/Sleep сам по себе. Zoomies still requires sufficient energy/stimulation, low overload and an expired cooldown. New public intent kinds require the coordinated [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md) change.
 
 ### 6.1. Feedback stimuli
 
@@ -365,7 +367,8 @@ onPetPresentationState(listener: (state: PetPresentationStateDTO) => void): () =
 ## 10. Animation, Render и изоляция
 
 ```text
-Behavior/Activity -> AnimationIntent -> one Animation FSM -> Resolver/Player -> RenderPresentationState
+Resolved BehaviorIntent -> Behavior Brain -> Activity Runner -> AnimationIntent -> one Animation FSM
+  -> Resolver/Player -> RenderPresentationState
 MotionEvent -> same FSM; MotionState.position -> host/world placement
 GazeState -> Presentation Composer -> compatible pupil layer (or no-op)
 body + face/expression + gaze + props/effects + overlays + scale/flip + world placement = presentation

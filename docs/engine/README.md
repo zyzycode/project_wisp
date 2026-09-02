@@ -2,7 +2,7 @@
 
 `docs/engine/` является source of truth для engine contracts Project Wisp. Эти документы фиксируют границы между provider output, поведением персонажа, выбором анимации, рендером и памятью до начала implementation-задач.
 
-Исключение: `UI_SPEC.md` пока содержит только продуктовые намерения и станет контрактом после architect gate.
+`UI_SPEC.md` принят как архитектурный контракт UI/Renderer в `DOC-A04`.
 
 ---
 
@@ -15,13 +15,25 @@
 | [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md) | Автономия и физика: локомоция (сидеть/лежать/бег/прыжки), баллистика бросков, слежение зрачками, цепочки активностей, Zoomies. |
 | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md) | Визуальные намерения: `AnimationIntent`, FSM анимаций, приоритеты, прерывания, тайминги клипов. |
 | [`RENDER_ENGINE.md`](./RENDER_ENGINE.md) | Визуализация: схема `manifest.json`, слои (`RenderSlot`), смещения `anchors`/`pivot`, fallback, презентационный DTO. |
-| [`UI_SPEC.md`](./UI_SPEC.md) | Намерения UI/Renderer; архитектурный контракт должен подготовить `architect`. |
+| [`UI_SPEC.md`](./UI_SPEC.md) | UI/Renderer boundaries: presentation state, typed user intents, local UI state, cleanup и privacy. |
 | [`MEMORY_ENGINE.md`](./MEMORY_ENGINE.md) | Оффлайн-память: сообщения, факты пользователя, эпизодическая память, JSON-снапшоты состояния. |
 | [`AI_PROVIDER_CONTRACT.md`](./AI_PROVIDER_CONTRACT.md) | AI-диалог: контракт `IAIProvider`, DTO реплик и Suggested Intent на основе `CharacterSnapshot`. |
 
 ---
 
-## 2. Граф зависимостей и поток данных между движками
+## 2. Канонические shared definitions
+
+| Общее определение | Единственный authoritative contract | Consumer boundary |
+|---|---|---|
+| Словарь и синтез `SynthesizedEmotionalTone` | [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения) | Animation, Shimeji и Render только потребляют готовый tone и не повторяют union/формулы. |
+| Семантика и пороги `sleep` / `wake`; отличие `quiet` | [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#21-каноническая-семантика-сна-и-пробуждения) | Behavior catalog сохраняет semantic names; Shimeji исполняет resolved behavior без повторной проверки thresholds. |
+| Visual lifecycle `sleep_start` / `sleep_loop` / `wake_up` | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md#витальный-сон-и-пробуждение) | Render отображает resolved presentation и не принимает sleep/wake decisions. |
+
+`sleep`, `quiet` и `wake` — semantic behavior terms. `sleep_start`, `sleep_loop` и `wake_up` — animation-only presentation terms; совпадение слов не переносит ownership между Character и Animation engines.
+
+---
+
+## 3. Граф зависимостей и поток данных между движками
 
 ```mermaid
 flowchart TD
@@ -29,56 +41,69 @@ flowchart TD
         AI["AI_PROVIDER_CONTRACT.md\n(AI Реплика + Suggested Intent)"]
         UserEvents["Пользовательский ввод\n(Клик, Перетаскивание, Меню)"]
         Tick["Таймер времени\n(Пассивный тик потребностей)"]
+        Mapper["Application mapper\n(Boundary normalization)"]
     end
 
     subgraph Mind["1. Психо-эмоциональный слой"]
         CE["CHARACTER_ENGINE.md\n(Needs, Скука, Отношения, Mood)"]
         Mem["MEMORY_ENGINE.md\n(Факты, История диалогов)"]
-        BI["BEHAVIOR_INTENTS.md\n(Семантический выбор действия)"]
+        Candidate["Candidate BehaviorIntent"]
+        Resolved["Resolved BehaviorIntent"]
     end
 
     subgraph Motion["2. Поведение и Автономия"]
-        Shimeji["SHIMEJI_SPEC.md\n(Баллистика броска, FSM локомоции, Gaze, Zoomies)"]
+        Brain["Behavior Brain\n(Activity selection)"]
+        Runner["Activity Runner\n(Activity lifecycle)"]
+        Physics["Motion Engine\n(Forced position)"]
     end
 
     subgraph Visual["3. Визуальный пайплайн"]
         AE["ANIMATION_ENGINE.md\n(AnimationIntent, FSM клипов)"]
         RE["RENDER_ENGINE.md\n(Слои, смещения Anchors, манифест)"]
-        UI["UI_SPEC.md\n(UI intentions; architect gate)"]
+        UI["UI_SPEC.md\n(UI / Renderer contract)"]
     end
 
     %% Потоки стимулов
     Tick -->|деградация needs| CE
-    AI -->|реплика + тон| BI
-    UserEvents -->|физический драг/клик| Shimeji
+    AI -->|provider hint| Mapper
+    UserEvents -->|semantic event| Mapper
+    Tick -->|autonomy event| Mapper
+    Mapper --> Candidate
+    Candidate -->|gating / acceptance| CE
+    CE --> Resolved
     UserEvents -->|стимулы поглаживания| CE
+    UserEvents -->|forced physical fact| Physics
 
     %% Психология -> Выбор поведения
-    CE -->|needs + mood + relationship| BI
     Mem -->|контекст фактов| CE
-    BI -->|семантическое решение| Shimeji
+    Resolved --> Brain
+    CE -->|immutable snapshot| Brain
+    Brain -->|selected Activity| Runner
 
     %% Shimeji -> Визуализация
-    Shimeji -->|AnimationIntent| AE
-    Shimeji -->|Gaze/Pupil Offset| RE
+    Runner -->|AnimationIntent| AE
+    Physics -->|MotionEvent| AE
+    Runner -->|voluntary locomotion| Physics
     AE -->|RenderPresentationState| RE
     RE -->|Слои и спрайты| UI
 
     %% Обратная связь физики в психологию
-    Shimeji -.->|Стимулы от падений/бросков/swat| CE
+    Physics -.->|Application mapper -> StimulusDto| CE
 ```
+
+Единственный порядок behavior decision: boundary input → candidate `BehaviorIntent` → Character Engine gating → resolved `BehaviorIntent` → Activity selection → Activity execution → `AnimationIntent`. Forced physical facts не являются behavior decision: Motion Engine применяет их независимо, отменяет Activity и направляет `MotionEvent` в тот же Animation FSM. Подробная ownership-матрица — в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
 
 ---
 
-## 3. Матрица межмодульных контрактов (Кто от кого зависит)
+## 4. Матрица межмодульных контрактов (Кто от кого зависит)
 
 | Модуль (Движок) | Входящие зависимости (От кого получает данные) | Исходящие данные (Кому передаёт) | Контракт обмена (DTO / Events) |
 |---|---|---|---|
 | **`AI_PROVIDER`** | `CharacterSnapshot` (из Character Engine) | Реплика + Suggested Behavior | `ProviderResponseDto` → `ProviderResponseIntentMapper` |
-| **`CHARACTER_ENGINE`** | Внешние стимулы, таймеры, события из `SHIMEJI` | Текущее эмоциональное состояние, доступность действий | `CharacterState`, `Needs` (включая `boredom`), `StimulusDto` |
-| **`BEHAVIOR_INTENTS`** | `CharacterState` + Suggested Behavior | Выбранное намерение действия | `BehaviorIntent` (`wander`, `play`, `sleep`, `drag`, `land`...) |
-| **`SHIMEJI_SPEC`** | `BehaviorIntent`, `CharacterState` (Needs/Mood), ввод мыши | Запросы на анимацию, смещение зрачков, стимулы падений | `AnimationIntent`, `GazeOffsetDto`, `StimulusDto` |
+| **`CHARACTER_ENGINE`** | Candidate `BehaviorIntent`, внешние стимулы и таймеры | Resolved `BehaviorIntent`, текущее эмоциональное состояние | `BehaviorIntent`, `CharacterState`, `Needs`, `StimulusDto` |
+| **`BEHAVIOR_INTENTS`** | Boundary suggestion/event через Application mapper | Candidate → resolved semantic decision | `BehaviorIntent` (`wander`, `play`, `sleep`, `drag`, `land`...) |
+| **`SHIMEJI_SPEC`** | Resolved `BehaviorIntent`, `CharacterSnapshot`, environment/user physical events | Selected Activity, `AnimationIntent`, `MotionEvent`, gaze и feedback | `AnimationIntent`, `MotionEvent`, `GazeOffsetDto`, `StimulusDto` |
 | **`ANIMATION_ENGINE`** | `AnimationIntent` (из Behavior/Shimeji) | Презентационный стейт клипа | `ActiveAnimationState`, приоритеты, прерывания |
 | **`RENDER_ENGINE`** | `ActiveAnimationState`, `GazeOffsetDto`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderPresentationState`, `anchors[face]`, `pivot` |
-| **`UI_SPEC`** | Пока не определено | Пока не определено | Intent brief; требуется architect gate |
+| **`UI_SPEC`** | Presentation DTO/capabilities из Main и `RenderPresentationState` | Semantic user intents через typed Preload boundary | Local UI state + существующие serializable IPC DTO |
 | **`MEMORY_ENGINE`** | Сообщения чата, `CharacterSnapshot`, факты | Исторический контекст для AI и восстановления | `EpisodeDto`, `UserFactDto`, `MemoryQuery` |

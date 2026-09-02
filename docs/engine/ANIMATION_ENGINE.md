@@ -7,27 +7,35 @@
 ## Поток ответственности
 
 ```text
-ProviderResponseIntentMapper
-  -> BehaviorIntent
+Application mapper
+  -> Candidate BehaviorIntent
   -> Character Engine
+  -> Resolved BehaviorIntent
+  -> Behavior Brain (для Activity-backed behavior)
+  -> Activity Runner
   -> AnimationIntent
   -> Animation Controller
   -> Asset/Fallback Resolver
   -> AnimationPlayer
   -> RenderPresentationState
   -> ICharacterRenderer
+
+Forced physical fact -> Motion Engine -> MotionEvent -> same Animation Controller
 ```
 
-- Character Engine принимает или отклоняет `BehaviorIntent` с учетом `Needs`, `Relationship`, `Personality`, `IntimacyState` и текущего `SynthesizedEmotionalTone`.
-- Animation Engine переводит принятое поведение в semantic `AnimationIntent`.
+- Application mapper создаёт candidate `BehaviorIntent`, но не принимает behavior decision.
+- Character Engine принимает, отклоняет или откладывает candidate с учетом `Needs`, `Relationship`, `Personality`, `IntimacyState` и текущего `SynthesizedEmotionalTone`; принятый intent является resolved behavior.
+- Behavior Brain выбирает Activity только в рамках resolved behavior, а Activity Runner выпускает semantic `AnimationIntent` по mapping contract этого документа.
 - Animation Controller применяет resolved priority, interrupt rules, loop policy и координирует переходы стейт-машины.
 - Asset/Fallback Resolver разрешает семантический fallback и сопоставляет intent с конкретными клипами и оверлеями из манифеста.
 - AnimationPlayer управляет тактовой частотой (delta timing, currentFrame) и формирует `RenderPresentationState`.
 - ICharacterRenderer детерминированно отрисовывает подготовленный `RenderPresentationState` через активный адаптер (например, `ReactSpriteRenderer`).
 
-Animation Engine не принимает решений о поведении персонажа и не читает raw provider DTO. Он получает уже нормализованный `BehaviorIntent` и актуальный эмоциональный тон от Character Engine / Application boundary.
+Animation Engine не принимает решений о поведении персонажа и не читает raw provider DTO. Activity Runner получает resolved `BehaviorIntent`, выбранную Activity и актуальный эмоциональный тон через Application boundary. Forced `MotionEvent` обходит Activity selection, потому что фиксирует физический факт, но входит в тот же Animation Controller и не создаёт второй behavior decision. Каноническое распределение владельцев определено в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
 
 ## Форма intent
+
+`SynthesizedEmotionalTone` используется ровно в форме, определённой в authoritative разделе [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения); Animation Engine не расширяет и не переопределяет его словарь.
 
 ```typescript
 export interface AnimationIntent {
@@ -69,15 +77,6 @@ export type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
 export type AnimationInterruptMode = 'yes' | 'no' | 'limited';
 export type AnimationLoopMode = 'none' | 'until_replaced' | 'bounded';
 
-export type SynthesizedEmotionalTone =
-  | 'shy'
-  | 'sleepy'
-  | 'playful'
-  | 'curious'
-  | 'neutral'
-  | 'affectionate'
-  | 'flustered';
-
 export type AnimationExpressionHint =
   | 'blush'
   | 'sleepy'
@@ -96,7 +95,7 @@ export type AnimationPropHint =
   | 'none';
 ```
 
-`emotionalTone` синхронизирован со словарём `SynthesizedEmotionalTone` из `CHARACTER_ENGINE.md`. Это не provider hint: финальное значение приходит после решения Character Engine.
+`emotionalTone` не является provider hint: финальное значение приходит после решения Character Engine.
 
 `expressionHint` описывает семантическую мимику (`blush`, `sleepy`, `happy`, `surprised`, `curious`, `idle`, `winking`, `pout`). Отсутствие `expressionHint` означает, что Animation Controller / Resolver может выбрать default expression для `kind + emotionalTone`.
 
@@ -113,9 +112,9 @@ export type AnimationPropHint =
 | `talking` | dialogue | normal | yes | bounded | Сопровождение ответа Wisp. |
 | `happy_reaction` | reaction | normal | yes | bounded | Позитивная реакция, игра, дружелюбие, тепло. |
 | `confused_reaction` | reaction | normal | yes | bounded | Непонимание, удивление, смущение или fallback reaction. |
-| `sleep_start` | sleep | high | limited | none | Переход в сон / quiet rest behavior. |
-| `sleep_loop` | sleep | high | limited | until_replaced | Устойчивый сон или quiet visual state. |
-| `wake_up` | transition | high | no | none | Переход из sleep / quiet state. |
+| `sleep_start` | sleep | high | limited | none | Visual transition после resolved `sleep`. |
+| `sleep_loop` | sleep | high | limited | until_replaced | Устойчивое visual state активного semantic sleep. |
+| `wake_up` | transition | high | no | none | Visual transition после resolved `wake`; direct drag использует свой lifecycle. |
 | `dragged` | movement | critical | no | until_replaced | Прямое перетаскивание пользователем. |
 | `spook` | reaction | critical | no | bounded | Резкая защитная реакция на emergency/system stimulus. |
 | `land` | transition | high | no | none | Стабилизация после drag movement. |
@@ -155,26 +154,22 @@ export type AnimationPropHint =
 | `land` | `land` (`blush`) -> `settle` | `land` (`sleepy`) -> `settle` | `land` (`happy`) -> `settle` | `land` (`curious`) -> `settle` | `land` (`idle`) -> `settle` | `land` (`happy`) -> `settle` | `land` (`blush`) -> `settle` |
 | `wander` | `walk` (`blush`) -> `settle` | `walk` (`sleepy`) -> `settle` | `walk` (`winking`, `sparkle`) -> `settle` | `walk` (`curious`, `question`) -> `settle` | `walk` (`idle`) -> `settle` | `walk` (`happy`, `heart`) -> `settle` | `walk` (`blush`, `heart`) -> `settle` |
 | `idle` | `idle_blink` (`blush`) | `idle_blink` (`sleepy`) | `idle_blink` (`winking`, `sparkle`) | `idle_blink` (`curious`, `question`) | `idle_blink` (`idle`) | `idle_blink` (`happy`, `heart`) | `idle_blink` (`blush`, `heart`) |
-| `quiet` | `idle_blink` (`blush`) или `sleep_loop` | `sleep_loop` (`sleepy`, `pillow`) | `idle_blink` (`idle`) | `idle_blink` (`curious`) | `idle_blink` (`idle`) | `idle_blink` (`happy`) | `idle_blink` (`blush`) |
+| `quiet` | `idle_blink` (`blush`); active sleep сохраняет `sleep_loop` | `idle_blink` (`sleepy`); active sleep сохраняет `sleep_loop` | `idle_blink` (`idle`) | `idle_blink` (`curious`) | `idle_blink` (`idle`) | `idle_blink` (`happy`) | `idle_blink` (`blush`) |
 
 Правила применения матрицы:
 - `emotionalTone` всегда заполняется в выходном `AnimationIntent`.
 - Если ячейка указывает sequence, первый `AnimationIntent` является текущим request, а последующий устойчивый state планируется Animation Controller после завершения bounded transition/reaction.
 - `settle` возвращает персонажа в устойчивое состояние: обычно `idle_blink`, а во время активного sleep mode — `sleep_loop`.
-- `quiet` не является sleep decision сам по себе. Он может визуально использовать `sleep_loop`, только если Character Engine уже перевёл персонажа в quiet rest / sleep mode.
+- `quiet` не является sleep decision и не запускает `sleep_start` / `sleep_loop`. Если semantic sleep уже активен, quiet presentation не отменяет его visual lifecycle.
 - Direct user interaction (`drag`, `land`) сохраняет своё `kind` независимо от тона; тон влияет только на expression/prop hints.
 
 ## Витальный сон и пробуждение
 
-Character Engine владеет `Needs` и решает, когда сон допустим или обязателен. Animation Engine только формирует визуальную последовательность после принятого решения.
+Authoritative semantic rules и пороги находятся в разделе [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#21-каноническая-семантика-сна-и-пробуждения). Animation Engine не читает `Needs` и только формирует visual lifecycle после resolved `sleep` / `wake` либо более приоритетного direct interaction.
 
 ### Засыпание
 
-При выполнении любого из условий Character Engine должен инициировать или принять `BehaviorIntentKind: 'sleep'`, если нет более приоритетного прямого пользовательского взаимодействия:
-- `Needs.energy <= 20`;
-- `Needs.comfort >= 80`.
-
-Resolved visual sequence:
+Resolved `sleep` создаёт visual sequence:
 
 ```text
 sleep_start (priority: high, interrupt: limited, loop: none)
@@ -185,15 +180,12 @@ sleep_start (priority: high, interrupt: limited, loop: none)
 - `sleep_start` защищён от обычных `normal` и `low` реакций.
 - `sleep_loop` является устойчивым состоянием, а не временной reaction animation.
 - Фоновые `idle`, `wander`, idle micro-motion и blink timers не прерывают `sleep_loop`.
-- Provider-origin `respond`, `think`, `play`, `react_happy` и `react_confused` не будят Wisp сами по себе; Character Engine может отложить или отклонить их по sleep/quiet rules.
+- Неразрешённые Character Engine behavior intents не меняют visual sleep lifecycle.
 - Animation Controller не выходит из `sleep_loop` из-за отсутствия специализированного sleep visual; он применяет fallback policy и сохраняет sleep state.
 
 ### Пробуждение
 
-`wake_up` создаётся только при одном из событий:
-- прямой пользовательский click / drag interaction;
-- критический дефицит внимания: `Needs.attention >= 90`;
-- завершение sleep cycle после восстановления энергии: `Needs.energy >= 80`.
+Resolved `wake` создаёт `wake_up`. Animation Engine не проверяет причину или пороги этого решения.
 
 Resolved visual sequence:
 
@@ -204,10 +196,12 @@ wake_up (priority: high, interrupt: no, loop: none)
 ```
 
 Правила пробуждения:
-- `drag` во время сна имеет `critical` priority и может немедленно заменить `sleep_loop` на `dragged`; после завершения drag flow следует `land`, затем `settle`.
-- Обычный timer-only `idle` или `wander` не создаёт `wake_up`.
+- `drag` во время сна имеет `critical` priority и немедленно заменяет `sleep_loop` на `dragged`; после завершения drag flow следует `land`, затем `settle`, без обязательного `wake_up`.
+- Неразрешённый `wake`, обычный `idle` или `wander` не создаёт `wake_up`.
 - `wake_up` не прерывается обычными dialogue/reaction intents.
-- После `wake_up` Character Engine остаётся источником истины: если `Needs.energy` всё ещё низкая или `Needs.comfort` всё ещё высокая, следующий устойчивый state может снова перейти в sleep/quiet flow.
+- После `wake_up` Character Engine остаётся источником semantic state; Animation Controller не решает, следует ли снова заснуть.
+
+Animation lifecycle names не становятся полями Character state, а semantic `sleep` / `wake` не используются как имена клипов или кадров.
 
 ## Graceful Degradation
 

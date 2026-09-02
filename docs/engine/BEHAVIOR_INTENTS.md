@@ -6,19 +6,38 @@
 
 ## Поток ответственности
 
-```text
-ProviderResponseIntentMapper
-  -> BehaviorIntent
-  -> Character Engine
-  -> AnimationIntent
-  -> Animation Controller
-  -> Render Engine
+```mermaid
+flowchart LR
+  Source[Provider hint / user, timer or system event]
+  Mapper[Application mapper]
+  Candidate[Candidate BehaviorIntent]
+  Character[Character Engine]
+  Resolved[Resolved BehaviorIntent]
+  Brain[Behavior Brain]
+  Activity[Activity Runner]
+  Visual[AnimationIntent]
+  Controller[Animation Controller]
+  Motion[Motion Engine]
+
+  Source --> Mapper --> Candidate --> Character --> Resolved
+  Resolved -->|Activity-backed behavior| Brain --> Activity --> Visual --> Controller
+  Source -->|forced physical fact| Motion -->|MotionEvent| Controller
 ```
 
-- `ProviderResponseIntentMapper` создаёт `BehaviorIntent` из provider DTO.
-- Character Engine принимает финальное behavior decision: применяет потребности (`Needs`), отношения (`Relationship`), характер (`Personality`), cooldowns, quiet/sleep mode и приоритет user input.
-- Animation Engine/Controller получает уже принятое поведение и переводит его в `AnimationIntent`.
-- Render Engine только отображает presentation-ready visual state.
+`Candidate` и `Resolved` обозначают этапы жизни той же формы `BehaviorIntent`, а не новые public DTO или `kind`.
+
+| Этап | Единственный authoritative owner | Результат и граница |
+|---|---|---|
+| Suggested intent | Источник; provider только предлагает hint | Hint не является решением и не обходит локальные правила. |
+| Нормализация | Application mapper, включая `ProviderResponseIntentMapper` | Создаёт candidate `BehaviorIntent` из boundary DTO/event; не принимает behavior decision. |
+| Gating / acceptance | Character Engine | Применяет `Needs`, `Relationship`, `Personality`, cooldowns, quiet/sleep и приоритет источника; принимает, отклоняет или откладывает candidate. |
+| Resolved behavior | Character Engine | Принятый `BehaviorIntent` становится единственным semantic решением. |
+| Activity selection | Behavior Brain | Для Activity-backed behavior выбирает eligible Activity в рамках resolved `kind`; не переопределяет и не повторно принимает behavior decision. |
+| Activity lifecycle | Activity Runner | Исполняет одну Activity, выпускает её `AnimationIntent` и voluntary locomotion command; не выбирает behavior или физический исход. |
+| Forced motion | Motion Engine | Владеет позицией при drag/fall/collision/landing и выдаёт `MotionEvent`; не создаёт resolved behavior. |
+| Visual intent | Activity Runner | Выпускает `AnimationIntent` по mapping contract; Animation Controller разрешает visual priority/interrupt/FSM, но не behavior. |
+
+Forced physical facts — отдельная safety-ветка, а не параллельное принятие поведения. Они немедленно отменяют активную Activity и через `MotionEvent` управляют тем же Animation Controller. В той же Application transaction валидный drag input или `landed` event нормализуется в обязательный lifecycle intent `drag`/`land`: Character Engine остаётся owner его semantic resolution, но не может отменить уже произошедший P1/P0 физический факт. Support loss/collision без public intent kind остаётся только `MotionEvent` и не расширяет каталог. Полный forced-motion порядок зафиксирован в [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md#3-forced-motion-fsm-и-приоритеты), visual mapping — в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md#поток-ответственности).
 
 ## Форма intent
 
@@ -34,7 +53,7 @@ export interface BehaviorIntent {
 }
 ```
 
-`priority` здесь является входной подсказкой. Character Engine может повысить, понизить, отклонить или отложить intent.
+`priority` здесь является входной подсказкой. Character Engine может повысить, понизить, отклонить или отложить intent; исключение — уже произошедший P0 forced physical fact, который semantic gating не отменяет.
 
 ## Начальный каталог
 
