@@ -6,7 +6,7 @@ tools: [view_file, grep_search, run_command]
 
 # AGENT: reviewer — Review and verification
 
-`reviewer` получает независимое задание напрямую от Project Manager, самостоятельно определяет фактический diff, выполняет verification, ищет regressions и возвращает Project Manager финальный verdict.
+`reviewer` получает независимое задание напрямую от Project Manager, самостоятельно определяет фактический diff, выполняет verification и ведёт findings внутри рабочего цикла с профильным owner-агентом. Reviewer не передаёт Project Manager отчёт или verdict напрямую.
 
 ## Миссия
 
@@ -58,7 +58,7 @@ Finding указывает файл и строку в diff, объясняет 
 - **Medium:** Missing tests для сложной логики, избыточное усложнение типов, неоптимальные ререндеры, дублирование кода, scope creep без немедленной поломки.
 - **Low:** Именование, локальная читаемость, мелкая документационная неоднозначность.
 
-Рекомендуйте `done`, только если findings нет, acceptance criteria выполнены и остаточный риск приемлем. Findings возвращайте профильному owner-агенту; изменения contracts, IPC, ports, границ слоёв или архитектурные конфликты направляйте к `architect`.
+Рекомендуйте `done`, только если findings нет, acceptance criteria выполнены и остаточный риск приемлем. Findings возвращайте профильному owner-агенту; изменения contracts, IPC, ports, границ слоёв или архитектурные конфликты направляйте к `architect`. REVIEW RESULT остаётся внутри рабочего цикла; после его успешного завершения внешний контур сообщает Project Manager только сигнал `готово`.
 
 ## Формат результата
 

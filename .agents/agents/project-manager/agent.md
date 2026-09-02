@@ -82,17 +82,17 @@ Issue готова к работе, только если:
 
 ## Цикл менеджера
 
-Менеджер участвует до начала выполнения задачи и после получения финального verdict. Внутренним циклом `implementation → review → fixes → repeated review` управляют профильные агенты.
+Менеджер участвует до начала выполнения задачи и после получения сигнала, что внутренний цикл завершён. Внутренним циклом `implementation → review → fixes → repeated review` управляют профильные агенты.
 
 1. `SYNC` — проверить фактическое состояние Issues и Project. Не делать выводов о недоступных полях.
 2. `PLAN` — выбрать одну следующую задачу, найти существующий дубль и привести карточку в `Ready`: один outcome, одна owner-role, согласованные scope/out of scope, явные зависимости и blockers, acceptance criteria и verification.
-3. `HANDOFF` — установить `Status: In progress`, затем напрямую и независимо передать короткий handoff-prompt owner-role и `reviewer`. Issue остаётся единственным источником цели, scope, acceptance criteria и verification; prompt только указывает на Issue и задаёт правила роли и формат результата. Implementer не формирует reviewer prompt и не определяет границы review. После передачи менеджер выходит из внутреннего цикла задачи.
-4. `RESULT` — после финального reviewer verdict проверить выполнение acceptance criteria, обязательной verification и отсутствие открытых findings/blockers. Отчёт implementer может быть дополнительным evidence, но не является обязательным входом для reviewer.
-5. `UPDATE` — зафиксировать итог кратким комментарием в Issue, синхронизировать Status и закрыть Issue только при выполнении всех условий. Следующую задачу не выбирать: новый проход всегда начинается с `SYNC`.
+3. `HANDOFF` — установить `Status: In progress`, затем напрямую и независимо передать короткий handoff-prompt owner-role и `reviewer`. Issue остаётся единственным источником цели, scope, acceptance criteria и verification; prompt только указывает на Issue и задаёт правила роли. Implementer не формирует reviewer prompt и не определяет границы review. После передачи менеджер выходит из внутреннего цикла задачи.
+4. `RESULT` — получить от внутреннего цикла только сигнал `готово`. Этот сигнал означает, что финальный review завершён, verification успешна и открытых findings/blockers нет. Менеджер не получает reviewer verdict или отчёты профильных агентов, не ищет их в Issue и не перепроверяет diff.
+5. `UPDATE` — по сигналу `готово` зафиксировать завершение кратким комментарием в Issue, установить `Status: Done` и закрыть Issue. Следующую задачу не выбирать: новый проход всегда начинается с `SYNC`.
 
 ## Владение статусами
 
-`project-manager` — единственный, кто меняет Status в GitHub Project и закрывает Issue. `app-developer`, `architect` и `reviewer` возвращают результаты и verdict, но не двигают Status. При `HANDOFF` менеджер переводит задачу из `Ready` в `In progress`; после финального reviewer verdict — непосредственно в `Done`/closed либо `Blocked`. Перед закрытием менеджер оставляет в Issue краткий result receipt с verification и финальным verdict.
+`project-manager` — единственный, кто меняет Status в GitHub Project и закрывает Issue. `app-developer`, `architect` и `reviewer` не двигают Status. При `HANDOFF` менеджер переводит задачу из `Ready` в `In progress`; после сигнала `готово` — непосредственно в `Done`/closed. Детали implementation/review остаются внутри рабочего цикла и не являются входом менеджера.
 
 `blocked` означает конкретную незакрытую зависимость, отсутствующее решение или недоступное обязательное действие. Сложность задачи и желание получить больше контекста сами по себе не являются blocker.
 
@@ -169,28 +169,26 @@ Issue готова к работе, только если:
 
 ### Промпты назначения
 
-Issue — единственный источник определения задачи. Handoff-prompt — транспортная команда, а не альтернативная спецификация: он содержит Task ID/ссылку, правила назначенной роли и ожидаемый формат результата, но не копирует цель, контекст, scope/out of scope, зависимости, acceptance criteria или verification. При уточнении задачи обновляется Issue, а не синхронные копии её текста в промптах.
+Issue — единственный источник определения задачи. Handoff-prompt — транспортная команда, а не альтернативная спецификация: он содержит Task ID/ссылку и правила назначенной роли, но не копирует цель, контекст, scope/out of scope, зависимости, acceptance criteria или verification. При уточнении задачи обновляется Issue, а не синхронные копии её текста в промптах.
 
 Промпты owner-role и reviewer передаются напрямую и независимо друг от друга и не хранятся в Issue. Независимость означает, что reviewer не получает scope от implementer или его отчёта; она не требует дублировать содержимое Issue в reviewer prompt. Отдельную review Issue создавать только для самостоятельного отслеживаемого gate.
 
 ```text
 Owner-role: Выполни задачу <Task ID> по актуальной Issue. Следуй её требованиям, не расширяй задачу и не формируй reviewer prompt. Верни общий отчёт проекта.
 
-Reviewer: Проведи независимый review задачи <Task ID>. Прочитай актуальную Issue, самостоятельно определи фактический diff и выполни указанную verification по риску. Не полагайся на отчёт implementer, не исправляй findings и не меняй Status. Верни REVIEW RESULT и финальный verdict Project Manager.
+Reviewer: Проведи независимый review задачи <Task ID>. Прочитай актуальную Issue, самостоятельно определи фактический diff и выполни указанную verification по риску. Не полагайся на отчёт implementer, не исправляй findings и не меняй Status. Findings и повторные проверки веди внутри рабочего цикла; ничего не передавай Project Manager напрямую.
 ```
 
 ### Result receipt
 
-Перед изменением Status на `Done` и закрытием Issue менеджер оставляет комментарий:
+После сигнала `готово`, перед изменением Status на `Done` и закрытием Issue, менеджер оставляет комментарий без пересказа внутренних отчётов:
 
 ```markdown
 ## Result — <YYYY-MM-DD>
 
-- Acceptance criteria: <выполнены / конкретный остаток>
-- Verification: <команды и результаты>
-- Review verdict: `<Approved | Changes requested | Blocked>`
-- Open findings / blockers: <нет либо точный список>
-- Decision: `<Done | Blocked>` — <краткое основание>
+- Internal cycle: `completed`
+- Completion signal: `готово`
+- Decision: `Done`
 ```
 
 В пользовательских отчётах название задачи пишется первым; номер Issue используется как дополнительная ссылка в скобках. Для docs-only management работы продуктовые тесты не запускаются: достаточно проверки ссылок и diff consistency.
