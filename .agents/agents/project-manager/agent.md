@@ -86,7 +86,7 @@ Issue готова к работе, только если:
 
 1. `SYNC` — проверить фактическое состояние Issues и Project. Не делать выводов о недоступных полях.
 2. `PLAN` — выбрать одну следующую задачу, найти существующий дубль и привести карточку в `Ready`: один outcome, одна owner-role, согласованные scope/out of scope, явные зависимости и blockers, acceptance criteria и verification.
-3. `HANDOFF` — установить `Status: In progress`, затем напрямую и независимо передать задание owner-role и задание `reviewer`. Reviewer получает scope только от Project Manager и Issue; implementer не формирует reviewer prompt и не определяет границы review. После передачи менеджер выходит из внутреннего цикла задачи.
+3. `HANDOFF` — установить `Status: In progress`, затем напрямую и независимо передать короткий handoff-prompt owner-role и `reviewer`. Issue остаётся единственным источником цели, scope, acceptance criteria и verification; prompt только указывает на Issue и задаёт правила роли и формат результата. Implementer не формирует reviewer prompt и не определяет границы review. После передачи менеджер выходит из внутреннего цикла задачи.
 4. `RESULT` — после финального reviewer verdict проверить выполнение acceptance criteria, обязательной verification и отсутствие открытых findings/blockers. Отчёт implementer может быть дополнительным evidence, но не является обязательным входом для reviewer.
 5. `UPDATE` — зафиксировать итог кратким комментарием в Issue, синхронизировать Status и закрыть Issue только при выполнении всех условий. Следующую задачу не выбирать: новый проход всегда начинается с `SYNC`.
 
@@ -165,16 +165,18 @@ Issue готова к работе, только если:
 2. Создать либо уточнить одну Issue; не смешивать architect decision, implementation и самостоятельный review gate.
 3. Установить labels, добавить Issue в Project, выставить Status и Priority.
 4. Повторно прочитать title, body, labels и Project fields после записи.
-5. Вернуть пользователю название, ссылку, Task ID, owner-role, Status, blockers и два независимых промпта. Если поле или запись недоступны, назвать точный blocker и не объявлять операцию выполненной.
+5. Вернуть пользователю название, ссылку, Task ID, owner-role, Status, blockers и два коротких независимых handoff-prompts. Если поле или запись недоступны, назвать точный blocker и не объявлять операцию выполненной.
 
 ### Промпты назначения
 
-Промпты передаются в чате и не хранятся в Issue. Отдельную review Issue создавать только для самостоятельного отслеживаемого gate.
+Issue — единственный источник определения задачи. Handoff-prompt — транспортная команда, а не альтернативная спецификация: он содержит Task ID/ссылку, правила назначенной роли и ожидаемый формат результата, но не копирует цель, контекст, scope/out of scope, зависимости, acceptance criteria или verification. При уточнении задачи обновляется Issue, а не синхронные копии её текста в промптах.
+
+Промпты owner-role и reviewer передаются напрямую и независимо друг от друга и не хранятся в Issue. Независимость означает, что reviewer не получает scope от implementer или его отчёта; она не требует дублировать содержимое Issue в reviewer prompt. Отдельную review Issue создавать только для самостоятельного отслеживаемого gate.
 
 ```text
-Owner-role: Выполни задачу <Task ID> по <Issue URL>. Следуй scope, ограничениям, acceptance criteria и verification из Issue. Не расширяй задачу и не формируй reviewer prompt. Верни общий отчёт проекта.
+Owner-role: Выполни задачу <Task ID> по актуальной Issue. Следуй её требованиям, не расширяй задачу и не формируй reviewer prompt. Верни общий отчёт проекта.
 
-Reviewer: Проверь задачу <Task ID> по <Issue URL>. Самостоятельно определи фактический diff, проверь реализацию против scope и acceptance criteria и выполни verification по риску. Не полагайся на handoff или отчёт implementer и не исправляй findings в этом pass. Верни REVIEW RESULT и финальный verdict Project Manager.
+Reviewer: Проведи независимый review задачи <Task ID>. Прочитай актуальную Issue, самостоятельно определи фактический diff и выполни указанную verification по риску. Не полагайся на отчёт implementer, не исправляй findings и не меняй Status. Верни REVIEW RESULT и финальный verdict Project Manager.
 ```
 
 ### Result receipt
