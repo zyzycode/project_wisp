@@ -35,7 +35,7 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toBe('');
   });
 
-  it('renders actions, themes, and scales in unified layout without position override', () => {
+  it('renders actions, themes, and scales in compact layout without position override', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
@@ -93,15 +93,44 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Космический');
     expect(markup).toContain('100%');
     expect(markup).toContain('Выйти из приложения');
-    // Verify it doesn't force inline position style so side-by-side CSS layout applies
+    expect(markup).toContain('Главное');
+    expect(markup).toContain('Debug');
+    // Verify it doesn't force inline position style so docked CSS layout applies
     expect(markup).not.toContain('style="left:');
+  });
+
+  it('renders debug panel when activeTab is debug and debugHudEnabled is true', () => {
+    const markup = renderToStaticMarkup(
+      <ContextMenu
+        isOpen
+        activeTab="debug"
+        currentTheme={DEFAULT_THEMES.cosmic!}
+        scale={1.0}
+        autoWanderEnabled
+        isSleeping={false}
+        debugHudEnabled
+        debugContent={<div data-testid="debug-view">Telemetry Active</div>}
+        onClose={vi.fn()}
+        onPet={vi.fn()}
+        onThink={vi.fn()}
+        onToggleSleep={vi.fn()}
+        onToggleWander={vi.fn()}
+        onSelectTheme={vi.fn()}
+        onSelectScale={vi.fn()}
+        onQuit={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain('Telemetry Active');
+    expect(markup).toContain('telemetry-panel');
+    expect(markup).not.toContain('menu-scroll-body');
   });
 
   it('applies positioned style when explicit position anchor is provided', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
-        position={{ x: 100, y: 120 }}
+        position={{ x: 100, y: 50 }}
         currentTheme={DEFAULT_THEMES.cosmic!}
         scale={1.0}
         autoWanderEnabled
@@ -118,14 +147,14 @@ describe('Renderer: ContextMenu', () => {
       />
     );
 
-    expect(markup).toContain('style="left:100px;top:12px;right:auto;bottom:auto;width:760px"');
+    expect(markup).toContain('style="left:100px;top:50px;right:auto;bottom:auto;width:340px"');
   });
 
   it('clamps cursor-based position inside every viewport edge', () => {
     expect(calculateContextMenuPosition({ x: -100, y: -50 }, { width: 880, height: 580 }))
       .toEqual({ x: 12, y: 12 });
     expect(calculateContextMenuPosition({ x: 999, y: 999 }, { width: 880, height: 580 }))
-      .toEqual({ x: 108, y: 12 });
+      .toEqual({ x: 528, y: 68 });
     expect(calculateContextMenuPosition({ x: 100, y: 100 }, { width: 200, height: 180 }))
       .toEqual({ x: 12, y: 12 });
   });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { CharacterTheme } from '../../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../../domain/models/character-visuals';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
@@ -138,8 +138,8 @@ export function subscribeToOutsideMouseDown(
 }
 
 const MENU_MARGIN = 12;
-const MENU_WIDTH = 760;
-const MENU_MAX_HEIGHT = 556;
+const MENU_WIDTH = 340;
+const MENU_MAX_HEIGHT = 500;
 
 export function calculateContextMenuPosition(
   anchor: ContextMenuPosition,
@@ -159,6 +159,7 @@ export function calculateContextMenuPosition(
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
   position,
+  activeTab,
   tone = 'neutral',
   currentTheme,
   scale,
@@ -169,6 +170,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   isAlwaysOnTop = false,
   debugContent,
   currentFace = null,
+  onTabChange,
   onClose,
   onPet,
   onPlay,
@@ -185,6 +187,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onSelectScale,
   onQuit,
 }) => {
+  const [internalTab, setInternalTab] = useState<ContextMenuTab>('main');
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -204,6 +207,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   if (!isOpen) return null;
 
+  const currentTab = activeTab ?? internalTab;
+
+  const handleTabSelect = (tab: ContextMenuTab) => {
+    setInternalTab(tab);
+    onTabChange?.(tab);
+  };
+
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 880;
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 580;
   const menuPosition = position === undefined
@@ -217,15 +227,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     width: Math.min(MENU_WIDTH, Math.max(0, viewportWidth - MENU_MARGIN * 2)),
   };
   const interactionActions = createInteractionMenuActions({ onPet, onPlay, onFeed, onThink });
-  const showDebugPanel = Boolean(debugHudEnabled && debugContent);
 
   return (
     <div
       ref={menuRef}
-      className={`wisp-context-menu ${showDebugPanel ? 'has-debug' : ''}`}
+      className={`wisp-context-menu ${currentTab === 'debug' ? 'tab-debug' : 'tab-main'}`}
       style={positionedStyle}
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
+      role="dialog"
+      aria-label="Wisp Companion Menu"
     >
       <div className="menu-header">
         <div className="menu-header-left">
@@ -239,104 +250,61 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         </button>
       </div>
 
-      <div className="menu-unified-grid" aria-label="Wisp control panel">
-        {/* Column 1: Core Controls & Customization */}
-        <div className="menu-column menu-column-controls">
-          <div className="menu-section-title">Действия</div>
-          <div className="menu-btn-grid">
-            {interactionActions.map((action) => (
-              <button key={action.id} className="menu-action-btn" onClick={action.onSelect}>
-                {action.label}
-              </button>
-            ))}
-            <button className="menu-action-btn" onClick={onToggleSleep}>
-              {isSleeping ? 'body_land (Разбудить)' : 'body_sleep (Усыпить)'}
-            </button>
-            <button className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`} onClick={onToggleWander}>
-              {autoWanderEnabled ? 'body_walk (Прогулка: ВКЛ)' : 'body_idle (Прогулка: ВЫКЛ)'}
-            </button>
-          </div>
-
-          <div className="menu-divider" />
-          <div className="menu-section-title">Темы оформления</div>
-          <div className="menu-theme-grid">
-            {Object.values(DEFAULT_THEMES).map((theme) => (
-              <button
-                key={theme.id}
-                className={`menu-theme-btn ${currentTheme.id === theme.id ? 'active' : ''}`}
-                style={{ background: theme.palette.primary }}
-                onClick={() => onSelectTheme(theme)}
-              >
-                {theme.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="menu-divider" />
-          <div className="menu-section-title">Размер: {Math.round(scale * 100)}%</div>
-          <div className="menu-scale-controls">
-            <button
-              className="menu-scale-btn"
-              disabled={scale <= 0.6}
-              onClick={() => onSelectScale(Math.max(0.5, Number((scale - 0.1).toFixed(1))))}
-            >
-              - Уменьшить
-            </button>
-            <button
-              className="menu-scale-btn"
-              onClick={() => onSelectScale(1.0)}
-            >
-              100%
-            </button>
-            <button
-              className="menu-scale-btn"
-              disabled={scale >= 2.0}
-              onClick={() => onSelectScale(Math.min(2.0, Number((scale + 0.1).toFixed(1))))}
-            >
-              + Увеличить
-            </button>
-          </div>
-
-          <div className="menu-divider" />
-          <div className="menu-section-title">Окно и инструменты</div>
-          <div className="menu-btn-grid">
-            {onResetPosition ? (
-              <button type="button" className="menu-action-btn" onClick={onResetPosition}>
-                Сбросить позицию
-              </button>
-            ) : null}
-            {onToggleAlwaysOnTop ? (
-              <button
-                type="button"
-                className={`menu-action-btn ${isAlwaysOnTop ? 'active' : ''}`}
-                aria-pressed={isAlwaysOnTop}
-                onClick={onToggleAlwaysOnTop}
-              >
-                Поверх окон: {isAlwaysOnTop ? 'ВКЛ' : 'ВЫКЛ'}
-              </button>
-            ) : null}
-            {debugHudEnabled && onToggleDebugHud ? (
-              <button
-                type="button"
-                className={`menu-action-btn ${debugHudVisible ? 'active' : ''}`}
-                aria-pressed={debugHudVisible}
-                onClick={onToggleDebugHud}
-              >
-                Debug HUD: {debugHudVisible ? 'ВКЛ' : 'ВЫКЛ'}
-              </button>
-            ) : null}
-          </div>
-
-          <div className="menu-divider" />
-          <button className="menu-quit-btn" onClick={onQuit}>
-            Выйти из приложения
+      {debugHudEnabled ? (
+        <div className="menu-tabs" role="tablist" aria-label="Menu sections">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={currentTab === 'main'}
+            className={`menu-tab-btn ${currentTab === 'main' ? 'active' : ''}`}
+            onClick={() => handleTabSelect('main')}
+          >
+            Главное
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={currentTab === 'debug'}
+            className={`menu-tab-btn ${currentTab === 'debug' ? 'active' : ''}`}
+            onClick={() => handleTabSelect('debug')}
+          >
+            Debug
           </button>
         </div>
+      ) : null}
 
-        {/* Column 2: Animations & Expressions (Full comfortable width) */}
-        <div className="menu-column menu-column-animations">
+      {currentTab === 'debug' && debugHudEnabled ? (
+        <div className="telemetry-panel" role="tabpanel" aria-label="Debug telemetry">
+          {debugContent ?? <div className="debug-log-empty">Нет данных отладки</div>}
+        </div>
+      ) : (
+        <div className="menu-scroll-body" role="tabpanel" aria-label="Main controls">
+          {/* Actions */}
+          <div className="menu-section">
+            <div className="menu-section-title">Действия</div>
+            <div className="menu-btn-grid">
+              {interactionActions.map((action) => (
+                <button key={action.id} type="button" className="menu-action-btn" onClick={action.onSelect}>
+                  {action.label}
+                </button>
+              ))}
+              <button type="button" className="menu-action-btn" onClick={onToggleSleep}>
+                {isSleeping ? 'body_land (Разбудить)' : 'body_sleep (Усыпить)'}
+              </button>
+              <button
+                type="button"
+                className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`}
+                onClick={onToggleWander}
+              >
+                {autoWanderEnabled ? 'body_walk (Прогулка: ВКЛ)' : 'body_idle (Прогулка: ВЫКЛ)'}
+              </button>
+            </div>
+          </div>
+
+          {/* Animations & Poses */}
           {onPlayAnimation ? (
-            <>
+            <div className="menu-section">
+              <div className="menu-divider" />
               <div className="menu-section-title">Анимации и позы</div>
               <div className="menu-anim-4col-grid">
                 {ALL_ANIMATION_BUTTONS.map((item) => (
@@ -350,11 +318,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                   </button>
                 ))}
               </div>
-            </>
+            </div>
           ) : null}
 
+          {/* Face Expressions */}
           {onSelectFace ? (
-            <>
+            <div className="menu-section">
               <div className="menu-divider" />
               <div className="menu-section-title">Выражения лица</div>
               <div className="menu-anim-4col-grid">
@@ -369,16 +338,103 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                   </button>
                 ))}
               </div>
-            </>
+            </div>
           ) : null}
-        </div>
 
-        {showDebugPanel ? (
-          <div className="telemetry-panel">
-            {debugContent}
+          {/* Themes */}
+          <div className="menu-section">
+            <div className="menu-divider" />
+            <div className="menu-section-title">Темы оформления</div>
+            <div className="menu-theme-grid">
+              {Object.values(DEFAULT_THEMES).map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  className={`menu-theme-btn ${currentTheme.id === theme.id ? 'active' : ''}`}
+                  style={{ background: theme.palette.primary }}
+                  onClick={() => onSelectTheme(theme)}
+                >
+                  {theme.name}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : null}
-      </div>
+
+          {/* Scale */}
+          <div className="menu-section">
+            <div className="menu-divider" />
+            <div className="menu-section-title">Размер: {Math.round(scale * 100)}%</div>
+            <div className="menu-scale-controls">
+              <button
+                type="button"
+                className="menu-scale-btn"
+                disabled={scale <= 0.6}
+                onClick={() => onSelectScale(Math.max(0.5, Number((scale - 0.1).toFixed(1))))}
+              >
+                - Уменьшить
+              </button>
+              <button
+                type="button"
+                className={`menu-scale-btn ${scale === 1.0 ? 'active' : ''}`}
+                onClick={() => onSelectScale(1.0)}
+              >
+                100%
+              </button>
+              <button
+                type="button"
+                className="menu-scale-btn"
+                disabled={scale >= 2.0}
+                onClick={() => onSelectScale(Math.min(2.0, Number((scale + 0.1).toFixed(1))))}
+              >
+                + Увеличить
+              </button>
+            </div>
+          </div>
+
+          {/* Window & Tools */}
+          {onResetPosition || onToggleAlwaysOnTop || (debugHudEnabled && onToggleDebugHud) ? (
+            <div className="menu-section">
+              <div className="menu-divider" />
+              <div className="menu-section-title">Окно и инструменты</div>
+              <div className="menu-btn-grid">
+                {onResetPosition ? (
+                  <button type="button" className="menu-action-btn" onClick={onResetPosition}>
+                    Сбросить позицию
+                  </button>
+                ) : null}
+                {onToggleAlwaysOnTop ? (
+                  <button
+                    type="button"
+                    className={`menu-action-btn ${isAlwaysOnTop ? 'active' : ''}`}
+                    aria-pressed={isAlwaysOnTop}
+                    onClick={onToggleAlwaysOnTop}
+                  >
+                    Поверх окон: {isAlwaysOnTop ? 'ВКЛ' : 'ВЫКЛ'}
+                  </button>
+                ) : null}
+                {debugHudEnabled && onToggleDebugHud ? (
+                  <button
+                    type="button"
+                    className={`menu-action-btn ${debugHudVisible ? 'active' : ''}`}
+                    aria-pressed={debugHudVisible}
+                    onClick={onToggleDebugHud}
+                  >
+                    Debug HUD: {debugHudVisible ? 'ВКЛ' : 'ВЫКЛ'}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Quit */}
+          <div className="menu-section">
+            <div className="menu-divider" />
+            <button type="button" className="menu-quit-btn" onClick={onQuit}>
+              Выйти из приложения
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
