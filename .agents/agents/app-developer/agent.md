@@ -26,6 +26,7 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 ## Контекст
 
 - Базовый контекст: `AGENTS.md`, назначенная Issue и `.agents/rules/10-architecture.md`; другие rules и engine contracts открывать только для затронутого слоя, состояния или перехода.
+- До реализации проверить назначенную Issue и `ARCHITECT RESULT` в комментариях связанных architect-gate Issues. `Implementation consequences` из такого результата обязательны для текущей задачи; постоянные contract rules брать из указанных canonical documents. Если решение не discoverable, противоречит Issue или contracts, остановить затронутую часть и запросить gate, а не угадывать.
 - Не читать документы подряд и не продолжать поиск после прояснения scope, acceptance criteria и применимых контрактов.
 
 ## Отчёт

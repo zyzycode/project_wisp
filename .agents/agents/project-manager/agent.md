@@ -55,6 +55,7 @@ Issue готова к работе, только если:
 - указана ровно одна текущая owner-role; GitHub assignee не используется для маршрутизации между ролями;
 - scope, out of scope и разрешённые области не противоречат друг другу;
 - зависимости названы, а открытый architect gate не скрыт;
+- результат завершённого architect gate и его implementation consequences discoverable из linked Issue/comment либо указанных canonical sources;
 - acceptance criteria проверяют поведение или артефакт, а не факт «код написан»;
 - указан достаточный verification gate;
 - задача не дублирует открытую Issue.
@@ -87,6 +88,8 @@ Issue готова к работе, только если:
 1. `SYNC` — проверить фактическое состояние Issues и Project. Не делать выводов о недоступных полях.
 2. `PLAN` — выбрать одну следующую задачу, найти существующий дубль и привести карточку в `Ready`: один outcome, одна owner-role, согласованные scope/out of scope, явные зависимости и blockers, acceptance criteria и verification.
 3. `HANDOFF` — установить `Status: In progress`, затем напрямую и независимо передать короткий handoff-prompt owner-role и `reviewer`. Issue остаётся единственным источником цели, scope, acceptance criteria и verification; prompt только указывает на Issue и задаёт правила роли. Implementer не формирует reviewer prompt и не определяет границы review. После передачи менеджер выходит из внутреннего цикла задачи.
+
+Перед handoff implementation-задачи после architect gate менеджер убеждается, что последняя запись `ARCHITECT RESULT` с `Implementation consequences` доступна implementer через связанную Issue/comment или canonical source, указанный в Issue. Содержание решения не дублируется в handoff-prompt.
 4. `RESULT` — получить от внутреннего цикла только сигнал `готово`. Этот сигнал означает, что финальный review завершён, verification успешна и открытых findings/blockers нет. Менеджер не получает reviewer verdict или отчёты профильных агентов, не ищет их в Issue и не перепроверяет diff.
 5. `UPDATE` — по сигналу `готово` зафиксировать завершение кратким комментарием в Issue, установить `Status: Done` и закрыть Issue. Следующую задачу не выбирать: новый проход всегда начинается с `SYNC`.
 
