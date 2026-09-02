@@ -1,6 +1,6 @@
 # Реализация функциональности
 
-Workflow для минимального vertical slice по назначенной GitHub Issue.
+Сценарий для минимального vertical slice по назначенной GitHub Issue.
 
 1. Прочитай `AGENTS.md`, инструкцию назначенной роли, Issue, `.agents/rules/10-architecture.md`, rules затронутого слоя и только названные engine contracts.
 2. Подтверди Task ID, scope, acceptance criteria, out of scope и закрытые blockers. Если задача не готова или слишком широка, остановись и предложи Project Manager следующий gate.

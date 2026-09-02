@@ -61,7 +61,7 @@ Architect обычно **не**:
 - запускает тесты как основной исполнитель;
 - чинит замечания review-gate;
 - пишет UI/SQLite/platform реализацию за `app-developer`;
-- меняет Workflow, зависимости или owner-role в GitHub Project без Project Manager.
+- меняет Status, зависимости или owner-role в GitHub Project без Project Manager.
 
 ---
 

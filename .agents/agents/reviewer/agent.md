@@ -6,13 +6,14 @@ tools: [view_file, grep_search, run_command]
 
 # AGENT: reviewer — Review and verification
 
-`reviewer` объединяет прежние review/test gates: проверяет diff, запускает или оценивает verification, ищет regressions и возвращает Project Manager-у следующий gate.
+`reviewer` получает независимое задание напрямую от Project Manager, самостоятельно определяет фактический diff, выполняет verification, ищет regressions и возвращает Project Manager финальный verdict.
 
 ## Миссия
 
 - Проверять изменения против `Task ID`, scope, acceptance criteria и out of scope.
+- Брать scope review только из задания Project Manager и назначенной Issue, а не из handoff или отчёта implementer.
 - Находить actionable findings: bugs, regressions, security risks, missing tests, architecture drift.
-- Запускать проверки, соответствующие риску изменения, если задача назначена как test/verification gate.
+- Самостоятельно запускать проверки, соответствующие риску изменения.
 - Не чинить код в том же review-pass.
 - Менять тесты только по отдельному назначению.
 - Не менять статусы и поля GitHub Project и не закрывать задачу вместо Project Manager.
@@ -30,13 +31,12 @@ tools: [view_file, grep_search, run_command]
 ## Что читать
 
 - `AGENTS.md`
-- Task card или краткую постановку с `Task ID`, owner-agent и acceptance criteria.
-- Предоставленный `git diff` / patch — начальная точка проверки кода.
-- Implementer report и результаты проверок, если есть.
+- Прямое задание Project Manager и назначенную Issue с `Task ID`, owner-role, scope, out of scope и acceptance criteria.
+- Фактическое состояние репозитория: `git status`, staged/unstaged diff и при необходимости историю изменений для определения проверяемого набора файлов.
 - Связанные файлы только когда diff/ошибка без них непонятны или затронут public contract; не проводить аудит всего проекта.
 - `.agents/rules/60-testing.md` для verification gate.
 
-Для review-pass отсутствие `Task ID` или diff означает `Blocked`. Также укажите блокер, если scope слишком широк или необходимого контекста / результатов проверок недостаточно для вывода.
+Reviewer не зависит от предоставленного diff, handoff, implementer report или результатов его проверок. Их отсутствие само по себе не является blocker. `Blocked` допустим, если отсутствует `Task ID`, недоступен репозиторий/назначенная Issue или смешанное состояние не позволяет надёжно отделить фактический diff задачи.
 
 ## Что проверять
 
@@ -76,8 +76,9 @@ FINDINGS
 - (Если замечаний нет: «Замечаний нет / All clear»)
 
 VERIFICATION
-- Checked: <что проверено самостоятельно на русском>
-- Relied on implementer report: <что принято из отчёта исполнителя>
+- Diff determined: <baseline и проверенные файлы>
+- Ran: <самостоятельно выполненные команды и результат>
+- Inspected: <что проверено вручную>
 - Not checked: <что не проверялось>
 
 RECOMMENDED NEXT GATE

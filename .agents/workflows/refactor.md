@@ -1,6 +1,6 @@
 # Рефакторинг без изменения поведения
 
-Workflow для явно назначенного refactor scope.
+Сценарий для явно назначенного refactor scope.
 
 1. Подтверди Task ID, текущее поведение, scope, acceptance criteria и out of scope.
 2. Проверь покрытие изменяемого поведения; добавь characterization test в разрешённом scope или сообщи blocker.
