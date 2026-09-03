@@ -12,12 +12,16 @@
 |---|---|
 | [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md) | Модель личности: потребности (`Needs`), отношения (`Relationship`), оси характера (`PersonalityAxis`), романтика (`IntimacyState`), эмоции. |
 | [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md) | Семантические намерения: *что* персонаж решил сделать (`wander`, `play`, `sleep`, `drag`, `land`, `react_happy`). |
-| [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md) | Автономия и физика: локомоция (сидеть/лежать/бег/прыжки), баллистика бросков, слежение зрачками, цепочки активностей, Zoomies. |
+| [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md) | P0–P5, P4 Utility eligibility/scoring/arbitration, Application cadence, trace и safety. |
+| [`ACTIVITY_ENGINE.md`](./ACTIVITY_ENGINE.md) | Activity definitions, выбор внутри resolved intent, lifecycle, chains, guards, cooldown и repetition. |
+| [`MOTION_ENGINE.md`](./MOTION_ENGINE.md) | Drag/throw/fall/collision/surfaces, position authority, Main/Application orchestration и typed IPC. |
+| [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md) | Gaze, cursor proximity/freshness и normalized environment signals. |
 | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md) | Визуальные намерения: `AnimationIntent`, FSM анимаций, приоритеты, прерывания, тайминги клипов. |
 | [`RENDER_ENGINE.md`](./RENDER_ENGINE.md) | Визуализация: схема `manifest.json`, слои (`RenderSlot`), смещения `anchors`/`pivot`, fallback, презентационный DTO. |
 | [`UI_SPEC.md`](./UI_SPEC.md) | UI/Renderer boundaries: presentation state, typed user intents, local UI state, cleanup и privacy. |
 | [`MEMORY_ENGINE.md`](./MEMORY_ENGINE.md) | Оффлайн-память: сообщения, факты пользователя, эпизодическая память, JSON-снапшоты состояния. |
 | [`AI_PROVIDER_CONTRACT.md`](./AI_PROVIDER_CONTRACT.md) | AI-диалог: контракт `IAIProvider`, DTO реплик и Suggested Intent на основе `CharacterSnapshot`. |
+| [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md) | Legacy compatibility index; перенаправляет старые headings к authoritative contracts и не содержит определений. |
 
 ---
 
@@ -25,8 +29,12 @@
 
 | Общее определение | Единственный authoritative contract | Consumer boundary |
 |---|---|---|
-| Словарь и синтез `SynthesizedEmotionalTone` | [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения) | Animation, Shimeji и Render только потребляют готовый tone и не повторяют union/формулы. |
-| Семантика и пороги `sleep` / `wake`; отличие `quiet` | [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#21-каноническая-семантика-сна-и-пробуждения) | Behavior catalog сохраняет semantic names; Shimeji исполняет resolved behavior без повторной проверки thresholds. |
+| Needs, tone, sleep/wake thresholds и quiet semantics | [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md) | Autonomy и Activity потребляют готовый Character snapshot/gates без локальных thresholds. |
+| Public `BehaviorIntent` DTO и kinds | [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#форма-intent) | Provider mapper, Autonomy и Activity не расширяют public catalog локально. |
+| Utility scoring и P0–P5 | [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md) | Character Engine исполняет policy; остальные движки только соблюдают resolved order. |
+| Activity lifecycle, cooldown и repetition | [`ACTIVITY_ENGINE.md`](./ACTIVITY_ENGINE.md) | Behavior Brain/Runner не принимают semantic решения. |
+| Physics, support и position orchestration | [`MOTION_ENGINE.md`](./MOTION_ENGINE.md) | Renderer и Perception не владеют world position. |
+| Environment, cursor и gaze signals | [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md) | Motion/Behavior используют normalized observations без OS discovery. |
 | Visual lifecycle `sleep_start` / `sleep_loop` / `wake_up` | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md#витальный-сон-и-пробуждение) | Render отображает resolved presentation и не принимает sleep/wake decisions. |
 
 `sleep`, `quiet` и `wake` — semantic behavior terms. `sleep_start`, `sleep_loop` и `wake_up` — animation-only presentation terms; совпадение слов не переносит ownership между Character и Animation engines.
@@ -45,19 +53,24 @@ flowchart TD
     end
 
     subgraph Mind["1. Психо-эмоциональный слой"]
-        CE["CHARACTER_ENGINE.md\n(Needs, Mood, gating + Utility policy)"]
+        CE["CHARACTER_ENGINE.md\n(Needs, tone, gating owner)"]
+        AU["AUTONOMY_ENGINE.md\n(P0-P5, P4 Utility policy)"]
         Mem["MEMORY_ENGINE.md\n(Факты, История диалогов)"]
         Candidate["Candidate BehaviorIntent"]
         Resolved["Resolved BehaviorIntent"]
     end
 
-    subgraph Motion["2. Поведение и Автономия"]
+    subgraph Behavior["2. Activity и Perception"]
         Brain["Behavior Brain\n(Activity selection)"]
         Runner["Activity Runner\n(Activity lifecycle)"]
+        Perception["PERCEPTION_ENGINE.md\n(Gaze, cursor, environment)"]
+    end
+
+    subgraph Motion["3. Motion"]
         Physics["Motion Engine\n(Forced position)"]
     end
 
-    subgraph Visual["3. Визуальный пайплайн"]
+    subgraph Visual["4. Визуальный пайплайн"]
         AE["ANIMATION_ENGINE.md\n(AnimationIntent, FSM клипов)"]
         RE["RENDER_ENGINE.md\n(Слои, смещения Anchors, манифест)"]
         UI["UI_SPEC.md\n(UI / Renderer contract)"]
@@ -70,6 +83,7 @@ flowchart TD
     Tick -->|autonomy opportunity + candidate set| Mapper
     Mapper --> Candidate
     Candidate -->|gating / acceptance| CE
+    AU -->|P4 policy owned by CE| CE
     CE --> Resolved
     UserEvents -->|стимулы поглаживания| CE
     UserEvents -->|forced physical fact| Physics
@@ -79,8 +93,10 @@ flowchart TD
     Resolved --> Brain
     CE -->|immutable snapshot| Brain
     Brain -->|selected Activity| Runner
+    Perception -->|fresh normalized signal| Brain
+    Perception -->|support observation| Physics
 
-    %% Shimeji -> Визуализация
+    %% Activity/Motion -> Визуализация
     Runner -->|AnimationIntent| AE
     Physics -->|MotionEvent| AE
     Runner -->|voluntary locomotion| Physics
@@ -91,7 +107,7 @@ flowchart TD
     Physics -.->|Application mapper -> StimulusDto| CE
 ```
 
-Единственный порядок behavior decision: boundary input → candidate `BehaviorIntent` → Character Engine gating → resolved `BehaviorIntent` → Activity selection → Activity execution → `AnimationIntent`. Forced physical facts не являются behavior decision: Motion Engine применяет их независимо, отменяет Activity и направляет `MotionEvent` в тот же Animation FSM. Подробная ownership-матрица — в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
+Единственный порядок behavior decision: boundary input → candidate `BehaviorIntent` → Character Engine gating/P4 Utility → resolved `BehaviorIntent` → Activity selection → Activity execution → `AnimationIntent`. Application сериализует cadence и boundary normalization. Forced physical facts не являются behavior decision: Motion Engine применяет их независимо, отменяет Activity и направляет `MotionEvent` в тот же Animation FSM. Подробная ownership-матрица — в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
 
 ---
 
@@ -100,10 +116,13 @@ flowchart TD
 | Модуль (Движок) | Входящие зависимости (От кого получает данные) | Исходящие данные (Кому передаёт) | Контракт обмена (DTO / Events) |
 |---|---|---|---|
 | **`AI_PROVIDER`** | `CharacterSnapshot` (из Character Engine) | Реплика + Suggested Behavior | `ProviderResponseDto` → `ProviderResponseIntentMapper` |
-| **`CHARACTER_ENGINE`** | Candidate `BehaviorIntent`/P4 candidate set, внешние стимулы и autonomy opportunities | Один resolved `BehaviorIntent`, текущее эмоциональное состояние | `BehaviorIntent`, `CharacterState`, `Needs`, `StimulusDto`; Utility policy остаётся внутренней Domain strategy |
+| **`CHARACTER_ENGINE`** | Candidate `BehaviorIntent`/P4 set, внешние stimuli и Application opportunities | Один resolved `BehaviorIntent`, Character state/tone | `BehaviorIntent`, `CharacterState`, `Needs`, `StimulusDto` |
 | **`BEHAVIOR_INTENTS`** | Boundary suggestion/event через Application mapper | Candidate → resolved semantic decision | `BehaviorIntent` (`wander`, `play`, `sleep`, `drag`, `land`...) |
-| **`SHIMEJI_SPEC`** | Resolved `BehaviorIntent`, `CharacterSnapshot`, environment/user physical events | Selected Activity, `AnimationIntent`, `MotionEvent`, gaze и feedback | `AnimationIntent`, `MotionEvent`, `GazeOffsetDto`, `StimulusDto` |
-| **`ANIMATION_ENGINE`** | `AnimationIntent` (из Behavior/Shimeji) | Презентационный стейт клипа | `ActiveAnimationState`, приоритеты, прерывания |
-| **`RENDER_ENGINE`** | `ActiveAnimationState`, `GazeOffsetDto`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderPresentationState`, `anchors[face]`, `pivot` |
+| **`AUTONOMY_ENGINE`** | Application-owned opportunity/snapshot и finite P4 candidate set | Eligibility, score trace, один winner через Character Engine | Internal pure Utility policy; public intent shape не расширяется |
+| **`ACTIVITY_ENGINE`** | Resolved `BehaviorIntent`, immutable Character/environment/history context | Selected Activity, `AnimationIntent`, voluntary locomotion, feedback | `ActivityDefinition`, `runId`, `CooldownEntry`, bounded repetition history |
+| **`MOTION_ENGINE`** | Drag/support input, normalized environment, fixed Application step | Authoritative position, `MotionEvent`, presentation snapshot | `MotionState`, `MotionEvent`, `PetPositionPort`, motion IPC DTO |
+| **`PERCEPTION_ENGINE`** | Cursor/environment observations и presentation geometry | `PupilOffset`, fresh proximity signal, normalized environment snapshot | `GazeState`, `CursorProximitySignal`, `EnvironmentSnapshot` |
+| **`ANIMATION_ENGINE`** | `AnimationIntent` из Activity или direct behavior; `MotionEvent` | Презентационный стейт клипа | `ActiveAnimationState`, visual priorities, transitions |
+| **`RENDER_ENGINE`** | `ActiveAnimationState`, `PupilOffset`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderPresentationState`, `anchors[face]`, `pivot` |
 | **`UI_SPEC`** | Presentation DTO/capabilities из Main и `RenderPresentationState` | Semantic user intents через typed Preload boundary | Local UI state + существующие serializable IPC DTO |
 | **`MEMORY_ENGINE`** | Сообщения чата, `CharacterSnapshot`, факты | Исторический контекст для AI и восстановления | `EpisodeDto`, `UserFactDto`, `MemoryQuery` |

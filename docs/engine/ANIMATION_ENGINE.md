@@ -33,6 +33,22 @@ Forced physical fact -> Motion Engine -> MotionEvent -> same Animation Controlle
 
 Animation Engine не принимает решений о поведении персонажа и не читает raw provider DTO. Activity Runner получает resolved `BehaviorIntent`, выбранную Activity и актуальный эмоциональный тон через Application boundary. Forced `MotionEvent` обходит Activity selection, потому что фиксирует физический факт, но входит в тот же Animation Controller и не создаёт второй behavior decision. Каноническое распределение владельцев определено в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
 
+### MotionEvent boundary
+
+Forced motion использует тот же Animation Controller. Эти states разрешаются из `MotionEvent` и не становятся вторым `BehaviorIntent`:
+
+| Motion event | FSM request/state | Visual policy |
+|---|---|---|
+| `drag_started` | `START_DRAG` / `dragged` | `critical`, non-interruptible |
+| `airborne_started: throw_release/support_lost/voluntary_jump` | `RELEASE_DRAG` или `FALL` → `fall` | resolved не ниже `high` |
+| `landed: soft_landing` | `LAND` / `land` → `settle` | `high` |
+| `landed: stumble` | `stumble` → `settle` | `high`, bounded |
+| `landed: crash_landing` | `crash_landing` → `recover` → `settle` | `high`, bounded |
+
+`falling`/`fall` и `landing`/`land` — compatibility aliases на Controller boundary. `stumble`, `crash_landing` и `recover` — motion-resolved visual kinds/states того же FSM, а не public behavior kinds. Combined states наподобие `walk_look_left` запрещены.
+
+Physical position authority и момент возврата voluntary locomotion определены в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md#8-forced-motion-и-position-authority); Animation FSM не владеет world position.
+
 ## Форма intent
 
 `SynthesizedEmotionalTone` используется ровно в форме, определённой в authoritative разделе [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения); Animation Engine не расширяет и не переопределяет его словарь.

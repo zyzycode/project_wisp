@@ -130,7 +130,7 @@ Application связывает части системы в пользовате
 
 ### 8.3. Domain Layer (Main / Pure TypeScript)
 
-Domain описывает самого персонажа: потребности, отношения, настроение и правила поведения. Семантическое намерение выражает смысл действия; визуальное представление этого смысла рассматривается следующим этапом. Модель состояния находится в [Character Engine](docs/engine/CHARACTER_ENGINE.md), намерения — в [BehaviorIntent](docs/engine/BEHAVIOR_INTENTS.md).
+Domain описывает самого персонажа: потребности, отношения, настроение и правила поведения. Семантическое намерение выражает смысл действия; визуальное представление этого смысла рассматривается следующим этапом. Модель состояния находится в [Character Engine](docs/engine/CHARACTER_ENGINE.md), намерения — в [BehaviorIntent](docs/engine/BEHAVIOR_INTENTS.md), а порядок автономного выбора — в [Autonomy Engine](docs/engine/AUTONOMY_ENGINE.md).
 
 ### 8.4. Ports & Adapters (Infrastructure)
 
@@ -146,7 +146,7 @@ Domain описывает самого персонажа: потребност�
 
 Разделение удобно на примере сна: решение отдыхать, переход анимации и выбор доступных кадров относятся к разным частям системы. Точные условия и взаимодействия определяются контрактами, а не этим примером.
 
-Связанные источники: [Character Engine](docs/engine/CHARACTER_ENGINE.md), [BehaviorIntent](docs/engine/BEHAVIOR_INTENTS.md), [Shimeji](docs/engine/SHIMEJI_SPEC.md), [Animation Engine](docs/engine/ANIMATION_ENGINE.md) и [Render Engine](docs/engine/RENDER_ENGINE.md).
+Связанные источники: [Character Engine](docs/engine/CHARACTER_ENGINE.md), [BehaviorIntent](docs/engine/BEHAVIOR_INTENTS.md), [Autonomy Engine](docs/engine/AUTONOMY_ENGINE.md), [Activity Engine](docs/engine/ACTIVITY_ENGINE.md), [Motion Engine](docs/engine/MOTION_ENGINE.md), [Perception Engine](docs/engine/PERCEPTION_ENGINE.md), [Animation Engine](docs/engine/ANIMATION_ENGINE.md) и [Render Engine](docs/engine/RENDER_ENGINE.md). Старый путь [SHIMEJI_SPEC.md](docs/engine/SHIMEJI_SPEC.md) сохранён только как compatibility index.
 
 ## 10. Абстракция AI и внешний backend-контракт
 
@@ -158,7 +158,7 @@ Domain описывает самого персонажа: потребност�
 
 Документы в `docs/engine/` раскрывают отдельные предметные области: состояние персонажа, поведение, движение, анимации, визуализацию, память и AI. Их удобно читать по вопросу, который требуется решить, а не подряд.
 
-Выбрать источник помогает [общий навигатор](docs/README.md); локальный указатель находится в [docs/engine/README.md](docs/engine/README.md). Наличие ссылки не подтверждает готовность спецификации: `UI_SPEC.md` сейчас очищен и ещё не задаёт контракт интерфейса. Порядок изменения контрактов установлен [архитектурными правилами](.agents/rules/10-architecture.md).
+Выбрать источник помогает [общий навигатор](docs/README.md); локальный указатель находится в [docs/engine/README.md](docs/engine/README.md), причины решений — в [ADR index](docs/adr/README.md). Наличие ссылки не подтверждает готовность спецификации: `UI_SPEC.md` сейчас очищен и ещё не задаёт контракт интерфейса. Порядок изменения контрактов установлен [архитектурными правилами](.agents/rules/10-architecture.md).
 
 ## 12. Хранилище данных и пути (SQLite & Storage)
 

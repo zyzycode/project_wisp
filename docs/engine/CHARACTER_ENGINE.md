@@ -24,7 +24,15 @@ Autonomy opportunity -> normalized candidate set -----------------+
   -> AnimationIntent -> Animation Controller -> Render Engine
 ```
 
-Character Engine — единственный owner semantic gating, P4 Utility arbitration и resolved behavior, но не выбирает Activity, physics outcome, animation clip или frame. Utility policy является чистой внутренней Domain strategy; её inputs, cadence и safety order закреплены в [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md#11-auto-a01-utility-ai-и-state-orchestration). `Candidate` и `Resolved` — стадии одной формы `BehaviorIntent`, не новые DTO. Полная ownership-матрица и forced-motion исключение находятся в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
+Character Engine — единственный owner semantic gating, P4 Utility arbitration и resolved behavior, но не выбирает Activity, physics outcome, animation clip или frame. Utility policy является чистой внутренней Domain strategy; её inputs, cadence и safety order закреплены в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md). `Candidate` и `Resolved` — стадии одной формы `BehaviorIntent`, не новые DTO. Полная ownership-матрица и forced-motion исключение находятся в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
+
+Application feedback mapper передаёт Character Engine существующую canonical форму без второго DTO:
+
+```typescript
+export type StimulusDto = StimulusEvent;
+```
+
+Lifecycle feedback events и правила дедупликации определены в [`ACTIVITY_ENGINE.md`](./ACTIVITY_ENGINE.md#13-feedback-boundary); только Character Engine применяет stimulus к Needs/Relationship и заново синтезирует tone.
 
 ---
 
