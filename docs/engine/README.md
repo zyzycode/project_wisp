@@ -2,7 +2,7 @@
 
 `docs/engine/` является source of truth для engine contracts Project Wisp. Эти документы фиксируют границы между provider output, поведением персонажа, выбором анимации, рендером и памятью до начала implementation-задач.
 
-`UI_SPEC.md` принят как архитектурный контракт UI/Renderer в `DOC-A04`.
+Все authoritative contracts в реестре приняты; незавершённых architect gates среди них нет. Статус product implementation ведётся отдельно и не делает принятый contract черновиком. `UI_SPEC.md` принят как архитектурный контракт UI/Renderer в `DOC-A04`; `SHIMEJI_SPEC.md` сохранён только как compatibility index.
 
 ---
 
@@ -17,7 +17,7 @@
 | [`MOTION_ENGINE.md`](./MOTION_ENGINE.md) | Drag/throw/fall/collision/surfaces, position authority, Main/Application orchestration и typed IPC. |
 | [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md) | Gaze, cursor proximity/freshness и normalized environment signals. |
 | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md) | Визуальные намерения: `AnimationIntent`, FSM анимаций, приоритеты, прерывания, тайминги клипов. |
-| [`RENDER_ENGINE.md`](./RENDER_ENGINE.md) | Визуализация: схема `manifest.json`, слои (`RenderSlot`), смещения `anchors`/`pivot`, fallback, презентационный DTO. |
+| [`RENDER_ENGINE.md`](./RENDER_ENGINE.md) | Визуализация: схема `manifest.json`, слои (`RenderLayerId`), смещения `anchors`/`pivot`, fallback, presentation projection. |
 | [`UI_SPEC.md`](./UI_SPEC.md) | UI/Renderer boundaries: presentation state, typed user intents, local UI state, cleanup и privacy. |
 | [`MEMORY_ENGINE.md`](./MEMORY_ENGINE.md) | Оффлайн-память: сообщения, факты пользователя, эпизодическая память, JSON-снапшоты состояния. |
 | [`AI_PROVIDER_CONTRACT.md`](./AI_PROVIDER_CONTRACT.md) | AI-диалог: контракт `IAIProvider`, DTO реплик и Suggested Intent на основе `CharacterSnapshot`. |
@@ -39,6 +39,8 @@
 
 `sleep`, `quiet` и `wake` — semantic behavior terms. `sleep_start`, `sleep_loop` и `wake_up` — animation-only presentation terms; совпадение слов не переносит ownership между Character и Animation engines.
 
+`RenderPresentationState` ниже — conceptual имя внутренней presentation projection Animation Player → Renderer, а не определённый этим индексом public DTO. Его публичная форма потребует отдельного contract review.
+
 ---
 
 ## 3. Граф зависимостей и поток данных между движками
@@ -49,6 +51,7 @@ flowchart TD
         AI["AI_PROVIDER_CONTRACT.md\n(AI Реплика + Suggested Intent)"]
         UserEvents["Пользовательский ввод\n(Клик, Перетаскивание, Меню)"]
         Tick["Таймер времени\n(Пассивный тик потребностей)"]
+        Opportunity["Application opportunity\n(Событие / configured pulse)"]
         Mapper["Application mapper\n(Boundary normalization)"]
     end
 
@@ -78,9 +81,11 @@ flowchart TD
 
     %% Потоки стимулов
     Tick -->|деградация needs| CE
-    AI -->|provider hint| Mapper
+    CE -->|Application mapper -> CharacterSnapshot| AI
+    Mem -->|Application -> bounded recentContext| AI
+    AI -->|AIProviderResponse| Mapper
     UserEvents -->|semantic event| Mapper
-    Tick -->|autonomy opportunity + candidate set| Mapper
+    Opportunity -->|opportunity + candidate set| Mapper
     Mapper --> Candidate
     Candidate -->|gating / acceptance| CE
     AU -->|P4 policy owned by CE| CE
@@ -89,7 +94,7 @@ flowchart TD
     UserEvents -->|forced physical fact| Physics
 
     %% Психология -> Выбор поведения
-    Mem -->|контекст фактов| CE
+    Mem -->|Application restore -> CharacterState| CE
     Resolved --> Brain
     CE -->|immutable snapshot| Brain
     Brain -->|selected Activity| Runner
@@ -115,14 +120,14 @@ flowchart TD
 
 | Модуль (Движок) | Входящие зависимости (От кого получает данные) | Исходящие данные (Кому передаёт) | Контракт обмена (DTO / Events) |
 |---|---|---|---|
-| **`AI_PROVIDER`** | `CharacterSnapshot` (из Character Engine) | Реплика + Suggested Behavior | `ProviderResponseDto` → `ProviderResponseIntentMapper` |
+| **`AI_PROVIDER`** | `CharacterSnapshot` и bounded `recentContext` через Application | Реплика + Suggested Behavior | `AIProviderResponse` → `ProviderResponseIntentMapper` |
 | **`CHARACTER_ENGINE`** | Candidate `BehaviorIntent`/P4 set, внешние stimuli и Application opportunities | Один resolved `BehaviorIntent`, Character state/tone | `BehaviorIntent`, `CharacterState`, `Needs`, `StimulusDto` |
 | **`BEHAVIOR_INTENTS`** | Boundary suggestion/event через Application mapper | Candidate → resolved semantic decision | `BehaviorIntent` (`wander`, `play`, `sleep`, `drag`, `land`...) |
 | **`AUTONOMY_ENGINE`** | Application-owned opportunity/snapshot и finite P4 candidate set | Eligibility, score trace, один winner через Character Engine | Internal pure Utility policy; public intent shape не расширяется |
 | **`ACTIVITY_ENGINE`** | Resolved `BehaviorIntent`, immutable Character/environment/history context | Selected Activity, `AnimationIntent`, voluntary locomotion, feedback | `ActivityDefinition`, `runId`, `CooldownEntry`, bounded repetition history |
 | **`MOTION_ENGINE`** | Drag/support input, normalized environment, fixed Application step | Authoritative position, `MotionEvent`, presentation snapshot | `MotionState`, `MotionEvent`, `PetPositionPort`, motion IPC DTO |
 | **`PERCEPTION_ENGINE`** | Cursor/environment observations и presentation geometry | `PupilOffset`, fresh proximity signal, normalized environment snapshot | `GazeState`, `CursorProximitySignal`, `EnvironmentSnapshot` |
-| **`ANIMATION_ENGINE`** | `AnimationIntent` из Activity или direct behavior; `MotionEvent` | Презентационный стейт клипа | `ActiveAnimationState`, visual priorities, transitions |
-| **`RENDER_ENGINE`** | `ActiveAnimationState`, `PupilOffset`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderPresentationState`, `anchors[face]`, `pivot` |
+| **`ANIMATION_ENGINE`** | `AnimationIntent` из Activity или direct behavior; `MotionEvent` | Conceptual `RenderPresentationState` после Animation Player | `AnimationIntent`, `MotionEvent`, visual priorities и transitions |
+| **`RENDER_ENGINE`** | Conceptual `RenderPresentationState`, `PupilOffset`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderLayerId`, `VisibleRenderLayerDef`, `anchors[face]`, `pivot` |
 | **`UI_SPEC`** | Presentation DTO/capabilities из Main и `RenderPresentationState` | Semantic user intents через typed Preload boundary | Local UI state + существующие serializable IPC DTO |
-| **`MEMORY_ENGINE`** | Сообщения чата, `CharacterSnapshot`, факты | Исторический контекст для AI и восстановления | `EpisodeDto`, `UserFactDto`, `MemoryQuery` |
+| **`MEMORY_ENGINE`** | `ChatMessage`, `UserFactDraft`, `PersistedCharacterStateSnapshot` через Application | Bounded `recentContext`, `UserFact`, восстановленный state snapshot | `ChatMessage`, `UserFact`, `PersistedCharacterStateSnapshot` |
