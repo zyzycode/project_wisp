@@ -6,7 +6,7 @@
 
 ## Владение
 
-- **Domain Layer (`src/domain/models/`, `src/domain/behavior/`):** полностью владеет структурой `CharacterState`, расчетом метаболизма потребностей (`Needs`), шкал отношений (`Relationship`), осей личности (`Personality`), динамическим синтезом эмоционального тона, гейтингом романтики (`IntimacyState`) и semantic acceptance входного `BehaviorIntent`.
+- **Domain Layer (`src/domain/models/`, `src/domain/behavior/`):** полностью владеет структурой `CharacterState`, расчетом метаболизма потребностей (`Needs`), шкал отношений (`Relationship`), осей личности (`Personality`), динамическим синтезом эмоционального тона, гейтингом романтики (`IntimacyState`), semantic acceptance и Utility arbitration P4 autonomous candidates.
 - **Application Layer:** нормализует provider/user/timer/system input в candidate `BehaviorIntent`, передает внешние стимулы в Character Engine и формирует актуальный `CharacterSnapshot`; mapper не принимает behavior decision.
 - **Renderer / UI:** получает presentation-ready срез состояния через IPC (эмоциональный статус, уровни шкал для карточки питомца, доступные визуальные темы), но не вычисляет формулы и не меняет состояние напрямую.
 - **AI Provider:** получает сериализованный `CharacterSnapshot` и контекстные подсказки из пресета, но не имеет прямого доступа к мутабельным объектам домена.
@@ -14,17 +14,17 @@
 ## Поток ответственности
 
 ```text
-Provider hint / user, timer or system event
-  -> Application mapper
-  -> Candidate BehaviorIntent
-  -> Character Engine (gating / acceptance)
+Provider hint / user, timer or system event -> Application mapper
+Autonomy opportunity -> normalized candidate set -----------------+
+  -> Candidate BehaviorIntent(s)
+  -> Character Engine (gating / Utility arbitration)
   -> Resolved BehaviorIntent
   -> Behavior Brain (Activity selection, если требуется)
   -> Activity Runner
   -> AnimationIntent -> Animation Controller -> Render Engine
 ```
 
-Character Engine — единственный owner semantic gating и resolved behavior, но не выбирает Activity, physics outcome, animation clip или frame. `Candidate` и `Resolved` — статусы одной формы `BehaviorIntent`, не новые DTO. Полная ownership-матрица и forced-motion исключение находятся в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности); связь с Activity и Motion Engine — в [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md#1-границы-и-поток-данных).
+Character Engine — единственный owner semantic gating, P4 Utility arbitration и resolved behavior, но не выбирает Activity, physics outcome, animation clip или frame. Utility policy является чистой внутренней Domain strategy; её inputs, cadence и safety order закреплены в [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md#11-auto-a01-utility-ai-и-state-orchestration). `Candidate` и `Resolved` — стадии одной формы `BehaviorIntent`, не новые DTO. Полная ownership-матрица и forced-motion исключение находятся в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
 
 ---
 

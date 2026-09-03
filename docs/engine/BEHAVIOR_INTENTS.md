@@ -30,7 +30,7 @@ flowchart LR
 |---|---|---|
 | Suggested intent | Источник; provider только предлагает hint | Hint не является решением и не обходит локальные правила. |
 | Нормализация | Application mapper, включая `ProviderResponseIntentMapper` | Создаёт candidate `BehaviorIntent` из boundary DTO/event; не принимает behavior decision. |
-| Gating / acceptance | Character Engine | Применяет `Needs`, `Relationship`, `Personality`, cooldowns, quiet/sleep и приоритет источника; принимает, отклоняет или откладывает candidate. |
+| Gating / acceptance | Character Engine | Применяет `Needs`, `Relationship`, `Personality`, cooldowns, quiet/sleep и приоритет источника; для P4 opportunity сравнивает нормализованный candidate set через Utility policy; принимает, отклоняет или откладывает candidate. |
 | Resolved behavior | Character Engine | Принятый `BehaviorIntent` становится единственным semantic решением. |
 | Activity selection | Behavior Brain | Для Activity-backed behavior выбирает eligible Activity в рамках resolved `kind`; не переопределяет и не повторно принимает behavior decision. |
 | Activity lifecycle | Activity Runner | Исполняет одну Activity, выпускает её `AnimationIntent` и voluntary locomotion command; не выбирает behavior или физический исход. |
@@ -54,6 +54,8 @@ export interface BehaviorIntent {
 ```
 
 `priority` здесь является входной подсказкой. Character Engine может повысить, понизить, отклонить или отложить intent; исключение — уже произошедший P0 forced physical fact, который semantic gating не отменяет.
+
+Utility AI не вводит новый `BehaviorIntentKind`: Application формирует конечный набор обычных candidates, а Character Engine возвращает не более одного resolved intent. Provider candidate и timer/autonomy candidate проходят одну boundary; provider никогда не становится вторым decision-maker.
 
 ## Начальный каталог
 

@@ -5,8 +5,9 @@ Source of truth для Phase 14: Activity, drag/throw physics, gaze/cursor react
 ## 1. Границы и поток данных
 
 ```text
-Provider/user/timer event -> Application mapper -> Candidate BehaviorIntent
-  -> Character Engine gate -> Resolved BehaviorIntent
+Provider/user/system event -> Application mapper -> Candidate BehaviorIntent
+Autonomy opportunity -> normalized candidate set ---------------------+
+  -> Character Engine gate + Utility policy -> Resolved BehaviorIntent
   -> Behavior Brain -> Activity Runner -> AnimationIntent -> FSM -> Render
                                       -> voluntary locomotion ----------+
 Drag/release/support -> Motion Engine -> MotionEvent -> same FSM -------+-> world transform
@@ -23,7 +24,7 @@ Motion/Activity/user event -> ShimejiFeedbackEvent -> Application mapper -> Stim
 | Animation FSM | pose/locomotion transitions и visual interrupt policy | behavior choice |
 | Motion Engine | forced position при drag/fall/collision | autonomous choice |
 | Gaze Engine | pupil presentation и proximity signal | Activity/locomotion launch |
-| Character Engine | Needs, Relationship, Personality, Intimacy, tone, stimulus reduction, semantic gating/resolved behavior | Activity selection, physics/render |
+| Character Engine | Needs, Relationship, Personality, Intimacy, tone, stimulus reduction, semantic gating и Utility arbitration одного resolved behavior | Activity selection, physics/render |
 | Application/adapters | boundary normalization, snapshots, clocks, orchestration, OS data | behavior, Activity или physics decisions |
 
 В forced-motion run ровно один position owner — Motion Engine. Forced physical facts обходят semantic/Activity selection, потому что не являются выбором поведения: они отменяют Activity и входят через `MotionEvent` в тот же FSM. Application возвращает authority voluntary locomotion только когда physics уже `grounded` **и** landing/recover FSM вошёл в стабильный `settle`; Renderer не владеет world-position. Каноническая ownership-матрица находится в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
@@ -377,3 +378,41 @@ body + face/expression + gaze + props/effects + overlays + scale/flip + world pl
 No Cartesian states (`walk_look_left`, `sit_look_left`). `RenderPresentationState.layers`, `proceduralBlush`, `rootPivot`, `transform.flipX/scale` remain Render authority; missing assets cannot block Activity/physics/sleep completion.
 
 Motion/Activity/Gaze/Character math contains no Electron/BrowserWindow/screen/IPC, React/DOM/CSS/devicePixelRatio, Node timers/filesystem, OS/window handles, asset paths/frames, provider/backend DTO, mutable CharacterState or direct Needs/Relationship mutations. Platform data enters only normalized immutable DTO through Application/adapters.
+
+## 11. AUTO-A01: Utility AI и state orchestration
+
+### 11.1. Dependency Review: XState
+
+**Verdict: rejected для текущего autonomy boundary.** Проверена актуальная на 2026-09-02 версия `xstate@5.32.6`: MIT, zero runtime dependencies, ESM/CJS exports, `sideEffects: false`, 132 файла и около 2.29 MB unpacked. Пакет не устанавливается и не входит в разрешённый runtime.
+
+| Критерий | Решение |
+|---|---|
+| Необходимость | TypeScript discriminated unions, pure reducers и существующие Activity/Animation FSM покрывают lifecycle; Utility scoring не требует statecharts/actors. |
+| Пропорциональность | Actor runtime, effects и orchestration шире задачи и создают второй lifecycle owner рядом с текущими FSM. |
+| Operational surface | Нулевые transitive dependencies благоприятны, но остаются новый runtime, bundle/packaging surface и upgrade-риск семантики/типов minor-релизов. |
+| Изоляция | Даже при будущем пересмотре XState допустим только как заменяемая Application orchestration detail; не в Domain, Renderer, shared DTO или provider contract. |
+| Альтернатива | Чистая TypeScript Utility policy + текущие Activity Runner и один Animation FSM меньше, детерминированы и тестируются без actor clock. |
+
+Повторный review допустим только при двух подтверждённых сценариях, которые требуют hierarchical/parallel statecharts, actor supervision или model-based path traversal и не выражаются текущими FSM без дублирования. XState никогда не становится owner Needs, Utility score, physics, animation frames или provider decisions.
+
+### 11.2. Единственный semantic decision owner
+
+Character Engine остаётся единственным owner semantic gating и resolved `BehaviorIntent`; Utility AI — его чистая внутренняя policy для P4 autonomous opportunities, а не новый engine/actor. Application по явному opportunity передаёт immutable snapshot и конечный набор нормализованных candidates. Policy применяет hard gates, вычисляет score и возвращает не более одного resolved intent. Behavior Brain после этого выбирает Activity только внутри resolved `kind`; Activity Runner, Motion и Animation FSM не пересчитывают utility.
+
+Допустимые входы: `Needs`, `SynthesizedEmotionalTone`, `Personality`, relationship/intimacy gates; quiet/sleep state; активная Activity и её rank; bounded repetition/cooldown history; нормализованный `EnvironmentSnapshot`; свежие reactive signals; candidate metadata (`source`, `priority`, `requestId`). Raw provider response, memory text, DOM/Electron/OS handles, asset/frame data и wall-clock reads запрещены. Provider/будущий LLM лишь добавляет candidate через Application mapper; отсутствие provider-а не отключает локальную автономность и не меняет arbitration.
+
+```text
+eligible(c) = catalog ∧ safety ∧ quiet/sleep ∧ cooldown ∧ environment
+U(c) = clamp(base × need × tone × personality × environment × repetition, 0, 1)
+resolved = highest U among eligible; stable catalog order breaks ties; none -> idle
+```
+
+Все коэффициенты — versioned tuning data. Одинаковые snapshot, candidate order, history, config и decision sequence дают одинаковые scores/result; `Math.random`, `Date.now`, скрытые timers и render FPS запрещены. Если вариативности недостаточно, разрешён только явно переданный seeded PRNG; seed входит в test fixture/result trace. Diagnostic trace содержит opportunity/sequence, eligibility reasons, scores и winner, но не становится IPC или persisted memory contract.
+
+### 11.3. Cadence, safety и coexistence
+
+Application владеет monotonic clock и создаёт decision opportunity: после завершения/отмены Activity, при пересечении semantic need threshold, изменении quiet/settings, поступлении candidate или на редком configured autonomy pulse. Domain получает `opportunityAtMs` аргументом; он не планирует таймер. Opportunities сериализуются возрастающим decision sequence, а накопленные до transaction inputs оцениваются одним snapshot. Pulse не привязан к physics/animation/render tick, не прерывает peer P4 Activity и не вызывает provider. Для shutdown/window destruction новые opportunities не создаются.
+
+Порядок остаётся единым: P0 forced physics → P1 direct user input/его causal continuation → P2 deterministic critical sleep/wake → P3 allowed reactive event → P4 Utility choice → P5 ambient. P0 обходит arbitration и отменяет Activity; P1/P2 проходят существующий Character gate и не конкурируют по utility, но gate не отменяет уже случившийся drag/forced physical fact. Semantic sleep подавляет P3–P5, пока разрешённый `wake`/drag не завершит lifecycle. `quiet` не означает sleep, разрешает P5 non-verbal idle и подавляет unsolicited provider/autonomous speech, play и locomotion; direct user input всё равно проходит общий gate.
+
+Существующие Activity Runner и Animation FSM не мигрируют и не получают параллельную state machine. Новые mechanics добавляются как catalog candidates/Activities с hard gates, scoring features, cooldown/repetition и feedback `StimulusDto`; новый public `BehaviorIntentKind`, IPC/port или изменение sleep thresholds требует отдельного Architect review.

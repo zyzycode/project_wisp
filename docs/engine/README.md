@@ -45,7 +45,7 @@ flowchart TD
     end
 
     subgraph Mind["1. Психо-эмоциональный слой"]
-        CE["CHARACTER_ENGINE.md\n(Needs, Скука, Отношения, Mood)"]
+        CE["CHARACTER_ENGINE.md\n(Needs, Mood, gating + Utility policy)"]
         Mem["MEMORY_ENGINE.md\n(Факты, История диалогов)"]
         Candidate["Candidate BehaviorIntent"]
         Resolved["Resolved BehaviorIntent"]
@@ -67,7 +67,7 @@ flowchart TD
     Tick -->|деградация needs| CE
     AI -->|provider hint| Mapper
     UserEvents -->|semantic event| Mapper
-    Tick -->|autonomy event| Mapper
+    Tick -->|autonomy opportunity + candidate set| Mapper
     Mapper --> Candidate
     Candidate -->|gating / acceptance| CE
     CE --> Resolved
@@ -100,7 +100,7 @@ flowchart TD
 | Модуль (Движок) | Входящие зависимости (От кого получает данные) | Исходящие данные (Кому передаёт) | Контракт обмена (DTO / Events) |
 |---|---|---|---|
 | **`AI_PROVIDER`** | `CharacterSnapshot` (из Character Engine) | Реплика + Suggested Behavior | `ProviderResponseDto` → `ProviderResponseIntentMapper` |
-| **`CHARACTER_ENGINE`** | Candidate `BehaviorIntent`, внешние стимулы и таймеры | Resolved `BehaviorIntent`, текущее эмоциональное состояние | `BehaviorIntent`, `CharacterState`, `Needs`, `StimulusDto` |
+| **`CHARACTER_ENGINE`** | Candidate `BehaviorIntent`/P4 candidate set, внешние стимулы и autonomy opportunities | Один resolved `BehaviorIntent`, текущее эмоциональное состояние | `BehaviorIntent`, `CharacterState`, `Needs`, `StimulusDto`; Utility policy остаётся внутренней Domain strategy |
 | **`BEHAVIOR_INTENTS`** | Boundary suggestion/event через Application mapper | Candidate → resolved semantic decision | `BehaviorIntent` (`wander`, `play`, `sleep`, `drag`, `land`...) |
 | **`SHIMEJI_SPEC`** | Resolved `BehaviorIntent`, `CharacterSnapshot`, environment/user physical events | Selected Activity, `AnimationIntent`, `MotionEvent`, gaze и feedback | `AnimationIntent`, `MotionEvent`, `GazeOffsetDto`, `StimulusDto` |
 | **`ANIMATION_ENGINE`** | `AnimationIntent` (из Behavior/Shimeji) | Презентационный стейт клипа | `ActiveAnimationState`, приоритеты, прерывания |
