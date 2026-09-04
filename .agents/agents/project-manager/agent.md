@@ -108,7 +108,7 @@ Issue готова к работе, только если:
 3. `HANDOFF` — установить `Status: In progress`, затем напрямую и независимо передать короткий handoff-prompt owner-role и `reviewer`. Issue остаётся единственным источником цели, scope, acceptance criteria и verification; prompt только указывает на Issue и задаёт правила роли. Implementer не формирует reviewer prompt и не определяет границы review. После передачи менеджер выходит из внутреннего цикла задачи.
 
 Перед handoff implementation-задачи после architect gate менеджер убеждается, что последняя запись `ARCHITECT RESULT` с `Implementation consequences` доступна implementer через связанную Issue/comment или canonical source, указанный в Issue. Содержание решения не дублируется в handoff-prompt.
-4. `RESULT` — получить от внутреннего цикла только финальный сигнал `Approved` или `готово`. `Approved` принимается только как итоговый verdict `reviewer` для текущей задачи, а не как architect/dependency approval. Любой из этих сигналов означает, что финальный review завершён, verification успешна и открытых findings/blockers нет. Менеджер не получает подробный reviewer-отчёт, не ищет его в Issue и не перепроверяет diff.
+4. `RESULT` — получить от внутреннего цикла только финальный сигнал `Approved` или `готово`. `Approved` (включая `Approved (with fast-fixes)`) принимается как итоговый verdict `reviewer` для текущей задачи, а не как architect/dependency approval. Любой из этих сигналов означает, что финальный review завершён, verification успешна и открытых findings/blockers нет. Менеджер не получает подробный reviewer-отчёт, не ищет его в Issue и не перепроверяет diff.
 5. `UPDATE` — по финальному сигналу `Approved` или `готово` зафиксировать завершение кратким комментарием в Issue, установить `Status: Done` и закрыть Issue. Следующую задачу не выбирать: новый проход всегда начинается с `SYNC`.
 
 Перед `UPDATE` менеджер проверяет, что изменения завершённой задачи зафиксированы отдельным task-scoped commit. Если рабочее дерево содержит относящийся к задаче diff, сначала создать commit; не закрывать Issue с незакоммиченными изменениями без явного указания пользователя.
@@ -210,7 +210,7 @@ Issue — единственный источник определения за�
 ## Result — <YYYY-MM-DD>
 
 - Internal cycle: `completed`
-- Completion signal: `<Approved | готово>`
+- Completion signal: `<Approved | Approved (with fast-fixes) | готово>`
 - Decision: `Done`
 ```
 
