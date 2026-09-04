@@ -29,7 +29,7 @@
 | 11 — Character Engine v2 | done | `architect` + `app-developer` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
 | 12 — Animation & Reaction Pack | done | `architect` + `app-developer` | Синхронизация контракта с Character Engine v2, реакции, idle variety, sleep rules. |
 | 13 — Render Engine | done | `architect` + `app-developer` | RENDER_ENGINE.md, слои, fallback, структурированный логгер и Debug HUD. |
-| 14 — Shimeji & Autonomy (Stabilization) | in_progress | `app-developer` | Калибровка физики, интеграция FSM с Renderer, оверлей лиц, пул фраз и редизайн меню. |
+| 14 — Shimeji & Autonomy (Stabilization) | in_progress | `architect` + `app-developer` | Перенос autonomy loop из Renderer в единый Main/Application runtime owner при сохранении текущего поведения. |
 | 15 — Offline Memory & Persistence | next | `app-developer` | Контракт MEMORY_ENGINE.md готов. SQLite, bounded history, facts, state restore, clear memory. |
 | 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и расширенная dev-only debug panel. |
 | 17 — External AI Contract Readiness | future | `architect` + `app-developer` | Только client-side контракт будущего adapter; backend остаётся отдельно. |
@@ -38,4 +38,4 @@
 
 ## Текущий фокус
 
-**Phase 14 (Shimeji Stabilization & Polish):** текущие задачи ведутся в [GitHub Project](https://github.com/users/zyzycode/projects/1): [#1 P14-P01](https://github.com/zyzycode/project_wisp/issues/1), [#2 P14-P02](https://github.com/zyzycode/project_wisp/issues/2), [#3 P14-P03](https://github.com/zyzycode/project_wisp/issues/3), [#4 P14-P04](https://github.com/zyzycode/project_wisp/issues/4).
+**Phase 14 (Shimeji & Autonomy):** завершённый stabilization/polish slice сменил активный трек автономности. Текущая последовательность: architect gate [#25 AUTO-A03](https://github.com/zyzycode/project_wisp/issues/25), затем implementation [#26 AUTO-I01](https://github.com/zyzycode/project_wisp/issues/26); фактические статусы ведутся в [GitHub Project](https://github.com/users/zyzycode/projects/1).
