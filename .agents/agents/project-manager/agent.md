@@ -60,12 +60,30 @@ Issue готова к работе, только если:
 - указан достаточный verification gate;
 - задача не дублирует открытую Issue.
 
-| Изменение | Первая owner-role |
+### Маршрутизация: Fast-Track vs Architect Gate
+
+Менеджер обязан при выборе первой роли проверить **4 обязательных триггера Архитектора**.
+
+#### 1. Обязательный Architect Gate (`owner: architect`)
+Архитектор назначается первой ролью **всегда и обязательно** при срабатывании хотя бы одного триггера (пропуск запрещён):
+1. **Новая подсистема / технология:** создание нового модуля в `src/domain/`, нового файла спецификации `docs/engine/*`, интеграция нового движка (SQLite/persistence, аудио-система, реальный AI-провайдер вместо mock).
+2. **Сдвиг межслойных границ или модели процессов:** перенос ответственности между Main, Preload и Renderer; изменение правил изоляции Electron/безопасности; принципиально новые паттерны IPC.
+3. **Dependency Review:** добавление любой новой внешней npm-зависимости в `package.json` (аудит по 5 критериям `AGENTS.md`).
+4. **Явная эскалация / запрос:** метка `needs:architect`, прямой запрос пользователя, либо отчёт `app-developer` об архитектурном тупике или нестыковке контрактов.
+
+#### 2. Fast-Track по умолчанию (`owner: app-developer`)
+Если **ни один** из 4 триггеров выше не активен, задача идёт **напрямую к `app-developer`** (без вызова архитектора):
+- Доработка существующего поведения, анимаций, FSM, физики движения, реакций питомца.
+- Эволюционное расширение *существующих* интерфейсов в `src/application/ports/` и IPC DTO в `src/shared/ipc-contracts.ts` (добавление новых полей, параметров, методов) в рамках существующих архитектурных слоёв.
+- UI/Renderer компоненты, диалоги, худы, меню, стили, обработчики пользовательского ввода.
+- Багфиксы, тесты, локальный рефакторинг реализации.
+
+| Характер задачи | Первая owner-role |
 |---|---|
-| Contracts, boundaries, IPC, ports, `docs/engine/*`, Dependency Review | `architect` |\
-| Domain/Application, Main/Preload, Renderer, adapters, persistence, provider, packaging | `app-developer` |\
-| Review, regression analysis, verification gate | `reviewer` |\
-| Генерация, обработка и размещение назначенных PNG | локальный `sprite-artist` по `asset-pipeline/AGENTS.md` |\
+| Архитектурные триггеры (новая подсистема, сдвиг границ, `needs:architect`, Dependency Review) | `architect` |\
+| Реализация задач на Fast-Track (логика, UI, расширение существующих портов и IPC DTO) | `app-developer` |\
+| Регрессионный анализ, независимый аудит изменений, verification gate | `reviewer` |\
+| Генерация, обработка и размещение PNG | локальный `sprite-artist` по `asset-pipeline/AGENTS.md` |\
 | Scope, roadmap, task graph и документационная навигация | `project-manager` |\
 
 Смешанную задачу разделять по последовательным gates. Нельзя назначать двух owners одной Issue выражением `architect + app-developer`: сначала architect decision, затем отдельная implementation Issue. Изменение манифеста/runtime после подготовки PNG принадлежит `app-developer`; отдельный перенос готовых PNG не нужен.

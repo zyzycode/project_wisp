@@ -68,9 +68,9 @@
 
 Перед работой прочитать инструкцию назначенной роли по ссылке ниже, не остальные роли. «Ты менеджер» или «менеджер проекта» означает `project-manager`.
 
-- [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач, roadmap/backlog docs. Не меняет продуктовый код.
-- [architect](.agents/agents/architect/agent.md): границы слоёв, IPC/ports, engine contracts, `docs/engine/*`.
-- [app-developer](.agents/agents/app-developer/agent.md): весь product implementation: Domain/Application, Main/Preload, Renderer, adapters, persistence/provider и packaging.
+- [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач (Fast-Track по умолчанию, Architect только по 4 триггерам), roadmap/backlog docs. Не меняет продуктовый код.
+- [architect](.agents/agents/architect/agent.md): границы слоёв, новые подсистемы, архитектура IPC/портов, `docs/engine/*`, Dependency Review.
+- [app-developer](.agents/agents/app-developer/agent.md): реализация задач на Fast-Track (Domain/Application, Main/Preload, Renderer, adapters, packaging), эволюционное расширение существующих портов и IPC DTO.
 - [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Не чинит findings в том же review-pass.
 
 ## Рабочие правила
