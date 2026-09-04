@@ -90,14 +90,14 @@ Issue готова к работе, только если:
 3. `HANDOFF` — установить `Status: In progress`, затем напрямую и независимо передать короткий handoff-prompt owner-role и `reviewer`. Issue остаётся единственным источником цели, scope, acceptance criteria и verification; prompt только указывает на Issue и задаёт правила роли. Implementer не формирует reviewer prompt и не определяет границы review. После передачи менеджер выходит из внутреннего цикла задачи.
 
 Перед handoff implementation-задачи после architect gate менеджер убеждается, что последняя запись `ARCHITECT RESULT` с `Implementation consequences` доступна implementer через связанную Issue/comment или canonical source, указанный в Issue. Содержание решения не дублируется в handoff-prompt.
-4. `RESULT` — получить от внутреннего цикла только сигнал `готово`. Этот сигнал означает, что финальный review завершён, verification успешна и открытых findings/blockers нет. Менеджер не получает reviewer verdict или отчёты профильных агентов, не ищет их в Issue и не перепроверяет diff.
-5. `UPDATE` — по сигналу `готово` зафиксировать завершение кратким комментарием в Issue, установить `Status: Done` и закрыть Issue. Следующую задачу не выбирать: новый проход всегда начинается с `SYNC`.
+4. `RESULT` — получить от внутреннего цикла только финальный сигнал `Approved` или `готово`. `Approved` принимается только как итоговый verdict `reviewer` для текущей задачи, а не как architect/dependency approval. Любой из этих сигналов означает, что финальный review завершён, verification успешна и открытых findings/blockers нет. Менеджер не получает подробный reviewer-отчёт, не ищет его в Issue и не перепроверяет diff.
+5. `UPDATE` — по финальному сигналу `Approved` или `готово` зафиксировать завершение кратким комментарием в Issue, установить `Status: Done` и закрыть Issue. Следующую задачу не выбирать: новый проход всегда начинается с `SYNC`.
 
 Перед `UPDATE` менеджер проверяет, что изменения завершённой задачи зафиксированы отдельным task-scoped commit. Если рабочее дерево содержит относящийся к задаче diff, сначала создать commit; не закрывать Issue с незакоммиченными изменениями без явного указания пользователя.
 
 ## Владение статусами
 
-`project-manager` — единственный, кто меняет Status в GitHub Project и закрывает Issue. `app-developer`, `architect` и `reviewer` не двигают Status. При `HANDOFF` менеджер переводит задачу из `Ready` в `In progress`; после сигнала `готово` — непосредственно в `Done`/closed. Детали implementation/review остаются внутри рабочего цикла и не являются входом менеджера.
+`project-manager` — единственный, кто меняет Status в GitHub Project и закрывает Issue. `app-developer`, `architect` и `reviewer` не двигают Status. При `HANDOFF` менеджер переводит задачу из `Ready` в `In progress`; после финального сигнала `Approved` или `готово` — непосредственно в `Done`/closed. Детали implementation/review остаются внутри рабочего цикла и не являются входом менеджера.
 
 `blocked` означает конкретную незакрытую зависимость, отсутствующее решение или недоступное обязательное действие. Сложность задачи и желание получить больше контекста сами по себе не являются blocker.
 
@@ -186,13 +186,13 @@ Reviewer: Проведи независимый review задачи <Task ID>. �
 
 ### Result receipt
 
-После сигнала `готово`, перед изменением Status на `Done` и закрытием Issue, менеджер оставляет комментарий без пересказа внутренних отчётов:
+После финального сигнала `Approved` или `готово`, перед изменением Status на `Done` и закрытием Issue, менеджер оставляет комментарий без пересказа внутренних отчётов:
 
 ```markdown
 ## Result — <YYYY-MM-DD>
 
 - Internal cycle: `completed`
-- Completion signal: `готово`
+- Completion signal: `<Approved | готово>`
 - Decision: `Done`
 ```
 
