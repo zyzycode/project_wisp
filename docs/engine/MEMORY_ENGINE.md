@@ -236,138 +236,20 @@ FULL`, а не `NORMAL`: это уменьшает риск потери пос�
 
 ## 3. DTO и порты Application layer
 
-Имена ниже описывают public shape Application layer. Они не раскрывают SQL,
-`better-sqlite3`, таблицы, транзакции или Electron types.
+Контракты репозиториев и сущности DTO определены в коде: [src/application/ports/memory-repository.interface.ts](../../src/application/ports/memory-repository.interface.ts).
 
-```ts
-/** Допустимые роли публичного MVP API. */
-export type ChatRole = 'user' | 'assistant';
+### Ключевые инварианты:
+- **Временные метки:** Все timestamps persistence-модели имеют строгий формат UTC ISO-8601 (`YYYY-MM-DDTHH:mm:ss.sssZ`). Смешивание с local time, строками без таймзоны или Unix timestamp запрещено.
+- **Неизменяемость:** Сущности неизменяемы после создания (кроме `ended_at`/`summary` в сессиях и `fact_value`/`confidence` в фактах).
+- **Изоляция:** Прямой доступ к SQLite и `better-sqlite3` изолирован в Infrastructure-адаптерах; Application работает только через порты `IChatHistoryRepository`, `IUserFactsRepository`, `ICharacterStateRepository`, `IClearMemoryStore`. Renderer не имеет доступа к SQLite или файлам БД.
 
-/** Сообщение до присвоения идентификатора и сохранения. */
-export interface ChatMessageDraft {
-  conversationSessionId: string;
-  role: ChatRole;
-  content: string;
-  createdAt: string;
-}
-
-/** Persisted entity: сообщение всегда принадлежит одной сессии. */
-export interface ChatMessage extends ChatMessageDraft {
-  id: string;
-}
-
-export interface ConversationSession {
-  id: string;
-  appRunId: string;
-  startedAt: string;
-  endedAt: string | null;
-  summary: string | null;
-}
-
-export interface UserFact {
-  id: string;
-  factKey: string;
-  factValue: string;
-  confidence: number;
-  sourceMessageId: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface UserFactDraft {
-  factKey: string;
-  factValue: string;
-  confidence: number;
-  sourceMessageId: string | null;
-}
-
-export type MemoryType =
-  | 'event'
-  | 'experience'
-  | 'relationship';
-
-export interface MemoryRecord {
-  id: string;
-  type: MemoryType;
-  content: string;
-  importance: number;
-  sourceMessageId: string | null;
-  createdAt: string;
-  lastAccessedAt: string;
-  eventAt: string | null;
-  expiresAt: string | null;
-}
-
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { readonly [key: string]: JsonValue };
-
-export interface PersistedCharacterStateSnapshot {
-  /** Формат snapshot_json; SQLite не интерпретирует его payload. */
-  snapshotVersion: number;
-  state: JsonValue;
-  updatedAt: string;
-}
-
-export interface IChatHistoryRepository {
-  append(message: ChatMessage): Promise<void>;
-  getRecent(limit: number): Promise<ChatMessage[]>;
-  createSession(session: ConversationSession): Promise<void>;
-  closeSession(sessionId: string, endedAt: string): Promise<void>;
-  closeUnfinishedSessions(endedAt: string): Promise<void>;
-  setSessionSummary(sessionId: string, summary: string | null): Promise<void>;
-  clear(): Promise<void>;
-}
-
-export interface IUserFactsRepository {
-  upsert(fact: UserFactDraft): Promise<UserFact>;
-  removeByKey(factKey: string): Promise<void>;
-  list(limit: number): Promise<UserFact[]>;
-  clear(): Promise<void>;
-}
-
-export interface ICharacterStateRepository {
-  load(): Promise<PersistedCharacterStateSnapshot | null>;
-  save(snapshot: PersistedCharacterStateSnapshot): Promise<void>;
-  clear(): Promise<void>;
-}
-
-/** Узкая транзакционная граница, используемая только ClearMemoryUseCase. */
-export interface IClearMemoryStore {
-  clearUserMemory(): Promise<void>;
-}
-```
-
-DTO `MemoryRecord` и `ConversationSession` определены здесь для владения
-схемой, но отдельные repository ports отложены. До появления use case для
-извлечения, summary или retrieval они не нужны. Когда такой use case будет
-запланирован, Architect добавит узкие порты потребителя вместо превращения
-`IChatHistoryRepository` в god repository. `IClearMemoryStore` намеренно
-отделён от CRUD-портов: его одна операция должна быть атомарна для всех
-таблиц пользовательской памяти. `ICharacterStateRepository` возвращает
-версионированный сериализуемый DTO; Application, а не SQLite adapter,
-преобразует его в актуальный `CharacterState`.
+DTO `MemoryRecord` и `ConversationSession` определены для владения схемой, но отдельные repository ports отложены до появления use cases для извлечения, summary или retrieval.
+`IClearMemoryStore` намеренно отделён от CRUD-портов: его операция должна быть атомарна для всех таблиц пользовательской памяти.
+`ICharacterStateRepository` возвращает версионированный сериализуемый DTO (`PersistedCharacterStateSnapshot`); Application, а не SQLite adapter, преобразует его в актуальный `CharacterState`.
 
 ### Сознательно отложенные поля
 
-Таблицы не получают универсальные `scope`, `slot_key`, `origin`,
-`status`, `valid_from`, `valid_until`, `last_confirmed_at`,
-`superseded_by_id`, `title`, `recall_count`, `source_session_id`,
-`reply_to_message_id`, `provider`, `model` или `metadata_json`.
-Сейчас ни один Application use case не читает и не изменяет эти данные.
-
-В частности, `last_accessed_at` уже фиксирует последнюю фактическую
-инъекцию memory в AI context; счётчик повторных recall станет нужен только
-вместе с retrieval/scoring use case. `source_session_id` выводится через
-`source_message_id -> messages.conversation_session_id`. Универсальный
-`metadata_json` не добавляется как «карман для будущего»: metadata допустимы
-лишь для редких, некритичных экспериментальных данных. Поле, участвующее в
-поиске, сортировке, lifecycle или domain-инвариантах, при появлении получает
-явную SQLite-колонку через additive migration.
+Таблицы не получают универсальные `scope`, `slot_key`, `origin`, `status`, `valid_from`, `valid_until`, `last_confirmed_at`, `superseded_by_id`, `title`, `recall_count`, `source_session_id`, `reply_to_message_id`, `provider`, `model` или `metadata_json`. Сейчас ни один Application use case не читает и не изменяет эти данные.
 
 ## 4. Ограниченный контекст для Mock AI
 

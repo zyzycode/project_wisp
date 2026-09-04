@@ -34,60 +34,13 @@ flowchart LR
 
 EnvironmentSnapshot — наблюдение, а не команда. Gaze output — presentation component, proximity output — normalized signal. Ни один из них не является `BehaviorIntent` или `AnimationIntent`.
 
-## 3. Gaze DTO
+## 3. Gaze DTO и контракт взгляда
 
-```typescript
-export interface CursorSample {
-  readonly globalPosition: Vector2Dto;
-  readonly capturedAtMs: MonotonicMs;
-}
+Типы и конфигурация Gaze Engine определены в [src/domain/behavior/gaze-engine.ts](../../src/domain/behavior/gaze-engine.ts).
 
-export type GazeTarget =
-  | { readonly type: 'cursor'; readonly sample: CursorSample }
-  | { readonly type: 'world_point'; readonly globalPosition: Vector2Dto }
-  | { readonly type: 'neutral' };
-
-export interface GazeGeometry {
-  readonly rootGlobalPosition: Vector2Dto;
-  readonly gazeOriginSourcePx: Vector2Dto;
-  readonly scale: number;
-  readonly flipX: boolean;
-}
-
-export interface GazeInput {
-  readonly nowMs: MonotonicMs;
-  readonly deltaSec: number;
-  readonly target: GazeTarget;
-  readonly geometry: GazeGeometry;
-}
-
-export interface PupilOffset {
-  readonly xSourcePx: SourcePx;
-  readonly ySourcePx: SourcePx;
-}
-
-export interface GazeConstraints {
-  readonly attentionRadiusWorldPx: number;
-  readonly deadZoneSourcePx: number;
-  readonly maxPupilOffsetXSourcePx: number;
-  readonly maxPupilOffsetYSourcePx: number;
-  readonly smoothingTimeSec: number;
-  readonly maxCursorAgeMs: number;
-}
-
-export interface GazeState {
-  readonly mode: 'tracking' | 'returning_to_neutral' | 'neutral';
-  readonly target?: GazeTarget;
-  readonly pupilOffset: PupilOffset;
-  readonly updatedAtMs: MonotonicMs;
-}
-
-export interface IGazeEngine {
-  update(previous: GazeState, input: GazeInput, constraints: GazeConstraints): GazeState;
-}
-```
-
-Validation требует `scale`, max offsets и smoothing time `> 0`; остальные значения неотрицательны; `attentionRadiusWorldPx > deadZoneSourcePx × scale`.
+- **Допустимые диапазоны смещения зрачка**: $dx, dy \in [-1.0, 1.0]$.
+- **Deadzone и clamped circle**: в deadzone desired offset равен $(0, 0)$; вне deadzone результирующий вектор смещения зрачка ограничивается кругом единичного радиуса ($r = \sqrt{(dx/maxOffsetX)^2 + (dy/maxOffsetY)^2} \le 1.0$).
+- **Валидация**: `scale`, max offsets и smoothing time $> 0$; остальные значения неотрицательны; `attentionRadiusWorldPx > deadZoneSourcePx × scale`.
 
 ## 4. Gaze normalization
 
@@ -124,52 +77,20 @@ offset(t+dt) = offset(t) + alpha × (desired - offset(t))
 
 Gaze не emits Activity/AnimationIntent. При baked-in face Renderer может не показывать pupil layer, не подавляя proximity signal.
 
-## 5. Cursor proximity DTO
+## 5. Cursor proximity DTO (Близость курсора)
 
-```typescript
-export interface CursorReactionConstraints {
-  readonly attentionRadiusWorldPx: number;
-  readonly swatRadiusWorldPx: number;
-  readonly swatDwellMs: number;
-  readonly signalMaxAgeMs: number;
-  readonly swatCooldownKey: CooldownKey;
-}
+Типы и контракт сигналов близости курсора определены в [src/domain/behavior/gaze-engine.ts](../../src/domain/behavior/gaze-engine.ts).
 
-export interface CursorProximitySignal {
-  readonly cursor: CursorSample;
-  readonly distanceToRootWorldPx: number;
-  readonly withinAttentionRange: boolean;
-  readonly withinSwatRange: boolean;
-  readonly dwellWithinSwatRangeMs: number;
-  readonly emittedAtMs: MonotonicMs;
-}
+### Зоны близости курсора
 
-export interface CursorProximityState {
-  readonly withinSwatRange: boolean;
-  readonly dwellWithinSwatRangeMs: number;
-  readonly updatedAtMs: MonotonicMs;
-}
+| Зона | Дистанция | Назначение |
+|---|---|---|
+| `contact` | $\le 48\text{ px}$ | Непосредственный физический контакт / реакция swat |
+| `near` | $\le 160\text{ px}$ | Близкое присутствие курсора |
+| `ambient` | $\le 360\text{ px}$ | Фоновое наблюдение и внимание |
+| `far` | $> 360\text{ px}$ | Вне зоны внимания / нейтральное состояние |
 
-export interface CursorProximityInput {
-  readonly nowMs: MonotonicMs;
-  readonly rootGlobalPosition: Vector2Dto;
-  readonly cursor?: CursorSample;
-  readonly compatible: boolean;
-}
-
-export interface CursorProximityUpdate {
-  readonly state: CursorProximityState;
-  readonly signal?: CursorProximitySignal;
-}
-
-export interface ICursorProximityEngine {
-  update(
-    previous: CursorProximityState,
-    input: CursorProximityInput,
-    constraints: CursorReactionConstraints,
-  ): CursorProximityUpdate;
-}
-```
+- **TTL свежести**: `300 мс` (сигналы старше TTL считаются устаревшими и сбрасывают dwell).
 
 ## 6. Freshness, dwell и reaction signal
 
@@ -207,29 +128,7 @@ Look-at остаётся gaze. Swat/chase/avoid — P3 Activity decisions и н�
 
 ## 7. Normalized environment signals
 
-```typescript
-export type SurfaceKind = 'screen_floor' | 'window_top' | 'unknown';
-
-export interface SurfaceSnapshotDto {
-  readonly id: string;
-  readonly kind: SurfaceKind;
-  readonly bounds: {
-    readonly x: WorldPx;
-    readonly y: WorldPx;
-    readonly width: WorldPx;
-    readonly height: WorldPx;
-  };
-  readonly supportY?: WorldPx;
-  readonly isValidSupport: boolean;
-}
-
-export interface EnvironmentSnapshot {
-  readonly capturedAtMs: MonotonicMs;
-  readonly screenBounds: ScreenBoundsDto;
-  readonly cursor?: CursorSample;
-  readonly currentSurface?: SurfaceSnapshotDto;
-}
-```
+Доменные типы снимка окружения и поверхностей определены в [src/domain/behavior/surface-kinematics.ts](../../src/domain/behavior/surface-kinematics.ts).
 
 Snapshot immutable. Adapter выбирает usable work area и нормализует OS limitations. Отсутствующий cursor/surface означает unavailable observation.
 
@@ -239,27 +138,7 @@ Perception сообщает observed `isValidSupport`; решение начат
 
 ## 8. Environment IPC boundary
 
-Shared IPC shapes остаются самостоятельными serializable DTO и не импортируют Domain types. Main boundary mapper выполняет `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`.
-
-```typescript
-export interface EnvironmentScreenBoundsDTO extends ScreenBoundsDTO {
-  readonly id: string;
-}
-
-export interface EnvironmentSurfaceDTO {
-  readonly id: string;
-  readonly kind: 'screen_floor' | 'window_top' | 'unknown';
-  readonly bounds: ScreenBoundsDTO;
-  readonly supportY?: number;
-  readonly isValidSupport: boolean;
-}
-
-export interface EnvironmentSnapshotDTO {
-  readonly capturedAtMs: number;
-  readonly screenBounds: EnvironmentScreenBoundsDTO;
-  readonly currentSurface?: EnvironmentSurfaceDTO;
-}
-```
+Shared IPC shapes остаются самостоятельными serializable DTO и не импортируют Domain types. Контракты IPC определены в [src/shared/ipc-contracts.ts](../../src/shared/ipc-contracts.ts). Main boundary mapper выполняет `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`.
 
 Текущий Domain import `EnvironmentSnapshot` в shared IPC является transitional debt и удаляется до публичной экспозиции stream. Эта миграция документации не меняет реализацию или DTO.
 

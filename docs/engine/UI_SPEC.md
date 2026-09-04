@@ -96,29 +96,12 @@ Renderer сообщает Main только terminal результат уже �
 
 ### 6.1. Shared DTO
 
-```typescript
-export type AnimationLifecycleOutcomeDTO =
-  | 'completed'
-  | 'interrupted'
-  | 'rejected';
+DTO результатов жизненного цикла анимации и событий окна типизированы в [src/shared/ipc-contracts.ts](../../src/shared/ipc-contracts.ts).
 
-export interface AnimationLifecycleResultDTO {
-  readonly requestId: string;
-  readonly outcome: AnimationLifecycleOutcomeDTO;
-}
-
-export interface PetPresentationStateDTO {
-  // Existing fields remain unchanged.
-  readonly animationState: PetAnimationStateDTO;
-  readonly animationRequestId?: string;
-}
-
-export interface WispApiBridge {
-  notifyAnimationLifecycleResult(
-    result: AnimationLifecycleResultDTO
-  ): Promise<void>;
-}
-```
+Краткое описание значений исхода:
+- `completed` (анимация доиграла до конца);
+- `interrupted` (прервана более приоритетным событием);
+- `failed` (ошибка кадра/ассета).
 
 `animationRequestId` присутствует только у request, terminal lifecycle которого ожидает Main. Это уникальный непустой opaque ID, создаваемый Main и стабильный на всех повторных presentation snapshots одного request. `revision` продолжает упорядочивать снапшоты и не заменяет request ID.
 

@@ -6,7 +6,7 @@
 
 ## Владение
 
-- Интерфейс `IAIProvider` принадлежит Application layer и живет в `application/ports/`.
+- Интерфейс `IAIProvider` принадлежит Application layer и живёт в `application/ports/`.
 - Реализации provider-а принадлежат Infrastructure layer: текущий `MockAIProvider`, будущий `ExternalAIProviderClient`.
 - Renderer, React components и Render Engine не знают конкретный provider и не получают provider-specific payload.
 - Domain / Character Engine не видит raw provider DTO. Provider response проходит через `ProviderResponseIntentMapper` в Application layer.
@@ -14,79 +14,14 @@
 
 ## Форма интерфейса
 
-```typescript
-export interface IAIProvider {
-  getStatus(): Promise<AIProviderStatus>;
-  generateResponse(request: AIProviderRequest): Promise<AIProviderResponse>;
-}
-```
-
 - `getStatus()` нужен Application layer для debug/status counters и предсказуемого fallback. Он не должен инициировать network setup, login flow или user-facing provider configuration.
 - `generateResponse()` возвращает один semantic response. Streaming допускается позже только как расширение этого контракта после Architect review.
 
-## Request DTO
+## Request DTO (Форма запроса)
+
+Контракт IAIProvider, типы запроса/ответа и CharacterSnapshot определены в [src/application/ports/ai-provider.interface.ts](../../src/application/ports/ai-provider.interface.ts).
 
 `AIProviderRequest` является сериализуемым DTO без ссылок на React, DOM, Electron window handles, Node objects или классы внешних SDK.
-
-```typescript
-export interface AIProviderRequest {
-  requestId: string;
-  userMessage: {
-    id: string;
-    text: string;
-    createdAt: string;
-  };
-  /** Богатый срез психологического состояния из CHARACTER_ENGINE.md */
-  characterSnapshot: CharacterSnapshot;
-  recentContext: Array<{
-    role: 'user' | 'wisp';
-    text: string;
-    createdAt: string;
-  }>;
-  locale?: string;
-}
-
-export interface CharacterSnapshot {
-  /** Витальные потребности (unmet needs + energy) */
-  needs: {
-    energy: number;
-    attention: number;
-    play: number;
-    comfort: number;
-  };
-  /** Уровень отношений с пользователем */
-  relationship: {
-    friendship: number;
-    love: number;
-    loveUnlocked: boolean;
-  };
-  /** Личность персонажа и концепция */
-  personality: {
-    presetId: string;
-    aiSelfConcept: string;
-    axes: {
-      openness: number;
-      extraversion: number;
-      agreeableness: number;
-      sensitivity: number;
-      playfulness: number;
-      boldness: number;
-      independence: number;
-    };
-    derivedTraits: {
-      shyness: number;
-    };
-  };
-  /** Романтическое состояние и границы */
-  intimacy: {
-    flirtiness: number;
-    romanticCharge: number;
-    userConsentEnabled: boolean;
-  };
-  /** Синтезированный преобладающий эмоциональный тон */
-  synthesizedTone: 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';
-}
-```
 
 ### Правила:
 - `text` санитизируется на application/domain boundary.
@@ -94,48 +29,14 @@ export interface CharacterSnapshot {
 - `recentContext` ограничивается Application layer (скользящее окно); provider не получает полный SQLite dump без отдельного memory contract.
 - DTO не содержит токены, названия внешних моделей, API keys, endpoint URLs или auth/billing поля.
 
-## Response DTO
+## Response DTO (Форма ответа)
 
 `AIProviderResponse` описывает semantic result provider-а. Он может предложить эмоциональный тон или suggested behavior, но не выбирает окончательное поведение персонажа, animation clip или ассет.
 
-```typescript
-export interface AIProviderResponse {
-  requestId: string;
-  status: 'ok' | 'fallback';
-  reply: {
-    text: string;
-    tone?: 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';
-  };
-  suggestedTone?: 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';
-  suggestedBehavior?: ProviderSuggestedBehaviorKind;
-  confidence: number;
-  diagnostics?: {
-    provider: 'mock' | 'external';
-    latencyMs: number;
-    fallbackReason?: AIProviderFallbackReason;
-  };
-}
-
-export type ProviderSuggestedBehaviorKind =
-  | 'respond'
-  | 'think'
-  | 'react_happy'
-  | 'react_confused'
-  | 'play'
-  | 'sleep'
-  | 'wake'
-  | 'wander'
-  | 'idle'
-  | 'quiet';
-```
-
-### Правила:
-- `reply.text` — текст для отображения в SpeechBubble и передачи в историю диалога.
-- `reply.tone` — разговорный оттенок конкретной реплики provider-а в словаре `SynthesizedEmotionalTone`.
-- `suggestedTone` — подсказка для `SynthesizedEmotionalTone`; `CharacterEngine` остаётся источником истины и может проигнорировать provider hint.
-- `suggestedBehavior` — семантическая подсказка. `CharacterEngine` решает, допустимо ли действие с учетом `Needs`, `Relationship`, `cooldowns`, `quiet/sleep mode` и приоритета действий пользователя.
-- First-party providers возвращают `suggestedBehavior` только из разрешенного подмножества `BehaviorIntentKind` (см. `BEHAVIOR_INTENTS.md`).
-- Provider не должен предлагать `drag` или `land` (они принадлежат прямому user interaction). Если такие значения пришли, mapper отбрасывает их в fallback.
+### Обязательные требования:
+- `replyText` (`reply.text`) не пустой: текст для отображения в SpeechBubble и передачи в историю диалога.
+- `suggestedBehavior` опционален: семантическая подсказка для `CharacterEngine`. `CharacterEngine` решает, допустимо ли действие с учетом `Needs`, `Relationship`, `cooldowns`, `quiet/sleep mode` и приоритета действий пользователя. First-party providers возвращают `suggestedBehavior` только из разрешенного подмножества `BehaviorIntentKind` (см. `BEHAVIOR_INTENTS.md`). Provider не должен предлагать `drag` или `land` (они принадлежат прямому user interaction; mapper отбрасывает их в fallback).
+- `toneHint` (`reply.tone` / `suggestedTone`) валидируется через enum: допустимы только значения из словаря `SynthesizedEmotionalTone`. `CharacterEngine` остаётся источником истины и может проигнорировать provider hint.
 - Response не содержит CSS class names, React component names, SVG paths, sprite sheet names, frame indexes, animation fps или asset paths.
 
 ## Thinking и latency
@@ -148,14 +49,6 @@ idle -> thinking -> fallback
 idle -> thinking -> error
 ```
 
-```typescript
-export interface AIProviderStatus {
-  kind: 'ready' | 'thinking' | 'degraded' | 'offline' | 'error';
-  activeRequestId?: string;
-  message?: string;
-}
-```
-
 ### Правила:
 - `MockAIProvider` симулирует latency локальным таймером, без сети.
 - Thinking state provider-нейтрален: UI видит presentation-ready state через Application/IPC.
@@ -163,15 +56,7 @@ export interface AIProviderStatus {
 
 ## Errors и offline fallback
 
-```typescript
-export type AIProviderFallbackReason =
-  | 'empty_input'
-  | 'message_too_long'
-  | 'unsupported_input'
-  | 'provider_unavailable'
-  | 'timeout'
-  | 'unexpected_error';
-```
+Причины fallback (`AIProviderFallbackReason`: `empty_input`, `message_too_long`, `unsupported_input`, `provider_unavailable`, `timeout`, `unexpected_error`) нормализуются в Application layer.
 
 ### Правила:
 - Для MVP `MockAIProvider` возвращает локальные детерминированные fallback responses для пустого, слишком длинного или непонятного ввода.

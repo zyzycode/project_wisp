@@ -112,17 +112,12 @@ Selection использует явно переданный `randomUnit`/seeded
 
 ## 7. Lifecycle одного run
 
-В каждый момент Activity Runner исполняет не более одной Activity. Запуск создаёт новый уникальный `runId`, фиксирует activity/step identity и emits первый request либо terminal result.
+Структуры ActivityDefinition, Step и рантайм-контракты определены в [src/domain/behavior/activity-runner.ts](../../src/domain/behavior/activity-runner.ts).
 
-Состояния lifecycle концептуально ограничены:
+- `runId` уникален для каждого запуска.
+- Завершение всегда детерминировано одним из статусов: `completed`, `interrupted`, `failed`, `cancelled`.
 
-```text
-not_started -> running(step) -> completed
-                           \-> failed
-                           \-> cancelled
-```
-
-`completed`, `failed` и `cancelled` terminal. Они не возобновляются. Повторный запуск той же Activity создаёт новый `runId` и не переиспользует external request ids.
+В каждый момент Activity Runner исполняет не более одной Activity. Terminal run не возобновляется; повторный запуск той же Activity не переиспользует external request ids.
 
 Runner:
 
@@ -213,7 +208,7 @@ Character Engine clamp-ит собственные шкалы и синтези�
 
 ## 14. Изоляция
 
-Behavior Brain и Activity Runner — pure Domain logic. Они не знают Electron, BrowserWindow, IPC, DOM, CSS, Node timers/filesystem, OS/window handles, assets, provider/backend DTO или presentation frames.
+Behavior Brain и Activity Runner — pure Domain logic. Activity Runner не знает React, DOM, Electron, BrowserWindow, IPC, CSS, Node timers/filesystem, OS/window handles, assets, provider/backend DTO или presentation frames.
 
 Renderer не выбирает Activity и не владеет lifecycle. Application доставляет нормализованные events/time и orchestrates cleanup, но не переписывает definition graph.
 

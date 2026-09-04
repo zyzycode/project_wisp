@@ -41,17 +41,16 @@ Forced physical facts — отдельная safety-ветка, а не пара
 
 ## Форма intent
 
-```typescript
-export interface BehaviorIntent {
-  kind: BehaviorIntentKind;
-  source: 'user' | 'provider' | 'timer' | 'memory' | 'settings' | 'system';
-  priority: 'low' | 'normal' | 'high' | 'critical';
-  replyText?: string;
-  toneHint?: 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';
-  reason?: string;
-  requestId?: string;
-}
-```
+Интерфейс BehaviorIntent и тип BehaviorIntentKind определены в [src/domain/behavior/behavior-intent.ts](../../src/domain/behavior/behavior-intent.ts).
+
+| Поле | Назначение |
+|---|---|
+| `kind` | Семантический тип намерения (`BehaviorIntentKind`) |
+| `source` | Источник происхождения намерения (`user`, `provider`, `timer`, `memory`, `system`) |
+| `priority` | Входная подсказка приоритета (`low`, `normal`, `high`, `critical`) |
+| `replyText` | Опциональный текст ответа персонажа |
+| `toneHint` | Опциональная тональность или эмоциональная подсказка |
+| `reason` | Опциональное пояснение причины формирования намерения |
 
 `priority` здесь является входной подсказкой. Character Engine может повысить, понизить, отклонить или отложить intent; исключение — уже произошедший P0 forced physical fact, который semantic gating не отменяет.
 
