@@ -17,6 +17,7 @@
 | Физика, surfaces и position orchestration | [MOTION_ENGINE.md](engine/MOTION_ENGINE.md) |
 | Gaze, cursor и environment signals | [PERCEPTION_ENGINE.md](engine/PERCEPTION_ENGINE.md) |
 | AnimationIntent, FSM и прерывания | [ANIMATION_ENGINE.md](engine/ANIMATION_ENGINE.md) |
+| Сквозные сценарии автономного поведения | [Behavior catalog](behaviors/README.md) — неканонические packs, связывающие пользовательские сценарии с engine contracts |
 | Формат ассетов, anchors, слои и воспроизведение | [RENDER_ENGINE.md](engine/RENDER_ENGINE.md) |
 | Меню, чат и остальные элементы интерфейса | [UI_SPEC.md](engine/UI_SPEC.md) |
 | Память | [MEMORY_ENGINE.md](engine/MEMORY_ENGINE.md) |
