@@ -1,33 +1,23 @@
-import {
-  Point2D,
-  Size2D,
-  RectBounds,
-  clampPositionToBounds,
-} from '../../domain/models/position';
+import type { CollisionInsets, ScreenBoundsDto, Vector2Dto } from '../../domain/behavior/motion-engine';
+import { clampRootPosition } from '../../domain/behavior/motion-engine';
 
 export class PetPositionService {
-  private currentPosition: Point2D;
-  private petSize: Size2D = { width: 100, height: 100 };
+  private currentRootPosition: Vector2Dto;
 
-  constructor(initialPosition?: Point2D) {
-    this.currentPosition = initialPosition ?? { x: 300, y: 300 };
+  constructor(initialRootPosition?: Vector2Dto) {
+    this.currentRootPosition = initialRootPosition ?? { x: 300, y: 300 };
   }
 
-  getPosition(): Point2D {
-    return { ...this.currentPosition };
+  getRootPosition(): Vector2Dto {
+    return { ...this.currentRootPosition };
   }
 
-  getPetSize(): Size2D {
-    return { ...this.petSize };
-  }
-
-  setPetSize(size: Size2D): void {
-    this.petSize = { ...size };
-  }
-
-  updatePosition(target: Point2D, bounds: RectBounds): Point2D {
-    const clamped = clampPositionToBounds(target, this.petSize, bounds);
-    this.currentPosition = clamped;
-    return this.currentPosition;
+  updateRootPosition(
+    target: Vector2Dto,
+    bounds: ScreenBoundsDto,
+    collisionInsets: CollisionInsets
+  ): Vector2Dto {
+    this.currentRootPosition = clampRootPosition(target, bounds, collisionInsets);
+    return this.getRootPosition();
   }
 }

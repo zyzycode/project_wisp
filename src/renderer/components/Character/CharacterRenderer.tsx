@@ -12,6 +12,7 @@ import {
 import {
   AssetResolver,
   ManifestLoader,
+  type AnimationCompletedEvent,
   type RenderPresentationState,
   type SpritePoint,
 } from '../../render-engine';
@@ -51,6 +52,12 @@ export interface CharacterRendererProps {
   debugAnimationSelection?: DebugAnimationSelection;
   showAnchorPoint?: boolean;
   onManifestAnimationsLoaded?: (registry: ManifestAnimationRegistry) => void;
+  animationRequestId?: string;
+  onAnimationCompleted?: (
+    event: AnimationCompletedEvent,
+    completedPlaybackRequestId: string | undefined
+  ) => void;
+  onAnimationRejected?: (rejectedPlaybackRequestId: string | undefined) => void;
   onClick?: () => void;
   onDoubleClick?: () => void;
   onMouseDown?: (e: React.MouseEvent) => void;
@@ -68,6 +75,9 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   debugAnimationSelection,
   showAnchorPoint = false,
   onManifestAnimationsLoaded,
+  animationRequestId,
+  onAnimationCompleted,
+  onAnimationRejected,
   onClick,
   onDoubleClick,
   onMouseDown,
@@ -88,7 +98,14 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
     if (debugClip !== undefined || (intent.expressionHint !== undefined && intent.expressionHint !== 'idle')) return intent;
     return { ...intent, expressionHint: 'gaze' as const, gazeDirection };
   }, [debugClip, gazeDirection, intent]);
-  const presentationState = useCharacterAnimation(resolver, gazeIntent, debugClip);
+  const presentationState = useCharacterAnimation(
+    resolver,
+    gazeIntent,
+    debugClip,
+    animationRequestId,
+    onAnimationCompleted,
+    onAnimationRejected
+  );
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
 
   const activePresentationState = useMemo(() => {

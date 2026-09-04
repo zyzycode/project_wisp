@@ -23,6 +23,24 @@ export interface IgnoreMouseEventsDTO {
   forward?: boolean;
 }
 
+export interface SetAutonomyEnabledDTO {
+  readonly enabled: boolean;
+}
+
+export type SleepWakeCommandDTO =
+  | { readonly action: 'sleep' }
+  | { readonly action: 'wake' };
+
+export type AnimationLifecycleOutcomeDTO =
+  | 'completed'
+  | 'interrupted'
+  | 'rejected';
+
+export interface AnimationLifecycleResultDTO {
+  readonly requestId: string;
+  readonly outcome: AnimationLifecycleOutcomeDTO;
+}
+
 export interface PetPositionDTO {
   x: number;
   y: number;
@@ -95,6 +113,7 @@ export interface PetPresentationStateDTO {
   readonly velocityPxPerSec: PetPositionDTO;
   readonly positionAuthority: 'forced' | 'voluntary';
   readonly animationState: PetAnimationStateDTO;
+  readonly animationRequestId?: string;
 }
 
 export type CharacterInteractionTypeDTO =
@@ -148,6 +167,9 @@ export interface WispApiBridge {
   setIgnoreMouseEvents: (payload: IgnoreMouseEventsDTO) => Promise<void>;
   getPosition: () => Promise<PetPositionDTO>;
   updatePosition?: (targetPos: PetPositionDTO) => Promise<PetPositionDTO>;
+  setAutonomyEnabled?: (payload: SetAutonomyEnabledDTO) => Promise<void>;
+  requestSleepWake: (command: SleepWakeCommandDTO) => Promise<void>;
+  notifyAnimationLifecycleResult: (result: AnimationLifecycleResultDTO) => Promise<void>;
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
   getEnvironmentSnapshot: () => Promise<EnvironmentSnapshotDTO>;
   onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshotDTO) => void) => () => void;

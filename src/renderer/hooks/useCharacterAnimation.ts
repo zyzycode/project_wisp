@@ -3,6 +3,7 @@ import type { AnimationIntent } from '../../domain/animation/animation-intent';
 import { AnimationPlayer } from '../render-engine/animation-player';
 import { AssetResolver } from '../render-engine/asset-resolver';
 import type {
+  AnimationCompletedEvent,
   AnimationLoopMode,
   ICharacterRenderer,
   RenderPresentationState,
@@ -13,11 +14,23 @@ import type {
 export function useCharacterAnimation(
   resolver: AssetResolver,
   intent: AnimationIntent,
-  clipOverride?: ResolvedAnimationClip
+  clipOverride?: ResolvedAnimationClip,
+  playbackRequestId?: string,
+  onCompleted?: (
+    event: AnimationCompletedEvent,
+    completedPlaybackRequestId: string | undefined
+  ) => void,
+  onRejected?: (rejectedPlaybackRequestId: string | undefined) => void
 ): RenderPresentationState | undefined {
   const [presentationState, setPresentationState] = useState<RenderPresentationState>();
   const publishedSignatureRef = useRef<string | undefined>(undefined);
   const playerRef = useRef<AnimationPlayer | null>(null);
+  const previousPlaybackRequestIdRef = useRef<string | undefined>(undefined);
+  const activePlaybackRequestIdRef = useRef<string | undefined>(undefined);
+  const onCompletedRef = useRef(onCompleted);
+  const onRejectedRef = useRef(onRejected);
+  onCompletedRef.current = onCompleted;
+  onRejectedRef.current = onRejected;
 
   useEffect(() => {
     if (!playerRef.current) {
@@ -31,13 +44,31 @@ export function useCharacterAnimation(
         destroy: (): void => undefined,
       };
       playerRef.current = new AnimationPlayer(renderer);
+      playerRef.current.onCompleted((event) => {
+        onCompletedRef.current?.(event, activePlaybackRequestIdRef.current);
+      });
     }
 
     const player = playerRef.current;
-    player.updateClip(
-      clipOverride ?? resolver.resolve(intent),
-      clipOverride === undefined ? toPlayerLoopMode(intent.loop) : { type: 'until_replaced' }
-    );
+    try {
+      const clip = clipOverride ?? resolver.resolve(intent);
+      const loopMode = clipOverride === undefined
+        ? toPlayerLoopMode(intent.loop)
+        : { type: 'until_replaced' as const };
+      if (
+        playbackRequestId !== undefined &&
+        playbackRequestId !== previousPlaybackRequestIdRef.current
+      ) {
+        player.play(clip, loopMode);
+      } else {
+        player.updateClip(clip, loopMode);
+      }
+    } catch {
+      onRejectedRef.current?.(playbackRequestId);
+      return undefined;
+    }
+    previousPlaybackRequestIdRef.current = playbackRequestId;
+    activePlaybackRequestIdRef.current = playbackRequestId;
 
     let animationFrameId = 0;
     let previousNow: number | undefined;
@@ -51,7 +82,7 @@ export function useCharacterAnimation(
     return (): void => {
       animationFrames.cancelAnimationFrame(animationFrameId);
     };
-  }, [clipOverride, intent, resolver]);
+  }, [clipOverride, intent, playbackRequestId, resolver]);
 
   useEffect(() => {
     return (): void => {
@@ -91,5 +122,6 @@ const animationFrames = globalThis as unknown as {
 
 function toPlayerLoopMode(loop: AnimationIntent['loop']): AnimationLoopMode {
   if (loop === 'none') return { type: 'none' };
+  if (loop === 'bounded') return { type: 'bounded', count: 1 };
   return { type: 'until_replaced' };
 }

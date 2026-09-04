@@ -10,6 +10,7 @@ export interface PetPresentationState {
   readonly revision: number;
   readonly motion: MotionState;
   readonly animationState: PetAnimationStateDTO;
+  readonly animationRequestId?: string;
 }
 
 export function toEnvironmentSnapshotDTO(snapshot: EnvironmentSnapshot): EnvironmentSnapshotDTO {
@@ -60,5 +61,8 @@ export function toPetPresentationStateDTO(state: PetPresentationState): PetPrese
     velocityPxPerSec: { ...state.motion.velocityPxPerSec },
     positionAuthority: state.motion.phase === 'grounded' ? 'voluntary' : 'forced',
     animationState: state.animationState,
+    ...(state.animationRequestId === undefined
+      ? {}
+      : { animationRequestId: state.animationRequestId }),
   };
 }

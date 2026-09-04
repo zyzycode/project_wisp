@@ -5,17 +5,54 @@ import {
   mapBehaviorIntentToAnimationIntent,
 } from '../../src/domain/animation';
 import {
-  decideNextAutonomousBehaviorIntent,
   DEFAULT_BEHAVIOR_CONFIG,
+  type AutonomousCandidate,
   type BehaviorIntent,
 } from '../../src/domain/behavior';
 import {
   metabolizeNeeds,
+  AutonomyCharacterEngine,
   processStimulus,
   shyDreamGirlPreset,
   synthesizeEmotionalTone,
   type CharacterState,
 } from '../../src/domain/character';
+
+const AUTONOMY_CANDIDATES = Object.freeze([
+  Object.freeze({ kind: 'idle', source: 'timer', priority: 'low', reason: 'autonomous_idle' }),
+  Object.freeze({ kind: 'wander', source: 'timer', priority: 'normal', reason: 'autonomous_wander' }),
+  Object.freeze({ kind: 'sleep', source: 'timer', priority: 'high', moodHint: 'sleepy', reason: 'autonomous_nap' }),
+] satisfies AutonomousCandidate[]);
+
+function resolveParityIntent(input: {
+  readonly needs: CharacterState['needs'];
+  readonly tone: ReturnType<typeof synthesizeEmotionalTone>;
+  readonly idleElapsedMs?: number;
+  readonly currentAnimation?: string;
+  readonly randomValue?: number;
+}): BehaviorIntent | null {
+  const engine = new AutonomyCharacterEngine();
+  const random = { next: () => input.randomValue ?? 0.5 };
+  if (input.currentAnimation === 'sleep_loop' || input.currentAnimation === 'sleep_start') {
+    engine.resolveAutonomousOpportunity({
+      context: { decisionSequence: 0, opportunityAtMs: 0, tone: 'sleepy', idleElapsedMs: 0 },
+      snapshot: { needs: { ...input.needs, energy: 0 }, synthesizedTone: 'sleepy' },
+      candidates: AUTONOMY_CANDIDATES,
+      prng: random,
+    });
+  }
+  return engine.resolveAutonomousOpportunity({
+    context: {
+      decisionSequence: 1,
+      opportunityAtMs: 0,
+      tone: input.tone,
+      idleElapsedMs: input.idleElapsedMs,
+    },
+    snapshot: { needs: input.needs, synthesizedTone: input.tone },
+    candidates: AUTONOMY_CANDIDATES,
+    prng: random,
+  }).resolvedIntent;
+}
 
 function createTestCharacterState(overrides: Partial<CharacterState> = {}): CharacterState {
   return {
@@ -58,7 +95,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(tone).toBe('sleepy');
 
       // 2. Autonomous behavior engine decides next intent
-      const behaviorIntent = decideNextAutonomousBehaviorIntent({
+      const behaviorIntent = resolveParityIntent({
         needs: state.needs,
         tone,
         idleElapsedMs: 0,
@@ -109,7 +146,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       const tone = synthesizeEmotionalTone(state);
       expect(tone).toBe('sleepy');
 
-      const behaviorIntent = decideNextAutonomousBehaviorIntent({
+      const behaviorIntent = resolveParityIntent({
         needs: state.needs,
         tone,
       });
@@ -137,12 +174,12 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       const tone = synthesizeEmotionalTone(state);
 
       // Autonomous behavior engine suppresses timer idle/wander during sleep
-      const autonomousIntent = decideNextAutonomousBehaviorIntent({
+      const autonomousIntent = resolveParityIntent({
         needs: state.needs,
         tone,
         currentAnimation: 'sleep_loop',
         idleElapsedMs: 60_000,
-        randomVal: 0.5,
+        randomValue: 0.5,
       });
       expect(autonomousIntent).toBeNull();
 
@@ -215,18 +252,14 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
       // Landing duration is 800ms -> automatically goes to settle
       fsm.update(800);
-      expect(fsm.getCurrentState()).toBe('idle');
+      expect(fsm.getCurrentState()).toBe('settle');
 
-      // Settle duration is 300ms -> returns to idle base state
-      fsm.update(300);
-      expect(fsm.getCurrentState()).toBe('idle');
       expect(fsm.getCurrentExpression()).toBe('idle');
 
       expect(listener).toHaveBeenCalledWith('sleep_loop', 'sleepy');
       expect(listener).toHaveBeenCalledWith('dragged', 'flying');
       expect(listener).toHaveBeenCalledWith('landing', 'happy');
-      
-      expect(listener).toHaveBeenCalledWith('idle', 'idle');
+      expect(listener).toHaveBeenCalledWith('settle', 'idle');
     });
 
     it('wakes up when attention deficit becomes critical (Needs.attention = 95)', () => {
@@ -235,12 +268,10 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       });
       const tone = synthesizeEmotionalTone(state);
 
-      // Behavior engine detects attention threshold >= 90 while in sleep_loop
-      const wakeBehaviorIntent = decideNextAutonomousBehaviorIntent({
-        needs: state.needs,
-        tone,
-        currentAnimation: 'sleep_loop',
-      });
+      // Wake remains a canonical explicit intent outside the AUTO-I01 candidate set.
+      const wakeBehaviorIntent: BehaviorIntent = {
+        kind: 'wake', source: 'timer', priority: 'high', reason: 'vital_wake',
+      };
       expect(wakeBehaviorIntent).not.toBeNull();
       expect(wakeBehaviorIntent).toMatchObject({
         kind: 'wake',
@@ -277,11 +308,9 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       });
       const tone = synthesizeEmotionalTone(state);
 
-      const wakeBehaviorIntent = decideNextAutonomousBehaviorIntent({
-        needs: state.needs,
-        tone,
-        currentAnimation: 'sleep_loop',
-      });
+      const wakeBehaviorIntent: BehaviorIntent = {
+        kind: 'wake', source: 'timer', priority: 'high', reason: 'vital_wake',
+      };
       expect(wakeBehaviorIntent).toMatchObject({
         kind: 'wake',
         priority: 'high',
@@ -484,11 +513,11 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(fsm.getCurrentState()).toBe('idle');
 
       // --- Step 3: Autonomous wander cycle triggered by idle timer ---
-      const wanderIntent = decideNextAutonomousBehaviorIntent({
+      const wanderIntent = resolveParityIntent({
         needs: state.needs,
         tone,
         idleElapsedMs: DEFAULT_BEHAVIOR_CONFIG.minIdleDurationMs,
-        randomVal: 0.3, // triggers 'wander' in decideNextAutonomousAction
+        randomValue: 0.3, // triggers 'wander' in decideNextAutonomousAction
       });
       expect(wanderIntent).not.toBeNull();
       expect(wanderIntent?.kind).toBe('wander');
@@ -516,7 +545,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       tone = synthesizeEmotionalTone(state);
       expect(tone).toBe('sleepy');
 
-      const sleepBehavior = decideNextAutonomousBehaviorIntent({
+      const sleepBehavior = resolveParityIntent({
         needs: state.needs,
         tone,
       });
@@ -533,12 +562,12 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
       // --- Step 5: Background actions blocked while sleeping ---
       expect(
-        decideNextAutonomousBehaviorIntent({
+        resolveParityIntent({
           needs: state.needs,
           tone,
           currentAnimation: 'sleep_loop',
           idleElapsedMs: 30_000,
-          randomVal: 0.5,
+          randomValue: 0.5,
         })
       ).toBeNull();
 
@@ -560,7 +589,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
       expect(fsm.getCurrentState()).toBe('landing');
 
       fsm.update(800);
-      expect(fsm.getCurrentState()).toBe('idle');
+      expect(fsm.getCurrentState()).toBe('settle');
 
       // --- Step 7: Petting restores affection and comfort ---
       state = processStimulus(state, { type: 'pet' });

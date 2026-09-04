@@ -40,6 +40,9 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.transition('LAND')).toBe(true);
     expect(fsm.getCurrentState()).toBe('landing');
     expect(fsm.getCurrentExpression()).toBe('happy');
+
+    fsm.update(800);
+    expect(fsm.getCurrentState()).toBe('settle');
   });
 
   it('transitions properly into thinking state and reacts to dialogue responses', () => {
@@ -106,6 +109,26 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.transition('THINK')).toBe(false);
     expect(fsm.transition('START_FLOAT')).toBe(false);
     expect(fsm.getCurrentState()).toBe('sleep_loop');
+  });
+
+  it('advances finite transitions from actual player completion without a copied duration', () => {
+    const landing = new AnimationStateMachine('falling');
+    expect(landing.transition('LAND')).toBe(true);
+    expect(landing.completeCurrentState()).toBe(true);
+    expect(landing.getCurrentState()).toBe('settle');
+    expect(landing.completeCurrentState()).toBe(true);
+    expect(landing.getCurrentState()).toBe('idle');
+    expect(landing.completeCurrentState()).toBe(false);
+
+    const sleep = new AnimationStateMachine('idle');
+    expect(sleep.transition('START_SLEEP')).toBe(true);
+    expect(sleep.completeCurrentState()).toBe(true);
+    expect(sleep.getCurrentState()).toBe('sleep_loop');
+
+    const wake = new AnimationStateMachine('sleep_loop');
+    expect(wake.transition('WAKE_UP')).toBe(true);
+    expect(wake.completeCurrentState()).toBe(true);
+    expect(wake.getCurrentState()).toBe('idle');
   });
 
   it('allows wake_up and drag to replace protected sleep_loop', () => {
@@ -230,7 +253,7 @@ describe('Domain: AnimationStateMachine', () => {
       expect(fsm.transition('LAND')).toBe(true);
       expect(fsm.getCurrentState()).toBe('landing');
       fsm.update(800);
-      expect(fsm.getCurrentState()).toBe('idle');
+      expect(fsm.getCurrentState()).toBe('settle');
     });
 
     it('supports crawl locomotion', () => {

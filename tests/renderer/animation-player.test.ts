@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { AnimationStateMachine } from '../../src/domain/animation';
 import { AnimationPlayer, type ICharacterRenderer, type RenderPresentationState, type ResolvedAnimationClip } from '../../src/renderer/render-engine';
 
 function createClip(overrides: Partial<ResolvedAnimationClip> = {}): ResolvedAnimationClip {
@@ -255,5 +256,24 @@ describe('Renderer: AnimationPlayer', () => {
     player.tick(100);
     expect(states).toHaveLength(1);
     expect(player.getPresentationState()).toBeUndefined();
+  });
+
+  it('resynchronizes real FSM terminal visuals after player rejection and stalled playback', () => {
+    const rejectedFsm = new AnimationStateMachine('idle');
+    const rejectedPlayer = new AnimationPlayer(createRenderer().renderer);
+    expect(rejectedFsm.transition('START_SLEEP', true, false)).toBe(true);
+    expect(() => rejectedPlayer.play(createClip({
+      body: { ...createClip().body, frames: [] },
+    }), { type: 'none' })).toThrow();
+    expect(rejectedFsm.synchronizeTerminalState('sleep_loop')).toBe(true);
+    expect(rejectedFsm.getCurrentState()).toBe('sleep_loop');
+    expect(rejectedFsm.synchronizeTerminalState('sleep_loop')).toBe(false);
+
+    const stalledFsm = new AnimationStateMachine('falling');
+    const stalledPlayer = new AnimationPlayer(createRenderer().renderer);
+    expect(stalledFsm.transition('LAND', true, false)).toBe(true);
+    stalledPlayer.play(createClip({ key: 'body_land' }), { type: 'none' });
+    expect(stalledFsm.synchronizeTerminalState('settle')).toBe(true);
+    expect(stalledFsm.getCurrentState()).toBe('settle');
   });
 });

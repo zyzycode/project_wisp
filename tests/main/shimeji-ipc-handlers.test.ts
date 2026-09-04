@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   handleBeginPetDrag,
+  handleAnimationLifecycleResult,
   handleMovePetDrag,
   handleReleasePetDrag,
+  handleRequestSleepWake,
+  handleSetAutonomyEnabled,
+  handleSetMenuExpanded,
+  isTrustedIpcSender,
   isMovePetDragDTO,
   isPetDragPointerDTO,
 } from '../../src/main/shimeji-ipc-handlers';
@@ -43,5 +48,66 @@ describe('Main: Shimeji IPC handlers', () => {
     expect(() => handleMovePetDrag(target, beginPayload)).toThrow(TypeError);
     expect(() => handleReleasePetDrag(target, { ...movePayload, sequence: 1.5 })).toThrow(TypeError);
     expect(() => handleBeginPetDrag(target, beginPayload)).toThrow('unavailable');
+  });
+
+  it('validates and routes the autonomy toggle', () => {
+    const autonomy = { setEnabled: vi.fn() };
+
+    handleSetAutonomyEnabled(autonomy, { enabled: false });
+
+    expect(autonomy.setEnabled).toHaveBeenCalledWith(false);
+    expect(() => handleSetAutonomyEnabled(autonomy, { enabled: 'false' })).toThrow(TypeError);
+    expect(() => handleSetAutonomyEnabled(autonomy, { enabled: false, extra: true })).toThrow(TypeError);
+    expect(() => handleSetAutonomyEnabled(autonomy, Object.create({ enabled: false }))).toThrow(TypeError);
+    expect(() => handleSetAutonomyEnabled(autonomy, null)).toThrow(TypeError);
+  });
+
+  it('validates and routes the menu pause state to autonomy', () => {
+    const autonomy = { setMenuOpen: vi.fn() };
+    expect(handleSetMenuExpanded(autonomy, true)).toBe(true);
+    expect(handleSetMenuExpanded(autonomy, false)).toBe(false);
+    expect(autonomy.setMenuOpen).toHaveBeenNthCalledWith(1, true);
+    expect(autonomy.setMenuOpen).toHaveBeenNthCalledWith(2, false);
+    expect(() => handleSetMenuExpanded(autonomy, 'true')).toThrow(TypeError);
+  });
+
+  it('accepts sleep/wake commands only from the trusted sender and normalizes payloads', () => {
+    const expectedSender = {};
+    const controller = { requestSleepWake: vi.fn() };
+
+    expect(isTrustedIpcSender(expectedSender, expectedSender)).toBe(true);
+    expect(isTrustedIpcSender({}, expectedSender)).toBe(false);
+    expect(isTrustedIpcSender(expectedSender, null)).toBe(false);
+
+    const sleepPayload = { action: 'sleep', ignored: 'extra' };
+    handleRequestSleepWake(controller, sleepPayload);
+    handleRequestSleepWake(controller, { action: 'wake' });
+
+    expect(controller.requestSleepWake).toHaveBeenNthCalledWith(1, { action: 'sleep' });
+    expect(controller.requestSleepWake.mock.calls[0]?.[0]).not.toBe(sleepPayload);
+    expect(controller.requestSleepWake).toHaveBeenNthCalledWith(2, { action: 'wake' });
+    for (const malformed of [null, [], { action: 'nap' }, { action: 1 }, Object.create({ action: 'sleep' })]) {
+      expect(() => handleRequestSleepWake(controller, malformed)).toThrow(TypeError);
+    }
+  });
+
+  it('accepts only exact correlated animation lifecycle results', () => {
+    const lifecycle = { handleAnimationLifecycleResult: vi.fn() };
+    const payload = { requestId: 'animation-42', outcome: 'completed' as const };
+
+    handleAnimationLifecycleResult(lifecycle, payload);
+
+    expect(lifecycle.handleAnimationLifecycleResult).toHaveBeenCalledWith(payload);
+    expect(lifecycle.handleAnimationLifecycleResult.mock.calls[0]?.[0]).not.toBe(payload);
+    for (const malformed of [
+      null,
+      [],
+      { requestId: '', outcome: 'completed' },
+      { requestId: 'animation-42', outcome: 'timed_out' },
+      { requestId: 'animation-42', outcome: 'completed', extra: true },
+      Object.create({ requestId: 'animation-42', outcome: 'completed' }),
+    ]) {
+      expect(() => handleAnimationLifecycleResult(lifecycle, malformed)).toThrow(TypeError);
+    }
   });
 });

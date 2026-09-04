@@ -1,24 +1,19 @@
 /**
  * Autonomous Behavior Domain Engine
- * Handles wander targets, movement pacing, timers, and autonomous intentions.
+ * Pure Character Engine policy for the AUTO-I01 idle/wander/sleep parity slice.
  */
 
-import type { Point2D, RectBounds, Size2D } from '../models/position';
-import type { AnimationIntentKind } from '../animation';
-import type { Needs, SynthesizedEmotionalTone } from '../character';
+import type { Point2D, RectBounds } from '../models/position';
+import { calculateRootCollisionRange, type CollisionInsets } from './motion-engine';
+import type { SynthesizedEmotionalTone } from '../character';
 import type { BehaviorIntent, BehaviorIntentMoodHint } from './behavior-intent';
-import { clampPositionToBounds } from '../models/position';
 import { selectIdleMicroMotion, type IdleVarietyConfig, DEFAULT_IDLE_VARIETY_CONFIG } from './idle-variety';
 
-export type AutonomousActionType =
-  | 'idle_look_around'
-  | 'wander'
-  | 'take_nap'
-  | 'stretch'
-  | 'run'
-  | 'jump'
-  | 'sit'
-  | 'lie_down';
+export type AutonomousActionType = 'idle_look_around' | 'wander' | 'take_nap';
+
+export interface IPrng {
+  next(): number;
+}
 
 export interface BehaviorConfig {
   minIdleDurationMs: number;
@@ -45,49 +40,25 @@ export interface WanderTarget {
   durationMs: number;
 }
 
-export interface VitalAutonomousThresholds {
-  sleepEnergyMax: number;
-  sleepComfortMin: number;
-  wakeAttentionMin: number;
-  wakeEnergyMin: number;
-}
-
-export const DEFAULT_VITAL_AUTONOMOUS_THRESHOLDS: VitalAutonomousThresholds = {
-  sleepEnergyMax: 20,
-  sleepComfortMin: 80,
-  wakeAttentionMin: 90,
-  wakeEnergyMin: 80,
-};
-
-export type AutonomousAnimationStateHint =
-  | AnimationIntentKind
-  | 'idle'
-  | 'float'
-  | 'falling'
-  | 'landing'
-  | 'sleep'
-  | 'happy'
-  | 'surprised'
-  | 'thinking';
-
 export interface AutonomousDecisionContext {
-  needs: Needs;
-  tone: SynthesizedEmotionalTone;
-  currentAnimation?: AutonomousAnimationStateHint;
-  idleElapsedMs?: number;
-  randomVal?: number;
+  readonly decisionSequence: number;
+  readonly opportunityAtMs: number;
+  readonly tone: SynthesizedEmotionalTone;
+  readonly idleElapsedMs?: number;
 }
+
+export type AutonomousCandidate = BehaviorIntent & {
+  readonly kind: 'idle' | 'wander' | 'sleep';
+};
 
 export interface AutonomousIntentConfig {
   behavior: BehaviorConfig;
   idleVariety: IdleVarietyConfig;
-  thresholds: VitalAutonomousThresholds;
 }
 
 export const DEFAULT_AUTONOMOUS_INTENT_CONFIG: AutonomousIntentConfig = {
   behavior: DEFAULT_BEHAVIOR_CONFIG,
   idleVariety: DEFAULT_IDLE_VARIETY_CONFIG,
-  thresholds: DEFAULT_VITAL_AUTONOMOUS_THRESHOLDS,
 };
 
 /**
@@ -99,13 +70,22 @@ export const DEFAULT_AUTONOMOUS_INTENT_CONFIG: AutonomousIntentConfig = {
 export function calculateNextWanderTarget(
   currentPos: Point2D,
   screenBounds: RectBounds,
-  petSize: Size2D = { width: 100, height: 100 },
-  config: BehaviorConfig = DEFAULT_BEHAVIOR_CONFIG,
-  randomAngle: number = Math.random() < 0.5 ? 0 : Math.PI,
-  randomDistanceFactor: number = 0.5 + Math.random() * 0.5
+  prng: IPrng,
+  collisionInsets: CollisionInsets,
+  config: BehaviorConfig = DEFAULT_BEHAVIOR_CONFIG
 ): WanderTarget {
-  const minX = screenBounds.x;
-  const maxX = screenBounds.x + Math.max(0, screenBounds.width - petSize.width);
+  const randomAngle = nextRandom(prng) < 0.5 ? 0 : Math.PI;
+  const randomDistanceFactor = 0.5 + nextRandom(prng) * 0.5;
+  let range;
+  try {
+    range = calculateRootCollisionRange(
+      { id: 'wander-planning', ...screenBounds },
+      collisionInsets
+    );
+  } catch {
+    return { target: { ...currentPos }, durationMs: 0 };
+  }
+  const { minX, maxX, maxY } = range;
 
   const roomRight = Math.max(0, maxX - currentPos.x);
   const roomLeft = Math.max(0, currentPos.x - minX);
@@ -126,19 +106,19 @@ export function calculateNextWanderTarget(
   // If completely trapped with no room to step
   if (actualDistance < 20) {
     return {
-      target: clampPositionToBounds({ x: currentPos.x, y: currentPos.y }, petSize, screenBounds),
+      target: {
+        x: Math.min(maxX, Math.max(minX, currentPos.x)),
+        y: maxY,
+      },
       durationMs: 0,
     };
   }
 
   const rawTargetX = currentPos.x + directionX * actualDistance;
-  const rawTargetY = currentPos.y; // Maintain steady ground elevation
-
-  const clampedTarget = clampPositionToBounds(
-    { x: rawTargetX, y: rawTargetY },
-    petSize,
-    screenBounds
-  );
+  const clampedTarget = {
+    x: Math.min(maxX, Math.max(minX, rawTargetX)),
+    y: maxY,
+  };
 
   const finalDeltaX = Math.abs(clampedTarget.x - currentPos.x);
   const calculatedDuration = (finalDeltaX / Math.max(1, config.wanderSpeedPxPerSec)) * 1000;
@@ -172,33 +152,16 @@ export function interpolatePosition(
 }
 
 /**
- * Decides the next autonomous action based on configuration probabilities and character needs.
+ * Selects one action from the fixed AUTO-I01 parity distribution.
  */
 export function decideNextAutonomousAction(
-  config: BehaviorConfig = DEFAULT_BEHAVIOR_CONFIG,
-  randomVal: number = Math.random(),
-  needs?: Needs
+  prng: IPrng,
+  config: BehaviorConfig = DEFAULT_BEHAVIOR_CONFIG
 ): AutonomousActionType {
-  // High boredom triggers active locomotion behaviors
-  if (needs && (needs.boredom ?? 0) >= 70 && needs.energy > 30) {
-    if (randomVal < 0.35) {
-      return 'run';
-    }
-    if (randomVal < 0.65) {
-      return 'jump';
-    }
-    return 'wander';
-  }
-
-  // Low energy triggers resting locomotion postures
-  if (needs && needs.energy <= 35 && needs.energy > 20) {
-    return randomVal < 0.5 ? 'sit' : 'lie_down';
-  }
-
+  const randomVal = nextRandom(prng);
   const napProb = Math.max(0, Math.min(1, config.napProbability));
   const remaining = 1 - napProb;
   const wanderThreshold = napProb + remaining * 0.7;
-  const stretchThreshold = napProb + remaining * 0.9;
 
   if (randomVal < napProb) {
     return 'take_nap';
@@ -206,14 +169,15 @@ export function decideNextAutonomousAction(
   if (randomVal < wanderThreshold) {
     return 'wander';
   }
-  if (randomVal < stretchThreshold) {
-    return 'stretch';
-  }
   return 'idle_look_around';
 }
 
-function isSleepAnimationState(currentAnimation: AutonomousAnimationStateHint | undefined): boolean {
-  return currentAnimation === 'sleep_loop' || currentAnimation === 'sleep_start' || currentAnimation === 'sleep';
+function nextRandom(prng: IPrng): number {
+  const value = prng.next();
+  if (!Number.isFinite(value) || value < 0 || value >= 1) {
+    throw new RangeError('IPrng.next() must return a finite value in [0, 1)');
+  }
+  return value;
 }
 
 function toneToMoodHint(tone: SynthesizedEmotionalTone): BehaviorIntentMoodHint {
@@ -231,80 +195,41 @@ function toneToMoodHint(tone: SynthesizedEmotionalTone): BehaviorIntentMoodHint 
   }
 }
 
-function createTimerIntent(
-  kind: BehaviorIntent['kind'],
-  tone: SynthesizedEmotionalTone,
-  priority: BehaviorIntent['priority'],
-  reason: string
-): BehaviorIntent {
-  return {
-    kind,
-    source: 'timer',
-    priority,
-    moodHint: toneToMoodHint(tone),
-    reason,
-  };
-}
-
-function shouldSleep(needs: Needs, thresholds: VitalAutonomousThresholds): boolean {
-  return needs.energy <= thresholds.sleepEnergyMax || needs.comfort >= thresholds.sleepComfortMin;
-}
-
-function shouldWakeFromSleep(needs: Needs, thresholds: VitalAutonomousThresholds): boolean {
-  return needs.attention >= thresholds.wakeAttentionMin || needs.energy >= thresholds.wakeEnergyMin;
-}
-
-export function decideNextAutonomousBehaviorIntent(
+/** Pure policy selection over Application-normalized candidates. */
+export function resolveAutonomousBehaviorIntent(
   context: AutonomousDecisionContext,
+  candidates: readonly AutonomousCandidate[],
+  prng: IPrng,
   config: AutonomousIntentConfig = DEFAULT_AUTONOMOUS_INTENT_CONFIG
 ): BehaviorIntent | null {
-  const sleepActive = isSleepAnimationState(context.currentAnimation);
-
-  if (sleepActive) {
-    if (shouldWakeFromSleep(context.needs, config.thresholds)) {
-      return createTimerIntent('wake', context.tone, 'high', 'vital_wake');
-    }
-
-    return null;
-  }
-
-  if (shouldSleep(context.needs, config.thresholds)) {
-    return createTimerIntent('sleep', 'sleepy', 'high', 'vital_sleep');
-  }
-
   const idleElapsedMs = context.idleElapsedMs ?? config.behavior.minIdleDurationMs;
 
   if (idleElapsedMs < config.behavior.minIdleDurationMs) {
     return null;
   }
 
-  const randomVal = context.randomVal ?? Math.random();
-  const action = decideNextAutonomousAction(config.behavior, randomVal, context.needs);
+  const action = decideNextAutonomousAction(prng, config.behavior);
 
   switch (action) {
     case 'take_nap':
-      return createTimerIntent('sleep', 'sleepy', 'high', 'autonomous_nap');
+      return candidates.find((candidate) => candidate.kind === 'sleep') ?? null;
     case 'wander':
-      return createTimerIntent('wander', context.tone, 'normal', 'autonomous_wander');
-    case 'stretch':
-      return createTimerIntent('play', context.tone, 'normal', 'autonomous_stretch');
-    case 'run':
-      return createTimerIntent('run', context.tone, 'normal', 'autonomous_run');
-    case 'jump':
-      return createTimerIntent('jump', context.tone, 'normal', 'autonomous_jump');
-    case 'sit':
-      return createTimerIntent('sit', context.tone, 'low', 'autonomous_sit');
-    case 'lie_down':
-      return createTimerIntent('lie_down', context.tone, 'low', 'autonomous_lie_down');
+      return candidates.find((candidate) => candidate.kind === 'wander') ?? null;
     case 'idle_look_around': {
+      const idleCandidate = candidates.find((candidate) => candidate.kind === 'idle');
+      if (idleCandidate === undefined) return null;
       const microMotion = selectIdleMicroMotion(
         context.tone,
         idleElapsedMs,
-        randomVal,
+        nextRandom(prng),
         config.idleVariety
       );
 
-      return createTimerIntent('idle', context.tone, 'low', microMotion?.behaviorReason ?? 'autonomous_idle');
+      return {
+        ...idleCandidate,
+        moodHint: toneToMoodHint(context.tone),
+        reason: microMotion?.behaviorReason ?? idleCandidate.reason,
+      };
     }
   }
 }

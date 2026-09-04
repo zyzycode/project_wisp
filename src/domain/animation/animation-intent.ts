@@ -265,54 +265,6 @@ const BEHAVIOR_MAPPINGS: Record<BehaviorIntentKind, BehaviorMapping> = {
       flustered: { propHint: 'none' },
     }),
   },
-  sit: {
-    kind: 'sit',
-    hintsByTone: hints({}),
-  },
-  stand_up: {
-    kind: 'stand_up',
-    hintsByTone: hints({
-      playful: { expressionHint: 'happy' },
-    }),
-  },
-  lie_down: {
-    kind: 'lie_down',
-    hintsByTone: hints({}),
-  },
-  get_up: {
-    kind: 'get_up',
-    hintsByTone: hints({}),
-  },
-  run: {
-    kind: 'run',
-    hintsByTone: hints({
-      neutral: { expressionHint: 'happy' },
-    }),
-  },
-  jump: {
-    kind: 'jump',
-    hintsByTone: hints({
-      neutral: { expressionHint: 'happy' },
-    }),
-  },
-  fall: {
-    kind: 'fall',
-    hintsByTone: hints({
-      shy: { expressionHint: 'surprised', propHint: 'none' },
-      sleepy: { expressionHint: 'surprised', propHint: 'none' },
-      playful: { expressionHint: 'surprised', propHint: 'sparkle' },
-      curious: { expressionHint: 'surprised', propHint: 'question' },
-      neutral: { expressionHint: 'surprised', propHint: 'none' },
-      affectionate: { expressionHint: 'surprised', propHint: 'heart' },
-      flustered: { expressionHint: 'surprised', propHint: 'heart' },
-    }),
-  },
-  crawl: {
-    kind: 'crawl',
-    hintsByTone: hints({
-      neutral: { expressionHint: 'curious' },
-    }),
-  },
 };
 
 function resolvePlayKind(tone: SynthesizedEmotionalTone): AnimationIntentKind {

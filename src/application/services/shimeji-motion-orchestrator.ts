@@ -1,5 +1,7 @@
 import type { PetPositionPort } from '../ports/pet-position-port';
 import {
+  calculateRootCollisionRange,
+  clampRootPosition,
   DEFAULT_MOTION_CONSTRAINTS,
   type IMotionEngine,
   type MotionConstraints,
@@ -8,6 +10,7 @@ import {
   type PointerMotionSample,
   type Vector2Dto,
 } from '../../domain/behavior/motion-engine';
+import type { PetPositionService } from './pet-position.service';
 import {
   SurfaceKinematics,
   type EnvironmentSnapshot,
@@ -58,14 +61,27 @@ export interface ShimejiMotionOrchestratorOptions {
   readonly surfaceKinematics: SurfaceKinematics;
   readonly environment: () => EnvironmentSnapshot;
   readonly positionPort: PetPositionPort;
+  readonly positionService?: PetPositionService;
   readonly now: () => number;
   readonly scheduler?: ShimejiMotionScheduler;
-  readonly constraints?: Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling'>;
+  readonly constraints?: Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling' | 'collisionInsets'>;
   readonly eventDispatcher?: ShimejiMotionEventDispatcher;
   readonly stimulusMapper?: IShimejiStimulusMapper;
   readonly applyStimulus?: (stimulus: StimulusDto) => void;
   readonly createDragSessionId?: () => string;
+  readonly onVoluntaryMovementCompleted?: () => void;
 }
+
+export type VoluntaryRootCommand =
+  | {
+      readonly kind: 'horizontal_wander';
+      readonly targetRootPosition: Vector2Dto;
+      readonly speedPxPerSec: number;
+    }
+  | {
+      readonly kind: 'manual_root';
+      readonly targetRootPosition: Vector2Dto;
+    };
 
 interface DragSession {
   readonly id: string;
@@ -117,6 +133,8 @@ export class ShimejiMotionOrchestrator {
   private cancelScheduledTick: (() => void) | undefined;
   private running = false;
   private generatedSessionCount = 0;
+  private voluntaryCommand: VoluntaryRootCommand | undefined;
+  private presentationDirty = false;
 
   public constructor(private readonly options: ShimejiMotionOrchestratorOptions) {
     this.motion = options.initialMotion;
@@ -135,12 +153,14 @@ export class ShimejiMotionOrchestrator {
 
   public stop(): void {
     this.running = false;
+    this.cancelVoluntaryMovement();
     this.cancelScheduledTick?.();
     this.cancelScheduledTick = undefined;
   }
 
   public beginDrag(input: PointerInput): string | null {
     if (!isValidPointerInput(input) || this.dragSession !== undefined || this.hasQueuedBegin()) return null;
+    this.cancelVoluntaryMovement();
     const sessionId = this.options.createDragSessionId?.() ?? `drag-${++this.generatedSessionCount}`;
     const nowMs = this.options.now();
     this.dragSession = {
@@ -182,12 +202,16 @@ export class ShimejiMotionOrchestrator {
     this.accumulatorSec += Math.min(elapsedSec, constraints.maxFrameDeltaSec);
 
     const motionAtTickStart = this.motion;
+    const wasPresentationDirty = this.presentationDirty;
+    this.presentationDirty = false;
     let simulationAtMs = this.simulationAtMs;
+    let voluntaryMovementCompleted = false;
     while (this.running && this.accumulatorSec >= constraints.fixedStepSec) {
       const environment = this.options.environment();
       const stepAtMs = simulationAtMs + constraints.fixedStepSec * 1000;
       this.applyQueuedInput(environment, stepAtMs);
-      this.step(environment, stepAtMs, constraints.fixedStepSec);
+      voluntaryMovementCompleted =
+        this.step(environment, stepAtMs, constraints.fixedStepSec) || voluntaryMovementCompleted;
       simulationAtMs = stepAtMs;
       this.simulationAtMs = simulationAtMs;
       this.accumulatorSec -= constraints.fixedStepSec;
@@ -198,15 +222,30 @@ export class ShimejiMotionOrchestrator {
       this.motion.position.y !== motionAtTickStart.position.y;
     if (this.running && positionChanged) {
       const environment = this.options.environment();
-      this.options.positionPort.commitRootPosition({ rootPosition: this.motion.position, bounds: environment.screenBounds });
+      const rootPosition = this.options.positionService?.updateRootPosition(
+        this.motion.position,
+        environment.screenBounds,
+        constraints.collisionInsets
+      ) ?? this.motion.position;
+      if (
+        rootPosition.x !== this.motion.position.x ||
+        rootPosition.y !== this.motion.position.y
+      ) {
+        this.motion = { ...this.motion, position: rootPosition };
+      }
+      this.options.positionPort.commitRootPosition({ rootPosition, bounds: environment.screenBounds });
     }
     const presentationChanged =
       this.running &&
       (positionChanged ||
+        wasPresentationDirty ||
         this.motion.phase !== motionAtTickStart.phase ||
         this.motion.velocityPxPerSec.x !== motionAtTickStart.velocityPxPerSec.x ||
         this.motion.velocityPxPerSec.y !== motionAtTickStart.velocityPxPerSec.y);
     if (presentationChanged) this.presentationRevision += 1;
+    if (this.running && voluntaryMovementCompleted) {
+      this.options.onVoluntaryMovementCompleted?.();
+    }
     return presentationChanged;
   }
 
@@ -222,16 +261,63 @@ export class ShimejiMotionOrchestrator {
     return this.presentationRevision;
   }
 
-  public syncRootPosition(position: Vector2Dto): void {
-    if (this.dragSession === undefined && this.motion.phase !== 'dragged' && this.motion.phase !== 'airborne') {
-      this.motion = {
-        ...this.motion,
-        position: { x: position.x, y: position.y },
-      };
-    }
+  public canAcceptVoluntaryMovement(): boolean {
+    return (
+      this.running &&
+      this.dragSession === undefined &&
+      !this.hasQueuedBegin() &&
+      this.motion.phase === 'grounded' &&
+      this.surface.phase === 'grounded'
+    );
   }
 
-  private constraints(): Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling'> {
+  public requestVoluntaryMovement(command: VoluntaryRootCommand): boolean {
+    if (
+      !this.canAcceptVoluntaryMovement() ||
+      this.voluntaryCommand !== undefined ||
+      !isFiniteVector(command.targetRootPosition) ||
+      (command.kind === 'horizontal_wander' &&
+        (!Number.isFinite(command.speedPxPerSec) || command.speedPxPerSec <= 0))
+    ) return false;
+    const environment = this.options.environment();
+    let targetRootPosition: Vector2Dto;
+    try {
+      targetRootPosition = clampRootPosition(
+        command.targetRootPosition,
+        environment.screenBounds,
+        this.constraints().collisionInsets
+      );
+    } catch {
+      return false;
+    }
+    if (
+      targetRootPosition.x === this.motion.position.x &&
+      targetRootPosition.y === this.motion.position.y
+    ) return false;
+    this.voluntaryCommand = command.kind === 'manual_root'
+      ? { kind: 'manual_root', targetRootPosition }
+      : { kind: 'horizontal_wander', targetRootPosition, speedPxPerSec: command.speedPxPerSec };
+    return true;
+  }
+
+  public cancelVoluntaryMovement(): boolean {
+    const hadVoluntaryMovement = this.voluntaryCommand !== undefined;
+    const changed =
+      this.voluntaryCommand !== undefined ||
+      this.motion.velocityPxPerSec.x !== 0 ||
+      this.motion.velocityPxPerSec.y !== 0;
+    this.voluntaryCommand = undefined;
+    if (this.motion.phase === 'grounded') {
+      this.motion = { ...this.motion, velocityPxPerSec: { x: 0, y: 0 } };
+      if (this.surface.phase === 'grounded') {
+        this.surface = { ...this.surface, locomotionVelocityPxPerSec: { x: 0, y: 0 } };
+      }
+    }
+    if (changed) this.presentationDirty = true;
+    return hadVoluntaryMovement;
+  }
+
+  private constraints(): Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling' | 'collisionInsets'> {
     return this.options.constraints ?? DEFAULT_MOTION_CONSTRAINTS;
   }
 
@@ -306,7 +392,7 @@ export class ShimejiMotionOrchestrator {
     }
   }
 
-  private step(environment: EnvironmentSnapshot, nowMs: number, stepSec: number): void {
+  private step(environment: EnvironmentSnapshot, nowMs: number, stepSec: number): boolean {
     const surfaceResult = this.options.surfaceKinematics.step(
       { state: this.surface, motion: this.motion, environment, nowMs },
       this.options.motionEngine
@@ -323,7 +409,69 @@ export class ShimejiMotionOrchestrator {
       this.motion = motionResult.state;
       motionEvents = [...motionEvents, ...motionResult.events];
     }
+    const voluntaryMovementCompleted = this.stepVoluntaryMovement(environment, stepSec);
     this.routeEvents(motionEvents, surfaceResult.events);
+    return voluntaryMovementCompleted;
+  }
+
+  private stepVoluntaryMovement(environment: EnvironmentSnapshot, stepSec: number): boolean {
+    if (this.motion.phase !== 'grounded' || this.surface.phase !== 'grounded') {
+      if (this.voluntaryCommand !== undefined) this.cancelVoluntaryMovement();
+      return false;
+    }
+    let range;
+    try {
+      range = calculateRootCollisionRange(environment.screenBounds, this.constraints().collisionInsets);
+    } catch {
+      this.cancelVoluntaryMovement();
+      return false;
+    }
+
+    const floorY = environment.currentSurface?.kind === 'screen_floor' ? range.maxY : undefined;
+    const clampedCurrent = clampRootPosition(this.motion.position, environment.screenBounds, this.constraints().collisionInsets);
+    const command = this.voluntaryCommand;
+    const current = command?.kind === 'horizontal_wander'
+      ? { x: clampedCurrent.x, y: floorY ?? clampedCurrent.y }
+      : clampedCurrent;
+    if (command === undefined) {
+      if (current.x !== this.motion.position.x || current.y !== this.motion.position.y) {
+        this.motion = { ...this.motion, position: current, activeBoundsId: environment.screenBounds.id };
+      }
+      return false;
+    }
+
+    const target = clampRootPosition(command.targetRootPosition, environment.screenBounds, this.constraints().collisionInsets);
+    const groundedTarget = command.kind === 'manual_root'
+      ? target
+      : { x: target.x, y: floorY ?? current.y };
+    const deltaX = groundedTarget.x - current.x;
+    const deltaY = groundedTarget.y - current.y;
+    const distance = Math.hypot(deltaX, deltaY);
+    const maxStep = command.kind === 'manual_root'
+      ? Number.POSITIVE_INFINITY
+      : command.speedPxPerSec * stepSec;
+    const completed = distance <= maxStep;
+    const scale = completed ? 1 : maxStep / distance;
+    const position = completed
+      ? groundedTarget
+      : { x: current.x + deltaX * scale, y: current.y + deltaY * scale };
+    const velocityPxPerSec = completed
+      ? { x: 0, y: 0 }
+      : command.kind === 'horizontal_wander'
+        ? { x: (deltaX / distance) * command.speedPxPerSec, y: (deltaY / distance) * command.speedPxPerSec }
+        : { x: 0, y: 0 };
+    this.motion = {
+      ...this.motion,
+      position,
+      velocityPxPerSec,
+      activeBoundsId: environment.screenBounds.id,
+    };
+    this.surface = { ...this.surface, locomotionVelocityPxPerSec: velocityPxPerSec };
+    if (completed) {
+      this.voluntaryCommand = undefined;
+      return true;
+    }
+    return false;
   }
 
   private routeEvents(motionEvents: readonly MotionEvent[], surfaceEvents: readonly SurfaceKinematicsEvent[]): void {

@@ -15,6 +15,9 @@ import type {
   InteractiveBoundsDTO,
   DebugTelemetryDTO,
   CharacterInteractionDTO,
+  AnimationLifecycleResultDTO,
+  SetAutonomyEnabledDTO,
+  SleepWakeCommandDTO,
 } from '../shared/ipc-contracts';
 import { isDebugMode } from '../shared/debug-mode';
 
@@ -34,6 +37,15 @@ const api: WispApiBridge = {
   },
   updatePosition: (targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
     return ipcRenderer.invoke('wisp:update-position', targetPos);
+  },
+  setAutonomyEnabled: (payload: SetAutonomyEnabledDTO): Promise<void> => {
+    return ipcRenderer.invoke('wisp:set-autonomy-enabled', payload);
+  },
+  requestSleepWake: (command: SleepWakeCommandDTO): Promise<void> => {
+    return ipcRenderer.invoke('wisp:request-sleep-wake', command);
+  },
+  notifyAnimationLifecycleResult: (result: AnimationLifecycleResultDTO): Promise<void> => {
+    return ipcRenderer.invoke('wisp:animation-lifecycle-result', result);
   },
   getScreenBounds: (): Promise<ScreenBoundsDTO> => {
     return ipcRenderer.invoke('wisp:get-screen-bounds');

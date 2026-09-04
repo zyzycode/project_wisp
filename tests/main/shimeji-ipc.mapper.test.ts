@@ -31,11 +31,12 @@ describe('Main: Shimeji IPC mappers', () => {
   it('derives a forced presentation DTO for physics-owned motion', () => {
     expect(
       toPetPresentationStateDTO({
-        revision: 3, motion, animationState: 'fall',
+        revision: 3, motion, animationState: 'fall', animationRequestId: 'animation-3',
       })
     ).toEqual({
       revision: 3, motionPhase: 'airborne', rootScreenPosition: { x: 50, y: 60 },
       velocityPxPerSec: { x: 70, y: -80 }, positionAuthority: 'forced', animationState: 'fall',
+      animationRequestId: 'animation-3',
     });
   });
 });

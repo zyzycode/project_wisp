@@ -9,3 +9,4 @@ export * from './metabolism';
 export * from './personality-plasticity';
 export * from './preferences';
 export * from './stimuli-reducer';
+export * from './autonomy-character-engine';

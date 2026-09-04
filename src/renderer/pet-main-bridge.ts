@@ -4,6 +4,7 @@ import type {
   MovePetDragDTO,
   PetPresentationStateDTO,
   ReleasePetDragDTO,
+  SleepWakeCommandDTO,
   WispApiBridge,
 } from '../shared/ipc-contracts';
 
@@ -32,6 +33,13 @@ export function movePetDrag(bridge: PetMainBridge, payload: MovePetDragDTO): Pro
 
 export function releasePetDrag(bridge: PetMainBridge, payload: ReleasePetDragDTO): Promise<void> {
   return bridge.releasePetDrag(payload);
+}
+
+export function requestCharacterSleepWake(
+  bridge: Pick<WispApiBridge, 'requestSleepWake'>,
+  action: SleepWakeCommandDTO['action']
+): Promise<void> {
+  return bridge.requestSleepWake({ action });
 }
 
 type PendingDragEvent =

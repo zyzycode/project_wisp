@@ -146,7 +146,7 @@ export const DEFAULT_MOTION_CONSTRAINTS: MotionConstraints = {
 
 const EPSILON = 1e-9;
 
-interface CollisionLimits {
+export interface RootCollisionRange {
   readonly minX: number;
   readonly maxX: number;
   readonly minY: number;
@@ -225,11 +225,18 @@ function validateConstraints(constraints: MotionConstraints): void {
   }
 }
 
-function collisionLimits(bounds: ScreenBoundsDto, insets: CollisionInsets): CollisionLimits {
+export function calculateRootCollisionRange(
+  bounds: ScreenBoundsDto,
+  insets: CollisionInsets
+): RootCollisionRange {
   requireFinite(bounds.x, 'bounds.x');
   requireFinite(bounds.y, 'bounds.y');
   requirePositive(bounds.width, 'bounds.width');
   requirePositive(bounds.height, 'bounds.height');
+  requireNonNegative(insets.left, 'collisionInsets.left');
+  requireNonNegative(insets.right, 'collisionInsets.right');
+  requireNonNegative(insets.top, 'collisionInsets.top');
+  requireNonNegative(insets.bottom, 'collisionInsets.bottom');
 
   const limits = {
     minX: bounds.x + insets.left,
@@ -243,6 +250,20 @@ function collisionLimits(bounds: ScreenBoundsDto, insets: CollisionInsets): Coll
   }
 
   return limits;
+}
+
+export function clampRootPosition(
+  position: Vector2Dto,
+  bounds: ScreenBoundsDto,
+  insets: CollisionInsets
+): Vector2Dto {
+  requireFinite(position.x, 'position.x');
+  requireFinite(position.y, 'position.y');
+  const range = calculateRootCollisionRange(bounds, insets);
+  return {
+    x: Math.min(range.maxX, Math.max(range.minX, position.x)),
+    y: Math.min(range.maxY, Math.max(range.minY, position.y)),
+  };
 }
 
 function clampMagnitude(vector: Vector2Dto, maximum: number): Vector2Dto {
@@ -425,7 +446,7 @@ export class MotionEngine implements IMotionEngine {
 
   public step(input: MotionStepInput): MotionStepResult {
     requirePositive(input.stepSec, 'stepSec');
-    const limits = collisionLimits(input.bounds, this.constraints.collisionInsets);
+    const limits = calculateRootCollisionRange(input.bounds, this.constraints.collisionInsets);
     if (input.state.phase !== 'airborne') {
       return { state: input.state, events: [] };
     }

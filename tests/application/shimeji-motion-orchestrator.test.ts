@@ -12,6 +12,9 @@ import {
   type IShimejiStimulusMapper,
   type ShimejiFeedbackEvent,
 } from '../../src/application/services/shimeji-motion-orchestrator';
+import { PetPositionService } from '../../src/application/services/pet-position.service';
+import { ElectronPetPositionAdapter } from '../../src/infrastructure/adapters/electron-pet-position-adapter';
+import type { BrowserWindow } from 'electron';
 
 const environment = {
   capturedAtMs: 0,
@@ -133,18 +136,162 @@ describe('Application: ShimejiMotionOrchestrator', () => {
     expect(result.orchestrator.getPresentationRevision()).toBe(1);
   });
 
-  it('syncs root position when not dragged or airborne', () => {
+  it('queues manual root movement and applies it only on a fixed-step boundary', () => {
     let nowMs = 0;
     const result = createOrchestrator(() => nowMs, motion({ position: { x: 100, y: 790 } }));
     result.orchestrator.start();
 
-    result.orchestrator.syncRootPosition({ x: 350, y: 500 });
+    expect(result.orchestrator.requestVoluntaryMovement({
+      kind: 'manual_root',
+      targetRootPosition: { x: 350, y: 500 },
+    })).toBe(true);
+    expect(result.orchestrator.getMotionState().position).toEqual({ x: 100, y: 790 });
+    nowMs = 10;
+    result.orchestrator.tick();
     expect(result.orchestrator.getMotionState().position).toEqual({ x: 350, y: 500 });
 
-    // beginDrag should now calculate grabOffset based on the synced position
     result.orchestrator.beginDrag({ pointerId: 1, sequence: 0, screenPosition: { x: 350, y: 500 } });
-    result.orchestrator.syncRootPosition({ x: 999, y: 999 }); // should NOT overwrite while dragged
-    expect(result.orchestrator.getMotionState().position).toEqual({ x: 350, y: 500 });
+    expect(result.orchestrator.requestVoluntaryMovement({
+      kind: 'manual_root',
+      targetRootPosition: { x: 999, y: 799 },
+    })).toBe(false);
+  });
+
+  it('commits the final root before reporting voluntary movement completion', () => {
+    let nowMs = 0;
+    const order: string[] = [];
+    const commitRootPosition = vi.fn(() => order.push('commit'));
+    const onVoluntaryMovementCompleted = vi.fn(() => order.push('completed'));
+    const orchestrator = new ShimejiMotionOrchestrator({
+      initialMotion: motion({ position: { x: 100, y: 500 } }),
+      initialSurface,
+      motionEngine: new MotionEngine(),
+      surfaceKinematics: new SurfaceKinematics(),
+      environment: () => environment,
+      positionPort: { commitRootPosition },
+      now: () => nowMs,
+      onVoluntaryMovementCompleted,
+    });
+    orchestrator.start();
+    expect(orchestrator.requestVoluntaryMovement({
+      kind: 'manual_root',
+      targetRootPosition: { x: 350, y: 500 },
+    })).toBe(true);
+
+    nowMs = 10;
+    const presentationChanged = orchestrator.tick();
+    if (presentationChanged) order.push('presentation');
+
+    expect(order).toEqual(['commit', 'completed', 'presentation']);
+    expect(commitRootPosition).toHaveBeenCalledOnce();
+    expect(onVoluntaryMovementCompleted).toHaveBeenCalledOnce();
+  });
+
+  it('validates voluntary commands and moves by at most speed times fixed-step', () => {
+    let nowMs = 0;
+    const result = createOrchestrator(() => nowMs, motion({ position: { x: 100, y: 500 } }));
+    result.orchestrator.start();
+
+    expect(result.orchestrator.requestVoluntaryMovement({
+      kind: 'horizontal_wander',
+      targetRootPosition: { x: 140, y: 500 },
+      speedPxPerSec: 90,
+    })).toBe(true);
+    expect(result.commitRootPosition).not.toHaveBeenCalled();
+    nowMs = 10;
+    result.orchestrator.tick();
+    expect(result.orchestrator.getMotionState().position.x).toBeCloseTo(100.75, 8);
+    expect(result.commitRootPosition).toHaveBeenCalledTimes(1);
+    expect(result.orchestrator.getPresentationRevision()).toBe(1);
+
+    result.orchestrator.beginDrag({ pointerId: 1, sequence: 0, screenPosition: { x: 140, y: 500 } });
+    expect(result.orchestrator.requestVoluntaryMovement({
+      kind: 'horizontal_wander',
+      targetRootPosition: { x: 200, y: 500 },
+      speedPxPerSec: 90,
+    })).toBe(false);
+    expect(result.orchestrator.requestVoluntaryMovement({
+      kind: 'horizontal_wander',
+      targetRootPosition: { x: Number.NaN, y: 500 },
+      speedPxPerSec: 90,
+    })).toBe(false);
+  });
+
+  it('reclamps an active root target after bounds change and commits once for catch-up substeps', () => {
+    let nowMs = 0;
+    let currentEnvironment = environment;
+    const commitRootPosition = vi.fn();
+    const orchestrator = new ShimejiMotionOrchestrator({
+      initialMotion: motion({ position: { x: 900, y: 790 } }),
+      initialSurface,
+      motionEngine: new MotionEngine(),
+      surfaceKinematics: new SurfaceKinematics(),
+      environment: () => currentEnvironment,
+      positionPort: { commitRootPosition },
+      now: () => nowMs,
+    });
+    orchestrator.start();
+    expect(orchestrator.requestVoluntaryMovement({
+      kind: 'horizontal_wander',
+      targetRootPosition: { x: 950, y: 790 }, speedPxPerSec: 120,
+    })).toBe(true);
+    currentEnvironment = {
+      ...environment,
+      screenBounds: { ...environment.screenBounds, width: 300 },
+    };
+    nowMs = 100;
+    orchestrator.tick();
+
+    expect(orchestrator.getMotionState().position.x).toBe(250);
+    expect(commitRootPosition).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels an active voluntary command before drag can mutate the fixed step', () => {
+    let nowMs = 0;
+    const result = createOrchestrator(() => nowMs, motion({ position: { x: 100, y: 500 } }));
+    result.orchestrator.start();
+    expect(result.orchestrator.requestVoluntaryMovement({
+      kind: 'horizontal_wander',
+      targetRootPosition: { x: 900, y: 500 }, speedPxPerSec: 100,
+    })).toBe(true);
+    result.orchestrator.beginDrag({ pointerId: 1, sequence: 0, screenPosition: { x: 100, y: 500 } });
+    nowMs = 10;
+    result.orchestrator.tick();
+
+    expect(result.orchestrator.getMotionState()).toMatchObject({
+      phase: 'dragged',
+      position: { x: 100, y: 500 },
+    });
+  });
+
+  it('keeps the stored root, Motion root, and adapter conversion equal after commit', () => {
+    let nowMs = 0;
+    const setPosition = vi.fn();
+    const window = { isDestroyed: () => false, setPosition } as unknown as BrowserWindow;
+    const positionService = new PetPositionService({ x: 100, y: 500 });
+    const orchestrator = new ShimejiMotionOrchestrator({
+      initialMotion: motion({ position: { x: 100, y: 500 } }),
+      initialSurface,
+      motionEngine: new MotionEngine(),
+      surfaceKinematics: new SurfaceKinematics(),
+      environment: () => environment,
+      positionService,
+      positionPort: new ElectronPetPositionAdapter({
+        getWindow: () => window,
+        pivotOffset: { x: 50, y: 90 },
+      }),
+      now: () => nowMs,
+    });
+    orchestrator.start();
+    orchestrator.requestVoluntaryMovement({
+      kind: 'horizontal_wander',
+      targetRootPosition: { x: 140, y: 500 }, speedPxPerSec: 100_000,
+    });
+    nowMs = 10;
+    orchestrator.tick();
+
+    expect(positionService.getRootPosition()).toEqual(orchestrator.getMotionState().position);
+    expect(setPosition).toHaveBeenCalledWith(90, 410);
   });
 
   it('clamps frame delta and preserves a fixed-step remainder', () => {

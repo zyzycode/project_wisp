@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type {
+  AnimationLifecycleOutcomeDTO,
   CharacterInteractionDTO,
   DebugTelemetryDTO,
   PetPositionDTO,
   ScreenBoundsDTO,
+  SleepWakeCommandDTO,
 } from '../../shared/ipc-contracts';
 import type { CharacterExpression, CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
@@ -20,8 +22,6 @@ import { ContextMenu } from './Interaction/ContextMenu';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { ChatInput } from './Chat/ChatInput';
 import { useAnimationStateMachine } from '../hooks/useAnimationStateMachine';
-import { useAutonomousBehavior } from '../hooks/useAutonomousBehavior';
-import { useEnvironmentSnapshot } from '../hooks/useEnvironmentSnapshot';
 import { useDialogueLoop } from '../hooks/useDialogueLoop';
 import {
   CLICK_REPLIES,
@@ -37,11 +37,16 @@ import {
   type AnimationExpressionHint,
   type AnimationIntentKind,
 } from '../../domain/animation/animation-intent';
-import type { AnimationEvent, AnyAnimationState } from '../../domain/animation/animation-state-machine';
+import type {
+  AnimationEvent,
+  AnyAnimationState,
+  TerminalAnimationState,
+} from '../../domain/animation/animation-state-machine';
 import { DebugHUD } from './Debug';
 import {
   PetDragController,
   PetPresentationRevisionGate,
+  requestCharacterSleepWake,
   subscribeToPetPresentation,
 } from '../pet-main-bridge';
 
@@ -65,7 +70,6 @@ export interface DesktopPetProps {
 export const DesktopPet: React.FC<DesktopPetProps> = ({
   aiProvider = DEFAULT_MOCK_AI_PROVIDER,
 }) => {
-  const [screenBounds, setScreenBounds] = useState<ScreenBoundsDTO | null>(null);
   const [position, setPosition] = useState<PetPositionDTO>({ x: 300, y: 300 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [tiltDeg, setTiltDeg] = useState<number>(0);
@@ -73,6 +77,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const [chatOpen, setChatOpen] = useState<boolean>(false);
   const [currentMessage, setCurrentMessage] = useState<ChatMessage | null>(null);
   const [autoWanderEnabled, setAutoWanderEnabled] = useState<boolean>(true);
+  const [isWandering, setIsWandering] = useState<boolean>(false);
+  const [animationRequestId, setAnimationRequestId] = useState<string | undefined>();
+  const [flipX, setFlipX] = useState<boolean>(false);
   const [customFace, setCustomFace] = useState<AnimationExpressionHint | null>(null);
   const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
     DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
@@ -93,7 +100,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     useState<DebugTelemetryDTO>(EMPTY_DEBUG_TELEMETRY);
   const [renderFps, setRenderFps] = useState<number>(0);
   const debugHudEnabled = window.wispAPI?.debugEnabled ?? false;
-  const environmentSnapshot = useEnvironmentSnapshot();
 
   const sendCharacterInteraction = useCallback(
     (interaction: CharacterInteractionDTO): void => {
@@ -104,11 +110,23 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     []
   );
 
+  const sendSleepWakeCommand = useCallback(
+    (command: SleepWakeCommandDTO): void => {
+      if (!window.wispAPI) return;
+      void requestCharacterSleepWake(window.wispAPI, command.action).catch((err: unknown) =>
+        console.error('Sleep/wake command failed:', err)
+      );
+    },
+    []
+  );
+
   // Animation State Machine Hook (FSM)
   const {
     state: animState,
     expression,
     dispatch: dispatchAnim,
+    completeCurrentState: completeCurrentAnimationState,
+    synchronizeTerminalState: synchronizeTerminalAnimationState,
   } = useAnimationStateMachine('idle');
 
   // Drag & Presentation State handling via Preload IPC bridge
@@ -122,28 +140,108 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const isDraggingRef = useRef(false);
   const hasMovedRef = useRef(false);
   const prevMotionPhaseRef = useRef<string>('grounded');
+  const prevPresentationAnimationRef = useRef<string>('idle');
+  const activeAnimationRequestRef = useRef<string | null>(null);
+  const lastAnimationRequestIdRef = useRef<string | null>(null);
+  const awaitingTerminalSyncRef = useRef(false);
+
+  const notifyAnimationLifecycleResult = useCallback(
+    (requestId: string, outcome: AnimationLifecycleOutcomeDTO): void => {
+      void window.wispAPI
+        ?.notifyAnimationLifecycleResult({ requestId, outcome })
+        .catch((err: unknown) =>
+          console.error('Animation lifecycle result failed:', err)
+        );
+    },
+    []
+  );
 
   // Subscribe to Main Process presentation stream (fixed-step physics & authoritative position)
   useEffect(() => {
     if (!window.wispAPI?.onPetPresentationState) return undefined;
     const revisionGate = new PetPresentationRevisionGate();
-    return subscribeToPetPresentation(window.wispAPI, (state) => {
+    const unsubscribe = subscribeToPetPresentation(window.wispAPI, (state) => {
       if (!revisionGate.accept(state)) return;
       setPosition(state.rootScreenPosition);
+      setAnimationRequestId(state.animationRequestId);
       const isNowDragging = state.motionPhase === 'dragged';
       setIsDragging(isNowDragging);
+      const isNowWandering = state.animationState === 'walk';
+      setIsWandering(isNowWandering);
+      if (isNowWandering && state.velocityPxPerSec.x !== 0) {
+        setFlipX(state.velocityPxPerSec.x > 0);
+      }
 
+      const previousMotionPhase = prevMotionPhaseRef.current;
       if (state.motionPhase === 'dragged') {
         dispatchAnim('START_DRAG', true, true);
       } else if (state.motionPhase === 'airborne') {
         dispatchAnim('FALL', true, true);
       } else if (
-        prevMotionPhaseRef.current === 'airborne' &&
-        state.motionPhase === 'grounded'
+        previousMotionPhase === 'airborne' &&
+        state.motionPhase === 'grounded' &&
+        state.animationRequestId === undefined
       ) {
         dispatchAnim('LAND', true, false);
       }
       prevMotionPhaseRef.current = state.motionPhase;
+
+      if (
+        state.animationRequestId !== undefined &&
+        state.animationRequestId !== lastAnimationRequestIdRef.current
+      ) {
+        awaitingTerminalSyncRef.current = false;
+        const previousRequestId = activeAnimationRequestRef.current;
+        if (previousRequestId !== null) {
+          notifyAnimationLifecycleResult(previousRequestId, 'interrupted');
+        }
+        lastAnimationRequestIdRef.current = state.animationRequestId;
+        const lifecycleEvent = animationLifecycleEvent(state.animationState);
+        const accepted = lifecycleEvent !== undefined &&
+          dispatchAnim(lifecycleEvent, true, false);
+        if (accepted) {
+          activeAnimationRequestRef.current = state.animationRequestId;
+        } else {
+          activeAnimationRequestRef.current = null;
+          awaitingTerminalSyncRef.current = true;
+          notifyAnimationLifecycleResult(state.animationRequestId, 'rejected');
+        }
+      } else if (
+        state.animationRequestId === undefined &&
+        activeAnimationRequestRef.current !== null
+      ) {
+        const interruptedRequestId = activeAnimationRequestRef.current;
+        activeAnimationRequestRef.current = null;
+        awaitingTerminalSyncRef.current = terminalAnimationState(state.animationState) !== undefined;
+        notifyAnimationLifecycleResult(interruptedRequestId, 'interrupted');
+      }
+
+      if (state.animationRequestId === undefined) {
+        const terminalState = terminalAnimationState(state.animationState);
+        if (awaitingTerminalSyncRef.current && terminalState !== undefined) {
+          synchronizeTerminalAnimationState(terminalState);
+          awaitingTerminalSyncRef.current = false;
+        } else if (state.animationState !== prevPresentationAnimationRef.current) {
+          if (state.animationState === 'walk') {
+            dispatchAnim('START_FLOAT');
+          } else if (state.animationState === 'sleep_start') {
+            dispatchAnim('START_SLEEP');
+          } else if (state.animationState === 'wake_up') {
+            dispatchAnim('WAKE_UP');
+          } else if (
+            state.animationState === 'land' &&
+            previousMotionPhase !== 'airborne'
+          ) {
+            dispatchAnim('LAND', true, false);
+          } else if (
+            state.animationState === 'idle' &&
+            prevPresentationAnimationRef.current === 'walk'
+          ) {
+            dispatchAnim('STOP_FLOAT');
+          }
+        }
+        prevPresentationAnimationRef.current = state.animationState;
+      }
 
       if (state.velocityPxPerSec) {
         const vx = state.velocityPxPerSec.x;
@@ -151,7 +249,15 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         setTiltDeg(tilt);
       }
     });
-  }, [dispatchAnim]);
+    return (): void => {
+      const activeRequestId = activeAnimationRequestRef.current;
+      activeAnimationRequestRef.current = null;
+      if (activeRequestId !== null) {
+        notifyAnimationLifecycleResult(activeRequestId, 'interrupted');
+      }
+      unsubscribe();
+    };
+  }, [dispatchAnim, notifyAnimationLifecycleResult, synchronizeTerminalAnimationState]);
 
   // Pointer drag event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -193,7 +299,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         isDraggingRef.current = false;
         dragControllerRef.current?.release({ x: e.screenX, y: e.screenY });
         setTiltDeg(0);
-        sendCharacterInteraction({ type: 'drag_end' });
       }
     };
 
@@ -222,23 +327,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     }
   }, [menuOpen]);
 
-  // Autonomous Behavior Hook
-  const { isWandering, flipX, triggerNap, wakeUp } = useAutonomousBehavior({
-    currentPosition: position,
-    screenBounds,
-    animState,
-    isDragging,
-    petSize: menuOpen ? { width: 880, height: 580 } : COMPACT_WINDOW_SIZE,
-    enabled: autoWanderEnabled && !menuOpen,
-    onPositionChange: (newPos) => {
-      setPosition(newPos);
-      if (window.wispAPI?.updatePosition) {
-        void window.wispAPI.updatePosition(newPos);
-      }
-    },
-    dispatchAnim,
-  });
-
   const characterAnimationIntent = useMemo(() => {
     const kind = isWandering ? 'walk' : animationStateToIntentKind(animState);
     const defaultHint = expressionToHint(expression);
@@ -264,6 +352,37 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     },
     []
   );
+
+  const handleAnimationCompleted = useCallback((
+    _event: unknown,
+    completedPlaybackRequestId: string | undefined
+  ): void => {
+    const activeRequestId = activeAnimationRequestRef.current;
+    if (
+      (activeRequestId !== null && completedPlaybackRequestId !== activeRequestId) ||
+      (activeRequestId === null && completedPlaybackRequestId !== undefined)
+    ) {
+      return;
+    }
+    const terminalTransitionAccepted = completeCurrentAnimationState();
+    if (activeRequestId === null) return;
+    activeAnimationRequestRef.current = null;
+    awaitingTerminalSyncRef.current = true;
+    notifyAnimationLifecycleResult(
+      activeRequestId,
+      terminalTransitionAccepted ? 'completed' : 'rejected'
+    );
+  }, [completeCurrentAnimationState, notifyAnimationLifecycleResult]);
+
+  const handleAnimationRejected = useCallback((
+    rejectedPlaybackRequestId: string | undefined
+  ): void => {
+    const activeRequestId = activeAnimationRequestRef.current;
+    if (activeRequestId === null || rejectedPlaybackRequestId !== activeRequestId) return;
+    activeAnimationRequestRef.current = null;
+    awaitingTerminalSyncRef.current = true;
+    notifyAnimationLifecycleResult(activeRequestId, 'rejected');
+  }, [notifyAnimationLifecycleResult]);
 
   useEffect(() => {
     if (!debugHudEnabled || (!debugHudVisible && !menuOpen)) return undefined;
@@ -353,12 +472,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (environmentSnapshot) {
-      setScreenBounds(environmentSnapshot.screenBounds);
-    }
-  }, [environmentSnapshot]);
-
   const handleDismissMessage = useCallback(() => {
     setCurrentMessage(null);
   }, []);
@@ -380,7 +493,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     if (hasMovedRef.current) return;
 
     if (animState === 'sleep') {
-      wakeUp();
+      sendCharacterInteraction({ type: 'click' });
       setCurrentMessage(
         createChatMessage('pet', INTERACTION_REPLIES.wakeFromClick)
       );
@@ -440,7 +553,6 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
     void window.wispAPI
       ?.getEnvironmentSnapshot?.()
       ?.then((bounds) => {
-        setScreenBounds(bounds.screenBounds);
         resetToCenter(bounds.screenBounds);
       })
       ?.catch((err: unknown) =>
@@ -457,14 +569,12 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
   const handlePlayAnimation = useCallback(
     (event: AnimationEvent) => {
       if (event === 'START_SLEEP') {
-        triggerNap();
-        dispatchAnim('START_SLEEP', true, true);
+        sendSleepWakeCommand({ action: 'sleep' });
         setCurrentMessage(
           createChatMessage('thought', INTERACTION_REPLIES.sleep)
         );
       } else if (event === 'WAKE_UP') {
-        wakeUp();
-        dispatchAnim('WAKE_UP', true, false);
+        sendSleepWakeCommand({ action: 'wake' });
         setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.wake));
       } else if (event === 'PET' || event === 'REACT_HAPPY') {
         sendCharacterInteraction({ type: 'pet' });
@@ -506,7 +616,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         dispatchAnim(event, true, true);
       }
     },
-    [dispatchAnim, sendCharacterInteraction, triggerNap, wakeUp]
+    [dispatchAnim, sendCharacterInteraction, sendSleepWakeCommand]
   );
 
   const debugHudElement = (
@@ -564,7 +674,7 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         currentTheme={currentTheme}
         scale={scale}
         autoWanderEnabled={autoWanderEnabled}
-        isSleeping={animState === 'sleep'}
+        isSleeping={animState === 'sleep_start' || animState === 'sleep_loop'}
         debugHudEnabled={debugHudEnabled}
         debugHudVisible={debugHudVisible}
         isAlwaysOnTop={isAlwaysOnTop}
@@ -601,21 +711,27 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
           setCurrentMessage(createChatMessage('thought', randomThought));
         }}
         onToggleSleep={() => {
-          if (animState === 'sleep') {
-            wakeUp();
-            dispatchAnim('WAKE_UP', true, false);
+          if (animState === 'sleep_start' || animState === 'sleep_loop') {
+            sendSleepWakeCommand({ action: 'wake' });
             setCurrentMessage(
               createChatMessage('pet', INTERACTION_REPLIES.wake)
             );
           } else {
-            triggerNap();
-            dispatchAnim('START_SLEEP', true, true);
+            sendSleepWakeCommand({ action: 'sleep' });
             setCurrentMessage(
               createChatMessage('thought', INTERACTION_REPLIES.sleep)
             );
           }
         }}
-        onToggleWander={() => setAutoWanderEnabled((prev) => !prev)}
+        onToggleWander={() => {
+          const nextValue = !autoWanderEnabled;
+          setAutoWanderEnabled(nextValue);
+          void window.wispAPI
+            ?.setAutonomyEnabled?.({ enabled: nextValue })
+            ?.catch((err: unknown) =>
+              console.error('Failed to toggle autonomy:', err)
+            );
+        }}
         onToggleDebugHud={() => setDebugHudVisible((visible) => !visible)}
         onToggleAlwaysOnTop={() => {
           const nextValue = !isAlwaysOnTop;
@@ -645,6 +761,9 @@ export const DesktopPet: React.FC<DesktopPetProps> = ({
         debugAnimationSelection={debugAnimationSelection}
         showAnchorPoint={showAnchorPoint}
         onManifestAnimationsLoaded={handleManifestAnimationsLoaded}
+        animationRequestId={animationRequestId}
+        onAnimationCompleted={handleAnimationCompleted}
+        onAnimationRejected={handleAnimationRejected}
         onMouseDown={handleMouseDown}
         onClick={handlePetClick}
         onDoubleClick={handlePetDoubleClick}
@@ -729,6 +848,20 @@ function animationStateToIntentKind(
     default:
       return 'idle_blink';
   }
+}
+
+function animationLifecycleEvent(
+  state: 'sleep_start' | 'wake_up' | 'land' | string
+): AnimationEvent | undefined {
+  if (state === 'sleep_start') return 'START_SLEEP';
+  if (state === 'wake_up') return 'WAKE_UP';
+  if (state === 'land') return 'LAND';
+  return undefined;
+}
+
+function terminalAnimationState(state: string): TerminalAnimationState | undefined {
+  if (state === 'idle' || state === 'settle' || state === 'sleep_loop') return state;
+  return undefined;
 }
 
 function expressionToHint(expr: CharacterExpression): AnimationExpressionHint {

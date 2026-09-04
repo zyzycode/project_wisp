@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import type {
   PingResponseDTO,
   SystemInfoDTO,
@@ -23,6 +24,7 @@ import { isDebugMode } from '../shared/debug-mode';
 import { performance } from 'node:perf_hooks';
 import {
   DEFAULT_MOTION_CONSTRAINTS,
+  clampRootPosition,
   MotionEngine,
   SurfaceKinematics,
   type MotionState,
@@ -30,7 +32,12 @@ import {
 } from '../domain/behavior';
 import type { EnvironmentSnapshot } from '../domain/behavior/surface-kinematics';
 import { ShimejiMotionOrchestrator } from '../application/services/shimeji-motion-orchestrator';
-import { ElectronPetPositionAdapter } from '../infrastructure/adapters/electron-pet-position-adapter';
+import {
+  ElectronPetPositionAdapter,
+  nativeToRootPosition,
+  rootToNativePosition,
+} from '../infrastructure/adapters/electron-pet-position-adapter';
+import { SeededPrng } from '../infrastructure/random/seeded-prng';
 import {
   toEnvironmentSnapshotDTO,
   toPetPresentationStateDTO,
@@ -41,6 +48,8 @@ import {
   handleReleasePetDrag,
 } from './shimeji-ipc-handlers';
 import { startShimejiMotionLoop } from './shimeji-motion-loop';
+import { MainAutonomyComposition } from './main-autonomy-composition';
+import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
 
 process.env.APP_ROOT = path.join(__dirname, '../..');
 
@@ -59,6 +68,12 @@ export const EXPANDED_WINDOW_HEIGHT = 620;
 export const WINDOW_WIDTH = COMPACT_WINDOW_WIDTH;
 export const WINDOW_HEIGHT = COMPACT_WINDOW_HEIGHT;
 
+const ROOT_PIVOT_OFFSET = {
+  x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
+  y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
+};
+const AUTONOMY_SEED = 0x5753_5031;
+
 let mainWindow: BrowserWindow | null = null;
 const platformAdapter = createPlatformAdapter();
 const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
@@ -66,6 +81,8 @@ let positionService: PetPositionService | null = null;
 let unsubscribeEnvironmentChanges: (() => void) | null = null;
 let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
+let autonomyComposition: MainAutonomyComposition | null = null;
+let petPresentationRevision = 0;
 const debugLogBuffer = new LogBuffer();
 const appLogger = new AppLogger({
   level: 'debug',
@@ -97,9 +114,8 @@ function calculateInitialPosition(): { x: number; y: number } {
 }
 
 function initializeServices(): void {
-  const initial = calculateInitialPosition();
-  positionService = new PetPositionService(initial);
-  positionService.setPetSize({ width: WINDOW_WIDTH, height: WINDOW_HEIGHT });
+  const initialRoot = nativeToRootPosition(calculateInitialPosition(), ROOT_PIVOT_OFFSET);
+  positionService = new PetPositionService(initialRoot);
   appLogger.info('CharacterEngine', 'Main character telemetry initialized');
 }
 
@@ -138,13 +154,20 @@ function publishEnvironmentSnapshot(snapshot: EnvironmentSnapshot): void {
 function publishPetPresentationState(): void {
   if (mainWindow === null || mainWindow.isDestroyed() || shimejiMotionOrchestrator === null) return;
   const motion = shimejiMotionOrchestrator.getMotionState();
-  const animationState = motion.phase === 'dragged' ? 'dragged' : motion.phase === 'airborne' ? 'fall' : 'idle';
+  const animationState = motion.phase === 'dragged'
+    ? 'dragged'
+    : motion.phase === 'airborne'
+      ? 'fall'
+      : autonomyComposition?.getAnimationState() ?? 'idle';
   mainWindow.webContents.send(
     'pet:presentation-state',
     toPetPresentationStateDTO({
-      revision: shimejiMotionOrchestrator.getPresentationRevision(),
+      revision: ++petPresentationRevision,
       motion,
       animationState,
+      ...(autonomyComposition?.getAnimationRequestId() === undefined
+        ? {}
+        : { animationRequestId: autonomyComposition.getAnimationRequestId() }),
     })
   );
 }
@@ -155,16 +178,73 @@ function stopShimejiMotionLoop(): void {
   shimejiMotionOrchestrator = null;
 }
 
+function disposeAutonomyComposition(): void {
+  autonomyComposition?.dispose();
+  autonomyComposition = null;
+}
+
+function initializeAutonomyComposition(): void {
+  disposeAutonomyComposition();
+  const orchestrator = shimejiMotionOrchestrator;
+  if (orchestrator === null) return;
+  const prng = new SeededPrng(AUTONOMY_SEED);
+  autonomyComposition = new MainAutonomyComposition({
+    clock: { now: () => performance.now() },
+    scheduler: createMainAutonomyScheduler(),
+    prng,
+    prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
+    getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
+    movement: {
+      getRootPosition: () => orchestrator.getMotionState().position,
+      getBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
+      getCollisionInsets: () => DEFAULT_MOTION_CONSTRAINTS.collisionInsets,
+      canAcceptVoluntaryMovement: () => orchestrator.canAcceptVoluntaryMovement(),
+      requestVoluntaryMovement: (command) => orchestrator.requestVoluntaryMovement(command),
+      cancelVoluntaryMovement: () => orchestrator.cancelVoluntaryMovement(),
+    },
+    requestManualRootPosition: (targetRootPosition) => {
+      return orchestrator.requestVoluntaryMovement({
+        kind: 'manual_root',
+        targetRootPosition,
+      });
+    },
+    createAnimationRequestId: randomUUID,
+    onPresentationChanged: publishPetPresentationState,
+  });
+  autonomyComposition.start();
+}
+
+function createMainAutonomyScheduler(): {
+  setTimeout(callback: () => void, delayMs: number): unknown;
+  clearTimeout(handle: unknown): void;
+} {
+  const timers = new Map<unknown, ReturnType<typeof setTimeout>>();
+  return {
+    setTimeout: (callback, delayMs) => {
+      let timer: ReturnType<typeof setTimeout>;
+      timer = setTimeout(() => {
+        timers.delete(timer);
+        callback();
+      }, delayMs);
+      timers.set(timer, timer);
+      return timer;
+    },
+    clearTimeout: (handle) => {
+      const timer = timers.get(handle);
+      if (timer === undefined) return;
+      timers.delete(handle);
+      clearTimeout(timer);
+    },
+  };
+}
+
 function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): void {
   stopShimejiMotionLoop();
+  petPresentationRevision = 0;
   const environment = platformEnvironmentAdapter.getSnapshot();
-  const pivotOffset = {
-    x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
-    y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
-  };
   const initialMotion: MotionState = {
     phase: 'grounded',
-    position: { x: initialWindowPosition.x + pivotOffset.x, y: initialWindowPosition.y + pivotOffset.y },
+    position: nativeToRootPosition(initialWindowPosition, ROOT_PIVOT_OFFSET),
     velocityPxPerSec: { x: 0, y: 0 },
     activeBoundsId: environment.screenBounds.id,
     airborneElapsedSec: 0,
@@ -181,8 +261,23 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
     motionEngine: new MotionEngine(),
     surfaceKinematics: new SurfaceKinematics(),
     environment: () => platformEnvironmentAdapter.getSnapshot(),
-    positionPort: new ElectronPetPositionAdapter({ getWindow: () => mainWindow, pivotOffset }),
+    positionService: positionService ?? undefined,
+    positionPort: new ElectronPetPositionAdapter({
+      getWindow: () => mainWindow,
+      pivotOffset: ROOT_PIVOT_OFFSET,
+    }),
     now: () => performance.now(),
+    eventDispatcher: {
+      dispatchMotionEvent: (event) => {
+        autonomyComposition?.handleMotionEvent(event);
+      },
+      dispatchSurfaceEvent: (event) => {
+        if (event.type === 'support_lost') autonomyComposition?.handleSupportLost();
+      },
+    },
+    onVoluntaryMovementCompleted: () => {
+      autonomyComposition?.notifyVoluntaryMovementCompleted();
+    },
   });
   stopShimejiMotionLoopHandle = startShimejiMotionLoop({
     orchestrator: shimejiMotionOrchestrator,
@@ -190,6 +285,7 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
     publishPresentation: publishPetPresentationState,
     intervalMs: Math.round(DEFAULT_MOTION_CONSTRAINTS.fixedStepSec * 1000),
   });
+  initializeAutonomyComposition();
 }
 
 const CHARACTER_INTERACTION_TYPES: readonly CharacterInteractionTypeDTO[] = [
@@ -212,7 +308,28 @@ function isCharacterInteractionDTO(value: unknown): value is CharacterInteractio
   );
 }
 
+function getNativePosition(): PetPositionDTO {
+  if (positionService === null) return calculateInitialPosition();
+  const bounds = platformEnvironmentAdapter.getSnapshot().screenBounds;
+  return rootToNativePosition(positionService.getRootPosition(), bounds, ROOT_PIVOT_OFFSET);
+}
+
 function registerIpcHandlers(): void {
+  registerAutonomyIpcHandlers({
+    register: (channel, handler) => {
+      ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
+        return handler({ sender: event.sender }, payload);
+      });
+    },
+    getWindow: () => mainWindow,
+    getController: () => autonomyComposition,
+    getNativePosition,
+    getScreenBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
+    pivotOffset: ROOT_PIVOT_OFFSET,
+    compactSize: { width: COMPACT_WINDOW_WIDTH, height: COMPACT_WINDOW_HEIGHT },
+    expandedSize: { width: EXPANDED_WINDOW_WIDTH, height: EXPANDED_WINDOW_HEIGHT },
+  });
+
   ipcMain.handle('wisp:ping', async (_event, message: unknown): Promise<PingResponseDTO> => {
     const text = typeof message === 'string' ? message : '';
     return {
@@ -257,47 +374,14 @@ function registerIpcHandlers(): void {
     }
   );
 
-  ipcMain.handle(
-    'wisp:set-menu-expanded',
-    async (_event, expanded: boolean): Promise<PetPositionDTO> => {
-      const width = expanded ? EXPANDED_WINDOW_WIDTH : COMPACT_WINDOW_WIDTH;
-      const height = expanded ? EXPANDED_WINDOW_HEIGHT : COMPACT_WINDOW_HEIGHT;
-
-      if (positionService) {
-        positionService.setPetSize({ width, height });
-        const currentPos = positionService.getPosition();
-        const bounds = platformAdapter.getDisplayWorkArea(currentPos);
-        const updated = positionService.updatePosition(currentPos, bounds);
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.setResizable(true);
-          mainWindow.setSize(width, height);
-        }
-        if (shimejiMotionOrchestrator) {
-          const pivotOffset = {
-            x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
-            y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
-          };
-          shimejiMotionOrchestrator.syncRootPosition({
-            x: updated.x + pivotOffset.x,
-            y: updated.y + pivotOffset.y,
-          });
-        }
-        return updated;
-      }
-      return calculateInitialPosition();
-    }
-  );
-
   ipcMain.handle('wisp:get-position', async (): Promise<PetPositionDTO> => {
-    return positionService ? positionService.getPosition() : calculateInitialPosition();
+    return getNativePosition();
   });
 
   ipcMain.handle(
     'wisp:update-position',
     async (_event, targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
-      const currentPos = positionService
-        ? positionService.getPosition()
-        : calculateInitialPosition();
+      const currentPos = getNativePosition();
 
       const validX =
         typeof targetPos?.x === 'number' && Number.isFinite(targetPos.x)
@@ -308,28 +392,18 @@ function registerIpcHandlers(): void {
           ? targetPos.y
           : currentPos.y;
 
-      const safePos: PetPositionDTO = { x: validX, y: validY };
-      const bounds = platformAdapter.getDisplayWorkArea(safePos);
-      const updated = positionService
-        ? positionService.updatePosition(safePos, bounds)
-        : safePos;
-
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.setPosition(Math.round(updated.x), Math.round(updated.y));
+      const bounds = platformEnvironmentAdapter.getSnapshot().screenBounds;
+      const requestedRoot = nativeToRootPosition({ x: validX, y: validY }, ROOT_PIVOT_OFFSET);
+      let targetRoot;
+      try {
+        targetRoot = clampRootPosition(requestedRoot, bounds, DEFAULT_MOTION_CONSTRAINTS.collisionInsets);
+      } catch {
+        return currentPos;
       }
-
-      if (shimejiMotionOrchestrator) {
-        const pivotOffset = {
-          x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
-          y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
-        };
-        shimejiMotionOrchestrator.syncRootPosition({
-          x: updated.x + pivotOffset.x,
-          y: updated.y + pivotOffset.y,
-        });
-      }
-
-      return updated;
+      const accepted = autonomyComposition?.requestManualRootPosition(targetRoot) ?? false;
+      return accepted
+        ? rootToNativePosition(targetRoot, bounds, ROOT_PIVOT_OFFSET)
+        : currentPos;
     }
   );
 
@@ -343,7 +417,9 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('pet:begin-drag', async (_event, payload: unknown) => {
     if (shimejiMotionOrchestrator === null) throw new Error('Shimeji motion is unavailable');
-    return handleBeginPetDrag(shimejiMotionOrchestrator, payload);
+    const result = handleBeginPetDrag(shimejiMotionOrchestrator, payload);
+    autonomyComposition?.beginDrag();
+    return result;
   });
 
   ipcMain.handle('pet:move-drag', async (_event, payload: unknown): Promise<void> => {
@@ -362,8 +438,20 @@ function registerIpcHandlers(): void {
       if (!isCharacterInteractionDTO(interaction)) {
         throw new TypeError('Invalid character interaction payload');
       }
-      defaultCharacterInteractionUseCase.execute(interaction);
+      const interactionType = interaction.type;
+      if (interactionType === 'click') {
+        autonomyComposition?.handleClick();
+      } else {
+        autonomyComposition?.suspendForUserInteraction();
+      }
+      defaultCharacterInteractionUseCase.execute({
+        type: interactionType,
+        ...(interaction.intensity === undefined ? {} : { intensity: interaction.intensity }),
+      });
       publishDebugTelemetry();
+      if (interactionType !== 'drag_end' && interactionType !== 'click') {
+        autonomyComposition?.resumeAfterUserInteraction();
+      }
     }
   );
 
@@ -453,6 +541,7 @@ function createWindow(): void {
   }
 
   mainWindow.on('closed', () => {
+    disposeAutonomyComposition();
     stopShimejiMotionLoop();
     mainWindow = null;
   });
@@ -493,6 +582,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  disposeAutonomyComposition();
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();
 });

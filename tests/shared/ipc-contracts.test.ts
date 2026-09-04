@@ -1,9 +1,14 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import type {
+  AnimationLifecycleResultDTO,
   BeginPetDragDTO,
+  CharacterInteractionDTO,
+  CharacterInteractionTypeDTO,
   EnvironmentSnapshotDTO,
   PetPresentationStateDTO,
+  SetAutonomyEnabledDTO,
+  SleepWakeCommandDTO,
 } from '../../src/shared/ipc-contracts';
 
 describe('Shared: IPC contracts', () => {
@@ -24,7 +29,26 @@ describe('Shared: IPC contracts', () => {
       revision: 1, motionPhase: 'grounded', rootScreenPosition: { x: 1, y: 2 },
       velocityPxPerSec: { x: 0, y: 0 }, positionAuthority: 'voluntary', animationState: 'idle',
     };
+    const autonomy: SetAutonomyEnabledDTO = { enabled: true };
+    const interaction: CharacterInteractionDTO = { type: 'click' };
+    const sleepCommand: SleepWakeCommandDTO = { action: 'sleep' };
+    const wakeCommand: SleepWakeCommandDTO = { action: 'wake' };
+    const animationResult: AnimationLifecycleResultDTO = {
+      requestId: 'animation-1',
+      outcome: 'completed',
+    };
 
-    expect({ environment, begin, presentation }).toBeDefined();
+    expect({
+      environment,
+      begin,
+      presentation,
+      autonomy,
+      interaction,
+      sleepCommand,
+      wakeCommand,
+      animationResult,
+    }).toBeDefined();
+    expectTypeOf<'sleep'>().not.toMatchTypeOf<CharacterInteractionTypeDTO>();
+    expectTypeOf<'wake'>().not.toMatchTypeOf<CharacterInteractionTypeDTO>();
   });
 });

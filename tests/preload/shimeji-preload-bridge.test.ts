@@ -36,11 +36,23 @@ describe('Preload: Shimeji bridge', () => {
     await api.beginPetDrag(begin);
     await api.movePetDrag(move);
     await api.releasePetDrag(move);
+    await api.setAutonomyEnabled?.({ enabled: false });
+    await api.requestSleepWake({ action: 'sleep' });
+    await api.requestSleepWake({ action: 'wake' });
+    await api.notifyAnimationLifecycleResult({ requestId: 'animation-1', outcome: 'completed' });
     unsubscribe();
 
     expect(electronMocks.invoke).toHaveBeenNthCalledWith(1, 'pet:begin-drag', begin);
     expect(electronMocks.invoke).toHaveBeenNthCalledWith(2, 'pet:move-drag', move);
     expect(electronMocks.invoke).toHaveBeenNthCalledWith(3, 'pet:release-drag', move);
+    expect(electronMocks.invoke).toHaveBeenNthCalledWith(4, 'wisp:set-autonomy-enabled', { enabled: false });
+    expect(electronMocks.invoke).toHaveBeenNthCalledWith(5, 'wisp:request-sleep-wake', { action: 'sleep' });
+    expect(electronMocks.invoke).toHaveBeenNthCalledWith(6, 'wisp:request-sleep-wake', { action: 'wake' });
+    expect(electronMocks.invoke).toHaveBeenNthCalledWith(
+      7,
+      'wisp:animation-lifecycle-result',
+      { requestId: 'animation-1', outcome: 'completed' }
+    );
     expect(electronMocks.on).toHaveBeenCalledWith('pet:presentation-state', expect.any(Function));
     const registeredListener = electronMocks.on.mock.calls.find(
       ([channel]: readonly unknown[]) => channel === 'pet:presentation-state'

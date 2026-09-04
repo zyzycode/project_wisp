@@ -35,6 +35,7 @@ export type LocomotionAnimationState =
 
 export type AnimationState = CoreAnimationState;
 export type AnyAnimationState = CoreAnimationState | LocomotionAnimationState;
+export type TerminalAnimationState = 'idle' | 'settle' | 'sleep_loop';
 
 export type CoreAnimationEvent =
   | 'TICK'
@@ -153,7 +154,7 @@ export const ANIMATION_STATES: Record<AnyAnimationState, StateConfig> = {
     priority: 'high',
     stable: false,
     durationMs: 800,
-    autoNextState: 'idle',
+    autoNextState: 'settle',
     allowedTransitions: ['settle', 'idle', 'dragged', 'spook'],
   },
   sleep: {
@@ -756,12 +757,24 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
 
     if (!this.isStateLocked && config?.durationMs && config.autoNextState) {
       if (this.stateElapsedTimeMs >= config.durationMs) {
-        this.currentState = config.autoNextState;
-        this.currentExpression =
-          ANIMATION_STATES[this.currentState]?.defaultExpression ?? 'idle';
-        this.stateElapsedTimeMs = 0;
-        this.notify();
+        this.completeCurrentState();
       }
     }
+  }
+
+  /** Advances a finite visual lifecycle after its actual player reports completion. */
+  completeCurrentState(): boolean {
+    const nextState = ANIMATION_STATES[this.currentState]?.autoNextState;
+    if (this.isStateLocked || nextState === undefined) return false;
+    this.moveTo(nextState);
+    return true;
+  }
+
+  /** Applies an authoritative terminal presentation after lifecycle recovery. */
+  synchronizeTerminalState(targetState: TerminalAnimationState): boolean {
+    if (this.currentState === targetState) return false;
+    this.isStateLocked = false;
+    this.moveTo(targetState);
+    return true;
   }
 }
