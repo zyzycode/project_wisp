@@ -1,8 +1,8 @@
 # Контракт Motion Engine
 
-`MOTION_ENGINE.md` — source of truth для drag/throw/fall/collision, support и surface kinematics, world-position authority, Main/Application position orchestration и необходимого typed IPC.
+`MOTION_ENGINE.md` — source of truth для физических расчётов (drag, throw, fall, collision, crawl/support kinematics), правил авторитета позиции и границ применения перемещения окна.
 
-Motion Engine фиксирует physical facts и forced position, но не выбирает поведение. Архитектурное обоснование lightweight solver для native window вынесено в [`ADR-014`](../adr/ADR-014-native-window-motion.md).
+Motion Engine фиксирует **физические факты** и принудительную позицию, но не выбирает автономное поведение персонажа. Архитектурное обоснование lightweight solver для native window вынесено в [`ADR-014`](../adr/ADR-014-native-window-motion.md). Доменные типы определены в [`motion-engine.ts`](../../src/domain/behavior/motion-engine.ts) и [`surface-kinematics.ts`](../../src/domain/behavior/surface-kinematics.ts).
 
 ## 1. Владение и поток
 
@@ -23,167 +23,49 @@ flowchart LR
 
 | Owner | Владеет | Не владеет |
 |---|---|---|
-| Motion Engine | pure drag/airborne/grounded state, velocity, collision и landing facts | clocks, window, Activity, behavior |
-| Surface Kinematics | pure support/surface traversal state и physical transitions | environment discovery, window commits |
-| Main/Application | aggregate state, fixed-step accumulator, input order, environment refresh, feedback/FSM dispatch, commit decision | Electron conversion, semantic choice |
-| Infrastructure | environment/clock adapters и `PetPositionPort` implementation | motion state или solver |
-| Renderer | pointer capture и immutable presentation View | authoritative position/velocity/collision |
-| Preload | narrow typed bridge и unsubscribe | validation/physics policy |
+| Motion Engine | Чистые состояния физики (drag, airborne, grounded), скорости, факты коллизий и посадки | Таймерами, окном Electron, Activity, поведением |
+| Surface Kinematics | Чистые состояния опоры (wall climb, ceiling hang/crawl), отрыв от поверхности | Сканированием окон ОС, коммитом позиции окна |
+| Main / Application | Агрегат состояния, аккумулятор шагов, валидация сессий drag, диспетчеризация событий | Преобразованием координат Electron, семантикой |
+| Infrastructure | Адаптеры окружения/часов и реализация `PetPositionPort` | Физическим солвером или принятием решений |
+| Renderer | Захват указателя мыши и пассивный рендеринг | Авторитетной позицией, скоростью, физикой |
 
-P0–P5 определены только в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md); Animation transitions — только в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md).
+Приоритеты P0–P5 определены в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md); визуальные анимации — в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md).
 
 ## 2. Координаты и базовые DTO
 
-`WorldPx` — logical desktop pixel/DIP; origin сверху слева, `x` вправо, `y` вниз, значения могут быть отрицательными. `SourcePx` — pixel source canvas Render Engine. Скорость измеряется в `WorldPx/s`, ускорение — в `WorldPx/s²`, physics delta — в секундах, timestamps/durations — в monotonic ms.
+- **Единицы**: координаты — `WorldPx` (логический пиксель экрана / DIP, origin сверху слева, $x$ вправо, $y$ вниз); скорость — `WorldPx/s`; ускорение — `WorldPx/s²`; время/таймстемпы — monotonic ms.
+- **Опорная точка (`rootPosition`)**: базовый контактный pivot персонажа (подошвы/центр опоры). Смещения рендерера и спрайтов вычисляются относительно него и не влияют на физический pivot.
+- Типы данных (`Vector2Dto`, `ScreenBoundsDto`, `CollisionInsets`, `MotionState`, `MotionEvent`) импортируются напрямую из [`src/domain/behavior/motion-engine.ts`](../../src/domain/behavior/motion-engine.ts).
 
-`MotionState.position` — root/contact pivot. Renderer offsets и sprite anchors не меняют эту координату.
+## 3. Физические состояния
 
-```typescript
-export type MonotonicMs = number;
-export type WorldPx = number;
-export type SourcePx = number;
+Физический цикл движения разделяется на четыре базовых состояния:
 
-export interface Vector2Dto {
-  readonly x: number;
-  readonly y: number;
-}
-
-export type MotionPhase = 'dragged' | 'airborne' | 'grounded';
-export type AirborneCause = 'throw_release' | 'voluntary_jump' | 'support_lost';
-
-export interface AirborneLaunch {
-  readonly cause: AirborneCause;
-  readonly position: Vector2Dto;
-  readonly velocityPxPerSec: Vector2Dto;
-  readonly boundsId: string;
-  readonly atMs: MonotonicMs;
-}
-
-export interface ThrowVector {
-  readonly vxPxPerSec: number;
-  readonly vyPxPerSec: number;
-  readonly sampledAtMs: MonotonicMs;
-  readonly sampleCount: number;
-  readonly sampleSpanMs: number;
-}
-
-export interface ScreenBoundsDto {
-  readonly id: string;
-  readonly x: WorldPx;
-  readonly y: WorldPx;
-  readonly width: WorldPx;
-  readonly height: WorldPx;
-}
-
-export interface CollisionInsets {
-  readonly left: WorldPx;
-  readonly right: WorldPx;
-  readonly top: WorldPx;
-  readonly bottom: WorldPx;
-}
+```mermaid
+stateDiagram-v2
+  [*] --> grounded
+  grounded --> dragged: drag_started (pointer grab)
+  grounded --> airborne: voluntary_jump / support_lost
+  grounded --> crawl: startWallClimb / startCeilingHang
+  crawl --> airborne: support_lost
+  dragged --> airborne: released (throw_release)
+  airborne --> airborne: collision (bounce)
+  airborne --> grounded: landed (settle criteria met)
 ```
 
-## 3. Motion state и constraints
-
-```typescript
-export interface ThrowSamplingConstraints {
-  readonly windowMs: number;
-  readonly maxSamples: number;
-  readonly minSpanMs: number;
-  readonly maxThrowSpeedPxPerSec: number;
-}
-
-export interface MotionConstraints {
-  readonly gravityPxPerSec2: number;
-  readonly linearDampingXPerSec: number;
-  readonly linearDampingYPerSec: number;
-  readonly fixedStepSec: number;
-  readonly maxFrameDeltaSec: number;
-  readonly maxSpeedPxPerSec: number;
-  readonly wallRestitution: number;
-  readonly ceilingRestitution: number;
-  readonly floorRestitution: number;
-  readonly floorTangentialRetention: number;
-  readonly minBounceNormalSpeedPxPerSec: number;
-  readonly settleNormalSpeedPxPerSec: number;
-  readonly settleTangentialSpeedPxPerSec: number;
-  readonly softLandingMaxSeverity: number;
-  readonly stumbleMaxSeverity: number;
-  readonly collisionInsets: CollisionInsets;
-  readonly throwSampling: ThrowSamplingConstraints;
-}
-
-export type LandingOutcome = 'soft_landing' | 'stumble' | 'crash_landing';
-
-export interface MotionState {
-  readonly phase: MotionPhase;
-  readonly position: Vector2Dto;
-  readonly velocityPxPerSec: Vector2Dto;
-  readonly activeBoundsId: string;
-  readonly airborneElapsedSec: number;
-  readonly peakGroundImpactSeverity: number;
-}
-
-export type MotionEvent =
-  | { readonly type: 'drag_started'; readonly atMs: MonotonicMs }
-  | { readonly type: 'released'; readonly throwVector: ThrowVector }
-  | { readonly type: 'airborne_started'; readonly cause: AirborneCause; readonly atMs: MonotonicMs }
-  | { readonly type: 'collision'; readonly side: 'left' | 'right' | 'top' | 'bottom'; readonly normalSpeedPxPerSec: number }
-  | { readonly type: 'landed'; readonly outcome: LandingOutcome; readonly impactSeverity: number };
-
-export interface MotionStepResult {
-  readonly state: MotionState;
-  readonly events: readonly MotionEvent[];
-}
-
-export interface PointerMotionSample {
-  readonly position: Vector2Dto;
-  readonly capturedAtMs: MonotonicMs;
-}
-
-export interface MotionStepInput {
-  readonly state: MotionState;
-  readonly stepSec: number;
-  readonly bounds: ScreenBoundsDto;
-}
-
-export interface IMotionEngine {
-  beginDrag(state: MotionState, pivotPosition: Vector2Dto, boundsId: string, atMs: MonotonicMs): MotionStepResult;
-  updateDraggedPosition(state: MotionState, pivotPosition: Vector2Dto): MotionState;
-  estimateThrow(samples: readonly PointerMotionSample[], releaseAtMs: MonotonicMs): ThrowVector;
-  release(state: MotionState, throwVector: ThrowVector): MotionStepResult;
-  beginAirborne(state: MotionState, launch: AirborneLaunch): MotionStepResult;
-  step(input: MotionStepInput): MotionStepResult;
-}
-```
-
-```typescript
-export const DEFAULT_MOTION_CONSTRAINTS: MotionConstraints = {
-  gravityPxPerSec2: 1800,
-  linearDampingXPerSec: 0.35,
-  linearDampingYPerSec: 0.08,
-  fixedStepSec: 1 / 120,
-  maxFrameDeltaSec: 0.25,
-  maxSpeedPxPerSec: 2400,
-  wallRestitution: 0.45,
-  ceilingRestitution: 0.30,
-  floorRestitution: 0.30,
-  floorTangentialRetention: 0.72,
-  minBounceNormalSpeedPxPerSec: 160,
-  settleNormalSpeedPxPerSec: 120,
-  settleTangentialSpeedPxPerSec: 90,
-  softLandingMaxSeverity: 420,
-  stumbleMaxSeverity: 950,
-  collisionInsets: { left: 50, right: 50, top: 90, bottom: 10 },
-  throwSampling: { windowMs: 100, maxSamples: 8, minSpanMs: 24, maxThrowSpeedPxPerSec: 2200 },
-};
-```
-
-Validation: positive bounds/steps; non-negative damping/speeds; restitution/retention in `[0,1]`; `minBounce >= settleNormal`; `softLandingMax < stumbleMax`; legal inset range non-empty. Sprite packs may override only collision insets; остальной tuning проходит через `MotionConstraints`.
+1. **`drag` (`dragged`)**: Принудительное перемещение курсором пользователя. Персонаж привязан к pivot курсора с постоянным grab offset. Скорость обнулена, гравитация отключена. Немедленно отменяет текущую активность (P1 safety).
+2. **`fall` (`airborne`)**: Свободный полёт/падение под действием гравитации и демпфирования. Возникает по трём причинам (`AirborneCause`):
+   - `throw_release`: бросок пользователем после отпускания drag;
+   - `support_lost`: потеря твердой поверхности (полка/окно исчезли или персонаж выполз за пределы);
+   - `voluntary_jump`: санкционированный прыжок системы автономности.
+3. **`land` (фаза стабилизации и приземления)**: Контакт с нижней поверхностью (`screen_floor` / границы экрана). Включает отскоки (`bounce`) и тангенциальное трение до выполнения критериев затухания (`settle`). Завершается исходом `soft_landing`, `stumble` или `crash_landing`.
+4. **`crawl` (`climbing_wall`, `hanging_ceiling`)**: Кинематика движения по поверхностям ([`surface-kinematics.ts`](../../src/domain/behavior/surface-kinematics.ts)):
+   - Движение по вертикальной стене (`climbing_wall`) со скоростью $v_{\text{vertical}}$;
+   - Ползание по верхней кромке стороннего окна (`hanging_ceiling`) со скоростью $v_{\text{crawl}}$. При выходе за границу поверхности генерируется `support_lost` и персонаж переходит в `fall`.
 
 ## 4. Sliding-window throw vector
 
-Samples сортируются, duplicate timestamps схлопываются с сохранением последнего, затем берутся не более `maxSamples` с `t_i >= releaseAtMs - windowMs`. Если samples меньше двух или span `< minSpanMs`, velocity равна `(0,0)`.
+Оценка вектора скорости броска при отпускании драга использует взвешенную линейную регрессию выборки последних положений за окно `windowMs` (по умолчанию 100 мс, макс. 8 сэмплов):
 
 ```text
 τ_i = (t_i - t_(n-1)) / 1000;  w_i = i + 1
@@ -194,162 +76,117 @@ s = sqrt(vx_raw² + vy_raw²);  k = min(1, maxThrowSpeed / max(s, ε))
 vx = vx_raw × k;  vy = vy_raw × k
 ```
 
-Zero denominator даёт `(0,0)`. Pointer/root samples эквивалентны при constant grab offset; two-last-sample или `movementX/Y` estimation запрещены. `release` создаёт `AirborneLaunch(cause='throw_release')`. Approved jump передаёт explicit `voluntary_jump`; lost/invalid support — explicit `support_lost`. `beginAirborne` сбрасывает airborne counters и emits `airborne_started`.
+- Если количество сэмплов $< 2$ или span $< \text{minSpanMs}$ (24 мс), скорость броска принимается равной $(0, 0)$.
+- Запрещено использовать мгновенную скорость по двум точкам или сырые дельты мыши (`movementX/Y`).
 
-## 5. Fixed-step integration
+## 5. Интеграция физики (Fixed-step integration)
+
+Интеграция выполняется фиксированным шагом $h$ (`fixedStepSec = 1/120` с) по схеме полунеявного метода Эйлера с экспоненциальным демпфированием:
 
 ```text
-Motion.step(input), h = input.stepSec:
-  vy_accel = vy(t) + gravity × h
-  vx(t+h) = vx(t) × exp(-linearDampingX × h)
-  vy(t+h) = vy_accel × exp(-linearDampingY × h)
-  speed = sqrt(vx(t+h)² + vy(t+h)²)
-  velocity = velocity × min(1, maxSpeed / max(speed, ε))
-  x(t+h) = x(t) + vx(t+h) × h
-  y(t+h) = y(t) + vy(t+h) × h
-
-Application accumulator:
-  frameDelta = clamp(renderDeltaSec, 0, maxFrameDeltaSec)
-  accumulator += frameDelta
-  while accumulator >= fixedStepSec:
-    result = motion.step({ state, stepSec: fixedStepSec, bounds })
-    state = result.state
-    accumulator -= fixedStepSec
+vy_accel = vy(t) + gravity × h
+vx(t+h) = vx(t) × exp(-linearDampingX × h)
+vy(t+h) = vy_accel × exp(-linearDampingY × h)
+speed = sqrt(vx(t+h)² + vy(t+h)²)
+velocity = velocity × min(1, maxSpeed / max(speed, ε))
+x(t+h) = x(t) + vx(t+h) × h
+y(t+h) = y(t) + vy(t+h) × h
 ```
 
-Application сохраняет remainder. Motion Engine не хранит accumulator/clock. При одинаковых `MotionStepInput` и constraints result одинаков; render FPS не участвует в Domain math.
+Константы по умолчанию: $g = 1800\text{ px/s}^2$, $d_x = 0.35\text{ s}^{-1}$, $d_y = 0.08\text{ s}^{-1}$, $v_{\text{maxSpeed}} = 2400\text{ px/s}$.
+Motion Engine является чистой функцией: при одинаковых входных данных результат строго детерминирован и не зависит от FPS рендера.
 
-## 6. Collision, bounce и landing
+## 6. Коллизии, отскок и приземление
 
+Эффективные границы рассчитываются с учётом отступов персонажа (`collisionInsets`):
 ```text
 minX = bounds.x + insets.left;  maxX = bounds.x + bounds.width - insets.right
 minY = bounds.y + insets.top;   maxY = bounds.y + bounds.height - insets.bottom
-left/right: vx_after = -wallRestitution × vx_before
-top:        vy_after = -ceilingRestitution × vy_before
-bottom:     vy_after = -floorRestitution × vy_before
-            vx_after = floorTangentialRetention × vx_before
+```
+
+Отражение скорости при ударе:
+- Стены (left/right): $v_{x,\text{after}} = -\text{wallRestitution} \times v_{x,\text{before}} \quad (\text{restitution} = 0.45)$
+- Потолок (top): $v_{y,\text{after}} = -\text{ceilingRestitution} \times v_{y,\text{before}} \quad (\text{restitution} = 0.30)$
+- Пол (bottom): $v_{y,\text{after}} = -\text{floorRestitution} \times v_{y,\text{before}}, \quad v_{x,\text{after}} = \text{floorTangentialRetention} \times v_{x,\text{before}} \quad (0.30, \; 0.72)$
+
+Тяжесть удара (Impact severity) и пиковая нагрузка:
+```text
 normalImpact = max(0, vy_before); tangentialImpact = abs(vx_before)
 impactSeverity = sqrt(normalImpact² + 0.25 × tangentialImpact²)
 peak = max(previousPeak, impactSeverity)
 ```
 
-Penetration clamp-ится; отражается только outward velocity. Bounce происходит при `normalImpact > minBounceNormalSpeed`. Иначе root остаётся на floor, tangential velocity затухает до:
-
+### Критерий перехода в grounded (Settle)
+Отскок происходит, если нормальная скорость удара $\text{normalImpact} > \text{minBounceNormalSpeed}$ (160 px/s). Иначе персонаж остаётся на полу, а тангенциальная скорость гасится. Переход в `grounded` наступает при соблюдении всех трёх условий:
 ```text
-normalImpact <= settleNormalSpeed
-AND abs(vx_after) <= settleTangentialSpeed
-AND abs(y-maxY) <= ε
+normalImpact <= settleNormalSpeed (120 px/s)
+AND abs(vx_after) <= settleTangentialSpeed (90 px/s)
+AND abs(y - maxY) <= ε
 ```
 
-После этого state становится `grounded`, velocity обнуляется и единожды emits outcome:
+После этого скорость обнуляется и единожды генерируется событие приземления:
+- $\text{peak} \le 420 \implies \text{soft\_landing}$
+- $\text{peak} \le 950 \implies \text{stumble}$
+- $\text{peak} > 950 \implies \text{crash\_landing}$
 
-```text
-peak <= softLandingMaxSeverity -> soft_landing
-peak <= stumbleMaxSeverity     -> stumble
-peak >  stumbleMaxSeverity     -> crash_landing
+## 7. Кинематика поверхностей (Surfaces и crawl)
+
+Управление движением по поверхностям изолировано в [`surface-kinematics.ts`](../../src/domain/behavior/surface-kinematics.ts). Модуль принимает нормализованный снимок окружения (`EnvironmentSnapshot`), не выполняя прямого обращения к OS API.
+
+- **Стена (`climbing_wall`)**: $x = x_{\text{wall}}, \quad y(t+\Delta t) = y(t) + v_{\text{vertical}} \cdot \Delta t$.
+- **Потолок/кромка окна (`hanging_ceiling` / crawl)**: $y = y_{\text{support}}, \quad x(t+\Delta t) = x(t) + v_{\text{crawl}} \cdot \Delta t$.
+- **Валидация опоры**: при $x \notin [x_{\min}, x_{\max}]$ опоры, удалении окна или невалидности флага `isValidSupport` немедленно инициируется отрыв: `beginAirborne(..., cause: 'support_lost')`.
+
+## 8. Авторитет позиции: кто двигает окно
+
+```mermaid
+flowchart TD
+  subgraph Input
+    UI[Pointer input] -->|IPC| MO[Main Orchestrator]
+  end
+
+  subgraph Physics & Authority
+    MO -->|forced drag/fall/land| ME[MotionEngine]
+    MO -->|voluntary walk/crawl| BE[Behavior & Surface Engine]
+    ME -->|authoritative rootPosition| PPS[PetPositionService]
+    BE -->|authoritative rootPosition| PPS
+  end
+
+  subgraph Native Window Commit
+    PPS -->|commitRootPosition| Port[PetPositionPort]
+    Port --> Adapter[ElectronPetPositionAdapter]
+    Adapter -->|Math.round root - pivotOffset| NativePos[Native X, Y]
+    NativePos -->|if changed| Win[BrowserWindow.setPosition]
+  end
 ```
 
-Side/top collision не определяет landing. Bounds меняются только между steps. Invalid support запускает только явный `beginAirborne(...cause='support_lost')`.
+### Правила авторитета (Authority Rules)
+1. **Renderer никогда не двигает окно**: окно не перемещается из Renderer-процесса и не имеет прямого доступа к окну Electron. Renderer лишь захватывает pointer events и отправляет их в Main через типизированный IPC.
+2. **Forced vs Voluntary Motion**:
+   - **Forced motion (P1/P0)**: при возникновении drag, throw release или support loss управление позицией монопольно захватывается Motion Engine. Текущие Activity немедленно отменяются. Никакие автономные команды перемещения не применяются.
+   - **Voluntary motion**: возвращается персонажу **только** после полного завершения приземления, когда состояние стало `grounded` и FSM вошёл в стабильное состояние `settle`.
+3. **Единая точка коммита позиции окна**:
+   - Логический центр контакта `rootPosition` передаётся через интерфейс [`PetPositionPort`](../../src/application/ports/pet-position-port.ts).
+   - Инфраструктурный адаптер [`ElectronPetPositionAdapter`](../../src/infrastructure/adapters/electron-pet-position-adapter.ts) переводит контактный pivot в верхний левый угол окна:
+     $$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_x, \dots)), \quad y_{\text{native}} = \text{round}(\text{clamp}(y_{\text{root}} - \text{offset}_y, \dots))$$
+   - `BrowserWindow.setPosition` вызывается **строго при изменении целочисленных координат**, исключая спам IPC и дергание окна.
 
-## 7. Surfaces и support
+## 9. Оркестрация (ShimejiMotionOrchestrator)
 
-Perception/Application поставляет immutable normalized `EnvironmentSnapshot`; его DTO и отсутствие данных определены в [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md#7-normalized-environment-signals). Motion/Surface Kinematics интерпретирует snapshot как physical support, не выполняя OS discovery.
+Главный координатор в Application-слое ([`shimeji-motion-orchestrator.ts`](../../src/application/services/shimeji-motion-orchestrator.ts)) управляет жизненным циклом физического цикла:
+- Владеет монотонными часами Main-процесса, аккумулятором времени и текущей drag-сессией.
+- На каждом такте накапливает $\Delta t$ кадра (с отсечкой `maxFrameDeltaSec = 0.25`), исполняет дискретные шаги `fixedStepSec` и передаёт результат в [`PetPositionPort`](../../src/application/ports/pet-position-port.ts).
+- Публикует для Renderer ровно один снимок состояния презентации (`PetPresentationStateDTO`) на коммит транзакции.
 
-Surface kinds остаются `screen_floor`, `window_top`, `unknown`. `isValidSupport=false`, исчезновение active support или несовместимая geometry создают explicit support-loss transition на step boundary. Отсутствующий surface означает unavailable observation, а не разрешение угадать окно или z-order.
+## 10. Граница IPC (Typed IPC Boundary)
 
-Surface Kinematics может вести wall/ceiling traversal рядом с Motion state, но position commit остаётся единым. Она не получает native handles, PID, platform name или DOM geometry и не меняет semantic intent.
-
-## 8. Forced motion и position authority
-
-Forced motion начинается с drag, throw release или support loss и продолжается через collision/landing до стабильного `settle`. В этот период единственный position owner — Motion Engine/Main aggregate.
-
-Forced physical fact обходит Activity selection, отменяет active Activity и входит через `MotionEvent` в тот же Animation FSM. Application возвращает voluntary authority только когда Motion state уже `grounded` и landing/recover FSM вошёл в stable `settle`.
-
-Begin drag отменяет Activity как `user_interaction`; fall — как `forced_motion`. Release оценивается по Main-stamped samples. `MotionEvent` dispatch происходит до presentation snapshot той же revision.
-
-`falling`/`fall` и `landing`/`land` сохраняются как compatibility aliases на Controller boundary. Их visual mapping и все transitions принадлежат [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md).
-
-## 9. `ShimejiMotionOrchestrator`
-
-Main/Application coordinator владеет mutable aggregate `{ motion, surface, accumulatorSec, dragSession?, lastTickAtMs, presentationRevision }`, scheduler lifecycle и решением commit position. Motion и Surface Kinematics остаются pure services.
-
-`start()` фиксирует Main monotonic time и запускает Main-owned tick. `stop()` отменяет future ticks. На tick Application clamp-ит delta, consumes exact fixed steps, обновляет environment только на step boundary, применяет queued input по возрастающему `sequence`, вызывает pure services, atomically routes events и commit-ит изменившуюся root position.
-
-Catch-up step после shutdown/window destruction запрещён. Renderer получает не более одного immutable presentation snapshot за committed tick, а не stream substeps.
-
-`PetPositionService` валидирует и хранит logical root position. Application-owned port объявлен потребителем:
-
-```typescript
-export interface PetPositionPort {
-  commitRootPosition(input: {
-    readonly rootPosition: Vector2Dto;
-    readonly bounds: ScreenBoundsDto;
-  }): void;
-}
-```
-
-Infrastructure adapter переводит root/contact pivot в integer native window coordinates через registered static pivot offset, clamp-ит по выбранным bounds и вызывает `BrowserWindow.setPosition` только при изменившейся integer coordinate. Это единственная Electron boundary.
-
-Main хранит grab offset `rootPosition - pointerScreenPosition`; Renderer никогда не задаёт root position. Invalidated session отменяется; stale, duplicate, out-of-order и foreign-session pointer messages не меняют physics.
-
-## 10. Typed IPC
-
-`src/shared/ipc-contracts.ts` — dependency leaf и не импортирует Domain/Application/Infrastructure types. Shared shapes самостоятельны и serializable; Main mapper переводит их в internal inputs. Environment IPC определён в [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md#8-environment-ipc-boundary).
-
-```typescript
-export interface PetDragPointerDTO {
-  readonly pointerId: number;
-  readonly sequence: number;
-  readonly screenPosition: PetPositionDTO;
-}
-
-export interface BeginPetDragDTO extends PetDragPointerDTO {}
-export interface BeginPetDragResultDTO { readonly dragSessionId: string }
-
-export interface MovePetDragDTO extends PetDragPointerDTO {
-  readonly dragSessionId: string;
-}
-
-export interface ReleasePetDragDTO extends MovePetDragDTO {}
-
-export type PetMotionPhaseDTO = 'dragged' | 'airborne' | 'grounded';
-
-export type PetAnimationStateDTO =
-  | 'idle' | 'walk' | 'run' | 'dragged' | 'fall' | 'land' | 'stumble'
-  | 'crash_landing' | 'recover' | 'settle'
-  | 'sleep_start' | 'sleep_loop' | 'wake_up';
-
-export interface PetPresentationStateDTO {
-  readonly revision: number;
-  readonly motionPhase: PetMotionPhaseDTO;
-  readonly rootScreenPosition: PetPositionDTO;
-  readonly velocityPxPerSec: PetPositionDTO;
-  readonly positionAuthority: 'forced' | 'voluntary';
-  readonly animationState: PetAnimationStateDTO;
-  readonly pupilOffsetSourcePx: { readonly x: number; readonly y: number };
-}
-```
-
-Preload exposes exactly:
-
-```typescript
-beginPetDrag(payload: BeginPetDragDTO): Promise<BeginPetDragResultDTO>;
-movePetDrag(payload: MovePetDragDTO): Promise<void>;
-releasePetDrag(payload: ReleasePetDragDTO): Promise<void>;
-onPetPresentationState(listener: (state: PetPresentationStateDTO) => void): () => void;
-```
-
-`screenPosition` — Electron screen/DIP coordinate input; `sequence` строго возрастает на `pointerId`. Main назначает authoritative sample time. Begin создаёт fresh session и grab offset; move только queue-ит sample; release finalizes его session и emits release/airborne на следующей Main transaction.
-
-Invalid/non-finite DTO отклоняются handler-ом; delivery race после normal cancellation — no-op. Presentation revisions возрастают, unsubscribe удаляет listener. DTO не содержит OS handles, DOM event, raw timestamps, asset paths, Character state или writable callback.
+Взаимодействие между процессами строится через контракт [`ipc-contracts.ts`](../../src/shared/ipc-contracts.ts):
+- **События Drag**: Renderer посылает `beginPetDrag`, `movePetDrag`, `releasePetDrag` с монотонно возрастающим номером `sequence` и экранными координатами курсора. Main-процесс валидирует идентификатор сессии и отбрасывает устаревшие или чужие сообщения.
+- **Состояние представления**: Main рассылает `PetPresentationStateDTO` с монотонным номером ревизии, текущей фазой движения (`dragged` / `airborne` / `grounded`), типом авторитета (`forced` / `voluntary`) и визуальным состоянием анимации.
+- Контракты IPC являются независимым листом зависимостей и не содержат дескрипторов ОС, классов рендеринга или прямых ссылок на Electron.
 
 ## 11. Изоляция и проверяемые свойства
 
-- Domain motion/surface math не читает Electron, DOM, Node timers, OS или assets.
-- Renderer не владеет world position и не двигает native window напрямую.
-- На fixed step существует один authoritative Motion state и один commit path.
-- Forced motion отменяет Activity, но не создаёт второго semantic decision-maker.
-- Voluntary authority возвращается только после `grounded + settle`.
-- Bounds/environment обновляются только на transaction boundary.
-- Одинаковые state/input/constraints дают одинаковый Motion result.
-- IPC shapes остаются serializable dependency leaf и не расширяются этой миграцией.
+- **Независимость домена**: математика движения в [`MotionEngine`](../../src/domain/behavior/motion-engine.ts) и [`SurfaceKinematics`](../../src/domain/behavior/surface-kinematics.ts) не зависит от Electron, DOM, таймеров Node.js и файловой системы.
+- **Детерминизм**: одинаковый входной снимок и констрейнты дают строго идентичное положение и события независимо от FPS рендера.
+- **Безопасность авторитета**: окно Electron двигается только через адаптер [`PetPositionPort`](../../src/application/ports/pet-position-port.ts); race conditions и параллельное перемещение окна несколькими источниками исключены.
