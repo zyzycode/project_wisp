@@ -1,341 +1,264 @@
 # Контракт Character Engine
 
-`CHARACTER_ENGINE.md` — source of truth для модели персонажа Wisp, его витальных потребностей, шкал отношений, личностных осей, пластичности характера, романтического состояния и предпочтений. Персонаж управляется чистой доменной логикой (Domain Layer) и служит психологическим контекстом как для выбора автономного поведения, так и для AI Provider.
+`CHARACTER_ENGINE.md` — концептуальный и поведенческий контракт модели персонажа Wisp: витальных потребностей, шкал отношений, личностных осей, пластичности характера, романтического гейтинга и динамического эмоционального тона.
 
-Документ является архитектурным контрактом ядра. Implementer-агенты не меняют этот contract без Architect review.
+Персонаж управляется чистой доменной логикой (Domain Layer) и служит психологическим контекстом как для выбора автономного поведения (Utility arbitration), так и для AI Provider.
+
+> [!NOTE]
+> **TypeScript-код является единственным источником правды для типов и DTO.**
+> Все контракты, интерфейсы и фабрики моделей определены в директории [`src/domain/character/`](../../src/domain/character/).
+
+---
 
 ## Владение
 
-- **Domain Layer (`src/domain/models/`, `src/domain/behavior/`):** полностью владеет структурой `CharacterState`, расчетом метаболизма потребностей (`Needs`), шкал отношений (`Relationship`), осей личности (`Personality`), динамическим синтезом эмоционального тона, гейтингом романтики (`IntimacyState`), semantic acceptance и Utility arbitration P4 autonomous candidates.
-- **Application Layer:** нормализует provider/user/timer/system input в candidate `BehaviorIntent`, передает внешние стимулы в Character Engine и формирует актуальный `CharacterSnapshot`; mapper не принимает behavior decision.
-- **Renderer / UI:** получает presentation-ready срез состояния через IPC (эмоциональный статус, уровни шкал для карточки питомца, доступные визуальные темы), но не вычисляет формулы и не меняет состояние напрямую.
-- **AI Provider:** получает сериализованный `CharacterSnapshot` и контекстные подсказки из пресета, но не имеет прямого доступа к мутабельным объектам домена.
+- **Domain Layer ([`src/domain/character/`](../../src/domain/character/), [`src/domain/behavior/`](../../src/domain/behavior/)):** полностью владеет структурой `CharacterState`, метаболизмом потребностей (`Needs`), шкалами отношений (`Relationship`), осями личности (`Personality`), динамическим синтезом эмоционального тона, гейтингом романтики (`IntimacyState`), семантическим гейтингом и Utility arbitration P4 автономных кандидатов.
+- **Application Layer:** нормализует внешний ввод (user, provider, timer, system) в candidate `BehaviorIntent`, передает стимулы (`StimulusEvent`) в доменный редьюсер и формирует read-only проекцию `CharacterSnapshot`. Mapper не принимает поведенческих решений.
+- **Renderer / UI:** отображает презентационный срез `CharacterPresentationDTO` через IPC (статус, карточка питомца, доступные визуальные темы), но не вычисляет формулы и не меняет состояние напрямую.
+- **AI Provider:** получает сериализованный `CharacterSnapshot` и подсказки из пресета, не имея прямого доступа к мутабельным объектам домена.
+
+---
 
 ## Поток ответственности
 
-```text
-Provider hint / user, timer or system event -> Application mapper
-Autonomy opportunity -> normalized candidate set -----------------+
-  -> Candidate BehaviorIntent(s)
-  -> Character Engine (gating / Utility arbitration)
-  -> Resolved BehaviorIntent
-  -> Behavior Brain (Activity selection, если требуется)
-  -> Activity Runner
-  -> AnimationIntent -> Animation Controller -> Render Engine
+```mermaid
+flowchart LR
+    Source["Provider hint / User / Timer / System event"] --> Mapper["Application mapper"]
+    Autonomy["Autonomy opportunity"] --> Candidate["Candidate BehaviorIntent(s)"]
+    Mapper --> Candidate
+    Candidate --> Character["Character Engine\n(gating / Utility arbitration)"]
+    Character --> Resolved["Resolved BehaviorIntent"]
+    Resolved --> Brain["Behavior Brain\n(Activity selection)"]
+    Brain --> Runner["Activity Runner"]
+    Runner --> Visual["AnimationIntent"]
+    Visual --> Controller["Animation Controller"]
 ```
 
-Character Engine — единственный owner semantic gating, P4 Utility arbitration и resolved behavior, но не выбирает Activity, physics outcome, animation clip или frame. Utility policy является чистой внутренней Domain strategy; её inputs, cadence и safety order закреплены в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md). `Candidate` и `Resolved` — стадии одной формы `BehaviorIntent`, не новые DTO. Полная ownership-матрица и forced-motion исключение находятся в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
-
-Application feedback mapper передаёт Character Engine существующую canonical форму без второго DTO:
-
-```typescript
-export type StimulusDto = StimulusEvent;
-```
-
-Lifecycle feedback events и правила дедупликации определены в [`ACTIVITY_ENGINE.md`](./ACTIVITY_ENGINE.md#13-feedback-boundary); только Character Engine применяет stimulus к Needs/Relationship и заново синтезирует tone.
+Character Engine — единственный владелец семантического гейтинга и разрешения `BehaviorIntent`, но не выбирает Activity, физический исход, спрайты или кадры анимаций:
+- Правила Utility arbitration зафиксированы в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md).
+- Матрица владения интентами и исключения forced-motion — в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
+- Входные стимулы поступают в канонической форме `StimulusEvent` (см. [`src/domain/character/types.ts`](../../src/domain/character/types.ts)); жизненный цикл стимулов и правила дедупликации описаны в [`ACTIVITY_ENGINE.md`](./ACTIVITY_ENGINE.md#13-feedback-boundary).
 
 ---
 
 ## 1. Главная идея
 
-Wisp должен ощущаться живым. Не как таблица статов, а как персонаж с характером, настроением, потребностями, привязанностью, стеснением, памятью и постепенно меняющимися реакциями.
+Wisp должна ощущаться живым существом, а не сухой таблицей статов. Это персонаж со своим характером, настроением, уязвимостями, привязанностью и постепенным раскрытием.
 
-Система спроектирована так, чтобы AI читал эти параметры как глубокий психологический контекст:
-- почему Wisp сейчас молчит;
-- почему смущается;
-- почему держит дистанцию;
-- почему хочет внимания;
-- почему стал теплее после доверительных разговоров;
-- почему понравился или не понравился фильм/игра/сцена.
+Параметры состояния служат глубоким психологическим контекстом для поведения и генераций AI:
+- почему Wisp сейчас молчит или смущается;
+- почему держит дистанцию или, наоборот, ищет внимания;
+- как меняется её доверие после заботы и откровенных бесед;
+- как формируются её личные симпатии и предпочтения к темам.
 
 ---
 
 ## 2. Needs (Витальные потребности)
 
-`Needs` — текущие потребности персонажа. Для AI и поведения используется формат `unmet need` (чем выше значение, тем сильнее дефицит/потребность).
+> Контракты типов и значения по умолчанию: [`src/domain/character/needs.ts`](../../src/domain/character/needs.ts).
 
-Исключение — `energy`: это ресурс, где 100 — бодрость, а 0 — истощение.
+Потребности персонажа представлены шкалами `0–100`:
+- **`energy`** (ресурс): `100` = полная бодрость, `0` = крайнее истощение.
+- **`attention`** (дефицит): `100` = сильное одиночество, `0` = внимание насыщено.
+- **`play`** (дефицит): `100` = острая скука, `0` = интерес удовлетворен.
+- **`comfort`** (дефицит): `100` = сенсорный перегруз / стресс, `0` = максимальный уют и покой.
+- **`boredom`** (дефицит): `100` = монотонность, отсутствие новых стимулов.
 
-```typescript
-export interface Needs {
-  /** 0-100, бодрость (ресурс: 100 = бодр, 0 = истощен) */
-  energy: number;
-  /** 0-100, потребность во внимании (unmet need: 100 = сильное одиночество) */
-  attention: number;
-  /** 0-100, потребность в игре/стимуляции (unmet need: 100 = скука) */
-  play: number;
-  /** 0-100, потребность в покое/уюте (unmet need: 100 = сенсорный перегруз) */
-  comfort: number;
-}
-```
+### Поведенческая интерпретация:
+- `energy <= 20`: усталость — реплики короче, замедление, стремление сесть или заснуть.
+- `attention >= 80`: потребность в контакте — поворот к пользователю, сокращение дистанции, мягкие намеки.
+- `play >= 75`: скука — поиск движения, реакция на курсор, игривые анимации.
+- `comfort >= 80`: перегруз — стремление к тишине, покою и спокойному idle.
 
-### Интерпретация:
-- `energy <= 20`: Wisp устал, отвечает короче, чаще садится или засыпает.
-- `attention >= 80`: Wisp хочет контакта, смотрит на пользователя, подходит ближе, мягко намекает.
-- `play >= 75`: Wisp скучает, ищет движение или реакцию на курсор.
-- `comfort >= 80`: Wisp перегружен, стремится к тишине, покою и спокойному idle.
+### Метаболизм и формулы дрейфа
+> Реализация: [`src/domain/character/metabolism.ts`](../../src/domain/character/metabolism.ts) и [`src/domain/character/stimuli-reducer.ts`](../../src/domain/character/stimuli-reducer.ts).
+
+С течением времени потребности персонажа непрерывно дрейфуют к целевым значениям в зависимости от текущего эмоционального тона (`SynthesizedEmotionalTone`).
+
+Формула асимптотического приближения за интервал $\Delta t$ (в часах):
+$$V_{\text{new}} = V_{\text{current}} + (V_{\text{target}} - V_{\text{current}}) \times \left(1 - e^{-\text{ratePerHour} \times \Delta t}\right)$$
+
+Динамические дискретные сдвиги при интеракциях (клики, поглаживания, диалог, кормление) рассчитываются редьюсером стимулов (`stimuli-reducer.ts`).
+
+---
 
 ### 2.1. Каноническая семантика сна и пробуждения
 
-Character Engine — единственный source of truth для semantic sleep state, правил принятия `sleep` / `wake` и их порогов. Соседние движки получают уже resolved behavior и не повторяют эти условия.
+Character Engine — единственный источник правды для семантического состояния сна и пробуждения.
 
-| Термин | Семантика и owner |
+```mermaid
+stateDiagram-v2
+    [*] --> Awake
+    Awake --> Sleep: energy <= 20 ИЛИ comfort >= 80 (P2 sleep)
+    Sleep --> Awake: клик ИЛИ attention >= 90 ИЛИ energy >= 80 (wake)
+    Sleep --> Awake: прямой drag (P1 forced motion завершает сон)
+```
+
+| Термин | Семантика и владелец |
 |---|---|
-| `sleep` | `BehaviorIntentKind`, который Character Engine принимает или инициирует для входа в semantic sleep state. |
-| `quiet` | Отдельный `BehaviorIntentKind`: подавляет навязчивые автономные действия и реплики, но сам по себе не означает сон и не запускает sleep lifecycle. |
-| `wake` | `BehaviorIntentKind`, который Character Engine принимает или инициирует для выхода из semantic sleep state. |
-| `sleep_start` / `sleep_loop` / `wake_up` | Только visual lifecycle kinds Animation Engine; они не принимают behavior decision и не задают пороги. |
+| `sleep` | `BehaviorIntentKind`, принимаемый или инициируемый Character Engine для входа в сон. |
+| `quiet` | `BehaviorIntentKind`: режим тишины (подавляет навязчивость и реплики), но сам по себе не является сном. |
+| `wake` | `BehaviorIntentKind`, разрешаемый Character Engine для выхода из семантического сна. |
+| `sleep_start` / `sleep_loop` / `wake_up` | Исключительно визуальные клипы [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md); не принимают решений о поведении. |
 
-Канонические правила:
-
-- `energy <= 20` **или** `comfort >= 80` инициирует deterministic P2 `sleep` после P0 forced physics и P1 direct user interaction;
-- прямой click, `attention >= 90` или восстановление `energy >= 80` разрешает `wake`;
-- прямой drag имеет P1 authority: он завершает активный сон через resolved `drag` и visual `dragged -> land -> settle`, не требуя отдельного `wake_up`;
-- provider-origin `respond`, `think`, `play`, `react_happy` и `react_confused`, а также timer-only `idle` / `wander`, сами по себе не создают `wake`;
-- если после выхода из сна условие входа всё ещё истинно, Character Engine может снова разрешить `sleep` после завершения более приоритетного interaction flow.
-
-Эти значения являются существующим runtime tuning contract: данный раздел не вводит новый DTO, state field или настройку.
+**Канонические правила:**
+1. `energy <= 20` **или** `comfort >= 80` инициирует детерминированный P2 `sleep` (после P0 физики и P1 прямого взаимодействия).
+2. Прямой клик пользователя, `attention >= 90` или восстановление `energy >= 80` разрешает `wake`.
+3. Прямой `drag` обладает авторитетом P1: прерывает активный сон через связку `drag -> land -> settle` без ожидания отдельного `wake_up`.
+4. Внутренние автономные события (`respond`, `think`, `play`, таймерный `idle` / `wander`) пробуждения сами по себе не вызывают.
+5. Если после пробуждения условие сна всё ещё истинно, Character Engine может вновь разрешить `sleep` по завершении приоритетного взаимодействия.
 
 ---
 
 ## 3. Relationship (Система отношений)
 
-Отношения делятся на две независимые шкалы:
+> Контракты типов: [`src/domain/character/types.ts`](../../src/domain/character/types.ts).
 
-```typescript
-export interface Relationship {
-  /** 0-1000, базовое доверие, комфорт и привыкание */
-  friendship: number;
-  /** 0-1000, глубокая эмоциональная/романтическая связь */
-  love: number;
-  /** Флаг разблокировки шкалы любви */
-  loveUnlocked: boolean;
-}
-```
+Отношения с пользователем моделируются двумя шкалами `0–1000`:
+- **`friendship`**: базовое доверие, комфорт, безопасность и привыкание.
+- **`love`**: глубокая эмоциональная и романтическая привязанность (изначально заблокирована: `loveUnlocked: false`).
 
 ### Правила прогрессии:
-- `friendship` растет от регулярного взаимодействия, доброты, игр, разговоров и совместного времени.
-- `love` заблокирован на старте (`loveUnlocked: false`) и открывается только при достижении порога дружбы (по умолчанию `friendship >= 400`). Не растет от спам-кликов; требует доверия, заботы, эмоциональной близости и уважения границ.
-- **Принцип отсутствия чувства вины:** Wisp не наказывает пользователя за отсутствие. Допустим мягкий `soft decay` без драматических штрафов и сообщений с укором.
+- `friendship` растет от регулярного взаимодействия, диалогов, поглаживаний и совместного времени.
+- `love` разблокируется только при достижении порога дружбы: **`friendship >= 400`** и явного пользовательского согласия (`userConsentEnabled`). Не накручивается спам-кликами.
+- **Принцип отсутствия вины (No-guilt design):** Wisp не наказывает пользователя за долгое отсутствие. Применяется сверхмягкий `soft decay` без драматических штрафов и укоряющих реплик.
 
 ---
 
 ## 4. Personality (Оси личности)
 
-Личность определяется 7 числовыми шкалами:
+> Контракты шкал: [`src/domain/character/types.ts`](../../src/domain/character/types.ts).
 
-```typescript
-export type PersonalityAxis =
-  | 'openness'
-  | 'extraversion'
-  | 'agreeableness'
-  | 'sensitivity'
-  | 'playfulness'
-  | 'boldness'
-  | 'independence';
-```
+Личность выражается через 7 нормализованных осей (`0.0–1.0`):
+- **`openness`**: любопытство, интерес к новым темам, фантазия.
+- **`extraversion`**: социальная энергия, готовность первой проявлять инициативу.
+- **`agreeableness`**: мягкость, эмпатия, уступчивость, заботливость.
+- **`sensitivity`**: глубина эмоционального отклика на тон и происходящее.
+- **`playfulness`**: игривость, склонность к юмору и шалостям.
+- **`boldness`**: раскованность, уверенность, смелость в выражении чувств.
+- **`independence`**: способность комфортно находиться рядом без постоянного внимания.
 
-### Значение шкал:
-- `openness`: любопытство, фантазия, интерес к новому.
-- `extraversion`: социальная энергия, готовность первой инициировать контакт.
-- `agreeableness`: мягкость, забота, уступчивость.
-- `sensitivity`: эмоциональная чувствительность, глубина реакции на тон и события.
-- `playfulness`: игривость, юмор, тяга к шалостям и играм.
-- `boldness`: раскрепощенность, смелость, прямота выражения чувств.
-- `independence`: способность комфортно быть рядом без постоянного внимания.
+### Синтез производных черт
+> Реализация: [`src/domain/character/derived-traits.ts`](../../src/domain/character/derived-traits.ts).
 
-### Синтез производных черт:
-Производные черты (например, `shyness`) вычисляются динамически:
+Производные черты рассчитываются динамически из осей личности.
 
-```typescript
-export function calculateShyness(axes: Record<PersonalityAxis, AxisValue>): number {
-  return (
-    axes.sensitivity.current * 0.45 +
-    (1 - axes.boldness.current) * 0.35 +
-    (1 - axes.extraversion.current) * 0.2
-  );
-}
-```
+Формула застенчивости (`shyness`):
+$$\text{shyness} = \text{sensitivity} \times 0.45 + (1 - \text{boldness}) \times 0.35 + (1 - \text{extraversion}) \times 0.2$$
 
 ---
 
 ## 5. Soft Lock / Hard Lock и пластичность
 
-Каждая ось личности имеет коридор допустимых изменений:
+> Контракты значений и логика адаптации: [`src/domain/character/types.ts`](../../src/domain/character/types.ts) и [`src/domain/character/personality-plasticity.ts`](../../src/domain/character/personality-plasticity.ts).
 
-```typescript
-export interface AxisValue {
-  /** 0-1, ядро личности */
-  base: number;
-  /** 0-1, текущее динамическое значение */
-  current: number;
-  /** Комфортная нижняя граница */
-  softMin: number;
-  /** Комфортная верхняя граница */
-  softMax: number;
-  /** Абсолютный минимум */
-  hardMin: number;
-  /** Абсолютный максимум */
-  hardMax: number;
-  /** 0-1, скорость/легкость адаптации шкалы */
-  plasticity: number;
-}
-```
+Каждая ось личности обладает коридором вариативности (`AxisValue`):
+- **`base`**: ядро идентичности персонажа.
+- **`current`**: текущее динамическое значение.
+- **`softMin` / `softMax`**: границы повседневной комфортной зоны.
+- **`hardMin` / `hardMax`**: абсолютные пределы, сохраняющие целостность персонажа.
+- **`plasticity`**: скорость и глубина адаптации черты под влиянием регулярных стимулов.
 
-- `soft lock`: персонаж может выходить за пределы комфортной зоны только временно и при сильных стимулах.
-- `hard lock`: персонаж никогда не ломает базовую идентичность (стеснительная Wisp не станет наглой или вульгарной даже при максимуме любви).
+**Правила устойчивости:**
+- `Soft lock`: персонаж выходит за пределы комфортной зоны лишь кратковременно и под воздействием сильных стимулов.
+- `Hard lock`: идентичность защищена — застенчивая Wisp не станет вульгарной или агрессивной даже на пиковых уровнях отношений.
 
 ---
 
 ## 6. Стартовый архетип: Shy Dream Girl
 
-Базовый образ Wisp: **аниме-девушка-мечта — нежная, застенчивая, медленно привязывающаяся, сохраняющая смущение даже при глубоких отношениях.**
+Базовый образ Wisp: **аниме-девушка-мечта — нежная, застенчивая, медленно привязывающаяся, сохраняющая лёгкое смущение даже при глубокой близости.**
 
 ### Динамика раскрытия:
-1. **Начало:** осторожность, краткие мягкие ответы, частое смущение, тихое созерцание издалека.
-2. **Развитая дружба:** сокращение дистанции, охотные игры, легкое дружеское поддразнивание, самостоятельная инициатива.
-3. **Развитая любовь:** глубокая нежность и забота, тонкий флирт через смущение (*blush, паузы, отвод взгляда, тихие реплики*).
+1. **Начало:** осторожность, деликатность, краткие мягкие ответы, частое смущение, тихое созерцание издалека.
+2. **Развитая дружба:** сокращение физической дистанции, охотные игры, дружеское поддразнивание, самостоятельная инициатива диалога.
+3. **Развитая любовь:** доверительная нежность, забота, тонкий флирт через смущение (*румянец, паузы, отвод взгляда, тихие искренние реплики*).
+
+Конфигурации пресетов определены в [`src/domain/character/personality-presets.ts`](../../src/domain/character/personality-presets.ts).
 
 ---
 
 ## 7. Intimacy & Romantic Charge
 
-Внутреннее состояние романтического напряжения:
+> Типы состояния и логика гейтинга: [`src/domain/character/types.ts`](../../src/domain/character/types.ts) и [`src/domain/character/intimacy-rules.ts`](../../src/domain/character/intimacy-rules.ts).
 
-```typescript
-export interface IntimacyState {
-  /** 0-100, проявленный флирт / кокетство */
-  flirtiness: number;
-  /** 0-100, внутреннее романтическое напряжение */
-  romanticCharge: number;
-  /** Пользовательский флаг согласия на романтический контент */
-  userConsentEnabled: boolean;
-  /** Границы пользователя установлены и понятны */
-  boundariesKnown: boolean;
-}
-```
+Романтическое состояние управляется через:
+- **`flirtiness`** (0–100): внешнее проявление кокетства / флирта.
+- **`romanticCharge`** (0–100): накопленное внутреннее романтическое напряжение.
+- **`userConsentEnabled`** / **`boundariesKnown`**: флаги этических границ и явного согласия пользователя.
 
-### Пороги и константы гейтинга флирта:
-
-```typescript
-export const DEFAULT_INTIMACY_THRESHOLDS = {
-  FRIENDSHIP_FLIRT_THRESHOLD: 500,
-  MIN_FLIRT_ENERGY: 30,
-  MAX_COMFORT_NEED: 60,
-  LOVE_UNLOCK_FRIENDSHIP_THRESHOLD: 400,
-} as const;
-
-export function canExpressFlirt(
-  state: CharacterState,
-  thresholds = DEFAULT_INTIMACY_THRESHOLDS
-): boolean {
-  return (
-    state.intimacy.userConsentEnabled &&
-    state.relationship.loveUnlocked &&
-    state.relationship.friendship >= thresholds.FRIENDSHIP_FLIRT_THRESHOLD &&
-    state.needs.energy >= thresholds.MIN_FLIRT_ENERGY &&
-    state.needs.comfort <= thresholds.MAX_COMFORT_NEED
-  );
-}
-```
+### Условия разрешения романтического выражения (`canExpressFlirt`):
+Флирт и романтический контент активируются **исключительно** при одновременном выполнении условий:
+1. `userConsentEnabled === true` (согласие пользователя включено);
+2. `relationship.loveUnlocked === true` (шкала любви разблокирована);
+3. `relationship.friendship >= 500` (высокий уровень доверия);
+4. `needs.energy >= 30` (персонаж не истощён);
+5. `needs.comfort <= 60` (отсутствует сенсорный перегруз).
 
 ---
 
 ## 8. Эмоциональный тон (Синтез настроения)
 
-Вместо плоского статического поля `mood` эмоциональное состояние синтезируется динамически на основе потребностей, характера и отношений:
+> Словарь тонов и логика синтеза: [`src/domain/character/types.ts`](../../src/domain/character/types.ts) и [`src/domain/character/emotional-tone.ts`](../../src/domain/character/emotional-tone.ts).
 
-Этот раздел — единственный authoritative contract словаря и синтеза `SynthesizedEmotionalTone`. Consumer contracts ссылаются на тип и не переопределяют его значения.
+Вместо плоского статического перечисления `mood`, эмоциональный тон (`SynthesizedEmotionalTone`) синтезируется на каждом тике из актуальных потребностей, осей и отношений:
 
-```typescript
-export type SynthesizedEmotionalTone =
-  | 'shy'
-  | 'sleepy'
-  | 'playful'
-  | 'curious'
-  | 'neutral'
-  | 'affectionate'
-  | 'flustered';
+```mermaid
+stateDiagram-v2
+    [*] --> Neutral
+    Neutral --> Sleepy: energy <= 20 ИЛИ comfort >= 80
+    Neutral --> Shy: shyness >= 0.65 И friendship < 400
+    Neutral --> Affectionate: love >= 500 И friendship >= 500
+    Neutral --> Playful: play >= 70
+    Neutral --> Curious: стимулы исследования / новые темы
+    Sleepy --> Neutral: восстановление energy > 20 И comfort < 80
+    Shy --> Affectionate: рост friendship >= 400 И love >= 500
+    Playful --> Neutral: насыщение play < 70
+    Affectionate --> Neutral: изменение стимулов
 ```
 
-### Матрица синтеза:
-- `energy <= 20` или `comfort >= 80` -> `'sleepy'`
-- `shyness >= 0.65` при `relationship.friendship < 400` -> `'shy'`
-- `relationship.love >= 500` при высоком доверии -> `'affectionate'`
-- `play >= 70` при нормальной энергии -> `'playful'`
-- Иначе -> `'neutral'` или `'curious'`
+### Приоритетная матрица синтеза:
+1. `energy <= 20` или `comfort >= 80` $\to$ `'sleepy'`
+2. `shyness >= 0.65` при `friendship < 400` $\to$ `'shy'`
+3. `love >= 500` при `friendship >= 500` $\to$ `'affectionate'`
+4. `play >= 70` (при достаточной энергии) $\to$ `'playful'`
+5. Иначе $\to$ `'neutral'` или `'curious'`
 
 ---
 
 ## 9. Taste & Preferences (Вкусы и предпочтения)
 
-Формируются на основе пережитого опыта:
+> Модель предпочтений и алгоритм трекинга: [`src/domain/character/preferences.ts`](../../src/domain/character/preferences.ts).
 
-```typescript
-export interface PreferenceTrack {
-  /** -100..100, оценка темы/жанра */
-  value: number;
-  /** 0-1, уверенность в оценке */
-  confidence: number;
-  /** Число контактов с темой */
-  samples: number;
-}
-```
+Предпочтения персонажа к темам и жанрам формируются на основе опыта:
+- **`value`** (`-100..100`): отношение к теме (симпатия / антипатия).
+- **`confidence`** (`0.0..1.0`): уверенность в оценке на базе повторяющихся контактов.
+- **`samples`**: количество зафиксированных диалогов или событий с данной темой.
 
-Повторяющийся опыт повышает `confidence`. Wisp способна перенимать интересы пользователя из эмпатии и привязанности.
+Wisp способна мягко перенимать интересы пользователя благодаря механизму эмпатии и привязанности.
 
 ---
 
-## 10. Config Presets
+## 10. Сводная модель CharacterState v2
 
-```typescript
-export interface PersonalityPreset {
-  id: string;
-  displayName: string;
-  aiSelfConcept: string;
-  axes: Record<PersonalityAxis, AxisValue>;
-}
+> Полные контракты состояния и проекций: [`src/domain/character/types.ts`](../../src/domain/character/types.ts) и [`src/domain/character/character-snapshot.ts`](../../src/domain/character/character-snapshot.ts).
 
-export const shyDreamGirlPreset: PersonalityPreset = {
-  id: 'shyDreamGirl',
-  displayName: 'Shy Dream Girl',
-  aiSelfConcept:
-    'Wisp is a shy, gentle, emotionally sensitive anime-like companion. She is slow to attach, easily flustered, and hides her feelings at first. With trust, she becomes warmer, more playful, and more affectionate, but never loses her shy core.',
-  axes: {
-    openness: { base: 0.55, current: 0.55, softMin: 0.35, softMax: 0.75, hardMin: 0.2, hardMax: 0.9, plasticity: 0.3 },
-    extraversion: { base: 0.28, current: 0.28, softMin: 0.15, softMax: 0.5, hardMin: 0.05, hardMax: 0.7, plasticity: 0.25 },
-    agreeableness: { base: 0.86, current: 0.86, softMin: 0.65, softMax: 0.96, hardMin: 0.45, hardMax: 1.0, plasticity: 0.2 },
-    sensitivity: { base: 0.88, current: 0.88, softMin: 0.68, softMax: 0.98, hardMin: 0.5, hardMax: 1.0, plasticity: 0.18 },
-    playfulness: { base: 0.42, current: 0.42, softMin: 0.25, softMax: 0.7, hardMin: 0.1, hardMax: 0.85, plasticity: 0.35 },
-    boldness: { base: 0.18, current: 0.18, softMin: 0.08, softMax: 0.38, hardMin: 0.02, hardMax: 0.58, plasticity: 0.22 },
-    independence: { base: 0.58, current: 0.58, softMin: 0.35, softMax: 0.82, hardMin: 0.2, hardMax: 0.95, plasticity: 0.25 },
-  },
-};
-```
-
----
-
-## 11. Сводная модель CharacterState v2
-
-```typescript
-export interface CharacterState {
-  needs: Needs;
-  relationship: Relationship;
-  personality: PersonalityPreset;
-  intimacy: IntimacyState;
-  preferences: Record<string, PreferenceTrack>;
-  lastUpdated: number;
-}
-```
+Итоговый доменный агрегат `CharacterState` объединяет:
+- `needs`: витальные потребности;
+- `relationship`: шкалы дружбы и любви;
+- `personality`: пресет и динамические значения осей;
+- `intimacy`: уровень романтического напряжения и флаги границ;
+- `preferences`: карту интересов и вкусов;
+- `lastUpdated`: временную метку последнего пересчёта.
 
 ---
 
 ## Запрещённые знания Character Engine
 
-Character Engine не знает и не содержит:
-- React components, JSX, хуки и Zustand UI-хранилища;
-- DOM-элементы, CSS-стили, координаты пикселей экрана;
-- Пути к ассетам, названия спрайт-листов, индексы кадров и тайминги анимаций;
-- Electron BrowserWindow, IPC каналы и platform-специфичные API;
-- Сетевые вызовы к сторонним AI SDK (OpenAI, Anthropic, Gemini);
-- Прямые SQL-запросы (персистентность идет только через порты репозиториев в Application layer).
+Character Engine строго изолирован и **не содержит**:
+- React-компонентов, JSX, UI-хуков и Zustand-хранилищ;
+- DOM-элементов, CSS-стилей, координат и пикселей экрана;
+- Путей к ассетам, спрайт-листов, индексов кадров и таймингов анимаций;
+- Electron BrowserWindow, каналов IPC и платформенных API;
+- Сетевых вызовов к сторонним AI SDK (OpenAI, Anthropic, Gemini);
+- Прямых SQL-запросов к БД (персистентность выполняется через репозитории Application layer).
