@@ -6,16 +6,10 @@
 
 ## 1. Владение
 
-| Owner | Владеет | Не владеет |
-|---|---|---|
-| Gaze Engine | pupil offset, tracking/neutral state, freshness target | Activity, locomotion, semantic reaction |
-| Cursor Proximity Engine | normalized distance/range/dwell signal | Swat/chase/avoid decision |
-| Environment adapter | OS observation и normalization в immutable snapshot | physics/support decision |
-| Application | capture time, snapshot boundary, compatibility input | gaze math или behavior choice |
-| Behavior Brain | eligibility P3 Activity по свежему signal после resolved flow | perception thresholds/state |
-| Renderer | отображение готового pupil offset либо no-op | freshness, proximity или environment discovery |
-
-Cooldown/repetition принадлежат [`ACTIVITY_ENGINE.md`](./ACTIVITY_ENGINE.md); P3/P4 ordering — [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md); support interpretation — [`MOTION_ENGINE.md`](./MOTION_ENGINE.md#7-surfaces-и-support).
+- **Gaze Engine (Domain):** расчёт смещения зрачков (`PupilOffset`), состояний слежения/нейтрали, проверка свежести цели. Не управляет локомоцией и семантическими реакциями.
+- **Cursor Proximity Engine (Domain):** расчёт нормализованного сигнала дистанции, диапазона и dwell курсора.
+- **Environment Adapter (Infrastructure):** снятие геометрии дисплеев ОС и нормализация в `EnvironmentSnapshot`.
+- **Внешние связи:** Application Layer оркестрирует время захвата; Behavior Brain использует сигналы для eligibility реактивных P3-активностей; Renderer пассивно отображает готовый `PupilOffset`. Матрица контрактов — в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Поток perception
 

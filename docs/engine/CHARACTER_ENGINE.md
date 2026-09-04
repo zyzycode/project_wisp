@@ -13,9 +13,7 @@
 ## Владение
 
 - **Domain Layer ([`src/domain/character/`](../../src/domain/character/), [`src/domain/behavior/`](../../src/domain/behavior/)):** полностью владеет структурой `CharacterState`, метаболизмом потребностей (`Needs`), шкалами отношений (`Relationship`), осями личности (`Personality`), динамическим синтезом эмоционального тона, гейтингом романтики (`IntimacyState`), семантическим гейтингом и Utility arbitration P4 автономных кандидатов.
-- **Application Layer:** нормализует внешний ввод (user, provider, timer, system) в candidate `BehaviorIntent`, передает стимулы (`StimulusEvent`) в доменный редьюсер и формирует read-only проекцию `CharacterSnapshot`. Mapper не принимает поведенческих решений.
-- **Renderer / UI:** отображает презентационный срез `CharacterPresentationDTO` через IPC (статус, карточка питомца, доступные визуальные темы), но не вычисляет формулы и не меняет состояние напрямую.
-- **AI Provider:** получает сериализованный `CharacterSnapshot` и подсказки из пресета, не имея прямого доступа к мутабельным объектам домена.
+- **Внешние связи:** Application Layer нормализует входные стимулы (`StimulusEvent`) и формирует проекцию `CharacterSnapshot`. Renderer и AI Provider не имеют прямого доступа к доменным сущностям. Полная матрица — в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ---
 
@@ -253,12 +251,6 @@ Wisp способна мягко перенимать интересы поль�
 
 ---
 
-## Запрещённые знания Character Engine
+## Архитектурные границы
 
-Character Engine строго изолирован и **не содержит**:
-- React-компонентов, JSX, UI-хуков и Zustand-хранилищ;
-- DOM-элементов, CSS-стилей, координат и пикселей экрана;
-- Путей к ассетам, спрайт-листов, индексов кадров и таймингов анимаций;
-- Electron BrowserWindow, каналов IPC и платформенных API;
-- Сетевых вызовов к сторонним AI SDK (OpenAI, Anthropic, Gemini);
-- Прямых SQL-запросов к БД (персистентность выполняется через репозитории Application layer).
+Character Engine является чистым модулем доменного слоя (`src/domain/character/`). Общие правила изоляции и запрещённые зависимости зафиксированы в [README.md](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).

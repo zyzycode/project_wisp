@@ -79,12 +79,7 @@ idle -> thinking -> error
 
 ## Запрещённые знания provider-а
 
-Provider не знает и не выбирает:
-- React components, Zustand stores, DOM nodes, CSS classes;
-- SVG paths, sprite sheet files, asset paths, frame indexes;
-- Electron window handles, IPC channels, platform details;
-- SQLite schema, сырые таблицы БД или приватные системные настройки;
-- Auth/billing/subscription серверную логику.
+Provider следует [инвариантам изоляции Clean Architecture](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture) и не имеет доступа к UI-разметке (React/DOM/CSS), путям к ассетам/спрайтам, Electron/OS handles или таблицам SQLite.
 
 ## Граница mapper-а
 

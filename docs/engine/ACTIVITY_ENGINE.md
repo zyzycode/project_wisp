@@ -6,16 +6,9 @@ Activity Engine не принимает semantic решение. Character Engin
 
 ## 1. Владение
 
-| Owner | Владеет | Не владеет |
-|---|---|---|
-| Character Engine | semantic gating, P4 Utility arbitration, resolved intent | Activity selection/lifecycle |
-| Behavior Brain | eligibility и weighted selection Activity внутри resolved intent | выбором intent, physics или frames |
-| Activity Runner | lifecycle одного `runId`, chain progress, completion/cancel, emitted requests | выбором intent или Activity |
-| Application | monotonic time, snapshot boundaries, доставка external completion events, cleanup | скрытым изменением chain |
-| Motion Engine | forced position и physical facts | Activity lifecycle |
-| Animation FSM | visual transitions/interrupt policy по `AnimationIntent`/`MotionEvent` | Activity chain |
-
-Public `BehaviorIntent` определён только в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md); P0–P5 и P4 Utility — только в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md); visual priorities — только в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md).
+- **Behavior Brain (Domain):** взвешенный выбор `ActivityDefinition` строго внутри переданного resolved `BehaviorIntent`. Не принимает решений о смене семантического намерения.
+- **Activity Runner (Domain):** жизненный цикл выполнения шагов активного `runId`, проверка гардов, переходы по цепочке шагов, эмиссия `AnimationIntent`, отмена и завершение.
+- **Внешние связи:** Application Layer поставляет монотонное время и оркестрирует события завершения шагов. Полная матрица распределения ответственности зафиксирована в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Поток Activity
 
@@ -208,9 +201,8 @@ Character Engine clamp-ит собственные шкалы и синтези�
 
 ## 14. Изоляция
 
-Behavior Brain и Activity Runner — pure Domain logic. Activity Runner не знает React, DOM, Electron, BrowserWindow, IPC, CSS, Node timers/filesystem, OS/window handles, assets, provider/backend DTO или presentation frames.
-
-Renderer не выбирает Activity и не владеет lifecycle. Application доставляет нормализованные events/time и orchestrates cleanup, но не переписывает definition graph.
+Behavior Brain и Activity Runner — чистые модули Domain Layer (`src/domain/behavior/`). Общие правила изоляции и запрещённые зависимости зафиксированы в [README.md](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).
+Renderer не выбирает Activity и не управляет её жизненным циклом. Application доставляет нормализованные события/время и оркестрирует завершение шагов.
 
 ## 15. Проверяемые свойства
 

@@ -21,13 +21,11 @@ flowchart LR
   O -->|presentation snapshot| R
 ```
 
-| Owner | Владеет | Не владеет |
-|---|---|---|
-| Motion Engine | Чистые состояния физики (drag, airborne, grounded), скорости, факты коллизий и посадки | Таймерами, окном Electron, Activity, поведением |
-| Surface Kinematics | Чистые состояния опоры (wall climb, ceiling hang/crawl), отрыв от поверхности | Сканированием окон ОС, коммитом позиции окна |
-| Main / Application | Агрегат состояния, аккумулятор шагов, валидация сессий drag, диспетчеризация событий | Преобразованием координат Electron, семантикой |
-| Infrastructure | Адаптеры окружения/часов и реализация `PetPositionPort` | Физическим солвером или принятием решений |
-| Renderer | Захват указателя мыши и пассивный рендеринг | Авторитетной позицией, скоростью, физикой |
+- **Motion Engine (Domain):** чистый физический солвер (drag, airborne, grounded, crawl/support), расчёт скоростей, коллизий и фактов посадки. Не управляет таймерами, окнами ОС и не принимает решений по поведению.
+- **Surface Kinematics (Domain):** кинематика поверхностей опоры (wall climb, ceiling hang/crawl) и отрыв.
+- **Main / Application Orchestrator:** агрегат состояния, интеграция по времени (fixed-step accumulator), валидация drag-сессий, диспатчеризация `MotionEvent`.
+- **Infrastructure:** платформенные адаптеры экранов и реализация `PetPositionPort` (перемещение BrowserWindow).
+- **Renderer:** пассивный рендеринг и захват событий указателя мыши. Не владеет физикой и авторитетной позицией.
 
 Приоритеты P0–P5 определены в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md); визуальные анимации — в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md).
 

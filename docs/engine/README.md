@@ -130,3 +130,25 @@ flowchart TD
 | **`RENDER_ENGINE`** | Conceptual `RenderPresentationState`, `PupilOffset`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderLayerId`, `VisibleRenderLayerDef`, `anchors[face]`, `pivot` |
 | **`UI_SPEC`** | Presentation DTO/capabilities из Main и `RenderPresentationState` | Semantic user intents через typed Preload boundary | Local UI state + существующие serializable IPC DTO |
 | **`MEMORY_ENGINE`** | `ChatMessage`, `UserFactDraft`, `PersistedCharacterStateSnapshot` через Application | Bounded `recentContext`, `UserFact`, восстановленный state snapshot | `ChatMessage`, `UserFact`, `PersistedCharacterStateSnapshot` |
+
+---
+
+## 5. Общие архитектурные границы и изоляция (Clean Architecture)
+
+Во всех движках Wisp соблюдаются фундаментальные правила изоляции слоёв:
+
+1. **Domain Layer (`src/domain/`):**
+   - Чистая бизнес-логика. Полностью изолирован от побочных эффектов и платформы.
+   - **Запрещено:** импорты React, JSX, DOM, CSS, Electron (`BrowserWindow`, `ipcRenderer`, `ipcMain`), Node.js (`fs`), системных таймеров (`setTimeout`), неявного времени (`Date.now()`), неявной случайности (`Math.random()`), внешних LLM SDK и прямого SQL.
+   - **Инвариант детерминизма:** монотонное время передаётся аргументом (`opportunityAtMs: number`), случайность — через seeded PRNG (`randomUnit: number`). При одинаковых входах результат всегда идентичен.
+
+2. **Application Layer (`src/application/`):**
+   - Use cases, оркестрация, порты репозиториев (`application/ports`), boundary normalization, сборка снапшотов.
+   - Не принимает художественных и семантических решений за персонажа; не содержит сырых SQL-запросов и UI-разметки.
+
+3. **Infrastructure Layer (`src/infrastructure/`):**
+   - Реализация портов: адаптеры SQLite (`better-sqlite3`), Electron windows, таймеры ОС, AI-провайдеры.
+
+4. **Renderer / UI Layer (`src/renderer/`):**
+   - React, Canvas, CSS, Zustand UI-stores.
+   - Пассивно отображает презентационный срез, передаваемый из Main по IPC. Не выполняет доменных расчётов и не меняет стейт в обход typed IPC.

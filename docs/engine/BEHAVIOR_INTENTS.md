@@ -101,11 +101,6 @@ Utility AI не вводит новый `BehaviorIntentKind`: Application фор
 - Unknown provider hints мапятся в safe fallback intent, обычно `react_confused`, `idle` или `quiet` по ситуации.
 - Provider-origin intents не должны создавать `drag` или `land`; эти intents принадлежат прямому user/system interaction flow.
 
-## Запрещено
+## Архитектурные границы
 
-`BehaviorIntent` не содержит:
-- React component names, DOM commands или CSS classes;
-- SVG paths, sprite sheet names, frame indexes или asset paths;
-- animation fps, frame duration, rows/columns или frame size;
-- Electron window handles, IPC channel names или platform details;
-- raw provider response DTO.
+`BehaviorIntent` — чистый семантический DTO доменного слоя ([`src/domain/behavior/behavior-intent.ts`](../../src/domain/behavior/behavior-intent.ts)). Согласно [инвариантам изоляции Clean Architecture](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture), он не содержит UI-разметки (React/DOM/CSS), путей к ассетам, параметров кадров/FPS, дескрипторов окон ОС или каналов IPC.

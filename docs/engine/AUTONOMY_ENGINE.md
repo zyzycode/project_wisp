@@ -6,17 +6,9 @@ Autonomy Engine не является отдельным runtime actor или в
 
 ## 1. Владение
 
-| Owner | Владеет | Не владеет |
-|---|---|---|
-| Character Engine | semantic gating всех candidates, P4 Utility eligibility/scoring/arbitration, единственный resolved `BehaviorIntent` | Activity, motion, animation, clocks |
-| Application | boundary normalization, immutable snapshot, конечный candidate set, serialized decision sequence, monotonic opportunity time | semantic score/выбор, Activity selection |
-| Behavior Brain | выбором Activity только внутри уже resolved intent | semantic gating или повторной Utility arbitration |
-| Activity Runner | исполнением выбранной Activity | выбором intent/Activity |
-| Motion Engine | уже произошедшими physical facts и forced position | semantic decisions |
-| Animation FSM | visual priority, transitions и interrupt policy | behavior priorities P0–P5 |
-| Provider | необязательным candidate через Application mapper | resolved intent, autonomy cadence |
-
-Public форма и каталог `BehaviorIntent` принадлежат [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md). Needs, tone, sleep/wake thresholds и quiet semantics принадлежат [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md). Activity lifecycle и history принадлежат [`ACTIVITY_ENGINE.md`](./ACTIVITY_ENGINE.md).
+- **Character Engine (Domain):** семантический гейтинг кандидатов, порядок безопасности P0–P5, Utility eligibility, scoring и арбитраж P4, возврат ровно одного resolved `BehaviorIntent`. Не владеет выбором Activity, физикой, кадрами анимации и часами.
+- **Application Orchestrator:** нормализация входов, сборка неизменяемого снапшота, формирование конечного набора кандидатов, монотонный пульс возможностей (`opportunityAtMs`). Не вычисляет семантические веса.
+- **Внешние связи:** Полная матрица распределения ответственности смежных движков зафиксирована в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Единственная цепочка решений
 
@@ -83,25 +75,15 @@ Pulse не привязан к physics, animation или render tick, не пр�
 
 ## 5. Допустимые и запрещённые inputs
 
-Utility policy может читать только нормализованные значения:
-
-- Character snapshot: Needs, готовый synthesized tone, Personality и relationship/intimacy gates;
+Utility policy читает только нормализованные доменные значения:
+- Character snapshot: Needs, synthesized tone, Personality и relationship/intimacy gates;
 - готовые quiet/sleep gating facts без повторения их семантики;
-- active Activity rank;
-- bounded cooldown/repetition summary;
-- environment geometry/capabilities и свежие reactive signals из [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md);
-- candidate metadata `source`, `priority`, `requestId` и catalog identity.
+- rank активной Activity;
+- сводку cooldown/repetition;
+- геометрию окружения и свежие реактивные сигналы из [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md);
+- метаданные кандидата (`source`, `priority`, `requestId`) и identity каталога.
 
-Utility policy не получает:
-
-- raw provider response или memory text;
-- DOM, React, Electron, OS handles или platform/source names;
-- asset paths, clips, frames или Renderer state;
-- `Date.now()`, `Math.random()` или скрытые timers;
-- physics, animation или render cadence;
-- mutable `CharacterState`.
-
-Provider может добавить candidate только через тот же Application mapper. При недоступном provider локальный catalog формирует автономные candidates, поэтому offline autonomy сохраняет те же gating и arbitration.
+**Запрещено:** согласно [инвариантам изоляции Clean Architecture](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture), Utility policy не получает сырой ответ провайдера, текст памяти, DOM/React/Electron handles, пути ассетов, клипы/фреймы, `Date.now()`, `Math.random()`, тикрейт рендера/физики или мутабельный `CharacterState`.
 
 ## 6. Eligibility
 
