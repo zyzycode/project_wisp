@@ -2,9 +2,9 @@
 
 `UI_SPEC.md` — принятый архитектурный контракт UI/Renderer Project Wisp. Он определяет ownership, поток presentation state и user intents, но не фиксирует дерево React-компонентов, CSS, визуальный стиль или конкретные IPC channels.
 
-**Статус: accepted (`DOC-A04`).** Этот contract является обязательным architect gate для P14-P04 «Редизайн контекстного меню»: **yes**, потому что меню затрагивает границы Renderer ↔ Preload ↔ Main, window surface и debug/settings affordances.
+**Статус: accepted (`DOC-A04`), public sleep/wake command уточнён в `AUTO-A05`.** Этот contract является обязательным architect gate для P14-P04 «Редизайн контекстного меню»: **yes**, потому что меню затрагивает границы Renderer ↔ Preload ↔ Main, window surface и debug/settings affordances.
 
-Public IPC DTO и Application ports этой задачей не меняются. Новая capability требует отдельного планирования Project Manager и Architect review соответствующего public contract.
+Исходный `DOC-A04` не менял public IPC DTO или Application ports. Принятые последующие public deltas фиксируются в профильных разделах; любая новая capability по-прежнему требует отдельного планирования Project Manager и Architect review.
 
 ## 1. Поток данных
 
@@ -54,7 +54,7 @@ flowchart LR
 | Surface | Минимальные inputs | Допустимые outputs | Local-only state |
 |---|---|---|---|
 | Character | `RenderPresentationState`, motion/presentation snapshot, safe interaction capabilities | click/double-click/right-click, bounded drag pointer lifecycle, pet/play semantic intent | hover/pressed, pointer capture bookkeeping, transient visual focus |
-| Context menu | available actions/capabilities, confirmed setting summaries, safe anchor/viewport data | select action, open chat/settings, request window preference, close application | open/closed, active tab, keyboard focus, measured menu placement |
+| Context menu | available actions/capabilities, confirmed setting summaries, safe anchor/viewport data | select action, explicit sleep/wake command, open chat/settings, request window preference, close application | open/closed, active tab, keyboard focus, measured menu placement |
 | Chat | dialogue status, bounded display message/reply, validation/error presentation | submit sanitized text, cancel/dismiss, retry when capability exists | draft text, focus, composing flag, open/closed |
 | Settings surface | safe setting presentation and capability flags | request validated change/reset; wait for confirmed result | unsaved controls/draft and validation hints |
 | Debug surface | debug-enabled capability, redacted bounded telemetry | refresh, clear diagnostic logs, local visual inspection controls | panel visibility, paused view, selected inspector item |
@@ -132,6 +132,43 @@ P14-P04 может менять layout, grouping, labels, CSS и component decom
 
 Состав текущего `WispApiBridge` не копируется сюда. `src/shared/ipc-contracts.ts` остаётся source of truth для реализованной typed surface, а изменение её public shape требует отдельного Architect review.
 
+### 8.1. Explicit sleep/wake command (`AUTO-A05`)
+
+Ручные `sleep` и `wake` — semantic commands, а не физические/эмоциональные stimuli. Поэтому они не входят в `CharacterInteractionTypeDTO` и не проходят через `CharacterInteractionUseCase`.
+
+Единственная public request shape:
+
+```typescript
+export type SleepWakeCommandDTO =
+  | { readonly action: 'sleep' }
+  | { readonly action: 'wake' };
+
+export interface WispApiBridge {
+  requestSleepWake(command: SleepWakeCommandDTO): Promise<void>;
+}
+```
+
+Поток вызова строго один:
+
+```text
+Renderer
+  -> window.wispAPI.requestSleepWake(command)
+  -> fixed Preload invoke
+  -> Main sender/payload validation
+  -> Application sleep/wake use case or mapper
+  -> candidate BehaviorIntent
+  -> Character Engine resolution
+  -> existing presentation publication
+```
+
+- Preload использует один фиксированный channel `wisp:request-sleep-wake`; Renderer не видит его имя и не получает generic IPC.
+- Main принимает `unknown`, проверяет trusted sender и plain non-null object с единственным допустимым discriminant `action`; unsupported/missing action отклоняется до Application. Raw object и дополнительные поля не передаются дальше.
+- Main handler не читает текущий animation/sleep state, не выбирает противоположную команду и не запускает visual transition.
+- Application создаёт новый internal candidate: `sleep` → `{ kind: 'sleep', source: 'user', priority: 'high', reason: 'user_sleep_command' }`; `wake` → `{ kind: 'wake', source: 'user', priority: 'critical', reason: 'user_wake_command' }`.
+- Character Engine единолично принимает или отклоняет candidate и меняет semantic sleep state. Application исполняет только resolved outcome и публикует его через существующий presentation path.
+- `Promise<void>` подтверждает только завершение валидированного request path. Он не является semantic acceptance result: Renderer не делает optimistic FSM transition и ждёт authoritative presentation update.
+- DTO не содержит `BehaviorIntent`, priority, source, reason, thresholds, animation kind, current state или toggle flag. Новый Application port не нужен: это внутренний use case над существующим Character boundary.
+
 ## 9. State consistency и cleanup
 
 Правила состояния согласованы с [rules.md](../../.agents/rules/rules.md):
@@ -172,7 +209,7 @@ Renderer не хранит, импортирует и не отображает:
 | Ранее открытый вопрос | Решение contract |
 |---|---|
 | React tree/hooks/catalogs | Implementation detail; contract задаёт owners и surfaces, не имена компонентов. |
-| Точный `window.wispAPI` | Текущая typed surface остаётся без изменений; новые capabilities планируются отдельно. |
+| Точный `window.wispAPI` | `AUTO-A05` добавляет только `requestSleepWake(SleepWakeCommandDTO): Promise<void>`; остальные новые capabilities планируются отдельно. |
 | Menu/settings/chat actions | Зафиксированы semantic categories и ownership; точный product set/layout остаётся профильной implementation task. |
 | Placement у краёв | Local measurement + normalized bounds; native resize/reposition подтверждает Main/platform adapter. |
 | Visual style/timing/accessibility | Не engine boundary; implementation обязана сохранять keyboard/focus semantics и проверяемый доступ к actions. |
