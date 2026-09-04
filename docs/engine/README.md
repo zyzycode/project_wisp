@@ -2,7 +2,7 @@
 
 `docs/engine/` является source of truth для engine contracts Project Wisp. Эти документы фиксируют границы между provider output, поведением персонажа, выбором анимации, рендером и памятью до начала implementation-задач.
 
-Все authoritative contracts в реестре приняты; незавершённых architect gates среди них нет. Статус product implementation ведётся отдельно и не делает принятый contract черновиком. `UI_SPEC.md` принят как архитектурный контракт UI/Renderer в `DOC-A04`; `SHIMEJI_SPEC.md` сохранён только как compatibility index.
+Все authoritative contracts в реестре приняты; незавершённых architect gates среди них нет. Статус product implementation ведётся отдельно и не делает принятый contract черновиком. `UI_SPEC.md` принят как архитектурный контракт UI/Renderer в `DOC-A04`.
 
 ---
 
@@ -21,7 +21,6 @@
 | [`UI_SPEC.md`](./UI_SPEC.md) | UI/Renderer boundaries: presentation state, typed user intents, local UI state, cleanup и privacy. |
 | [`MEMORY_ENGINE.md`](./MEMORY_ENGINE.md) | Оффлайн-память: сообщения, факты пользователя, эпизодическая память, JSON-снапшоты состояния. |
 | [`AI_PROVIDER_CONTRACT.md`](./AI_PROVIDER_CONTRACT.md) | AI-диалог: контракт `IAIProvider`, DTO реплик и Suggested Intent на основе `CharacterSnapshot`. |
-| [`SHIMEJI_SPEC.md`](./SHIMEJI_SPEC.md) | Legacy compatibility index; перенаправляет старые headings к authoritative contracts и не содержит определений. |
 
 ---
 

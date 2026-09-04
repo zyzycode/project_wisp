@@ -22,7 +22,6 @@
 | Меню, чат и остальные элементы интерфейса | [UI_SPEC.md](engine/UI_SPEC.md) |
 | Память | [MEMORY_ENGINE.md](engine/MEMORY_ENGINE.md) |
 | Граница AI-провайдера | [AI_PROVIDER_CONTRACT.md](engine/AI_PROVIDER_CONTRACT.md) |
-| Старые ссылки на смешанную Shimeji specification | [SHIMEJI_SPEC.md](engine/SHIMEJI_SPEC.md) — compatibility index, не source of truth |
 | Создание, нарезка и обработка спрайтов | [Asset Pipeline](../asset-pipeline/README.md) — отдельный скоуп и локальный агент |
 | Регистрация ассетов и изменения runtime | [GitHub Project](https://github.com/users/zyzycode/projects/1); текущая интеграция Renderer — [#1 P14-P01](https://github.com/zyzycode/project_wisp/issues/1) |
 
