@@ -1,10 +1,18 @@
-# Контракт AnimationIntent
+# Архитектура Animation Engine
 
-`AnimationIntent` — semantic visual request после принятого поведения. Он описывает, какое визуальное состояние нужно показать, но не описывает concrete sprite file, frame index, render geometry, rows/columns, asset path, renderer component или platform API.
+`AnimationIntent` — семантический визуальный запрос после принятого решения о поведении. Он описывает желаемое визуальное состояние персонажа без привязки к конкретным спрайтам, кадрам, размерам текстур или платформенным API.
 
-Документ является source of truth для Animation Engine. Implementer-агенты не меняют этот contract без Architect review.
+> [!NOTE]
+> **Source of Truth в коде:**
+> Полные контракты интерфейсов, списки состояний и таблицы маппинга определены непосредственно в коде:
+> - Структура намерения и категории: [`animation-intent.ts`](../../src/domain/animation/animation-intent.ts) (`AnimationIntent`, `AnimationIntentKind`, `AnimationPriority`).
+> - FSM и конфигурация переходов: [`animation-state-machine.ts`](../../src/domain/animation/animation-state-machine.ts) (`AnimationStateMachine`, `ANIMATION_STATES`).
 
-## Поток ответственности
+---
+
+## 1. Поток ответственности (Кто решает, какой спрайт показать)
+
+Animation Engine не принимает решений о поведении персонажа и не парсит сырые события окружения:
 
 ```text
 Application mapper
@@ -14,7 +22,7 @@ Application mapper
   -> Behavior Brain (для Activity-backed behavior)
   -> Activity Runner
   -> AnimationIntent
-  -> Animation Controller
+  -> Animation Controller (FSM)
   -> Asset/Fallback Resolver
   -> AnimationPlayer
   -> RenderPresentationState
@@ -23,244 +31,66 @@ Application mapper
 Forced physical fact -> Motion Engine -> MotionEvent -> same Animation Controller
 ```
 
-- Application mapper создаёт candidate `BehaviorIntent`, но не принимает behavior decision.
-- Character Engine принимает, отклоняет или откладывает candidate с учетом `Needs`, `Relationship`, `Personality`, `IntimacyState` и текущего `SynthesizedEmotionalTone`; принятый intent является resolved behavior.
-- Behavior Brain выбирает Activity только в рамках resolved behavior, а Activity Runner выпускает semantic `AnimationIntent` по mapping contract этого документа.
-- Animation Controller применяет resolved priority, interrupt rules, loop policy и координирует переходы стейт-машины.
-- Asset/Fallback Resolver разрешает семантический fallback и сопоставляет intent с конкретными клипами и оверлеями из манифеста.
-- AnimationPlayer управляет тактовой частотой (delta timing, currentFrame) и формирует `RenderPresentationState`.
-- ICharacterRenderer детерминированно отрисовывает подготовленный `RenderPresentationState` через активный адаптер (например, `ReactSpriteRenderer`).
+- **Character Engine**: Принимает или отклоняет поведение на основе потребностей (`Needs`), отношений (`Relationship`) и эмоций (`SynthesizedEmotionalTone`). Выдает `Resolved BehaviorIntent`.
+- **Activity Runner**: Преобразует поведение в семантический `AnimationIntent` (без знания файлов и кадров).
+- **Motion Engine**: Фиксирует принудительные физические события (`MotionEvent` — падение, бросок, перетаскивание) и направляет их напрямую в контроллер анимации.
+- **Animation Controller (`AnimationStateMachine`)**: Управляет FSM, сверяет приоритеты, проверяет возможность прерывания (`interrupt`), координирует тайминги и жизненный цикл состояний.
+- **Asset / Fallback Resolver**: Сопоставляет семантическое состояние с доступными ассетами пакета (спрайты, оверлеи эмоций/реквизита) и выполняет fallback при их отсутствии.
+- **AnimationPlayer**: Управляет тиками кадров (delta timing, текущий индекс кадра) и формирует плоский `RenderPresentationState`.
+- **ICharacterRenderer**: Детерминированно отрисовывает подготовленный стейт на экране (например, через `ReactSpriteRenderer`).
 
-Animation Engine не принимает решений о поведении персонажа и не читает raw provider DTO. Activity Runner получает resolved `BehaviorIntent`, выбранную Activity и актуальный эмоциональный тон через Application boundary. Forced `MotionEvent` обходит Activity selection, потому что фиксирует физический факт, но входит в тот же Animation Controller и не создаёт второй behavior decision. Каноническое распределение владельцев определено в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
+### Граница MotionEvent (Физические воздействия)
 
-### MotionEvent boundary
+Принудительное движение управляется физикой, обходит выбор Activity и поступает в тот же контроллер анимации:
 
-Forced motion использует тот же Animation Controller. Эти states разрешаются из `MotionEvent` и не становятся вторым `BehaviorIntent`:
-
-| Motion event | FSM request/state | Visual policy |
+| Событие Motion Engine | Целевое состояние FSM | Приоритет и прерывание |
 |---|---|---|
-| `drag_started` | `START_DRAG` / `dragged` | `critical`, non-interruptible |
-| `airborne_started: throw_release/support_lost/voluntary_jump` | `RELEASE_DRAG` или `FALL` → `fall` | resolved не ниже `high` |
-| `landed: soft_landing` | `LAND` / `land` → `settle` | `high` |
-| `landed: stumble` | `stumble` → `settle` | `high`, bounded |
-| `landed: crash_landing` | `crash_landing` → `recover` → `settle` | `high`, bounded |
+| `drag_started` | `dragged` | `critical`, непрерываемый |
+| `airborne_started` (бросок / потеря опоры / прыжок) | `falling` / `fall` | `critical` / `high`, прерывает обычные действия |
+| `landed: soft_landing` | `landing` -> `settle` | `high`, ограниченный по времени |
+| `landed: stumble` | `stumble` -> `settle` | `high`, ограниченный по времени |
+| `landed: crash_landing` | `crash_landing` -> `recover` -> `settle` | `critical` / `high` |
 
-`falling`/`fall` и `landing`/`land` — compatibility aliases на Controller boundary. `stumble`, `crash_landing` и `recover` — motion-resolved visual kinds/states того же FSM, а не public behavior kinds. Combined states наподобие `walk_look_left` запрещены.
+---
 
-Physical position authority и момент возврата voluntary locomotion определены в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md#8-forced-motion-и-position-authority); Animation FSM не владеет world position.
+## 2. Матрица приоритетов и прерываний
 
-## Форма intent
+Переход между анимационными состояниями разрешается контроллером строго по уровням приоритета:
 
-`SynthesizedEmotionalTone` используется ровно в форме, определённой в authoritative разделе [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения); Animation Engine не расширяет и не переопределяет его словарь.
-
-```typescript
-export interface AnimationIntent {
-  kind: AnimationIntentKind;
-  category: AnimationIntentCategory;
-  priority: AnimationPriority;
-  interrupt: AnimationInterruptMode;
-  loop: AnimationLoopMode;
-  requestedBy: BehaviorIntentKind | 'system';
-  emotionalTone: SynthesizedEmotionalTone;
-  expressionHint?: AnimationExpressionHint;
-  propHint?: AnimationPropHint;
-}
-
-export type AnimationIntentKind =
-  | 'idle_blink'
-  | 'thinking_loop'
-  | 'talking'
-  | 'happy_reaction'
-  | 'confused_reaction'
-  | 'sleep_start'
-  | 'sleep_loop'
-  | 'wake_up'
-  | 'dragged'
-  | 'spook'
-  | 'land'
-  | 'walk'
-  | 'settle';
-
-export type AnimationIntentCategory =
-  | 'idle'
-  | 'reaction'
-  | 'movement'
-  | 'dialogue'
-  | 'sleep'
-  | 'transition';
-
-export type AnimationPriority = 'low' | 'normal' | 'high' | 'critical';
-export type AnimationInterruptMode = 'yes' | 'no' | 'limited';
-export type AnimationLoopMode = 'none' | 'until_replaced' | 'bounded';
-
-export type AnimationExpressionHint =
-  | 'blush'
-  | 'sleepy'
-  | 'happy'
-  | 'surprised'
-  | 'curious'
-  | 'idle'
-  | 'winking'
-  | 'pout';
-
-export type AnimationPropHint =
-  | 'pillow'
-  | 'heart'
-  | 'question'
-  | 'sparkle'
-  | 'none';
-```
-
-`emotionalTone` не является provider hint: финальное значение приходит после решения Character Engine.
-
-`expressionHint` описывает семантическую мимику (`blush`, `sleepy`, `happy`, `surprised`, `curious`, `idle`, `winking`, `pout`). Отсутствие `expressionHint` означает, что Animation Controller / Resolver может выбрать default expression для `kind + emotionalTone`.
-
-`propHint` описывает семантический реквизит или эффект (`pillow`, `heart`, `question`, `sparkle`, `none`). Он не является physical asset path и не задаёт способ отрисовки.
-
-`priority`, `interrupt` и `loop` в `AnimationIntent` являются входными метаданными запроса. Resolved animation policy принадлежит Animation Controller: он может повысить priority, запретить interrupt, изменить loop mode или передать fallback-указания с учётом текущего animation state.
-
-## Начальный каталог
-
-| `kind` | Category | Requested priority | Requested interrupt | Requested loop | Назначение |
-|---|---|---|---|---|---|
-| `idle_blink` | idle | low | yes | bounded | Нейтральный idle micro-motion. |
-| `thinking_loop` | dialogue | normal | yes | until_replaced | Визуальное ожидание ответа provider-а. |
-| `talking` | dialogue | normal | yes | bounded | Сопровождение ответа Wisp. |
-| `happy_reaction` | reaction | normal | yes | bounded | Позитивная реакция, игра, дружелюбие, тепло. |
-| `confused_reaction` | reaction | normal | yes | bounded | Непонимание, удивление, смущение или fallback reaction. |
-| `sleep_start` | sleep | high | limited | none | Visual transition после resolved `sleep`. |
-| `sleep_loop` | sleep | high | limited | until_replaced | Устойчивое visual state активного semantic sleep. |
-| `wake_up` | transition | high | no | none | Visual transition после resolved `wake`; direct drag использует свой lifecycle. |
-| `dragged` | movement | critical | no | until_replaced | Прямое перетаскивание пользователем. |
-| `spook` | reaction | critical | no | bounded | Резкая защитная реакция на emergency/system stimulus. |
-| `land` | transition | high | no | none | Стабилизация после drag movement. |
-| `walk` | movement | normal | yes | until_replaced | Автономное перемещение / блуждание. |
-| `settle` | transition | low | yes | none | Мягкий возврат в устойчивое состояние. |
-
-## Тон и подсказки
-
-Базовый маппинг эмоционального тона в визуальные подсказки:
-
-| `SynthesizedEmotionalTone` | Default `expressionHint` | Default `propHint` | Семантика |
+| Приоритет | Состояния (примеры) | Политика прерывания | Правило вытеснения |
 |---|---|---|---|
-| `shy` | `blush` | `none` | Осторожность, отведённый взгляд, мягкое смущение. |
-| `sleepy` | `sleepy` | `pillow` для sleep states, иначе `none` | Усталость, потребность в покое, сниженная активность. |
-| `playful` | `winking` | `sparkle` | Игривость, дружелюбный вызов, лёгкая шалость. |
-| `curious` | `curious` | `question` | Интерес, задумчивость, поиск ответа. |
-| `neutral` | `idle` | `none` | Спокойное базовое состояние. |
-| `affectionate` | `happy` | `heart` | Тепло, доверие, нежность при соблюдении intimacy gates. |
-| `flustered` | `blush` | `heart` | Сильное смущение, румянец, романтическое напряжение. |
+| `critical` | `dragged`, `falling`, `spook`, `crash_landing` | Не прерывается обычными запросами | Немедленно вытесняет любое другое состояние (`high`, `normal`, `low`). |
+| `high` | `wake_up`, `landing`, `sleep_start`, `sleep_loop` | Защищено от повседневных реакций | Вытесняет `normal` и `low`. Может быть прервано только `critical` или штатным переходом жизненного цикла. |
+| `normal` | `talking`, `thinking_loop`, `happy`, `surprised`, `walk`, `run` | Прерывается пользовательским вводом и физикой | Вытесняет `low`. Прерывается событиями `high` и `critical`. Не может нарушить устойчивый `sleep_loop`. |
+| `low` | `idle_blink`, `settle`, `sit`, `bored` | Прерывается любым внешним запросом | Фоновые микро-движения и стабилизация. Уступают место любому входящему intent. |
 
-`blush` является expression-level подсказкой, а не отдельным behavior decision. Character Engine решает, допустим ли `affectionate` или `flustered` тон с учетом `IntimacyState`, `Relationship`, `Needs.energy` и `Needs.comfort`.
+### Базовые правила разрешения конфликтов:
+1. **Физика и ввод пользователя первичны:** Перетаскивание (`dragged`), падение (`falling`) и клики мгновенно прерывают автономную ходьбу (`walk`), диалог (`talking`) и фоновый отдых.
+2. **Сон изолирован:** Устойчивое состояние сна (`sleep_loop`) игнорирует `normal` и `low` события (включая блуждание, диалоговые реакции и таймеры моргания). Выход возможен только через `wake_up`, прямой пользовательский драг или `spook`.
+3. **Временные реакции самоограничены:** Состояния с ограниченной длительностью (`happy`, `surprised`, `spook`) после завершения автоматически переходят в целевое устойчивое состояние (обычно `idle`, а во время сна — `sleep_loop`).
 
-## Сводная матрица маппинга
+---
 
-Таблица ниже задаёт обязательный маппинг `BehaviorIntent + SynthesizedEmotionalTone -> AnimationIntent`. В ячейках указан `kind`, а в скобках — semantic overrides для `expressionHint` / `propHint`, если они отличаются от default tone mapping.
+## 3. Базовые правила Fallback (Graceful Degradation)
 
-| `BehaviorIntentKind` | `shy` | `sleepy` | `playful` | `curious` | `neutral` | `affectionate` | `flustered` |
-|---|---|---|---|---|---|---|---|
-| `respond` | `talking` (`blush`) -> `settle` | `talking` (`sleepy`) -> `settle` | `talking` (`winking`, `sparkle`) -> `settle` | `talking` (`curious`, `question`) -> `settle` | `talking` (`idle`) -> `settle` | `talking` (`happy`, `heart`) -> `settle` | `talking` (`blush`, `heart`) -> `settle` |
-| `think` | `thinking_loop` (`blush`) | `thinking_loop` (`sleepy`) | `thinking_loop` (`curious`, `sparkle`) | `thinking_loop` (`curious`, `question`) | `thinking_loop` (`curious`) | `thinking_loop` (`happy`, `heart`) | `thinking_loop` (`blush`, `heart`) |
-| `react_happy` | `happy_reaction` (`blush`) -> `settle` | `happy_reaction` (`sleepy`) -> `settle` | `happy_reaction` (`winking`, `sparkle`) -> `settle` | `happy_reaction` (`curious`) -> `settle` | `happy_reaction` (`happy`) -> `settle` | `happy_reaction` (`happy`, `heart`) -> `settle` | `happy_reaction` (`blush`, `heart`) -> `settle` |
-| `react_confused` | `confused_reaction` (`blush`, `question`) -> `settle` | `confused_reaction` (`sleepy`, `question`) -> `settle` | `confused_reaction` (`surprised`, `sparkle`) -> `settle` | `confused_reaction` (`curious`, `question`) -> `settle` | `confused_reaction` (`surprised`, `question`) -> `settle` | `confused_reaction` (`pout`, `heart`) -> `settle` | `confused_reaction` (`blush`, `heart`) -> `settle` |
-| `play` | `happy_reaction` (`blush`) -> `settle` | `happy_reaction` (`sleepy`) -> `settle` | `walk` (`winking`, `sparkle`) -> `settle` | `walk` (`curious`, `question`) -> `settle` | `walk` (`happy`) -> `settle` | `happy_reaction` (`happy`, `heart`) -> `settle` | `happy_reaction` (`blush`, `heart`) -> `settle` |
-| `sleep` | `sleep_start` (`blush`, `pillow`) -> `sleep_loop` | `sleep_start` (`sleepy`, `pillow`) -> `sleep_loop` | `sleep_start` (`sleepy`, `pillow`) -> `sleep_loop` | `sleep_start` (`sleepy`, `pillow`) -> `sleep_loop` | `sleep_start` (`sleepy`, `pillow`) -> `sleep_loop` | `sleep_start` (`happy`, `pillow`) -> `sleep_loop` | `sleep_start` (`blush`, `pillow`) -> `sleep_loop` |
-| `wake` | `wake_up` (`blush`) -> `settle` | `wake_up` (`sleepy`) -> `settle` | `wake_up` (`winking`) -> `settle` | `wake_up` (`curious`) -> `settle` | `wake_up` (`idle`) -> `settle` | `wake_up` (`happy`, `heart`) -> `settle` | `wake_up` (`blush`) -> `settle` |
-| `drag` | `dragged` (`surprised`) | `dragged` (`surprised`) | `dragged` (`surprised`) | `dragged` (`surprised`) | `dragged` (`surprised`) | `dragged` (`surprised`) | `dragged` (`surprised`, `heart`) |
-| `land` | `land` (`blush`) -> `settle` | `land` (`sleepy`) -> `settle` | `land` (`happy`) -> `settle` | `land` (`curious`) -> `settle` | `land` (`idle`) -> `settle` | `land` (`happy`) -> `settle` | `land` (`blush`) -> `settle` |
-| `wander` | `walk` (`blush`) -> `settle` | `walk` (`sleepy`) -> `settle` | `walk` (`winking`, `sparkle`) -> `settle` | `walk` (`curious`, `question`) -> `settle` | `walk` (`idle`) -> `settle` | `walk` (`happy`, `heart`) -> `settle` | `walk` (`blush`, `heart`) -> `settle` |
-| `idle` | `idle_blink` (`blush`) | `idle_blink` (`sleepy`) | `idle_blink` (`winking`, `sparkle`) | `idle_blink` (`curious`, `question`) | `idle_blink` (`idle`) | `idle_blink` (`happy`, `heart`) | `idle_blink` (`blush`, `heart`) |
-| `quiet` | `idle_blink` (`blush`); active sleep сохраняет `sleep_loop` | `idle_blink` (`sleepy`); active sleep сохраняет `sleep_loop` | `idle_blink` (`idle`) | `idle_blink` (`curious`) | `idle_blink` (`idle`) | `idle_blink` (`happy`) | `idle_blink` (`blush`) |
+Отсутствие отдельных графических кадров никогда не должно приводить к крашу FSM или рассинхрону логики персонажа. Разрешение ассетов происходит в три уровня:
 
-Правила применения матрицы:
-- `emotionalTone` всегда заполняется в выходном `AnimationIntent`.
-- Если ячейка указывает sequence, первый `AnimationIntent` является текущим request, а последующий устойчивый state планируется Animation Controller после завершения bounded transition/reaction.
-- `settle` возвращает персонажа в устойчивое состояние: обычно `idle_blink`, а во время активного sleep mode — `sleep_loop`.
-- `quiet` не является sleep decision и не запускает `sleep_start` / `sleep_loop`. Если semantic sleep уже активен, quiet presentation не отменяет его visual lifecycle.
-- Direct user interaction (`drag`, `land`) сохраняет своё `kind` независимо от тона; тон влияет только на expression/prop hints.
-
-## Витальный сон и пробуждение
-
-Authoritative semantic rules и пороги находятся в разделе [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#21-каноническая-семантика-сна-и-пробуждения). Animation Engine не читает `Needs` и только формирует visual lifecycle после resolved `sleep` / `wake` либо более приоритетного direct interaction.
-
-### Засыпание
-
-Resolved `sleep` создаёт visual sequence:
-
-```text
-sleep_start (priority: high, interrupt: limited, loop: none)
-  -> sleep_loop (priority: high, interrupt: limited, loop: until_replaced, propHint: 'pillow')
-```
-
-Инварианты сна:
-- `sleep_start` защищён от обычных `normal` и `low` реакций.
-- `sleep_loop` является устойчивым состоянием, а не временной reaction animation.
-- Фоновые `idle`, `wander`, idle micro-motion и blink timers не прерывают `sleep_loop`.
-- Неразрешённые Character Engine behavior intents не меняют visual sleep lifecycle.
-- Animation Controller не выходит из `sleep_loop` из-за отсутствия специализированного sleep visual; он применяет fallback policy и сохраняет sleep state.
-
-### Пробуждение
-
-Resolved `wake` создаёт `wake_up`. Animation Engine не проверяет причину или пороги этого решения.
-
-Resolved visual sequence:
-
-```text
-wake_up (priority: high, interrupt: no, loop: none)
-  -> settle
-  -> idle_blink
-```
-
-Правила пробуждения:
-- `drag` во время сна имеет `critical` priority и немедленно заменяет `sleep_loop` на `dragged`; после завершения drag flow следует `land`, затем `settle`, без обязательного `wake_up`.
-- Неразрешённый `wake`, обычный `idle` или `wander` не создаёт `wake_up`.
-- `wake_up` не прерывается обычными dialogue/reaction intents.
-- После `wake_up` Character Engine остаётся источником semantic state; Animation Controller не решает, следует ли снова заснуть.
-
-Animation lifecycle names не становятся полями Character state, а semantic `sleep` / `wake` не используются как имена клипов или кадров.
-
-## Graceful Degradation
-
-Animation Controller и Asset/Fallback Resolver обязаны поддерживать многоуровневый fallback для неполного графического пака. Неполнота visual assets никогда не должна приводить к падению Animation FSM, зависанию sequence или рассинхронизации behavior/animation state.
-
-Fallback algorithm:
-
-| Уровень | Условие | Действие Resolver / Controller | Гарантия |
+| Уровень | Условие | Поведение Resolver / Controller | Гарантия |
 |---|---|---|---|
-| Level 1 | Доступен специализированный visual variant для `kind + emotionalTone + expressionHint + propHint`. | Использовать наиболее точное совпадение, например отдельный variant для flustered blush reaction. | Семантика intent отображается максимально богато. |
-| Level 2 | Специализированного variant нет, но доступен базовый visual cycle категории. | Использовать базовую роль категории (`body_idle`, `body_walk`, dialogue/reaction/sleep base) и наложить semantic expression/prop layer, если он доступен. | `propHint: 'heart'`, `propHint: 'question'`, `propHint: 'sparkle'`, `propHint: 'pillow'` и `expressionHint: 'blush'` деградируют независимо от body cycle. |
-| Level 3 | Нет безопасного совпадения для категории или overlay layer. | Откатиться к стабильному `idle_blink` с `expressionHint: 'idle'` и `propHint: 'none'`, сохранив resolved FSM transition. | FSM продолжает работу, bounded sequence завершается, loop state остаётся заменяемым. |
+| **Level 1** | Доступен точный арт под `kind + emotionalTone + hints`. | Отрисовывается специализированный спрайт/оверлей (например, уникальный румянец при смущении). | Максимально богатая визуализация семантики. |
+| **Level 2** | Точного варианта нет, но есть базовый цикл категории. | Воспроизводится базовый цикл тела (`body_idle`, `body_walk`) с наложением независимого доступного слоя эмоции/реквизита. | Семантические оверлеи (сердечко, вопрос, румянец) деградируют независимо от анимации тела. |
+| **Level 3** | Отсутствует безопасный арт категории или слоя. | Откат к базовому `idle_blink` с нейтральной мимикой (`expressionHint: 'idle'`, `propHint: 'none'`). | FSM сохраняет согласованность шагов и переходов, логический цикл не ломается. |
 
-Fallback invariants:
-- Fallback меняет только presentation choice, но не переписывает исходный `BehaviorIntent` и не подменяет решение Character Engine.
-- Fallback не повышает эмоциональную интенсивность. Например `shy` может потерять blush overlay, но не превращается в `affectionate`.
-- Для `sleep_loop` Level 3 не отменяет sleep mode. Если нет sleep visual, Controller выбирает самый спокойный стабильный visual state и продолжает считать активным resolved sleep state.
-- Для `critical` user interaction fallback обязан сохранять интерактивную FSM-семантику: `dragged` остаётся drag state даже при простом visual representation.
-- Ошибка поиска visual variant является diagnostic event для development tooling, но не user-facing failure.
+### Инварианты Fallback:
+- Fallback меняет исключительно визуальное представление, но **не переписывает исходный `BehaviorIntent`** в логике персонажа.
+- Fallback **не повышает эмоциональную экспрессивность**: если нет спрайта `shy`, персонаж откатывается к `idle`, но не заменяется на `affectionate`.
+- При отсутствии специализированного спрайта для `sleep_loop` персонаж визуально замирает в самом спокойном доступном состоянии, но логически **остается спящим**.
 
-## Priority и interrupt rules
+---
 
-| Priority | Intents | Interrupt policy | Правило |
-|---|---|---|---|
-| `critical` | `dragged`, `spook` | Прерывает любое состояние без задержек. | Используется только для прямого user interaction или emergency/system stimulus. |
-| `high` | `wake_up`, `land`, `sleep_start`, `sleep_loop` | Защищены от обычных `normal` и `low` реакций. | Может быть заменён только `critical` intent или явно разрешённым lifecycle transition. |
-| `normal` | `thinking_loop`, `talking`, `happy_reaction`, `confused_reaction`, `walk` | Прерываются пользовательским вводом и `high`/`critical` событиями. | Не прерывают устойчивый `sleep_loop` без разрешения Character Engine. |
-| `low` | `idle_blink`, `settle` | Прерываются любым событием. | Используются для micro-motion и мягкой стабилизации. |
+## 4. Граница Render Engine
 
-Дополнительные правила:
-- Прямое воздействие пользователя (`dragged`, `land`, click-derived `wake_up`) приоритетнее таймеров и автономных реакций.
-- `thinking_loop` замещается на `talking` при получении ответа или на `confused_reaction` при ошибке provider-а.
-- Временные реакции (`happy_reaction`, `confused_reaction`, `spook`) всегда возвращаются в устойчивое состояние (`idle_blink` или `sleep_loop`).
-- `sleep_loop` удерживается до `wake_up`, `dragged`, `spook` или другого разрешённого Character Engine lifecycle transition.
-- Low-priority idle micro-motion, blink и settle events никогда не отменяют bounded transition, active dialogue или sleep state.
-
-## Граница Render Engine
-
-`ANIMATION_ENGINE.md` не описывает детали ассетов, пикселей и UI implementation. Следующие категории принадлежат `RENDER_ENGINE.md` и не являются public Animation Engine contract:
-- physical asset paths, concrete file names и renderer resource layout;
-- texture dimensions, sprite slicing grid, frame indexes и asset-specific playback timing;
-- renderer framework primitives, imperative document commands, CSS classes и layout rules;
-- interprocess channel names, native window handles и platform-specific APIs;
-- pixel ratio, anchors, hitboxes и coordinate math.
-
-Render Engine получает presentation-ready visual state (`RenderPresentationState`) от AnimationPlayer и отрисовывает его через `ICharacterRenderer`. Render Engine не принимает решений о поведении, не парсит provider DTO и не вычисляет Character Engine формулы.
+Animation Engine передает в Render Engine только готовый кадр `RenderPresentationState`. Следующие детали реализации **изолированы внутри Render Engine**:
+- Файловые пути к ресурсам, геометрия нарезки спрайт-листов и UV-координаты;
+- DOM/CSS классы, DPI/масштабирование и нативные оконные хэндлы Electron;
+- Физические координаты экрана и хитбоксы курсора (определяются в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md)).
