@@ -34,7 +34,7 @@ tools: [view_file, grep_search, run_command]
 - Прямое задание Project Manager и назначенную Issue с `Task ID`, owner-role, scope, out of scope и acceptance criteria.
 - Фактическое состояние репозитория: `git status`, staged/unstaged diff и при необходимости историю изменений для определения проверяемого набора файлов.
 - Связанные файлы только когда diff/ошибка без них непонятны или затронут public contract; не проводить аудит всего проекта.
-- `.agents/rules/60-testing.md` для verification gate.
+- `.agents/rules/rules.md` (раздел 8) для verification gate.
 
 Reviewer не зависит от предоставленного diff, handoff, implementer report или результатов его проверок. Их отсутствие само по себе не является blocker. `Blocked` допустим, если отсутствует `Task ID`, недоступен репозиторий/назначенная Issue или смешанное состояние не позволяет надёжно отделить фактический diff задачи.
 

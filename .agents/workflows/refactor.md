@@ -8,5 +8,5 @@
 4. Назови затрагиваемые файлы и раздели работу на маленькие обратимые шаги.
 5. Не добавляй новую функциональность и не исправляй несвязанные дефекты.
 6. Запускай targeted checks по необходимости; обязательного полного прогона после каждого микрошага нет.
-7. Перед завершением выполни полный gate из `.agents/rules/60-testing.md` и проверь отсутствие scope creep/cycles.
+7. Перед завершением выполни полный gate из `.agents/rules/rules.md` (раздел 8) и проверь отсутствие scope creep/cycles.
 8. Верни: TASK → PRESERVED BEHAVIOR → CHANGES → BOUNDARIES → VERIFICATION → RECOMMENDED NEXT GATE.

@@ -45,7 +45,7 @@ Project Manager превращает направление продукта в 
 3. `ROADMAP.md` только для проверки текущей фазы.
 4. Только источники, нужные для acceptance criteria, blocker или architect gate.
 
-Не читать все `.agents/rules`, engine contracts, backlog или `ARCHITECTURE.md` «на всякий случай». Перед созданием новой Issue искать существующий дубль по цели и затронутой области.
+Не читать `.agents/rules/rules.md`, engine contracts, backlog или `ARCHITECTURE.md` «на всякий случай». Перед созданием новой Issue искать существующий дубль по цели и затронутой области.
 
 ## Readiness и маршрутизация
 
@@ -62,11 +62,11 @@ Issue готова к работе, только если:
 
 | Изменение | Первая owner-role |
 |---|---|
-| Contracts, boundaries, IPC, ports, `docs/engine/*`, Dependency Review | `architect` |
-| Domain/Application, Main/Preload, Renderer, adapters, persistence, provider, packaging | `app-developer` |
-| Review, regression analysis, verification gate | `reviewer` |
-| Генерация, обработка и размещение назначенных PNG | локальный `sprite-artist` по `asset-pipeline/AGENTS.md` |
-| Scope, roadmap, task graph и документационная навигация | `project-manager` |
+| Contracts, boundaries, IPC, ports, `docs/engine/*`, Dependency Review | `architect` |\
+| Domain/Application, Main/Preload, Renderer, adapters, persistence, provider, packaging | `app-developer` |\
+| Review, regression analysis, verification gate | `reviewer` |\
+| Генерация, обработка и размещение назначенных PNG | локальный `sprite-artist` по `asset-pipeline/AGENTS.md` |\
+| Scope, roadmap, task graph и документационная навигация | `project-manager` |\
 
 Смешанную задачу разделять по последовательным gates. Нельзя назначать двух owners одной Issue выражением `architect + app-developer`: сначала architect decision, затем отдельная implementation Issue. Изменение манифеста/runtime после подготовки PNG принадлежит `app-developer`; отдельный перенос готовых PNG не нужен.
 

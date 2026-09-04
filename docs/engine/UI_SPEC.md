@@ -120,7 +120,7 @@ P14-P04 может менять layout, grouping, labels, CSS и component decom
 
 ## 8. Typed Preload/IPC boundary
 
-Действуют [`30-electron.md`](../../.agents/rules/30-electron.md) и следующие UI-level invariants:
+Действуют [rules.md](../../.agents/rules/rules.md) и следующие UI-level invariants:
 
 - Renderer видит только `window.wispAPI`; Electron/Node globals недоступны.
 - Renderer imports ограничены UI/Render modules и shared serializable DTO; Domain/Application/Infrastructure modules и их types через границу не импортируются.
@@ -134,7 +134,7 @@ P14-P04 может менять layout, grouping, labels, CSS и component decom
 
 ## 9. State consistency и cleanup
 
-Правила состояния согласованы с [`40-react-ui.md`](../../.agents/rules/40-react-ui.md) и [`50-state-and-data.md`](../../.agents/rules/50-state-and-data.md):
+Правила состояния согласованы с [rules.md](../../.agents/rules/rules.md):
 
 - Snapshot from Main заменяет предыдущую projection атомарно; Renderer не merge-ит domain fields по собственным правилам.
 - Confirmed Main state при конфликте побеждает optimistic/local draft. Ошибка сохраняет безопасный draft только как UI convenience.
