@@ -87,3 +87,75 @@ flowchart LR
 1. **Изоляция окружения:** Renderer функционирует в режиме строгой изоляции (`contextIsolation: true`, `sandbox: true`).
 2. **Отсутствие доступа к приватным данным:** Renderer не имеет доступа к локальной файловой системе, SQLite, системным промптам нейросетей, API-ключам и полным слепкам памяти персонажа.
 3. **Семантические намерения:** Любое действие пользователя из UI формирует высокоуровневый семантический интент (User Intent DTO), отправляемый через `window.wispAPI`. UI не имеет права напрямую мутировать внутреннее состояние движков ядра.
+
+---
+
+## 6. Animation lifecycle result IPC
+
+Renderer сообщает Main только terminal результат уже выданного presentation request. Контракт не передаёт `BehaviorIntent`, не позволяет Renderer выбрать следующий visual/semantic state и не даёт ему authority над autonomy cadence.
+
+### 6.1. Shared DTO
+
+```typescript
+export type AnimationLifecycleOutcomeDTO =
+  | 'completed'
+  | 'interrupted'
+  | 'rejected';
+
+export interface AnimationLifecycleResultDTO {
+  readonly requestId: string;
+  readonly outcome: AnimationLifecycleOutcomeDTO;
+}
+
+export interface PetPresentationStateDTO {
+  // Existing fields remain unchanged.
+  readonly animationState: PetAnimationStateDTO;
+  readonly animationRequestId?: string;
+}
+
+export interface WispApiBridge {
+  notifyAnimationLifecycleResult(
+    result: AnimationLifecycleResultDTO
+  ): Promise<void>;
+}
+```
+
+`animationRequestId` присутствует только у request, terminal lifecycle которого ожидает Main. Это уникальный непустой opaque ID, создаваемый Main и стабильный на всех повторных presentation snapshots одного request. `revision` продолжает упорядочивать снапшоты и не заменяет request ID.
+
+### 6.2. Направление и channel
+
+```text
+Main --PetPresentationStateDTO--> typed Preload subscription --> Renderer
+Renderer --notifyAnimationLifecycleResult(result)--> fixed Preload invoke
+         --wisp:animation-lifecycle-result--> Main validation/consumer
+```
+
+Preload экспортирует только точечный метод `notifyAnimationLifecycleResult`; raw `ipcRenderer`, generic `send` / `invoke` и динамическое имя канала запрещены. `Promise<void>` подтверждает только validation и доставку result handler, но не semantic acceptance и не факт возобновления cadence.
+
+### 6.3. Main validation и idempotency
+
+Main handler принимает `unknown` и до вызова lifecycle consumer проверяет:
+
+1. sender совпадает с актуальным trusted `BrowserWindow.webContents` и окно не уничтожено;
+2. payload является plain non-null object ровно с полями `requestId` и `outcome`;
+3. `requestId` — непустая строка допустимой bounded длины;
+4. `outcome` равен только `completed`, `interrupted` или `rejected`;
+5. validated данные скопированы в новый DTO; raw object и extra fields дальше не передаются.
+
+Malformed payload отклоняется до Application/Main composition. Валидный stale, foreign или duplicate `requestId` является идемпотентным no-op: он не меняет presentation, Character/Motion state, pending interaction или cadence.
+
+Matching result атомарно снимает pending request и очищает его watchdog. Дальнейшее действие определяется сохранённым Main context, а не данными Renderer:
+
+| Outcome | Main handling |
+|---|---|
+| `completed` | Зафиксировать подтверждённый visual terminal outcome и вызвать ровно один guarded continuation. |
+| `interrupted` | Не продолжать старый flow; replacement/forced lifecycle остаётся владельцем дальнейшего состояния. |
+| `rejected` | Завершить request как failed и выполнить safe recovery через свежие authoritative gates. |
+
+Новый Main request инвалидирует старый ID до публикации replacement. Stop/dispose/window destruction также инвалидируют pending ID. Watchdog semantics и источник фактического completion определены в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md#5-коррелированный-lifecycle-транзитной-анимации).
+
+### 6.4. Interaction и cadence boundary
+
+Accepted user interaction, запустившая транзитную анимацию, удерживает autonomy suspension до matching terminal result либо Main-owned cancellation/timeout recovery. Blanket immediate resume после отправки interaction запрещён.
+
+Rejected/no-visual interaction может завершиться синхронно. Любое последующее scheduling всё равно проходит через единый coordinator helper, который отменяет старый timer и проверяет свежие Character eligibility, Motion authority, menu и enabled state. Renderer lifecycle result не создаёт autonomy opportunity и не является вторым scheduler.

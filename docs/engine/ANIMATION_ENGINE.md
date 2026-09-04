@@ -94,3 +94,49 @@ Animation Engine передает в Render Engine только готовый �
 - Файловые пути к ресурсам, геометрия нарезки спрайт-листов и UV-координаты;
 - DOM/CSS классы, DPI/масштабирование и нативные оконные хэндлы Electron;
 - Физические координаты экрана и хитбоксы курсора (определяются в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md)).
+
+---
+
+## 5. Коррелированный lifecycle транзитной анимации
+
+Когда Application должна ждать окончания транзитной анимации перед продолжением Activity или autonomy cadence, Main публикует presentation request с уникальным `animationRequestId`. Этот идентификатор создаёт Main; Renderer только возвращает его в lifecycle result. `PetPresentationStateDTO.revision` остаётся порядком снапшотов и не используется для корреляции: несколько motion-снапшотов могут относиться к одному animation request.
+
+Единственный нормальный completion flow:
+
+```text
+Main presentation request + animationRequestId
+  -> Renderer Animation FSM принимает либо отклоняет переход
+  -> Asset/Fallback Resolver выбирает клип
+  -> AnimationPlayer воспроизводит клип по RAF/monotonic delta
+  -> AnimationPlayer completion поступает в ту же FSM
+  -> FSM выполняет штатный переход в ожидаемое stable state
+  -> Renderer сообщает Main terminal lifecycle result с тем же requestId
+```
+
+AnimationPlayer владеет фактом окончания фактически выбранного finite clip, включая безопасный fallback; FSM владеет допустимостью перехода и следующим visual state. Проверка только имени текущего состояния, React timer или копия `durationMs` в Main не являются completion.
+
+| Outcome Renderer | Условие | Последствие в Main |
+|---|---|---|
+| `completed` | Request принят, finite clip завершён, FSM вошла в штатное terminal state | Завершить совпавшее ожидание и выполнить один guarded continuation. |
+| `interrupted` | Принятый request заменён более новым presentation request или forced visual event до normal completion | Не продолжать старый flow; новый request/forced lifecycle уже владеет дальнейшим ожиданием. |
+| `rejected` | FSM не приняла входной переход либо playback не смог стартовать даже через canonical fallback | Завершить совпавшее ожидание как failed и применить Main-owned recovery policy без подмены semantic decision. |
+
+Правила lifecycle:
+
+- В Main одновременно существует не более одного pending animation request для одного presentation owner. Новый authoritative request сначала инвалидирует прежний ID, затем публикуется.
+- Повторный снапшот с тем же `animationRequestId` не перезапускает клип. Один ID никогда не переиспользуется для другого visual request.
+- Renderer сообщает terminal result не более одного раза для принятого ID. Main всё равно обрабатывает result идемпотентно: stale, foreign и duplicate ID не меняют state, cadence или Activity.
+- `interrupted` старого ID не возобновляет cadence. `rejected` и `completed` проходят через текущий operational continuation и свежие Character/Motion/menu/enabled gates; result сам по себе не является behavior intent.
+- Semantic `sleep` / `wake`, Needs и acceptance остаются Character-owned. Lifecycle result подтверждает только визуальное исполнение и не может менять Character или Motion state.
+
+### Safety watchdog
+
+Main может держать bounded watchdog для renderer crash/hang, но timeout является внутренним operational outcome `timed_out`, а не `completed` и не четвёртым Renderer outcome. Watchdog:
+
+- не содержит и не копирует длительность клипа;
+- проверяет тот же pending request ID и после срабатывания инвалидирует его;
+- фиксирует diagnostic timeout и запускает safe recovery/resync;
+- продолжает cadence только через свежие eligibility gates и не обходит forced motion, menu pause, disabled autonomy или semantic sleep;
+- очищается при matching terminal result, interruption/replacement, stop, dispose и уничтожении окна.
+
+Точная IPC-форма, направление вызова и validation определены в [`UI_SPEC.md`](./UI_SPEC.md#6-animation-lifecycle-result-ipc).
