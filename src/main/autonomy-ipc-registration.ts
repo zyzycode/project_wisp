@@ -101,15 +101,9 @@ export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlers
     const repositionAccepted = controller.requestManualRootPosition(
       nativeToRootPosition(nextPosition, options.pivotOffset)
     );
-    if (
-      !repositionAccepted &&
-      (nextPosition.x !== currentPosition.x || nextPosition.y !== currentPosition.y)
-    ) {
-      throw new Error('Window reposition is unavailable');
-    }
     window.setResizable(true);
     window.setSize(size.width, size.height);
-    return nextPosition;
+    return repositionAccepted ? nextPosition : currentPosition;
   });
 
   options.register('wisp:set-autonomy-enabled', async (event, payload): Promise<void> => {

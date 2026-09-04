@@ -111,4 +111,19 @@ describe('Main: autonomy IPC registration', () => {
 
     expect(fixture.controller.requestManualRootPosition).toHaveBeenCalledWith({ x: 50, y: 90 });
   });
+
+  it('still resizes and keeps the current position when Motion rejects reposition', async () => {
+    const currentPosition = { x: 1_600, y: 760 };
+    const fixture = createRegistrationFixture(currentPosition);
+    fixture.controller.requestManualRootPosition.mockReturnValue(false);
+
+    await expect(fixture.handler('wisp:set-menu-expanded')(
+      { sender: fixture.trustedSender },
+      true
+    )).resolves.toEqual(currentPosition);
+
+    expect(fixture.controller.requestManualRootPosition).toHaveBeenCalledWith({ x: 830, y: 550 });
+    expect(fixture.window.setResizable).toHaveBeenCalledWith(true);
+    expect(fixture.window.setSize).toHaveBeenCalledWith(1_140, 620);
+  });
 });
