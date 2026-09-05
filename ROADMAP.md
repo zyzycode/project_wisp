@@ -29,7 +29,7 @@
 | 11 — Character Engine v2 | done | `architect` + `app-developer` | Needs, Relationships (friendship/love), Traits, Intimacy и stimuli. |
 | 12 — Animation & Reaction Pack | done | `architect` + `app-developer` | Синхронизация контракта с Character Engine v2, реакции, idle variety, sleep rules. |
 | 13 — Render Engine | done | `architect` + `app-developer` | RENDER_ENGINE.md, слои, fallback, структурированный логгер и Debug HUD. |
-| 14 — Shimeji & Autonomy (Stabilization) | in_progress | `architect` + `app-developer` | Перенос autonomy loop из Renderer в единый Main/Application runtime owner при сохранении текущего поведения. |
+| 14 — Shimeji & Autonomy | in_progress | `architect` + `app-developer` | Единый Main/Application runtime автономности, живые рутины Explore/Rest/Observe и surface-aware перемещение. |
 | 15 — Offline Memory & Persistence | next | `app-developer` | Контракт MEMORY_ENGINE.md готов. SQLite, bounded history, facts, state restore, clear memory. |
 | 16 — Settings & Control Surface | later | `app-developer` | Behavior, appearance, memory controls и расширенная dev-only debug panel. |
 | 17 — External AI Contract Readiness | future | `architect` + `app-developer` | Только client-side контракт будущего adapter; backend остаётся отдельно. |
@@ -38,4 +38,4 @@
 
 ## Текущий фокус
 
-**Phase 14 (Shimeji & Autonomy):** завершённый stabilization/polish slice сменил активный трек автономности. Текущая последовательность: architect gate [#25 AUTO-A03](https://github.com/zyzycode/project_wisp/issues/25), затем implementation [#26 AUTO-I01](https://github.com/zyzycode/project_wisp/issues/26); фактические статусы ведутся в [GitHub Project](https://github.com/users/zyzycode/projects/1).
+**Phase 14 (Shimeji & Autonomy):** после завершения переноса autonomy loop фокус перешёл на живые автономные рутины и поверхности окружения. Ближайшие независимые slices — `Observe Cursor`, экранный `Explore` и architect gate внешних окон; затем edge traversal, Windows window-support и объединённые Explore/Rest routines. Фактические карточки, зависимости и статусы ведутся в [GitHub Project](https://github.com/users/zyzycode/projects/1).
