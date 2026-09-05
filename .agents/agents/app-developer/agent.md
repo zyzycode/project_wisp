@@ -8,7 +8,7 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 ## Scope
 
-- Domain/Application: Character Engine, behavior и animation FSM, чистая motion logic, use cases и orchestration.
+- Domain/Application: Character Engine, behavior и animation FSM, чистая motion logic, use cases и оркестрация.
 - Main/Preload: `BrowserWindow`, typed IPC и platform integration; Renderer: visual state, runtime rendering, settings/chat/debug UI.
 - Persistence и `IAIProvider` adapters, включая текущий `MockAIProvider`; packaging и desktop smoke checks.
 
@@ -27,7 +27,7 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 - Базовый контекст: `AGENTS.md`, назначенная Issue и `.agents/rules/rules.md`; engine contracts открывать только для затронутого слоя, состояния или перехода.
 - До реализации проверить назначенную Issue и `ARCHITECT RESULT` в комментариях связанных architect-gate Issues. `Implementation consequences` из такого результата обязательны для текущей задачи; постоянные contract rules брать из указанных canonical documents. Если решение не discoverable, противоречит Issue или contracts, остановить затронутую часть и запросить gate, а не угадывать.
-- Не читать документы подряд и не продолжать поиск после прояснения scope, acceptance criteria и применимых контрактов.
+- Фокус поиска: завершать сбор контекста сразу после прояснения scope и acceptance criteria задачи.
 
 ## Отчёт
 
