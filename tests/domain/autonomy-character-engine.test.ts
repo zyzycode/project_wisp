@@ -76,4 +76,21 @@ describe('Domain: AutonomyCharacterEngine', () => {
     expect(drag.semanticSleepState).toBe('awake');
     expect(drag.resolvedIntent?.kind).not.toBe('wake');
   });
+
+  it('resolves direct play while awake and does not use it as an implicit wake', () => {
+    const engine = new AutonomyCharacterEngine();
+    expect(engine.resolveDirectIntent(
+      { kind: 'play', source: 'user', priority: 'high' },
+      awakeSnapshot
+    ).resolvedIntent?.kind).toBe('play');
+
+    engine.resolveDirectIntent(
+      { kind: 'sleep', source: 'user', priority: 'high' },
+      awakeSnapshot
+    );
+    expect(engine.resolveDirectIntent(
+      { kind: 'play', source: 'user', priority: 'high' },
+      awakeSnapshot
+    ).resolvedIntent).toBeNull();
+  });
 });

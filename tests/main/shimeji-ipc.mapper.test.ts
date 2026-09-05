@@ -38,6 +38,10 @@ describe('Main: Shimeji IPC mappers', () => {
           needs: { energy: 80, attention: 30, play: 40, comfort: 50, boredom: 10 },
           synthesizedTone: 'neutral',
         },
+        activity: {
+          runId: 'run-1', activityId: 'explore', phaseId: 'walk', stage: 'entering',
+          startedAtMs: 10, phaseStartedAtMs: 10, phaseEndsAtMs: 60,
+        },
         motion,
         visualEpisode: {
           id: 'episode-3',
@@ -56,7 +60,10 @@ describe('Main: Shimeji IPC mappers', () => {
         needs: { energy: 80, attention: 30, play: 40, comfort: 50, boredom: 10 },
         synthesizedTone: 'neutral',
       },
-      activity: null,
+      activity: {
+        runId: 'run-1', activityId: 'explore', phaseId: 'walk', stage: 'entering',
+        startedAtMs: 10, phaseStartedAtMs: 10, phaseEndsAtMs: 60,
+      },
       motion: {
         phase: 'airborne', rootScreenPosition: { x: 50, y: 60 },
         velocityPxPerSec: { x: 70, y: -80 }, positionAuthority: 'forced',

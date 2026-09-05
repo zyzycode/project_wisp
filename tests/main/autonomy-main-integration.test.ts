@@ -45,7 +45,9 @@ function createFixture(random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0)) {
   const requestVoluntaryMovement = vi.fn(() => true);
   const cancelVoluntaryMovement = vi.fn(() => false);
   const onPresentationChanged = vi.fn();
+  const tickNeeds = vi.fn();
   let episodeSequence = 0;
+  let activitySequence = 0;
   const composition = new MainAutonomyComposition({
     clock: { now: () => scheduler.nowMs },
     scheduler,
@@ -55,6 +57,8 @@ function createFixture(random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0)) {
       needs: { energy: 70, attention: 20, play: 20, comfort: 20, boredom: 20 },
       synthesizedTone: 'neutral',
     }),
+    tickNeeds,
+    brainLoopPolicy: { needsTickIntervalMs: 100, maxNeedsCatchUpSteps: 2 },
     movement: {
       getRootPosition: () => ({ x: 100, y: 200 }),
       getBounds: () => ({ id: 'primary', x: 0, y: 0, width: 1_000, height: 800 }),
@@ -65,6 +69,7 @@ function createFixture(random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0)) {
     },
     requestManualRootPosition: () => true,
     createVisualEpisodeId: () => `episode-${++episodeSequence}`,
+    createActivityRunId: () => `run-${++activitySequence}`,
     onPresentationChanged,
     behaviorConfig: {
       minIdleDurationMs: 10,
@@ -82,11 +87,12 @@ function createFixture(random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0)) {
     requestVoluntaryMovement,
     cancelVoluntaryMovement,
     onPresentationChanged,
+    tickNeeds,
   };
 }
 
-describe('Main integration: AUTO-I07 Brain-owned presentation', () => {
-  it('preserves idle and walk while creating ordered Brain-owned visual episodes', () => {
+describe('Main integration: AUTO-I08 Brain runtime', () => {
+  it('starts Explore from the Character-resolved wander and exposes its causal timeline', () => {
     const fixture = createFixture();
     const initial = fixture.composition.getVisualEpisode();
     expect(initial).toMatchObject({ id: 'episode-1', startedAtMs: 0 });
@@ -98,27 +104,120 @@ describe('Main integration: AUTO-I07 Brain-owned presentation', () => {
     expect(fixture.requestVoluntaryMovement).toHaveBeenCalledOnce();
     expect(fixture.composition.getVisualEpisode().intent.kind).toBe('walk');
     expect(fixture.composition.getVisualEpisode().id).toBe('episode-2');
+    expect(fixture.composition.getActivityTimeline()).toEqual({
+      runId: 'run-1', activityId: 'explore', phaseId: 'walk', stage: 'entering',
+      startedAtMs: 10, phaseStartedAtMs: 10, phaseEndsAtMs: 7_010,
+    });
     expect(fixture.onPresentationChanged).toHaveBeenCalledOnce();
+
+    fixture.composition.notifyVoluntaryMovementCompleted();
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({
+      runId: 'run-1', phaseId: 'observe', stage: 'looping',
+      phaseStartedAtMs: 10, phaseEndsAtMs: 3_010,
+    });
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
   });
 
-  it('advances sleep and wake semantics without waiting for Skin completion', () => {
+  it('advances Rest phases by Main-monotonic deadlines without Skin completion', () => {
     const fixture = createFixture();
     fixture.composition.start();
 
     expect(fixture.composition.requestSleepWake({ action: 'sleep' })).toBe(true);
     expect(fixture.composition.getVisualEpisode()).toMatchObject({
-      id: 'episode-2',
-      intent: { kind: 'sleep_start' },
+      intent: { kind: 'idle_blink' },
+    });
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({
+      activityId: 'rest', phaseId: 'yawn', stage: 'entering', phaseEndsAtMs: 3_000,
     });
     expect(fixture.scheduler.size()).toBe(0);
     expect(fixture.composition.requestSleepWake({ action: 'sleep' })).toBe(false);
 
+    fixture.scheduler.nowMs = 3_000;
+    expect(fixture.composition.tick()).toBe(true);
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({ phaseId: 'lie_down' });
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('lie_down');
+    fixture.scheduler.nowMs = 6_000;
+    fixture.composition.tick();
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({ phaseId: 'sleep_start' });
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('sleep_start');
+    fixture.scheduler.nowMs = 9_000;
+    fixture.composition.tick();
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({
+      phaseId: 'sleep_loop', stage: 'looping', phaseEndsAtMs: 12_000,
+    });
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('sleep_loop');
+
     expect(fixture.composition.requestSleepWake({ action: 'wake' })).toBe(true);
     expect(fixture.composition.getVisualEpisode()).toMatchObject({
-      id: 'episode-3',
       intent: { kind: 'wake_up' },
     });
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
     expect(fixture.scheduler.size()).toBe(1);
+  });
+
+  it('starts Zoomies only after a Character-resolved play intent', () => {
+    const fixture = createFixture();
+    fixture.composition.start();
+    fixture.composition.suspendForUserInteraction();
+
+    expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
+    fixture.composition.resumeAfterUserInteraction();
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({
+      activityId: 'zoomies', phaseId: 'sprint', stage: 'looping',
+    });
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('run');
+    expect(fixture.requestVoluntaryMovement).toHaveBeenCalledOnce();
+    expect(fixture.scheduler.size()).toBe(0);
+
+    fixture.composition.notifyVoluntaryMovementCompleted();
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({
+      phaseId: 'settle', stage: 'exiting', phaseEndsAtMs: 3_000,
+    });
+    fixture.scheduler.nowMs = 3_000;
+    fixture.composition.tick();
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    expect(fixture.scheduler.size()).toBe(1);
+  });
+
+  it.each([
+    [
+      'menu pause',
+      (composition: MainAutonomyComposition) => composition.setMenuOpen(true),
+      (composition: MainAutonomyComposition) => composition.setMenuOpen(false),
+    ],
+    [
+      'autonomy disable',
+      (composition: MainAutonomyComposition) => composition.setEnabled(false),
+      (composition: MainAutonomyComposition) => composition.setEnabled(true),
+    ],
+  ])('restores cadence after %s interrupts deferred Zoomies', (_label, pause, resume) => {
+    const fixture = createFixture();
+    fixture.composition.start();
+    fixture.composition.suspendForUserInteraction();
+    expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
+    fixture.composition.resumeAfterUserInteraction();
+    expect(fixture.composition.getActivityTimeline()?.activityId).toBe('zoomies');
+
+    pause(fixture.composition);
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.scheduler.size()).toBe(0);
+
+    resume(fixture.composition);
+    expect(fixture.scheduler.size()).toBe(1);
+  });
+
+  it('ticks needs from bounded accumulated Brain-loop delta', () => {
+    const fixture = createFixture();
+    fixture.composition.start();
+
+    fixture.scheduler.nowMs = 550;
+    expect(fixture.composition.tick()).toBe(true);
+    expect(fixture.tickNeeds.mock.calls).toEqual([[100], [100]]);
+    expect(fixture.composition.tick()).toBe(false);
+    fixture.scheduler.nowMs = 650;
+    fixture.composition.tick();
+    expect(fixture.tickNeeds.mock.calls).toEqual([[100], [100], [100]]);
   });
 
   it('creates a fresh episode for each intentional click replay', () => {
@@ -157,6 +256,28 @@ describe('Main integration: AUTO-I07 Brain-owned presentation', () => {
     });
     expect(fixture.composition.getVisualEpisode().intent.kind).toBe('land');
     expect(fixture.scheduler.size()).toBe(1);
+  });
+
+  it.each([
+    ['click', (composition: MainAutonomyComposition) => composition.handleClick()],
+    ['drag', (composition: MainAutonomyComposition) => composition.beginDrag()],
+    ['forced motion', (composition: MainAutonomyComposition) => composition.handleMotionEvent({
+      type: 'airborne_started', cause: 'support_lost', atMs: 20,
+    })],
+    ['menu pause', (composition: MainAutonomyComposition) => composition.setMenuOpen(true)],
+    ['autonomy disable', (composition: MainAutonomyComposition) => composition.setEnabled(false)],
+    ['support loss', (composition: MainAutonomyComposition) => composition.handleSupportLost()],
+    ['shutdown', (composition: MainAutonomyComposition) => composition.dispose()],
+  ])('cancels the active Activity on %s without a second owner', (_label, interrupt) => {
+    const fixture = createFixture();
+    fixture.composition.start();
+    fixture.scheduler.take()?.();
+    expect(fixture.composition.getActivityTimeline()?.activityId).toBe('explore');
+
+    interrupt(fixture.composition);
+
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.cancelVoluntaryMovement).toHaveBeenCalled();
   });
 
   it('contains no legacy lifecycle watchdog or callback surface', () => {

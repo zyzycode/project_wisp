@@ -16,6 +16,7 @@ export interface MotionLoopTimer {
 export interface ShimejiMotionLoopOptions {
   readonly orchestrator: MotionLoopOrchestrator;
   readonly getWindow: () => MotionLoopWindow | null;
+  readonly advanceBrain?: () => boolean;
   readonly publishPresentation: () => void;
   readonly beginPresentationTransaction?: () => void;
   readonly commitPresentationTransaction?: () => void;
@@ -41,7 +42,9 @@ export function startShimejiMotionLoop(options: ShimejiMotionLoopOptions): () =>
     }
     options.beginPresentationTransaction?.();
     try {
-      if (options.orchestrator.tick()) options.publishPresentation();
+      const motionChanged = options.orchestrator.tick();
+      const brainChanged = options.advanceBrain?.() ?? false;
+      if (motionChanged || brainChanged) options.publishPresentation();
     } finally {
       options.commitPresentationTransaction?.();
     }

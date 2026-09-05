@@ -63,6 +63,7 @@ export interface ShimejiMotionOrchestratorOptions {
   readonly eventDispatcher?: ShimejiMotionEventDispatcher;
   readonly stimulusMapper?: IShimejiStimulusMapper;
   readonly applyStimulus?: (stimulus: StimulusDto) => void;
+  readonly createStimulusTimestamp?: () => string;
   readonly createDragSessionId?: () => string;
   readonly onVoluntaryMovementCompleted?: () => void;
 }
@@ -132,6 +133,9 @@ export class ShimejiMotionOrchestrator {
   private presentationDirty = false;
 
   public constructor(private readonly options: ShimejiMotionOrchestratorOptions) {
+    if (options.stimulusMapper !== undefined && options.createStimulusTimestamp === undefined) {
+      throw new Error('A stimulus timestamp source is required with the stimulus mapper');
+    }
     this.motion = options.initialMotion;
     this.surface = options.initialSurface;
   }
@@ -485,7 +489,7 @@ export class ShimejiMotionOrchestrator {
     const mapper = this.options.stimulusMapper;
     if (mapper === undefined || this.emittedStimulusIds.has(event.eventId)) return;
     const stimulus = mapper.map(event, {
-      createdAtIso: new Date(event.atMs).toISOString(),
+      createdAtIso: this.options.createStimulusTimestamp?.() ?? '',
       landingThresholds: { stumbleMaxSeverity: this.constraints().stumbleMaxSeverity },
     });
     if (stimulus === null || this.emittedStimulusIds.has(stimulus.id)) return;

@@ -1,4 +1,5 @@
 import type {
+  BrainActivityTimelineDTO,
   BrainStateDTO,
   BrainVisualIntentDTO,
   EnvironmentSnapshotDTO,
@@ -13,6 +14,7 @@ export interface BrainStateSource {
   readonly revision: number;
   readonly sampledAtMs: number;
   readonly character: CharacterAutonomySnapshot;
+  readonly activity: BrainActivityTimelineDTO | null;
   readonly motion: MotionState;
   readonly visualEpisode: BrainVisualEpisode;
 }
@@ -89,7 +91,7 @@ export function toBrainStateDTO(state: BrainStateSource): BrainStateDTO {
       },
       synthesizedTone: state.character.synthesizedTone,
     },
-    activity: null,
+    activity: state.activity === null ? null : { ...state.activity },
     motion: {
       phase: state.motion.phase,
       rootScreenPosition: { ...state.motion.position },

@@ -52,6 +52,7 @@ import { MainAutonomyComposition } from './main-autonomy-composition';
 import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
 import { BodyEventIngress } from './body-event-ingress';
 import { BrainStatePublisher } from './brain-state-publisher';
+import { ShimejiStimulusMapper } from '../application/services/shimeji-stimulus.mapper';
 
 process.env.APP_ROOT = path.join(__dirname, '../..');
 
@@ -85,6 +86,7 @@ let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
 const bodyEventIngress = new BodyEventIngress();
+const shimejiStimulusMapper = new ShimejiStimulusMapper();
 const debugLogBuffer = new LogBuffer();
 const appLogger = new AppLogger({
   level: 'debug',
@@ -103,6 +105,7 @@ const brainStatePublisher = new BrainStatePublisher({
       revision,
       sampledAtMs,
       character: defaultCharacterStateService.getSnapshot(),
+      activity: autonomyComposition.getActivityTimeline(),
       motion: shimejiMotionOrchestrator.getMotionState(),
       visualEpisode: autonomyComposition.getVisualEpisode(),
     });
@@ -185,6 +188,7 @@ function publishBrainState(): void {
 }
 
 function beginBrainStream(): void {
+  autonomyComposition?.tick();
   brainStatePublisher.replaceStream();
 }
 
@@ -214,6 +218,9 @@ function initializeAutonomyComposition(): void {
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
+    tickNeeds: (deltaMs) => {
+      defaultCharacterStateService.tickNeeds(deltaMs);
+    },
     movement: {
       getRootPosition: () => orchestrator.getMotionState().position,
       getBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
@@ -229,6 +236,7 @@ function initializeAutonomyComposition(): void {
       });
     },
     createVisualEpisodeId: randomUUID,
+    createActivityRunId: randomUUID,
     onPresentationChanged: publishBrainState,
   });
   autonomyComposition.start();
@@ -295,6 +303,11 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
         if (event.type === 'support_lost') autonomyComposition?.handleSupportLost();
       },
     },
+    stimulusMapper: shimejiStimulusMapper,
+    applyStimulus: (stimulus) => {
+      defaultCharacterStateService.applyStimulus(stimulus);
+    },
+    createStimulusTimestamp: () => new Date().toISOString(),
     onVoluntaryMovementCompleted: () => {
       autonomyComposition?.notifyVoluntaryMovementCompleted();
     },
@@ -302,6 +315,7 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
   stopShimejiMotionLoopHandle = startShimejiMotionLoop({
     orchestrator: shimejiMotionOrchestrator,
     getWindow: () => mainWindow,
+    advanceBrain: () => autonomyComposition?.tick() ?? false,
     publishPresentation: publishBrainState,
     beginPresentationTransaction: () => brainStatePublisher.beginTransaction(),
     commitPresentationTransaction: () => brainStatePublisher.commitTransaction(),

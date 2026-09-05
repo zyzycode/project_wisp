@@ -22,12 +22,17 @@ describe('Main: Shimeji motion loop', () => {
       }),
     };
     const publishPresentation = vi.fn(() => order.push('publish'));
+    const advanceBrain = vi.fn(() => {
+      order.push('brain');
+      return true;
+    });
     const beginPresentationTransaction = vi.fn(() => order.push('begin'));
     const commitPresentationTransaction = vi.fn(() => order.push('commit'));
     const window = { isDestroyed: vi.fn(() => false) };
     const stop = startShimejiMotionLoop({
       orchestrator,
       getWindow: () => window,
+      advanceBrain,
       publishPresentation,
       beginPresentationTransaction,
       commitPresentationTransaction,
@@ -45,7 +50,8 @@ describe('Main: Shimeji motion loop', () => {
     expect(publishPresentation).toHaveBeenCalledOnce();
     expect(beginPresentationTransaction).toHaveBeenCalledOnce();
     expect(commitPresentationTransaction).toHaveBeenCalledOnce();
-    expect(order).toEqual(['begin', 'tick', 'publish', 'commit']);
+    expect(advanceBrain).toHaveBeenCalledOnce();
+    expect(order).toEqual(['begin', 'tick', 'brain', 'publish', 'commit']);
     expect(orchestrator.stop).toHaveBeenCalledOnce();
     expect(timer.clearInterval).toHaveBeenCalledOnce();
   });

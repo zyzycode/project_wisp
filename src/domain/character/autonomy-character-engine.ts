@@ -78,6 +78,9 @@ export class AutonomyCharacterEngine {
       this.sleepState = 'awake';
       return this.resolution(intent);
     }
+    if (intent.kind === 'play' && this.sleepState === 'awake') {
+      return this.resolution(intent);
+    }
     if (
       intent.kind === 'wake' &&
       this.sleepState === 'sleeping' &&

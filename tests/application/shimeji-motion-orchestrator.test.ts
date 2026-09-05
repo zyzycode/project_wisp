@@ -58,6 +58,7 @@ function createOrchestrator(now: () => number, initialMotion: MotionState = moti
     eventDispatcher: { dispatchMotionEvent, dispatchSurfaceEvent },
     stimulusMapper: mapper,
     applyStimulus,
+    createStimulusTimestamp: () => '2026-09-05T00:00:00.000Z',
     createDragSessionId: () => 'session-1',
   });
   return { orchestrator, commitRootPosition, dispatchMotionEvent, dispatchSurfaceEvent, applyStimulus };
@@ -90,6 +91,57 @@ describe('Application: ShimejiMotionOrchestrator', () => {
     expect(result.orchestrator.getMotionState().phase).toBe('dragged');
     expect(result.commitRootPosition).not.toHaveBeenCalled();
     expect(result.orchestrator.getPresentationRevision()).toBe(1);
+  });
+
+  it('applies drag start and terminal stimuli exactly once per semantic event', () => {
+    let nowMs = 0;
+    const result = createOrchestrator(() => nowMs, motion({ position: { x: 100, y: 500 } }));
+    result.orchestrator.start();
+    result.orchestrator.beginDrag({
+      pointerId: 2, sequence: 0, screenPosition: { x: 100, y: 500 },
+    });
+    nowMs = 10;
+    result.orchestrator.tick();
+    result.orchestrator.releaseDrag({
+      pointerId: 2, dragSessionId: 'session-1', sequence: 1,
+      screenPosition: { x: 100, y: 500 },
+    });
+    result.orchestrator.releaseDrag({
+      pointerId: 2, dragSessionId: 'session-1', sequence: 1,
+      screenPosition: { x: 100, y: 500 },
+    });
+    nowMs = 20;
+    result.orchestrator.tick();
+
+    expect(result.applyStimulus).toHaveBeenCalledTimes(2);
+    expect(result.applyStimulus.mock.calls.map(([stimulus]) => stimulus.id)).toEqual([
+      'stimulus:session-1:started',
+      'stimulus:session-1:ended',
+    ]);
+  });
+
+  it('applies one stimulus for a crash landing across fixed-step catch-up', () => {
+    let nowMs = 0;
+    const result = createOrchestrator(
+      () => nowMs,
+      motion({
+        phase: 'airborne',
+        position: { x: 100, y: 780 },
+        velocityPxPerSec: { x: 0, y: 1_400 },
+      })
+    );
+    result.orchestrator.start();
+
+    for (let index = 0; index < 500 && result.orchestrator.getMotionState().phase !== 'grounded'; index += 1) {
+      nowMs += 10;
+      result.orchestrator.tick();
+    }
+
+    expect(result.orchestrator.getMotionState().phase).toBe('grounded');
+    const landingStimuli = result.applyStimulus.mock.calls
+      .map(([stimulus]) => stimulus)
+      .filter((stimulus) => stimulus.id.includes('landing:'));
+    expect(landingStimuli).toHaveLength(1);
   });
 
   it('consumes queued pointer input in sequence order, routes events, and commits once per tick', () => {

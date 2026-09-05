@@ -180,6 +180,16 @@ export class AutonomyCoordinator {
     }
   }
 
+  public notifyActivityFinished(): void {
+    if (this.disposed) return;
+    this.scheduleNextOpportunity();
+  }
+
+  public requestActivityLocomotion(): boolean {
+    if (this.disposed) return false;
+    return this.requestWander();
+  }
+
   public getDecisionTrace(): readonly AutonomyTraceEntry[] {
     return this.trace.map((entry) => ({
       ...entry,

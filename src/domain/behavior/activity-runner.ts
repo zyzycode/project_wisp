@@ -11,6 +11,7 @@ export type CooldownKey = string;
 export type ActivityStepTarget = ActivityStepId | 'complete' | 'cancel';
 export type ActivityPriorityClass = 'P0_forced_physics' | 'P1_user_interaction' | 'P2_critical_need' | 'P3_reactive' | 'P4_autonomous' | 'P5_ambient';
 export type RunnableActivityPriorityClass = Exclude<ActivityPriorityClass, 'P0_forced_physics'>;
+export type ActivityPhaseStage = 'entering' | 'looping' | 'exiting';
 
 export interface AnimationIntentTemplate {
   readonly kind: AnimationIntentKind;
@@ -20,14 +21,12 @@ export interface AnimationIntentTemplate {
   readonly loop?: AnimationIntent['loop'];
 }
 
-export type ActivityStepCompletion =
-  | { readonly type: 'animation_completed'; readonly timeoutMs: number }
-  | { readonly type: 'state_entered'; readonly state: string; readonly timeoutMs: number }
-  | { readonly type: 'elapsed'; readonly durationMs: number };
+export type ActivityStepCompletion = { readonly type: 'elapsed'; readonly durationMs: number };
 
 export interface ActivityStepBase {
   readonly id: ActivityStepId;
   readonly actionId: ActivityActionId;
+  readonly stage: ActivityPhaseStage;
   readonly guard?: ActivityConditionId;
   readonly next?: ActivityStepId | 'complete';
   readonly onGuardFalse?: ActivityStepTarget;
@@ -60,11 +59,22 @@ export interface CooldownState { readonly entries: readonly CooldownEntry[] }
 export const EMPTY_COOLDOWNS: CooldownState = { entries: [] };
 
 export type ActivityRuntimeStatus = 'running' | 'completed' | 'cancelled' | 'failed';
-export interface ActivityRuntimeState { readonly runId: string; readonly activityId: ActivityId; readonly status: ActivityRuntimeStatus; readonly currentStepId: ActivityStepId; readonly startedAtMs: MonotonicMs; readonly stepStartedAtMs: MonotonicMs; readonly activeAnimationRequestId?: string; readonly activeLocomotionRequestId?: string }
+export interface ActivityRuntimeState {
+  readonly runId: string;
+  readonly activityId: ActivityId;
+  readonly status: ActivityRuntimeStatus;
+  readonly currentStepId: ActivityStepId;
+  readonly stage: ActivityPhaseStage;
+  readonly startedAtMs: MonotonicMs;
+  readonly stepStartedAtMs: MonotonicMs;
+  readonly phaseEndsAtMs: MonotonicMs | null;
+}
 export type ActivityCancelReason = 'forced_motion' | 'user_interaction' | 'critical_need' | 'higher_priority_activity' | 'environment_invalidated' | 'animation_rejected' | 'step_timeout' | 'explicit_cancel' | 'application_shutdown';
 export type ActivityResult = { readonly status: 'completed'; readonly activityId: ActivityId; readonly completedAtMs: MonotonicMs } | { readonly status: 'cancelled'; readonly activityId: ActivityId; readonly reason: ActivityCancelReason; readonly cancelledAtMs: MonotonicMs } | { readonly status: 'failed'; readonly activityId: ActivityId; readonly reason: 'invalid_definition' | 'unresolved_target'; readonly failedAtMs: MonotonicMs };
-export type ActivityEvent = { readonly type: 'animation_completed'; readonly runId: string; readonly requestId: string } | { readonly type: 'state_entered'; readonly runId: string; readonly state: string } | { readonly type: 'guard_evaluated'; readonly runId: string; readonly condition: ActivityConditionId; readonly value: boolean };
-export interface ActivityRunnerUpdate { readonly runtime?: ActivityRuntimeState; readonly emittedStep?: ActivityStep; readonly emittedRequestId?: string; readonly result?: ActivityResult; /** Only this run's external requests may be cleaned up. */ readonly clearedRunId?: string }
+export type ActivityEvent =
+  | { readonly type: 'locomotion_completed'; readonly runId: string }
+  | { readonly type: 'guard_evaluated'; readonly runId: string; readonly condition: ActivityConditionId; readonly value: boolean };
+export interface ActivityRunnerUpdate { readonly runtime?: ActivityRuntimeState; readonly emittedStep?: ActivityStep; readonly result?: ActivityResult; /** Only this run's external requests may be cleaned up. */ readonly clearedRunId?: string }
 
 function validPositive(value: number): boolean { return Number.isFinite(value) && value > 0; }
 function stepMap(definition: ActivityDefinition): Map<string, ActivityStep> { return new Map(definition.steps.map((step) => [step.id, step])); }
@@ -90,7 +100,7 @@ export function validateActivityDefinition(definition: ActivityDefinition): bool
   if (isUnconditionalCycle(definition, steps)) return false;
   return definition.steps.every((step) => {
     const targets = step.type === 'branch' ? [step.whenTrue, step.whenFalse] : [step.next ?? 'complete', step.onGuardFalse ?? 'complete'];
-    const durations = step.type === 'delay' ? [step.durationMs] : step.type === 'locomotion' ? [step.timeoutMs] : step.type === 'animation' ? [step.completion.type === 'elapsed' ? step.completion.durationMs : step.completion.timeoutMs] : [];
+    const durations = step.type === 'delay' ? [step.durationMs] : step.type === 'locomotion' ? [step.timeoutMs] : step.type === 'animation' ? [step.completion.durationMs] : [];
     return targets.every((target) => target === 'complete' || target === 'cancel' || steps.has(target)) && durations.every(validPositive);
   });
 }
@@ -105,9 +115,21 @@ export function validateRepetitionPenalty(config: RepetitionPenalty): boolean {
 }
 export function validateCooldownRule(rule: CooldownRule): boolean { return rule.key.length > 0 && Number.isFinite(rule.durationMs) && rule.durationMs >= 0; }
 
+function stepDurationMs(step: ActivityStep): number | null {
+  if (step.type === 'animation') return step.completion.durationMs;
+  if (step.type === 'locomotion') return step.timeoutMs;
+  if (step.type === 'delay') return step.durationMs;
+  return null;
+}
 function runtimeForStep(runtime: ActivityRuntimeState, step: ActivityStep, nowMs: MonotonicMs): ActivityRuntimeState {
-  const requestId = `${runtime.runId}:${step.id}:${nowMs}`;
-  return { ...runtime, currentStepId: step.id, stepStartedAtMs: nowMs, activeAnimationRequestId: step.type === 'animation' ? requestId : undefined, activeLocomotionRequestId: step.type === 'locomotion' ? requestId : undefined };
+  const durationMs = stepDurationMs(step);
+  return {
+    ...runtime,
+    currentStepId: step.id,
+    stage: step.stage,
+    stepStartedAtMs: nowMs,
+    phaseEndsAtMs: durationMs === null ? null : nowMs + durationMs,
+  };
 }
 function nextRuntime(definition: ActivityDefinition, runtime: ActivityRuntimeState, target: ActivityStepTarget, nowMs: MonotonicMs): ActivityRunnerUpdate {
   if (target === 'complete') return { result: { status: 'completed', activityId: runtime.activityId, completedAtMs: nowMs }, clearedRunId: runtime.runId };
@@ -115,15 +137,24 @@ function nextRuntime(definition: ActivityDefinition, runtime: ActivityRuntimeSta
   const step = stepMap(definition).get(target);
   if (!step) return { result: { status: 'failed', activityId: runtime.activityId, reason: 'unresolved_target', failedAtMs: nowMs } };
   const next = runtimeForStep(runtime, step, nowMs);
-  return { runtime: next, emittedStep: step, emittedRequestId: next.activeAnimationRequestId ?? next.activeLocomotionRequestId };
+  return { runtime: next, emittedStep: step };
 }
 
 export class ActivityRunner {
   start(definition: ActivityDefinition, runId: string, nowMs: MonotonicMs): ActivityRunnerUpdate {
     if (!validateActivityDefinition(definition)) return { result: { status: 'failed', activityId: definition.id, reason: 'invalid_definition', failedAtMs: nowMs } };
     const first = stepMap(definition).get(definition.entryStepId)!;
-    const runtime = runtimeForStep({ runId, activityId: definition.id, status: 'running', currentStepId: first.id, startedAtMs: nowMs, stepStartedAtMs: nowMs }, first, nowMs);
-    return { runtime, emittedStep: first, emittedRequestId: runtime.activeAnimationRequestId ?? runtime.activeLocomotionRequestId };
+    const runtime = runtimeForStep({
+      runId,
+      activityId: definition.id,
+      status: 'running',
+      currentStepId: first.id,
+      stage: first.stage,
+      startedAtMs: nowMs,
+      stepStartedAtMs: nowMs,
+      phaseEndsAtMs: null,
+    }, first, nowMs);
+    return { runtime, emittedStep: first };
   }
   update(definition: ActivityDefinition, runtime: ActivityRuntimeState, event: ActivityEvent, nowMs: MonotonicMs): ActivityRunnerUpdate {
     const step = stepMap(definition).get(runtime.currentStepId);
@@ -131,14 +162,17 @@ export class ActivityRunner {
     if (event.runId !== runtime.runId) return { runtime };
     if (step.type === 'branch' && event.type === 'guard_evaluated' && event.condition === step.condition) return nextRuntime(definition, runtime, event.value ? step.whenTrue : step.whenFalse, nowMs);
     if (step.guard && event.type === 'guard_evaluated' && event.condition === step.guard && !event.value) return nextRuntime(definition, runtime, step.onGuardFalse ?? 'complete', nowMs);
-    const complete = step.type === 'animation' && ((step.completion.type === 'animation_completed' && event.type === 'animation_completed' && event.requestId === runtime.activeAnimationRequestId) || (step.completion.type === 'state_entered' && event.type === 'state_entered' && event.state === step.completion.state));
+    const complete = step.type === 'locomotion' && event.type === 'locomotion_completed';
     return complete ? nextRuntime(definition, runtime, step.next ?? 'complete', nowMs) : { runtime };
   }
   tick(definition: ActivityDefinition, runtime: ActivityRuntimeState, nowMs: MonotonicMs): ActivityRunnerUpdate {
     const step = stepMap(definition).get(runtime.currentStepId);
     if (!step) return { result: { status: 'failed', activityId: runtime.activityId, reason: 'unresolved_target', failedAtMs: nowMs } };
-    const limit = step.type === 'delay' ? step.durationMs : step.type === 'locomotion' ? step.timeoutMs : step.type === 'animation' ? (step.completion.type === 'elapsed' ? step.completion.durationMs : step.completion.timeoutMs) : undefined;
-    if (limit !== undefined && nowMs - runtime.stepStartedAtMs >= limit) return step.type === 'animation' && step.completion.type !== 'elapsed' ? this.cancel(runtime, 'step_timeout', nowMs) : nextRuntime(definition, runtime, step.next ?? 'complete', nowMs);
+    if (runtime.phaseEndsAtMs !== null && nowMs >= runtime.phaseEndsAtMs) {
+      return step.type === 'locomotion'
+        ? this.cancel(runtime, 'step_timeout', nowMs)
+        : nextRuntime(definition, runtime, step.next ?? 'complete', nowMs);
+    }
     return { runtime };
   }
   interrupt(runtime: ActivityRuntimeState, priority: ActivityPriorityClass, nowMs: MonotonicMs): ActivityRunnerUpdate { return priority === 'P0_forced_physics' ? this.cancel(runtime, 'forced_motion', nowMs) : priority === 'P1_user_interaction' ? this.cancel(runtime, 'user_interaction', nowMs) : { runtime }; }
@@ -169,7 +203,7 @@ export function isZoomiesEligible(context: ActivitySelectionContext, cooldownKey
 export function zoomiesNeedModifier(character: Readonly<CharacterState>): number { const needs = character.needs; const b = unit(needs.boredom); const e = unit(needs.energy); const p = unit(needs.play); return (.5 + 2.5 * b ** 2) * (.5 + 1.5 * e ** 2) * (.5 + p); }
 export function weightedActivity(definitions: readonly ActivityDefinition[], context: ActivitySelectionContext, nowMs: MonotonicMs, randomUnit: number, extraModifier: (definition: ActivityDefinition) => number = () => 1): ActivityDefinition | null { const weighted = definitions.filter((definition) => (!definition.cooldownKey || isCooldownEligible(context.cooldowns, definition.cooldownKey, nowMs)) && (definition.id !== ZOOMIES_ACTIVITY.id || isZoomiesEligible(context, definition.cooldownKey, nowMs))).map((definition) => ({ definition, weight: definition.baseWeight * repetitionModifier(definition, context.repetition, nowMs) * (definition.id === ZOOMIES_ACTIVITY.id ? zoomiesNeedModifier(context.character) : 1) * Math.max(0, extraModifier(definition)) })).filter((item) => item.weight > 0); const total = weighted.reduce((sum, item) => sum + item.weight, 0); if (total === 0) return null; let cursor = Math.max(0, Math.min(0.999999999, randomUnit)) * total; for (const item of weighted) { cursor -= item.weight; if (cursor <= 0) return item.definition; } return weighted[weighted.length - 1]?.definition ?? null; }
 
-export const EXPLORE_ACTIVITY: ActivityDefinition = { id: 'explore', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'walk', steps: [ { id: 'walk', actionId: 'walk', type: 'locomotion', gait: 'walk', targetRef: 'wander_target', intent: { kind: 'walk' }, timeoutMs: 7000, next: 'observe' }, { id: 'observe', actionId: 'observe', type: 'animation', intent: { kind: 'idle_blink' }, completion: { type: 'animation_completed', timeoutMs: 3000 }, next: 'sit' }, { id: 'sit', actionId: 'sit', type: 'animation', intent: { kind: 'sit' }, completion: { type: 'animation_completed', timeoutMs: 3000 }, next: 'look_around' }, { id: 'look_around', actionId: 'look_around', type: 'animation', intent: { kind: 'thinking_loop' }, completion: { type: 'animation_completed', timeoutMs: 3000 }, next: 'stand_up' }, { id: 'stand_up', actionId: 'stand_up', type: 'animation', intent: { kind: 'stand_up' }, completion: { type: 'animation_completed', timeoutMs: 3000 } } ] };
-export const REST_ACTIVITY: ActivityDefinition = { id: 'rest', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'yawn', steps: [ { id: 'yawn', actionId: 'yawn', type: 'animation', intent: { kind: 'idle_blink' }, completion: { type: 'animation_completed', timeoutMs: 3000 }, next: 'lie_down' }, { id: 'lie_down', actionId: 'lie_down', type: 'animation', intent: { kind: 'lie_down' }, completion: { type: 'animation_completed', timeoutMs: 3000 }, next: 'sleep_start' }, { id: 'sleep_start', actionId: 'sleep_start', type: 'animation', intent: { kind: 'sleep_start' }, completion: { type: 'animation_completed', timeoutMs: 3000 }, next: 'sleep_loop' }, { id: 'sleep_loop', actionId: 'sleep_loop', type: 'animation', intent: { kind: 'sleep_loop', loop: 'until_replaced' }, completion: { type: 'state_entered', state: 'sleep_loop', timeoutMs: 3000 } } ] };
+export const EXPLORE_ACTIVITY: ActivityDefinition = { id: 'explore', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'walk', steps: [ { id: 'walk', actionId: 'walk', stage: 'entering', type: 'locomotion', gait: 'walk', targetRef: 'wander_target', intent: { kind: 'walk' }, timeoutMs: 7000, next: 'observe' }, { id: 'observe', actionId: 'observe', stage: 'looping', type: 'animation', intent: { kind: 'idle_blink' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'sit' }, { id: 'sit', actionId: 'sit', stage: 'looping', type: 'animation', intent: { kind: 'sit' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'look_around' }, { id: 'look_around', actionId: 'look_around', stage: 'looping', type: 'animation', intent: { kind: 'thinking_loop' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'stand_up' }, { id: 'stand_up', actionId: 'stand_up', stage: 'exiting', type: 'animation', intent: { kind: 'stand_up' }, completion: { type: 'elapsed', durationMs: 3000 } } ] };
+export const REST_ACTIVITY: ActivityDefinition = { id: 'rest', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'yawn', steps: [ { id: 'yawn', actionId: 'yawn', stage: 'entering', type: 'animation', intent: { kind: 'idle_blink' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'lie_down' }, { id: 'lie_down', actionId: 'lie_down', stage: 'entering', type: 'animation', intent: { kind: 'lie_down' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'sleep_start' }, { id: 'sleep_start', actionId: 'sleep_start', stage: 'entering', type: 'animation', intent: { kind: 'sleep_start' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'sleep_loop' }, { id: 'sleep_loop', actionId: 'sleep_loop', stage: 'looping', type: 'animation', intent: { kind: 'sleep_loop', loop: 'until_replaced' }, completion: { type: 'elapsed', durationMs: 3000 } } ] };
 /** A rare P3 reactive sprint; gates and cooldown are enforced by weightedActivity. */
-export const ZOOMIES_ACTIVITY: ActivityDefinition = { id: 'zoomies', priority: 'P3_reactive', baseWeight: .1, cooldownKey: 'zoomies', entryStepId: 'sprint', steps: [ { id: 'sprint', actionId: 'zoomies_sprint', type: 'locomotion', gait: 'run', targetRef: 'zoomies_target', intent: { kind: 'run' }, timeoutMs: 6000, next: 'settle' }, { id: 'settle', actionId: 'zoomies_settle', type: 'animation', intent: { kind: 'settle' }, completion: { type: 'animation_completed', timeoutMs: 3000 } } ] };
+export const ZOOMIES_ACTIVITY: ActivityDefinition = { id: 'zoomies', priority: 'P3_reactive', baseWeight: .1, cooldownKey: 'zoomies', entryStepId: 'sprint', steps: [ { id: 'sprint', actionId: 'zoomies_sprint', stage: 'looping', type: 'locomotion', gait: 'run', targetRef: 'zoomies_target', intent: { kind: 'run' }, timeoutMs: 6000, next: 'settle' }, { id: 'settle', actionId: 'zoomies_settle', stage: 'exiting', type: 'animation', intent: { kind: 'settle' }, completion: { type: 'elapsed', durationMs: 3000 } } ] };

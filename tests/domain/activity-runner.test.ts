@@ -42,33 +42,53 @@ describe('Domain: Activity Runner', () => {
     expect(validateActivityDefinition(REST_ACTIVITY)).toBe(true);
   });
 
-  it('advances a chain only from explicit completion and gives each run independent identity', () => {
+  it('advances locomotion causally and visual phases only from Brain-owned deadlines', () => {
     const runner = new ActivityRunner();
     const started = runner.start(EXPLORE_ACTIVITY, 'run-1', 100);
     expect(started.runtime?.runId).toBe('run-1');
-    const advanced = runner.update(EXPLORE_ACTIVITY, started.runtime!, { type: 'animation_completed', runId: 'run-1', requestId: 'ignored' }, 200);
-    expect(advanced.runtime?.currentStepId).toBe('walk');
-    const walked = runner.tick(EXPLORE_ACTIVITY, started.runtime!, 7_100);
-    expect(walked.runtime?.currentStepId).toBe('observe');
+    expect(started.runtime).toMatchObject({
+      stage: 'entering',
+      stepStartedAtMs: 100,
+      phaseEndsAtMs: 7_100,
+    });
+    const walked = runner.update(
+      EXPLORE_ACTIVITY,
+      started.runtime!,
+      { type: 'locomotion_completed', runId: 'run-1' },
+      200
+    );
+    expect(walked.runtime).toMatchObject({
+      currentStepId: 'observe',
+      stage: 'looping',
+      stepStartedAtMs: 200,
+      phaseEndsAtMs: 3_200,
+    });
+    expect(runner.tick(EXPLORE_ACTIVITY, walked.runtime!, 3_199).runtime?.currentStepId)
+      .toBe('observe');
+    expect(runner.tick(EXPLORE_ACTIVITY, walked.runtime!, 3_200).runtime?.currentStepId)
+      .toBe('sit');
     expect(runner.start(EXPLORE_ACTIVITY, 'run-2', 300).runtime?.runId).toBe('run-2');
   });
 
-  it('ignores a stale completion from a cancelled run and only accepts its active request', () => {
+  it('ignores a stale locomotion outcome from a cancelled run', () => {
     const runner = new ActivityRunner();
-    const first = runner.start(REST_ACTIVITY, 'run-1', 0).runtime!;
+    const first = runner.start(EXPLORE_ACTIVITY, 'run-1', 0).runtime!;
     runner.interrupt(first, 'P1_user_interaction', 10);
-    const second = runner.start(REST_ACTIVITY, 'run-2', 20).runtime!;
-    expect(runner.update(REST_ACTIVITY, second, { type: 'animation_completed', runId: 'run-1', requestId: first.activeAnimationRequestId! }, 30).runtime?.currentStepId).toBe('yawn');
-    expect(runner.update(REST_ACTIVITY, second, { type: 'animation_completed', runId: 'run-2', requestId: 'late-request' }, 30).runtime?.currentStepId).toBe('yawn');
-    expect(runner.update(REST_ACTIVITY, second, { type: 'animation_completed', runId: 'run-2', requestId: second.activeAnimationRequestId! }, 30).runtime?.currentStepId).toBe('lie_down');
+    const second = runner.start(EXPLORE_ACTIVITY, 'run-2', 20).runtime!;
+    expect(runner.update(EXPLORE_ACTIVITY, second, {
+      type: 'locomotion_completed', runId: 'run-1',
+    }, 30).runtime?.currentStepId).toBe('walk');
+    expect(runner.update(EXPLORE_ACTIVITY, second, {
+      type: 'locomotion_completed', runId: 'run-2',
+    }, 30).runtime?.currentStepId).toBe('observe');
   });
 
   it('ignores a stale guard result before applying any branch control flow', () => {
     const guarded: ActivityDefinition = {
       id: 'guarded', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'check',
       steps: [
-        { id: 'check', actionId: 'check', type: 'branch', condition: 'can_continue', whenTrue: 'continue', whenFalse: 'cancel' },
-        { id: 'continue', actionId: 'continue', type: 'delay', durationMs: 1 },
+        { id: 'check', actionId: 'check', stage: 'entering', type: 'branch', condition: 'can_continue', whenTrue: 'continue', whenFalse: 'cancel' },
+        { id: 'continue', actionId: 'continue', stage: 'looping', type: 'delay', durationMs: 1 },
       ],
     };
     const runner = new ActivityRunner();
@@ -84,6 +104,29 @@ describe('Domain: Activity Runner', () => {
     const runtime = runner.start(EXPLORE_ACTIVITY, 'run-1', 0).runtime!;
     expect(runner.interrupt(runtime, 'P0_forced_physics', 10)).toMatchObject({ clearedRunId: 'run-1', result: { status: 'cancelled', reason: 'forced_motion', activityId: 'explore' } });
     expect(runner.interrupt(runtime, 'P1_user_interaction', 10)).toMatchObject({ clearedRunId: 'run-1', result: { status: 'cancelled', reason: 'user_interaction', activityId: 'explore' } });
+  });
+
+  it('uses the locomotion deadline as a bounded cleanup path', () => {
+    const runner = new ActivityRunner();
+    const runtime = runner.start(EXPLORE_ACTIVITY, 'run-timeout', 100).runtime!;
+
+    expect(runner.tick(EXPLORE_ACTIVITY, runtime, 7_100)).toMatchObject({
+      clearedRunId: 'run-timeout',
+      result: { status: 'cancelled', reason: 'step_timeout', activityId: 'explore' },
+    });
+  });
+
+  it('completes Rest entirely from monotonic deadlines', () => {
+    const runner = new ActivityRunner();
+    const yawn = runner.start(REST_ACTIVITY, 'run-rest', 0).runtime!;
+    const lieDown = runner.tick(REST_ACTIVITY, yawn, 3_000).runtime!;
+    const sleepStart = runner.tick(REST_ACTIVITY, lieDown, 6_000).runtime!;
+    const sleepLoop = runner.tick(REST_ACTIVITY, sleepStart, 9_000).runtime!;
+
+    expect(runner.tick(REST_ACTIVITY, sleepLoop, 12_000)).toMatchObject({
+      clearedRunId: 'run-rest',
+      result: { status: 'completed', activityId: 'rest', completedAtMs: 12_000 },
+    });
   });
 });
 
