@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { AnimationIntent } from '../../../domain/animation/animation-intent';
 import { createSystemAnimationIntent } from '../../../domain/animation/animation-intent';
 import type {
   CharacterExpression,
@@ -13,6 +12,7 @@ import {
   AssetResolver,
   ManifestLoader,
   type AnimationCompletedEvent,
+  type BodyVisualState,
   type RenderPresentationState,
   type SpritePoint,
 } from '../../render-engine';
@@ -22,6 +22,31 @@ import type { GazeDirection } from '../../../domain/behavior/gaze-engine';
 import { SpriteRenderer } from './SpriteRenderer';
 
 export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
+
+const FALLBACK_INTENT = createSystemAnimationIntent('idle_blink');
+const FALLBACK_VISUAL_STATE: BodyVisualState = {
+  streamId: 'renderer-fallback',
+  revision: 1,
+  visualIntent: {
+    episodeId: 'renderer-fallback-idle',
+    episodeStartedAtMs: 0,
+    kind: FALLBACK_INTENT.kind,
+    category: FALLBACK_INTENT.category,
+    priority: FALLBACK_INTENT.priority,
+    interrupt: FALLBACK_INTENT.interrupt,
+    loop: FALLBACK_INTENT.loop,
+    emotionalTone: FALLBACK_INTENT.emotionalTone,
+    ...(FALLBACK_INTENT.expressionHint === undefined
+      ? {}
+      : { expressionHint: FALLBACK_INTENT.expressionHint }),
+    ...(FALLBACK_INTENT.propHint === undefined ? {} : { propHint: FALLBACK_INTENT.propHint }),
+  },
+  visualAgeMs: 0,
+  reflex: {
+    pupilOffset: { x: 0, y: 0 },
+    transform: { flipX: false, scaleX: 1, scaleY: 1, rotationDeg: 0 },
+  },
+};
 
 const manifestLoader = new ManifestLoader();
 const INITIAL_RESOLVER = new AssetResolver(
@@ -45,17 +70,11 @@ export interface CharacterRendererProps {
   expression?: CharacterExpression;
   theme?: CharacterTheme;
   scale?: number;
-  scaleX?: number;
-  scaleY?: number;
-  flipX?: boolean;
+  visualState?: Readonly<BodyVisualState>;
   isDragging?: boolean;
-  tiltDeg?: number;
-  animationIntent?: AnimationIntent;
   debugAnimationSelection?: DebugAnimationSelection;
   showAnchorPoint?: boolean;
   onManifestAnimationsLoaded?: (registry: ManifestAnimationRegistry) => void;
-  visualEpisodeId?: string;
-  visualAgeMs?: number;
   onAnimationCompleted?: (
     event: AnimationCompletedEvent,
     completedVisualEpisodeId: string | undefined
@@ -72,17 +91,11 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   expression = 'idle',
   theme = DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!,
   scale = 1.0,
-  scaleX = 1,
-  scaleY = 1,
-  flipX = false,
+  visualState = FALLBACK_VISUAL_STATE,
   isDragging = false,
-  tiltDeg = 0,
-  animationIntent,
   debugAnimationSelection,
   showAnchorPoint = false,
   onManifestAnimationsLoaded,
-  visualEpisodeId,
-  visualAgeMs = 0,
   onAnimationCompleted,
   onAnimationRejected,
   onGazeDirectionChanged,
@@ -91,11 +104,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   onPointerDown,
   onContextMenu,
 }) => {
-  const defaultIntent = useMemo(() => createSystemAnimationIntent('idle_blink'), []);
-  const intent = animationIntent ?? defaultIntent;
   const rootRef = useRef<HTMLDivElement>(null);
-  const [gazeDirection, setGazeDirection] = useState<GazeDirection>('down');
-  const gazeDirectionRef = useRef<GazeDirection>('down');
   const [resolver, setResolver] = useState<AssetResolver>(() => cachedManifestResolver ?? INITIAL_RESOLVER);
   const debugClip = useMemo(
     () => debugAnimationSelection === undefined
@@ -103,32 +112,15 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       : resolver.resolveDebugSelection(debugAnimationSelection.bodyKey, debugAnimationSelection.faceKey),
     [debugAnimationSelection, resolver]
   );
-  const gazeIntent = useMemo(() => {
-    if (debugClip !== undefined || (intent.expressionHint !== undefined && intent.expressionHint !== 'idle')) return intent;
-    return { ...intent, expressionHint: 'gaze' as const, gazeDirection };
-  }, [debugClip, gazeDirection, intent]);
   const presentationState = useCharacterAnimation(
     resolver,
-    gazeIntent,
+    visualState,
     debugClip,
-    visualEpisodeId,
-    visualAgeMs,
     onAnimationCompleted,
     onAnimationRejected
   );
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
-
-  const activePresentationState = useMemo(() => {
-    if (presentationState === undefined) return undefined;
-    if (presentationState.transform.flipX === flipX) return presentationState;
-    return {
-      ...presentationState,
-      transform: {
-        ...presentationState.transform,
-        flipX,
-      },
-    };
-  }, [presentationState, flipX]);
+  const activePresentationState = presentationState;
 
   const faceAnchor = useMemo(() => {
     return getFaceAnchorPoint(activePresentationState);
@@ -157,9 +149,6 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   }, [activePresentationState, faceAnchor]);
 
   const handleGazeDirection = useCallback((direction: GazeDirection) => {
-    if (gazeDirectionRef.current === direction) return;
-    gazeDirectionRef.current = direction;
-    setGazeDirection(direction);
     onGazeDirectionChanged?.(direction);
   }, [onGazeDirectionChanged]);
 
@@ -222,7 +211,6 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       style={{
         width: `${renderedSize.width}px`,
         height: `${renderedSize.height}px`,
-        transform: `scale(${scaleX}, ${scaleY}) rotate(${tiltDeg}deg)`,
         willChange: 'transform',
         filter: `drop-shadow(0 0 16px ${theme.palette.glow})`,
       }}
@@ -238,7 +226,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
           viewport={activePresentationState.viewport}
           rootPivot={activePresentationState.rootPivot}
           renderedSize={renderedSize}
-          flipX={flipX}
+          flipX={activePresentationState.transform.flipX}
         />
       ) : null}
     </div>

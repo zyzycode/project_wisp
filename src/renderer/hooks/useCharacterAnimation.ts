@@ -1,22 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AnimationIntent } from '../../domain/animation/animation-intent';
-import { AnimationPlayer } from '../render-engine/animation-player';
-import { AssetResolver } from '../render-engine/asset-resolver';
-import type {
-  AnimationCompletedEvent,
-  AnimationLoopMode,
-  ICharacterRenderer,
-  RenderPresentationState,
-  ResolvedAnimationClip,
-} from '../render-engine/types';
+import {
+  SpriteSkinAdapter,
+  type AnimationCompletedEvent,
+  type AssetResolver,
+  type BodyVisualState,
+  type ICharacterRenderer,
+  type RenderPresentationState,
+  type ResolvedAnimationClip,
+} from '../render-engine';
 
-/** Bridges an already-selected intent to render state; animation timing remains in AnimationPlayer. */
+/** React host for one SpriteSkinAdapter lifecycle. */
 export function useCharacterAnimation(
   resolver: AssetResolver,
-  intent: AnimationIntent,
+  visualState: Readonly<BodyVisualState>,
   clipOverride?: ResolvedAnimationClip,
-  visualEpisodeId?: string,
-  visualAgeMs = 0,
   onCompleted?: (
     event: AnimationCompletedEvent,
     completedVisualEpisodeId: string | undefined
@@ -24,106 +21,39 @@ export function useCharacterAnimation(
   onRejected?: (rejectedVisualEpisodeId: string | undefined) => void
 ): RenderPresentationState | undefined {
   const [presentationState, setPresentationState] = useState<RenderPresentationState>();
-  const publishedSignatureRef = useRef<string | undefined>(undefined);
-  const playerRef = useRef<AnimationPlayer | null>(null);
-  const previousVisualEpisodeIdRef = useRef<string | undefined>(undefined);
-  const activeVisualEpisodeIdRef = useRef<string | undefined>(undefined);
+  const adapterRef = useRef<SpriteSkinAdapter | null>(null);
+  const visualStateRef = useRef(visualState);
   const onCompletedRef = useRef(onCompleted);
   const onRejectedRef = useRef(onRejected);
+  visualStateRef.current = visualState;
   onCompletedRef.current = onCompleted;
   onRejectedRef.current = onRejected;
 
   useEffect(() => {
-    if (!playerRef.current) {
-      const renderer: ICharacterRenderer = {
-        render: (state: RenderPresentationState): void => {
-          const signature = getPresentationSignature(state);
-          if (publishedSignatureRef.current === signature) return;
-          publishedSignatureRef.current = signature;
-          setPresentationState(state);
-        },
+    const skinResolver: Pick<AssetResolver, 'resolve'> = clipOverride === undefined
+      ? resolver
+      : { resolve: () => clipOverride };
+    const adapter = new SpriteSkinAdapter({
+      resolver: skinResolver,
+      createRenderer: (): ICharacterRenderer => ({
+        render: setPresentationState,
         destroy: (): void => undefined,
-      };
-      playerRef.current = new AnimationPlayer(renderer);
-      playerRef.current.onCompleted((event) => {
-        onCompletedRef.current?.(event, activeVisualEpisodeIdRef.current);
-      });
-    }
-
-    const player = playerRef.current;
-    activeVisualEpisodeIdRef.current = visualEpisodeId;
-    try {
-      const clip = clipOverride ?? resolver.resolve(intent);
-      const loopMode = clipOverride === undefined
-        ? toPlayerLoopMode(intent.loop)
-        : { type: 'until_replaced' as const };
-      if (
-        visualEpisodeId !== undefined &&
-        visualEpisodeId !== previousVisualEpisodeIdRef.current
-      ) {
-        player.play(clip, loopMode);
-        if (Number.isFinite(visualAgeMs) && visualAgeMs > 0) player.tick(visualAgeMs);
-      } else {
-        player.updateClip(clip, loopMode);
-      }
-    } catch {
-      onRejectedRef.current?.(visualEpisodeId);
-      return undefined;
-    }
-    previousVisualEpisodeIdRef.current = visualEpisodeId;
-
-    let animationFrameId = 0;
-    let previousNow: number | undefined;
-    const tick = (now: number): void => {
-      if (previousNow !== undefined) player.tick(now - previousNow);
-      previousNow = now;
-      animationFrameId = animationFrames.requestAnimationFrame(tick);
-    };
-    animationFrameId = animationFrames.requestAnimationFrame(tick);
-
+      }),
+      onCompleted: (event, episodeId) => onCompletedRef.current?.(event, episodeId),
+      onRejected: (episodeId) => onRejectedRef.current?.(episodeId),
+    });
+    adapterRef.current = adapter;
+    adapter.init();
+    adapter.update(visualStateRef.current);
     return (): void => {
-      animationFrames.cancelAnimationFrame(animationFrameId);
+      adapter.destroy();
+      if (adapterRef.current === adapter) adapterRef.current = null;
     };
-  }, [clipOverride, intent, visualAgeMs, visualEpisodeId, resolver]);
+  }, [clipOverride, resolver]);
 
   useEffect(() => {
-    return (): void => {
-      playerRef.current?.destroy();
-      playerRef.current = null;
-    };
-  }, []);
+    adapterRef.current?.update(visualState);
+  }, [visualState]);
 
   return presentationState;
-}
-
-/** Stable signature of renderer-observable data; unchanged frames do not need a React render. */
-export function getPresentationSignature(state: RenderPresentationState): string {
-  return JSON.stringify({
-    viewport: state.viewport,
-    rootPivot: state.rootPivot,
-    transform: state.transform,
-    layers: state.layers.map((layer) => ({
-      id: layer.id,
-      category: layer.category,
-      zIndex: layer.zIndex,
-      pivot: layer.pivot,
-      offset: layer.offset,
-      opacity: layer.opacity,
-      blendMode: layer.blendMode,
-      visible: layer.visible,
-      ...(layer.visible ? { frame: layer.frame } : {}),
-    })),
-    proceduralBlush: state.proceduralBlush,
-  });
-}
-
-const animationFrames = globalThis as unknown as {
-  requestAnimationFrame(callback: (now: number) => void): number;
-  cancelAnimationFrame(id: number): void;
-};
-
-function toPlayerLoopMode(loop: AnimationIntent['loop']): AnimationLoopMode {
-  if (loop === 'none') return { type: 'none' };
-  if (loop === 'bounded') return { type: 'bounded', count: 1 };
-  return { type: 'until_replaced' };
 }

@@ -343,6 +343,7 @@ export function useDesktopPetController({ aiProvider, bridge }: UseDesktopPetCon
     setCurrentTheme,
     scale,
     setScale,
+    visualState: visual ?? undefined,
     flipX: visual?.reflex.transform.flipX ?? false,
     scaleX: visual?.reflex.transform.scaleX ?? 1,
     scaleY: visual?.reflex.transform.scaleY ?? 1,

@@ -77,6 +77,23 @@ describe('Renderer: SpriteRenderer', () => {
     expect(markup).toContain('transform="translate(256 460) scale(-1.25 1.25) translate(-256 -460)"');
   });
 
+  it('applies Skin-owned squash, stretch, and rotation around the sprite root pivot', () => {
+    const reflexState: RenderPresentationState = {
+      ...state,
+      transform: {
+        flipX: true,
+        scale: 1,
+        scaleX: 1.08,
+        scaleY: 0.92,
+        rotationDeg: 12,
+      },
+    };
+
+    expect(renderToStaticMarkup(<SpriteRenderer state={reflexState} />)).toContain(
+      'transform="translate(256 460) rotate(12) scale(-1.08 0.92) translate(-256 -460)"'
+    );
+  });
+
   it('does not render the retired procedural pupil layer', () => {
     const markup = renderToStaticMarkup(<SpriteRenderer state={state} />);
     expect(markup).not.toContain('pupils_normal');
@@ -111,11 +128,10 @@ describe('Renderer: CharacterRenderer Visual Polish', () => {
     expect(markup150).toContain(`height:${Math.round(BASE_CHARACTER_SIZE.height * 1.5)}px`);
   });
 
-  it('applies theme drop-shadow glow and tiltDeg rotation cleanly', () => {
+  it('applies theme drop-shadow glow and dragging class cleanly', () => {
     const markup = renderToStaticMarkup(
-      <CharacterRenderer theme={DEFAULT_THEMES.emerald} tiltDeg={12} isDragging />
+      <CharacterRenderer theme={DEFAULT_THEMES.emerald} isDragging />
     );
-    expect(markup).toContain('rotate(12deg)');
     expect(markup).toContain('drop-shadow(0 0 16px rgba(16, 185, 129, 0.65))');
     expect(markup).toContain('dragging');
   });

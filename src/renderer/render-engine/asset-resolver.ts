@@ -15,6 +15,7 @@ import {
 
 const DEFAULT_VIEWPORT = { width: 512, height: 512 };
 const ZERO_POINT: SpritePoint = { x: 0, y: 0 };
+type AnyAnimationIntent = AnimationIntent<AnyAnimationIntentKind>;
 
 const BODY_KEYS: Readonly<Record<AnyAnimationIntentKind, string>> = {
   walk: 'body_walk',
@@ -96,7 +97,7 @@ export class AssetResolver {
     this.enableFaceOverlays = options.enableFaceOverlays ?? true;
   }
 
-  resolve(intent: AnimationIntent): ResolvedAnimationClip {
+  resolve(intent: AnyAnimationIntent): ResolvedAnimationClip {
     const body = this.resolveBody(intent);
     const face = this.resolveFace(intent, body);
     const expression = this.resolveExpression(intent);
@@ -149,7 +150,7 @@ export class AssetResolver {
       .sort((left, right) => left.localeCompare(right));
   }
 
-  private resolveBody(intent: AnimationIntent): NormalizedSpriteAnimationDef {
+  private resolveBody(intent: AnyAnimationIntent): NormalizedSpriteAnimationDef {
     const preferredKey = BODY_KEYS[intent.kind] ?? 'body_idle';
     const specialised = this.manifest.animations[`${preferredKey}_${intent.emotionalTone}`];
     const preferred = this.manifest.animations[preferredKey];
@@ -158,7 +159,7 @@ export class AssetResolver {
   }
 
   private resolveFace(
-    intent: AnimationIntent,
+    intent: AnyAnimationIntent,
     body: NormalizedSpriteAnimationDef
   ): (ResolvedOverlayTrack & { readonly category: 'face' }) | undefined {
     if (!this.enableFaceOverlays) return undefined;
@@ -185,7 +186,7 @@ export class AssetResolver {
     };
   }
 
-  private resolveExpression(intent: AnimationIntent): (ResolvedOverlayTrack & { readonly category: 'expression' }) | undefined {
+  private resolveExpression(intent: AnyAnimationIntent): (ResolvedOverlayTrack & { readonly category: 'expression' }) | undefined {
     const key = intent.expressionHint === undefined ? undefined : EXPRESSION_KEYS[intent.expressionHint];
     const animation = key === undefined ? undefined : selectAnimation(this.manifest.animations[key], 'expression');
     return animation === undefined
@@ -193,7 +194,7 @@ export class AssetResolver {
       : toOverlayTrack(animation, 'expression', 'expression', 21, 'hold', 'normal');
   }
 
-  private resolveProp(intent: AnimationIntent): (ResolvedOverlayTrack & { readonly category: 'props' }) | undefined {
+  private resolveProp(intent: AnyAnimationIntent): (ResolvedOverlayTrack & { readonly category: 'props' }) | undefined {
     if (intent.propHint === undefined || intent.propHint === 'none') return undefined;
     const config = PROP_CONFIG[intent.propHint];
     const animation = selectAnimation(this.manifest.animations[config.key], 'props');

@@ -21,11 +21,11 @@ vi.mock('../../src/renderer/components/Character/CharacterRenderer', () => ({
   CharacterRenderer: (props: {
     readonly onAnimationCompleted?: (_event: unknown, episodeId: string | undefined) => void;
     readonly onAnimationRejected?: (episodeId: string | undefined) => void;
-    readonly visualAgeMs?: number;
+    readonly visualState?: { readonly visualAgeMs: number };
   }) => {
     mocks.animationCompleted = props.onAnimationCompleted;
     mocks.animationRejected = props.onAnimationRejected;
-    mocks.visualAgeMs = props.visualAgeMs;
+    mocks.visualAgeMs = props.visualState?.visualAgeMs;
     return React.createElement('div', { 'data-testid': 'character' });
   },
 }));

@@ -21,9 +21,13 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
   const primaryLayers = visibleLayers.filter((layer) => layer.category !== 'props');
   const propLayers = visibleLayers.filter((layer) => layer.category === 'props');
   const { viewport, rootPivot, transform } = state;
+  const scaleX = transform.scale * (transform.scaleX ?? 1);
+  const scaleY = transform.scale * (transform.scaleY ?? 1);
+  const rotation = transform.rotationDeg ?? 0;
   const transformValue = [
     `translate(${rootPivot.x} ${rootPivot.y})`,
-    `scale(${transform.flipX ? -transform.scale : transform.scale} ${transform.scale})`,
+    ...(rotation === 0 ? [] : [`rotate(${rotation})`]),
+    `scale(${transform.flipX ? -scaleX : scaleX} ${scaleY})`,
     `translate(${-rootPivot.x} ${-rootPivot.y})`,
   ].join(' ');
 

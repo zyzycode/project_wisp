@@ -33,17 +33,26 @@ export class AnimationPlayer implements IAnimationPlayer {
 
   constructor(private readonly renderer: ICharacterRenderer) {}
 
-  play(clip: ResolvedAnimationClip, loopMode: AnimationLoopMode): void {
+  play(
+    clip: ResolvedAnimationClip,
+    loopMode: AnimationLoopMode,
+    initialElapsedMs = 0
+  ): void {
     if (this.destroyed) return;
     if (clip.body.frames.length === 0) {
       throw new Error('Resolved animation clips must contain at least one body frame.');
     }
     this.clip = clip;
     this.loopMode = normalizeLoopMode(loopMode);
-    this.elapsedMs = 0;
+    const requestedElapsedMs = isNonNegativeFinite(initialElapsedMs) ? initialElapsedMs : 0;
+    const terminalElapsedMs = getTerminalElapsedMs(clip.body, this.loopMode);
+    this.elapsedMs = terminalElapsedMs === undefined
+      ? requestedElapsedMs
+      : Math.min(requestedElapsedMs, terminalElapsedMs);
     this.elapsedCompensationMs = 0;
-    this.completed = false;
+    this.completed = terminalElapsedMs !== undefined && requestedElapsedMs >= terminalElapsedMs;
     this.emitPresentation();
+    if (this.completed) this.notifyCompleted();
   }
 
   updateClip(clip: ResolvedAnimationClip, loopMode?: AnimationLoopMode): void {
@@ -255,4 +264,8 @@ function getFaceOffset(
 
 function isPositiveFinite(value: number): boolean {
   return Number.isFinite(value) && value > 0;
+}
+
+function isNonNegativeFinite(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
 }

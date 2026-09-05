@@ -80,19 +80,13 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
       />
       <CharacterRenderer
         expression={model.expression}
-        animationIntent={model.characterAnimationIntent}
         theme={model.currentTheme}
         scale={model.scale}
-        scaleX={model.scaleX}
-        scaleY={model.scaleY}
-        flipX={model.flipX}
+        visualState={model.visualState}
         isDragging={model.isDragging}
-        tiltDeg={model.tiltDeg}
         debugAnimationSelection={model.debugAnimationSelection}
         showAnchorPoint={model.showAnchorPoint}
         onManifestAnimationsLoaded={model.setManifestAnimations}
-        visualEpisodeId={model.visualEpisodeId}
-        visualAgeMs={model.visualAgeMs}
         onAnimationCompleted={model.handleAnimationCompleted}
         onAnimationRejected={model.handleAnimationRejected}
         onGazeDirectionChanged={model.handleGazeDirectionChanged}

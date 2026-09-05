@@ -171,7 +171,13 @@ export interface ProceduralBlushDef {
 export interface RenderPresentationState {
   readonly viewport: { readonly width: number; readonly height: number };
   readonly rootPivot: SpritePoint;
-  readonly transform: { readonly flipX: boolean; readonly scale: number };
+  readonly transform: {
+    readonly flipX: boolean;
+    readonly scale: number;
+    readonly scaleX?: number;
+    readonly scaleY?: number;
+    readonly rotationDeg?: number;
+  };
   readonly layers: readonly RenderLayerDef[];
   readonly proceduralBlush?: ProceduralBlushDef;
 }
@@ -242,7 +248,7 @@ export interface ICharacterRenderer {
 }
 
 export interface IAnimationPlayer {
-  play(clip: ResolvedAnimationClip, loopMode: AnimationLoopMode): void;
+  play(clip: ResolvedAnimationClip, loopMode: AnimationLoopMode, initialElapsedMs?: number): void;
   tick(deltaMs: number): void;
   getPresentationState(): RenderPresentationState | undefined;
   onCompleted(listener: AnimationCompletedListener): () => void;
