@@ -52,12 +52,13 @@ export interface CharacterRendererProps {
   debugAnimationSelection?: DebugAnimationSelection;
   showAnchorPoint?: boolean;
   onManifestAnimationsLoaded?: (registry: ManifestAnimationRegistry) => void;
-  animationRequestId?: string;
+  visualEpisodeId?: string;
+  visualAgeMs?: number;
   onAnimationCompleted?: (
     event: AnimationCompletedEvent,
-    completedPlaybackRequestId: string | undefined
+    completedVisualEpisodeId: string | undefined
   ) => void;
-  onAnimationRejected?: (rejectedPlaybackRequestId: string | undefined) => void;
+  onAnimationRejected?: (rejectedVisualEpisodeId: string | undefined) => void;
   onClick?: () => void;
   onDoubleClick?: () => void;
   onMouseDown?: (e: React.MouseEvent) => void;
@@ -75,7 +76,8 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   debugAnimationSelection,
   showAnchorPoint = false,
   onManifestAnimationsLoaded,
-  animationRequestId,
+  visualEpisodeId,
+  visualAgeMs = 0,
   onAnimationCompleted,
   onAnimationRejected,
   onClick,
@@ -102,7 +104,8 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
     resolver,
     gazeIntent,
     debugClip,
-    animationRequestId,
+    visualEpisodeId,
+    visualAgeMs,
     onAnimationCompleted,
     onAnimationRejected
   );

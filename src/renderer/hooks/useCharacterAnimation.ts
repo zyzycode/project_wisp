@@ -15,18 +15,19 @@ export function useCharacterAnimation(
   resolver: AssetResolver,
   intent: AnimationIntent,
   clipOverride?: ResolvedAnimationClip,
-  playbackRequestId?: string,
+  visualEpisodeId?: string,
+  visualAgeMs = 0,
   onCompleted?: (
     event: AnimationCompletedEvent,
-    completedPlaybackRequestId: string | undefined
+    completedVisualEpisodeId: string | undefined
   ) => void,
-  onRejected?: (rejectedPlaybackRequestId: string | undefined) => void
+  onRejected?: (rejectedVisualEpisodeId: string | undefined) => void
 ): RenderPresentationState | undefined {
   const [presentationState, setPresentationState] = useState<RenderPresentationState>();
   const publishedSignatureRef = useRef<string | undefined>(undefined);
   const playerRef = useRef<AnimationPlayer | null>(null);
-  const previousPlaybackRequestIdRef = useRef<string | undefined>(undefined);
-  const activePlaybackRequestIdRef = useRef<string | undefined>(undefined);
+  const previousVisualEpisodeIdRef = useRef<string | undefined>(undefined);
+  const activeVisualEpisodeIdRef = useRef<string | undefined>(undefined);
   const onCompletedRef = useRef(onCompleted);
   const onRejectedRef = useRef(onRejected);
   onCompletedRef.current = onCompleted;
@@ -45,30 +46,31 @@ export function useCharacterAnimation(
       };
       playerRef.current = new AnimationPlayer(renderer);
       playerRef.current.onCompleted((event) => {
-        onCompletedRef.current?.(event, activePlaybackRequestIdRef.current);
+        onCompletedRef.current?.(event, activeVisualEpisodeIdRef.current);
       });
     }
 
     const player = playerRef.current;
+    activeVisualEpisodeIdRef.current = visualEpisodeId;
     try {
       const clip = clipOverride ?? resolver.resolve(intent);
       const loopMode = clipOverride === undefined
         ? toPlayerLoopMode(intent.loop)
         : { type: 'until_replaced' as const };
       if (
-        playbackRequestId !== undefined &&
-        playbackRequestId !== previousPlaybackRequestIdRef.current
+        visualEpisodeId !== undefined &&
+        visualEpisodeId !== previousVisualEpisodeIdRef.current
       ) {
         player.play(clip, loopMode);
+        if (Number.isFinite(visualAgeMs) && visualAgeMs > 0) player.tick(visualAgeMs);
       } else {
         player.updateClip(clip, loopMode);
       }
     } catch {
-      onRejectedRef.current?.(playbackRequestId);
+      onRejectedRef.current?.(visualEpisodeId);
       return undefined;
     }
-    previousPlaybackRequestIdRef.current = playbackRequestId;
-    activePlaybackRequestIdRef.current = playbackRequestId;
+    previousVisualEpisodeIdRef.current = visualEpisodeId;
 
     let animationFrameId = 0;
     let previousNow: number | undefined;
@@ -82,7 +84,7 @@ export function useCharacterAnimation(
     return (): void => {
       animationFrames.cancelAnimationFrame(animationFrameId);
     };
-  }, [clipOverride, intent, playbackRequestId, resolver]);
+  }, [clipOverride, intent, visualAgeMs, visualEpisodeId, resolver]);
 
   useEffect(() => {
     return (): void => {

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   handleBeginPetDrag,
-  handleAnimationLifecycleResult,
   handleMovePetDrag,
   handleReleasePetDrag,
   handleRequestSleepWake,
@@ -88,26 +87,6 @@ describe('Main: Shimeji IPC handlers', () => {
     expect(controller.requestSleepWake).toHaveBeenNthCalledWith(2, { action: 'wake' });
     for (const malformed of [null, [], { action: 'nap' }, { action: 1 }, Object.create({ action: 'sleep' })]) {
       expect(() => handleRequestSleepWake(controller, malformed)).toThrow(TypeError);
-    }
-  });
-
-  it('accepts only exact correlated animation lifecycle results', () => {
-    const lifecycle = { handleAnimationLifecycleResult: vi.fn() };
-    const payload = { requestId: 'animation-42', outcome: 'completed' as const };
-
-    handleAnimationLifecycleResult(lifecycle, payload);
-
-    expect(lifecycle.handleAnimationLifecycleResult).toHaveBeenCalledWith(payload);
-    expect(lifecycle.handleAnimationLifecycleResult.mock.calls[0]?.[0]).not.toBe(payload);
-    for (const malformed of [
-      null,
-      [],
-      { requestId: '', outcome: 'completed' },
-      { requestId: 'animation-42', outcome: 'timed_out' },
-      { requestId: 'animation-42', outcome: 'completed', extra: true },
-      Object.create({ requestId: 'animation-42', outcome: 'completed' }),
-    ]) {
-      expect(() => handleAnimationLifecycleResult(lifecycle, malformed)).toThrow(TypeError);
     }
   });
 });

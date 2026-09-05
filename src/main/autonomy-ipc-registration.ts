@@ -2,13 +2,11 @@ import type { ScreenBoundsDto, Vector2Dto } from '../domain/behavior/motion-engi
 import { nativeToRootPosition } from '../infrastructure/adapters/electron-pet-position-adapter';
 import type { PetPositionDTO } from '../shared/ipc-contracts';
 import {
-  handleAnimationLifecycleResult,
   handleRequestSleepWake,
   handleSetAutonomyEnabled,
   handleSetMenuExpanded,
   isTrustedIpcSender,
   type AutonomyIpcController,
-  type AnimationLifecycleResultController,
   type MenuAutonomyController,
   type SleepWakeCommandController,
 } from './shimeji-ipc-handlers';
@@ -37,15 +35,19 @@ interface AutonomyIpcWindow {
 interface MainAutonomyIpcController
   extends AutonomyIpcController,
     MenuAutonomyController,
-    SleepWakeCommandController,
-    AnimationLifecycleResultController {
+    SleepWakeCommandController {
   requestManualRootPosition(targetRootPosition: Vector2Dto): boolean;
+}
+
+export interface BodyEventIpcIngress {
+  receive(payload: unknown): unknown;
 }
 
 export interface RegisterAutonomyIpcHandlersOptions {
   readonly register: (channel: string, handler: RegisteredAutonomyIpcHandler) => void;
   readonly getWindow: () => AutonomyIpcWindow | null;
   readonly getController: () => MainAutonomyIpcController | null;
+  readonly bodyEventIngress: BodyEventIpcIngress;
   readonly getNativePosition: () => PetPositionDTO;
   readonly getScreenBounds: () => ScreenBoundsDto;
   readonly pivotOffset: Vector2Dto;
@@ -70,10 +72,10 @@ export function clampNativePositionForWindow(
   };
 }
 
-function requireTrustedContext(
+function requireTrustedWindow(
   options: RegisterAutonomyIpcHandlersOptions,
   event: RegisteredAutonomyIpcEvent
-): { readonly window: AutonomyIpcWindow; readonly controller: MainAutonomyIpcController } {
+): AutonomyIpcWindow {
   const window = options.getWindow();
   if (
     window === null ||
@@ -82,6 +84,14 @@ function requireTrustedContext(
   ) {
     throw new TypeError('Untrusted autonomy IPC sender');
   }
+  return window;
+}
+
+function requireTrustedContext(
+  options: RegisterAutonomyIpcHandlersOptions,
+  event: RegisteredAutonomyIpcEvent
+): { readonly window: AutonomyIpcWindow; readonly controller: MainAutonomyIpcController } {
+  const window = requireTrustedWindow(options, event);
   const controller = options.getController();
   if (controller === null) throw new Error('Autonomy is unavailable');
   return { window, controller };
@@ -116,8 +126,8 @@ export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlers
     handleRequestSleepWake(controller, payload);
   });
 
-  options.register('wisp:animation-lifecycle-result', async (event, payload): Promise<void> => {
-    const { controller } = requireTrustedContext(options, event);
-    handleAnimationLifecycleResult(controller, payload);
+  options.register('wisp:body-event', async (event, payload): Promise<void> => {
+    requireTrustedWindow(options, event);
+    options.bodyEventIngress.receive(payload);
   });
 }

@@ -11,15 +11,42 @@ import type {
   BeginPetDragResultDTO,
   MovePetDragDTO,
   ReleasePetDragDTO,
-  PetPresentationStateDTO,
+  BrainStateDTO,
+  BodyEventDTO,
   InteractiveBoundsDTO,
   DebugTelemetryDTO,
   CharacterInteractionDTO,
-  AnimationLifecycleResultDTO,
   SetAutonomyEnabledDTO,
   SleepWakeCommandDTO,
 } from '../shared/ipc-contracts';
+import {
+  parseBodyEventDTO,
+  parseBrainStateDTO,
+} from '../shared/brain-body-ipc-validation';
 import { isDebugMode } from '../shared/debug-mode';
+
+const brainStateListeners = new Set<(state: BrainStateDTO) => void>();
+let latestBrainState: BrainStateDTO | null = null;
+
+const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown): void => {
+  let state: BrainStateDTO;
+  try {
+    state = parseBrainStateDTO(payload);
+  } catch {
+    // Invalid Main payloads never cross the typed Preload boundary.
+    return;
+  }
+  latestBrainState = state;
+  for (const listener of brainStateListeners) {
+    try {
+      listener(parseBrainStateDTO(state));
+    } catch {
+      // One Renderer listener cannot block delivery to other typed subscribers.
+    }
+  }
+};
+
+ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
   debugEnabled: isDebugMode(),
@@ -44,8 +71,15 @@ const api: WispApiBridge = {
   requestSleepWake: (command: SleepWakeCommandDTO): Promise<void> => {
     return ipcRenderer.invoke('wisp:request-sleep-wake', command);
   },
-  notifyAnimationLifecycleResult: (result: AnimationLifecycleResultDTO): Promise<void> => {
-    return ipcRenderer.invoke('wisp:animation-lifecycle-result', result);
+  onBrainState: (listener: (state: BrainStateDTO) => void): (() => void) => {
+    brainStateListeners.add(listener);
+    if (latestBrainState !== null) listener(parseBrainStateDTO(latestBrainState));
+    return (): void => {
+      brainStateListeners.delete(listener);
+    };
+  },
+  postBodyEvent: (event: BodyEventDTO): Promise<void> => {
+    return ipcRenderer.invoke('wisp:body-event', parseBodyEventDTO(event));
   },
   getScreenBounds: (): Promise<ScreenBoundsDTO> => {
     return ipcRenderer.invoke('wisp:get-screen-bounds');
@@ -68,13 +102,6 @@ const api: WispApiBridge = {
   },
   releasePetDrag: (payload: ReleasePetDragDTO): Promise<void> => {
     return ipcRenderer.invoke('pet:release-drag', payload);
-  },
-  onPetPresentationState: (listener: (state: PetPresentationStateDTO) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, state: PetPresentationStateDTO): void => listener(state);
-    ipcRenderer.on('pet:presentation-state', handler);
-    return (): void => {
-      ipcRenderer.removeListener('pet:presentation-state', handler);
-    };
   },
   interactWithCharacter: (interaction: CharacterInteractionDTO): Promise<void> => {
     return ipcRenderer.invoke('wisp:character-interact', interaction);

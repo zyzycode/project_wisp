@@ -1,16 +1,20 @@
 import type {
+  BrainStateDTO,
+  BrainVisualIntentDTO,
   EnvironmentSnapshotDTO,
-  PetAnimationStateDTO,
-  PetPresentationStateDTO,
 } from '../../shared/ipc-contracts';
 import type { MotionState } from '../../domain/behavior/motion-engine';
 import type { EnvironmentSnapshot } from '../../domain/behavior/surface-kinematics';
+import type { CharacterAutonomySnapshot } from '../../domain/character';
+import type { BrainVisualEpisode } from '../main-autonomy-composition';
 
-export interface PetPresentationState {
+export interface BrainStateSource {
+  readonly streamId: string;
   readonly revision: number;
+  readonly sampledAtMs: number;
+  readonly character: CharacterAutonomySnapshot;
   readonly motion: MotionState;
-  readonly animationState: PetAnimationStateDTO;
-  readonly animationRequestId?: string;
+  readonly visualEpisode: BrainVisualEpisode;
 }
 
 export function toEnvironmentSnapshotDTO(snapshot: EnvironmentSnapshot): EnvironmentSnapshotDTO {
@@ -53,16 +57,45 @@ export function toEnvironmentSnapshot(snapshot: EnvironmentSnapshotDTO): Environ
   };
 }
 
-export function toPetPresentationStateDTO(state: PetPresentationState): PetPresentationStateDTO {
+function toBrainVisualIntentDTO(episode: BrainVisualEpisode): BrainVisualIntentDTO {
+  const intent = episode.intent;
   return {
+    episodeId: episode.id,
+    episodeStartedAtMs: episode.startedAtMs,
+    kind: intent.kind,
+    category: intent.category,
+    priority: intent.priority,
+    interrupt: intent.interrupt,
+    loop: intent.loop,
+    emotionalTone: intent.emotionalTone,
+    ...(intent.expressionHint === undefined ? {} : { expressionHint: intent.expressionHint }),
+    ...(intent.gazeDirection === undefined ? {} : { gazeDirection: intent.gazeDirection }),
+    ...(intent.propHint === undefined ? {} : { propHint: intent.propHint }),
+  };
+}
+
+export function toBrainStateDTO(state: BrainStateSource): BrainStateDTO {
+  return {
+    streamId: state.streamId,
     revision: state.revision,
-    motionPhase: state.motion.phase,
-    rootScreenPosition: { ...state.motion.position },
-    velocityPxPerSec: { ...state.motion.velocityPxPerSec },
-    positionAuthority: state.motion.phase === 'grounded' ? 'voluntary' : 'forced',
-    animationState: state.animationState,
-    ...(state.animationRequestId === undefined
-      ? {}
-      : { animationRequestId: state.animationRequestId }),
+    sampledAtMs: state.sampledAtMs,
+    character: {
+      needs: {
+        energy: state.character.needs.energy,
+        attention: state.character.needs.attention,
+        play: state.character.needs.play,
+        comfort: state.character.needs.comfort,
+        boredom: state.character.needs.boredom ?? 0,
+      },
+      synthesizedTone: state.character.synthesizedTone,
+    },
+    activity: null,
+    motion: {
+      phase: state.motion.phase,
+      rootScreenPosition: { ...state.motion.position },
+      velocityPxPerSec: { ...state.motion.velocityPxPerSec },
+      positionAuthority: state.motion.phase === 'grounded' ? 'voluntary' : 'forced',
+    },
+    visualIntent: toBrainVisualIntentDTO(state.visualEpisode),
   };
 }

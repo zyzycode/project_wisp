@@ -189,16 +189,6 @@ export type BodyEventDTO =
       readonly expanded: boolean;
     });
 
-export type AnimationLifecycleOutcomeDTO =
-  | 'completed'
-  | 'interrupted'
-  | 'rejected';
-
-export interface AnimationLifecycleResultDTO {
-  readonly requestId: string;
-  readonly outcome: AnimationLifecycleOutcomeDTO;
-}
-
 export interface PetPositionDTO {
   x: number;
   y: number;
@@ -246,33 +236,6 @@ export interface MovePetDragDTO extends PetDragPointerDTO {
 }
 
 export interface ReleasePetDragDTO extends MovePetDragDTO {}
-
-export type PetMotionPhaseDTO = 'dragged' | 'airborne' | 'grounded';
-
-export type PetAnimationStateDTO =
-  | 'idle'
-  | 'walk'
-  | 'run'
-  | 'dragged'
-  | 'fall'
-  | 'land'
-  | 'stumble'
-  | 'crash_landing'
-  | 'recover'
-  | 'settle'
-  | 'sleep_start'
-  | 'sleep_loop'
-  | 'wake_up';
-
-export interface PetPresentationStateDTO {
-  readonly revision: number;
-  readonly motionPhase: PetMotionPhaseDTO;
-  readonly rootScreenPosition: PetPositionDTO;
-  readonly velocityPxPerSec: PetPositionDTO;
-  readonly positionAuthority: 'forced' | 'voluntary';
-  readonly animationState: PetAnimationStateDTO;
-  readonly animationRequestId?: string;
-}
 
 export type CharacterInteractionTypeDTO =
   | 'click'
@@ -327,14 +290,14 @@ export interface WispApiBridge {
   updatePosition?: (targetPos: PetPositionDTO) => Promise<PetPositionDTO>;
   setAutonomyEnabled?: (payload: SetAutonomyEnabledDTO) => Promise<void>;
   requestSleepWake: (command: SleepWakeCommandDTO) => Promise<void>;
-  notifyAnimationLifecycleResult: (result: AnimationLifecycleResultDTO) => Promise<void>;
+  onBrainState: (listener: (state: BrainStateDTO) => void) => () => void;
+  postBodyEvent: (event: BodyEventDTO) => Promise<void>;
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
   getEnvironmentSnapshot: () => Promise<EnvironmentSnapshotDTO>;
   onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshotDTO) => void) => () => void;
   beginPetDrag: (payload: BeginPetDragDTO) => Promise<BeginPetDragResultDTO>;
   movePetDrag: (payload: MovePetDragDTO) => Promise<void>;
   releasePetDrag: (payload: ReleasePetDragDTO) => Promise<void>;
-  onPetPresentationState: (listener: (state: PetPresentationStateDTO) => void) => () => void;
   interactWithCharacter: (interaction: CharacterInteractionDTO) => Promise<void>;
   setAlwaysOnTop: (enabled: boolean) => Promise<boolean>;
   setInteractiveBounds?: (bounds: InteractiveBoundsDTO) => Promise<void>;

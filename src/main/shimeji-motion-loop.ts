@@ -17,6 +17,8 @@ export interface ShimejiMotionLoopOptions {
   readonly orchestrator: MotionLoopOrchestrator;
   readonly getWindow: () => MotionLoopWindow | null;
   readonly publishPresentation: () => void;
+  readonly beginPresentationTransaction?: () => void;
+  readonly commitPresentationTransaction?: () => void;
   readonly intervalMs: number;
   readonly timer?: MotionLoopTimer;
 }
@@ -37,7 +39,12 @@ export function startShimejiMotionLoop(options: ShimejiMotionLoopOptions): () =>
       stop();
       return;
     }
-    if (options.orchestrator.tick()) options.publishPresentation();
+    options.beginPresentationTransaction?.();
+    try {
+      if (options.orchestrator.tick()) options.publishPresentation();
+    } finally {
+      options.commitPresentationTransaction?.();
+    }
   }, options.intervalMs);
   options.orchestrator.start();
   return stop;

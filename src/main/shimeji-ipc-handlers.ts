@@ -1,5 +1,4 @@
 import type {
-  AnimationLifecycleResultDTO,
   BeginPetDragDTO,
   BeginPetDragResultDTO,
   MovePetDragDTO,
@@ -25,10 +24,6 @@ export interface SleepWakeCommandController {
   requestSleepWake(command: SleepWakeCommandDTO): void;
 }
 
-export interface AnimationLifecycleResultController {
-  handleAnimationLifecycleResult(result: AnimationLifecycleResultDTO): void;
-}
-
 export function isTrustedIpcSender(sender: object, expectedSender: object | null): boolean {
   return expectedSender !== null && sender === expectedSender;
 }
@@ -47,35 +42,6 @@ export function handleRequestSleepWake(
     throw new TypeError('Invalid sleep/wake command payload');
   }
   controller.requestSleepWake({ action: payload.action });
-}
-
-const MAX_ANIMATION_REQUEST_ID_LENGTH = 128;
-
-export function handleAnimationLifecycleResult(
-  controller: AnimationLifecycleResultController,
-  payload: unknown
-): void {
-  if (!isPlainObject(payload)) {
-    throw new TypeError('Invalid animation lifecycle result payload');
-  }
-  const keys = Object.keys(payload);
-  if (
-    keys.length !== 2 ||
-    !Object.hasOwn(payload, 'requestId') ||
-    !Object.hasOwn(payload, 'outcome') ||
-    typeof payload.requestId !== 'string' ||
-    payload.requestId.trim().length === 0 ||
-    payload.requestId.length > MAX_ANIMATION_REQUEST_ID_LENGTH ||
-    (payload.outcome !== 'completed' &&
-      payload.outcome !== 'interrupted' &&
-      payload.outcome !== 'rejected')
-  ) {
-    throw new TypeError('Invalid animation lifecycle result payload');
-  }
-  controller.handleAnimationLifecycleResult({
-    requestId: payload.requestId,
-    outcome: payload.outcome,
-  });
 }
 
 export function handleSetMenuExpanded(

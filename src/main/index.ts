@@ -40,7 +40,7 @@ import {
 import { SeededPrng } from '../infrastructure/random/seeded-prng';
 import {
   toEnvironmentSnapshotDTO,
-  toPetPresentationStateDTO,
+  toBrainStateDTO,
 } from './mappers/shimeji-ipc.mapper';
 import {
   handleBeginPetDrag,
@@ -50,6 +50,8 @@ import {
 import { startShimejiMotionLoop } from './shimeji-motion-loop';
 import { MainAutonomyComposition } from './main-autonomy-composition';
 import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
+import { BodyEventIngress } from './body-event-ingress';
+import { BrainStatePublisher } from './brain-state-publisher';
 
 process.env.APP_ROOT = path.join(__dirname, '../..');
 
@@ -82,12 +84,39 @@ let unsubscribeEnvironmentChanges: (() => void) | null = null;
 let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
-let petPresentationRevision = 0;
+const bodyEventIngress = new BodyEventIngress();
 const debugLogBuffer = new LogBuffer();
 const appLogger = new AppLogger({
   level: 'debug',
   buffer: debugLogBuffer,
   sink: () => publishDebugTelemetry(),
+});
+const brainStatePublisher = new BrainStatePublisher({
+  now: () => performance.now(),
+  createStreamId: randomUUID,
+  createSnapshot: ({ streamId, revision, sampledAtMs }) => {
+    if (shimejiMotionOrchestrator === null || autonomyComposition === null) {
+      throw new Error('Brain state sources are unavailable');
+    }
+    return toBrainStateDTO({
+      streamId,
+      revision,
+      sampledAtMs,
+      character: defaultCharacterStateService.getSnapshot(),
+      motion: shimejiMotionOrchestrator.getMotionState(),
+      visualEpisode: autonomyComposition.getVisualEpisode(),
+    });
+  },
+  deliver: (state) => {
+    if (mainWindow === null || mainWindow.isDestroyed()) {
+      throw new Error('Brain state destination is unavailable');
+    }
+    mainWindow.webContents.send('wisp:brain-state', state);
+  },
+  revisionSink: bodyEventIngress,
+  onDeliveryError: (error) => {
+    appLogger.warn('IPC', `Brain state delivery failed: ${String(error)}`);
+  },
 });
 
 function resolvePreloadPath(): string {
@@ -151,25 +180,16 @@ function publishEnvironmentSnapshot(snapshot: EnvironmentSnapshot): void {
   }
 }
 
-function publishPetPresentationState(): void {
-  if (mainWindow === null || mainWindow.isDestroyed() || shimejiMotionOrchestrator === null) return;
-  const motion = shimejiMotionOrchestrator.getMotionState();
-  const animationState = motion.phase === 'dragged'
-    ? 'dragged'
-    : motion.phase === 'airborne'
-      ? 'fall'
-      : autonomyComposition?.getAnimationState() ?? 'idle';
-  mainWindow.webContents.send(
-    'pet:presentation-state',
-    toPetPresentationStateDTO({
-      revision: ++petPresentationRevision,
-      motion,
-      animationState,
-      ...(autonomyComposition?.getAnimationRequestId() === undefined
-        ? {}
-        : { animationRequestId: autonomyComposition.getAnimationRequestId() }),
-    })
-  );
+function publishBrainState(): void {
+  brainStatePublisher.requestCommit();
+}
+
+function beginBrainStream(): void {
+  brainStatePublisher.replaceStream();
+}
+
+function clearBrainStream(): void {
+  brainStatePublisher.clearStream();
 }
 
 function stopShimejiMotionLoop(): void {
@@ -208,8 +228,8 @@ function initializeAutonomyComposition(): void {
         targetRootPosition,
       });
     },
-    createAnimationRequestId: randomUUID,
-    onPresentationChanged: publishPetPresentationState,
+    createVisualEpisodeId: randomUUID,
+    onPresentationChanged: publishBrainState,
   });
   autonomyComposition.start();
 }
@@ -240,7 +260,7 @@ function createMainAutonomyScheduler(): {
 
 function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): void {
   stopShimejiMotionLoop();
-  petPresentationRevision = 0;
+  clearBrainStream();
   const environment = platformEnvironmentAdapter.getSnapshot();
   const initialMotion: MotionState = {
     phase: 'grounded',
@@ -282,7 +302,9 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
   stopShimejiMotionLoopHandle = startShimejiMotionLoop({
     orchestrator: shimejiMotionOrchestrator,
     getWindow: () => mainWindow,
-    publishPresentation: publishPetPresentationState,
+    publishPresentation: publishBrainState,
+    beginPresentationTransaction: () => brainStatePublisher.beginTransaction(),
+    commitPresentationTransaction: () => brainStatePublisher.commitTransaction(),
     intervalMs: Math.round(DEFAULT_MOTION_CONSTRAINTS.fixedStepSec * 1000),
   });
   initializeAutonomyComposition();
@@ -323,6 +345,7 @@ function registerIpcHandlers(): void {
     },
     getWindow: () => mainWindow,
     getController: () => autonomyComposition,
+    bodyEventIngress,
     getNativePosition,
     getScreenBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
     pivotOffset: ROOT_PIVOT_OFFSET,
@@ -417,19 +440,37 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('pet:begin-drag', async (_event, payload: unknown) => {
     if (shimejiMotionOrchestrator === null) throw new Error('Shimeji motion is unavailable');
-    const result = handleBeginPetDrag(shimejiMotionOrchestrator, payload);
-    autonomyComposition?.beginDrag();
-    return result;
+    brainStatePublisher.beginTransaction();
+    try {
+      const result = handleBeginPetDrag(shimejiMotionOrchestrator, payload);
+      autonomyComposition?.beginDrag();
+      publishBrainState();
+      return result;
+    } finally {
+      brainStatePublisher.commitTransaction();
+    }
   });
 
   ipcMain.handle('pet:move-drag', async (_event, payload: unknown): Promise<void> => {
     if (shimejiMotionOrchestrator === null) return;
-    handleMovePetDrag(shimejiMotionOrchestrator, payload);
+    brainStatePublisher.beginTransaction();
+    try {
+      handleMovePetDrag(shimejiMotionOrchestrator, payload);
+      publishBrainState();
+    } finally {
+      brainStatePublisher.commitTransaction();
+    }
   });
 
   ipcMain.handle('pet:release-drag', async (_event, payload: unknown): Promise<void> => {
     if (shimejiMotionOrchestrator === null) return;
-    handleReleasePetDrag(shimejiMotionOrchestrator, payload);
+    brainStatePublisher.beginTransaction();
+    try {
+      handleReleasePetDrag(shimejiMotionOrchestrator, payload);
+      publishBrainState();
+    } finally {
+      brainStatePublisher.commitTransaction();
+    }
   });
 
   ipcMain.handle(
@@ -438,19 +479,24 @@ function registerIpcHandlers(): void {
       if (!isCharacterInteractionDTO(interaction)) {
         throw new TypeError('Invalid character interaction payload');
       }
-      const interactionType = interaction.type;
-      if (interactionType === 'click') {
-        autonomyComposition?.handleClick();
-      } else {
-        autonomyComposition?.suspendForUserInteraction();
-      }
-      defaultCharacterInteractionUseCase.execute({
-        type: interactionType,
-        ...(interaction.intensity === undefined ? {} : { intensity: interaction.intensity }),
-      });
-      publishDebugTelemetry();
-      if (interactionType !== 'drag_end' && interactionType !== 'click') {
-        autonomyComposition?.resumeAfterUserInteraction();
+      brainStatePublisher.beginTransaction();
+      try {
+        const interactionType = interaction.type;
+        if (interactionType !== 'click') {
+          autonomyComposition?.suspendForUserInteraction();
+        }
+        defaultCharacterInteractionUseCase.execute({
+          type: interactionType,
+          ...(interaction.intensity === undefined ? {} : { intensity: interaction.intensity }),
+        });
+        autonomyComposition?.handleCharacterInteraction(interactionType);
+        publishDebugTelemetry();
+        publishBrainState();
+        if (interactionType !== 'drag_end' && interactionType !== 'click') {
+          autonomyComposition?.resumeAfterUserInteraction();
+        }
+      } finally {
+        brainStatePublisher.commitTransaction();
       }
     }
   );
@@ -512,6 +558,8 @@ function createWindow(): void {
   // Apply platform-specific overlay configuration
   platformAdapter.configureOverlayWindow(mainWindow);
   initializeShimejiMotionLoop(initialPos);
+  mainWindow.webContents.on('did-start-loading', clearBrainStream);
+  mainWindow.webContents.on('did-finish-load', beginBrainStream);
 
   // Prevent desktop minimization from hiding overlay
   mainWindow.on('minimize', () => {
@@ -543,6 +591,7 @@ function createWindow(): void {
   mainWindow.on('closed', () => {
     disposeAutonomyComposition();
     stopShimejiMotionLoop();
+    clearBrainStream();
     mainWindow = null;
   });
 }

@@ -3,7 +3,7 @@ import type { EnvironmentSnapshot, MotionState } from '../../src/domain/behavior
 import {
   toEnvironmentSnapshot,
   toEnvironmentSnapshotDTO,
-  toPetPresentationStateDTO,
+  toBrainStateDTO,
 } from '../../src/main/mappers/shimeji-ipc.mapper';
 
 const environment: EnvironmentSnapshot = {
@@ -28,15 +28,44 @@ describe('Main: Shimeji IPC mappers', () => {
     expect(toEnvironmentSnapshot(dto)).toEqual(environment);
   });
 
-  it('derives a forced presentation DTO for physics-owned motion', () => {
+  it('maps one complete Brain snapshot with authoritative forced motion', () => {
     expect(
-      toPetPresentationStateDTO({
-        revision: 3, motion, animationState: 'fall', animationRequestId: 'animation-3',
+      toBrainStateDTO({
+        streamId: 'stream-1',
+        revision: 3,
+        sampledAtMs: 50,
+        character: {
+          needs: { energy: 80, attention: 30, play: 40, comfort: 50, boredom: 10 },
+          synthesizedTone: 'neutral',
+        },
+        motion,
+        visualEpisode: {
+          id: 'episode-3',
+          startedAtMs: 40,
+          intent: {
+            kind: 'fall', category: 'movement', priority: 'normal', interrupt: 'no',
+            loop: 'until_replaced', requestedBy: 'system', emotionalTone: 'neutral',
+          },
+        },
       })
     ).toEqual({
-      revision: 3, motionPhase: 'airborne', rootScreenPosition: { x: 50, y: 60 },
-      velocityPxPerSec: { x: 70, y: -80 }, positionAuthority: 'forced', animationState: 'fall',
-      animationRequestId: 'animation-3',
+      streamId: 'stream-1',
+      revision: 3,
+      sampledAtMs: 50,
+      character: {
+        needs: { energy: 80, attention: 30, play: 40, comfort: 50, boredom: 10 },
+        synthesizedTone: 'neutral',
+      },
+      activity: null,
+      motion: {
+        phase: 'airborne', rootScreenPosition: { x: 50, y: 60 },
+        velocityPxPerSec: { x: 70, y: -80 }, positionAuthority: 'forced',
+      },
+      visualIntent: {
+        episodeId: 'episode-3', episodeStartedAtMs: 40, kind: 'fall',
+        category: 'movement', priority: 'normal', interrupt: 'no',
+        loop: 'until_replaced', emotionalTone: 'neutral',
+      },
     });
   });
 });

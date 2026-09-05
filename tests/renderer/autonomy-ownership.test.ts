@@ -2,35 +2,36 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { existsSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PetPresentationStateDTO, WispApiBridge } from '../../src/shared/ipc-contracts';
+import type { BrainStateDTO, WispApiBridge } from '../../src/shared/ipc-contracts';
 
 const mocks = vi.hoisted(() => ({
-  dispatch: vi.fn(),
+  dispatch: vi.fn(() => true),
   completeCurrentState: vi.fn(() => true),
   synchronizeTerminalState: vi.fn(() => true),
-  unsubscribePresentation: vi.fn(),
+  unsubscribeBrain: vi.fn(),
   onToggleSleep: undefined as (() => void) | undefined,
-  isSleeping: false,
+  brainListener: undefined as ((state: BrainStateDTO) => void) | undefined,
+  animationCompleted: undefined as ((_event: unknown, episodeId: string | undefined) => void) | undefined,
+  animationRejected: undefined as ((episodeId: string | undefined) => void) | undefined,
   animationState: 'idle',
-  presentationListener: undefined as ((state: PetPresentationStateDTO) => void) | undefined,
-  animationCompleted: undefined as ((_event: unknown, requestId: string | undefined) => void) | undefined,
-  animationRejected: undefined as ((requestId: string | undefined) => void) | undefined,
+  visualAgeMs: undefined as number | undefined,
 }));
 
 vi.mock('../../src/renderer/components/Character/CharacterRenderer', () => ({
   CharacterRenderer: (props: {
-    readonly onAnimationCompleted?: (_event: unknown, requestId: string | undefined) => void;
-    readonly onAnimationRejected?: (requestId: string | undefined) => void;
+    readonly onAnimationCompleted?: (_event: unknown, episodeId: string | undefined) => void;
+    readonly onAnimationRejected?: (episodeId: string | undefined) => void;
+    readonly visualAgeMs?: number;
   }) => {
     mocks.animationCompleted = props.onAnimationCompleted;
     mocks.animationRejected = props.onAnimationRejected;
+    mocks.visualAgeMs = props.visualAgeMs;
     return React.createElement('div', { 'data-testid': 'character' });
   },
 }));
 vi.mock('../../src/renderer/components/Interaction/ContextMenu', () => ({
-  ContextMenu: (props: { readonly isSleeping: boolean; readonly onToggleSleep: () => void }) => {
+  ContextMenu: (props: { readonly onToggleSleep: () => void }) => {
     mocks.onToggleSleep = props.onToggleSleep;
-    mocks.isSleeping = props.isSleeping;
     return null;
   },
 }));
@@ -51,13 +52,19 @@ vi.mock('../../src/renderer/hooks/useDialogueLoop', () => ({
 }));
 vi.mock('../../src/renderer/pet-main-bridge', () => ({
   PetDragController: class {},
-  PetPresentationRevisionGate: class { accept() { return true; } },
+  BrainStateRevisionGate: class { public accept(state: BrainStateDTO) { return state; } },
   requestCharacterSleepWake: (
     api: Pick<WispApiBridge, 'requestSleepWake'>,
     action: 'sleep' | 'wake'
   ) => api.requestSleepWake({ action }),
-  subscribeToPetPresentation: (api: WispApiBridge, listener: Parameters<WispApiBridge['onPetPresentationState']>[0]) =>
-    api.onPetPresentationState(listener),
+  subscribeToBrainState: (
+    api: WispApiBridge,
+    listener: Parameters<WispApiBridge['onBrainState']>[0]
+  ) => api.onBrainState(listener),
+  toAnimationIntent: (visual: BrainStateDTO['visualIntent']) => ({
+    ...visual,
+    requestedBy: 'brain',
+  }),
 }));
 
 class MiniNode {
@@ -81,13 +88,11 @@ class MiniNode {
   public get tagName(): string { return this.nodeName; }
   public get firstChild(): MiniNode | null { return this.childNodes[0] ?? null; }
   public get lastChild(): MiniNode | null { return this.childNodes.at(-1) ?? null; }
-
   public appendChild(child: MiniNode): MiniNode {
     child.parentNode = this;
     this.childNodes.push(child);
     return child;
   }
-
   public insertBefore(child: MiniNode, before: MiniNode | null): MiniNode {
     child.parentNode = this;
     const index = before === null ? -1 : this.childNodes.indexOf(before);
@@ -95,14 +100,12 @@ class MiniNode {
     else this.childNodes.splice(index, 0, child);
     return child;
   }
-
   public removeChild(child: MiniNode): MiniNode {
     const index = this.childNodes.indexOf(child);
     if (index >= 0) this.childNodes.splice(index, 1);
     child.parentNode = null;
     return child;
   }
-
   public setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
   public removeAttribute(name: string): void { this.attributes.delete(name); }
   public addEventListener(): void {}
@@ -122,7 +125,6 @@ class MiniDocument extends MiniNode {
     this.documentElement.appendChild(this.body);
     this.appendChild(this.documentElement);
   }
-
   public createElement(tag: string): MiniNode { return new MiniNode(1, tag.toUpperCase(), this); }
   public createElementNS(_namespace: string, tag: string): MiniNode { return this.createElement(tag); }
   public createTextNode(text: string): MiniNode {
@@ -137,6 +139,40 @@ class MiniDocument extends MiniNode {
   }
 }
 
+function brainState(
+  revision: number,
+  episodeId: string,
+  kind: BrainStateDTO['visualIntent']['kind'],
+  phase: BrainStateDTO['motion']['phase'] = 'grounded'
+): BrainStateDTO {
+  return {
+    streamId: 'stream-1',
+    revision,
+    sampledAtMs: revision * 10,
+    character: {
+      needs: { energy: 80, attention: 30, play: 40, comfort: 50, boredom: 10 },
+      synthesizedTone: 'neutral',
+    },
+    activity: null,
+    motion: {
+      phase,
+      rootScreenPosition: { x: 300, y: phase === 'airborne' ? 290 : 300 },
+      velocityPxPerSec: { x: 0, y: phase === 'airborne' ? -100 : 0 },
+      positionAuthority: phase === 'grounded' ? 'voluntary' : 'forced',
+    },
+    visualIntent: {
+      episodeId,
+      episodeStartedAtMs: revision * 10,
+      kind,
+      category: kind === 'sleep_start' ? 'sleep' : kind === 'fall' ? 'movement' : 'transition',
+      priority: 'high',
+      interrupt: 'limited',
+      loop: kind === 'fall' ? 'until_replaced' : 'none',
+      emotionalTone: 'neutral',
+    },
+  };
+}
+
 describe('Renderer: autonomy ownership', () => {
   const runtimeGlobals = globalThis as unknown as Record<string, unknown>;
   let previousWindow: unknown;
@@ -147,13 +183,13 @@ describe('Renderer: autonomy ownership', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.animationState = 'idle';
-    mocks.isSleeping = false;
-    mocks.presentationListener = undefined;
+    mocks.brainListener = undefined;
     mocks.animationCompleted = undefined;
     mocks.animationRejected = undefined;
-    mocks.completeCurrentState.mockReturnValue(true);
-    mocks.synchronizeTerminalState.mockReturnValue(true);
-    mocks.dispatch.mockReturnValue(true);
+    mocks.dispatch.mockClear();
+    mocks.completeCurrentState.mockClear();
+    mocks.synchronizeTerminalState.mockClear();
+    mocks.unsubscribeBrain.mockClear();
     previousWindow = runtimeGlobals.window;
     previousDocument = runtimeGlobals.document;
     testDocument = new MiniDocument();
@@ -170,12 +206,18 @@ describe('Renderer: autonomy ownership', () => {
       clearTimeout,
       setInterval,
       clearInterval,
-      requestAnimationFrame: (callback: (time: number) => void) => setTimeout(() => callback(performance.now()), 16),
+      requestAnimationFrame: (callback: (time: number) => void) =>
+        setTimeout(() => callback(performance.now()), 16),
       cancelAnimationFrame: clearTimeout,
     };
     testDocument.defaultView = testWindow;
-    Object.assign(globalThis, { window: testWindow, document: testDocument, Node: MiniNode, HTMLElement: MiniNode });
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.assign(globalThis, {
+      window: testWindow,
+      document: testDocument,
+      Node: MiniNode,
+      HTMLElement: MiniNode,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    });
   });
 
   afterEach(() => {
@@ -183,19 +225,19 @@ describe('Renderer: autonomy ownership', () => {
     Object.assign(globalThis, { window: previousWindow, document: previousDocument });
   });
 
-  it('mounts and unmounts with fake timers without creating a renderer autonomy loop', async () => {
+  it('consumes Brain episodes without Renderer lifecycle feedback or autonomy cadence', async () => {
     const api = {
       debugEnabled: false,
-      onPetPresentationState: vi.fn((listener) => {
-        mocks.presentationListener = listener;
-        return mocks.unsubscribePresentation;
+      onBrainState: vi.fn((listener: (state: BrainStateDTO) => void) => {
+        mocks.brainListener = listener;
+        return mocks.unsubscribeBrain;
       }),
+      postBodyEvent: vi.fn(async () => undefined),
       getPosition: vi.fn(async () => ({ x: 300, y: 300 })),
       updatePosition: vi.fn(async (position) => position),
       setMenuExpanded: vi.fn(async () => ({ x: 300, y: 300 })),
       setAutonomyEnabled: vi.fn(async () => undefined),
       requestSleepWake: vi.fn(async () => undefined),
-      notifyAnimationLifecycleResult: vi.fn(async () => undefined),
       interactWithCharacter: vi.fn(async () => undefined),
     } as unknown as WispApiBridge;
     Object.assign(testWindow, { wispAPI: api });
@@ -207,151 +249,50 @@ describe('Renderer: autonomy ownership', () => {
     const root = createRoot(container);
 
     await act(async () => root.render(React.createElement(DesktopPet)));
-    expect(vi.getTimerCount()).toBe(1);
-    mocks.dispatch.mockClear();
     await act(async () => mocks.onToggleSleep?.());
     expect(api.requestSleepWake).toHaveBeenCalledWith({ action: 'sleep' });
-    expect(api.interactWithCharacter).not.toHaveBeenCalledWith({ type: 'sleep' });
     expect(mocks.dispatch).not.toHaveBeenCalledWith('START_SLEEP', true, true);
 
-    mocks.animationState = 'sleep_start';
-    await act(async () => mocks.presentationListener?.({
-      revision: 1,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'sleep_start',
-      animationRequestId: 'animation-1',
+    const sleeping = brainState(1, 'episode-1', 'sleep_start');
+    await act(async () => mocks.brainListener?.({
+      ...sleeping,
+      visualIntent: { ...sleeping.visualIntent, episodeStartedAtMs: 2 },
     }));
     expect(mocks.dispatch).toHaveBeenCalledWith('START_SLEEP', true, false);
+    expect(mocks.visualAgeMs).toBe(8);
     mocks.dispatch.mockClear();
-    await act(async () => mocks.animationCompleted?.({}, 'animation-1'));
-    expect(mocks.completeCurrentState).toHaveBeenCalledOnce();
-    expect(api.notifyAnimationLifecycleResult).toHaveBeenCalledWith({
-      requestId: 'animation-1',
-      outcome: 'completed',
-    });
-    await act(async () => mocks.presentationListener?.({
-      revision: 2,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'sleep_start',
-      animationRequestId: 'animation-1',
+    const sleepingUpdate = brainState(2, 'episode-1', 'sleep_start');
+    await act(async () => mocks.brainListener?.({
+      ...sleepingUpdate,
+      visualIntent: { ...sleepingUpdate.visualIntent, episodeStartedAtMs: 2 },
     }));
     expect(mocks.dispatch).not.toHaveBeenCalled();
-    expect(mocks.isSleeping).toBe(true);
-    await act(async () => mocks.onToggleSleep?.());
-    expect(api.requestSleepWake).toHaveBeenLastCalledWith({ action: 'wake' });
 
-    mocks.animationState = 'sleep_loop';
-    await act(async () => mocks.presentationListener?.({
-      revision: 3,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'sleep_loop',
-    }));
-    expect(mocks.isSleeping).toBe(true);
-    await act(async () => mocks.onToggleSleep?.());
-    expect(api.requestSleepWake).toHaveBeenLastCalledWith({ action: 'wake' });
+    await act(async () => mocks.animationCompleted?.({}, 'episode-1'));
+    expect(mocks.completeCurrentState).toHaveBeenCalledOnce();
+    expect(api.postBodyEvent).not.toHaveBeenCalled();
 
-    await act(async () => mocks.presentationListener?.({
-      revision: 4,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'wake_up',
-      animationRequestId: 'animation-2',
-    }));
-    await act(async () => mocks.animationCompleted?.({}, 'animation-1'));
-    expect(api.notifyAnimationLifecycleResult).not.toHaveBeenCalledWith({
-      requestId: 'animation-2',
-      outcome: 'completed',
-    });
-    await act(async () => mocks.presentationListener?.({
-      revision: 5,
-      motionPhase: 'airborne',
-      rootScreenPosition: { x: 300, y: 290 },
-      velocityPxPerSec: { x: 0, y: -100 },
-      positionAuthority: 'forced',
-      animationState: 'fall',
-    }));
-    expect(api.notifyAnimationLifecycleResult).toHaveBeenCalledWith({
-      requestId: 'animation-2',
-      outcome: 'interrupted',
-    });
+    await act(async () => mocks.brainListener?.(brainState(3, 'episode-2', 'wake_up')));
+    expect(mocks.dispatch).toHaveBeenCalledWith('WAKE_UP', true, false);
+    const completedCount = mocks.completeCurrentState.mock.calls.length;
+    await act(async () => mocks.animationCompleted?.({}, 'episode-1'));
+    expect(mocks.completeCurrentState).toHaveBeenCalledTimes(completedCount);
 
-    await act(async () => mocks.presentationListener?.({
-      revision: 6,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'land',
-      animationRequestId: 'animation-3',
-    }));
-    await act(async () => mocks.animationRejected?.('animation-3'));
-    expect(api.notifyAnimationLifecycleResult).toHaveBeenCalledWith({
-      requestId: 'animation-3',
-      outcome: 'rejected',
-    });
-    await act(async () => mocks.presentationListener?.({
-      revision: 7,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'settle',
-    }));
-    expect(mocks.synchronizeTerminalState).toHaveBeenCalledWith('settle');
-
-    await act(async () => mocks.presentationListener?.({
-      revision: 8,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'wake_up',
-      animationRequestId: 'animation-4',
-    }));
-    await act(async () => mocks.presentationListener?.({
-      revision: 9,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'idle',
-    }));
-    expect(api.notifyAnimationLifecycleResult).toHaveBeenCalledWith({
-      requestId: 'animation-4',
-      outcome: 'interrupted',
-    });
-    expect(mocks.synchronizeTerminalState).toHaveBeenLastCalledWith('idle');
-    const terminalSyncCount = mocks.synchronizeTerminalState.mock.calls.length;
-    await act(async () => mocks.presentationListener?.({
-      revision: 10,
-      motionPhase: 'grounded',
-      rootScreenPosition: { x: 300, y: 300 },
-      velocityPxPerSec: { x: 0, y: 0 },
-      positionAuthority: 'voluntary',
-      animationState: 'idle',
-    }));
-    expect(mocks.synchronizeTerminalState).toHaveBeenCalledTimes(terminalSyncCount);
+    await act(async () => mocks.brainListener?.(brainState(4, 'episode-3', 'fall', 'airborne')));
+    expect(mocks.dispatch).toHaveBeenCalledWith('FALL', true, false);
+    await act(async () => mocks.brainListener?.(brainState(5, 'episode-4', 'land')));
+    expect(mocks.dispatch).toHaveBeenCalledWith('LAND', true, false);
+    await act(async () => mocks.animationRejected?.('episode-4'));
+    expect(api.postBodyEvent).not.toHaveBeenCalled();
 
     await act(async () => vi.advanceTimersByTime(60_000));
-
     expect(api.getPosition).toHaveBeenCalledOnce();
     expect(api.updatePosition).not.toHaveBeenCalled();
     expect(api.setAutonomyEnabled).not.toHaveBeenCalled();
-    expect(vi.getTimerCount()).toBe(0);
 
     await act(async () => root.unmount());
-    expect(mocks.unsubscribePresentation).toHaveBeenCalledOnce();
+    expect(mocks.unsubscribeBrain).toHaveBeenCalledOnce();
+    expect(api.postBodyEvent).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
   });
 

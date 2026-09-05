@@ -17,14 +17,15 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     setMenuOpen: vi.fn(),
     setEnabled: vi.fn(),
     requestSleepWake: vi.fn(),
-    handleAnimationLifecycleResult: vi.fn(),
     requestManualRootPosition: vi.fn(() => true),
   };
+  const bodyEventIngress = { receive: vi.fn() };
 
   registerAutonomyIpcHandlers({
     register: (channel, handler) => handlers.set(channel, handler),
     getWindow: () => window,
     getController: () => controller,
+    bodyEventIngress,
     getNativePosition: () => currentPosition,
     getScreenBounds: () => ({ id: 'primary', x: 0, y: 0, width: 1_920, height: 1_080 }),
     pivotOffset: { x: 50, y: 90 },
@@ -37,7 +38,7 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     if (registered === undefined) throw new Error(`Missing handler: ${channel}`);
     return registered;
   };
-  return { handler, trustedSender, window, controller };
+  return { handler, trustedSender, window, controller, bodyEventIngress };
 }
 
 describe('Main: autonomy IPC registration', () => {
@@ -56,36 +57,29 @@ describe('Main: autonomy IPC registration', () => {
       foreignEvent,
       { action: 'sleep' }
     )).rejects.toThrow('Untrusted');
-    await expect(fixture.handler('wisp:animation-lifecycle-result')(
+    await expect(fixture.handler('wisp:body-event')(
       foreignEvent,
-      { requestId: 'animation-1', outcome: 'completed' }
+      { type: 'interaction' }
     )).rejects.toThrow('Untrusted');
 
     expect(fixture.controller.setMenuOpen).not.toHaveBeenCalled();
     expect(fixture.controller.setEnabled).not.toHaveBeenCalled();
     expect(fixture.controller.requestSleepWake).not.toHaveBeenCalled();
-    expect(fixture.controller.handleAnimationLifecycleResult).not.toHaveBeenCalled();
+    expect(fixture.bodyEventIngress.receive).not.toHaveBeenCalled();
     expect(fixture.controller.requestManualRootPosition).not.toHaveBeenCalled();
     expect(fixture.window.setSize).not.toHaveBeenCalled();
   });
 
-  it('routes a validated lifecycle result and treats malformed payload as a boundary error', async () => {
+  it('routes Body payloads only through the dedicated ingress boundary', async () => {
     const fixture = createRegistrationFixture();
     const event = { sender: fixture.trustedSender };
+    const payload = {
+      streamId: 'stream-1', sequence: 1, basedOnRevision: 1, observedAtMs: 10,
+      type: 'interaction', interaction: 'click',
+    };
 
-    await expect(fixture.handler('wisp:animation-lifecycle-result')(
-      event,
-      { requestId: 'animation-1', outcome: 'interrupted' }
-    )).resolves.toBeUndefined();
-    expect(fixture.controller.handleAnimationLifecycleResult).toHaveBeenCalledWith({
-      requestId: 'animation-1',
-      outcome: 'interrupted',
-    });
-
-    await expect(fixture.handler('wisp:animation-lifecycle-result')(
-      event,
-      { requestId: 'animation-1', outcome: 'completed', extra: true }
-    )).rejects.toThrow(TypeError);
+    await expect(fixture.handler('wisp:body-event')(event, payload)).resolves.toBeUndefined();
+    expect(fixture.bodyEventIngress.receive).toHaveBeenCalledWith(payload);
   });
 
   it('clamps right and bottom edges by expanded window size through the root command path', async () => {
