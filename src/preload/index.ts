@@ -7,15 +7,9 @@ import type {
   PetPositionDTO,
   ScreenBoundsDTO,
   EnvironmentSnapshotDTO,
-  BeginPetDragDTO,
-  BeginPetDragResultDTO,
-  MovePetDragDTO,
-  ReleasePetDragDTO,
   BrainStateDTO,
   BodyEventDTO,
-  InteractiveBoundsDTO,
   DebugTelemetryDTO,
-  CharacterInteractionDTO,
   SetAutonomyEnabledDTO,
   SleepWakeCommandDTO,
 } from '../shared/ipc-contracts';
@@ -94,29 +88,8 @@ const api: WispApiBridge = {
       ipcRenderer.removeListener('wisp:environment-changed', handler);
     };
   },
-  beginPetDrag: (payload: BeginPetDragDTO): Promise<BeginPetDragResultDTO> => {
-    return ipcRenderer.invoke('pet:begin-drag', payload);
-  },
-  movePetDrag: (payload: MovePetDragDTO): Promise<void> => {
-    return ipcRenderer.invoke('pet:move-drag', payload);
-  },
-  releasePetDrag: (payload: ReleasePetDragDTO): Promise<void> => {
-    return ipcRenderer.invoke('pet:release-drag', payload);
-  },
-  interactWithCharacter: (interaction: CharacterInteractionDTO): Promise<void> => {
-    return ipcRenderer.invoke('wisp:character-interact', interaction);
-  },
   setAlwaysOnTop: (enabled: boolean): Promise<boolean> => {
     return ipcRenderer.invoke('wisp:set-always-on-top', enabled);
-  },
-  setInteractiveBounds: (bounds: InteractiveBoundsDTO): Promise<void> => {
-    return ipcRenderer.invoke('wisp:set-interactive-bounds', bounds);
-  },
-  setDragState: (isDragging: boolean): Promise<void> => {
-    return ipcRenderer.invoke('wisp:set-drag-state', isDragging);
-  },
-  setMenuExpanded: (expanded: boolean): Promise<PetPositionDTO> => {
-    return ipcRenderer.invoke('wisp:set-menu-expanded', expanded);
   },
   ...(isDebugMode() ? {
     getDebugTelemetry: (): Promise<DebugTelemetryDTO> => ipcRenderer.invoke('wisp:get-debug-telemetry'),

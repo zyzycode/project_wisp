@@ -8,10 +8,8 @@ import type {
   IgnoreMouseEventsDTO,
   PetPositionDTO,
   ScreenBoundsDTO,
-  InteractiveBoundsDTO,
   DebugTelemetryDTO,
-  CharacterInteractionDTO,
-  CharacterInteractionTypeDTO,
+  BodyEventDTO,
   EnvironmentSnapshotDTO,
 } from '../shared/ipc-contracts';
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
@@ -42,11 +40,6 @@ import {
   toEnvironmentSnapshotDTO,
   toBrainStateDTO,
 } from './mappers/shimeji-ipc.mapper';
-import {
-  handleBeginPetDrag,
-  handleMovePetDrag,
-  handleReleasePetDrag,
-} from './shimeji-ipc-handlers';
 import { startShimejiMotionLoop } from './shimeji-motion-loop';
 import { MainAutonomyComposition } from './main-autonomy-composition';
 import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
@@ -85,6 +78,13 @@ let unsubscribeEnvironmentChanges: (() => void) | null = null;
 let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
+let activeBodyDrag: {
+  readonly gestureId: string;
+  readonly pointerId: number;
+  readonly dragSessionId: string;
+  sequence: number;
+  lastScreenPosition: PetPositionDTO;
+} | null = null;
 const bodyEventIngress = new BodyEventIngress();
 const shimejiStimulusMapper = new ShimejiStimulusMapper();
 const debugLogBuffer = new LogBuffer();
@@ -187,12 +187,27 @@ function publishBrainState(): void {
   brainStatePublisher.requestCommit();
 }
 
+function cancelActiveBodyDrag(): void {
+  const drag = activeBodyDrag;
+  const orchestrator = shimejiMotionOrchestrator;
+  activeBodyDrag = null;
+  if (drag === null || orchestrator === null) return;
+  orchestrator.releaseDrag({
+    dragSessionId: drag.dragSessionId,
+    pointerId: drag.pointerId,
+    sequence: drag.sequence + 1,
+    screenPosition: drag.lastScreenPosition,
+  });
+}
+
 function beginBrainStream(): void {
+  cancelActiveBodyDrag();
   autonomyComposition?.tick();
   brainStatePublisher.replaceStream();
 }
 
 function clearBrainStream(): void {
+  cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
 }
 
@@ -324,30 +339,73 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
   initializeAutonomyComposition();
 }
 
-const CHARACTER_INTERACTION_TYPES: readonly CharacterInteractionTypeDTO[] = [
-  'click',
-  'double_click',
-  'right_click',
-  'drag_end',
-  'pet',
-  'play',
-  'feed',
-];
-
-function isCharacterInteractionDTO(value: unknown): value is CharacterInteractionDTO {
-  if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Partial<CharacterInteractionDTO>;
-  return (
-    CHARACTER_INTERACTION_TYPES.includes(candidate.type as CharacterInteractionTypeDTO) &&
-    (candidate.intensity === undefined ||
-      (typeof candidate.intensity === 'number' && Number.isFinite(candidate.intensity)))
-  );
-}
-
 function getNativePosition(): PetPositionDTO {
   if (positionService === null) return calculateInitialPosition();
   const bounds = platformEnvironmentAdapter.getSnapshot().screenBounds;
   return rootToNativePosition(positionService.getRootPosition(), bounds, ROOT_PIVOT_OFFSET);
+}
+
+function handleAcceptedBodyEvent(
+  event: Exclude<BodyEventDTO, { readonly type: 'menu_visibility_changed' }>
+): void {
+  const orchestrator = shimejiMotionOrchestrator;
+  if (event.type === 'drag_started') {
+    if (orchestrator === null) return;
+    const dragSessionId = orchestrator.beginDrag({
+      pointerId: event.pointerId,
+      sequence: event.sequence,
+      screenPosition: event.screenPosition,
+    });
+    if (dragSessionId === null) return;
+    activeBodyDrag = {
+      gestureId: event.gestureId,
+      pointerId: event.pointerId,
+      dragSessionId,
+      sequence: event.sequence,
+      lastScreenPosition: event.screenPosition,
+    };
+    autonomyComposition?.beginDrag();
+    publishBrainState();
+    return;
+  }
+  if (event.type === 'drag_moved' || event.type === 'drag_ended') {
+    const drag = activeBodyDrag;
+    if (
+      orchestrator === null ||
+      drag === null ||
+      drag.gestureId !== event.gestureId ||
+      drag.pointerId !== event.pointerId
+    ) return;
+    const payload = {
+      dragSessionId: drag.dragSessionId,
+      pointerId: event.pointerId,
+      sequence: event.sequence,
+      screenPosition: event.screenPosition,
+    };
+    drag.sequence = event.sequence;
+    drag.lastScreenPosition = event.screenPosition;
+    if (event.type === 'drag_moved') orchestrator.moveDrag(payload);
+    else {
+      orchestrator.releaseDrag(payload);
+      activeBodyDrag = null;
+    }
+    publishBrainState();
+    return;
+  }
+  if (event.type !== 'interaction') return;
+
+  const interactionType = event.interaction;
+  if (interactionType !== 'click') autonomyComposition?.suspendForUserInteraction();
+  if (interactionType !== 'think') {
+    defaultCharacterInteractionUseCase.execute({
+      type: interactionType,
+      ...(event.intensity === undefined ? {} : { intensity: event.intensity }),
+    });
+  }
+  autonomyComposition?.handleCharacterInteraction(interactionType);
+  publishDebugTelemetry();
+  publishBrainState();
+  if (interactionType !== 'click') autonomyComposition?.resumeAfterUserInteraction();
 }
 
 function registerIpcHandlers(): void {
@@ -360,6 +418,7 @@ function registerIpcHandlers(): void {
     getWindow: () => mainWindow,
     getController: () => autonomyComposition,
     bodyEventIngress,
+    handleAcceptedBodyEvent,
     getNativePosition,
     getScreenBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
     beginBrainTransaction: () => brainStatePublisher.beginTransaction(),
@@ -396,20 +455,6 @@ function registerIpcHandlers(): void {
         const forward = payload?.forward ?? true;
         platformAdapter.setIgnoreMouseEvents(mainWindow, ignore, forward);
       }
-    }
-  );
-
-  ipcMain.handle(
-    'wisp:set-interactive-bounds',
-    async (_event, _bounds: InteractiveBoundsDTO): Promise<void> => {
-      // Managed by dynamic window sizing
-    }
-  );
-
-  ipcMain.handle(
-    'wisp:set-drag-state',
-    async (_event, _isDragging: boolean): Promise<void> => {
-      // Managed directly by native window positioning
     }
   );
 
@@ -453,69 +498,6 @@ function registerIpcHandlers(): void {
   ipcMain.handle('wisp:get-environment-snapshot', async (): Promise<EnvironmentSnapshotDTO> => {
     return toEnvironmentSnapshotDTO(platformEnvironmentAdapter.getSnapshot());
   });
-
-  ipcMain.handle('pet:begin-drag', async (_event, payload: unknown) => {
-    if (shimejiMotionOrchestrator === null) throw new Error('Shimeji motion is unavailable');
-    brainStatePublisher.beginTransaction();
-    try {
-      const result = handleBeginPetDrag(shimejiMotionOrchestrator, payload);
-      autonomyComposition?.beginDrag();
-      publishBrainState();
-      return result;
-    } finally {
-      brainStatePublisher.commitTransaction();
-    }
-  });
-
-  ipcMain.handle('pet:move-drag', async (_event, payload: unknown): Promise<void> => {
-    if (shimejiMotionOrchestrator === null) return;
-    brainStatePublisher.beginTransaction();
-    try {
-      handleMovePetDrag(shimejiMotionOrchestrator, payload);
-      publishBrainState();
-    } finally {
-      brainStatePublisher.commitTransaction();
-    }
-  });
-
-  ipcMain.handle('pet:release-drag', async (_event, payload: unknown): Promise<void> => {
-    if (shimejiMotionOrchestrator === null) return;
-    brainStatePublisher.beginTransaction();
-    try {
-      handleReleasePetDrag(shimejiMotionOrchestrator, payload);
-      publishBrainState();
-    } finally {
-      brainStatePublisher.commitTransaction();
-    }
-  });
-
-  ipcMain.handle(
-    'wisp:character-interact',
-    async (_event, interaction: unknown): Promise<void> => {
-      if (!isCharacterInteractionDTO(interaction)) {
-        throw new TypeError('Invalid character interaction payload');
-      }
-      brainStatePublisher.beginTransaction();
-      try {
-        const interactionType = interaction.type;
-        if (interactionType !== 'click') {
-          autonomyComposition?.suspendForUserInteraction();
-        }
-        defaultCharacterInteractionUseCase.execute({
-          type: interactionType,
-          ...(interaction.intensity === undefined ? {} : { intensity: interaction.intensity }),
-        });
-        autonomyComposition?.handleCharacterInteraction(interactionType);
-        publishDebugTelemetry();
-        publishBrainState();
-        if (interactionType !== 'drag_end' && interactionType !== 'click') {
-          autonomyComposition?.resumeAfterUserInteraction();
-        }
-      } finally {
-        brainStatePublisher.commitTransaction();
-      }
-    }
-  );
 
   ipcMain.handle(
     'wisp:set-always-on-top',

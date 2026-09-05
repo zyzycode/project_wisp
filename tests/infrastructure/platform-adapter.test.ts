@@ -64,4 +64,16 @@ describe('Platform Adapters', () => {
     expect(setAlwaysOnTop).toHaveBeenNthCalledWith(1, false, level);
     expect(setAlwaysOnTop).toHaveBeenNthCalledWith(2, true, level);
   });
+
+  it('keeps the Linux overlay interactive when ignored-event forwarding is unavailable', () => {
+    const adapter = new LinuxPlatformAdapter();
+    const setIgnoreMouseEvents = vi.fn();
+    const window = { setIgnoreMouseEvents } as unknown as Electron.BrowserWindow;
+
+    adapter.setIgnoreMouseEvents(window, true, true);
+    adapter.setIgnoreMouseEvents(window, true, false);
+
+    expect(setIgnoreMouseEvents).toHaveBeenNthCalledWith(1, false);
+    expect(setIgnoreMouseEvents).toHaveBeenNthCalledWith(2, true);
+  });
 });

@@ -90,7 +90,7 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
   onToggleAnchorPoint,
 }) => {
   return (
-    <section className="debug-hud" data-testid="debug-hud">
+    <section className="debug-hud" data-testid="debug-hud" data-wisp-interactive="true">
       <header className="debug-hud-header">
         <strong>✨ Wisp Debug</strong>
         <span>{Math.round(fps)} FPS</span>

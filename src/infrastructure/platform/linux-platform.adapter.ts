@@ -40,8 +40,15 @@ export class LinuxPlatformAdapter implements IPlatformAdapter {
 
   setIgnoreMouseEvents(window: BrowserWindow, ignore: boolean, forward = true): void {
     try {
+      // Electron cannot forward ignored mouse movement on Linux. Keeping the
+      // window interactive is the safe fallback; otherwise the Renderer can
+      // never observe re-entry and the pet becomes permanently unclickable.
+      if (ignore && forward) {
+        window.setIgnoreMouseEvents(false);
+        return;
+      }
       if (ignore) {
-        window.setIgnoreMouseEvents(true, { forward });
+        window.setIgnoreMouseEvents(true);
       } else {
         window.setIgnoreMouseEvents(false);
       }

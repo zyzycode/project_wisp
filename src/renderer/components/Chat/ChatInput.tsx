@@ -52,6 +52,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div
       className="wisp-chat-input-container"
+      data-wisp-interactive="true"
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >

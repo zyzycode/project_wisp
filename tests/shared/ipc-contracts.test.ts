@@ -1,11 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type {
-  BeginPetDragDTO,
   BodyEventDTO,
+  BodyInteractionTypeDTO,
   BrainStateDTO,
-  CharacterInteractionDTO,
-  CharacterInteractionTypeDTO,
   EnvironmentSnapshotDTO,
   SetAutonomyEnabledDTO,
   SleepWakeCommandDTO,
@@ -72,34 +70,48 @@ describe('Shared: IPC contracts', () => {
     );
   });
 
+  it('removes replaced specialized drag, interaction, and menu channels atomically', () => {
+    const targets = [
+      '../../src/shared/ipc-contracts.ts',
+      '../../src/main/index.ts',
+      '../../src/main/autonomy-ipc-registration.ts',
+      '../../src/preload/index.ts',
+      '../../src/renderer/pet-main-bridge.ts',
+      '../../src/renderer/components/DesktopPet.tsx',
+    ];
+    const runtimeSource = targets
+      .map((target) => readFileSync(new URL(target, import.meta.url), 'utf8'))
+      .join('\n');
+
+    expect(runtimeSource).not.toMatch(
+      /pet:begin-drag|pet:move-drag|pet:release-drag|wisp:character-interact|wisp:set-menu-expanded|beginPetDrag|movePetDrag|releasePetDrag|interactWithCharacter|setMenuExpanded/
+    );
+  });
+
   it('provides standalone serializable Shimeji DTO shapes', () => {
     const environment: EnvironmentSnapshotDTO = {
       capturedAtMs: 1,
       screenBounds: { id: 'primary', x: 0, y: 0, width: 100, height: 100 },
     };
-    const begin: BeginPetDragDTO = { pointerId: 1, sequence: 0, screenPosition: { x: 1, y: 2 } };
     const brain = brainState();
     const body: BodyEventDTO = {
       streamId: 'stream-1', sequence: 1, basedOnRevision: 1, observedAtMs: 30,
       type: 'interaction', interaction: 'think', intensity: 0.5,
     };
     const autonomy: SetAutonomyEnabledDTO = { enabled: true };
-    const interaction: CharacterInteractionDTO = { type: 'click' };
     const sleepCommand: SleepWakeCommandDTO = { action: 'sleep' };
     const wakeCommand: SleepWakeCommandDTO = { action: 'wake' };
 
     expect({
       environment,
-      begin,
       brain,
       body,
       autonomy,
-      interaction,
       sleepCommand,
       wakeCommand,
     }).toBeDefined();
-    expectTypeOf<'sleep'>().not.toMatchTypeOf<CharacterInteractionTypeDTO>();
-    expectTypeOf<'wake'>().not.toMatchTypeOf<CharacterInteractionTypeDTO>();
+    expectTypeOf<'sleep'>().not.toMatchTypeOf<BodyInteractionTypeDTO>();
+    expectTypeOf<'wake'>().not.toMatchTypeOf<BodyInteractionTypeDTO>();
   });
 
   it('copies exact Brain and Body payloads and rejects non-serializable or malformed shapes', () => {

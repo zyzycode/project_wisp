@@ -1,10 +1,10 @@
 import type { ScreenBoundsDto, Vector2Dto } from '../domain/behavior/motion-engine';
 import { nativeToRootPosition } from '../infrastructure/adapters/electron-pet-position-adapter';
-import type { PetPositionDTO } from '../shared/ipc-contracts';
+import type { BodyEventDTO, PetPositionDTO } from '../shared/ipc-contracts';
 import {
   handleRequestSleepWake,
   handleSetAutonomyEnabled,
-  handleSetMenuExpanded,
+  handleMenuVisibilityChanged,
   isTrustedIpcSender,
   type AutonomyIpcController,
   type MenuAutonomyController,
@@ -40,7 +40,7 @@ interface MainAutonomyIpcController
 }
 
 export interface BodyEventIpcIngress {
-  receive(payload: unknown): unknown;
+  receive(payload: unknown): BodyEventDTO | null;
 }
 
 export interface RegisterAutonomyIpcHandlersOptions {
@@ -48,6 +48,7 @@ export interface RegisterAutonomyIpcHandlersOptions {
   readonly getWindow: () => AutonomyIpcWindow | null;
   readonly getController: () => MainAutonomyIpcController | null;
   readonly bodyEventIngress: BodyEventIpcIngress;
+  readonly handleAcceptedBodyEvent: (event: Exclude<BodyEventDTO, { readonly type: 'menu_visibility_changed' }>) => void;
   readonly getNativePosition: () => PetPositionDTO;
   readonly getScreenBounds: () => ScreenBoundsDto;
   readonly beginBrainTransaction: () => void;
@@ -112,26 +113,6 @@ function runInBrainTransaction<Result>(
 }
 
 export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlersOptions): void {
-  options.register('wisp:set-menu-expanded', async (event, payload): Promise<PetPositionDTO> => {
-    const { window, controller } = requireTrustedContext(options, event);
-    return runInBrainTransaction(options, () => {
-      const expanded = handleSetMenuExpanded(controller, payload);
-      const size = expanded ? options.expandedSize : options.compactSize;
-      const currentPosition = options.getNativePosition();
-      const nextPosition = clampNativePositionForWindow(
-        currentPosition,
-        options.getScreenBounds(),
-        size
-      );
-      const repositionAccepted = controller.requestManualRootPosition(
-        nativeToRootPosition(nextPosition, options.pivotOffset)
-      );
-      window.setResizable(true);
-      window.setSize(size.width, size.height);
-      return repositionAccepted ? nextPosition : currentPosition;
-    });
-  });
-
   options.register('wisp:set-autonomy-enabled', async (event, payload): Promise<void> => {
     const { controller } = requireTrustedContext(options, event);
     runInBrainTransaction(options, () => handleSetAutonomyEnabled(controller, payload));
@@ -143,7 +124,27 @@ export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlers
   });
 
   options.register('wisp:body-event', async (event, payload): Promise<void> => {
-    requireTrustedWindow(options, event);
-    options.bodyEventIngress.receive(payload);
+    const { window, controller } = requireTrustedContext(options, event);
+    const accepted = options.bodyEventIngress.receive(payload);
+    if (accepted === null) return;
+    runInBrainTransaction(options, () => {
+      if (accepted.type !== 'menu_visibility_changed') {
+        options.handleAcceptedBodyEvent(accepted);
+        return;
+      }
+      const expanded = handleMenuVisibilityChanged(controller, accepted.expanded);
+      const size = expanded ? options.expandedSize : options.compactSize;
+      const currentPosition = options.getNativePosition();
+      const nextPosition = clampNativePositionForWindow(
+        currentPosition,
+        options.getScreenBounds(),
+        size
+      );
+      controller.requestManualRootPosition(
+        nativeToRootPosition(nextPosition, options.pivotOffset)
+      );
+      window.setResizable(true);
+      window.setSize(size.width, size.height);
+    });
   });
 }

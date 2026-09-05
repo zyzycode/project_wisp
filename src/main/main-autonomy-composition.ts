@@ -23,7 +23,7 @@ import {
 import type {
   BrainActivityTimelineDTO,
   BrainVisualIntentKindDTO,
-  CharacterInteractionTypeDTO,
+  BodyInteractionTypeDTO,
 } from '../shared/ipc-contracts';
 
 export interface BrainVisualEpisode {
@@ -215,10 +215,19 @@ export class MainAutonomyComposition {
     return true;
   }
 
-  public handleCharacterInteraction(type: CharacterInteractionTypeDTO): boolean {
+  public handleCharacterInteraction(type: BodyInteractionTypeDTO): boolean {
     if (type === 'click') return this.handleClick();
     if (type === 'double_click' || type === 'pet' || type === 'feed') {
       this.setVisualKind('happy_reaction', true, true);
+      return true;
+    }
+    if (type === 'think') {
+      const intent = this.character.resolveDirectIntent(
+        { kind: 'think', source: 'user', priority: 'normal', reason: 'user_think' },
+        this.options.getCharacterSnapshot()
+      ).resolvedIntent;
+      if (intent === null) return false;
+      this.handleResolvedIntent(intent);
       return true;
     }
     if (type !== 'play') return false;

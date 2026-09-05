@@ -77,12 +77,16 @@ describe('Domain: AutonomyCharacterEngine', () => {
     expect(drag.resolvedIntent?.kind).not.toBe('wake');
   });
 
-  it('resolves direct play while awake and does not use it as an implicit wake', () => {
+  it('resolves direct play/think while awake and does not use either as an implicit wake', () => {
     const engine = new AutonomyCharacterEngine();
     expect(engine.resolveDirectIntent(
       { kind: 'play', source: 'user', priority: 'high' },
       awakeSnapshot
     ).resolvedIntent?.kind).toBe('play');
+    expect(engine.resolveDirectIntent(
+      { kind: 'think', source: 'user', priority: 'normal' },
+      awakeSnapshot
+    ).resolvedIntent?.kind).toBe('think');
 
     engine.resolveDirectIntent(
       { kind: 'sleep', source: 'user', priority: 'high' },
@@ -90,6 +94,10 @@ describe('Domain: AutonomyCharacterEngine', () => {
     );
     expect(engine.resolveDirectIntent(
       { kind: 'play', source: 'user', priority: 'high' },
+      awakeSnapshot
+    ).resolvedIntent).toBeNull();
+    expect(engine.resolveDirectIntent(
+      { kind: 'think', source: 'user', priority: 'normal' },
       awakeSnapshot
     ).resolvedIntent).toBeNull();
   });

@@ -28,14 +28,9 @@ function exposedApi(): WispApiBridge {
 describe('Preload: Shimeji bridge', () => {
   it('uses exact Brain/Body channels, validates snapshots, and removes the exact listener', async () => {
     const api = exposedApi();
-    const begin = { pointerId: 1, sequence: 0, screenPosition: { x: 10, y: 20 } };
-    const move = { ...begin, sequence: 1, dragSessionId: 'session-1' };
     const listener = vi.fn();
 
     const unsubscribe = api.onBrainState(listener);
-    await api.beginPetDrag(begin);
-    await api.movePetDrag(move);
-    await api.releasePetDrag(move);
     await api.setAutonomyEnabled?.({ enabled: false });
     await api.requestSleepWake({ action: 'sleep' });
     await api.requestSleepWake({ action: 'wake' });
@@ -73,17 +68,19 @@ describe('Preload: Shimeji bridge', () => {
     const unsubscribeLate = api.onBrainState(lateListener);
     unsubscribeLate();
 
-    expect(electronMocks.invoke).toHaveBeenNthCalledWith(1, 'pet:begin-drag', begin);
-    expect(electronMocks.invoke).toHaveBeenNthCalledWith(2, 'pet:move-drag', move);
-    expect(electronMocks.invoke).toHaveBeenNthCalledWith(3, 'pet:release-drag', move);
-    expect(electronMocks.invoke).toHaveBeenNthCalledWith(4, 'wisp:set-autonomy-enabled', { enabled: false });
-    expect(electronMocks.invoke).toHaveBeenNthCalledWith(5, 'wisp:request-sleep-wake', { action: 'sleep' });
-    expect(electronMocks.invoke).toHaveBeenNthCalledWith(6, 'wisp:request-sleep-wake', { action: 'wake' });
+    expect(electronMocks.invoke).toHaveBeenNthCalledWith(1, 'wisp:set-autonomy-enabled', { enabled: false });
+    expect(electronMocks.invoke).toHaveBeenNthCalledWith(2, 'wisp:request-sleep-wake', { action: 'sleep' });
+    expect(electronMocks.invoke).toHaveBeenNthCalledWith(3, 'wisp:request-sleep-wake', { action: 'wake' });
     expect(electronMocks.invoke).toHaveBeenNthCalledWith(
-      7,
+      4,
       'wisp:body-event',
       bodyEvent
     );
+    expect(api).not.toHaveProperty('beginPetDrag');
+    expect(api).not.toHaveProperty('movePetDrag');
+    expect(api).not.toHaveProperty('releasePetDrag');
+    expect(api).not.toHaveProperty('interactWithCharacter');
+    expect(api).not.toHaveProperty('setMenuExpanded');
     expect(listener).toHaveBeenCalledOnce();
     expect(listener).toHaveBeenCalledWith(brainState);
     expect(lateListener).toHaveBeenCalledWith({ ...brainState, revision: 2 });

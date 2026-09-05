@@ -45,6 +45,8 @@ export interface CharacterRendererProps {
   expression?: CharacterExpression;
   theme?: CharacterTheme;
   scale?: number;
+  scaleX?: number;
+  scaleY?: number;
   flipX?: boolean;
   isDragging?: boolean;
   tiltDeg?: number;
@@ -59,9 +61,10 @@ export interface CharacterRendererProps {
     completedVisualEpisodeId: string | undefined
   ) => void;
   onAnimationRejected?: (rejectedVisualEpisodeId: string | undefined) => void;
+  onGazeDirectionChanged?: (direction: GazeDirection) => void;
   onClick?: () => void;
   onDoubleClick?: () => void;
-  onMouseDown?: (e: React.MouseEvent) => void;
+  onPointerDown?: (event: React.PointerEvent) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
 }
 
@@ -69,6 +72,8 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   expression = 'idle',
   theme = DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!,
   scale = 1.0,
+  scaleX = 1,
+  scaleY = 1,
   flipX = false,
   isDragging = false,
   tiltDeg = 0,
@@ -80,15 +85,17 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   visualAgeMs = 0,
   onAnimationCompleted,
   onAnimationRejected,
+  onGazeDirectionChanged,
   onClick,
   onDoubleClick,
-  onMouseDown,
+  onPointerDown,
   onContextMenu,
 }) => {
   const defaultIntent = useMemo(() => createSystemAnimationIntent('idle_blink'), []);
   const intent = animationIntent ?? defaultIntent;
   const rootRef = useRef<HTMLDivElement>(null);
   const [gazeDirection, setGazeDirection] = useState<GazeDirection>('down');
+  const gazeDirectionRef = useRef<GazeDirection>('down');
   const [resolver, setResolver] = useState<AssetResolver>(() => cachedManifestResolver ?? INITIAL_RESOLVER);
   const debugClip = useMemo(
     () => debugAnimationSelection === undefined
@@ -150,8 +157,11 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   }, [activePresentationState, faceAnchor]);
 
   const handleGazeDirection = useCallback((direction: GazeDirection) => {
-    setGazeDirection((current) => current === direction ? current : direction);
-  }, []);
+    if (gazeDirectionRef.current === direction) return;
+    gazeDirectionRef.current = direction;
+    setGazeDirection(direction);
+    onGazeDirectionChanged?.(direction);
+  }, [onGazeDirectionChanged]);
 
   useGaze({
     enabled: debugClip === undefined && faceAnchor !== undefined,
@@ -207,17 +217,18 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       ref={rootRef}
       className={`wisp-character-root ${isDragging ? 'dragging' : ''}`}
       data-testid="wisp-character-root"
+      data-wisp-interactive="true"
       data-expression={expression}
       style={{
         width: `${renderedSize.width}px`,
         height: `${renderedSize.height}px`,
-        transform: `rotate(${tiltDeg}deg)`,
+        transform: `scale(${scaleX}, ${scaleY}) rotate(${tiltDeg}deg)`,
         willChange: 'transform',
         filter: `drop-shadow(0 0 16px ${theme.palette.glow})`,
       }}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      onMouseDown={onMouseDown}
+      onPointerDown={onPointerDown}
       onContextMenu={onContextMenu}
     >
       <SpriteRenderer state={activePresentationState} />

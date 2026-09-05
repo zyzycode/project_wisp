@@ -97,6 +97,7 @@ export function SpeechBubbleView({
   return (
     <div
       className={`wisp-speech-bubble speech-bubble ${isThought ? 'is-thought' : 'is-speech'} is-${phase}`}
+      data-wisp-interactive="true"
       role="button"
       tabIndex={0}
       aria-label={isThought ? 'Dismiss thought' : 'Dismiss speech'}

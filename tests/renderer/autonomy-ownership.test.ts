@@ -51,8 +51,11 @@ vi.mock('../../src/renderer/hooks/useDialogueLoop', () => ({
   useDialogueLoop: () => ({ handleSendMessage: vi.fn() }),
 }));
 vi.mock('../../src/renderer/pet-main-bridge', () => ({
-  PetDragController: class {},
   BrainStateRevisionGate: class { public accept(state: BrainStateDTO) { return state; } },
+  postBodyEvent: (
+    api: Pick<WispApiBridge, 'postBodyEvent'>,
+    event: Parameters<WispApiBridge['postBodyEvent']>[0]
+  ) => api.postBodyEvent(event),
   requestCharacterSleepWake: (
     api: Pick<WispApiBridge, 'requestSleepWake'>,
     action: 'sleep' | 'wake'
@@ -233,12 +236,11 @@ describe('Renderer: autonomy ownership', () => {
         return mocks.unsubscribeBrain;
       }),
       postBodyEvent: vi.fn(async () => undefined),
+      setIgnoreMouseEvents: vi.fn(async () => undefined),
       getPosition: vi.fn(async () => ({ x: 300, y: 300 })),
       updatePosition: vi.fn(async (position) => position),
-      setMenuExpanded: vi.fn(async () => ({ x: 300, y: 300 })),
       setAutonomyEnabled: vi.fn(async () => undefined),
       requestSleepWake: vi.fn(async () => undefined),
-      interactWithCharacter: vi.fn(async () => undefined),
     } as unknown as WispApiBridge;
     Object.assign(testWindow, { wispAPI: api });
     const desktopPetPath = '../../src/renderer/components/DesktopPet';
@@ -286,7 +288,7 @@ describe('Renderer: autonomy ownership', () => {
     expect(api.postBodyEvent).not.toHaveBeenCalled();
 
     await act(async () => vi.advanceTimersByTime(60_000));
-    expect(api.getPosition).toHaveBeenCalledOnce();
+    expect(api.getPosition).not.toHaveBeenCalled();
     expect(api.updatePosition).not.toHaveBeenCalled();
     expect(api.setAutonomyEnabled).not.toHaveBeenCalled();
 

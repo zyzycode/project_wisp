@@ -232,6 +232,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     <div
       ref={menuRef}
       className={`wisp-context-menu ${currentTab === 'debug' ? 'tab-debug' : 'tab-main'}`}
+      data-wisp-interactive="true"
       style={positionedStyle}
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}

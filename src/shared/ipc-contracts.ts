@@ -154,6 +154,15 @@ export interface BodyEventMetaDTO {
   readonly observedAtMs: number;
 }
 
+export type BodyInteractionTypeDTO =
+  | 'click'
+  | 'double_click'
+  | 'right_click'
+  | 'pet'
+  | 'play'
+  | 'feed'
+  | 'think';
+
 export type BodyEventDTO =
   | (BodyEventMetaDTO & {
       readonly type: 'cursor_observed';
@@ -161,14 +170,7 @@ export type BodyEventDTO =
     })
   | (BodyEventMetaDTO & {
       readonly type: 'interaction';
-      readonly interaction:
-        | 'click'
-        | 'double_click'
-        | 'right_click'
-        | 'pet'
-        | 'play'
-        | 'feed'
-        | 'think';
+      readonly interaction: BodyInteractionTypeDTO;
       readonly intensity?: number;
     })
   | (BodyEventMetaDTO & {
@@ -219,45 +221,6 @@ export interface EnvironmentSnapshotDTO {
   readonly currentSurface?: EnvironmentSurfaceDTO;
 }
 
-export interface PetDragPointerDTO {
-  readonly pointerId: number;
-  readonly sequence: number;
-  readonly screenPosition: PetPositionDTO;
-}
-
-export interface BeginPetDragDTO extends PetDragPointerDTO {}
-
-export interface BeginPetDragResultDTO {
-  readonly dragSessionId: string;
-}
-
-export interface MovePetDragDTO extends PetDragPointerDTO {
-  readonly dragSessionId: string;
-}
-
-export interface ReleasePetDragDTO extends MovePetDragDTO {}
-
-export type CharacterInteractionTypeDTO =
-  | 'click'
-  | 'double_click'
-  | 'right_click'
-  | 'drag_end'
-  | 'pet'
-  | 'play'
-  | 'feed';
-
-export interface CharacterInteractionDTO {
-  type: CharacterInteractionTypeDTO;
-  intensity?: number;
-}
-
-export interface InteractiveBoundsDTO {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export type DebugLogLevelDTO = 'debug' | 'info' | 'warn' | 'error';
 export type DebugLogContextDTO = 'FSM' | 'CharacterEngine' | 'Needs' | 'AIProvider' | 'RenderEngine' | 'IPC' | 'Autonomy';
 
@@ -295,14 +258,7 @@ export interface WispApiBridge {
   getScreenBounds: () => Promise<ScreenBoundsDTO>;
   getEnvironmentSnapshot: () => Promise<EnvironmentSnapshotDTO>;
   onEnvironmentChanged: (callback: (snapshot: EnvironmentSnapshotDTO) => void) => () => void;
-  beginPetDrag: (payload: BeginPetDragDTO) => Promise<BeginPetDragResultDTO>;
-  movePetDrag: (payload: MovePetDragDTO) => Promise<void>;
-  releasePetDrag: (payload: ReleasePetDragDTO) => Promise<void>;
-  interactWithCharacter: (interaction: CharacterInteractionDTO) => Promise<void>;
   setAlwaysOnTop: (enabled: boolean) => Promise<boolean>;
-  setInteractiveBounds?: (bounds: InteractiveBoundsDTO) => Promise<void>;
-  setDragState?: (isDragging: boolean) => Promise<void>;
-  setMenuExpanded?: (expanded: boolean) => Promise<PetPositionDTO>;
   getDebugTelemetry?: () => Promise<DebugTelemetryDTO>;
   clearDebugTelemetryLogs?: () => Promise<void>;
   onDebugTelemetry?: (listener: (telemetry: DebugTelemetryDTO) => void) => () => void;

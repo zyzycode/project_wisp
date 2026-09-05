@@ -308,6 +308,18 @@ describe('Main integration: AUTO-I08 Brain runtime', () => {
     expect(fixture.onPresentationChanged).toHaveBeenCalledTimes(2);
   });
 
+  it('maps the Body think interaction through the Domain-owned intent gate', () => {
+    const fixture = createFixture();
+
+    expect(fixture.composition.handleCharacterInteraction('think')).toBe(true);
+
+    expect(fixture.composition.getVisualEpisode().intent).toMatchObject({
+      kind: 'thinking_loop',
+      requestedBy: 'think',
+    });
+    expect(fixture.onPresentationChanged).toHaveBeenCalledOnce();
+  });
+
   it('keeps forced drag, fall, and landing progression independent from Body outcomes', () => {
     const fixture = createFixture();
     fixture.composition.start();

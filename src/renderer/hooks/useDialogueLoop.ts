@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type {
   IAIProvider,
   AIProviderContextMessage,
@@ -13,6 +13,7 @@ import type {
 } from '../../domain/animation/animation-state-machine';
 import type { ChatMessage } from '../../domain/chat/chat-message';
 import { createChatMessage } from '../../domain/chat/chat-message';
+import { DialogueEffectLifecycle } from '../body-ui-runtime';
 
 export interface UseDialogueLoopOptions {
   aiProvider: IAIProvider;
@@ -36,6 +37,15 @@ export function useDialogueLoop({
 }: UseDialogueLoopOptions) {
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const recentContextRef = useRef<AIProviderContextMessage[]>([]);
+  const lifecycleRef = useRef(new DialogueEffectLifecycle());
+
+  useEffect(() => {
+    lifecycleRef.current.mount();
+    return (): void => {
+      lifecycleRef.current.dispose();
+      recentContextRef.current = [];
+    };
+  }, []);
 
   const handleSendMessage = useCallback(
     async (userText: string) => {
@@ -50,6 +60,7 @@ export function useDialogueLoop({
           recentContext: recentContextRef.current,
           locale,
         });
+        if (!lifecycleRef.current.isActive()) return;
 
         // Update context window
         recentContextRef.current.push({
@@ -74,13 +85,14 @@ export function useDialogueLoop({
         // 3. Update Animation FSM based on intent
         applyBehaviorIntentToAnimation(turnResult.intent, dispatchAnim);
       } catch (err) {
+        if (!lifecycleRef.current.isActive()) return;
         console.error('Dialogue error:', err);
         dispatchAnim('REACT_CONFUSED');
         setCurrentMessage(
           createChatMessage('pet', 'Ой, что-то пошло не так... Но я всё равно рядом!')
         );
       } finally {
-        setIsThinking(false);
+        if (lifecycleRef.current.isActive()) setIsThinking(false);
       }
     },
     [aiProvider, setCurrentMessage, dispatchAnim, locale]

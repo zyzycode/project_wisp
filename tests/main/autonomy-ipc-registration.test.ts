@@ -3,6 +3,19 @@ import {
   registerAutonomyIpcHandlers,
   type RegisteredAutonomyIpcHandler,
 } from '../../src/main/autonomy-ipc-registration';
+import type { BodyEventDTO } from '../../src/shared/ipc-contracts';
+
+function bodyEvent(
+  type: 'interaction' | 'menu_visibility_changed',
+  sequence = 1
+): BodyEventDTO {
+  const meta = {
+    streamId: 'stream-1', sequence, basedOnRevision: 1, observedAtMs: sequence * 10,
+  };
+  return type === 'interaction'
+    ? { ...meta, type, interaction: 'click' }
+    : { ...meta, type, expanded: true };
+}
 
 function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
   const handlers = new Map<string, RegisteredAutonomyIpcHandler>();
@@ -19,7 +32,10 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     requestSleepWake: vi.fn(),
     requestManualRootPosition: vi.fn(() => true),
   };
-  const bodyEventIngress = { receive: vi.fn() };
+  const bodyEventIngress = {
+    receive: vi.fn((payload: unknown) => payload as BodyEventDTO),
+  };
+  const handleAcceptedBodyEvent = vi.fn();
   const beginBrainTransaction = vi.fn();
   const commitBrainTransaction = vi.fn();
 
@@ -28,6 +44,7 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     getWindow: () => window,
     getController: () => controller,
     bodyEventIngress,
+    handleAcceptedBodyEvent,
     getNativePosition: () => currentPosition,
     getScreenBounds: () => ({ id: 'primary', x: 0, y: 0, width: 1_920, height: 1_080 }),
     beginBrainTransaction,
@@ -48,6 +65,7 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     window,
     controller,
     bodyEventIngress,
+    handleAcceptedBodyEvent,
     beginBrainTransaction,
     commitBrainTransaction,
   };
@@ -58,9 +76,6 @@ describe('Main: autonomy IPC registration', () => {
     const fixture = createRegistrationFixture();
     const foreignEvent = { sender: {} };
 
-    await expect(fixture.handler('wisp:set-menu-expanded')(foreignEvent, true)).rejects.toThrow(
-      'Untrusted'
-    );
     await expect(fixture.handler('wisp:set-autonomy-enabled')(
       foreignEvent,
       { enabled: false }
@@ -101,9 +116,13 @@ describe('Main: autonomy IPC registration', () => {
     expect(fixture.commitBrainTransaction).toHaveBeenCalledOnce();
   });
 
-  it('routes Body payloads only through the dedicated ingress boundary', async () => {
+  it('routes accepted Body payloads through ingress and one Brain transaction', async () => {
     const fixture = createRegistrationFixture();
     const event = { sender: fixture.trustedSender };
+    const order: string[] = [];
+    fixture.beginBrainTransaction.mockImplementation(() => order.push('begin'));
+    fixture.handleAcceptedBodyEvent.mockImplementation(() => order.push('body-event'));
+    fixture.commitBrainTransaction.mockImplementation(() => order.push('commit'));
     const payload = {
       streamId: 'stream-1', sequence: 1, basedOnRevision: 1, observedAtMs: 10,
       type: 'interaction', interaction: 'click',
@@ -111,15 +130,19 @@ describe('Main: autonomy IPC registration', () => {
 
     await expect(fixture.handler('wisp:body-event')(event, payload)).resolves.toBeUndefined();
     expect(fixture.bodyEventIngress.receive).toHaveBeenCalledWith(payload);
+    expect(fixture.handleAcceptedBodyEvent).toHaveBeenCalledWith(payload);
+    expect(fixture.beginBrainTransaction).toHaveBeenCalledOnce();
+    expect(fixture.commitBrainTransaction).toHaveBeenCalledOnce();
+    expect(order).toEqual(['begin', 'body-event', 'commit']);
   });
 
   it('clamps right and bottom edges by expanded window size through the root command path', async () => {
     const fixture = createRegistrationFixture();
 
-    await expect(fixture.handler('wisp:set-menu-expanded')(
+    await expect(fixture.handler('wisp:body-event')(
       { sender: fixture.trustedSender },
-      true
-    )).resolves.toEqual({ x: 780, y: 460 });
+      bodyEvent('menu_visibility_changed')
+    )).resolves.toBeUndefined();
 
     expect(fixture.controller.setMenuOpen).toHaveBeenCalledWith(true);
     expect(fixture.window.setSize).toHaveBeenCalledWith(1_140, 620);
@@ -129,10 +152,10 @@ describe('Main: autonomy IPC registration', () => {
   it('preserves a legal left/top position while resizing through the same root path', async () => {
     const fixture = createRegistrationFixture({ x: 0, y: 0 });
 
-    await expect(fixture.handler('wisp:set-menu-expanded')(
+    await expect(fixture.handler('wisp:body-event')(
       { sender: fixture.trustedSender },
-      true
-    )).resolves.toEqual({ x: 0, y: 0 });
+      bodyEvent('menu_visibility_changed')
+    )).resolves.toBeUndefined();
 
     expect(fixture.controller.requestManualRootPosition).toHaveBeenCalledWith({ x: 50, y: 90 });
   });
@@ -142,10 +165,10 @@ describe('Main: autonomy IPC registration', () => {
     const fixture = createRegistrationFixture(currentPosition);
     fixture.controller.requestManualRootPosition.mockReturnValue(false);
 
-    await expect(fixture.handler('wisp:set-menu-expanded')(
+    await expect(fixture.handler('wisp:body-event')(
       { sender: fixture.trustedSender },
-      true
-    )).resolves.toEqual(currentPosition);
+      bodyEvent('menu_visibility_changed')
+    )).resolves.toBeUndefined();
 
     expect(fixture.controller.requestManualRootPosition).toHaveBeenCalledWith({ x: 830, y: 550 });
     expect(fixture.window.setResizable).toHaveBeenCalledWith(true);
