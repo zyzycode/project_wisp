@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import type { IPrng } from '../../src/domain/behavior';
+import { DEFAULT_ZOOMIES_COOLDOWN_MS, type IPrng } from '../../src/domain/behavior';
+import type { Needs } from '../../src/domain/character';
 import { MainAutonomyComposition } from '../../src/main/main-autonomy-composition';
 
 class Scheduler {
@@ -40,10 +41,17 @@ function sequence(...values: number[]): IPrng {
   return { next: () => values[index++] ?? 0 };
 }
 
-function createFixture(random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0)) {
+function createFixture(
+  random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0),
+  needs: Partial<Needs> = {},
+  cancelMovementResults: readonly boolean[] = []
+) {
   const scheduler = new Scheduler();
   const requestVoluntaryMovement = vi.fn(() => true);
-  const cancelVoluntaryMovement = vi.fn(() => false);
+  const pendingCancelMovementResults = [...cancelMovementResults];
+  const cancelVoluntaryMovement = vi.fn(
+    () => pendingCancelMovementResults.shift() ?? false
+  );
   const onPresentationChanged = vi.fn();
   const tickNeeds = vi.fn();
   let episodeSequence = 0;
@@ -54,7 +62,14 @@ function createFixture(random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0)) {
     prng: random,
     prngMetadata: { algorithm: 'sequence', seed: 1 },
     getCharacterSnapshot: () => ({
-      needs: { energy: 70, attention: 20, play: 20, comfort: 20, boredom: 20 },
+      needs: {
+        energy: 70,
+        attention: 20,
+        play: 60,
+        comfort: 20,
+        boredom: 80,
+        ...needs,
+      },
       synthesizedTone: 'neutral',
     }),
     tickNeeds,
@@ -178,6 +193,65 @@ describe('Main integration: AUTO-I08 Brain runtime', () => {
     expect(fixture.composition.getActivityTimeline()).toBeNull();
     expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
     expect(fixture.scheduler.size()).toBe(1);
+  });
+
+  it('rejects Zoomies when Domain needs gates do not allow resolved play', () => {
+    const fixture = createFixture(undefined, { energy: 64 });
+    fixture.composition.start();
+    fixture.composition.suspendForUserInteraction();
+
+    expect(fixture.composition.handleCharacterInteraction('play')).toBe(false);
+    fixture.composition.resumeAfterUserInteraction();
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.requestVoluntaryMovement).not.toHaveBeenCalled();
+    expect(fixture.scheduler.size()).toBe(1);
+  });
+
+  it('keeps repeated Zoomies blocked until its monotonic Domain cooldown expires', () => {
+    const fixture = createFixture();
+    fixture.composition.start();
+    fixture.composition.suspendForUserInteraction();
+    expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
+    fixture.composition.resumeAfterUserInteraction();
+    fixture.composition.handleClick();
+
+    fixture.composition.suspendForUserInteraction();
+    expect(fixture.composition.handleCharacterInteraction('play')).toBe(false);
+    fixture.composition.resumeAfterUserInteraction();
+
+    fixture.scheduler.nowMs = DEFAULT_ZOOMIES_COOLDOWN_MS;
+    fixture.composition.suspendForUserInteraction();
+    expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
+  });
+
+  it('commits Activity cancellation even when the visual kind stays idle', () => {
+    const fixture = createFixture();
+    fixture.composition.start();
+    expect(fixture.composition.requestSleepWake({ action: 'sleep' })).toBe(true);
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    fixture.onPresentationChanged.mockClear();
+
+    fixture.composition.setMenuOpen(true);
+
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    expect(fixture.onPresentationChanged).toHaveBeenCalledOnce();
+  });
+
+  it('publishes one coherent cancellation when stopping active movement succeeds', () => {
+    const fixture = createFixture(undefined, {}, [true]);
+    fixture.composition.start();
+    fixture.scheduler.take()?.();
+    expect(fixture.composition.getActivityTimeline()?.activityId).toBe('explore');
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('walk');
+    fixture.onPresentationChanged.mockClear();
+
+    fixture.composition.setEnabled(false);
+
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    expect(fixture.cancelVoluntaryMovement).toHaveNthReturnedWith(1, true);
+    expect(fixture.onPresentationChanged).toHaveBeenCalledOnce();
   });
 
   it.each([

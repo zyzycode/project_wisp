@@ -20,6 +20,8 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     requestManualRootPosition: vi.fn(() => true),
   };
   const bodyEventIngress = { receive: vi.fn() };
+  const beginBrainTransaction = vi.fn();
+  const commitBrainTransaction = vi.fn();
 
   registerAutonomyIpcHandlers({
     register: (channel, handler) => handlers.set(channel, handler),
@@ -28,6 +30,8 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     bodyEventIngress,
     getNativePosition: () => currentPosition,
     getScreenBounds: () => ({ id: 'primary', x: 0, y: 0, width: 1_920, height: 1_080 }),
+    beginBrainTransaction,
+    commitBrainTransaction,
     pivotOffset: { x: 50, y: 90 },
     compactSize: { width: 280, height: 320 },
     expandedSize: { width: 1_140, height: 620 },
@@ -38,7 +42,15 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     if (registered === undefined) throw new Error(`Missing handler: ${channel}`);
     return registered;
   };
-  return { handler, trustedSender, window, controller, bodyEventIngress };
+  return {
+    handler,
+    trustedSender,
+    window,
+    controller,
+    bodyEventIngress,
+    beginBrainTransaction,
+    commitBrainTransaction,
+  };
 }
 
 describe('Main: autonomy IPC registration', () => {
@@ -68,6 +80,25 @@ describe('Main: autonomy IPC registration', () => {
     expect(fixture.bodyEventIngress.receive).not.toHaveBeenCalled();
     expect(fixture.controller.requestManualRootPosition).not.toHaveBeenCalled();
     expect(fixture.window.setSize).not.toHaveBeenCalled();
+    expect(fixture.beginBrainTransaction).not.toHaveBeenCalled();
+    expect(fixture.commitBrainTransaction).not.toHaveBeenCalled();
+  });
+
+  it('contains autonomy mutations in one Brain transaction', async () => {
+    const fixture = createRegistrationFixture();
+    const order: string[] = [];
+    fixture.beginBrainTransaction.mockImplementation(() => order.push('begin'));
+    fixture.controller.setEnabled.mockImplementation(() => order.push('mutation'));
+    fixture.commitBrainTransaction.mockImplementation(() => order.push('commit'));
+
+    await fixture.handler('wisp:set-autonomy-enabled')(
+      { sender: fixture.trustedSender },
+      { enabled: false }
+    );
+
+    expect(order).toEqual(['begin', 'mutation', 'commit']);
+    expect(fixture.beginBrainTransaction).toHaveBeenCalledOnce();
+    expect(fixture.commitBrainTransaction).toHaveBeenCalledOnce();
   });
 
   it('routes Body payloads only through the dedicated ingress boundary', async () => {

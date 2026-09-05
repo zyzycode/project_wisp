@@ -44,8 +44,11 @@ function createOrchestrator(now: () => number, initialMotion: MotionState = moti
   const dispatchMotionEvent = vi.fn();
   const dispatchSurfaceEvent = vi.fn();
   const applyStimulus = vi.fn();
+  const mapStimulus = vi.fn(
+    (event: ShimejiFeedbackEvent) => ({ id: `stimulus:${event.eventId}`, type: 'user_drag_start' as const })
+  );
   const mapper: IShimejiStimulusMapper = {
-    map: (event: ShimejiFeedbackEvent) => ({ id: `stimulus:${event.eventId}`, type: 'user_drag_start' }),
+    map: mapStimulus,
   };
   const orchestrator = new ShimejiMotionOrchestrator({
     initialMotion,
@@ -61,7 +64,14 @@ function createOrchestrator(now: () => number, initialMotion: MotionState = moti
     createStimulusTimestamp: () => '2026-09-05T00:00:00.000Z',
     createDragSessionId: () => 'session-1',
   });
-  return { orchestrator, commitRootPosition, dispatchMotionEvent, dispatchSurfaceEvent, applyStimulus };
+  return {
+    orchestrator,
+    commitRootPosition,
+    dispatchMotionEvent,
+    dispatchSurfaceEvent,
+    applyStimulus,
+    mapStimulus,
+  };
 }
 
 describe('Application: ShimejiMotionOrchestrator', () => {
@@ -118,6 +128,41 @@ describe('Application: ShimejiMotionOrchestrator', () => {
       'stimulus:session-1:started',
       'stimulus:session-1:ended',
     ]);
+  });
+
+  it('emits one bounded hold stimulus per drag run', () => {
+    let nowMs = 0;
+    const result = createOrchestrator(() => nowMs, motion({ position: { x: 100, y: 500 } }));
+    result.orchestrator.start();
+    result.orchestrator.beginDrag({
+      pointerId: 2, sequence: 0, screenPosition: { x: 100, y: 500 },
+    });
+    nowMs = 10;
+    result.orchestrator.tick();
+
+    nowMs = 499;
+    result.orchestrator.tick();
+    expect(result.applyStimulus.mock.calls.map(([stimulus]) => stimulus.id))
+      .not.toContain('stimulus:session-1:hold');
+
+    nowMs = 500;
+    result.orchestrator.tick();
+    nowMs = 900;
+    result.orchestrator.tick();
+    result.orchestrator.releaseDrag({
+      pointerId: 2, dragSessionId: 'session-1', sequence: 1,
+      screenPosition: { x: 100, y: 500 },
+    });
+    nowMs = 910;
+    result.orchestrator.tick();
+
+    const holdEvents = result.mapStimulus.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.type === 'drag_hold');
+    expect(holdEvents).toEqual([{
+      type: 'drag_hold', eventId: 'session-1:hold', dragRunId: 'session-1',
+      heldMs: 500, atMs: 500,
+    }]);
   });
 
   it('applies one stimulus for a crash landing across fixed-step catch-up', () => {

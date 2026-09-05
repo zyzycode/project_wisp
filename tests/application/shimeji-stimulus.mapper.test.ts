@@ -35,6 +35,13 @@ describe('Application: Shimeji stimulus mapper', () => {
       createdAt: context.createdAtIso, metadata: { deltaMs: 0 },
     });
     expect(mapper.map({
+      type: 'drag_hold', eventId: 'drag-1:hold', dragRunId: 'drag-1', heldMs: 500, atMs: 500,
+    }, context)).toEqual({
+      id: 'drag-1:hold', type: 'system_event', source: 'user',
+      createdAt: context.createdAtIso,
+      metadata: { deltaMs: 0, dragRunId: 'drag-1', heldMs: 500 },
+    });
+    expect(mapper.map({
       type: 'drag_ended', eventId: 'drag-1:ended', dragRunId: 'drag-1', heldMs: 500, atMs: 510,
     }, context)).toEqual({
       id: 'drag-1:ended', type: 'user_drag_end', source: 'user',

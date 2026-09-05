@@ -30,6 +30,8 @@ export type {
   StimulusDto,
 } from '../ports/shimeji-feedback-port';
 
+export const DEFAULT_DRAG_HOLD_THRESHOLD_MS = 500;
+
 export interface PointerInput {
   readonly pointerId: number;
   readonly sequence: number;
@@ -64,6 +66,7 @@ export interface ShimejiMotionOrchestratorOptions {
   readonly stimulusMapper?: IShimejiStimulusMapper;
   readonly applyStimulus?: (stimulus: StimulusDto) => void;
   readonly createStimulusTimestamp?: () => string;
+  readonly dragHoldThresholdMs?: number;
   readonly createDragSessionId?: () => string;
   readonly onVoluntaryMovementCompleted?: () => void;
 }
@@ -86,6 +89,7 @@ interface DragSession {
   readonly startedAtMs: number;
   lastSequence: number;
   lastAppliedSequence: number;
+  holdFeedbackEmitted: boolean;
   samples: PointerMotionSample[];
 }
 
@@ -136,6 +140,9 @@ export class ShimejiMotionOrchestrator {
     if (options.stimulusMapper !== undefined && options.createStimulusTimestamp === undefined) {
       throw new Error('A stimulus timestamp source is required with the stimulus mapper');
     }
+    if (!Number.isFinite(this.dragHoldThresholdMs()) || this.dragHoldThresholdMs() < 0) {
+      throw new RangeError('Drag hold threshold must be finite and non-negative');
+    }
     this.motion = options.initialMotion;
     this.surface = options.initialSurface;
   }
@@ -172,6 +179,7 @@ export class ShimejiMotionOrchestrator {
       startedAtMs: nowMs,
       lastSequence: input.sequence,
       lastAppliedSequence: input.sequence,
+      holdFeedbackEmitted: false,
       samples: [],
     };
     this.queuedPointerEvents.push({ type: 'begin', input, sessionId, receivedAtMs: nowMs });
@@ -214,6 +222,9 @@ export class ShimejiMotionOrchestrator {
       simulationAtMs = stepAtMs;
       this.simulationAtMs = simulationAtMs;
       this.accumulatorSec -= constraints.fixedStepSec;
+    }
+    if (this.dragSession !== undefined && this.motion.phase === 'dragged') {
+      this.emitDragHold(this.dragSession, nowMs);
     }
 
     const positionChanged =
@@ -320,6 +331,10 @@ export class ShimejiMotionOrchestrator {
     return this.options.constraints ?? DEFAULT_MOTION_CONSTRAINTS;
   }
 
+  private dragHoldThresholdMs(): number {
+    return this.options.dragHoldThresholdMs ?? DEFAULT_DRAG_HOLD_THRESHOLD_MS;
+  }
+
   private scheduleNextTick(): void {
     if (!this.running || this.options.scheduler === undefined) return;
     this.cancelScheduledTick = this.options.scheduler.schedule(() => {
@@ -375,6 +390,7 @@ export class ShimejiMotionOrchestrator {
       session.samples.push({ position: rootPosition, capturedAtMs: event.receivedAtMs });
       session.lastAppliedSequence = event.input.sequence;
       if (event.type === 'release') {
+        this.emitDragHold(session, event.receivedAtMs);
         const released = this.options.motionEngine.release(
           this.motion,
           this.options.motionEngine.estimateThrow(session.samples, event.receivedAtMs)
@@ -389,6 +405,25 @@ export class ShimejiMotionOrchestrator {
         this.dragSession = undefined;
       }
     }
+  }
+
+  private emitDragHold(session: DragSession, atMs: number): void {
+    const heldMs = atMs - session.startedAtMs;
+    if (
+      session.holdFeedbackEmitted ||
+      !Number.isFinite(heldMs) ||
+      heldMs < this.dragHoldThresholdMs()
+    ) {
+      return;
+    }
+    session.holdFeedbackEmitted = true;
+    this.emitFeedback({
+      type: 'drag_hold',
+      eventId: `${session.id}:hold`,
+      dragRunId: session.id,
+      heldMs,
+      atMs,
+    });
   }
 
   private step(environment: EnvironmentSnapshot, nowMs: number, stepSec: number): boolean {

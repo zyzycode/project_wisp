@@ -1,14 +1,21 @@
 import {
   ActivityRunner,
-  EXPLORE_ACTIVITY,
-  REST_ACTIVITY,
-  ZOOMIES_ACTIVITY,
+  DEFAULT_ACTIVITY_COOLDOWN_RULES,
+  EMPTY_COOLDOWNS,
+  recordAction,
+  recordRunResult,
+  selectActivityForResolvedIntent,
+  triggerCooldown,
   type ActivityCancelReason,
   type ActivityDefinition,
   type ActivityResult,
   type ActivityRunnerUpdate,
   type ActivityRuntimeState,
+  type ActivitySelectionContext,
   type AnimationIntentTemplate,
+  type CooldownRule,
+  type CooldownState,
+  type RepetitionHistory,
 } from '../../domain/behavior/activity-runner';
 import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
 import {
@@ -22,9 +29,14 @@ import type { AutonomyClock } from './autonomy-coordinator';
 export interface BrainActivityRuntimeOptions {
   readonly clock: AutonomyClock;
   readonly getCharacterSnapshot: () => CharacterAutonomySnapshot;
+  readonly getSelectionContext: () => Pick<
+    ActivitySelectionContext,
+    'character' | 'synthesizedTone' | 'environment'
+  >;
   readonly requestLocomotion: () => boolean;
   readonly cancelLocomotion: () => boolean;
   readonly createRunId: () => string;
+  readonly cooldownRules?: readonly CooldownRule[];
   readonly onVisualIntent: (intent: AnimationIntent<AnimationIntentKind>) => void;
   readonly onTerminated: (result: ActivityResult) => void;
 }
@@ -35,19 +47,31 @@ export class BrainActivityRuntime {
   private readonly usedRunIds = new Set<string>();
   private definition: ActivityDefinition | null = null;
   private runtime: ActivityRuntimeState | null = null;
+  private repetition: RepetitionHistory = { activities: [], actions: [] };
+  private cooldowns: CooldownState = EMPTY_COOLDOWNS;
 
   public constructor(private readonly options: BrainActivityRuntimeOptions) {}
 
   public start(intent: BehaviorIntent, locomotionPrepared: boolean): boolean {
-    const definition = activityForIntent(intent);
+    const nowMs = this.options.clock.now();
+    const definition = selectActivityForResolvedIntent(
+      intent,
+      {
+        ...this.options.getSelectionContext(),
+        repetition: this.repetition,
+        cooldowns: this.cooldowns,
+      },
+      nowMs
+    );
     if (definition === null) return false;
     this.cancel('higher_priority_activity');
     const runId = this.options.createRunId();
     requireRunId(runId, this.usedRunIds);
-    const update = this.runner.start(definition, runId, this.options.clock.now());
+    const update = this.runner.start(definition, runId, nowMs);
     if (update.runtime === undefined) return false;
     this.definition = definition;
     this.runtime = update.runtime;
+    this.applyCooldown(definition, 'start', nowMs);
     return this.applyUpdate(definition, update, locomotionPrepared);
   }
 
@@ -79,9 +103,11 @@ export class BrainActivityRuntime {
   }
 
   public cancel(reason: ActivityCancelReason): boolean {
+    const definition = this.definition;
     const runtime = this.runtime;
-    if (runtime === null) return false;
-    this.runner.cancel(runtime, reason, this.options.clock.now());
+    if (definition === null || runtime === null) return false;
+    const update = this.runner.cancel(runtime, reason, this.options.clock.now());
+    this.recordTerminal(definition, runtime, update.result!);
     this.definition = null;
     this.runtime = null;
     this.options.cancelLocomotion();
@@ -98,6 +124,8 @@ export class BrainActivityRuntime {
     locomotionPrepared: boolean
   ): boolean {
     if (update.result !== undefined) {
+      const runtime = this.runtime;
+      if (runtime !== null) this.recordTerminal(definition, runtime, update.result);
       this.definition = null;
       this.runtime = null;
       if (update.result.status !== 'completed') this.options.cancelLocomotion();
@@ -117,9 +145,39 @@ export class BrainActivityRuntime {
       );
     }
     if (step.type === 'animation' || step.type === 'locomotion') {
+      this.repetition = recordAction(this.repetition, {
+        actionId: step.actionId,
+        animationKind: step.intent.kind,
+        shownAtMs: this.options.clock.now(),
+      });
       this.options.onVisualIntent(this.animationIntentFor(step.intent));
     }
     return true;
+  }
+
+  private recordTerminal(
+    definition: ActivityDefinition,
+    runtime: ActivityRuntimeState,
+    result: ActivityResult
+  ): void {
+    this.repetition = recordRunResult(this.repetition, runtime, result);
+    if (result.status === 'completed') {
+      this.applyCooldown(definition, 'completion', result.completedAtMs);
+    } else if (result.status === 'cancelled') {
+      this.applyCooldown(definition, 'cancelled', result.cancelledAtMs);
+    }
+  }
+
+  private applyCooldown(
+    definition: ActivityDefinition,
+    trigger: 'start' | 'completion' | 'cancelled',
+    nowMs: number
+  ): void {
+    const cooldownKey = definition.cooldownKey;
+    if (cooldownKey === undefined) return;
+    const rule = (this.options.cooldownRules ?? DEFAULT_ACTIVITY_COOLDOWN_RULES)
+      .find((candidate) => candidate.key === cooldownKey);
+    if (rule !== undefined) this.cooldowns = triggerCooldown(this.cooldowns, rule, trigger, nowMs);
   }
 
   private animationIntentFor(template: AnimationIntentTemplate): AnimationIntent<AnimationIntentKind> {
@@ -134,13 +192,6 @@ export class BrainActivityRuntime {
       }
     );
   }
-}
-
-function activityForIntent(intent: BehaviorIntent): ActivityDefinition | null {
-  if (intent.kind === 'wander') return EXPLORE_ACTIVITY;
-  if (intent.kind === 'sleep') return REST_ACTIVITY;
-  if (intent.kind === 'play') return ZOOMIES_ACTIVITY;
-  return null;
 }
 
 function requireRunId(id: string, used: Set<string>): void {

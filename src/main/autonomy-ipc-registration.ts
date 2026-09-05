@@ -50,6 +50,8 @@ export interface RegisterAutonomyIpcHandlersOptions {
   readonly bodyEventIngress: BodyEventIpcIngress;
   readonly getNativePosition: () => PetPositionDTO;
   readonly getScreenBounds: () => ScreenBoundsDto;
+  readonly beginBrainTransaction: () => void;
+  readonly commitBrainTransaction: () => void;
   readonly pivotOffset: Vector2Dto;
   readonly compactSize: WindowSize;
   readonly expandedSize: WindowSize;
@@ -97,33 +99,47 @@ function requireTrustedContext(
   return { window, controller };
 }
 
+function runInBrainTransaction<Result>(
+  options: RegisterAutonomyIpcHandlersOptions,
+  operation: () => Result
+): Result {
+  options.beginBrainTransaction();
+  try {
+    return operation();
+  } finally {
+    options.commitBrainTransaction();
+  }
+}
+
 export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlersOptions): void {
   options.register('wisp:set-menu-expanded', async (event, payload): Promise<PetPositionDTO> => {
     const { window, controller } = requireTrustedContext(options, event);
-    const expanded = handleSetMenuExpanded(controller, payload);
-    const size = expanded ? options.expandedSize : options.compactSize;
-    const currentPosition = options.getNativePosition();
-    const nextPosition = clampNativePositionForWindow(
-      currentPosition,
-      options.getScreenBounds(),
-      size
-    );
-    const repositionAccepted = controller.requestManualRootPosition(
-      nativeToRootPosition(nextPosition, options.pivotOffset)
-    );
-    window.setResizable(true);
-    window.setSize(size.width, size.height);
-    return repositionAccepted ? nextPosition : currentPosition;
+    return runInBrainTransaction(options, () => {
+      const expanded = handleSetMenuExpanded(controller, payload);
+      const size = expanded ? options.expandedSize : options.compactSize;
+      const currentPosition = options.getNativePosition();
+      const nextPosition = clampNativePositionForWindow(
+        currentPosition,
+        options.getScreenBounds(),
+        size
+      );
+      const repositionAccepted = controller.requestManualRootPosition(
+        nativeToRootPosition(nextPosition, options.pivotOffset)
+      );
+      window.setResizable(true);
+      window.setSize(size.width, size.height);
+      return repositionAccepted ? nextPosition : currentPosition;
+    });
   });
 
   options.register('wisp:set-autonomy-enabled', async (event, payload): Promise<void> => {
     const { controller } = requireTrustedContext(options, event);
-    handleSetAutonomyEnabled(controller, payload);
+    runInBrainTransaction(options, () => handleSetAutonomyEnabled(controller, payload));
   });
 
   options.register('wisp:request-sleep-wake', async (event, payload): Promise<void> => {
     const { controller } = requireTrustedContext(options, event);
-    handleRequestSleepWake(controller, payload);
+    runInBrainTransaction(options, () => handleRequestSleepWake(controller, payload));
   });
 
   options.register('wisp:body-event', async (event, payload): Promise<void> => {

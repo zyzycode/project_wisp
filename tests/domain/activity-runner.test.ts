@@ -11,6 +11,7 @@ import {
   recordAction,
   recordActivity,
   repetitionModifier,
+  selectActivityForResolvedIntent,
   triggerCooldown,
   validateCooldownRule,
   validateRepetitionPenalty,
@@ -176,6 +177,26 @@ describe('Domain: Zoomies selection', () => {
   it('includes Zoomies in weighted selection only after all gates are met', () => {
     expect(weightedActivity([EXPLORE_ACTIVITY, ZOOMIES_ACTIVITY], context(), 0, .999)).toBe(ZOOMIES_ACTIVITY);
     expect(weightedActivity([EXPLORE_ACTIVITY, ZOOMIES_ACTIVITY], context({ character: character({ energy: 64 }) }), 0, .999)).toBe(EXPLORE_ACTIVITY);
+  });
+
+  it('selects Zoomies for resolved play only when Domain needs and cooldown gates allow it', () => {
+    const play = { kind: 'play', source: 'user', priority: 'high' } as const;
+    expect(selectActivityForResolvedIntent(play, context(), 0)).toBe(ZOOMIES_ACTIVITY);
+    expect(selectActivityForResolvedIntent(
+      play,
+      context({ character: character({ energy: 64 }) }),
+      0
+    )).toBeNull();
+    const cooling = triggerCooldown(
+      EMPTY_COOLDOWNS,
+      { key: 'zoomies', durationMs: 1_000, startsOn: 'start' },
+      'start',
+      0
+    );
+    expect(selectActivityForResolvedIntent(play, context({ cooldowns: cooling }), 999))
+      .toBeNull();
+    expect(selectActivityForResolvedIntent(play, context({ cooldowns: cooling }), 1_000))
+      .toBe(ZOOMIES_ACTIVITY);
   });
 
   it('rejects unresolved targets in invalid definitions', () => {

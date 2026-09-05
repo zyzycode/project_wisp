@@ -90,6 +90,17 @@ export class MainAutonomyComposition {
     this.activity = new BrainActivityRuntime({
       clock: options.clock,
       getCharacterSnapshot: options.getCharacterSnapshot,
+      getSelectionContext: () => {
+        const snapshot = options.getCharacterSnapshot();
+        return {
+          character: snapshot,
+          synthesizedTone: snapshot.synthesizedTone,
+          environment: {
+            capturedAtMs: options.clock.now(),
+            screenBounds: options.movement.getBounds(),
+          },
+        };
+      },
       requestLocomotion: () => this.coordinator.requestActivityLocomotion(),
       cancelLocomotion: () => options.movement.cancelVoluntaryMovement(),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
@@ -140,13 +151,13 @@ export class MainAutonomyComposition {
   }
 
   public setEnabled(enabled: boolean): void {
-    this.coordinator.setEnabled(enabled);
     if (!enabled) this.cancelActivity('explicit_cancel', true);
+    this.coordinator.setEnabled(enabled);
   }
 
   public setMenuOpen(menuOpen: boolean): void {
-    this.coordinator.setMenuOpen(menuOpen);
     if (menuOpen) this.cancelActivity('explicit_cancel', true);
+    this.coordinator.setMenuOpen(menuOpen);
   }
 
   public getVisualEpisode(): BrainVisualEpisode {
@@ -311,7 +322,10 @@ export class MainAutonomyComposition {
     const releaseUserInteraction = this.deferredUserInteractionResume;
     this.deferredUserInteractionResume = false;
     if (releaseUserInteraction) this.coordinator.resumeAfterUserInteraction();
-    if (publish) this.setVisualKind('idle_blink', true);
+    if (publish) {
+      this.setVisualKind('idle_blink', false);
+      this.options.onPresentationChanged();
+    }
     return true;
   }
 

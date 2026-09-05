@@ -362,6 +362,8 @@ function registerIpcHandlers(): void {
     bodyEventIngress,
     getNativePosition,
     getScreenBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
+    beginBrainTransaction: () => brainStatePublisher.beginTransaction(),
+    commitBrainTransaction: () => brainStatePublisher.commitTransaction(),
     pivotOffset: ROOT_PIVOT_OFFSET,
     compactSize: { width: COMPACT_WINDOW_WIDTH, height: COMPACT_WINDOW_HEIGHT },
     expandedSize: { width: EXPANDED_WINDOW_WIDTH, height: EXPANDED_WINDOW_HEIGHT },

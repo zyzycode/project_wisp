@@ -1,5 +1,6 @@
 import type { AnimationIntent, AnimationIntentKind } from '../animation';
 import type { CharacterState, SynthesizedEmotionalTone } from '../character';
+import type { BehaviorIntent } from './behavior-intent';
 import type { MonotonicMs } from './motion-engine';
 import type { EnvironmentSnapshot } from './surface-kinematics';
 
@@ -57,6 +58,10 @@ export interface CooldownRule { readonly key: CooldownKey; readonly durationMs: 
 export interface CooldownEntry { readonly key: CooldownKey; readonly nextEligibleAtMs: MonotonicMs }
 export interface CooldownState { readonly entries: readonly CooldownEntry[] }
 export const EMPTY_COOLDOWNS: CooldownState = { entries: [] };
+export const DEFAULT_ZOOMIES_COOLDOWN_MS = 30_000;
+export const DEFAULT_ACTIVITY_COOLDOWN_RULES: readonly CooldownRule[] = Object.freeze([
+  Object.freeze({ key: 'zoomies', durationMs: DEFAULT_ZOOMIES_COOLDOWN_MS, startsOn: 'start' }),
+]);
 
 export type ActivityRuntimeStatus = 'running' | 'completed' | 'cancelled' | 'failed';
 export interface ActivityRuntimeState {
@@ -197,13 +202,30 @@ export function isCooldownEligible(state: CooldownState, key: CooldownKey, nowMs
 export type CooldownTrigger = 'start' | 'completion' | 'cancelled';
 export function triggerCooldown(state: CooldownState, rule: CooldownRule, trigger: CooldownTrigger, nowMs: MonotonicMs): CooldownState { const applies = rule.startsOn === trigger || (rule.startsOn === 'any_finish' && trigger !== 'start'); if (!validateCooldownRule(rule) || !applies) return state; return { entries: [...state.entries.filter((entry) => entry.key !== rule.key), { key: rule.key, nextEligibleAtMs: nowMs + rule.durationMs }] }; }
 
-export interface ActivitySelectionContext { readonly character: Readonly<CharacterState>; readonly synthesizedTone: SynthesizedEmotionalTone; readonly environment: EnvironmentSnapshot; readonly repetition: RepetitionHistory; readonly cooldowns: CooldownState; readonly activePriority?: ActivityPriorityClass }
+export interface ActivitySelectionContext { readonly character: Readonly<Pick<CharacterState, 'needs'>>; readonly synthesizedTone: SynthesizedEmotionalTone; readonly environment: EnvironmentSnapshot; readonly repetition: RepetitionHistory; readonly cooldowns: CooldownState; readonly activePriority?: ActivityPriorityClass }
 function unit(value: number | undefined): number { return Math.max(0, Math.min(1, (value ?? 0) / 100)); }
 export function isZoomiesEligible(context: ActivitySelectionContext, cooldownKey = 'zoomies', nowMs = 0): boolean { const needs = context.character.needs; return unit(needs.energy) >= .65 && unit(needs.boredom) >= .75 && unit(needs.play) >= .5 && unit(needs.comfort) < .8 && isCooldownEligible(context.cooldowns, cooldownKey, nowMs); }
-export function zoomiesNeedModifier(character: Readonly<CharacterState>): number { const needs = character.needs; const b = unit(needs.boredom); const e = unit(needs.energy); const p = unit(needs.play); return (.5 + 2.5 * b ** 2) * (.5 + 1.5 * e ** 2) * (.5 + p); }
+export function zoomiesNeedModifier(character: Readonly<Pick<CharacterState, 'needs'>>): number { const needs = character.needs; const b = unit(needs.boredom); const e = unit(needs.energy); const p = unit(needs.play); return (.5 + 2.5 * b ** 2) * (.5 + 1.5 * e ** 2) * (.5 + p); }
 export function weightedActivity(definitions: readonly ActivityDefinition[], context: ActivitySelectionContext, nowMs: MonotonicMs, randomUnit: number, extraModifier: (definition: ActivityDefinition) => number = () => 1): ActivityDefinition | null { const weighted = definitions.filter((definition) => (!definition.cooldownKey || isCooldownEligible(context.cooldowns, definition.cooldownKey, nowMs)) && (definition.id !== ZOOMIES_ACTIVITY.id || isZoomiesEligible(context, definition.cooldownKey, nowMs))).map((definition) => ({ definition, weight: definition.baseWeight * repetitionModifier(definition, context.repetition, nowMs) * (definition.id === ZOOMIES_ACTIVITY.id ? zoomiesNeedModifier(context.character) : 1) * Math.max(0, extraModifier(definition)) })).filter((item) => item.weight > 0); const total = weighted.reduce((sum, item) => sum + item.weight, 0); if (total === 0) return null; let cursor = Math.max(0, Math.min(0.999999999, randomUnit)) * total; for (const item of weighted) { cursor -= item.weight; if (cursor <= 0) return item.definition; } return weighted[weighted.length - 1]?.definition ?? null; }
 
 export const EXPLORE_ACTIVITY: ActivityDefinition = { id: 'explore', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'walk', steps: [ { id: 'walk', actionId: 'walk', stage: 'entering', type: 'locomotion', gait: 'walk', targetRef: 'wander_target', intent: { kind: 'walk' }, timeoutMs: 7000, next: 'observe' }, { id: 'observe', actionId: 'observe', stage: 'looping', type: 'animation', intent: { kind: 'idle_blink' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'sit' }, { id: 'sit', actionId: 'sit', stage: 'looping', type: 'animation', intent: { kind: 'sit' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'look_around' }, { id: 'look_around', actionId: 'look_around', stage: 'looping', type: 'animation', intent: { kind: 'thinking_loop' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'stand_up' }, { id: 'stand_up', actionId: 'stand_up', stage: 'exiting', type: 'animation', intent: { kind: 'stand_up' }, completion: { type: 'elapsed', durationMs: 3000 } } ] };
 export const REST_ACTIVITY: ActivityDefinition = { id: 'rest', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'yawn', steps: [ { id: 'yawn', actionId: 'yawn', stage: 'entering', type: 'animation', intent: { kind: 'idle_blink' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'lie_down' }, { id: 'lie_down', actionId: 'lie_down', stage: 'entering', type: 'animation', intent: { kind: 'lie_down' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'sleep_start' }, { id: 'sleep_start', actionId: 'sleep_start', stage: 'entering', type: 'animation', intent: { kind: 'sleep_start' }, completion: { type: 'elapsed', durationMs: 3000 }, next: 'sleep_loop' }, { id: 'sleep_loop', actionId: 'sleep_loop', stage: 'looping', type: 'animation', intent: { kind: 'sleep_loop', loop: 'until_replaced' }, completion: { type: 'elapsed', durationMs: 3000 } } ] };
 /** A rare P3 reactive sprint; gates and cooldown are enforced by weightedActivity. */
 export const ZOOMIES_ACTIVITY: ActivityDefinition = { id: 'zoomies', priority: 'P3_reactive', baseWeight: .1, cooldownKey: 'zoomies', entryStepId: 'sprint', steps: [ { id: 'sprint', actionId: 'zoomies_sprint', stage: 'looping', type: 'locomotion', gait: 'run', targetRef: 'zoomies_target', intent: { kind: 'run' }, timeoutMs: 6000, next: 'settle' }, { id: 'settle', actionId: 'zoomies_settle', stage: 'exiting', type: 'animation', intent: { kind: 'settle' }, completion: { type: 'elapsed', durationMs: 3000 } } ] };
+
+/** Pure Behavior Brain compatibility and eligibility selection for a resolved intent. */
+export function selectActivityForResolvedIntent(
+  intent: BehaviorIntent,
+  context: ActivitySelectionContext,
+  nowMs: MonotonicMs,
+  randomUnit = 0
+): ActivityDefinition | null {
+  const candidates = intent.kind === 'wander'
+    ? [EXPLORE_ACTIVITY]
+    : intent.kind === 'sleep'
+      ? [REST_ACTIVITY]
+      : intent.kind === 'play'
+        ? [ZOOMIES_ACTIVITY]
+        : [];
+  return weightedActivity(candidates, context, nowMs, randomUnit);
+}
