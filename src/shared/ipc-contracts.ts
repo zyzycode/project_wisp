@@ -31,6 +31,164 @@ export type SleepWakeCommandDTO =
   | { readonly action: 'sleep' }
   | { readonly action: 'wake' };
 
+/** Target Brain -> Body state contract for the Phase 14 atomic IPC cutover. */
+export type BrainEmotionalToneDTO =
+  | 'shy'
+  | 'sleepy'
+  | 'playful'
+  | 'curious'
+  | 'neutral'
+  | 'affectionate'
+  | 'flustered';
+
+export type BrainVisualIntentKindDTO =
+  | 'idle_blink'
+  | 'walk'
+  | 'settle'
+  | 'sleep_start'
+  | 'sleep_loop'
+  | 'wake_up'
+  | 'happy_reaction'
+  | 'confused_reaction'
+  | 'thinking_loop'
+  | 'talking'
+  | 'bored'
+  | 'wave'
+  | 'celebrate'
+  | 'spook'
+  | 'dragged'
+  | 'land'
+  | 'sit'
+  | 'stand_up'
+  | 'lie_down'
+  | 'get_up'
+  | 'run'
+  | 'jump'
+  | 'fall'
+  | 'crawl'
+  | 'climb_wall'
+  | 'hang_ceiling'
+  | 'crash_landing';
+
+export interface BrainNeedsDTO {
+  readonly energy: number;
+  readonly attention: number;
+  readonly play: number;
+  readonly comfort: number;
+  readonly boredom: number;
+}
+
+export interface BrainActivityTimelineDTO {
+  readonly runId: string;
+  readonly activityId: string;
+  readonly phaseId: string;
+  readonly stage: 'entering' | 'looping' | 'exiting';
+  readonly startedAtMs: number;
+  readonly phaseStartedAtMs: number;
+  readonly phaseEndsAtMs: number | null;
+}
+
+export interface BrainMotionStateDTO {
+  readonly phase: 'dragged' | 'airborne' | 'grounded';
+  readonly rootScreenPosition: { readonly x: number; readonly y: number };
+  readonly velocityPxPerSec: { readonly x: number; readonly y: number };
+  readonly positionAuthority: 'forced' | 'voluntary';
+}
+
+export interface BrainVisualIntentDTO {
+  readonly episodeId: string;
+  readonly episodeStartedAtMs: number;
+  readonly kind: BrainVisualIntentKindDTO;
+  readonly category:
+    | 'idle'
+    | 'movement'
+    | 'reaction'
+    | 'dialogue'
+    | 'sleep'
+    | 'gesture'
+    | 'transition'
+    | 'physics';
+  readonly priority: 'low' | 'normal' | 'high' | 'critical';
+  readonly interrupt: 'yes' | 'no' | 'limited';
+  readonly loop: 'none' | 'until_replaced' | 'bounded';
+  readonly emotionalTone: BrainEmotionalToneDTO;
+  readonly expressionHint?:
+    | 'idle'
+    | 'blush'
+    | 'happy'
+    | 'winking'
+    | 'pout'
+    | 'curious'
+    | 'thinking'
+    | 'sleepy'
+    | 'surprised'
+    | 'shocked'
+    | 'sad'
+    | 'angry'
+    | 'talking'
+    | 'flying'
+    | 'gaze'
+    | 'dizzy'
+    | 'flirty';
+  readonly gazeDirection?: 'left' | 'right' | 'up' | 'down';
+  readonly propHint?: 'pillow' | 'heart' | 'question' | 'sparkle' | 'none';
+}
+
+export interface BrainStateDTO {
+  readonly streamId: string;
+  readonly revision: number;
+  readonly sampledAtMs: number;
+  readonly character: {
+    readonly needs: BrainNeedsDTO;
+    readonly synthesizedTone: BrainEmotionalToneDTO;
+  };
+  readonly activity: BrainActivityTimelineDTO | null;
+  readonly motion: BrainMotionStateDTO;
+  readonly visualIntent: BrainVisualIntentDTO;
+}
+
+export interface BodyEventMetaDTO {
+  readonly streamId: string;
+  readonly sequence: number;
+  readonly basedOnRevision: number;
+  readonly observedAtMs: number;
+}
+
+export type BodyEventDTO =
+  | (BodyEventMetaDTO & {
+      readonly type: 'cursor_observed';
+      readonly screenPosition: { readonly x: number; readonly y: number };
+    })
+  | (BodyEventMetaDTO & {
+      readonly type: 'interaction';
+      readonly interaction:
+        | 'click'
+        | 'double_click'
+        | 'right_click'
+        | 'pet'
+        | 'play'
+        | 'feed'
+        | 'think';
+      readonly intensity?: number;
+    })
+  | (BodyEventMetaDTO & {
+      readonly type: 'drag_started' | 'drag_moved';
+      readonly gestureId: string;
+      readonly pointerId: number;
+      readonly screenPosition: { readonly x: number; readonly y: number };
+    })
+  | (BodyEventMetaDTO & {
+      readonly type: 'drag_ended';
+      readonly gestureId: string;
+      readonly pointerId: number;
+      readonly screenPosition: { readonly x: number; readonly y: number };
+      readonly cancelled: boolean;
+    })
+  | (BodyEventMetaDTO & {
+      readonly type: 'menu_visibility_changed';
+      readonly expanded: boolean;
+    });
+
 export type AnimationLifecycleOutcomeDTO =
   | 'completed'
   | 'interrupted'

@@ -3,14 +3,14 @@
 `AnimationIntent` — семантический визуальный запрос после принятого решения о поведении. Он описывает желаемое визуальное состояние персонажа без привязки к конкретным спрайтам, кадрам, размерам текстур или платформенным API.
 
 > [!NOTE]
-> **Source of Truth в коде:**
-> Полные контракты интерфейсов, списки состояний и таблицы маппинга определены непосредственно в коде:
+> **Каталог в коде, ownership в contract:**
+> Текущие интерфейсы, списки visual states и таблицы маппинга определены в коде ниже; границы Brain/Body/Skin, timeline и IPC определяет этот документ с `UI_SPEC.md`. Legacy lifecycle code мигрирует в AUTO-I07/AUTO-I08.
 > - Структура намерения и категории: [`animation-intent.ts`](../../src/domain/animation/animation-intent.ts) (`AnimationIntent`, `AnimationIntentKind`, `AnimationPriority`).
 > - FSM и конфигурация переходов: [`animation-state-machine.ts`](../../src/domain/animation/animation-state-machine.ts) (`AnimationStateMachine`, `ANIMATION_STATES`).
 
 ---
 
-## 1. Поток ответственности (Кто решает, какой спрайт показать)
+## 1. Поток ответственности Brain → Body → Skin
 
 Animation Engine не принимает решений о поведении персонажа и не парсит сырые события окружения:
 
@@ -21,23 +21,21 @@ Application mapper
   -> Resolved BehaviorIntent
   -> Behavior Brain (для Activity-backed behavior)
   -> Activity Runner
-  -> AnimationIntent
-  -> Animation Controller (FSM)
-  -> Asset/Fallback Resolver
-  -> AnimationPlayer
-  -> RenderPresentationState
-  -> ICharacterRenderer
+  -> Brain activity timeline + semantic AnimationIntent
+  -> BrainStateDTO
+  -> Renderer Body Controller
+  -> renderer-local BodyVisualState
+  -> ISkinEngine / SpriteSkinAdapter
+  -> Asset/Fallback Resolver -> AnimationPlayer -> ICharacterRenderer
 
-Forced physical fact -> Motion Engine -> MotionEvent -> same Animation Controller
+Forced physical fact -> Motion Engine -> BrainStateDTO.motion
 ```
 
 - **Character Engine**: Принимает или отклоняет поведение на основе потребностей (`Needs`), отношений (`Relationship`) и эмоций (`SynthesizedEmotionalTone`). Выдает `Resolved BehaviorIntent`.
-- **Activity Runner**: Преобразует поведение в семантический `AnimationIntent` (без знания файлов и кадров).
-- **Motion Engine**: Фиксирует принудительные физические события (`MotionEvent` — падение, бросок, перетаскивание) и направляет их напрямую в контроллер анимации.
-- **Animation Controller (`AnimationStateMachine`)**: Управляет FSM, сверяет приоритеты, проверяет возможность прерывания (`interrupt`), координирует тайминги и жизненный цикл состояний.
-- **Asset / Fallback Resolver**: Сопоставляет семантическое состояние с доступными ассетами пакета (спрайты, оверлеи эмоций/реквизита) и выполняет fallback при их отсутствии.
-- **AnimationPlayer**: Управляет тиками кадров (delta timing, текущий индекс кадра) и формирует плоский `RenderPresentationState`.
-- **ICharacterRenderer**: Детерминированно отрисовывает подготовленный стейт на экране (например, через `ReactSpriteRenderer`).
+- **Brain (Main/Application)**: Владеет semantic state, Activity timeline и authoritative motion projection. `ActivityRunner` формирует семантический `AnimationIntent` без знания файлов/кадров и переключает фазы по Main-monotonic времени либо authoritative causal events.
+- **Motion Engine**: Фиксирует принудительные физические события (`MotionEvent` — падение, бросок, перетаскивание); Brain атомарно отражает их в Activity/motion/visual полях следующего `BrainStateDTO`.
+- **Body Controller (Renderer)**: Принимает только возрастающие Brain revisions, проецирует их в renderer-local `BodyVisualState` и может добавить быстрые визуальные рефлексы (gaze, squash/stretch). Его visual FSM не является semantic FSM и не сообщает completion в Brain.
+- **Skin (Renderer)**: `ISkinEngine` и единственный текущий `SpriteSkinAdapter` выбирают ассеты, воспроизводят кадры и рендерят. Ни clip, ни fallback не меняют Brain/Body semantic inputs.
 
 ### Граница MotionEvent (Физические воздействия)
 
@@ -55,7 +53,7 @@ Forced physical fact -> Motion Engine -> MotionEvent -> same Animation Controlle
 
 ## 2. Матрица приоритетов и прерываний
 
-Переход между анимационными состояниями разрешается контроллером строго по уровням приоритета:
+Переход между visual states в Body разрешается локальным контроллером строго по уровням приоритета; эта таблица не меняет Brain Activity timeline:
 
 | Приоритет | Состояния (примеры) | Политика прерывания | Правило вытеснения |
 |---|---|---|---|
@@ -67,7 +65,7 @@ Forced physical fact -> Motion Engine -> MotionEvent -> same Animation Controlle
 ### Базовые правила разрешения конфликтов:
 1. **Физика и ввод пользователя первичны:** Перетаскивание (`dragged`), падение (`falling`) и клики мгновенно прерывают автономную ходьбу (`walk`), диалог (`talking`) и фоновый отдых.
 2. **Сон изолирован:** Устойчивое состояние сна (`sleep_loop`) игнорирует `normal` и `low` события (включая блуждание, диалоговые реакции и таймеры моргания). Выход возможен только через `wake_up`, прямой пользовательский драг или `spook`.
-3. **Временные реакции самоограничены:** Состояния с ограниченной длительностью (`happy`, `surprised`, `spook`) после завершения автоматически переходят в целевое устойчивое состояние (обычно `idle`, а во время сна — `sleep_loop`).
+3. **Временные реакции ограничены Brain phase:** Для `happy`, `surprised`, `spook` Brain публикует bounded phase/deadline, а Body применяет следующую revision. Локальное окончание клипа до deadline может лишь удержать terminal frame или fallback.
 
 ---
 
@@ -88,55 +86,32 @@ Forced physical fact -> Motion Engine -> MotionEvent -> same Animation Controlle
 
 ---
 
-## 4. Граница Render Engine
+## 4. Граница Body / Render Engine
 
-Animation Engine передает в Render Engine только готовый кадр `RenderPresentationState`. Следующие детали реализации **изолированы внутри Render Engine**:
+Brain передаёт Body только serializable semantic `visualIntent` внутри `BrainStateDTO`. Body формирует `BodyVisualState`, а Skin может внутри адаптера построить готовый кадр `RenderPresentationState`. Следующие детали реализации **изолированы внутри Renderer/Skin**:
 - Файловые пути к ресурсам, геометрия нарезки спрайт-листов и UV-координаты;
-- DOM/CSS классы, DPI/масштабирование и нативные оконные хэндлы Electron;
-- Физические координаты экрана и хитбоксы курсора (определяются в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md)).
+- DOM/canvas/CSS, visual hitboxes и Renderer-monotonic frame timing;
+- DPI/масштабирование visual resources и локальная композиция слоёв.
+
+Authoritative root screen position приходит только из `BrainStateDTO.motion`. Нативные оконные handles, Electron/platform types и callbacks запрещены как в Body/Skin DTO, так и во всех Main/Application/Domain/Shared контрактах.
 
 ---
 
-## 5. Коррелированный lifecycle транзитной анимации
+## 5. Независимые semantic и clip timelines
 
-Когда Application должна ждать окончания транзитной анимации перед продолжением Activity или autonomy cadence, Main публикует presentation request с уникальным `animationRequestId`. Этот идентификатор создаёт Main; Renderer только возвращает его в lifecycle result. `PetPresentationStateDTO.revision` остаётся порядком снапшотов и не используется для корреляции: несколько motion-снапшотов могут относиться к одному animation request.
+Brain никогда не ждёт фактического окончания Skin-клипа. Для time-bounded Activity phase `ActivityRunner` сохраняет `phaseStartedAtMs`/`phaseEndsAtMs` в Main-monotonic шкале и переходит дальше при `nowMs >= phaseEndsAtMs`. Locomotion, guard, forced motion и direct input могут завершить или прервать фазу только через свои authoritative Brain events.
 
-Единственный нормальный completion flow:
+Body привязывает base playback к `(streamId, visualIntent.episodeId)`, а не к Activity presence или Brain revision. Каждый новый episode начинает/replay-ит visual intent с Main-monotonic `episodeStartedAtMs`, включая повторные click/land/direct reactions при `activity: null`. Более новая revision с тем же episode сохраняет неизменный intent и не перезапускает клип. При приёме snapshot Body вычисляет `BodyVisualState.visualAgeMs = sampledAtMs - episodeStartedAtMs`; Skin принимает этот same-clock baseline, затем использует Renderer-monotonic delta только для выбора кадра и не сравнивает clocks напрямую.
 
-```text
-Main presentation request + animationRequestId
-  -> Renderer Animation FSM принимает либо отклоняет переход
-  -> Asset/Fallback Resolver выбирает клип
-  -> AnimationPlayer воспроизводит клип по RAF/monotonic delta
-  -> AnimationPlayer completion поступает в ту же FSM
-  -> FSM выполняет штатный переход в ожидаемое stable state
-  -> Renderer сообщает Main terminal lifecycle result с тем же requestId
-```
-
-AnimationPlayer владеет фактом окончания фактически выбранного finite clip, включая безопасный fallback; FSM владеет допустимостью перехода и следующим visual state. Проверка только имени текущего состояния, React timer или копия `durationMs` в Main не являются completion.
-
-| Outcome Renderer | Условие | Последствие в Main |
+| Соотношение clip и Brain phase | Поведение Body/Skin | Последствие для Brain |
 |---|---|---|
-| `completed` | Request принят, finite clip завершён, FSM вошла в штатное terminal state | Завершить совпавшее ожидание и выполнить один guarded continuation. |
-| `interrupted` | Принятый request заменён более новым presentation request или forced visual event до normal completion | Не продолжать старый flow; новый request/forced lifecycle уже владеет дальнейшим ожиданием. |
-| `rejected` | FSM не приняла входной переход либо playback не смог стартовать даже через canonical fallback | Завершить совпавшее ожидание как failed и применить Main-owned recovery policy без подмены semantic decision. |
+| Finite clip завершился раньше | Удержать terminal frame, повторить безопасный loop или перейти к локальному neutral fallback до новой revision. | Нет события и изменения cadence. |
+| Brain phase сменилась раньше | Немедленно разрешить новый `BodyVisualState`; старый clip локально прерывается. | Уже перешёл по своим часам/event. |
+| Asset/clip отсутствует или повреждён | Применить canonical fallback и локально залогировать bounded diagnostic. | Semantic phase продолжает штатный timeline. |
+| Renderer завис, перезагрузился или уничтожен | Новый Body получает полный актуальный snapshot и начинает визуализацию с него. | Brain продолжает работать без animation watchdog. |
 
-Правила lifecycle:
+Visual completion callback допустим только внутри `SpriteSkinAdapter` для локального frame/fallback перехода. Он не входит в `BodyEventDTO`, не пересекает Preload и не создаёт Activity completion, stimulus или autonomy opportunity.
 
-- В Main одновременно существует не более одного pending animation request для одного presentation owner. Новый authoritative request сначала инвалидирует прежний ID, затем публикуется.
-- Повторный снапшот с тем же `animationRequestId` не перезапускает клип. Один ID никогда не переиспользуется для другого visual request.
-- Renderer сообщает terminal result не более одного раза для принятого ID. Main всё равно обрабатывает result идемпотентно: stale, foreign и duplicate ID не меняют state, cadence или Activity.
-- `interrupted` старого ID не возобновляет cadence. `rejected` и `completed` проходят через текущий operational continuation и свежие Character/Motion/menu/enabled gates; result сам по себе не является behavior intent.
-- Semantic `sleep` / `wake`, Needs и acceptance остаются Character-owned. Lifecycle result подтверждает только визуальное исполнение и не может менять Character или Motion state.
+## 6. Superseded contract
 
-### Safety watchdog
-
-Main может держать bounded watchdog для renderer crash/hang, но timeout является внутренним operational outcome `timed_out`, а не `completed` и не четвёртым Renderer outcome. Watchdog:
-
-- не содержит и не копирует длительность клипа;
-- проверяет тот же pending request ID и после срабатывания инвалидирует его;
-- фиксирует diagnostic timeout и запускает safe recovery/resync;
-- продолжает cadence только через свежие eligibility gates и не обходит forced motion, menu pause, disabled autonomy или semantic sleep;
-- очищается при matching terminal result, interruption/replacement, stop, dispose и уничтожении окна.
-
-Точная IPC-форма, направление вызова и validation определены в [`UI_SPEC.md`](./UI_SPEC.md#6-animation-lifecycle-result-ipc).
+[AUTO-A06](https://github.com/zyzycode/project_wisp/issues/31) **superseded** решением AUTO-A08 в части animation-completion handshake. Целевой runtime удаляет `AnimationLifecycleResultDTO`, terminal outcomes, `animationRequestId`, `notifyAnimationLifecycleResult`, pending-animation state и watchdog целиком; compatibility period и второй параллельный protocol запрещены. Точные `BrainStateDTO` / `BodyEventDTO`, ordering и атомарный migration path заданы в [`UI_SPEC.md`](./UI_SPEC.md#6-brain--body-ipc).

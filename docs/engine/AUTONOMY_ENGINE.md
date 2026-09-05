@@ -7,7 +7,9 @@ Autonomy Engine не является отдельным runtime actor или в
 ## 1. Владение
 
 - **Character Engine (Domain):** семантический гейтинг кандидатов, порядок безопасности P0–P5, Utility eligibility, scoring и арбитраж P4, возврат ровно одного resolved `BehaviorIntent`. Не владеет выбором Activity, физикой, кадрами анимации и часами.
-- **Application Orchestrator:** нормализация входов, сборка неизменяемого снапшота, формирование конечного набора кандидатов, монотонный пульс возможностей (`opportunityAtMs`). Не вычисляет семантические веса.
+- **Brain (Main/Application runtime):** единственный владелец текущего semantic state, Activity timeline, Character needs и агрегированной authoritative motion projection. Brain оркестрирует чистые Domain engines, передаёт им явное монотонное время и публикует цельный `BrainStateDTO`; это архитектурная граница, а не новый Domain engine.
+- **Application Orchestrator внутри Brain:** нормализация входов, сборка неизменяемого снапшота, формирование конечного набора кандидатов, монотонный пульс возможностей (`opportunityAtMs`) и сериализация Activity/Motion transitions. Не вычисляет семантические веса.
+- **Body и Skin (Renderer):** Body потребляет ordered `BrainStateDTO`, захватывает input и вычисляет только быстрые визуальные рефлексы; Skin отображает renderer-local `BodyVisualState`. Они не выбирают behavior/Activity и не подтверждают Brain progression.
 - **Внешние связи:** Полная матрица распределения ответственности смежных движков зафиксирована в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Единственная цепочка решений
@@ -23,15 +25,23 @@ flowchart LR
   U --> R[One resolved BehaviorIntent]
   R --> BB[Behavior Brain]
   BB --> AR[Activity Runner]
-  AR --> AI[AnimationIntent]
-  AI --> AF[Animation FSM]
+  AR --> BT[Brain-owned activity timeline]
+  BT --> BS[BrainStateDTO]
+  BS --> Body[Renderer Body]
+  Body --> Skin[Renderer Skin]
   P[Forced physical fact] --> ME[Motion Engine]
-  ME --> AF
+  ME --> BS
 ```
 
 `Candidate` и `Resolved` — стадии одной public формы `BehaviorIntent`, а не новые DTO. Application mapper может собрать candidates из user/system events, локального catalog или provider hint, но не принимает решение. Character Engine возвращает не более одного resolved intent.
 
-Forced physical fact не является semantic candidate: Motion Engine применяет его независимо, отменяет активную Activity через Application transaction и направляет `MotionEvent` в тот же Animation FSM. Если физический lifecycle также представлен public intent, Character Engine разрешает его semantic часть, но не может отменить уже произошедший факт.
+Forced physical fact не является semantic candidate: Motion Engine применяет его независимо, отменяет активную Activity через Application transaction и отражает `MotionEvent` в следующем цельном Brain state/visual intent. Если физический lifecycle также представлен public intent, Character Engine разрешает его semantic часть, но не может отменить уже произошедший факт.
+
+### 2.1. Activity timeline не зависит от визуального playback
+
+`ActivityRunner` переключает semantic-фазы только в Brain transaction: по явно переданному Main-monotonic `nowMs`, Brain-owned guard/locomotion result или authoritative interruption. Для time-bounded фазы Runner сохраняет `phaseStartedAtMs` и `phaseEndsAtMs`; при `nowMs >= phaseEndsAtMs` он атомарно выбирает следующий шаг и публикует новую revision.
+
+Фактическое завершение, отказ, fallback или прерывание Skin-клипа не является Activity event. Brain не ожидает Renderer callback, не копирует длительность клипа и не ставит animation watchdog. `BodyEventDTO` может сообщать только пользовательский input/наблюдение; ни один его вариант не подтверждает визуальное completion и не гейтит cadence. Точная IPC-форма и правила времени заданы в [`UI_SPEC.md`](./UI_SPEC.md#6-brain--body-ipc).
 
 ## 3. Safety order P0–P5
 
@@ -156,9 +166,10 @@ Trace не содержит raw provider text, memory content, OS/window identif
 
 - Character Engine остаётся единственным semantic decision owner.
 - Behavior Brain не оценивает candidates между разными intent kinds.
-- Activity Runner и Animation FSM не мигрируют в параллельную state machine.
+- Activity Runner не ждёт Skin/Renderer lifecycle и не мигрирует в параллельную state machine.
 - Motion Engine не принимает behavior decisions; forced facts обходят Utility.
 - Application владеет clocks, sequence и boundary normalization, но не score.
+- Body/Skin не создают autonomy opportunity и не могут остановить или продолжить Brain cadence.
 - Provider необязателен и никогда не запускается фоновым autonomy pulse.
 - Shutdown отменяет scheduler lifecycle; catch-up opportunity после shutdown запрещён.
 - Новый public intent kind, IPC/port или Character threshold требует отдельного Architect review.

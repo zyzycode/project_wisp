@@ -17,7 +17,18 @@ import {
   type SurfaceKinematicsEvent,
   type SurfaceKinematicsState,
 } from '../../domain/behavior/surface-kinematics';
-import type { CharacterStimulus } from '../../domain/character/stimuli-reducer';
+import type {
+  IShimejiStimulusMapper,
+  ShimejiFeedbackEvent,
+  StimulusDto,
+} from '../ports/shimeji-feedback-port';
+
+export type {
+  IShimejiStimulusMapper,
+  ShimejiFeedbackEvent,
+  ShimejiStimulusMappingContext,
+  StimulusDto,
+} from '../ports/shimeji-feedback-port';
 
 export interface PointerInput {
   readonly pointerId: number;
@@ -32,22 +43,6 @@ export interface DragPointerInput extends PointerInput {
 export interface ShimejiMotionEventDispatcher {
   dispatchMotionEvent(event: MotionEvent): void;
   dispatchSurfaceEvent(event: SurfaceKinematicsEvent): void;
-}
-
-export type ShimejiFeedbackEvent =
-  | { readonly type: 'drag_started'; readonly eventId: string; readonly atMs: number }
-  | { readonly type: 'drag_ended'; readonly eventId: string; readonly dragRunId: string; readonly heldMs: number; readonly atMs: number }
-  | { readonly type: 'landing'; readonly eventId: string; readonly outcome: 'stumble' | 'crash_landing'; readonly impactSeverity: number; readonly atMs: number };
-
-export type StimulusDto = CharacterStimulus & { readonly id: string };
-
-export interface ShimejiStimulusMappingContext {
-  readonly createdAtIso: string;
-  readonly landingThresholds: Pick<MotionConstraints, 'stumbleMaxSeverity'>;
-}
-
-export interface IShimejiStimulusMapper {
-  map(event: ShimejiFeedbackEvent, context: ShimejiStimulusMappingContext): StimulusDto | null;
 }
 
 export interface ShimejiMotionScheduler {

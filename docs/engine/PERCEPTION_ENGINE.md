@@ -6,18 +6,20 @@
 
 ## 1. Владение
 
-- **Gaze Engine (Domain):** расчёт смещения зрачков (`PupilOffset`), состояний слежения/нейтрали, проверка свежести цели. Не управляет локомоцией и семантическими реакциями.
+- **Gaze Engine (pure):** расчёт смещения зрачков (`PupilOffset`), состояний слежения/нейтрали и локальной visual freshness. Renderer Body может вызывать эту чистую функцию на RAF; она не управляет локомоцией и семантическими реакциями.
 - **Cursor Proximity Engine (Domain):** расчёт нормализованного сигнала дистанции, диапазона и dwell курсора.
 - **Environment Adapter (Infrastructure):** снятие геометрии дисплеев ОС и нормализация в `EnvironmentSnapshot`.
-- **Внешние связи:** Application Layer оркестрирует время захвата; Behavior Brain использует сигналы для eligibility реактивных P3-активностей; Renderer пассивно отображает готовый `PupilOffset`. Матрица контрактов — в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
+- **Внешние связи:** Body показывает быстрый gaze локально и refresh-ит доступный `cursor_observed` с bounded cadence 10 Hz по [Brain → Body cadence](./UI_SPEC.md#63-cadence-и-coalescing), независимо от RAF. Application ставит Main-monotonic receive time; Behavior Brain использует только нормализованный proximity signal для eligibility реактивных P3-активностей. Матрица контрактов — в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Поток perception
 
 ```mermaid
 flowchart LR
   OS[OS / platform adapter] --> N[Boundary normalization]
+  Body[Renderer Body cursor observation] -->|BodyEventDTO| N
   N --> E[EnvironmentSnapshot]
-  E --> G[Gaze Engine]
+  Body --> G[Gaze Engine: local visual reflex]
+  E --> G
   E --> C[Cursor Proximity Engine]
   PG[Presentation geometry] --> G
   G --> P[PupilOffset presentation]
@@ -69,7 +71,7 @@ offset(t+dt) = offset(t) + alpha × (desired - offset(t))
 
 `flipX` применяется ровно один раз. Missing, stale (`nowMs - capturedAtMs > maxCursorAgeMs`) или out-of-radius cursor задаёт desired `(0,0)` и smooth return to neutral.
 
-Gaze не emits Activity/AnimationIntent. При baked-in face Renderer может не показывать pupil layer, не подавляя proximity signal.
+Gaze не emits Activity/AnimationIntent. При baked-in face Body может не показывать pupil layer, не подавляя отдельный bounded-refresh `cursor_observed` для Brain proximity.
 
 ## 5. Cursor proximity DTO (Близость курсора)
 
@@ -85,6 +87,8 @@ Gaze не emits Activity/AnimationIntent. При baked-in face Renderer може
 | `far` | $> 360\text{ px}$ | Вне зоны внимания / нейтральное состояние |
 
 - **TTL свежести**: `300 мс` (сигналы старше TTL считаются устаревшими и сбрасывают dwell).
+
+Body refresh interval `100 мс` строго меньше TTL и повторно подтверждает даже неподвижный доступный cursor sample. Поэтому непрерывное присутствие внутри зоны может накопить `swatDwellMs=450`; после остановки refresh Brain сбрасывает dwell, как только Main age последнего sample превысит 300 мс. Timer stall не компенсируется catch-up событиями: если age уже превысил TTL, обычное stale rule сбрасывает dwell до обработки следующего fresh interval.
 
 ## 6. Freshness, dwell и reaction signal
 
@@ -144,5 +148,5 @@ Shared IPC shapes остаются самостоятельными serializable
 - `flipX` применяется ровно один раз.
 - Gaze offset не запускает Activity; proximity signal не является resolved behavior.
 - Platform adapter отдаёт только normalized immutable snapshot.
-- Renderer не вычисляет authoritative freshness/proximity.
+- Body может вычислять только локальную visual freshness для gaze; authoritative semantic freshness/proximity вычисляется Brain по Main receive time.
 - Motion получает observation и сам владеет support/physics transition.

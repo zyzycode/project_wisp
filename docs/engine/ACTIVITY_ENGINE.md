@@ -8,7 +8,7 @@ Activity Engine не принимает semantic решение. Character Engin
 
 - **Behavior Brain (Domain):** взвешенный выбор `ActivityDefinition` строго внутри переданного resolved `BehaviorIntent`. Не принимает решений о смене семантического намерения.
 - **Activity Runner (Domain):** жизненный цикл выполнения шагов активного `runId`, проверка гардов, переходы по цепочке шагов, эмиссия `AnimationIntent`, отмена и завершение.
-- **Внешние связи:** Application Layer поставляет монотонное время и оркестрирует события завершения шагов. Полная матрица распределения ответственности зафиксирована в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
+- **Внешние связи:** Application Layer поставляет монотонное время и оркестрирует causal events/deadlines шагов. Полная матрица распределения ответственности зафиксирована в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Поток Activity
 
@@ -18,9 +18,9 @@ flowchart LR
   S[Immutable selection context] --> B
   B --> D[One ActivityDefinition]
   D --> A[Activity Runner]
-  A -->|AnimationIntent| F[Animation FSM]
+  A -->|AnimationIntent + phase timeline| BS[BrainStateDTO]
   A -->|voluntary locomotion| M[Motion/Application boundary]
-  E[Completion / timeout / guard event] --> A
+  E[Causal event / deadline / guard] --> A
   P[Forced motion or direct user interruption] --> C[Cancel run]
   C --> A
   A -->|result + feedback| O[Application]
@@ -110,29 +110,31 @@ Selection использует явно переданный `randomUnit`/seeded
 - `runId` уникален для каждого запуска.
 - Завершение всегда детерминировано одним из статусов: `completed`, `interrupted`, `failed`, `cancelled`.
 
-В каждый момент Activity Runner исполняет не более одной Activity. Terminal run не возобновляется; повторный запуск той же Activity не переиспользует external request ids.
+В каждый момент Activity Runner исполняет не более одной Activity. Terminal run не возобновляется; повторный запуск той же Activity получает новый `runId`.
 
 Runner:
 
 - принимает monotonic `nowMs` аргументом;
 - не создаёт timers;
 - выпускает не более одного step request за update transition;
-- сопоставляет completion только с текущими `runId` и request id;
-- игнорирует stale/foreign completion без изменения runtime;
+- сохраняет `stepStartedAtMs` и вычисленный Brain-owned deadline для time-bounded шага;
+- сопоставляет causal guard/locomotion event только с текущим `runId`;
+- игнорирует stale/foreign events без изменения runtime;
 - возвращает cleanup scope только для завершившегося run.
 
 ## 8. Completion и timeouts
 
 Step завершается только своим объявленным completion condition:
 
-- animation completion event;
-- locomotion target/result event;
-- вход Animation FSM в ожидаемый stable state;
+- time-bounded animation/pose phase: `nowMs >= phaseEndsAtMs`;
+- locomotion target/result event от authoritative Motion/Application boundary;
 - explicit delay elapsed по переданному `nowMs`;
 - guard outcome;
 - bounded timeout.
 
-Timeout не является скрытым scheduler. Application вызывает Runner с monotonic time; Runner сравнивает его с сохранённым start/deadline. Completion и timeout, попавшие в одну transaction, обрабатываются в стабильном порядке, установленном Application sequence.
+Timeout не является скрытым scheduler. Application вызывает Runner с Main-monotonic time; Runner сравнивает его с сохранённым start/deadline. Causal event и deadline, попавшие в одну transaction, обрабатываются в стабильном порядке, установленном Application sequence.
+
+Skin clip completion, Renderer visual FSM state, RAF callback и `BodyEventDTO` не входят в completion conditions. Конфигурации `animation_completed` / `state_entered`, external animation request ids и animation timeout из текущей реализации являются migration debt до AUTO-I08; целевой контракт после AUTO-A08 использует Brain-owned duration/deadline для каждой semantic visual phase. Skin может завершить, повторить, сократить или заменить клип fallback-ом, не меняя Activity timeline.
 
 После завершения шага Runner атомарно переходит к target и выпускает следующий request. Terminal step завершает Activity ровно один раз.
 
@@ -152,7 +154,7 @@ Interruption всегда означает cancel текущего run и нов
 - P1 direct user flow отменяет Activity с причиной `user_interaction`.
 - остальные rank interactions следуют единственной таблице [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md#3-safety-order-p0p5).
 
-Cancel прекращает новые step emissions и возвращает точный cleanup scope. Уже доставленный physical fact не откатывается. Animation FSM самостоятельно применяет visual interrupt rules; Activity Runner не подменяет их.
+Cancel прекращает новые step emissions и возвращает точный cleanup scope. Уже доставленный physical fact не откатывается. Body самостоятельно применяет visual interrupt rules только к локальной projection; Activity Runner не подменяет их и не ждёт visual outcome.
 
 ## 11. Cooldown
 
@@ -160,7 +162,7 @@ Cancel прекращает новые step emissions и возвращает т
 
 Zoomies, rare actions, Stretch и Swat используют отдельные keys. `sleep_after_wake` может обходиться только P2 согласно Autonomy/Character boundary. Все durations являются tuning data; этот документ не вводит новые значения.
 
-Cooldown устанавливается по определённому lifecycle event Activity, а не по render frame или попытке scoring. Неуспешный candidate, не выбранная Activity и stale completion не продлевают cooldown неявно.
+Cooldown устанавливается по определённому lifecycle event Activity, а не по render frame или попытке scoring. Неуспешный candidate, не выбранная Activity и stale causal event не продлевают cooldown неявно.
 
 ## 12. Repetition
 
@@ -172,26 +174,23 @@ History обновляется только подтверждённым зап�
 
 ## 13. Feedback boundary
 
-Activity/Motion/user semantic outcomes поступают в Application mapper как `ShimejiFeedbackEvent`, а затем не более одного раза становятся canonical `StimulusDto` Character Engine. Форма `StimulusDto` и изменения Needs/Relationship принадлежат [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md).
+Activity/Motion/user semantic outcomes поступают в Application mapper как `ShimejiFeedbackEvent`, а затем не более одного раза становятся canonical `StimulusDto` Character Engine. Канонические declarations feedback union, mapping context и mapper port находятся в [`src/application/ports/shimeji-feedback-port.ts`](../../src/application/ports/shimeji-feedback-port.ts). Форма `StimulusDto` и изменения Needs/Relationship принадлежат [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md).
 
-```typescript
-export type ShimejiFeedbackEvent =
-  | { readonly type: 'drag_started'; readonly eventId: string; readonly atMs: MonotonicMs }
-  | { readonly type: 'drag_hold'; readonly eventId: string; readonly dragRunId: string; readonly heldMs: number; readonly atMs: MonotonicMs }
-  | { readonly type: 'drag_ended'; readonly eventId: string; readonly dragRunId: string; readonly heldMs: number; readonly atMs: MonotonicMs }
-  | { readonly type: 'landing'; readonly eventId: string; readonly outcome: LandingOutcome; readonly impactSeverity: number; readonly atMs: MonotonicMs }
-  | { readonly type: 'petting'; readonly eventId: string; readonly intensity: number; readonly atMs: MonotonicMs }
-  | { readonly type: 'swat_cursor_completed'; readonly eventId: string; readonly activityRunId: string; readonly atMs: MonotonicMs };
+| Variant `ShimejiFeedbackEvent` | Поля payload | Назначение и инвариант |
+|---|---|---|
+| `drag_started` | `eventId`, `atMs` | Ровно один semantic start на drag run. |
+| `drag_hold` | `eventId`, `dragRunId`, `heldMs`, `atMs` | Не более одного события после configured hold; `heldMs` конечен и неотрицателен. |
+| `drag_ended` | `eventId`, `dragRunId`, `heldMs`, `atMs` | Ровно один terminal outcome для известного run. |
+| `landing` | `eventId`, `outcome`, `impactSeverity`, `atMs` | `LandingOutcome`; severity конечна и неотрицательна, soft landing не создаёт stimulus. |
+| `petting` | `eventId`, `intensity`, `atMs` | Нормализованная intensity конечна и находится в `[0, 1]`. |
+| `swat_cursor_completed` | `eventId`, `activityRunId`, `atMs` | Только подтверждённое завершение текущего Activity run. |
 
-export interface ShimejiStimulusMappingContext {
-  readonly createdAtIso: string;
-  readonly landingThresholds: Pick<MotionConstraints, 'stumbleMaxSeverity'>;
-}
-
-export interface IShimejiStimulusMapper {
-  map(event: ShimejiFeedbackEvent, context: ShimejiStimulusMappingContext): StimulusDto | null;
-}
-```
+| Mapping contract | Назначение | Инвариант |
+|---|---|---|
+| `eventId` / `atMs` | Общая identity и Main-monotonic метка события | ID непустой и дедуплицируется; время конечно и неотрицательно. |
+| `ShimejiStimulusMappingContext.createdAtIso` | UTC-время создаваемого stimulus | Валидная ISO-8601 строка, формируется Application boundary. |
+| `landingThresholds.stumbleMaxSeverity` | Минимальный context для landing mapping | Берётся из текущих `MotionConstraints`, не копируется в Domain event. |
+| `IShimejiStimulusMapper.map(...)` | Преобразовать semantic feedback в `StimulusDto` или `null` | Чистое deterministic mapping; не применяет stimulus и не владеет дедупликацией. |
 
 Сохраняется mapping: drag start/hold/end становятся user stimuli; `stumble`/`crash_landing` — system stimuli; petting и completed Swat применяют configured deltas. Soft landing не создаёт дополнительный stimulus. Raw pointer events, physics substeps, bounces и animation frames не размножают feedback.
 
@@ -209,7 +208,7 @@ Renderer не выбирает Activity и не управляет её жизн
 - Activity выбирается только внутри resolved intent;
 - одновременно активен не более одного `runId`;
 - invalid definitions детерминированно отклоняются;
-- stale/foreign completions не меняют runtime;
+- stale/foreign causal events не меняют runtime;
 - interruption — cancel, никогда pause/resume;
 - cooldown является hard gate, repetition — положительным soft factor;
 - одинаковые inputs и explicit random source дают одинаковый selection/lifecycle result;

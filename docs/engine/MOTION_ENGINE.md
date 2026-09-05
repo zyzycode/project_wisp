@@ -17,8 +17,8 @@ flowchart LR
   S --> P
   P --> PP[PetPositionPort]
   PP --> W[Electron window adapter]
-  M -->|MotionEvent| A[Animation FSM]
-  O -->|presentation snapshot| R
+  M -->|MotionEvent| A[Brain visual intent mapping]
+  O -->|BrainStateDTO.motion| R
 ```
 
 - **Motion Engine (Domain):** чистый физический солвер (drag, airborne, grounded, crawl/support), расчёт скоростей, коллизий и фактов посадки. Не управляет таймерами, окнами ОС и не принимает решений по поведению.
@@ -174,13 +174,13 @@ flowchart TD
 Главный координатор в Application-слое ([`shimeji-motion-orchestrator.ts`](../../src/application/services/shimeji-motion-orchestrator.ts)) управляет жизненным циклом физического цикла:
 - Владеет монотонными часами Main-процесса, аккумулятором времени и текущей drag-сессией.
 - На каждом такте накапливает $\Delta t$ кадра (с отсечкой `maxFrameDeltaSec = 0.25`), исполняет дискретные шаги `fixedStepSec` и передаёт результат в [`PetPositionPort`](../../src/application/ports/pet-position-port.ts).
-- Публикует для Renderer ровно один снимок состояния презентации (`PetPresentationStateDTO`) на коммит транзакции.
+- Передаёт агрегатору Brain authoritative motion projection; Brain публикует не более одного цельного `BrainStateDTO` на внешний commit одного тика.
 
 ## 10. Граница IPC (Typed IPC Boundary)
 
 Взаимодействие между процессами строится через контракт [`ipc-contracts.ts`](../../src/shared/ipc-contracts.ts):
-- **События Drag**: Renderer посылает `beginPetDrag`, `movePetDrag`, `releasePetDrag` с монотонно возрастающим номером `sequence` и экранными координатами курсора. Main-процесс валидирует идентификатор сессии и отбрасывает устаревшие или чужие сообщения.
-- **Состояние представления**: Main рассылает `PetPresentationStateDTO` с монотонным номером ревизии, текущей фазой движения (`dragged` / `airborne` / `grounded`), типом авторитета (`forced` / `voluntary`) и визуальным состоянием анимации.
+- **События Drag**: целевой Body посылает варианты `drag_started` / `drag_moved` / `drag_ended` единого `BodyEventDTO` с общим порядком, `gestureId`, pointer ID и экранными координатами. Main регистрирует gesture только после valid start и отбрасывает stale/foreign события. Текущие отдельные drag methods являются migration input до AUTO-I09, а не вторым presentation protocol.
+- **Состояние Brain**: Main рассылает `BrainStateDTO`; его поле `motion` содержит текущую фазу (`dragged` / `airborne` / `grounded`), authoritative root position, velocity и тип авторитета (`forced` / `voluntary`). Порядок, cadence и точная форма определены в [`UI_SPEC.md`](./UI_SPEC.md#6-brain--body-ipc).
 - Контракты IPC являются независимым листом зависимостей и не содержат дескрипторов ОС, классов рендеринга или прямых ссылок на Electron.
 
 ## 11. Изоляция и проверяемые свойства

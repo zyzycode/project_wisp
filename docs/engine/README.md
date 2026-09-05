@@ -35,10 +35,12 @@
 | Physics, support и position orchestration | [`MOTION_ENGINE.md`](./MOTION_ENGINE.md) | Renderer и Perception не владеют world position. |
 | Environment, cursor и gaze signals | [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md) | Motion/Behavior используют normalized observations без OS discovery. |
 | Visual lifecycle `sleep_start` / `sleep_loop` / `wake_up` | [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md#витальный-сон-и-пробуждение) | Render отображает resolved presentation и не принимает sleep/wake decisions. |
+| `BrainStateDTO` / `BodyEventDTO`, ordering и cadence | [`UI_SPEC.md`](./UI_SPEC.md#6-brain--body-ipc) | Brain владеет state/timeline/motion; Body/Skin не подтверждают semantic progression. |
+| Renderer-local `ISkinEngine` / `SpriteSkinAdapter` | [`RENDER_ENGINE.md`](./RENDER_ENGINE.md#renderer-local-skin-contract) | Skin types и render resources не пересекают Shared IPC/Application/Domain. |
 
 `sleep`, `quiet` и `wake` — semantic behavior terms. `sleep_start`, `sleep_loop` и `wake_up` — animation-only presentation terms; совпадение слов не переносит ownership между Character и Animation engines.
 
-`RenderPresentationState` ниже — conceptual имя внутренней presentation projection Animation Player → Renderer, а не определённый этим индексом public DTO. Его публичная форма потребует отдельного contract review.
+`BodyVisualState` и `RenderPresentationState` ниже — renderer-local projections Body → Skin → renderer, а не public DTO. Публичной границей остаётся только полный `BrainStateDTO`.
 
 ---
 
@@ -73,9 +75,11 @@ flowchart TD
     end
 
     subgraph Visual["4. Визуальный пайплайн"]
-        AE["ANIMATION_ENGINE.md\n(AnimationIntent, FSM клипов)"]
-        RE["RENDER_ENGINE.md\n(Слои, смещения Anchors, манифест)"]
-        UI["UI_SPEC.md\n(UI / Renderer contract)"]
+        AE["ANIMATION_ENGINE.md\n(Semantic visual intent)"]
+        BS["BrainStateDTO\n(Main → Renderer)"]
+        Body["Body\nPresentation + input/reflexes"]
+        RE["Skin\nISkinEngine / SpriteSkinAdapter"]
+        UI["React surfaces"]
     end
 
     %% Потоки стимулов
@@ -102,16 +106,20 @@ flowchart TD
 
     %% Activity/Motion -> Визуализация
     Runner -->|AnimationIntent| AE
-    Physics -->|MotionEvent| AE
+    AE --> BS
+    CE -->|needs / tone| BS
+    Physics -->|authoritative motion| BS
     Runner -->|voluntary locomotion| Physics
-    AE -->|RenderPresentationState| RE
-    RE -->|Слои и спрайты| UI
+    BS --> Body
+    Body -->|BodyVisualState| RE
+    RE -->|RenderPresentationState| UI
+    Body -.->|BodyEventDTO: input only| Mapper
 
     %% Обратная связь физики в психологию
     Physics -.->|Application mapper -> StimulusDto| CE
 ```
 
-Единственный порядок behavior decision: boundary input → candidate `BehaviorIntent` → Character Engine gating/P4 Utility → resolved `BehaviorIntent` → Activity selection → Activity execution → `AnimationIntent`. Application сериализует cadence и boundary normalization. Forced physical facts не являются behavior decision: Motion Engine применяет их независимо, отменяет Activity и направляет `MotionEvent` в тот же Animation FSM. Подробная ownership-матрица — в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
+Единственный порядок behavior decision: boundary input → candidate `BehaviorIntent` → Character Engine gating/P4 Utility → resolved `BehaviorIntent` → Activity selection → Activity execution → `AnimationIntent`. Application сериализует cadence и boundary normalization. Forced physical facts не являются behavior decision: Motion Engine применяет их независимо, отменяет Activity и отражает `MotionEvent` в следующем цельном `BrainStateDTO`; Body/Skin не подтверждают этот переход. Подробная ownership-матрица — в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
 
 ---
 
@@ -126,9 +134,9 @@ flowchart TD
 | **`ACTIVITY_ENGINE`** | Resolved `BehaviorIntent`, immutable Character/environment/history context | Selected Activity, `AnimationIntent`, voluntary locomotion, feedback | `ActivityDefinition`, `runId`, `CooldownEntry`, bounded repetition history |
 | **`MOTION_ENGINE`** | Drag/support input, normalized environment, fixed Application step | Authoritative position, `MotionEvent`, presentation snapshot | `MotionState`, `MotionEvent`, `PetPositionPort`, motion IPC DTO |
 | **`PERCEPTION_ENGINE`** | Cursor/environment observations и presentation geometry | `PupilOffset`, fresh proximity signal, normalized environment snapshot | `GazeState`, `CursorProximitySignal`, `EnvironmentSnapshot` |
-| **`ANIMATION_ENGINE`** | `AnimationIntent` из Activity или direct behavior; `MotionEvent` | Conceptual `RenderPresentationState` после Animation Player | `AnimationIntent`, `MotionEvent`, visual priorities и transitions |
-| **`RENDER_ENGINE`** | Conceptual `RenderPresentationState`, `PupilOffset`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `RenderLayerId`, `VisibleRenderLayerDef`, `anchors[face]`, `pivot` |
-| **`UI_SPEC`** | Presentation DTO/capabilities из Main и `RenderPresentationState` | Semantic user intents через typed Preload boundary | Local UI state + существующие serializable IPC DTO |
+| **`ANIMATION_ENGINE`** | `AnimationIntent` из Activity/direct behavior и authoritative Motion projection | Semantic `visualIntent` внутри `BrainStateDTO`; Body-local visual arbitration | `AnimationIntent`, visual priorities; Skin completion не возвращается в Brain |
+| **`RENDER_ENGINE`** | Renderer-local `BodyVisualState`, `PupilOffset`, `manifest.json` | Итоговый рендер в окне (React/Canvas) | `ISkinEngine`, `SpriteSkinAdapter`, `RenderLayerId`, `anchors[face]`, `pivot` |
+| **`UI_SPEC`** | Полный ordered `BrainStateDTO` из Main | `BodyEventDTO` input/observation через typed Preload; renderer-local `BodyVisualState` | `BrainStateDTO`, `BodyEventDTO`, local UI state |
 | **`MEMORY_ENGINE`** | `ChatMessage`, `UserFactDraft`, `PersistedCharacterStateSnapshot` через Application | Bounded `recentContext`, `UserFact`, восстановленный state snapshot | `ChatMessage`, `UserFact`, `PersistedCharacterStateSnapshot` |
 
 ---

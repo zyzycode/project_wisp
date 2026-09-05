@@ -6,24 +6,46 @@
 
 ## Владение и границы ответственности
 
-Render Engine не принимает решений о поведении персонажа. Он получает уже принятый `AnimationIntent` из Animation Engine и детерминированно превращает его в presentation-ready описание визуальных слоев (`RenderPresentationState`).
+Render Engine — Skin-часть архитектуры `Brain → Body → Skin` и не принимает решений о поведении персонажа. Renderer Body получает `BrainStateDTO`, добавляет только быстрые visual reflexes и формирует renderer-local `BodyVisualState`; Skin детерминированно отображает его.
 
 ```text
-Character Engine
-  -> AnimationIntent
-  -> Animation Controller
-  -> Asset/Fallback Resolver
-  -> Animation Player
-  -> RenderPresentationState
-  -> ICharacterRenderer
+BrainStateDTO
+  -> PetBodyController
+  -> BodyVisualState
+  -> ISkinEngine
+  -> SpriteSkinAdapter
+  -> Asset/Fallback Resolver -> Animation Player -> ICharacterRenderer
 ```
 
-- **Animation Engine:** владеет `AnimationIntent`, `kind`, `category`, `priority`, `interrupt`, `loop`, `emotionalTone`, `expressionHint` и `propHint`.
-- **Asset/Fallback Resolver:** выбирает конкретные animation keys из `manifest.json`, строит слои и применяет graceful fallback.
-- **Animation Player:** вычисляет активный frame по времени и loop policy на монотонных часах.
-- **ICharacterRenderer:** детерминированно отображает `RenderPresentationState`.
+- **Brain:** владеет semantic `AnimationIntent`, Activity phase, needs и authoritative motion; сериализует их как часть `BrainStateDTO` без asset keys.
+- **Body:** владеет только renderer-local visual projection и input/reflex lifecycle. Gaze и drag squash/stretch могут обновляться на RAF без per-frame IPC, но не меняют semantic intent.
+- **Skin:** renderer-local adapter, который выбирает concrete asset/fallback, вычисляет frame по Renderer-monotonic delta и отображает результат.
 
-Renderer не парсит provider DTO, не вычисляет `Needs`, не меняет FSM, не знает причины выбранного поведения и не импортирует UI-framework hooks, Vite plugins, CSS-framework classes или platform-specific APIs.
+Renderer не парсит provider DTO, не вычисляет `Needs`, не планирует Activity, не владеет authoritative position и не импортирует Electron/Node/platform APIs. DOM/canvas и resource handles не выходят из Renderer; Main/Application/Domain/Shared IPC получают только plain serializable DTO.
+
+### Renderer-local Skin contract
+
+`ISkinEngine`, `BodyVisualState` и presentation-reflex types объявлены в [`src/renderer/render-engine/skin-engine.ts`](../../src/renderer/render-engine/skin-engine.ts). Контракт renderer-local и не является Application port или shared IPC type.
+
+| `BodyVisualState` поле | Назначение | Инвариант |
+|---|---|---|
+| `streamId` | Связывает projection с текущим Brain stream | Непустой trusted ID; при replacement создаётся новый Skin lifecycle. |
+| `revision` | Порядок полных visual projections, включая локальные reflex updates | Положительный safe integer; update с уже применённой revision не публикуется повторно. |
+| `visualIntent` | Immutable semantic intent текущего Brain episode | Для пары `(streamId, episodeId)` payload неизменен; asset keys отсутствуют. |
+| `visualAgeMs` | Same-clock baseline возраста visual episode, вычисленный Body | Равен `sampledAtMs - episodeStartedAtMs`, конечен и неотрицателен; Skin не сравнивает Main и Renderer clocks. |
+| `reflex.pupilOffset` | Renderer-local смещение взгляда | Обе компоненты конечны и нормализованы в `[-1, 1]`; не пересекают IPC. |
+| `reflex.transform` | `flipX`, `scaleX`, `scaleY`, `rotationDeg` для gaze/drag squash/stretch | Числа конечны, масштабы положительны; transform не меняет motion authority. |
+
+| Операция `ISkinEngine` | Назначение | Инвариант lifecycle |
+|---|---|---|
+| `init()` | Создать renderer-local resources | Идемпотентна в рамках одного instance lifecycle. |
+| `update(state)` | Применить последнюю полную `BodyVisualState` | Не принимает partial patch; повтор revision не создаёт React/render update. |
+| `destroy()` | Остановить RAF/player callbacks и освободить resources | После возврата новые updates запрещены. |
+
+- `SpriteSkinAdapter` — единственный допустимый adapter текущего scope. Он оборачивает существующие resolver/player/renderer и текущий `manifest.json` без миграции формата.
+- Base clip стартует/replay-ится только при смене renderer-local ключа `(streamId, visualIntent.episodeId)` и начинает с переданного `visualAgeMs`; Brain revision и локальные reflex updates с прежним episode не сбрасывают playback.
+- Spine/Live2D adapters, placeholders, package dependencies и adapter IDs вне AUTO-A08/AUTO-I10; они требуют отдельного Dependency/Implementation Gate и готовых rig assets.
+- Skin clip completion остаётся локальной деталью адаптера: callback не входит в `BodyEventDTO` и не меняет Brain state.
 
 ---
 
@@ -167,4 +189,4 @@ Animation Player использует elapsed monotonic time. При больш�
   - Нулевой FPS запрещён (`fps > 0`).
   - Отсутствие асинхронной загрузки посреди тика рендера: все ассеты должны быть загружены заранее; тик рендера синхронен и детерминирован.
   - Одинаковый входной `RenderPresentationState` гарантирует строго идентичный визуальный кадр независимо от частоты тиков.
-- **Границы ответственности:** Render Engine исключительно отображает `RenderPresentationState`, не принимает поведенческих решений, не меняет FSM и изолирован от UI-фреймворков и платформенных API.
+- **Границы ответственности:** Render Engine исключительно отображает `RenderPresentationState`, не принимает поведенческих решений и не меняет semantic FSM. UI-framework/DOM детали не выходят из Renderer, platform APIs запрещены.
