@@ -1,66 +1,53 @@
-# AGENTS.md — рабочие правила Project Wisp
+# Project Wisp: Правила для агентов
 
-Этот файл — верхнеуровневое руководство для агентов и разработчиков. Он должен оставаться коротким; исполнимые карточки задач живут в [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), а стабильные контракты движков — в `docs/engine/*.md`.
+Этот документ определяет роли и контекст агентов. Полные правила: [.agents/rules/rules.md](.agents/rules/rules.md).
 
-## Контекст проекта
+## Стек и окружение
 
-- Desktop-first/offline-first MVP: один AI-компаньон на рабочем столе с движением, реакциями, эмоциями, локальной памятью и диалогом.
-- Платформы: Linux, Windows, macOS; базовая среда разработки — Ubuntu Linux.
-- Стек: Electron, строгий TypeScript, React, Zustand, типизированный IPC.
-- AI: `IAIProvider` с локальным `MockAIProvider`. Для памяти и настроек планируется SQLite за репозиториями Main-процесса.
+- Linux (Ubuntu / Wayland / X11) — основной baseline разработки и smoke verification.
+- Runtime: Node.js 22 LTS, npm.
+- Framework: Electron 35, React 19, TypeScript 5.8 (Strict Mode).
+- Build/Dev: Vite 6, `@vitejs/plugin-react`.
+- Tests: Vitest 3.
+- Архитектура: Desktop-first, Clean Architecture, Main/Renderer isolation, typed IPC.
+- Документация движков: [docs/engine/README.md](docs/engine/README.md).
 
-## Жёсткие ограничения
+## Ограничения
 
-- Строго локальный scope (desktop offline-first): всё исполняется на клиенте, без внешних backend-сервисов, auth и billing.
-- Новые npm-зависимости запрещены без Dependency Review.
-- Никакого нецелевого рефакторинга.
-- Domain и Application остаются платформонезависимыми.
-- Платформозависимое поведение живёт за platform adapters.
-- Renderer не имеет доступа к Node.js и не знает детали хранилища, provider или ОС.
+- **Desktop Offline-First:** строго локальное настольное приложение (Electron + React + TypeScript). Запрещено добавление серверных backend-прослоек, удаленных БД и микросервисов.
+- Никаких внешних runtime-зависимостей без отдельного согласования.
+- **Zero New Dependencies First:** перед добавлением npm-пакета агент обязан проверить, решается ли задача стандартными средствами Node.js / Electron / React / Web API.
+- Новую npm-зависимость до реализации оценивает `architect`:
+  1. Лицензия: MIT, Apache 2.0, BSD, ISC (GPL/AGPL запрещены).
+  2. Размер и transitives: bundlephobia / npm trends, минимальный overhead.
+  3. Активность: релизы за последний год, отсутствие открытых критических CVE.
+  4. Нативные биндинги: предпочтение pure JS/WASM перед native C++ (node-gyp риски сборки на разных платформах).
+  5. Альтернатива: почему нельзя написать 50-100 строк собственного кода.
 
-## Dependency Review
+## Кроссплатформенность
 
-Новую npm-зависимость до реализации оценивает `architect`:
+- Пути: только `path.join`, никаких ручных слэшей в файловых операциях.
+- Регистр: в коде и документации имена файлов и импорты должны строго совпадать с регистром на файловой системе (чувствительность Linux).
+- ОС-специфичные модули и ветвления (`process.platform`) изолируются в адаптерах: `src/infrastructure/platform/`.
 
-1. **Необходимость:** TypeScript, Node.js, Electron и Web API недостаточны.
-2. **Пропорциональность:** библиотека решает значимую задачу, а не добавляет локальное удобство.
-3. **Операционная поверхность:** приемлемый размер, транзитивные зависимости и состояние поддержки.
-4. **Архитектурная изоляция:** зависимость ограничена Infrastructure/adapter и не проникает в Domain, Application или Renderer.
-5. **Альтернатива:** самописное решение хуже по безопасности, надёжности или стоимости поддержки.
+## Изоляция слоёв
 
-Решение — `approved` с обоснованием и ограничениями либо `rejected` с альтернативой. Его фиксируют в ADR или назначенной GitHub Issue.
+- Renderer не импортирует Node.js, Electron, persistence или provider internals. Доступ только через типизированный мост `window.wispAPI` из `src/preload/`.
+- Domain не зависит от Electron, React, UI, Node.js, провайдеров и внешних библиотек.
+- Application остаётся платформенно-нейтральным.
+- Main процесс владеет жизненным циклом и управляет окнами.
 
-## Архитектура кратко
-
-- Main process: окна, IPC handlers, application use cases, оркестрация домена, persistence adapters.
-- Preload: минимальный типизированный мост `window.wispAPI` с `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
-- Provider: возвращает semantic response DTO; он не управляет React, DOM, CSS, ассетами или кадрами анимации.
-
-Направление зависимостей и границы Domain/Renderer — в [правилах разработки](.agents/rules/rules.md).
-
-## Бюджет контекста и гигиена задач
-
-Агенты не читают весь markdown "на всякий случай".
-
-Минимум для большинства задач приложения:
-
-- `AGENTS.md` и инструкция назначенной роли;
-- одна назначенная GitHub Issue в компактном формате (до 30–50 строк, 4 блока: Scope, DoD, Ограничения, Verification);
-- не более 3–5 целевых файлов/источников в теле задачи (запрещены простыни из десятков ссылок);
-- одна пользовательская фича = одна implementation-задача (vertical slice), без дробления на микро-тикеты;
-- только файлы кода, нужные для задачи.
-
-Архитектурные и инженерные границы проверять по `.agents/rules/rules.md`. Документы `docs/engine/*.md` открывать только в части нужных разделов профильного контракта.
+## Обзор архитектуры
 
 `ARCHITECTURE.md` — объясняющий обзор для людей, а не источник технических требований. Он не входит в обязательный контекст агента; читать его только при явной задаче на сам обзор.
-
-Целевой размер markdown:
-
-- `AGENTS.md`: до 120 строк.
 
 ## Отдельный скоуп ассетов
 
 Генерация и обработка спрайтов — отдельный скоуп: следовать [asset-pipeline/AGENTS.md](asset-pipeline/AGENTS.md). Он размещает PNG, но не меняет манифест и runtime. Агент приложения не читает материалы генерации без необходимости.
+
+## Изолированный скоуп Discord
+
+Директория `discord_orcestrations/` — полностью автономная инфраструктура Discord-бота и сообщества. Продуктовые агенты Wisp туда не заходят, не модифицируют её и не импортируют оттуда код. См. [discord_orcestrations/.agent.md](discord_orcestrations/.agent.md).
 
 Общий навигатор — [docs/README.md](docs/README.md).
 
@@ -68,10 +55,14 @@
 
 Перед работой прочитать инструкцию назначенной роли по ссылке ниже, не остальные роли. «Ты менеджер» или «менеджер проекта» означает `project-manager`.
 
-- [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач (Fast-Track по умолчанию, Architect только по 4 триггерам), task backlog в GitHub Issues. Не меняет продуктовый код.
-- [architect](.agents/agents/architect/agent.md): границы слоёв, новые подсистемы, архитектура IPC/портов, `docs/engine/*`, Dependency Review.
-- [app-developer](.agents/agents/app-developer/agent.md): реализация задач на Fast-Track (Domain/Application, Main/Preload, Renderer, adapters, packaging), эволюционное расширение существующих портов и IPC DTO.
-- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Имеет право на точечный Fast-Fix мелких неточностей типов/тестов без возврата задачи.
+- [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач (Fast-Track по умолчанию, Architect только по 4 триггерам), task backlog в GitHub Issues. Не меняет продуктовый код. Подключается после завершения задачи (`Approved` / `done`).
+- [architect](.agents/agents/architect/agent.md): архитектура подсистем, инварианты в `docs/engine/*` и объявление целевых контрактов в кодовой базе (типы портов в `src/application/ports/` и DTO в `src/shared/ipc-contracts.ts`). Старый запрет «docs-only» устранён: объявляет и актуализирует интерфейсы в коде. Dependency Review.
+- [app-developer](.agents/agents/app-developer/agent.md): реализация задач на Fast-Track (объявление/расширение портов и DTO, Domain/Application, Main/Preload, Renderer, adapters, packaging), реализация логики, сервисов, UI и тестов.
+- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Проверяет как docs, так и код контрактов архитектора (`npm run typecheck`). Не отклоняет задачи архитектора из-за файлов в `src/`. Имеет право на точечный Fast-Fix мелких неточностей типов/тестов без возврата задачи.
+
+## Автономный цикл реализации
+
+Роли (`architect`, `app-developer`, `reviewer`) работают внутри цикла задачи (`implementation/fixes <-> review`) автономно без передачи промежуточных шагов менеджеру. Project Manager подключается только после закрытия задачи (`Approved` / `done`).
 
 ## Рабочие правила
 
@@ -79,10 +70,9 @@
 
 Проверка:
 
-- Изменения продуктового кода требуют подходящие typecheck/lint/tests.
-- Изменения только документации требуют проверки markdown/diff consistency.
+- Изменения продуктового кода логики/адаптеров (`owner: app-developer`) требуют `npm run typecheck && npm test`.
+- Архитектурные задачи с объявлением портов/DTO (`owner: architect`) требуют `npm run typecheck` и проверку markdown/diff consistency; продуктовые тесты (`npm test`) пишутся разработчиком при реализации логики.
+- Изменения только чистой документации требуют проверки markdown/diff consistency.
 - Project Manager не запускает продуктовые тесты для обычной работы с документацией и планированием.
 
 Общий отчёт исполнителя: `TASK` (Task ID, scope) → `CHANGES` → `BOUNDARIES` → `VERIFICATION` (результаты или `NOT RUN` с причиной) → `RECOMMENDED NEXT GATE` (`reviewer` / `architect` / `blocked` / `done`).
-
-Шаблон постановки задачи — в [инструкции project-manager](.agents/agents/project-manager/agent.md#формат-задачи).

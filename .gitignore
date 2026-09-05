@@ -114,3 +114,6 @@ public/**/*.py
 # Local asset-pipeline inputs, generated candidates, previews and cache
 /asset-pipeline/input/
 /asset-pipeline/output/
+
+# Discord bot & server orchestration (autonomous scope)
+discord_orcestrations/
