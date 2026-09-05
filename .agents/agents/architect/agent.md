@@ -98,25 +98,15 @@ Architect описывает только решение, границы и по
 ```markdown
 ## ARCHITECT RESULT
 
-- Task ID: `<ID>`
-- Verdict: `<Accepted | Changes required | Blocked>`
-
 ### Decision
-<одно принятое решение и краткое обоснование>
+<Краткое решение>
 
-### Boundaries
-- <разрешённые направления зависимостей>
-- <явные запреты и сохранённые границы>
-
-### Contract impact
-- <изменённые canonical files либо «public contracts не меняются»>
+### Layer boundaries & Contracts
+- <Затронутые контракты в docs/engine/*, порты в src/application/ports/ или IPC DTO>
+- <Что остаётся изолированным>
 
 ### Implementation consequences
-- <необходимые области реализации и ограничения без полной постановки следующей задачи>
-- <обязательное выделение портов application/ports/ при утверждении нового контракта>
-
-### Verification
-- <что сверено и с какими источниками>
+- <Фактические последствия для реализации и требования к реализации>
 
 ### Recommended next gate
 `project-manager` для фиксации результата и отдельного планирования следующей задачи либо `blocked` с точной причиной.
@@ -127,6 +117,5 @@ Architect описывает только решение, границы и по
 - `AGENTS.md`
 - `.agents/rules/rules.md`
 - Нужные разделы `docs/engine/*.md` только для затронутой области.
-- `ROADMAP.md`
 - Назначенную GitHub Issue из [Project Wisp Issues](https://github.com/zyzycode/project_wisp/issues)
 - `docs/engine/README.md` (ОБЯЗАТЕЛЬНО: граф зависимостей движков)

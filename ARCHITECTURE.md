@@ -2,7 +2,7 @@
 
 Высокоуровневый обзор архитектуры настольного AI-компаньона Project Wisp. Документ фиксирует границы ответственности подсистем и поток данных между ними.
 
-> **Единый источник правды:** обязательные инженерные правила и ограничения зафиксированы в [.agents/rules/rules.md](.agents/rules/rules.md), предметные спецификации движков — в [docs/engine/](docs/engine/README.md), текущий статус задач — в [ROADMAP.md](ROADMAP.md).
+> **Единый источник правды:** обязательные инженерные правила и ограничения зафиксированы в [.agents/rules/rules.md](.agents/rules/rules.md), предметные спецификации движков — в [docs/engine/](docs/engine/README.md), текущий статус задач — в [GitHub Issues](https://github.com/zyzycode/project_wisp/issues).
 
 ---
 
