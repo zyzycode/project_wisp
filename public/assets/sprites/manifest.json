@@ -100,6 +100,98 @@
     ],
     "sourceFile": "body_thinking.png"
   },
+  "body_look_around": {
+    "category": "body/look_around",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/look_around/body_look_around_00.png",
+      "/assets/sprites/body/look_around/body_look_around_01.png",
+      "/assets/sprites/body/look_around/body_look_around_02.png",
+      "/assets/sprites/body/look_around/body_look_around_03.png"
+    ],
+    "sourceFile": "body_look_around.png",
+    "faceOverlay": {
+      "mode": "overlay",
+      "anchor": "face",
+      "allowedFaceKeys": ["face_happy", "face_sad", "face_shocked", "face_sleep", "face_talking", "face_thinking", "face_angry", "face_pout", "face_winking", "face_curious", "face_dizzy", "face_flirty", "face_gaze"],
+      "fallback": "face_curious"
+    },
+    "frameMeta": [
+      { "anchors": { "face": { "x": 256, "y": 171 } } },
+      { "anchors": { "face": { "x": 238, "y": 171 } } },
+      { "anchors": { "face": { "x": 287, "y": 169 } } },
+      { "anchors": { "face": { "x": 270, "y": 171 } } }
+    ]
+  },
+  "body_crouch_examine": {
+    "category": "body/crouch_examine",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/crouch_examine/body_crouch_examine_00.png",
+      "/assets/sprites/body/crouch_examine/body_crouch_examine_01.png",
+      "/assets/sprites/body/crouch_examine/body_crouch_examine_02.png",
+      "/assets/sprites/body/crouch_examine/body_crouch_examine_03.png"
+    ],
+    "sourceFile": "body_crouch_examine.png",
+    "faceOverlay": {
+      "mode": "overlay",
+      "anchor": "face",
+      "allowedFaceKeys": ["face_happy", "face_sad", "face_shocked", "face_sleep", "face_talking", "face_thinking", "face_angry", "face_pout", "face_winking", "face_curious", "face_dizzy", "face_flirty", "face_gaze"],
+      "fallback": "face_curious"
+    },
+    "frameMeta": [
+      { "anchors": { "face": { "x": 278, "y": 185 } } },
+      { "anchors": { "face": { "x": 239, "y": 250 } } },
+      { "anchors": { "face": { "x": 245, "y": 260 } } },
+      { "anchors": { "face": { "x": 257, "y": 216 } } }
+    ]
+  },
+  "body_edge_peek": {
+    "category": "body/edge_peek",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/edge_peek/body_edge_peek_00.png",
+      "/assets/sprites/body/edge_peek/body_edge_peek_01.png",
+      "/assets/sprites/body/edge_peek/body_edge_peek_02.png",
+      "/assets/sprites/body/edge_peek/body_edge_peek_03.png"
+    ],
+    "sourceFile": "body_edge_peek.png",
+    "faceOverlay": {
+      "mode": "overlay",
+      "anchor": "face",
+      "allowedFaceKeys": ["face_happy", "face_sad", "face_shocked", "face_sleep", "face_talking", "face_thinking", "face_angry", "face_pout", "face_winking", "face_curious", "face_dizzy", "face_flirty", "face_gaze"],
+      "fallback": "face_curious"
+    },
+    "frameMeta": [
+      { "anchors": { "face": { "x": 278, "y": 155 } } },
+      { "anchors": { "face": { "x": 288, "y": 176 } } },
+      { "anchors": { "face": { "x": 302, "y": 193 } } },
+      { "anchors": { "face": { "x": 284, "y": 177 } } }
+    ]
+  },
+  "body_surface_touch": {
+    "category": "body/surface_touch",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/body/surface_touch/body_surface_touch_00.png",
+      "/assets/sprites/body/surface_touch/body_surface_touch_01.png",
+      "/assets/sprites/body/surface_touch/body_surface_touch_02.png",
+      "/assets/sprites/body/surface_touch/body_surface_touch_03.png"
+    ],
+    "sourceFile": "body_surface_touch.png",
+    "faceOverlay": {
+      "mode": "overlay",
+      "anchor": "face",
+      "allowedFaceKeys": ["face_happy", "face_sad", "face_shocked", "face_sleep", "face_talking", "face_thinking", "face_angry", "face_pout", "face_winking", "face_curious", "face_dizzy", "face_flirty", "face_gaze"],
+      "fallback": "face_curious"
+    },
+    "frameMeta": [
+      { "anchors": { "face": { "x": 278, "y": 171 } } },
+      { "anchors": { "face": { "x": 287, "y": 229 } } },
+      { "anchors": { "face": { "x": 267, "y": 278 } } },
+      { "anchors": { "face": { "x": 268, "y": 230 } } }
+    ]
+  },
   "body_dragged": {
     "category": "body/dragged",
     "faceOverlay": {

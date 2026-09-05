@@ -6,6 +6,7 @@ import {
 } from '../../src/application/services/autonomy-coordinator';
 import { AutonomyCharacterEngine } from '../../src/domain/character';
 import type { IPrng } from '../../src/domain/behavior/autonomous-behavior';
+import type { BehaviorConfig } from '../../src/domain/behavior/autonomous-behavior';
 
 class FakeScheduler implements AutonomyScheduler {
   public nowMs = 0;
@@ -44,6 +45,12 @@ class FakeScheduler implements AutonomyScheduler {
   public firstCallback(): (() => void) | undefined {
     return this.pending.values().next().value?.callback;
   }
+
+  public nextDelayMs(): number | undefined {
+    const dueAtMs = [...this.pending.values()]
+      .sort((left, right) => left.dueAtMs - right.dueAtMs)[0]?.dueAtMs;
+    return dueAtMs === undefined ? undefined : dueAtMs - this.nowMs;
+  }
 }
 
 function sequencePrng(...values: number[]): IPrng {
@@ -60,6 +67,14 @@ function movement(): MockMovement {
   return {
     getRootPosition: () => ({ x: 100, y: 390 }),
     getBounds: () => ({ id: 'primary', x: 0, y: 0, width: 500, height: 400 }),
+    getEnvironmentSnapshot: () => ({
+      capturedAtMs: 0,
+      screenBounds: { id: 'primary', x: 0, y: 0, width: 500, height: 400 },
+      currentSurface: {
+        id: 'floor', kind: 'screen_floor', bounds: { x: 0, y: 0, width: 500, height: 400 },
+        supportY: 400, isValidSupport: true,
+      },
+    }),
     getCollisionInsets: () => ({ left: 50, right: 50, top: 90, bottom: 10 }),
     canAcceptVoluntaryMovement: () => true,
     requestVoluntaryMovement: vi.fn(() => true),
@@ -71,9 +86,18 @@ function createCoordinator(
   scheduler: FakeScheduler,
   random: IPrng,
   moving: MockMovement = movement(),
-  traceCapacity = 32
+  traceCapacity = 32,
+  behaviorConfig: BehaviorConfig = {
+    minIdleDurationMs: 10,
+    maxIdleDurationMs: 10,
+    minWanderDurationMs: 20,
+    maxWanderDurationMs: 20,
+    wanderSpeedPxPerSec: 1000,
+    napProbability: 0.15,
+    maxWanderDistancePx: 100,
+  }
 ) {
-  const onIntent = vi.fn();
+  const onIntent = vi.fn(() => true);
   const onStopped = vi.fn();
   const character = new AutonomyCharacterEngine();
   const coordinator = new AutonomyCoordinator({
@@ -89,22 +113,50 @@ function createCoordinator(
     movement: moving,
     onIntentResolved: onIntent,
     onMovementStopped: onStopped,
-    behaviorConfig: {
-      minIdleDurationMs: 10,
-      maxIdleDurationMs: 10,
-      minWanderDurationMs: 20,
-      maxWanderDurationMs: 20,
-      wanderSpeedPxPerSec: 1000,
-      napProbability: 0.15,
-      maxWanderDistancePx: 100,
-    },
+    behaviorConfig,
     traceCapacity,
   });
   return { coordinator, moving, onIntent, onStopped, character };
 }
 
 describe('Application: AutonomyCoordinator', () => {
-  it('owns one cadence timer and delegates wander as one root command without a movement timer', () => {
+  it('shortens cadence after prolonged inactivity and resets it after user activity', () => {
+    const scheduler = new FakeScheduler();
+    const config: BehaviorConfig = {
+      minIdleDurationMs: 100,
+      maxIdleDurationMs: 1_000,
+      minWanderDurationMs: 20,
+      maxWanderDurationMs: 1_000,
+      wanderSpeedPxPerSec: 100,
+      napProbability: 0.15,
+      maxWanderDistancePx: 500,
+    };
+    const fixture = createCoordinator(
+      scheduler,
+      sequencePrng(0.5, 0.5, 0.5),
+      movement(),
+      32,
+      config
+    );
+    fixture.coordinator.start();
+    const recentDelay = scheduler.nextDelayMs()!;
+
+    scheduler.nowMs = config.maxIdleDurationMs * 6;
+    fixture.coordinator.notifyActivityFinished();
+    const prolongedDelay = scheduler.nextDelayMs()!;
+    expect(prolongedDelay).toBeLessThan(recentDelay);
+
+    fixture.coordinator.suspendForUserInteraction();
+    fixture.coordinator.resumeAfterUserInteraction();
+    expect(scheduler.nextDelayMs()).toBeGreaterThan(prolongedDelay);
+
+    scheduler.nowMs += config.maxIdleDurationMs * 6;
+    fixture.coordinator.setEnabled(false);
+    fixture.coordinator.setEnabled(true);
+    expect(scheduler.nextDelayMs()).toBeGreaterThan(prolongedDelay);
+  });
+
+  it('owns one cadence timer and delegates resolved wander to the Brain activity boundary', () => {
     const scheduler = new FakeScheduler();
     const fixture = createCoordinator(scheduler, sequencePrng(0, 0.4, 0.1, 0.9));
 
@@ -117,18 +169,14 @@ describe('Application: AutonomyCoordinator', () => {
       expect.objectContaining({ kind: 'wander' }),
       { decisionSequence: 1, opportunityAtMs: 10 }
     );
-    expect(fixture.moving.requestVoluntaryMovement).toHaveBeenCalledWith({
-      kind: 'horizontal_wander',
-      targetRootPosition: expect.objectContaining({ y: 390 }),
-      speedPxPerSec: 1000,
-    });
+    expect(fixture.moving.requestVoluntaryMovement).not.toHaveBeenCalled();
     expect(scheduler.size()).toBe(0);
 
     fixture.coordinator.notifyVoluntaryMovementCompleted();
     expect(scheduler.size()).toBe(1);
   });
 
-  it('does not publish wander and restores idle cadence when the root command is rejected', () => {
+  it('restores idle cadence when the Brain activity boundary rejects Explore', () => {
     const scheduler = new FakeScheduler();
     const rejectedMovement = movement();
     rejectedMovement.requestVoluntaryMovement.mockReturnValue(false);
@@ -137,12 +185,13 @@ describe('Application: AutonomyCoordinator', () => {
       sequencePrng(0, 0.4, 0.1, 0.9),
       rejectedMovement
     );
+    fixture.onIntent.mockReturnValue(false);
 
     fixture.coordinator.start();
     scheduler.advanceBy(10);
 
-    expect(fixture.moving.requestVoluntaryMovement).toHaveBeenCalledOnce();
-    expect(fixture.onIntent).not.toHaveBeenCalled();
+    expect(fixture.moving.requestVoluntaryMovement).not.toHaveBeenCalled();
+    expect(fixture.onIntent).toHaveBeenCalledOnce();
     expect(fixture.onStopped).toHaveBeenCalledOnce();
     expect(fixture.coordinator.getDecisionTrace()[0]).toMatchObject({
       outcomeKind: 'wander',
@@ -163,6 +212,7 @@ describe('Application: AutonomyCoordinator', () => {
     expect(scheduler.size()).toBe(1);
 
     scheduler.advanceBy(10);
+    expect(fixture.coordinator.requestActivityLocomotion({ x: 200, y: 390 })).toBe(true);
     expect(fixture.moving.requestVoluntaryMovement).toHaveBeenCalledOnce();
     fixture.coordinator.setMenuOpen(true);
     expect(fixture.moving.cancelVoluntaryMovement).toHaveBeenCalled();

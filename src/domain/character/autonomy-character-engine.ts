@@ -59,7 +59,8 @@ export class AutonomyCharacterEngine {
           input.context,
           input.candidates,
           input.prng,
-          input.config ?? DEFAULT_AUTONOMOUS_INTENT_CONFIG
+          input.config ?? DEFAULT_AUTONOMOUS_INTENT_CONFIG,
+          input.snapshot.needs
         );
 
     if (resolvedIntent?.kind === 'sleep') this.sleepState = 'sleeping';

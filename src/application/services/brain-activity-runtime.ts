@@ -19,6 +19,14 @@ import {
 } from '../../domain/behavior/activity-runner';
 import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
 import {
+  createExploreActivityDefinition,
+  recordExplorePlan,
+  selectExplorePlan,
+  type ExploreHistory,
+  type ExplorePlan,
+} from '../../domain/behavior/explore-planner';
+import type { CollisionInsets, Vector2Dto } from '../../domain/behavior/motion-engine';
+import {
   createSystemAnimationIntent,
   type AnimationIntent,
   type AnimationIntentKind,
@@ -33,7 +41,15 @@ export interface BrainActivityRuntimeOptions {
     ActivitySelectionContext,
     'character' | 'synthesizedTone' | 'environment'
   >;
-  readonly requestLocomotion: () => boolean;
+  readonly getRootPosition: () => Vector2Dto;
+  readonly getCollisionInsets: () => CollisionInsets;
+  readonly nextRandom: () => number;
+  readonly requestLocomotion: (request: {
+    readonly runId: string;
+    readonly targetRef: string;
+    readonly gait: 'walk' | 'run' | 'crawl';
+    readonly targetRootPosition?: Vector2Dto;
+  }) => boolean;
   readonly cancelLocomotion: () => boolean;
   readonly createRunId: () => string;
   readonly cooldownRules?: readonly CooldownRule[];
@@ -49,21 +65,39 @@ export class BrainActivityRuntime {
   private runtime: ActivityRuntimeState | null = null;
   private repetition: RepetitionHistory = { activities: [], actions: [] };
   private cooldowns: CooldownState = EMPTY_COOLDOWNS;
+  private exploreHistory: ExploreHistory = { entries: [] };
+  private explorePlan: ExplorePlan | null = null;
 
   public constructor(private readonly options: BrainActivityRuntimeOptions) {}
 
-  public start(intent: BehaviorIntent, locomotionPrepared: boolean): boolean {
+  public start(intent: BehaviorIntent): boolean {
     const nowMs = this.options.clock.now();
-    const definition = selectActivityForResolvedIntent(
+    const selectionContext = {
+      ...this.options.getSelectionContext(),
+      repetition: this.repetition,
+      cooldowns: this.cooldowns,
+    };
+    const selectedDefinition = selectActivityForResolvedIntent(
       intent,
-      {
-        ...this.options.getSelectionContext(),
-        repetition: this.repetition,
-        cooldowns: this.cooldowns,
-      },
+      selectionContext,
       nowMs
     );
-    if (definition === null) return false;
+    if (selectedDefinition === null) return false;
+    const selectedExplorePlan = selectedDefinition.id === 'explore'
+      ? selectExplorePlan({
+          currentRootPosition: this.options.getRootPosition(),
+          environment: selectionContext.environment,
+          collisionInsets: this.options.getCollisionInsets(),
+          needs: selectionContext.character.needs,
+          tone: selectionContext.synthesizedTone,
+          history: this.exploreHistory,
+          nowMs,
+        }, this.options.nextRandom())
+      : null;
+    if (selectedDefinition.id === 'explore' && selectedExplorePlan === null) return false;
+    const definition = selectedExplorePlan === null
+      ? selectedDefinition
+      : createExploreActivityDefinition(selectedExplorePlan);
     this.cancel('higher_priority_activity');
     const runId = this.options.createRunId();
     requireRunId(runId, this.usedRunIds);
@@ -71,8 +105,14 @@ export class BrainActivityRuntime {
     if (update.runtime === undefined) return false;
     this.definition = definition;
     this.runtime = update.runtime;
+    this.explorePlan = selectedExplorePlan;
     this.applyCooldown(definition, 'start', nowMs);
-    return this.applyUpdate(definition, update, locomotionPrepared);
+    this.applyUpdate(definition, update);
+    if (this.runtime === null) return false;
+    if (selectedExplorePlan !== null) {
+      this.exploreHistory = recordExplorePlan(this.exploreHistory, selectedExplorePlan, nowMs);
+    }
+    return true;
   }
 
   public tick(nowMs: number): boolean {
@@ -81,7 +121,7 @@ export class BrainActivityRuntime {
     if (definition === null || runtime === null) return false;
     const update = this.runner.tick(definition, runtime, nowMs);
     if (update.runtime === runtime && update.result === undefined) return false;
-    return this.applyUpdate(definition, update, false);
+    return this.applyUpdate(definition, update);
   }
 
   public notifyLocomotionCompleted(): boolean {
@@ -98,7 +138,6 @@ export class BrainActivityRuntime {
         { type: 'locomotion_completed', runId: runtime.runId },
         this.options.clock.now()
       ),
-      false
     );
   }
 
@@ -110,6 +149,7 @@ export class BrainActivityRuntime {
     this.recordTerminal(definition, runtime, update.result!);
     this.definition = null;
     this.runtime = null;
+    this.explorePlan = null;
     this.options.cancelLocomotion();
     return true;
   }
@@ -118,16 +158,22 @@ export class BrainActivityRuntime {
     return this.runtime === null ? null : { ...this.runtime };
   }
 
+  public getExplorePlan(): ExplorePlan | null {
+    return this.explorePlan === null
+      ? null
+      : { ...this.explorePlan, targetRootPosition: { ...this.explorePlan.targetRootPosition } };
+  }
+
   private applyUpdate(
     definition: ActivityDefinition,
-    update: ActivityRunnerUpdate,
-    locomotionPrepared: boolean
+    update: ActivityRunnerUpdate
   ): boolean {
     if (update.result !== undefined) {
       const runtime = this.runtime;
       if (runtime !== null) this.recordTerminal(definition, runtime, update.result);
       this.definition = null;
       this.runtime = null;
+      this.explorePlan = null;
       if (update.result.status !== 'completed') this.options.cancelLocomotion();
       this.options.onTerminated(update.result);
       return true;
@@ -135,13 +181,19 @@ export class BrainActivityRuntime {
     if (update.runtime !== undefined) this.runtime = update.runtime;
     const step = update.emittedStep;
     if (step === undefined) return false;
-    if (step.type === 'locomotion' && !locomotionPrepared && !this.options.requestLocomotion()) {
+    if (step.type === 'locomotion' && !this.options.requestLocomotion({
+      runId: this.runtime?.runId ?? '',
+      targetRef: step.targetRef,
+      gait: step.gait,
+      ...(this.explorePlan === null
+        ? {}
+        : { targetRootPosition: this.explorePlan.targetRootPosition }),
+    })) {
       const runtime = this.runtime;
       if (runtime === null) return false;
       return this.applyUpdate(
         definition,
         this.runner.cancel(runtime, 'environment_invalidated', this.options.clock.now()),
-        false
       );
     }
     if (step.type === 'animation' || step.type === 'locomotion') {

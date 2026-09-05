@@ -160,6 +160,10 @@ const EXPECTED_POLICY: Record<AnimationIntentKind, {
 }> = {
   idle_blink: { category: 'idle', priority: 'low' },
   thinking_loop: { category: 'dialogue', priority: 'normal' },
+  look_around: { category: 'gesture', priority: 'low' },
+  crouch_examine: { category: 'gesture', priority: 'low' },
+  edge_peek: { category: 'gesture', priority: 'low' },
+  surface_touch: { category: 'gesture', priority: 'low' },
   talking: { category: 'dialogue', priority: 'normal' },
   happy_reaction: { category: 'reaction', priority: 'normal' },
   confused_reaction: { category: 'reaction', priority: 'normal' },

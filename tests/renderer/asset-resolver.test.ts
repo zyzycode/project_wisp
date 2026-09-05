@@ -86,6 +86,10 @@ describe('Renderer: AssetResolver', () => {
     ['spook', 'body_scared'],
     ['bored', 'body_bored'],
     ['thinking_loop', 'body_thinking'],
+    ['look_around', 'body_look_around'],
+    ['crouch_examine', 'body_crouch_examine'],
+    ['edge_peek', 'body_edge_peek'],
+    ['surface_touch', 'body_surface_touch'],
   ] as const)('maps %s to the manifest body key %s', (kind, expectedBodyKey) => {
     const rawManifest: unknown = JSON.parse(
       readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8')

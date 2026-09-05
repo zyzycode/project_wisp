@@ -11,6 +11,10 @@ export type CoreAnimationIntentKind =
   | 'happy_reaction'
   | 'confused_reaction'
   | 'thinking_loop'
+  | 'look_around'
+  | 'crouch_examine'
+  | 'edge_peek'
+  | 'surface_touch'
   | 'talking'
   | 'bored'
   | 'wave'
@@ -132,6 +136,10 @@ const DEFAULT_TONE_HINTS: Record<SynthesizedEmotionalTone, ToneHints> = {
 const INTENT_POLICIES: Record<AnimationIntentKind, IntentPolicy> = {
   idle_blink: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
   thinking_loop: { category: 'dialogue', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
+  look_around: { category: 'gesture', priority: 'low', interrupt: 'yes', loop: 'bounded' },
+  crouch_examine: { category: 'gesture', priority: 'low', interrupt: 'yes', loop: 'bounded' },
+  edge_peek: { category: 'gesture', priority: 'low', interrupt: 'yes', loop: 'bounded' },
+  surface_touch: { category: 'gesture', priority: 'low', interrupt: 'yes', loop: 'bounded' },
   talking: { category: 'dialogue', priority: 'normal', interrupt: 'yes', loop: 'bounded' },
   happy_reaction: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'bounded' },
   confused_reaction: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'bounded' },

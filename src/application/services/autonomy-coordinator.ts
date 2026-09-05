@@ -4,6 +4,7 @@ import type {
 } from '../../domain/character/autonomy-character-engine';
 import type { CollisionInsets, ScreenBoundsDto, Vector2Dto } from '../../domain/behavior/motion-engine';
 import {
+  calculateAutonomyOpportunityDelayMs,
   calculateNextWanderTarget,
   DEFAULT_AUTONOMOUS_INTENT_CONFIG,
   DEFAULT_BEHAVIOR_CONFIG,
@@ -13,6 +14,7 @@ import {
   type IPrng,
 } from '../../domain/behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
+import type { EnvironmentSnapshot } from '../../domain/behavior/surface-kinematics';
 
 export interface AutonomyClock {
   now(): number;
@@ -37,6 +39,7 @@ export interface CharacterAutonomyBoundary {
 export interface VoluntaryMovementController {
   getRootPosition(): Vector2Dto;
   getBounds(): ScreenBoundsDto;
+  getEnvironmentSnapshot(): EnvironmentSnapshot;
   getCollisionInsets(): CollisionInsets;
   canAcceptVoluntaryMovement(): boolean;
   requestVoluntaryMovement(command: {
@@ -67,7 +70,7 @@ export interface AutonomyCoordinatorOptions {
   readonly onIntentResolved: (
     intent: BehaviorIntent,
     opportunity: { readonly decisionSequence: number; readonly opportunityAtMs: number }
-  ) => void;
+  ) => boolean;
   readonly onMovementStopped?: () => void;
   readonly behaviorConfig?: BehaviorConfig;
   readonly traceCapacity?: number;
@@ -94,6 +97,7 @@ export class AutonomyCoordinator {
   private generation = 0;
   private decisionSequence = 0;
   private lastOpportunityAtMs = Number.NEGATIVE_INFINITY;
+  private lastUserActivityAtMs: number | null = null;
   private readonly trace: AutonomyTraceEntry[] = [];
 
   public constructor(private readonly options: AutonomyCoordinatorOptions) {}
@@ -101,6 +105,7 @@ export class AutonomyCoordinator {
   public start(): void {
     if (this.disposed || this.started) return;
     this.started = true;
+    this.lastUserActivityAtMs = this.options.clock.now();
     this.scheduleNextOpportunity();
   }
 
@@ -125,6 +130,7 @@ export class AutonomyCoordinator {
 
   public setEnabled(enabled: boolean): void {
     if (this.disposed || this.enabled === enabled) return;
+    this.noteUserActivity();
     this.enabled = enabled;
     this.cancelPendingWork(true);
     if (enabled) this.scheduleNextOpportunity();
@@ -132,6 +138,7 @@ export class AutonomyCoordinator {
 
   public setMenuOpen(menuOpen: boolean): void {
     if (this.disposed || this.menuOpen === menuOpen) return;
+    if (menuOpen) this.noteUserActivity();
     this.menuOpen = menuOpen;
     this.cancelPendingWork(true);
     if (!menuOpen) this.scheduleNextOpportunity();
@@ -139,6 +146,7 @@ export class AutonomyCoordinator {
 
   public suspendForUserInteraction(): void {
     if (this.disposed) return;
+    this.noteUserActivity();
     this.cancelPendingWork(true);
     this.operationalSuspensions.add('user_interaction');
   }
@@ -162,6 +170,7 @@ export class AutonomyCoordinator {
 
   public suspendForManualMovement(): void {
     if (this.disposed) return;
+    this.noteUserActivity();
     this.cancelPendingWork(true);
     this.operationalSuspensions.add('manual_movement');
   }
@@ -185,9 +194,14 @@ export class AutonomyCoordinator {
     this.scheduleNextOpportunity();
   }
 
-  public requestActivityLocomotion(): boolean {
+  public requestActivityLocomotion(targetRootPosition?: Vector2Dto): boolean {
     if (this.disposed) return false;
-    return this.requestWander();
+    return this.requestWander(targetRootPosition);
+  }
+
+  public noteUserActivity(): void {
+    if (this.disposed) return;
+    this.lastUserActivityAtMs = this.options.clock.now();
   }
 
   public getDecisionTrace(): readonly AutonomyTraceEntry[] {
@@ -202,8 +216,14 @@ export class AutonomyCoordinator {
     this.clearTimer();
     if (!this.isCadenceEligible()) return;
     const config = this.behaviorConfig();
-    const rangeMs = Math.max(0, config.maxIdleDurationMs - config.minIdleDurationMs);
-    const delayMs = config.minIdleDurationMs + this.nextRandom() * rangeMs;
+    const nowMs = this.options.clock.now();
+    const idleElapsedMs = Math.max(0, nowMs - (this.lastUserActivityAtMs ?? nowMs));
+    const delayMs = calculateAutonomyOpportunityDelayMs(
+      this.nextRandom(),
+      this.options.getCharacterSnapshot().needs,
+      idleElapsedMs,
+      config
+    );
     const scheduledGeneration = this.generation;
     this.timerHandle = this.options.scheduler.setTimeout(() => {
       this.timerHandle = undefined;
@@ -230,7 +250,10 @@ export class AutonomyCoordinator {
         decisionSequence,
         opportunityAtMs,
         tone: snapshot.synthesizedTone,
-        idleElapsedMs: this.behaviorConfig().minIdleDurationMs,
+        idleElapsedMs: Math.max(
+          0,
+          opportunityAtMs - (this.lastUserActivityAtMs ?? opportunityAtMs)
+        ),
       },
       snapshot,
       candidates,
@@ -256,9 +279,12 @@ export class AutonomyCoordinator {
     }
 
     if (resolved.kind === 'wander') {
-      const accepted = this.requestWander();
+      const accepted = this.options.onIntentResolved(
+        resolved,
+        { decisionSequence, opportunityAtMs }
+      );
       if (accepted) {
-        this.options.onIntentResolved(resolved, { decisionSequence, opportunityAtMs });
+        return;
       } else {
         this.amendLatestTraceReason('movement_command_rejected');
         this.options.onMovementStopped?.();
@@ -270,21 +296,25 @@ export class AutonomyCoordinator {
     this.scheduleNextOpportunity();
   }
 
-  private requestWander(): boolean {
+  private requestWander(targetRootPosition?: Vector2Dto): boolean {
     const start = this.options.movement.getRootPosition();
-    const target = calculateNextWanderTarget(
-      start,
-      this.options.movement.getBounds(),
-      this.options.prng,
-      this.options.movement.getCollisionInsets(),
-      this.behaviorConfig()
-    );
-    const accepted = target.durationMs > 0 && this.options.movement.requestVoluntaryMovement({
+    const target = targetRootPosition === undefined
+      ? calculateNextWanderTarget(
+          start,
+          this.options.movement.getBounds(),
+          this.options.prng,
+          this.options.movement.getCollisionInsets(),
+          this.behaviorConfig()
+        )
+      : {
+          target: targetRootPosition,
+          durationMs: Math.abs(targetRootPosition.x - start.x) > 0 ? 1 : 0,
+        };
+    return target.durationMs > 0 && this.options.movement.requestVoluntaryMovement({
       kind: 'horizontal_wander',
       targetRootPosition: target.target,
       speedPxPerSec: this.behaviorConfig().wanderSpeedPxPerSec,
     });
-    return accepted;
   }
 
   private cancelPendingWork(cancelMovement: boolean): void {

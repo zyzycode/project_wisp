@@ -239,6 +239,7 @@ function initializeAutonomyComposition(): void {
     movement: {
       getRootPosition: () => orchestrator.getMotionState().position,
       getBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
+      getEnvironmentSnapshot: () => platformEnvironmentAdapter.getSnapshot(),
       getCollisionInsets: () => DEFAULT_MOTION_CONSTRAINTS.collisionInsets,
       canAcceptVoluntaryMovement: () => orchestrator.canAcceptVoluntaryMovement(),
       requestVoluntaryMovement: (command) => orchestrator.requestVoluntaryMovement(command),

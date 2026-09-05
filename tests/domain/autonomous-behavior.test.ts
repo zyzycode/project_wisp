@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateNextWanderTarget,
+  calculateAutonomyOpportunityDelayMs,
+  calculateExploreChance,
   decideNextAutonomousAction,
   DEFAULT_BEHAVIOR_CONFIG,
   resolveAutonomousBehaviorIntent,
@@ -57,6 +59,27 @@ describe('Domain: Autonomous Behavior', () => {
     expect(decideNextAutonomousAction(prng(0.05))).toBe('take_nap');
     expect(decideNextAutonomousAction(prng(0.4))).toBe('wander');
     expect(decideNextAutonomousAction(prng(0.95))).toBe('idle_look_around');
+  });
+
+  it('raises Explore frequency after prolonged inactivity and with compatible state needs', () => {
+    const quiet = { energy: 90, attention: 10, play: 90, comfort: 10, boredom: 100 };
+    const depleted = { energy: 25, attention: 10, play: 0, comfort: 70, boredom: 0 };
+    const recentChance = calculateExploreChance(quiet, DEFAULT_BEHAVIOR_CONFIG.minIdleDurationMs);
+    const prolongedChance = calculateExploreChance(quiet, DEFAULT_BEHAVIOR_CONFIG.maxIdleDurationMs * 6);
+    const depletedChance = calculateExploreChance(
+      depleted,
+      DEFAULT_BEHAVIOR_CONFIG.minIdleDurationMs
+    );
+
+    expect(prolongedChance).toBeGreaterThan(recentChance);
+    expect(recentChance).toBeGreaterThan(depletedChance);
+    expect(calculateAutonomyOpportunityDelayMs(0.5, quiet, 0)).toBeGreaterThan(
+      calculateAutonomyOpportunityDelayMs(
+        0.5,
+        quiet,
+        DEFAULT_BEHAVIOR_CONFIG.maxIdleDurationMs * 6
+      )
+    );
   });
 
   it('selects only from the ordered normalized candidates after cadence', () => {

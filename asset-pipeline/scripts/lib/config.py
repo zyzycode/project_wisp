@@ -41,6 +41,11 @@ TARGET_FACE_CENTER_Y: int = 180
 CategoryRuleType = Tuple[List[str], str, str, Tuple[int, int]]
 
 CATEGORY_RULES: List[CategoryRuleType] = [
+    # --- Explore body sheets must precede generic face/look and body/peek rules ---
+    (["body_look_around", "look_around"], "body/look_around", "body_look_around", (1, 4)),
+    (["body_crouch_examine", "crouch_examine"], "body/crouch_examine", "body_crouch_examine", (1, 4)),
+    (["body_edge_peek", "edge_peek"], "body/edge_peek", "body_edge_peek", (1, 4)),
+    (["body_surface_touch", "surface_touch"], "body/surface_touch", "body_surface_touch", (1, 4)),
     # --- Эмоции / Оверлеи лиц и зрачков (Faces & Pupils) - Standard 1x4 (4 frames) ---
     (["pupils_normal", "зрач_обыч", "pupil_normal"], "faces/pupils", "pupils_normal", (1, 4)),
     (["зрач", "pupil", "pupils", "iris"], "faces/pupils", "pupils_directional", (1, 4)),

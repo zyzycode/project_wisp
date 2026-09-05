@@ -77,6 +77,15 @@ function createFixture(
     movement: {
       getRootPosition: () => ({ x: 100, y: 200 }),
       getBounds: () => ({ id: 'primary', x: 0, y: 0, width: 1_000, height: 800 }),
+      getEnvironmentSnapshot: () => ({
+        capturedAtMs: scheduler.nowMs,
+        screenBounds: { id: 'primary', x: 0, y: 0, width: 1_000, height: 800 },
+        currentSurface: {
+          id: 'primary-floor', kind: 'screen_floor',
+          bounds: { x: 0, y: 0, width: 1_000, height: 800 },
+          supportY: 800, isValidSupport: true,
+        },
+      }),
       getCollisionInsets: () => ({ left: 50, right: 50, top: 90, bottom: 10 }),
       canAcceptVoluntaryMovement: () => true,
       requestVoluntaryMovement,
@@ -116,7 +125,13 @@ describe('Main integration: AUTO-I08 Brain runtime', () => {
     fixture.composition.start();
     fixture.scheduler.take()?.();
 
-    expect(fixture.requestVoluntaryMovement).toHaveBeenCalledOnce();
+    const plan = fixture.composition.getExplorePlan();
+    expect(plan).not.toBeNull();
+    expect(fixture.requestVoluntaryMovement).toHaveBeenCalledWith({
+      kind: 'horizontal_wander',
+      targetRootPosition: plan?.targetRootPosition,
+      speedPxPerSec: 100,
+    });
     expect(fixture.composition.getVisualEpisode().intent.kind).toBe('walk');
     expect(fixture.composition.getVisualEpisode().id).toBe('episode-2');
     expect(fixture.composition.getActivityTimeline()).toEqual({
@@ -127,10 +142,22 @@ describe('Main integration: AUTO-I08 Brain runtime', () => {
 
     fixture.composition.notifyVoluntaryMovementCompleted();
     expect(fixture.composition.getActivityTimeline()).toMatchObject({
-      runId: 'run-1', phaseId: 'observe', stage: 'looping',
-      phaseStartedAtMs: 10, phaseEndsAtMs: 3_010,
+      runId: 'run-1', phaseId: 'inspect', stage: 'looping',
+      phaseStartedAtMs: 10, phaseEndsAtMs: 2_210,
     });
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe(plan?.inspection);
+
+    for (let index = 0; index < 3; index += 1) {
+      const timeline = fixture.composition.getActivityTimeline();
+      if (timeline === null || timeline.phaseEndsAtMs === null) break;
+      fixture.scheduler.nowMs = timeline.phaseEndsAtMs;
+      fixture.composition.tick();
+    }
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.composition.getExplorePlan()).toBeNull();
     expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    expect(fixture.requestVoluntaryMovement).toHaveBeenCalledOnce();
+    expect(fixture.scheduler.size()).toBe(1);
   });
 
   it('advances Rest phases by Main-monotonic deadlines without Skin completion', () => {

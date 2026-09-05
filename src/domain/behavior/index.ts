@@ -5,3 +5,4 @@ export * from './motion-engine';
 export * from './gaze-engine';
 export * from './surface-kinematics';
 export * from './activity-runner';
+export * from './explore-planner';

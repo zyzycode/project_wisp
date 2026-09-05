@@ -37,7 +37,7 @@ function context(overrides: Partial<ActivitySelectionContext> = {}): ActivitySel
 
 describe('Domain: Activity Runner', () => {
   it('provides the specified Explore and Rest chains', () => {
-    expect(EXPLORE_ACTIVITY.steps.map((step) => step.actionId)).toEqual(['walk', 'observe', 'sit', 'look_around', 'stand_up']);
+    expect(EXPLORE_ACTIVITY.steps.map((step) => step.actionId)).toEqual(['walk:default', 'look_around']);
     expect(REST_ACTIVITY.steps.map((step) => step.actionId)).toEqual(['yawn', 'lie_down', 'sleep_start', 'sleep_loop']);
     expect(validateActivityDefinition(EXPLORE_ACTIVITY)).toBe(true);
     expect(validateActivityDefinition(REST_ACTIVITY)).toBe(true);
@@ -59,15 +59,15 @@ describe('Domain: Activity Runner', () => {
       200
     );
     expect(walked.runtime).toMatchObject({
-      currentStepId: 'observe',
+      currentStepId: 'inspect',
       stage: 'looping',
       stepStartedAtMs: 200,
-      phaseEndsAtMs: 3_200,
+      phaseEndsAtMs: 2_400,
     });
-    expect(runner.tick(EXPLORE_ACTIVITY, walked.runtime!, 3_199).runtime?.currentStepId)
-      .toBe('observe');
-    expect(runner.tick(EXPLORE_ACTIVITY, walked.runtime!, 3_200).runtime?.currentStepId)
-      .toBe('sit');
+    expect(runner.tick(EXPLORE_ACTIVITY, walked.runtime!, 2_399).runtime?.currentStepId)
+      .toBe('inspect');
+    expect(runner.tick(EXPLORE_ACTIVITY, walked.runtime!, 2_400).result?.status)
+      .toBe('completed');
     expect(runner.start(EXPLORE_ACTIVITY, 'run-2', 300).runtime?.runId).toBe('run-2');
   });
 
@@ -81,7 +81,7 @@ describe('Domain: Activity Runner', () => {
     }, 30).runtime?.currentStepId).toBe('walk');
     expect(runner.update(EXPLORE_ACTIVITY, second, {
       type: 'locomotion_completed', runId: 'run-2',
-    }, 30).runtime?.currentStepId).toBe('observe');
+    }, 30).runtime?.currentStepId).toBe('inspect');
   });
 
   it('ignores a stale guard result before applying any branch control flow', () => {

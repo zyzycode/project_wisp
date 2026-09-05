@@ -9,6 +9,7 @@ import { BrainActivityRuntime } from '../application/services/brain-activity-run
 import type { BehaviorConfig, IPrng } from '../domain/behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../domain/behavior/behavior-intent';
 import type { ActivityCancelReason } from '../domain/behavior/activity-runner';
+import type { ExplorePlan } from '../domain/behavior/explore-planner';
 import type { MotionEvent, Vector2Dto } from '../domain/behavior/motion-engine';
 import { AutonomyCharacterEngine, type CharacterAutonomySnapshot } from '../domain/character';
 import {
@@ -95,13 +96,15 @@ export class MainAutonomyComposition {
         return {
           character: snapshot,
           synthesizedTone: snapshot.synthesizedTone,
-          environment: {
-            capturedAtMs: options.clock.now(),
-            screenBounds: options.movement.getBounds(),
-          },
+          environment: options.movement.getEnvironmentSnapshot(),
         };
       },
-      requestLocomotion: () => this.coordinator.requestActivityLocomotion(),
+      getRootPosition: () => options.movement.getRootPosition(),
+      getCollisionInsets: () => options.movement.getCollisionInsets(),
+      nextRandom: () => options.prng.next(),
+      requestLocomotion: (request) => {
+        return this.coordinator.requestActivityLocomotion(request.targetRootPosition);
+      },
       cancelLocomotion: () => options.movement.cancelVoluntaryMovement(),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
@@ -177,6 +180,10 @@ export class MainAutonomyComposition {
     };
   }
 
+  public getExplorePlan(): ExplorePlan | null {
+    return this.activity.getExplorePlan();
+  }
+
   public getDecisionTrace(): readonly AutonomyTraceEntry[] {
     return this.coordinator.getDecisionTrace();
   }
@@ -188,7 +195,7 @@ export class MainAutonomyComposition {
     ).resolvedIntent;
     if (intent === null) return false;
     this.suspendForUserInteraction();
-    if (command.action === 'sleep') return this.activity.start(intent, false);
+    if (command.action === 'sleep') return this.activity.start(intent);
     this.setVisualKind('wake_up', true, true);
     this.resumeAfterUserInteraction();
     return true;
@@ -235,11 +242,12 @@ export class MainAutonomyComposition {
       { kind: 'play', source: 'user', priority: 'high', reason: 'user_play' },
       this.options.getCharacterSnapshot()
     ).resolvedIntent;
-    return intent !== null && this.activity.start(intent, false);
+    return intent !== null && this.activity.start(intent);
   }
 
   public beginDrag(): void {
     this.cancelActivity('user_interaction', true);
+    this.coordinator.noteUserActivity();
     this.coordinator.interruptForcedMotion();
     this.character.resolveDirectIntent(
       { kind: 'drag', source: 'user', priority: 'critical', reason: 'user_drag' },
@@ -307,13 +315,15 @@ export class MainAutonomyComposition {
     return appliedSteps > 0;
   }
 
-  private handleResolvedIntent(intent: BehaviorIntent): void {
-    if (this.activity.start(intent, intent.kind === 'wander' && intent.source === 'timer')) return;
+  private handleResolvedIntent(intent: BehaviorIntent): boolean {
+    if (this.activity.start(intent)) return true;
+    if (intent.kind === 'wander') return false;
     this.setVisualIntent(
       mapBehaviorIntentToAnimationIntent(intent, this.options.getCharacterSnapshot().synthesizedTone),
       true,
       true
     );
+    return true;
   }
 
   private finishActivityCadence(): void {

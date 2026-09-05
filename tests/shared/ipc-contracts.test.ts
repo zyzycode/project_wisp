@@ -134,4 +134,19 @@ describe('Shared: IPC contracts', () => {
     expect(() => parseBodyEventDTO({ ...body, screenPosition: { x: Infinity, y: 4 } }))
       .toThrow(TypeError);
   });
+
+  it('accepts the point-specific Explore visual intents through the exact Brain DTO validator', () => {
+    for (const kind of ['look_around', 'crouch_examine', 'edge_peek', 'surface_touch'] as const) {
+      const brain = brainState();
+      expect(parseBrainStateDTO({
+        ...brain,
+        visualIntent: {
+          ...brain.visualIntent,
+          kind,
+          category: 'gesture',
+          loop: 'bounded',
+        },
+      }).visualIntent.kind).toBe(kind);
+    }
+  });
 });
