@@ -108,7 +108,7 @@ Selection использует явно переданный `randomUnit`/seeded
 Структуры ActivityDefinition, Step и рантайм-контракты определены в [src/domain/behavior/activity-runner.ts](../../src/domain/behavior/activity-runner.ts).
 
 - `runId` уникален для каждого запуска.
-- Завершение всегда детерминировано одним из статусов: `completed`, `interrupted`, `failed`, `cancelled`.
+- Завершение всегда детерминировано одним из статусов: `completed`, `failed`, `cancelled`; interruption — `cancelled` с причиной.
 
 В каждый момент Activity Runner исполняет не более одной Activity. Terminal run не возобновляется; повторный запуск той же Activity получает новый `runId`.
 
@@ -237,3 +237,64 @@ Click/drag, menu pause, disable и shutdown отменяют активную Re
 Небольшое движение уже принятой опоры сохраняет local distance по Motion §7.1.
 Во время sleep phase/stable sleep Main передаёт существующий `sleepy` профиль метаболизма
 в CharacterStateService; во время подхода/подготовки он не применяется. Нового needs timer нет.
+
+## 16. AUTO-A09: единый outcome и ownership
+
+Целевые declarations [`ActivityOutcomeFeedback`](../../src/application/ports/shimeji-feedback-port.ts)
+и [`OwnedActivityRun`](../../src/application/ports/behavior-admission-port.ts) подключаются в #46/#50.
+Они дополняют Application boundary существующего Runner; Domain не импортирует Application types.
+Effective rank хранится рядом с run в Brain и определяется причиной запуска/источником.
+Отсутствие нового Activity kind не означает одинаковый приоритет user/local/provider запуска.
+Подробные admission/deadlines — [Autonomy §12](./AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
+
+Request → admission → started run → terminal outcome — разные факты.
+Команда `play` сначала проходит Character gate по состоянию **до игрового эффекта**.
+Rejected/no compatible Activity не создаёт игрового stimulus, execution history или полного cooldown.
+Accepted/deferred ещё не означает выполнения; budget/history старта фиксируются только при `started`.
+Любая ветка Runner, включая explicit cancel, failure, timeout, disable и shutdown,
+доставляет ровно один terminal outcome и cleanup. `clearedRunId` связывает `ActivityResult` с run.
+
+`ActivityOutcomeFeedback` — фактический terminal снимок: family, outcome, executedMs,
+participation и playCompleted. ID/run непустые; `atMs` и `executedMs` конечны и неотрицательны.
+`executedMs` не включает provider wait/defer; pause/resume нет.
+`playCompleted` true только после полностью выполненной Brain semantic play phase:
+Swat/игровой gesture/Zoomies, но не gaze, approach, arrival или social wave.
+Флаг сохраняется до terminal; отмена после этой фазы может дать её эффект, отмена до — нет.
+Для Explore/calm/rest/social_bid флаг false. User engagement означает фактическое игровое участие,
+а не источник provider или существование курсора; это нормализует Application.
+
+| Outcome | Mapping в существующий `StimulusDto` |
+|---|---|
+| Explore completed | `system_event`, metadata `activityOutcome=explore_completed`, `activityRunId`, `deltaMs=0`. |
+| play/cursor_interest с `playCompleted=true` | `play`, intensity=1; metadata `activityRunId`, `participation`, `deltaMs=0`. |
+| Cancel/failure до выполненной игровой фазы | `null`, без полного эффекта; реальный Motion feedback сохраняется. |
+| calm/rest/cursor gaze/SocialBid без игры | `null`; только история, cooldown/budget и обычный метаболизм. |
+
+Explore terminal completion означает конец существующей route/action chain, не одно прибытие.
+Новые deltas применяет только Character reducer; mapper не мутирует Needs.
+В #46 `IActivityOutcomeStimulusMapper` заменяет старый mapper consumer атомарно;
+не создаётся второй обработчик feedback. Legacy `swat_cursor_completed` нормализуется
+в тот же completed-play key `activityRunId`, затем его отдельная emission удаляется.
+Дедупликация проверяет **eventId и semantic key run+effect**: другой eventId не позволяет
+повторно начислить тот же эффект. Поздний outcome foreign/terminal run игнорируется.
+Bounded terminal ledger живёт в Brain generation; события прошлой generation отклоняются.
+
+Drag start ID служит dragRunId для hold/end; один hold и один end на известный run.
+Landing outcome применяется один раз на Motion landing episode после settle/recover;
+soft landing не даёт stimulus, bounce/substep/повтор IPC не даёт второго эффекта.
+Drag/landing не превращаются в `play`, не начисляют дружбу за физическое перемещение.
+Character deltas и bounded recovery — [Character §11](./CHARACTER_ENGINE.md#11-auto-a09-последствия-и-восстановление).
+
+Terminal transaction: завершить run/locomotion cleanup → применить once-only feedback →
+обновить history/cooldowns → получить Character snapshot/gates → один opportunity.
+При forced landing выбор ждёт recover, даже если Needs уже пересчитаны.
+Game/Explore reward не привязан к визуальному успеху Skin и не пересчитывается каждый pulse.
+
+### Проверки для implementation
+
+- rejected user play при critical Needs не меняет исходный gate игровым эффектом;
+- completed Explore/Swat/Zoomies насыщает Needs ровно один раз, duplicate с новым ID тоже игнорируется;
+- cancel до/после игровой фазы различается; no-start и foreign run не дают feedback;
+- отмена AI/nap/игры через drag не теряет реальные drag/landing последствия;
+- immediate и safe-deferred AI дают максимум один run, timeout не прерывает физическую безопасность;
+- nap/full sleep обновляет Needs существующим clock; после wake возвращается один local flow.

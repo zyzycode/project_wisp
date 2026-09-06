@@ -37,7 +37,7 @@ flowchart LR
 | Forced motion | Motion Engine | Владеет позицией при drag/fall/collision/landing и выдаёт `MotionEvent`; не создаёт resolved behavior. |
 | Visual intent | Activity Runner | Выпускает `AnimationIntent` по mapping contract; Animation Controller разрешает visual priority/interrupt/FSM, но не behavior. |
 
-Forced physical facts — отдельная safety-ветка, а не параллельное принятие поведения. Они немедленно отменяют активную Activity и через `MotionEvent` управляют тем же Animation Controller. В той же Application transaction валидный drag input или `landed` event нормализуется в обязательный lifecycle intent `drag`/`land`: Character Engine остаётся owner его semantic resolution, но не может отменить уже произошедший P1/P0 физический факт. Support loss/collision без public intent kind остаётся только `MotionEvent` и не расширяет каталог. Physical authority зафиксирован в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md#8-forced-motion-и-position-authority), общий safety order — в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md#3-safety-order-p0p5), visual mapping — в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md#поток-ответственности).
+Forced physical facts — отдельная safety-ветка, а не параллельное принятие поведения. Они немедленно отменяют активную Activity и через `MotionEvent` управляют тем же Animation Controller. В той же Application transaction валидный drag input или `landed` event нормализуется в обязательный lifecycle intent `drag`/`land`: Character Engine остаётся owner его semantic resolution, но не может отменить уже произошедший P1/P0 физический факт. Support loss/collision без public intent kind остаётся только `MotionEvent` и не расширяет каталог. Physical authority зафиксирован в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md#8-авторитет-позиции-кто-двигает-окно), общий safety order — в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md#3-safety-order-p0p5), visual mapping — в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md#1-поток-ответственности-brain--body--skin).
 
 ## Форма intent
 
@@ -67,8 +67,8 @@ Utility AI не вводит новый `BehaviorIntentKind`: Application фор
 | `react_happy` | Семантическая позитивная реакция на пользователя или событие. | provider, user |
 | `react_confused` | Семантическая реакция непонимания, ошибки или неоднозначного ввода. | provider, user, system |
 | `play` | Игровое или дружелюбное взаимодействие без выбора конкретной анимации или prop asset. | provider, user, timer |
-| `sleep` | Перейти в sleep/quiet behavior, если Character Engine разрешит. | user, provider, timer |
-| `wake` | Выйти из sleep/quiet behavior, если правила разрешают. | user, system |
+| `sleep` | Перейти в semantic sleep, если Character Engine разрешит; quiet не меняется. | user, provider, timer |
+| `wake` | Выйти из semantic sleep, если правила разрешают; quiet не меняется. | user, system |
 | `drag` | Зафиксировать прямое перетаскивание пользователем. | user |
 | `land` | Завершить drag movement и стабилизировать персонажа. | user, system |
 | `wander` | Ненавязчивое автономное перемещение. | timer |
@@ -98,9 +98,19 @@ Utility AI не вводит новый `BehaviorIntentKind`: Application фор
 - Character Engine может отклонить `sleep`, если пользователь активно взаимодействует с Wisp.
 - Character Engine может отклонить `respond`, если включён quiet mode; Application может сохранить ответ для более позднего показа только после отдельного решения.
 - Provider hints не обходят cooldowns, no-spam rules и sleep/quiet restrictions.
-- Unknown provider hints мапятся в safe fallback intent, обычно `react_confused`, `idle` или `quiet` по ситуации.
+- Unknown provider hints не допускаются как priority behavior; безопасная dialogue presentation не меняет quiet.
 - Provider-origin intents не должны создавать `drag` или `land`; эти intents принадлежат прямому user/system interaction flow.
 
 ## Архитектурные границы
+
+AUTO-A09 сохраняет каталог kinds. Calm использует `idle`; Explore — `wander`; игра,
+ограниченный cursor interest и невербальный SocialBid — Activities внутри `play`.
+`quiet` — устойчивый mode по user/settings boundary, не поза и не отключение Needs clock.
+Provider `source` не означает P1 и не обходит Character gates; admissible provider выше local
+по [Autonomy §12](./AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
+Request/admission/start/terminal и ownership объявлены отдельно в
+[`behavior-admission-port.ts`](../../src/application/ports/behavior-admission-port.ts),
+не расширяют provider DTO и не добавляют asset/target fields в `BehaviorIntent`.
+`reason` не используется для передачи pose, gait, ownership или выбора семейства.
 
 `BehaviorIntent` — чистый семантический DTO доменного слоя ([`src/domain/behavior/behavior-intent.ts`](../../src/domain/behavior/behavior-intent.ts)). Согласно [инвариантам изоляции Clean Architecture](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture), он не содержит UI-разметки (React/DOM/CSS), путей к ассетам, параметров кадров/FPS, дескрипторов окон ОС или каналов IPC.

@@ -44,6 +44,25 @@ export interface SetAutonomyEnabledDTO {
   readonly enabled: boolean;
 }
 
+/** AUTO-A09 target command/state; wired atomically with Main/Preload/UI in #49. */
+export interface SetQuietModeDTO {
+  readonly enabled: boolean;
+}
+
+export interface AutonomyModeDTO {
+  readonly quiet: boolean;
+}
+
+/** Target bridge extension; becomes required on WispApiBridge at #49 cutover. */
+export interface QuietModeBridge {
+  setQuietMode(command: SetQuietModeDTO): Promise<AutonomyModeDTO>;
+}
+
+/** Target full snapshot, including initial/reload quiet state; no parallel state stream. */
+export type QuietModeBrainStateDTO = BrainStateDTO & {
+  readonly autonomy: AutonomyModeDTO;
+};
+
 export type SleepWakeCommandDTO =
   | { readonly action: 'sleep' }
   | { readonly action: 'wake' };

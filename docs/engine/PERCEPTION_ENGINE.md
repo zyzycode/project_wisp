@@ -122,7 +122,24 @@ Starting thresholds сохраняются: `swatRadiusWorldPx=64`, `swatDwellMs
 
 Dwell сбрасывается при exit/stale/missing/incompatible state. Perception подавляет сигнал при `dragged`, fall lifecycle, land lifecycle, crash/recover и sleep visual lifecycle. Названия visual states здесь являются consumer compatibility list, а их transitions принадлежат Animation Engine.
 
-Look-at остаётся gaze. Swat/chase/avoid — P3 Activity decisions и не стартуют внутри Perception.
+Look-at остаётся gaze. Swat/avoid — local P3 Activity decisions и не стартуют внутри Perception.
+AUTO-A09 не вводит постоянную chase: ограниченный cursor interest подчинён
+[общему admission/budget](./AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость).
+
+### 6.1. AUTO-A09: bounded cursor interest
+
+Stationary Observe Cursor из #23 сохраняется: gaze, существующий доступный gesture,
+без locomotion по умолчанию. Новая approach Activity внутри `play` выбирается явно в #48
+только после freshness/dwell, Character Needs/friendship, cooldown и общего budget gate.
+Усталость может оставить только gaze; P2 и AI ownership запрещают новую local Activity.
+Один эпизод использует один run, deadline и максимум одну фиксированную цель на той же
+достижимой опоре; новые samples обновляют gaze/валидность, но не retarget и не продлевают run.
+Approach — существующий walk с ограничением суммарной дистанции из `InitiativeTuning`;
+новые прыжки/traversal primitives и переход между опорами для погони не допускаются.
+Потеря freshness, уход курсора за область интереса, исчезновение/недостижимость цели,
+user/physics interruption или deadline завершают эпизод с обычным cleanup и свежим local выбором.
+Движение курсора не перезапускает эпизод. Gaze-only не расходует budget и не даёт play reward;
+подтверждённая игровая фаза использует once-only [Activity outcome](./ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership).
 
 ## 7. Normalized environment signals
 

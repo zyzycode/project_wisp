@@ -106,6 +106,27 @@ stateDiagram-v2
 4. Внутренние автономные события (`respond`, `think`, `play`, таймерный `idle` / `wander`) пробуждения сами по себе не вызывают.
 5. Если после пробуждения условие сна всё ещё истинно, Character Engine может вновь разрешить `sleep` по завершении приоритетного взаимодействия.
 
+### 2.2. Устойчивый quiet (AUTO-A09)
+
+Quiet — отдельный session mode Character gating context в Brain, изначально false.
+`quiet` включает его по user/settings boundary; выключение — явная команда `SetQuietModeDTO`.
+Обычный idle, wake, completion, reply или смена Activity не выключает quiet.
+Provider не меняет mode. Quiet не равен semantic sleep, menu pause или autonomy disabled.
+Sleep/wake thresholds из §2.1 действуют и в quiet; wake оставляет quiet включённым.
+
+В quiet допускаются P0/P1/P2, calm, безопасное ненавязчивое Explore и Rest;
+подавляются unsolicited SocialBid, cursor gestures/approach, шумная игра/Zoomies и talking behavior.
+Gaze-only остаётся visual reflex. Прямые user команды, включая play/chat, проходят обычные
+Character gates и могут дать ответ пользователю, но не снимают quiet и не обходят critical state.
+Текст ответа на прямой chat доступен в dialogue presentation; unsolicited talking/жест не обязателен.
+Включение quiet отменяет несовместимый active/deferred run без восстановления;
+выключение создаёт один свежий opportunity без очереди. Budget/cooldown сохраняются.
+Runtime reload Renderer получает текущий mode из полного Brain snapshot; перезапуск Main
+сбрасывает session mode. Persistence не входит в AUTO-A09.
+
+Типы команды, bridge и snapshot — [`ipc-contracts.ts`](../../src/shared/ipc-contracts.ts);
+общий budget и priority — [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md).
+
 ---
 
 ## 3. Relationship (Система отношений)
@@ -250,6 +271,53 @@ Wisp способна мягко перенимать интересы поль�
 - `lastUpdated`: временную метку последнего пересчёта.
 
 ---
+
+## 11. AUTO-A09: последствия и восстановление
+
+Request/admission не равны выполнению: игровой effect применяется только по подтверждённой
+semantic play phase из [Activity feedback](./ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership).
+Ни request `play`, ни отклонённая игра не уменьшают дефициты до проверки Character gate.
+Стимулы физических фактов и прямого pet input сохраняются независимо от исхода Activity.
+
+Обязательны направления effects, once-only и clamp `[0,100]`; следующие deltas — начальный
+versioned tuning #46, а не новые шкалы/thresholds. Все неуказанные изменения равны нулю.
+
+| Подтверждённый факт | Начальные deltas |
+|---|---|
+| Explore completed | energy −1, boredom −8; одиночное исследование не даёт friendship/attention reward. |
+| Завершённая игра | energy −3, play −15, boredom −18 (существующие play deltas). |
+| Та же игра с `participation=user_engaged` | Дополнительно attention −3 и friendship +3, один раз. |
+| Drag start / end | Только semantic lifecycle, нулевой дискретный reward/штраф. |
+| Однократный drag hold | comfort +2; без friendship/love/игрового эффекта. |
+| stumble / crash_landing | comfort +2 / +6; energy −1 / −2 соответственно. |
+| soft landing, calm, SocialBid без ответа | Нулевой дискретный effect. |
+
+Игровые personality deltas существующего reducer сохраняются только при подтверждённой игре.
+Solitary play не считается социальным контактом; presence курсора не доказывает участие.
+Настоящий user input во время SocialBid получает собственный обычный stimulus, без второго
+reward за answered outcome. Cancel/failure до игровой фазы не начисляет её deltas;
+минимальный slice не вводит пропорциональную оплату каждого шага или отдельный ресурсный timer.
+Explore mapping использует `system_event.activityOutcome`, drag hold — `dragRunId/heldMs`,
+landing — существующий `landingOutcome`; reducer должен явно обработать эти факты в #46.
+Строки здесь обозначают metadata, не новые public intent kinds.
+
+Единственный Needs clock — существующий Brain/CharacterStateService loop.
+Semantic sleep phase/stable sleep использует `sleepy` профиль; подход/prepare/calm/quiet
+не включает принудительно профиль сна. Тон `sleepy` сам по себе не доказывает semantic sleep.
+Начальные target/rates сохраняются из [`metabolism.ts`](../../src/domain/character/metabolism.ts):
+sleep energy стремится к 82 при rate 0.3/hour; comfort — к 12 при rate 0.32/hour.
+Это медленное восстановление: 12-секундный nap не обязан полностью восстановить energy.
+Full sleep достигает wake threshold за конечное время; ускорение допускается только как
+явно versioned tuning с приложенным временным сценарием, не скрытая поправка ради теста.
+
+На каждом pulse elapsed считается от последнего применённого Main-monotonic времени;
+отрицательный/non-finite elapsed отвергается, повторное время не даёт повторного метаболизма.
+Catch-up ограничен начально 60000 ms за transaction; избыток после stall отбрасывается,
+а не ставится в очередь. Дискретный outcome несёт `deltaMs=0`, исключая двойной дрейф.
+Threshold crossing пересчитывается после Needs update тем же scheduler. P2 отменяет optional
+Activity/AI owner; pending intent не мешает обязательному сну или пробуждению.
+Optional nap завершается своим Brain deadline, full user/vital sleep — Character wake gate.
+Ни Skin completion, ни provider response не будят автоматически; quiet после wake сохраняется.
 
 ## Архитектурные границы
 
