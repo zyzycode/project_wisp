@@ -100,12 +100,9 @@ env/
 *.sqlite3-shm
 *.sqlite3-wal
 
-# Local generated images, large binary sprites, test gifs, and quarantine
+# Local generated images and quarantine
 generated_images/
 new_generated/
-public/**/*.png
-public/*.png
-*.gif
 **/delete_me/
 .quarantine/
 **/manifest.json.tmp
