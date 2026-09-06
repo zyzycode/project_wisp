@@ -179,6 +179,7 @@ const EXPECTED_POLICY: Record<AnimationIntentKind, {
   celebrate: { category: 'reaction', priority: 'normal' },
   bored: { category: 'idle', priority: 'low' },
   sit: { category: 'idle', priority: 'low' },
+  sit_edge: { category: 'idle', priority: 'low' },
   stand_up: { category: 'transition', priority: 'normal' },
   lie_down: { category: 'idle', priority: 'low' },
   get_up: { category: 'transition', priority: 'normal' },

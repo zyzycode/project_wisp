@@ -478,7 +478,7 @@ function synchronizeLocalAnimationState(
     walk: 'START_FLOAT', sleep_start: 'START_SLEEP', wake_up: 'WAKE_UP',
     happy_reaction: 'REACT_HAPPY', confused_reaction: 'REACT_CONFUSED',
     thinking_loop: 'THINK', bored: 'BORED', wave: 'WAVE', celebrate: 'CELEBRATE',
-    spook: 'SPOOK', dragged: 'START_DRAG', land: 'LAND', sit: 'SIT',
+    spook: 'SPOOK', dragged: 'START_DRAG', land: 'LAND', sit: 'SIT', sit_edge: 'SIT',
     stand_up: 'STAND_UP', lie_down: 'LIE_DOWN', get_up: 'GET_UP', run: 'RUN',
     jump: 'JUMP', fall: 'FALL', crawl: 'CRAWL', climb_wall: 'CLIMB_WALL',
     hang_ceiling: 'HANG_CEILING',

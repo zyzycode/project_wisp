@@ -727,6 +727,7 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
       case 'wake_up':
         return 'wake_up';
       case 'sit':
+      case 'sit_edge':
         return 'sit';
       case 'stand_up':
         return 'stand_up';

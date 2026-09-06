@@ -25,6 +25,7 @@ export type CoreAnimationIntentKind =
 
 export type LocomotionAnimationIntentKind =
   | 'sit'
+  | 'sit_edge'
   | 'stand_up'
   | 'lie_down'
   | 'get_up'
@@ -154,6 +155,7 @@ const INTENT_POLICIES: Record<AnimationIntentKind, IntentPolicy> = {
   wave: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
   celebrate: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
   bored: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
+  sit_edge: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
   sit: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
   stand_up: { category: 'transition', priority: 'normal', interrupt: 'yes', loop: 'none' },
   lie_down: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },

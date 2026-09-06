@@ -85,6 +85,7 @@ export class MainAutonomyComposition {
   private enabled = true;
   private menuOpen = false;
   private cursorReactionActive = false;
+  private userPerchActive = false;
   private jumpFallAtMs: number | null = null;
   private readonly cursorProximityEngine = new CursorProximityEngine();
   private cursorProximityState: CursorProximityState = {
@@ -134,11 +135,13 @@ export class MainAutonomyComposition {
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
       onTerminated: (result) => {
-        if ((result.status !== 'completed' || result.activityId !== 'rest')
+        if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'window_perch'))
             && options.movement.canAcceptVoluntaryMovement()) {
           this.setVisualKind('idle_blink', true, result.activityId === 'observe_cursor');
         }
-        if (result.activityId === 'observe_cursor' && this.cursorReactionActive) {
+        if (result.activityId === 'window_perch' && this.userPerchActive) {
+          this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity();
+        } else if (result.activityId === 'observe_cursor' && this.cursorReactionActive) {
           this.cursorReactionActive = false;
           this.coordinator.resumeAfterReactiveActivity();
         } else {
@@ -408,7 +411,19 @@ export class MainAutonomyComposition {
     }
   }
 
+  public handleWindowSupportAttached(): void {
+    this.cancelActivity('user_interaction', false);
+    this.coordinator.resumeAfterForcedMotion();
+    if (this.menuOpen || !this.enabled) { this.setVisualKind('sit_edge', true, true); return; }
+    this.coordinator.suspendForReactiveActivity();
+    this.userPerchActive = true;
+    if (!this.activity.startWindowPerch()) {
+      this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity();
+    }
+  }
+
   public handleSupportLost(): void {
+    this.character.wakeForSupportLoss();
     this.cancelActivity('forced_motion', true);
     this.coordinator.interruptForcedMotion();
   }
@@ -441,6 +456,10 @@ export class MainAutonomyComposition {
   }
 
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
+    if (this.options.movement.getEnvironmentSnapshot().currentSurface?.kind === 'window_top') {
+      if (intent.kind === 'wander') return false; // AUTO-I06 owns autonomous external target selection.
+      if (intent.kind === 'idle' || intent.kind === 'quiet') { this.setVisualKind('sit_edge', true); return true; }
+    }
     if (this.activity.start(intent)) return true;
     if (intent.kind === 'wander') return false;
     this.setVisualIntent(
@@ -463,8 +482,10 @@ export class MainAutonomyComposition {
   private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
     this.jumpFallAtMs = null;
     const wasCursorReaction = this.cursorReactionActive;
+    const wasPerching = this.userPerchActive;
     const cancelled = this.activity.cancel(reason, forDrag);
     if (!cancelled) return false;
+    if (wasPerching) { this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity(); }
     if (wasCursorReaction) {
       this.cursorReactionActive = false;
       this.coordinator.resumeAfterReactiveActivity();

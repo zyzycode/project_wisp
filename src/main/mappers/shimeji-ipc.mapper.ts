@@ -33,6 +33,7 @@ export function toEnvironmentSnapshotDTO(snapshot: EnvironmentSnapshot): Environ
             ...(snapshot.currentSurface.supportY === undefined
               ? {}
               : { supportY: snapshot.currentSurface.supportY }),
+            ...(snapshot.currentSurface.side === undefined ? {} : { side: snapshot.currentSurface.side }),
             isValidSupport: snapshot.currentSurface.isValidSupport,
           },
         }),
@@ -53,6 +54,7 @@ export function toEnvironmentSnapshot(snapshot: EnvironmentSnapshotDTO): Environ
             ...(snapshot.currentSurface.supportY === undefined
               ? {}
               : { supportY: snapshot.currentSurface.supportY }),
+            ...(snapshot.currentSurface.side === undefined ? {} : { side: snapshot.currentSurface.side }),
             isValidSupport: snapshot.currentSurface.isValidSupport,
           },
         }),

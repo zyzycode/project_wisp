@@ -1,3 +1,4 @@
+import type { SurfaceSnapshotDto } from '../../src/domain/behavior/surface-kinematics';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -48,7 +49,8 @@ function sequence(...values: number[]): IPrng {
 function createFixture(
   random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0),
   needs: Partial<Needs> = {},
-  cancelMovementResults: readonly boolean[] = []
+  cancelMovementResults: readonly boolean[] = [],
+  externalSurface?: SurfaceSnapshotDto
 ) {
   const scheduler = new Scheduler();
   const requestVoluntaryMovement = vi.fn(() => true);
@@ -85,7 +87,7 @@ function createFixture(
       getEnvironmentSnapshot: () => ({
         capturedAtMs: scheduler.nowMs,
         screenBounds: { id: 'primary', x: 0, y: 0, width: 1_000, height: 800 },
-        currentSurface: {
+        currentSurface: externalSurface ?? {
           id: 'primary-floor', kind: 'screen_floor',
           bounds: { x: 0, y: 0, width: 1_000, height: 800 },
           supportY: 800, isValidSupport: true,
@@ -121,6 +123,27 @@ function createFixture(
 }
 
 describe('Main integration: Brain runtime', () => {
+  it('lands, resolves a support-local walk against the latest window origin and perches', () => {
+    const surface: SurfaceSnapshotDto = { id: 'window', kind: 'window_top', bounds: { x: 90, y: 200, width: 400, height: 200 }, supportY: 200, isValidSupport: true };
+    const f = createFixture(undefined, {}, [], surface);
+    f.composition.start(); f.composition.handleWindowSupportAttached();
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('land');
+    Object.assign(surface.bounds, { x: 190 });
+    f.scheduler.nowMs = 500; f.composition.tick();
+    expect(f.requestVoluntaryMovement).toHaveBeenCalledWith(expect.objectContaining({ targetRootPosition: { x: 238, y: 200 } }));
+    f.composition.notifyVoluntaryMovementCompleted();
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('sit_edge');
+    f.composition.stop();
+  });
+  it('support loss wakes semantic sleep before the fall lifecycle', () => {
+    const f = createFixture(); f.composition.start();
+    expect(f.composition.requestSleepWake({ action: 'sleep' })).toBe(true);
+    f.composition.handleSupportLost();
+    expect(f.composition.requestSleepWake({ action: 'wake' })).toBe(false);
+    expect(f.composition.getActivityTimeline()).toBeNull();
+    f.composition.stop();
+  });
+
   it('publishes the common gaze-only tier without changing root position', () => {
     const fixture = createFixture(sequence(0.5, 0, 0.99));
     fixture.composition.start();

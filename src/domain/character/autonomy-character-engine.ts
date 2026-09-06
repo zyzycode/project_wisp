@@ -36,6 +36,10 @@ export class AutonomyCharacterEngine {
     return this.sleepState;
   }
 
+  public wakeForSupportLoss(): void {
+    this.sleepState = 'awake';
+  }
+
   public isAutonomyEligible(): boolean {
     return this.sleepState === 'awake';
   }

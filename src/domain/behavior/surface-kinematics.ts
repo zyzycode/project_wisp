@@ -1,3 +1,5 @@
+import { DEFAULT_MOTION_CONSTRAINTS, type CollisionInsets } from './motion-engine';
+import { isExternalSurface, isFreshExternalObservation, isRootInsideEnvironment } from './external-surface-support';
 import type {
   IMotionEngine,
   RootCollisionRange,
@@ -49,6 +51,7 @@ export interface SurfaceKinematicsState {
   readonly surfaceId?: string;
   readonly wallSide?: WallSide;
   readonly climbLimits?: RootCollisionRange;
+  readonly externalAttachment?: { readonly surface: ExternalWindowSurface; readonly localDistancePx: number };
   readonly supportY?: WorldPx;
   readonly locomotionVelocityPxPerSec: Vector2Dto;
 }
@@ -70,6 +73,8 @@ export interface StartCeilingHangInput {
 }
 
 export interface SurfaceKinematicsStepInput {
+  readonly collisionInsets?: CollisionInsets;
+  readonly observationNowMs?: MonotonicMs;
   readonly state: SurfaceKinematicsState;
   readonly motion: MotionState;
   readonly environment: EnvironmentSnapshot;
@@ -120,6 +125,56 @@ function unchangedMotion(state: MotionState): MotionStepResult {
  * service neither discovers windows nor owns the fixed-step airborne physics.
  */
 export class SurfaceKinematics {
+  public startExternalSupport(input: {
+    readonly motion: MotionState; readonly environment: EnvironmentSnapshot;
+    readonly nowMs: MonotonicMs; readonly observationNowMs: MonotonicMs;
+    readonly collisionInsets: CollisionInsets;
+  }): SurfaceKinematicsResult | null {
+    const surface = input.environment.currentSurface;
+    if (!isExternalSurface(surface) || !isFreshExternalObservation(input.environment.capturedAtMs, input.observationNowMs)) return null;
+    const localDistancePx = surface.kind === 'window_top'
+      ? input.motion.position.x - surface.bounds.x : input.motion.position.y - surface.bounds.y;
+    const length = surface.kind === 'window_top' ? surface.bounds.width : surface.bounds.height;
+    const position = surface.kind === 'window_top' ? { x: input.motion.position.x, y: surface.supportY }
+      : { x: surface.side === 'left' ? surface.bounds.x : surface.bounds.x + surface.bounds.width, y: input.motion.position.y };
+    if (localDistancePx < 0 || localDistancePx > length || !isRootInsideEnvironment(position, input.environment, input.collisionInsets)) return null;
+    return {
+      state: { phase: surface.kind === 'window_top' ? 'hanging_ceiling' : 'climbing_wall',
+        surfaceId: surface.id, updatedAtMs: input.nowMs, supportY: surface.bounds.y,
+        externalAttachment: { surface: { ...surface, bounds: { ...surface.bounds } }, localDistancePx },
+        locomotionVelocityPxPerSec: { x: 0, y: 0 } },
+      motion: unchangedMotion({ ...input.motion, phase: 'grounded', position, velocityPxPerSec: { x: 0, y: 0 },
+        activeBoundsId: input.environment.screenBounds.id, directedJump: undefined, peakGroundImpactSeverity: 0 }),
+      events: surface.kind === 'window_top' ? [{ type: 'ceiling_hung', surfaceId: surface.id }]
+        : [{ type: 'wall_climbed', side: surface.side }],
+    };
+  }
+
+  private stepExternalSupport(input: SurfaceKinematicsStepInput, engine: IMotionEngine): SurfaceKinematicsResult {
+    // Drag discards attachment before any support-lost decision.
+    if (input.motion.phase === 'dragged') return { state: { phase: 'grounded', updatedAtMs: input.nowMs,
+      locomotionVelocityPxPerSec: { x: 0, y: 0 } }, motion: unchangedMotion(input.motion), events: [] };
+    const attachment = input.state.externalAttachment!;
+    const surface = input.environment.currentSurface;
+    if (!isExternalSurface(surface) || surface.id !== attachment.surface.id || surface.kind !== attachment.surface.kind
+        || surface.side !== attachment.surface.side || !isFreshExternalObservation(input.environment.capturedAtMs, input.observationNowMs ?? input.nowMs)) {
+      return this.loseSupport(input, engine);
+    }
+    const speed = surface.kind === 'window_top' ? input.state.locomotionVelocityPxPerSec.x : input.state.locomotionVelocityPxPerSec.y;
+    const localDistancePx = attachment.localDistancePx + speed * (input.nowMs - input.state.updatedAtMs) / 1000;
+    const length = surface.kind === 'window_top' ? surface.bounds.width : surface.bounds.height;
+    const position = surface.kind === 'window_top'
+      ? { x: surface.bounds.x + localDistancePx, y: surface.bounds.y }
+      : { x: surface.side === 'left' ? surface.bounds.x : surface.bounds.x + surface.bounds.width, y: surface.bounds.y + localDistancePx };
+    if (localDistancePx < 0 || localDistancePx > length
+        || !isRootInsideEnvironment(position, input.environment, input.collisionInsets ?? DEFAULT_MOTION_CONSTRAINTS.collisionInsets)) {
+      return this.loseSupport(input, engine);
+    }
+    return { state: { ...input.state, updatedAtMs: input.nowMs, supportY: surface.bounds.y,
+      externalAttachment: { surface: { ...surface, bounds: { ...surface.bounds } }, localDistancePx } },
+      motion: unchangedMotion({ ...input.motion, position, velocityPxPerSec: input.state.locomotionVelocityPxPerSec }), events: [] };
+  }
+
   public startWallClimb(input: StartWallClimbInput): SurfaceKinematicsResult | null {
     const surface = input.environment.currentSurface;
     if (
@@ -196,6 +251,7 @@ export class SurfaceKinematics {
       throw new RangeError('nowMs must not precede the previous surface update');
     }
 
+    if (input.state.externalAttachment !== undefined) return this.stepExternalSupport(input, motionEngine);
     if (input.state.phase === 'climbing_wall') {
       return this.stepWallClimb(input, motionEngine);
     }

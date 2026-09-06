@@ -41,6 +41,7 @@ const VISUAL_KINDS = [
   'dragged',
   'land',
   'sit',
+  'sit_edge',
   'stand_up',
   'lie_down',
   'get_up',

@@ -63,6 +63,14 @@ function animation(
 }
 
 describe('Renderer: AssetResolver', () => {
+  it('uses the existing sit asset and pivot for missing sit_edge artwork', () => {
+    const loaded = new ManifestLoader().load(JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8')));
+    const result = new AssetResolver(loaded).resolve(createSystemAnimationIntent('sit_edge'));
+    expect(loaded.animations.body_sit_edge).toBeUndefined();
+    expect(result.body.animationKey).toBe('body_sit');
+    expect(result.rootPivot).toEqual(loaded.animations.body_sit!.pivot);
+  });
+
   it('holds existing grab/jump frames without moving pivots and keeps climb/ceiling/land clips intact', () => {
     const rawManifest: unknown = JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8'));
     const loaded = new ManifestLoader().load(rawManifest);

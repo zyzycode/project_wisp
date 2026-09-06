@@ -1,5 +1,6 @@
 import { screen } from 'electron';
 import { performance } from 'node:perf_hooks';
+import type { Vector2Dto } from '../../domain/behavior/motion-engine';
 import type { EnvironmentSnapshot } from '../../domain/behavior/surface-kinematics';
 
 export type EnvironmentSnapshotListener = (snapshot: EnvironmentSnapshot) => void;
@@ -11,13 +12,14 @@ export type EnvironmentSnapshotListener = (snapshot: EnvironmentSnapshot) => voi
 export class PlatformEnvironmentAdapter {
   private lastCapturedAtMs = 0;
 
-  public getSnapshot(): EnvironmentSnapshot {
-    const workArea = screen.getPrimaryDisplay().workArea;
+  public getSnapshot(position?: Vector2Dto): EnvironmentSnapshot {
+    const display = position === undefined ? screen.getPrimaryDisplay() : screen.getDisplayNearestPoint({ x: Math.round(position.x), y: Math.round(position.y) });
+    const workArea = display.workArea;
     const capturedAtMs = Math.max(performance.now(), this.lastCapturedAtMs);
     this.lastCapturedAtMs = capturedAtMs;
 
     const screenBounds = {
-      id: 'primary_screen',
+      id: `screen:${display.id}`,
       x: workArea.x,
       y: workArea.y,
       width: workArea.width,
@@ -28,7 +30,7 @@ export class PlatformEnvironmentAdapter {
       capturedAtMs,
       screenBounds,
       currentSurface: {
-        id: 'primary_screen_floor',
+        id: `screen:${display.id}:floor`,
         kind: 'screen_floor',
         bounds: {
           x: workArea.x,

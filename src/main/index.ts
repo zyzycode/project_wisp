@@ -1,3 +1,5 @@
+import { createExternalWindowSurfaces } from '../infrastructure/platform/external-window-surfaces.factory';
+import type { ExternalWindowSurfacesPort } from '../application/ports/external-window-surfaces.port';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -76,6 +78,7 @@ const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
 let positionService: PetPositionService | null = null;
 let unsubscribeEnvironmentChanges: (() => void) | null = null;
 let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
+let externalWindowSurfaces: ExternalWindowSurfacesPort | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
 let activeBodyDrag: {
@@ -215,6 +218,7 @@ function stopShimejiMotionLoop(): void {
   stopShimejiMotionLoopHandle?.();
   stopShimejiMotionLoopHandle = null;
   shimejiMotionOrchestrator = null;
+  externalWindowSurfaces?.dispose(); externalWindowSurfaces = null;
 }
 
 function disposeAutonomyComposition(): void {
@@ -238,8 +242,8 @@ function initializeAutonomyComposition(): void {
     },
     movement: {
       getRootPosition: () => orchestrator.getMotionState().position,
-      getBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
-      getEnvironmentSnapshot: () => platformEnvironmentAdapter.getSnapshot(),
+      getBounds: () => orchestrator.getEnvironmentSnapshot().screenBounds,
+      getEnvironmentSnapshot: () => orchestrator.getEnvironmentSnapshot(),
       getCollisionInsets: () => DEFAULT_MOTION_CONSTRAINTS.collisionInsets,
       canAcceptVoluntaryMovement: () => orchestrator.canAcceptVoluntaryMovement(),
       requestVoluntaryMovement: (command) => orchestrator.requestVoluntaryMovement(command),
@@ -285,6 +289,7 @@ function createMainAutonomyScheduler(): {
 
 function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): void {
   stopShimejiMotionLoop();
+  externalWindowSurfaces = createExternalWindowSurfaces();
   clearBrainStream();
   const environment = platformEnvironmentAdapter.getSnapshot();
   const initialMotion: MotionState = {
@@ -305,7 +310,8 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
     initialSurface,
     motionEngine: new MotionEngine(),
     surfaceKinematics: new SurfaceKinematics(),
-    environment: () => platformEnvironmentAdapter.getSnapshot(),
+    environment: (position) => platformEnvironmentAdapter.getSnapshot(position),
+    externalWindows: externalWindowSurfaces,
     positionService: positionService ?? undefined,
     positionPort: new ElectronPetPositionAdapter({
       getWindow: () => mainWindow,
@@ -318,6 +324,11 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
       },
       dispatchSurfaceEvent: (event) => {
         if (event.type === 'support_lost') autonomyComposition?.handleSupportLost();
+        if (event.type === 'ceiling_hung') autonomyComposition?.handleWindowSupportAttached();
+        if (event.type === 'support_lost' || event.type === 'ceiling_hung') {
+          const environment = shimejiMotionOrchestrator?.getEnvironmentSnapshot();
+          if (environment !== undefined) publishEnvironmentSnapshot(environment);
+        }
       },
     },
     stimulusMapper: shimejiStimulusMapper,
@@ -503,7 +514,7 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('wisp:get-environment-snapshot', async (): Promise<EnvironmentSnapshotDTO> => {
-    return toEnvironmentSnapshotDTO(platformEnvironmentAdapter.getSnapshot());
+    return toEnvironmentSnapshotDTO(shimejiMotionOrchestrator?.getEnvironmentSnapshot() ?? platformEnvironmentAdapter.getSnapshot());
   });
 
   ipcMain.handle(

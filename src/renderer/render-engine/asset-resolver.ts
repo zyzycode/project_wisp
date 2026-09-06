@@ -46,6 +46,7 @@ const BODY_KEYS: Readonly<Record<AnyAnimationIntentKind, string>> = {
   land: 'body_land',
   dragged: 'body_dragged',
   sit: 'body_sit',
+  sit_edge: 'body_sit_edge',
   stand_up: 'body_stand_up',
   lie_down: 'body_lie',
   get_up: 'body_stand_up',
@@ -166,7 +167,9 @@ export class AssetResolver {
     const specialised = this.manifest.animations[`${preferredKey}_${intent.emotionalTone}`];
     const preferred = this.manifest.animations[preferredKey];
     const idle = this.manifest.animations.body_idle;
-    const body = selectAnimation(specialised, 'body') ?? selectAnimation(preferred, 'body') ?? selectAnimation(idle, 'body') ?? systemBody();
+    const body = selectAnimation(specialised, 'body') ?? selectAnimation(preferred, 'body')
+      ?? (intent.kind === 'sit_edge' ? selectAnimation(this.manifest.animations.body_sit, 'body') : undefined)
+      ?? selectAnimation(idle, 'body') ?? systemBody();
     const fallback = intent.kind === 'jump' ? TRAVERSAL_SPRITE_FALLBACKS.jump_travel
       : intent.kind === 'climb_wall' && intent.loop === 'none' ? TRAVERSAL_SPRITE_FALLBACKS.grab_edge : undefined;
     if (fallback === undefined || body.key !== fallback.key) return body;

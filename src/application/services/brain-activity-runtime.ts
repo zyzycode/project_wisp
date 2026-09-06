@@ -1,3 +1,4 @@
+import { createWindowPerchActivity } from '../../domain/behavior/external-surface-support';
 import { createExploreTraversalSteps, type TraversalAction } from '../../domain/behavior/traversal-route';
 import {
   ActivityRunner,
@@ -135,6 +136,13 @@ export class BrainActivityRuntime {
     return true;
   }
 
+  /** Continuation of the already resolved user drag, never an autonomous target choice. */
+  public startWindowPerch(): boolean {
+    const surface = this.options.getSelectionContext().environment.currentSurface;
+    const definition = createWindowPerchActivity(surface, this.options.getRootPosition());
+    return definition !== null && this.startDefinition(definition, null, this.options.clock.now());
+  }
+
   public tick(nowMs: number): boolean {
     const definition = this.definition;
     const runtime = this.runtime;
@@ -207,13 +215,23 @@ export class BrainActivityRuntime {
     if (update.runtime !== undefined) this.runtime = update.runtime;
     const step = update.emittedStep;
     if (step === undefined) return false;
+    let supportTarget: Vector2Dto | undefined;
+    if (step.type === 'locomotion' && step.supportLocalDistancePx !== undefined) {
+      const surface = this.options.getSelectionContext().environment.currentSurface;
+      if (surface?.kind !== 'window_top' || surface.id !== step.targetRef || !surface.isValidSupport
+          || step.supportLocalDistancePx < 0 || step.supportLocalDistancePx > surface.bounds.width) {
+        return this.applyUpdate(definition, this.runner.cancel(this.runtime!, 'environment_invalidated', this.options.clock.now()));
+      }
+      supportTarget = { x: surface.bounds.x + step.supportLocalDistancePx, y: surface.bounds.y };
+    }
     if (step.type === 'locomotion' && !this.options.requestLocomotion({
       runId: this.runtime?.runId ?? '',
       stepId: step.id,
       traversal: step.traversal,
       targetRef: step.targetRef,
       gait: step.gait,
-      ...(step.targetRootPosition !== undefined ? { targetRootPosition: step.targetRootPosition }
+      ...(supportTarget !== undefined ? { targetRootPosition: supportTarget }
+        : step.targetRootPosition !== undefined ? { targetRootPosition: step.targetRootPosition }
         : this.explorePlan === null ? {} : { targetRootPosition: this.explorePlan.targetRootPosition }),
     })) {
       const runtime = this.runtime;

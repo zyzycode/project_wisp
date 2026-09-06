@@ -1,3 +1,5 @@
+import type { ExternalWindowSurfacesPort, ExternalWindowSurfacesSnapshot } from '../ports/external-window-surfaces.port';
+import { isExternalSurface, isFreshExternalObservation, selectWindowTopForRelease } from '../../domain/behavior/external-surface-support';
 import { SCREEN_CLIMB_SPEED, type TraversalRequest } from '../../domain/behavior/traversal-route';
 import type { PetPositionPort } from '../ports/pet-position-port';
 import {
@@ -15,6 +17,7 @@ import type { PetPositionService } from './pet-position.service';
 import {
   SurfaceKinematics,
   type EnvironmentSnapshot,
+  type ExternalWindowSurface,
   type SurfaceKinematicsEvent,
   type SurfaceKinematicsState,
 } from '../../domain/behavior/surface-kinematics';
@@ -57,7 +60,8 @@ export interface ShimejiMotionOrchestratorOptions {
   readonly initialSurface: SurfaceKinematicsState;
   readonly motionEngine: IMotionEngine;
   readonly surfaceKinematics: SurfaceKinematics;
-  readonly environment: () => EnvironmentSnapshot;
+  readonly environment: (position?: Vector2Dto) => EnvironmentSnapshot;
+  readonly externalWindows?: ExternalWindowSurfacesPort;
   readonly positionPort: PetPositionPort;
   readonly positionService?: PetPositionService;
   readonly now: () => number;
@@ -141,6 +145,9 @@ export class ShimejiMotionOrchestrator {
   private traversalStarted = false;
   private attachmentRunId: string | undefined;
   private completedTraversal: TraversalRequest | undefined;
+  private externalSnapshot: ExternalWindowSurfacesSnapshot | undefined;
+  private selectedExternalId: string | undefined;
+  private externalWalkTarget: number | undefined;
 
   public constructor(private readonly options: ShimejiMotionOrchestratorOptions) {
     if (options.stimulusMapper !== undefined && options.createStimulusTimestamp === undefined) {
@@ -220,11 +227,11 @@ export class ShimejiMotionOrchestrator {
     let simulationAtMs = this.simulationAtMs;
     let voluntaryMovementCompleted = false;
     while (this.running && this.accumulatorSec >= constraints.fixedStepSec) {
-      const environment = this.options.environment();
+      const environment = this.getEnvironmentSnapshot();
       const stepAtMs = simulationAtMs + constraints.fixedStepSec * 1000;
       this.applyQueuedInput(environment, stepAtMs);
       voluntaryMovementCompleted =
-        this.step(environment, stepAtMs, constraints.fixedStepSec) || voluntaryMovementCompleted;
+        this.step(this.getEnvironmentSnapshot(), stepAtMs, constraints.fixedStepSec) || voluntaryMovementCompleted;
       simulationAtMs = stepAtMs;
       this.simulationAtMs = simulationAtMs;
       this.accumulatorSec -= constraints.fixedStepSec;
@@ -237,7 +244,7 @@ export class ShimejiMotionOrchestrator {
       this.motion.position.x !== motionAtTickStart.position.x ||
       this.motion.position.y !== motionAtTickStart.position.y;
     if (this.running && positionChanged) {
-      const environment = this.options.environment();
+      const environment = this.getEnvironmentSnapshot();
       const rootPosition = this.options.positionService?.updateRootPosition(
         this.motion.position,
         environment.screenBounds,
@@ -269,6 +276,29 @@ export class ShimejiMotionOrchestrator {
     return presentationChanged;
   }
 
+  private availableExternalSurfaces(): readonly ExternalWindowSurface[] {
+    const snapshot = this.options.externalWindows?.getSnapshot();
+    if (snapshot !== undefined && Number.isSafeInteger(snapshot.revision) && snapshot.revision >= 0
+        && (this.externalSnapshot === undefined || snapshot.revision > this.externalSnapshot.revision)) {
+      this.externalSnapshot = snapshot;
+    }
+    const accepted = this.externalSnapshot;
+    return accepted?.capability === 'available' && isFreshExternalObservation(accepted.capturedAtMs, this.options.now())
+      ? accepted.surfaces.filter(isExternalSurface) : [];
+  }
+
+  public getEnvironmentSnapshot(): EnvironmentSnapshot {
+    const base = this.options.environment(this.motion.position);
+    if (this.selectedExternalId === undefined) return base;
+    const surface = this.availableExternalSurfaces().find(candidate => candidate.id === this.selectedExternalId);
+    if (surface === undefined) return { ...base, currentSurface: undefined };
+    const local = this.surface.externalAttachment?.localDistancePx ?? 0;
+    const environment = this.options.environment({ x: surface.bounds.x + local, y: surface.bounds.y });
+    // Crossing displays/DPI is a new attachment opportunity, not implicit follow.
+    if (environment.screenBounds.id !== this.motion.activeBoundsId) return { ...base, currentSurface: undefined };
+    return { ...environment, capturedAtMs: this.externalSnapshot!.capturedAtMs, currentSurface: surface };
+  }
+
   public getMotionState(): MotionState {
     return this.motion;
   }
@@ -287,7 +317,7 @@ export class ShimejiMotionOrchestrator {
       this.dragSession === undefined &&
       !this.hasQueuedBegin() &&
       this.motion.phase === 'grounded' &&
-      this.surface.phase === 'grounded' && this.traversal === undefined
+      (this.surface.phase === 'grounded' || this.surface.externalAttachment?.surface.kind === 'window_top') && this.traversal === undefined
     );
   }
 
@@ -299,7 +329,7 @@ export class ShimejiMotionOrchestrator {
       (command.kind === 'horizontal_wander' &&
         (!Number.isFinite(command.speedPxPerSec) || command.speedPxPerSec <= 0))
     ) return false;
-    const environment = this.options.environment();
+    const environment = this.getEnvironmentSnapshot();
     let targetRootPosition: Vector2Dto;
     try {
       targetRootPosition = clampRootPosition(
@@ -309,6 +339,13 @@ export class ShimejiMotionOrchestrator {
       );
     } catch {
       return false;
+    }
+    const attachment = this.surface.externalAttachment;
+    if (attachment !== undefined) {
+      if (command.kind !== 'horizontal_wander' || attachment.surface.kind !== 'window_top'
+          || targetRootPosition.x < attachment.surface.bounds.x
+          || targetRootPosition.x > attachment.surface.bounds.x + attachment.surface.bounds.width) return false;
+      this.externalWalkTarget = targetRootPosition.x - attachment.surface.bounds.x;
     }
     if (
       targetRootPosition.x === this.motion.position.x &&
@@ -325,7 +362,7 @@ export class ShimejiMotionOrchestrator {
         || this.motion.phase !== 'grounded' || this.traversal !== undefined || this.voluntaryCommand !== undefined
         || request.runId.trim().length === 0 || request.stepId.trim().length === 0
         || (this.attachmentRunId !== undefined && this.attachmentRunId !== request.runId)) return false;
-    if (!this.isTraversalEnvironmentValid(request, this.options.environment())) return false;
+    if (!this.isTraversalEnvironmentValid(request, this.getEnvironmentSnapshot())) return false;
     const action = request.action;
     let range;
     try { range = calculateRootCollisionRange(action.bounds, this.constraints().collisionInsets); } catch { return false; }
@@ -362,6 +399,13 @@ export class ShimejiMotionOrchestrator {
   }
 
   public cancelVoluntaryMovement(forDrag = false): boolean {
+    this.externalWalkTarget = undefined;
+    if (forDrag) {
+      this.selectedExternalId = undefined;
+      if (this.surface.externalAttachment !== undefined) this.surface = groundedSurface(this.simulationAtMs ?? this.options.now());
+    } else if (this.surface.externalAttachment !== undefined) {
+      this.surface = { ...this.surface, locomotionVelocityPxPerSec: { x: 0, y: 0 } };
+    }
     const hadTraversal = this.traversal !== undefined || this.attachmentRunId !== undefined;
     this.traversal = undefined;
     this.completedTraversal = undefined;
@@ -462,10 +506,28 @@ export class ShimejiMotionOrchestrator {
       session.lastAppliedSequence = event.input.sequence;
       if (event.type === 'release') {
         this.emitDragHold(session, event.receivedAtMs);
-        const released = this.options.motionEngine.release(
-          this.motion,
-          this.options.motionEngine.estimateThrow(session.samples, event.receivedAtMs)
-        );
+        const throwVector = this.options.motionEngine.estimateThrow(session.samples, event.receivedAtMs);
+        const candidate = Math.hypot(throwVector.vxPxPerSec, throwVector.vyPxPerSec) <= 300
+          ? selectWindowTopForRelease(this.availableExternalSurfaces(), this.motion.position,
+              point => this.options.environment(point), this.constraints().collisionInsets) : null;
+        if (candidate !== null) {
+          const selectedEnvironment = { ...this.options.environment(this.motion.position),
+            capturedAtMs: this.externalSnapshot!.capturedAtMs, currentSurface: candidate };
+          const attached = this.options.surfaceKinematics.startExternalSupport({ motion: this.motion,
+            environment: selectedEnvironment, nowMs: stepAtMs, observationNowMs: this.options.now(),
+            collisionInsets: this.constraints().collisionInsets });
+          if (attached !== null) {
+            this.selectedExternalId = candidate.id;
+            this.surface = attached.state; this.motion = attached.motion.state;
+            this.dragSession = undefined;
+            this.routeEvents([{ type: 'landed', outcome: 'soft_landing', impactSeverity: 0 }], attached.events);
+            this.emitFeedback({ type: 'drag_ended', eventId: `${session.id}:ended`, dragRunId: session.id,
+              heldMs: Math.max(0, event.receivedAtMs - session.startedAtMs), atMs: event.receivedAtMs });
+            this.presentationDirty = true;
+            continue;
+          }
+        }
+        const released = this.options.motionEngine.release(this.motion, throwVector);
         this.motion = released.state;
         this.surface = { ...groundedSurface(stepAtMs), phase: 'airborne' };
         this.routeEvents(released.events, []);
@@ -527,12 +589,22 @@ export class ShimejiMotionOrchestrator {
         }
       }
     }
+    const attachment = this.surface.externalAttachment;
+    if (attachment !== undefined && this.externalWalkTarget !== undefined && this.voluntaryCommand?.kind === 'horizontal_wander') {
+      const delta = this.externalWalkTarget - attachment.localDistancePx;
+      this.surface = { ...this.surface, locomotionVelocityPxPerSec: {
+        x: Math.sign(delta) * Math.min(this.voluntaryCommand.speedPxPerSec, Math.abs(delta) / stepSec), y: 0 } };
+    }
     const surfaceResult = this.options.surfaceKinematics.step(
-      { state: this.surface, motion: this.motion, environment, nowMs },
+      { state: this.surface, motion: this.motion, environment, nowMs,
+        observationNowMs: this.options.now(), collisionInsets: this.constraints().collisionInsets },
       this.options.motionEngine
     );
     this.surface = surfaceResult.state;
     this.motion = surfaceResult.motion.state;
+    if (surfaceResult.events.some(event => event.type === 'support_lost')) {
+      this.selectedExternalId = undefined; this.externalWalkTarget = undefined;
+    }
     let motionEvents = surfaceResult.motion.events;
     if (
       this.motion.phase === 'airborne' &&
@@ -559,6 +631,16 @@ export class ShimejiMotionOrchestrator {
   }
 
   private stepVoluntaryMovement(environment: EnvironmentSnapshot, stepSec: number): boolean {
+    if (this.surface.externalAttachment !== undefined) {
+      if (this.externalWalkTarget !== undefined
+          && Math.abs(this.surface.externalAttachment.localDistancePx - this.externalWalkTarget) < .001) {
+        this.voluntaryCommand = undefined; this.externalWalkTarget = undefined;
+        this.surface = { ...this.surface, locomotionVelocityPxPerSec: { x: 0, y: 0 } };
+        this.motion = { ...this.motion, velocityPxPerSec: { x: 0, y: 0 } };
+        return true;
+      }
+      return false;
+    }
     if (this.motion.phase !== 'grounded' || this.surface.phase !== 'grounded') {
       if (this.voluntaryCommand !== undefined) this.cancelVoluntaryMovement();
       return false;
@@ -619,6 +701,10 @@ export class ShimejiMotionOrchestrator {
   }
 
   private routeEvents(motionEvents: readonly MotionEvent[], surfaceEvents: readonly SurfaceKinematicsEvent[]): void {
+    // Wake/cancel before a possible same-substep floor landing resumes autonomy.
+    for (const event of surfaceEvents) {
+      if (event.type === 'support_lost') this.options.eventDispatcher?.dispatchSurfaceEvent(event);
+    }
     for (const event of motionEvents) {
       this.options.eventDispatcher?.dispatchMotionEvent(event);
       if (event.type === 'drag_started') {
@@ -627,7 +713,9 @@ export class ShimejiMotionOrchestrator {
         this.emitFeedback({ type: 'landing', eventId: `landing:${this.presentationRevision + 1}:${event.outcome}`, outcome: event.outcome, impactSeverity: event.impactSeverity, atMs: this.lastTickAtMs ?? 0 });
       }
     }
-    for (const event of surfaceEvents) this.options.eventDispatcher?.dispatchSurfaceEvent(event);
+    for (const event of surfaceEvents) {
+      if (event.type !== 'support_lost') this.options.eventDispatcher?.dispatchSurfaceEvent(event);
+    }
   }
 
   private emitFeedback(event: ShimejiFeedbackEvent): void {

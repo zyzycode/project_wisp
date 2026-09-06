@@ -4,7 +4,7 @@ const electronMock = vi.hoisted(() => ({
   on: vi.fn(),
   removeListener: vi.fn(),
   getPrimaryDisplay: vi.fn(() => ({
-    workArea: { x: -50, y: 30, width: 1600, height: 900 },
+    id: 7, workArea: { x: -50, y: 30, width: 1600, height: 900 },
   })),
 }));
 
@@ -20,10 +20,10 @@ describe('PlatformEnvironmentAdapter', () => {
 
     expect(snapshot.capturedAtMs).toBeGreaterThanOrEqual(0);
     expect(snapshot.screenBounds).toEqual({
-      id: 'primary_screen', x: -50, y: 30, width: 1600, height: 900,
+      id: 'screen:7', x: -50, y: 30, width: 1600, height: 900,
     });
     expect(snapshot.currentSurface).toEqual({
-      id: 'primary_screen_floor',
+      id: 'screen:7:floor',
       kind: 'screen_floor',
       bounds: { x: -50, y: 30, width: 1600, height: 900 },
       supportY: 930,
@@ -41,7 +41,7 @@ describe('PlatformEnvironmentAdapter', () => {
     expect(handler).toBeDefined();
     handler?.();
     expect(listener).toHaveBeenCalledWith(expect.objectContaining({
-      screenBounds: expect.objectContaining({ id: 'primary_screen' }),
+      screenBounds: expect.objectContaining({ id: 'screen:7' }),
     }));
 
     unsubscribe();
