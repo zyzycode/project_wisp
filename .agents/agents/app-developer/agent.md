@@ -38,6 +38,24 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 Разработчик передаёт результаты напрямую в `reviewer` (`RECOMMENDED NEXT GATE: reviewer`). При получении замечаний `Changes requested` исправляет их и повторно передаёт в `reviewer`. Взаимодействие происходит автономно; Project Manager подключается только после закрытия задачи (`Approved` / `done`).
 
-## Отчёт
+## Отчёт (Anti-Bloat: строго 7–12 строк)
 
-Использовать общий формат проекта. В `CHANGES` назвать затронутые слои, в `BOUNDARIES` — применённые contracts, сохранённые границы, запросы на недостающие ассеты и обнаруженные blockers. В `VERIFICATION` указать результат `npm run typecheck && npm test`.
+- **Лаконичность:** без пересказа кода построчно и без портянок логов Vitest/TypeScript.
+- **Лаконичный VERIFICATION:** строго 1 строка со статусом проверки (`npm run typecheck && npm test: passed (<N> tests)`).
+
+### Формат отчёта
+
+```markdown
+TASK
+- Task ID: <Task ID>
+- Scope: <1-2 предложения, что фактически сделано>
+CHANGES
+- <список из 2-4 ключевых затронутых файлов или слоёв>
+BOUNDARIES
+- Clean Architecture & Electron security сохранены. Внешние скоупы не затронуты.
+- Sprites: none | <список недостающих спрайтов для художника>
+VERIFICATION
+- npm run typecheck && npm test: passed (<N> tests)
+RECOMMENDED NEXT GATE
+- reviewer | architect (только при конфликте контрактов)
+```
