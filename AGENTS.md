@@ -1,22 +1,16 @@
-# Project Wisp: Правила для агентов
+# AGENTS: Autonomous Development Team
 
-Этот документ определяет роли и контекст агентов. Полные правила: [.agents/rules/rules.md](.agents/rules/rules.md).
+Этот файл определяет роли, границы ответственности и базовые технические ограничения проекта.
 
-## Стек и окружение
+## Автономность и платформа
 
-- Linux (Ubuntu / Wayland / X11) — основной baseline разработки и smoke verification.
-- Runtime: Node.js 22 LTS, npm.
-- Framework: Electron 35, React 19, TypeScript 5.8 (Strict Mode).
-- Build/Dev: Vite 6, `@vitejs/plugin-react` .
-- Tests: Vitest 3.
-- Архитектура: Desktop-first, Clean Architecture, Main/Renderer isolation, typed IPC.
-- Документация движков: [docs/engine/README.md](docs/engine/README.md).
+- Project Wisp — **автономное desktop-приложение** (Electron + React + TypeScript). Все вычисления и данные локальны.
+- Базовая поддерживаемая платформа — **Linux (Ubuntu / Wayland / X11)**. Целевые — Windows и macOS.
+- Персонаж на экране управляется собственным FSM поведения (`src/domain/character/`) и отображается через Renderer/PixiJS.
 
-## Ограничения
+## Зависимости (Zero New Dependencies First)
 
-- **Desktop Offline-First:** строго локальное настольное приложение (Electron + React + TypeScript). Все вычисления и данные хранятся локально на клиенте; серверные backend-прослойки, удаленные БД и микросервисы исключены.
-- Никаких внешних runtime-зависимостей без отдельного согласования.
-- **Zero New Dependencies First:** перед добавлением npm-пакета агент обязан проверить, решается ли задача стандартными средствами Node.js / Electron / React / Web API.
+- Любая внешняя библиотека требует архитектурного обоснования (YAGNI).
 - Новую npm-зависимость до реализации оценивает `architect`:
   1. Лицензия: пермиссивная (MIT, Apache 2.0, BSD, ISC).
   2. Размер и transitives: bundlephobia / npm trends, минимальный overhead.
@@ -55,7 +49,7 @@
 - [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач (Fast-Track по умолчанию, Architect только по 4 триггерам), task backlog в GitHub Issues. Не меняет продуктовый код. Предоставляет парные промпты (для исполнителя и сразу для ревьюера) с рекомендацией по контексту (текущий чат для сохранения горячего контекста в рамках одного скоупа / новый чат при смене роли или подсистемы). Подключается после завершения задачи (`Approved` / `done`).
 - [architect](.agents/agents/architect/agent.md): архитектура подсистем, инварианты в `docs/engine/*` и объявление целевых контрактов в кодовой базе (типы портов в `src/application/ports/` и DTO в `src/shared/ipc-contracts.ts`). Объявляет и актуализирует интерфейсы в коде. Dependency Review.
 - [app-developer](.agents/agents/app-developer/agent.md): реализация задач на Fast-Track (объявление/расширение портов и DTO, Domain/Application, Main/Preload, Renderer, adapters, packaging), реализация логики, сервисов, UI и тестов. Не генерирует спрайты сам (графику предоставляет художник).
-- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Проверяет как спецификации, так и кодовые контракты архитектора (`npm run typecheck`). Блокирует любые изменения вне продуктового скоупа в PR. Имеет право на точечный Fast-Fix мелких неточностей типов/тестов без возврата задачи.
+- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Проверяет спецификации и кодовые контракты архитектора (`npm run typecheck`). Блокирует любые изменения вне продуктового скоупа в PR. Имеет право на точечный Fast-Fix мелких неточностей типов/тестов без возврата задачи. Lean Verification: запускает быстрый `npm run typecheck` (~1 сек) и проводит аудит diff; повторный запуск `npm test` вхолостую не выполняет (запускает `npm test` только при применении Fast-Fix).
 
 ## Автономный цикл реализации
 
@@ -69,6 +63,7 @@
 
 - Изменения продуктового кода логики/адаптеров (`owner: app-developer`) требуют `npm run typecheck && npm test`.
 - Архитектурные задачи с объявлением портов/DTO (`owner: architect`) требуют `npm run typecheck` и проверку markdown/diff consistency; продуктовые тесты (`npm test`) пишутся разработчиком при реализации логики.
+- Ревьюер (`owner: reviewer`) выполняет быстрый `npm run typecheck` (~1 сек) и аудит diff; повторный запуск `npm test` ревьюером исключён, кроме случаев применения Fast-Fix.
 - Изменения только чистой документации требуют проверки markdown/diff consistency.
 - Project Manager не запускает продуктовые тесты для обычной работы с документацией и планированием.
 
