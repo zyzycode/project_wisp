@@ -176,6 +176,68 @@ export interface BodyEventMetaDTO {
   readonly observedAtMs: number;
 }
 
+/** P17-A02 target declarations; activate atomically with the dialogue runtime cutover. */
+export interface DialogueCommandMetaDTO {
+  readonly streamId: string;
+  readonly conversationId: string;
+  /** Increasing per Brain stream; independent of BodyEventDTO.sequence. */
+  readonly sequence: number;
+}
+
+export type DialogueCommandDTO = DialogueCommandMetaDTO & (
+  | { readonly type: 'send'; readonly text: string }
+  | { readonly type: 'reset' }
+);
+
+/** Admission only; replies and lifecycle are delivered in the complete Brain snapshot. */
+export type DialogueCommandReceiptDTO =
+  | { readonly status: 'accepted'; readonly conversationId: string }
+  | {
+      readonly status: 'rejected';
+      readonly reason: 'busy' | 'stale' | 'invalid_input' | 'unavailable';
+    };
+
+export type DialogueFallbackReasonDTO =
+  | 'degraded'
+  | 'offline'
+  | 'timeout'
+  | 'provider_error'
+  | 'invalid_response';
+
+export type DialogueTurnPresentationDTO =
+  | { readonly phase: 'idle' }
+  | { readonly phase: 'thinking'; readonly requestId: string }
+  | {
+      readonly phase: 'completed';
+      readonly requestId: string;
+      readonly replyText: string;
+      readonly outcome:
+        | { readonly kind: 'success' }
+        | { readonly kind: 'fallback'; readonly reason: DialogueFallbackReasonDTO };
+    }
+  | {
+      readonly phase: 'error';
+      readonly requestId: string;
+      readonly message: string;
+    };
+
+export interface DialoguePresentationDTO {
+  readonly conversationId: string;
+  /** False while a provider call is outstanding, including a retired timed-out call. */
+  readonly canSubmit: boolean;
+  readonly turn: DialogueTurnPresentationDTO;
+}
+
+/** Target shape on the existing wisp:brain-state channel, not a second state stream. */
+export interface DialogueBrainStateDTO extends BrainStateDTO {
+  readonly dialogue: DialoguePresentationDTO;
+}
+
+/** Merge into WispApiBridge when implementing P17-A02; no optional runtime API. */
+export interface DialogueCommandBridge {
+  postDialogueCommand(command: DialogueCommandDTO): Promise<DialogueCommandReceiptDTO>;
+}
+
 export type BodyInteractionTypeDTO =
   | 'click'
   | 'double_click'

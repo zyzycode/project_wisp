@@ -2,7 +2,7 @@
 
 `IAIProvider` — boundary между desktop-клиентом Project Wisp и источником semantic responses. Provider отвечает за генерацию текстовых ответов и подсказок поведения, опираясь на богатый психологический контекст персонажа из `CHARACTER_ENGINE.md`, но не принимает финальные behavior decisions и не управляет UI.
 
-Текущая default-реализация: `MockAIProvider`, полностью offline и локальная. Будущий `ExternalAIProviderClient` допускается только как client-side adapter к отдельному backend-проекту, не как backend/proxy/server code внутри `project_wisp`.
+Текущая default-реализация: `MockAIProvider`, полностью offline и локальная. Будущий `ExternalAIProviderClient` выполняет прямые вызовы LLM через `IAIProvider` только в Main; backend/proxy/server и внешняя БД не входят в архитектуру desktop-приложения.
 
 ## Владение
 
@@ -84,6 +84,149 @@ Application boundary обязан проверять известные поля
 произвольные вложенные значения; type assertion и `JSON.stringify` не заменяют валидацию.
 Изменение доменного `Needs` и реализация такого validator не входят в P17-A03.
 
+## Dialogue runtime и IPC — P17-A02 (#19)
+
+Это целевой контракт миграции текущего Renderer dialogue loop. Объявление типов не означает,
+что Main runtime уже реализован. Канонические target DTO находятся в
+[`ipc-contracts.ts`](../../src/shared/ipc-contracts.ts): `DialogueCommandDTO`,
+`DialogueCommandReceiptDTO`, `DialoguePresentationDTO`, `DialogueBrainStateDTO`, `DialogueCommandBridge`.
+
+### Единственный владелец и композиция
+
+| Область | Владелец | Обязанности |
+|---|---|---|
+| Provider instance | Main composition root | Создаёт один MockAIProvider на lifecycle runtime; будущий внешний адаптер также запускается только здесь. |
+| Dialogue runtime/use case | Application, исполняется в Main | Admission, один in-flight, deadline, контекст, нормализация результата, передача stimuli/candidates в Brain. |
+| Character state | Существующий Main CharacterStateService | Тот же экземпляр, что у остального Brain; dialogue не создаёт копию semantic authority. |
+| IPC handlers | Main | Trusted sender, exact validation, вызов runtime, admission receipt; регистрации один раз с симметричным cleanup. |
+| State publication | Существующий BrainStatePublisher | Публикует dialogue вместе с character/activity/motion/visualIntent в полном snapshot. |
+| Renderer | Body/UI composition | Draft текста, отправка команды, показ reply/status; не хранит provider context и не вызывает Application services. |
+
+Main создаёт runtime после Character/Brain composition, до регистрации dialogue handler,
+инъецирует provider, Character service, существующий путь candidate arbitration, publisher callback,
+монотонные часы, scheduler и генератор ID. Application не импортирует Electron, Node или Renderer.
+Clock/scheduler передаются структурными интерфейсами по существующему проектному образцу;
+новые npm-зависимости, singleton внутри Renderer и параллельный Character service не нужны.
+
+Текущий `processDialogueTurn` требует разделения await provider и semantic commit:
+ни один continuation не применяет `provider_response`, context или intent до проверки generation/deadline.
+`ProviderResponseIntentMapper` создаёт candidate, а Character gating принимает окончательное решение.
+Прямой `applyBehaviorIntentToAnimation` из dialogue hook удаляется при миграции.
+
+### Минимальная IPC boundary
+
+`postDialogueCommand(command)` использует фиксированный канал `wisp:dialogue-command`.
+Это typed command по модели существующего `requestSleepWake`, отдельно от Body observations.
+`BodyEventDTO` не расширяется provider payload, и его sequence не расходуется dialogue-командами.
+
+| Контракт | Смысл |
+|---|---|
+| `DialogueCommandDTO` | `send(text)` или `reset`, текущие stream/conversation ID и возрастающая sequence. Locale выбирает Main из конфигурации; UI не передаёт snapshot, историю или provider settings. |
+| `DialogueCommandReceiptDTO` | Только accepted/rejected: `busy`, `stale`, `invalid_input`, `unavailable`. Accepted reset возвращает новый conversationId. Receipt не содержит ответа, visual intent или состояния персонажа. |
+| `DialoguePresentationDTO` | Текущая conversationId, canSubmit и последний turn: idle/thinking/completed/error. Текст ошибки уже пригоден для UI, без stack trace. |
+| `DialogueBrainStateDTO` | Целевая форма прежнего BrainStateDTO с обязательным dialogue; отдельного onDialogueState/getDialogueState нет. |
+
+При cutover поле `dialogue` переносится в сам `BrainStateDTO`, а `postDialogueCommand` —
+в `WispApiBridge`; временные target wrappers удаляются. Validators, publisher, preload и
+Renderer обновляются одной change-set. Optional dialogue и dual publish запрещены.
+До cutover текущие validators продолжают отвергать новую форму; target declarations не меняют runtime.
+
+Все payload принимаются как unknown и копируются после exact-shape проверки по правилам
+[`UI_SPEC.md §6`](./UI_SPEC.md#6-brain--body-ipc). ID — trimmed непустые строки до 128 символов,
+sequence — положительный safe integer. `send.text` после trim содержит 1–240 UTF-16 code units
+(текущий лимит ChatInput); контролы, кроме newline/tab, недопустимы. Reply/message — plain text,
+не HTML, максимум 2000 code units. Provider reply trim-ится и ограничивается этим пределом.
+Неизвестные ключи/enum, пустой текст, non-finite числа отвергаются до вызова provider.
+Malformed command получает invalid_input, untrusted sender — транспортный отказ без раскрытия state.
+
+### Ordering, admission и in-flight
+
+1. Main проверяет trusted webContents и current stream. Чужой stream или conversation — stale.
+2. Sequence строго возрастает в пределах stream; уже обработанная sequence даёт stale без
+   повторного provider call или stimulus. Для валидной envelope sequence потребляется даже при busy;
+   UI повторяет попытку только явным действием с новой sequence, никогда автоматически.
+3. `send` при занятости немедленно возвращает busy; очереди запросов нет.
+   Main генерирует requestId, сохраняет generation, text и deadline, атомарно публикует thinking
+   и принимает команду. IPC promise не ждёт provider. Между receipt и snapshot нет гарантированного
+   порядка доставки; UI выводит состояние только из возрастающих Brain revisions.
+4. На admission применяется ровно один user_message stimulus; thinking — candidate `think`
+   через обычные Brain gates. Отклонение визуальной реакции не отменяет допустимый текстовый запрос.
+5. Provider result проверяется на форму, совпадение requestId и активные conversation/generation.
+   При `now >= deadline` побеждает timeout даже если callback таймера ещё не исполнился.
+6. Terminal commit однократен: context, provider stimulus/candidate и dialogue projection
+   обновляются в одной Brain transaction. Publisher считает dialogue change semantic,
+   не coalesce-ит её как motion-only; одинаковый snapshot не создаёт повторной UI-реплики.
+
+UI временно блокирует повторную отправку до admission receipt; после этого canSubmit определяется
+snapshot. Rejected receipt не очищает draft; принятый текст можно очистить, но receipt никогда
+не завершает thinking. После транспортного отказа UI снимает локальную блокировку и не делает
+автоматический retry: команда могла быть уже принята. Старый receipt после смены stream игнорируется.
+
+### Deadline, fallback и физически незавершённые вызовы
+
+Общий deadline — 15 000 ms от admission на инъецированных Main-monotonic часах, включая
+`getStatus()` и `generateResponse()`. Таймер только ставит событие в Application runtime;
+physics tick не блокируется await. Native timers изолированы адаптером scheduler.
+
+| Событие | Presentation / поведение |
+|---|---|
+| ready или degraded | Вызвать generateResponse в оставшееся время. Валидный status=ok даёт completed/success. |
+| offline | Не вызывать generateResponse; completed/fallback с reason=offline и локальной репликой. |
+| provider status=thinking без собственного активного запроса, error, rejection | completed/fallback с reason=provider_error. |
+| Валидный provider status=fallback | completed/fallback; provider_unavailable → offline, timeout → timeout, unexpected_error → provider_error, остальные причины → degraded. |
+| Некорректный response / несовпавший requestId | completed/fallback с reason=invalid_response; raw payload не попадает в UI/context/Character. |
+| Deadline истёк | completed/fallback с reason=timeout; thinking немедленно завершён, поздний результат игнорируется. |
+| Не удалось сформировать безопасный fallback | error с локальным сообщением; thinking завершён, provider behavior и context не коммитятся. |
+
+Fallback формируется локально детерминированным каталогом, без второго provider call.
+Валидная fallback-реплика провайдера может отображаться, но его behavior/mood hints для fallback
+не применяются. Только success даёт provider_response и candidate в обычную Character arbitration.
+Transport rejection отображается локальной UI-ошибкой и не создаёт semantic реакцию персонажа.
+На terminal/reset/dispose Brain освобождает только принадлежащую этому requestId thinking Activity;
+чужую Activity и forced Motion не отменяет. Переход к reply/idle определяется текущими gates,
+поэтому `thinking_loop` не может остаться активным из-за отсутствия Skin completion.
+
+У текущего `IAIProvider` нет cancellation API: timeout/reset логически отменяет запрос,
+но не выдаётся за физическую отмену Promise. Runtime сохраняет один execution guard до settlement
+старого getStatus/generateResponse, не запускает следующий вызов и публикует canSubmit=false.
+После settlement guard снимается и публикуется canSubmit=true без принятия старого результата;
+после позднего getStatus generateResponse уже не вызывается. При вечном зависании повторная
+отправка недоступна до перезапуска приложения, но UI и Motion работают. Cancellation внешнего
+адаптера требует отдельного контракта; бесконечное накопление retired calls запрещено.
+
+### Контекст, reset и lifecycle
+
+- Runtime хранит только последние три завершённые пары user/reply (шесть сообщений), в памяти.
+  В новый provider request попадает копия этого bounded context, текущий userMessage передаётся отдельно.
+  Пара добавляется атомарно после success или показанного fallback; error/reset/отменённый запрос
+  не добавляют половину пары. Reply ограничен 2000 символами, user — 240; контекст не растёт без лимита.
+- `reset` допускается и во время thinking: новая conversationId, пустые context/turn=idle,
+  отмена deadline, новая generation. Character needs/relationship reset не затрагивает.
+  Ранее применённый user_message stimulus не откатывается. Execution guard сохраняется до settlement.
+- Reload/замена webContents меняет Brain stream и сбрасывает conversation/context аналогично reset;
+  старые commands/receipts/results не переносятся в новый stream. Обычный React remount только
+  переподписывается на текущий snapshot и не сбрасывает Main runtime.
+- Закрытие окна/app shutdown вызывает dispose: generation инвалидируется, таймеры и подписки
+  снимаются, UI publication прекращается. Provider guard принадлежит Main lifecycle, не обнуляется
+  при пересоздании окна; новый запрос ждёт settlement старого. После перезапуска приложения всё idle.
+- Drag/fall и прочие высокоприоритетные действия не ждут provider. Они могут прервать thinking/talking
+  animation через существующие gates, но текстовый запрос продолжается. Ответ не восстанавливает
+  старую Activity и не обходит актуальное состояние персонажа. Skin completion не участвует в dialogue.
+
+### Implementation consequences и проверка
+
+Разработчик переносит provider creation из DesktopPet и recentContext из useDialogueLoop в
+Main/Application, убирает вызовы dialogue use case/animation dispatch из Renderer. Hook становится
+UI-обёрткой typed command и Brain snapshot. В том же изменении подключаются exact validators,
+IPC handler, целевые DTO и lifecycle к существующему Brain publisher; сырой provider result
+через IPC не передаётся. Сетевой адаптер, streaming, настройки provider и persistence не реализуются.
+
+Регрессионные тесты с fake scheduler/deferred provider: повторная отправка и duplicate sequence;
+timeout на обеих await стадиях; поздний success/rejection после reset/reload/dispose; reply ровно
+на deadline; malformed response/requestId; bounded context и целостность пар; receipt/snapshot
+в обоих порядках; снятие execution guard; отсутствие Renderer provider imports и direct animation
+dispatch; единый terminal commit и сохранение forced Motion. Developer запускает typecheck и npm test.
+
 ## Response DTO (Форма ответа)
 
 `AIProviderResponse` описывает semantic result provider-а. Он может предложить эмоциональный тон или suggested behavior, но не выбирает окончательное поведение персонажа, animation clip или ассет.
@@ -127,9 +270,9 @@ idle -> thinking -> error
 - Не делает сетевых вызовов и не требует API-ключей.
 
 ### `ExternalAIProviderClient`
-- Будущий client-side адаптер к внешнему бэкенду.
-- Не содержит backend/proxy/server кода внутри `project_wisp`.
-- Не хранит пользовательские API-ключи внутри десктоп-клиента.
+- Будущий Infrastructure adapter прямого вызова LLM через `IAIProvider`, исполняемый в Main.
+- Не вводит backend/proxy/server или внешнюю БД; Renderer сетевых вызовов не делает.
+- Политика credentials не определяется P17-A02; auth/API keys и provider SDK вне его scope.
 - Любое подключение требует отдельного Architect review.
 
 ## Запрещённые знания provider-а
@@ -162,3 +305,16 @@ AIProviderResponse -> ProviderResponseIntentMapper -> BehaviorIntent
   локальные Markdown-ссылки и `git diff --check` проверены; документ укладывается в лимит 450 строк.
   `npm test` / `typecheck` не требуются для docs-only изменения.
 - **RECOMMENDED NEXT GATE:** reviewer.
+
+## ARCHITECT RESULT — P17-A02 (#19)
+
+- **TASK / Decision:** единственный dialogue runtime в Main/Application, bounded volatile context,
+  single-flight и один Brain state stream. Provider и semantic commit удаляются из Renderer при реализации.
+- **CHANGES:** объявлены target command/receipt/presentation DTO и bridge в shared; зафиксированы
+  injection, lifecycle, ordering, deadline, fallback, reset и atomic cutover с BrainStateDTO.
+- **BOUNDARIES:** только контракты и спецификация; текущий runtime ещё не мигрирован.
+  Новых зависимостей, сетевого адаптера, persistence, backend и UI настроек нет.
+- **SPRITES:** none.
+- **VERIFICATION:** typecheck, локальные ссылки, лимит строк и diff check прошли;
+  продуктовые тесты относятся к последующей реализации.
+- **RECOMMENDED NEXT GATE:** reviewer контрактов, затем app-developer для runtime cutover.
