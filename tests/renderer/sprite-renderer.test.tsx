@@ -68,6 +68,12 @@ describe('Renderer: SpriteRenderer', () => {
     expect(renderToStaticMarkup(<SpriteRenderer state={fallbackState} />)).toContain('data:image/svg+xml,');
   });
 
+  it('normalizes absolute /assets/ URLs to relative ./assets/ paths for packaged file:// environments', () => {
+    expect(resolveSpriteSource('/assets/sprites/body/idle/body_idle_00.png')).toBe(
+      './assets/sprites/body/idle/body_idle_00.png'
+    );
+  });
+
   it('applies transform and pivot correctly in SpriteRenderer SVG group', () => {
     const flippedState: RenderPresentationState = {
       ...state,

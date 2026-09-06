@@ -36,7 +36,7 @@ export function createExternalWindowSurfaces(): ExternalWindowSurfacesPort {
     now: () => performance.now(),
     spawn: () => {
       epoch = randomUUID();
-      return spawn(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', path.join(directory, 'observe.ps1')],
+      return spawn(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(directory, 'observe.ps1')],
         { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     },
     ownProcessIds: () => [...new Set([process.pid, ...app.getAppMetrics().map(metric => metric.pid)])],
@@ -47,9 +47,12 @@ export function createExternalWindowSurfaces(): ExternalWindowSurfacesPort {
   const invalidate = (): void => port.invalidate();
   screen.on('display-added', invalidate); screen.on('display-removed', invalidate); screen.on('display-metrics-changed', invalidate);
   return {
-    getSnapshot: () => port.getSnapshot(), subscribe: listener => port.subscribe(listener),
+    getSnapshot: () => port.getSnapshot(),
+    subscribe: listener => port.subscribe(listener),
     dispose: () => {
-      screen.removeListener('display-added', invalidate); screen.removeListener('display-removed', invalidate); screen.removeListener('display-metrics-changed', invalidate);
+      screen.removeListener('display-added', invalidate);
+      screen.removeListener('display-removed', invalidate);
+      screen.removeListener('display-metrics-changed', invalidate);
       port.dispose();
       try { fs.rmSync(directory, { recursive: true, force: true }); } catch { /* A shutting-down helper may still hold the script. */ }
     },

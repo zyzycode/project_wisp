@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import bundledManifest from '../../../../public/assets/sprites/manifest.json';
 import { createSystemAnimationIntent } from '../../../domain/animation/animation-intent';
 import type {
   CharacterExpression,
@@ -20,7 +21,7 @@ import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { useGaze } from '../../hooks/useGaze';
 import type { GazeDirection } from '../../../domain/behavior/gaze-engine';
 import type { CursorScreenPosition } from '../../body-ui-runtime';
-import { SpriteRenderer } from './SpriteRenderer';
+import { SpriteRenderer, resolveSpriteSource } from './SpriteRenderer';
 
 export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
 
@@ -51,11 +52,11 @@ const FALLBACK_VISUAL_STATE: BodyVisualState = {
 
 const manifestLoader = new ManifestLoader();
 const INITIAL_RESOLVER = new AssetResolver(
-  manifestLoader.load({ schemaVersion: 1, animations: {} }),
+  manifestLoader.load(bundledManifest),
   { enableFaceOverlays: true }
 );
 
-let cachedManifestResolver: AssetResolver | null = null;
+let cachedManifestResolver: AssetResolver | null = INITIAL_RESOLVER;
 
 export interface ManifestAnimationRegistry {
   bodyKeys: readonly string[];
@@ -178,7 +179,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   useEffect(() => {
     let disposed = false;
     if (typeof fetch === 'function') {
-      void fetch('/assets/sprites/manifest.json')
+      void fetch('./assets/sprites/manifest.json')
         .then(async (response) => {
           if (!response.ok) throw new Error(`Unable to load sprites: ${response.status}`);
           return response.json() as Promise<unknown>;
@@ -197,7 +198,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
                 if (Array.isArray(anim?.frames)) {
                   for (const frameSrc of anim.frames) {
                     const img = new Image();
-                    img.src = frameSrc;
+                    img.src = resolveSpriteSource(frameSrc);
                   }
                 }
               }
