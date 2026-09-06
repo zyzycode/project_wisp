@@ -49,7 +49,7 @@
 - [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач (Fast-Track по умолчанию, Architect только по 4 триггерам), task backlog в GitHub Issues. Не меняет продуктовый код. Предоставляет парные промпты (для исполнителя и сразу для ревьюера) с рекомендацией по контексту (текущий чат для сохранения горячего контекста в рамках одного скоупа / новый чат при смене роли или подсистемы). Подключается после завершения задачи (`Approved` / `done`).
 - [architect](.agents/agents/architect/agent.md): архитектура подсистем, инварианты в `docs/engine/*` и объявление целевых контрактов в кодовой базе (типы портов в `src/application/ports/` и DTO в `src/shared/ipc-contracts.ts`). Объявляет и актуализирует интерфейсы в коде. Dependency Review.
 - [app-developer](.agents/agents/app-developer/agent.md): реализация задач на Fast-Track (объявление/расширение портов и DTO, Domain/Application, Main/Preload, Renderer, adapters, packaging), реализация логики, сервисов, UI и тестов. Не генерирует спрайты сам (графику предоставляет художник).
-- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Проверяет спецификации и кодовые контракты архитектора (`npm run typecheck`). Блокирует любые изменения вне продуктового скоупа в PR. Имеет право на точечный Fast-Fix мелких неточностей типов/тестов без возврата задачи. Lean Verification: запускает быстрый `npm run typecheck` (~1 сек) и проводит аудит diff; повторный запуск `npm test` вхолостую не выполняет (запускает `npm test` только при применении Fast-Fix).
+- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Проверяет спецификации и кодовые контракты архитектора (`npm run typecheck`). Блокирует любые изменения вне продуктового скоупа в PR. Имеет право на точечный Fast-Fix мелких неточностей типов/тестов без возврата задачи. Lean Verification: запускает только быстрый `npm run typecheck` (~1 сек) и проводит аудит diff; запуск `npm test` ревьюером исключён (включая Fast-Fix).
 
 ## Автономный цикл реализации
 
@@ -63,7 +63,7 @@
 
 - Изменения продуктового кода логики/адаптеров (`owner: app-developer`) требуют `npm run typecheck && npm test`.
 - Архитектурные задачи с объявлением портов/DTO (`owner: architect`) требуют `npm run typecheck` и проверку markdown/diff consistency; продуктовые тесты (`npm test`) пишутся разработчиком при реализации логики.
-- Ревьюер (`owner: reviewer`) выполняет быстрый `npm run typecheck` (~1 сек) и аудит diff; повторный запуск `npm test` ревьюером исключён, кроме случаев применения Fast-Fix.
+- Ревьюер (`owner: reviewer`) выполняет только быстрый `npm run typecheck` (~1 сек) и аудит diff; запуск `npm test` ревьюером полностью исключён.
 - Изменения только чистой документации требуют проверки markdown/diff consistency.
 - Project Manager не запускает продуктовые тесты для обычной работы с документацией и планированием.
 
