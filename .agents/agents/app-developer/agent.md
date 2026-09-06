@@ -16,18 +16,24 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 ## Страховки
 
-- Renderer взаимодействует с приложением только через типизированный `window.wispAPI` и не получает Node.js, persistence или provider internals.
-- Domain остаётся чистым детерминированным TypeScript: время, случайность и внешние события поступают явными входами; React, Electron, Node.js, persistence, provider и OS APIs запрещены.
-- Application остаётся OS-neutral; platform behavior реализуется только в adapters.
-- Behavior и FSM меняются только в пределах Issue и действующих contracts; недостающие правила не придумываются.
-- **Fast-Track:** в рамках задачи может объявлять новые и эволюционно расширять существующие порты в `src/application/ports/` и IPC DTO в `src/shared/ipc-contracts.ts` (добавление методов, параметров, полей), сохраняя чистоту слоев (Clean Architecture, Electron isolation).
+- Renderer строго изолирован: взаимодействие с приложением происходит исключительно через типизированный мост `window.wispAPI`, без прямого доступа к Node.js, persistence или provider internals.
+- Domain остаётся чистым детерминированным TypeScript: время, случайность и внешние события поступают явными входами; внешние библиотеки, React, Electron, Node.js, persistence, provider и OS APIs изолируются за пределами Domain.
+- Application остаётся OS-neutral; platform behavior реализуется только в адаптерах.
+- Behavior и FSM меняются строго в пределах Issue и действующих contracts; все решения опираются на согласованные спецификации.
+- **Изолированные внешние скоупы (`asset-pipeline/` и `discord_orcestrations/`):**
+  - Категорически запрещено заходить в `asset-pipeline/` и `discord_orcestrations/`, запускать их скрипты (`python3 asset-pipeline/...`) или изменять в них файлы.
+  - **Недостающие спрайты делает художник (`sprite-artist`):** разработчик сам спрайты **НЕ генерирует, не нарезает и не рисует**. Если для реализации не хватает спрайтов в `public/assets/sprites/`:
+    1. Использовать существующие кадры, fallback-логику или заглушку в коде;
+    2. Описать структуры/типы/манифест под фичу;
+    3. Зафиксировать запрос недостающих ассетов в отчёте (`CHANGES`/`BOUNDARIES`) для передачи задачи художнику (`sprite-artist`).
+- **Fast-Track:** в рамках задачи самостоятельно объявляет новые и эволюционно расширяет существующие порты в `src/application/ports/` и IPC DTO в `src/shared/ipc-contracts.ts` (добавление методов, параметров, полей), сохраняя чистоту слоев (Clean Architecture, Electron isolation).
 - **Architect Gate:** обязателен только при срабатывании архитектурных триггеров: создание новой подсистемы/движка, сдвиг границ между процессами (Main ↔ Renderer), добавление npm-зависимостей либо при архитектурном тупике/конфликте контрактов.
-- При обнаружении архитектурного конфликта или необходимости сдвига границ немедленно остановить затронутую часть и вернуть в отчёте эскалацию: `RECOMMENDED NEXT GATE: architect` (`needs:architect`); спагетти-обходы не создавать.
-- Ошибку вне scope фиксирует в отчёте, но не исправляет скрытно и не расширяет из-за неё текущую задачу.
+- При обнаружении архитектурного конфликта или необходимости сдвига границ немедленно остановить затронутую часть и вернуть в отчёте эскалацию: `RECOMMENDED NEXT GATE: architect` (`needs:architect`); границы слоёв сохраняются чистыми.
+- Ошибку вне scope фиксирует в отчёте, сохраняя стабильность несвязанного кода.
 
 ## Инструменты и контекст
 
-- До реализации проверить назначенную Issue и `ARCHITECT RESULT` в комментариях связанных architect-gate Issues. `Implementation consequences` из такого результата обязательны для текущей задачи; постоянные contract rules брать из указанных canonical documents. Если решение не discoverable, противоречит Issue или contracts, остановить затронутую часть и запросить gate, а не угадывать.
+- До реализации проверить назначенную Issue и `ARCHITECT RESULT` в комментариях связанных architect-gate Issues. `Implementation consequences` из такого результата обязательны для текущей задачи; постоянные contract rules брать из указанных canonical documents. Если решение не discoverable, противоречит Issue или contracts, остановить затронутую часть и запросить gate.
 - Фокус поиска: завершать сбор контекста сразу после прояснения scope и acceptance criteria задачи.
 
 ## Автономный цикл реализации
@@ -36,4 +42,4 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 ## Отчёт
 
-Использовать общий формат проекта. В `CHANGES` назвать затронутые слои, в `BOUNDARIES` — применённые contracts, сохранённые границы и обнаруженные blockers. В `VERIFICATION` указать результат `npm run typecheck && npm test`.
+Использовать общий формат проекта. В `CHANGES` назвать затронутые слои, в `BOUNDARIES` — применённые contracts, сохранённые границы, запросы на недостающие ассеты (для `sprite-artist`) и обнаруженные blockers. В `VERIFICATION` указать результат `npm run typecheck && npm test`.

@@ -7,22 +7,22 @@
 - Linux (Ubuntu / Wayland / X11) — основной baseline разработки и smoke verification.
 - Runtime: Node.js 22 LTS, npm.
 - Framework: Electron 35, React 19, TypeScript 5.8 (Strict Mode).
-- Build/Dev: Vite 6, `@vitejs/plugin-react`.
+- Build/Dev: Vite 6, `@vitejs/plugin-react` .
 - Tests: Vitest 3.
 - Архитектура: Desktop-first, Clean Architecture, Main/Renderer isolation, typed IPC.
 - Документация движков: [docs/engine/README.md](docs/engine/README.md).
 
 ## Ограничения
 
-- **Desktop Offline-First:** строго локальное настольное приложение (Electron + React + TypeScript). Запрещено добавление серверных backend-прослоек, удаленных БД и микросервисов.
+- **Desktop Offline-First:** строго локальное настольное приложение (Electron + React + TypeScript). Все вычисления и данные хранятся локально на клиенте; серверные backend-прослойки, удаленные БД и микросервисы исключены.
 - Никаких внешних runtime-зависимостей без отдельного согласования.
 - **Zero New Dependencies First:** перед добавлением npm-пакета агент обязан проверить, решается ли задача стандартными средствами Node.js / Electron / React / Web API.
 - Новую npm-зависимость до реализации оценивает `architect`:
-  1. Лицензия: MIT, Apache 2.0, BSD, ISC (GPL/AGPL запрещены).
+  1. Лицензия: пермиссивная (MIT, Apache 2.0, BSD, ISC).
   2. Размер и transitives: bundlephobia / npm trends, минимальный overhead.
   3. Активность: релизы за последний год, отсутствие открытых критических CVE.
   4. Нативные биндинги: предпочтение pure JS/WASM перед native C++ (node-gyp риски сборки на разных платформах).
-  5. Альтернатива: почему нельзя написать 50-100 строк собственного кода.
+  5. Альтернатива: возможность написать 50-100 строк собственного кода вместо добавления пакета.
 
 ## Кроссплатформенность
 
@@ -41,13 +41,16 @@
 
 `ARCHITECTURE.md` — объясняющий обзор для людей, а не источник технических требований. Он не входит в обязательный контекст агента; читать его только при явной задаче на сам обзор.
 
-## Отдельный скоуп ассетов
+## Изолированные внешние скоупы: asset-pipeline и discord_orcestrations
 
-Генерация и обработка спрайтов — отдельный скоуп: следовать [asset-pipeline/AGENTS.md](asset-pipeline/AGENTS.md). Он размещает PNG, но не меняет манифест и runtime. Агент приложения не читает материалы генерации без необходимости.
+Директории `asset-pipeline/` и `discord_orcestrations/` являются полностью автономными изолированными скоупами. Для всех продуктовых ролей (`app-developer`, `architect`, `reviewer`, `project-manager`) действует **строгий запрет**:
+- Запрещено модифицировать файлы, конфиги, скрипты и документацию внутри `asset-pipeline/` и `discord_orcestrations/`.
+- Запрещено запускать инструменты генерации/нарезки (`python3 asset-pipeline/...`) или скрипты Discord-бота.
+- Запрещено импортировать код из этих директорий в приложение.
 
-## Изолированный скоуп Discord
-
-Директория `discord_orcestrations/` — полностью автономная инфраструктура Discord-бота и сообщества. Продуктовые агенты Wisp туда не заходят, не модифицируют её и не импортируют оттуда код. См. [discord_orcestrations/.agent.md](discord_orcestrations/.agent.md).
+**Создание и генерация спрайтов:**
+- Недостающие спрайты, кадры и анимации создаёт **исключительно художник** (`sprite-artist` по `asset-pipeline/AGENTS.md`).
+- Разработчик (`app-developer`) спрайты самостоятельно **НЕ генерирует, не нарезает и не рисует**. Если для анимации или фичи отсутствуют спрайты, разработчик применяет fallback-логику / заглушку в кодовой базе и фиксирует запрос недостающих ассетов в отчёте.
 
 Общий навигатор — [docs/README.md](docs/README.md).
 
@@ -55,10 +58,10 @@
 
 Перед работой прочитать инструкцию назначенной роли по ссылке ниже, не остальные роли. «Ты менеджер» или «менеджер проекта» означает `project-manager`.
 
-- [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач (Fast-Track по умолчанию, Architect только по 4 триггерам), task backlog в GitHub Issues. Не меняет продуктовый код. Подключается после завершения задачи (`Approved` / `done`).
-- [architect](.agents/agents/architect/agent.md): архитектура подсистем, инварианты в `docs/engine/*` и объявление целевых контрактов в кодовой базе (типы портов в `src/application/ports/` и DTO в `src/shared/ipc-contracts.ts`). Старый запрет «docs-only» устранён: объявляет и актуализирует интерфейсы в коде. Dependency Review.
-- [app-developer](.agents/agents/app-developer/agent.md): реализация задач на Fast-Track (объявление/расширение портов и DTO, Domain/Application, Main/Preload, Renderer, adapters, packaging), реализация логики, сервисов, UI и тестов.
-- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Проверяет как docs, так и код контрактов архитектора (`npm run typecheck`). Не отклоняет задачи архитектора из-за файлов в `src/`. Имеет право на точечный Fast-Fix мелких неточностей типов/тестов без возврата задачи.
+- [project-manager](.agents/agents/project-manager/agent.md): scope, маршрутизация задач (Fast-Track по умолчанию, Architect только по 4 триггерам), task backlog в GitHub Issues. Не меняет продуктовый код. Предоставляет парные промпты (для исполнителя и сразу для ревьюера) с рекомендацией по контексту (текущий чат для сохранения горячего контекста в рамках одного скоупа / новый чат при смене роли или подсистемы). Задачи по графике направляет только художнику (`sprite-artist`), не смешивая с `app-developer`. Подключается после завершения задачи (`Approved` / `done`).
+- [architect](.agents/agents/architect/agent.md): архитектура подсистем, инварианты в `docs/engine/*` и объявление целевых контрактов в кодовой базе (типы портов в `src/application/ports/` и DTO в `src/shared/ipc-contracts.ts`). Объявляет и актуализирует интерфейсы в коде. Dependency Review. Не заходит в `asset-pipeline/` и `discord_orcestrations/`.
+- [app-developer](.agents/agents/app-developer/agent.md): реализация задач на Fast-Track (объявление/расширение портов и DTO, Domain/Application, Main/Preload, Renderer, adapters, packaging), реализация логики, сервисов, UI и тестов. Не генерирует спрайты сам (недостающие делает художник). Не заходит в `asset-pipeline/` и `discord_orcestrations/`.
+- [reviewer](.agents/agents/reviewer/agent.md): review, verification, test strategy. Проверяет как спецификации, так и кодовые контракты архитектора (`npm run typecheck`). Блокирует любые изменения в `asset-pipeline/` или `discord_orcestrations/` в продуктовых PR. Имеет право на точечный Fast-Fix мелких неточностей типов/тестов без возврата задачи.
 
 ## Автономный цикл реализации
 
