@@ -135,6 +135,37 @@ AND abs(y - maxY) <= ε
 - **Потолок/кромка окна (`hanging_ceiling` / crawl)**: $y = y_{\text{support}}, \quad x(t+\Delta t) = x(t) + v_{\text{crawl}} \cdot \Delta t$.
 - **Валидация опоры**: при $x \notin [x_{\min}, x_{\max}]$ опоры, удалении окна или невалидности флага `isValidSupport` немедленно инициируется отрыв: `beginAirborne(..., cause: 'support_lost')`.
 
+### 7.1. Lifecycle внешней опоры — целевой AUTO-A07
+
+Кандидаты, filtering, identity, capability, TTL и DIP conversion принадлежат [Perception §10](./PERCEPTION_ENGINE.md#10-внешние-окна--целевой-контракт-auto-a07).
+Domain принимает только выбранный нормализованный `ExternalWindowSurface`; native tracking и выбор окна здесь отсутствуют.
+`window_side` использует `climbing_wall`, `window_top` — существующий `hanging_ceiling`; название фазы не означает нижнюю грань окна.
+
+| Наблюдение на очередном Main tick | Результат |
+|---|---|
+| Тот же ID, та же geometry, fresh/valid | Продолжить движение по касательной. |
+| Тот же ID, move без resize | Follow: сохранить локальное расстояние от начала кромки, применить новый origin. |
+| Тот же ID, resize (включая move+resize) | Recompute: сохранить абсолютное локальное расстояние в DIP, пересчитать normal coordinate; при выходе за новый диапазон — `support_lost`. |
+| Другой ID, окно отсутствует, minimize/close/hide/cloak/filter-out | `support_lost`; не выбирать замену в том же шаге. |
+| Unavailable, stale > 300 ms, invalid geometry, topology/DPI invalidation | `support_lost`, удалить attachment baseline. |
+| Restore/recovery/new window | Только новый кандидат; автоматического reattach нет. |
+
+Для top начало кромки a=(bounds.x,bounds.y), касательная t=(1,0), длина L=width.
+Для left/right начало a=(bounds.x либо bounds.x+width,bounds.y), t=(0,1), L=height.
+Пусть s — сохранённое расстояние от начала предыдущей кромки в DIP, v — voluntary tangential velocity:
+` s' = s + v * dt; root' = a_new + t * s' `, только если `0 <= s' <= L_new`.
+На resize s не масштабируется пропорционально длине и не clamp-ится: иначе возникнет скрытая телепортация.
+При move+resize применяются новый origin и новая длина атомарно. Delta применяется один раз относительно предыдущей geometry; повторный snapshot не прибавляет её снова.
+
+Application хранит предыдущий accepted snapshot и передаёт его в будущую pure кинематику вместе с Main monotonic time. Алгоритм и расширение step input реализует app-developer.
+Если follow/recompute выводит root за допустимые screen bounds с collisionInsets, выполняется `support_lost`, а не clamped attachment.
+При потере опоры airborne начинается с последней принятой root position и текущей locomotion velocity; скорость перемещения окна не наследуется, импульс не оценивается по poll delta.
+`support_lost` генерируется один раз при attached → airborne; дальнейшие stale/unavailable не повторяют событие. Экранный floor остаётся fallback для физики после отрыва, не мгновенной заменой опоры.
+Drag имеет приоритет и отменяет attachment без дополнительного `support_lost` в том же шаге. Решения о переходе между кромками/traversal в AUTO-A07 не проектируются.
+
+Текущая реализация `SurfaceKinematics` пока поддерживает screen wall и теряет top support при изменении supportY; объявленные здесь follow/resize/window_side требуют отдельной реализации.
+AUTO-A07 меняет только декларации surface/port/IPC, не включает алгоритмы, mapper, adapter, поведение и графику.
+
 ## 8. Авторитет позиции: кто двигает окно
 
 ```mermaid

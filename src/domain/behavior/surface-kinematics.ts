@@ -8,7 +8,7 @@ import type {
   WorldPx,
 } from './motion-engine';
 
-export type SurfaceKind = 'screen_floor' | 'window_top' | 'unknown';
+export type SurfaceKind = 'screen_floor' | 'window_top' | 'window_side' | 'unknown';
 
 export interface SurfaceBoundsDto {
   readonly x: WorldPx;
@@ -22,8 +22,16 @@ export interface SurfaceSnapshotDto {
   readonly kind: SurfaceKind;
   readonly bounds: SurfaceBoundsDto;
   readonly supportY?: WorldPx;
+  /** Required for window_side; absent for other kinds. Target AUTO-A07 contract. */
+  readonly side?: WallSide;
   readonly isValidSupport: boolean;
 }
+
+/** Target external geometry; discovery and attachment are implemented separately. */
+export type ExternalWindowSurface = SurfaceSnapshotDto & (
+  | { readonly kind: 'window_top'; readonly supportY: WorldPx; readonly side?: never }
+  | { readonly kind: 'window_side'; readonly side: WallSide; readonly supportY?: never }
+);
 
 export interface EnvironmentSnapshot {
   readonly capturedAtMs: MonotonicMs;

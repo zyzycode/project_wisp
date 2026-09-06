@@ -213,9 +213,11 @@ export interface EnvironmentScreenBoundsDTO extends ScreenBoundsDTO {
 
 export interface EnvironmentSurfaceDTO {
   readonly id: string;
-  readonly kind: 'screen_floor' | 'window_top' | 'unknown';
+  readonly kind: 'screen_floor' | 'window_top' | 'window_side' | 'unknown';
   readonly bounds: ScreenBoundsDTO;
   readonly supportY?: number;
+  /** Target AUTO-A07 projection: required only for window_side. */
+  readonly side?: 'left' | 'right';
   readonly isValidSupport: boolean;
 }
 
