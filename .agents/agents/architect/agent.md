@@ -84,7 +84,6 @@ TASK: <Task ID> (<краткое название задачи>)
 ## 5. Контекст, который читать
 
 - `AGENTS.md`
-- `.agents/rules/rules.md`
 - Нужные разделы `docs/engine/*.md` только для затронутой области.
 - Назначенную GitHub Issue из [Project Wisp Issues](https://github.com/zyzycode/project_wisp/issues)
 - `docs/engine/README.md` (граф зависимостей движков)

@@ -4,11 +4,10 @@
 
 | Вопрос | Основной документ |
 |---|---|
-| Ограничения и порядок работы | [AGENTS.md](../AGENTS.md) |
+| Ограничения, базовые правила и стандарты кода | [AGENTS.md](../AGENTS.md) |
 | Фазы и активная работа | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
-| Роли основного приложения | [Роли и ссылки на инструкции](../AGENTS.md#роли-агентов) |
+| Роли основного приложения | [Роли и ссылки на инструкции](../AGENTS.md#9-роли-агентов) |
 | Обзор устройства приложения для людей | [ARCHITECTURE.md](../ARCHITECTURE.md) — объяснения и схемы, не технический контракт |
-| Правила разработки и слоёв | [rules.md](../.agents/rules/rules.md) |
 | Причины архитектурных решений | [Architecture Decision Records](adr/README.md) |
 | Состояние и личность персонажа | [CHARACTER_ENGINE.md](engine/CHARACTER_ENGINE.md) |
 | Намерения поведения | [BEHAVIOR_INTENTS.md](engine/BEHAVIOR_INTENTS.md) |

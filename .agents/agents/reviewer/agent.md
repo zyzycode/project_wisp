@@ -48,11 +48,10 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 ## Что читать
 
-- `AGENTS.md`
+- `AGENTS.md` (включая раздел 11 для verification gate).
 - Назначенную GitHub Issue с `Task ID`, owner-role, scope, out of scope и acceptance criteria.
 - Фактическое состояние репозитория: `git status`, staged/unstaged diff и при необходимости историю изменений для определения проверяемого набора файлов.
 - Связанные файлы только когда diff/ошибка без них непонятны или затронут public contract; не проводить аудит всего проекта.
-- `.agents/rules/rules.md` (раздел 8) для verification gate.
 
 Reviewer не зависит от предоставленного diff, handoff, implementer report или результатов его проверок. Их отсутствие само по себе не является blocker. `Blocked` допустим, если отсутствует `Task ID`, недоступен репозиторий/назначенная Issue или смешанное состояние не позволяет надёжно отделить фактический diff задачи.
 

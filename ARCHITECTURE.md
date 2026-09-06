@@ -2,7 +2,7 @@
 
 Высокоуровневый обзор архитектуры настольного AI-компаньона Project Wisp. Документ фиксирует границы ответственности подсистем и поток данных между ними.
 
-> **Единый источник правды:** обязательные инженерные правила и ограничения зафиксированы в [.agents/rules/rules.md](.agents/rules/rules.md), предметные спецификации движков — в [docs/engine/](docs/engine/README.md), текущий статус задач — в [GitHub Issues](https://github.com/zyzycode/project_wisp/issues).
+> **Единый источник правды:** обязательные инженерные правила и ограничения зафиксированы в [AGENTS.md](AGENTS.md), предметные спецификации движков — в [docs/engine/](docs/engine/README.md), текущий статус задач — в [GitHub Issues](https://github.com/zyzycode/project_wisp/issues).
 
 ---
 
@@ -92,11 +92,11 @@ flowchart TD
 
 | Область | Назначение | Документ |
 | :--- | :--- | :--- |
-| **Правила разработки** | Границы слоев, изоляция зависимостей, безопасность | [.agents/rules/rules.md](.agents/rules/rules.md) |
+| **Правила разработки** | Границы слоев, изоляция зависимостей, безопасность | [AGENTS.md](AGENTS.md) |
 | **Character Engine** | Модель состояний, эмоции и потребности | [CHARACTER_ENGINE.md](docs/engine/CHARACTER_ENGINE.md) |
 | **Autonomy & Behavior** | Выбор действий, намерения, логика циклов | [AUTONOMY_ENGINE.md](docs/engine/AUTONOMY_ENGINE.md), [BEHAVIOR_INTENTS.md](docs/engine/BEHAVIOR_INTENTS.md) |
 | **Render & Animation** | Визуализация, спрайты, переходы кадров | [RENDER_ENGINE.md](docs/engine/RENDER_ENGINE.md), [ANIMATION_ENGINE.md](docs/engine/ANIMATION_ENGINE.md) |
 | **AI Provider** | Контракты обмена данными с моделями и моки | [AI_PROVIDER_CONTRACT.md](docs/engine/AI_PROVIDER_CONTRACT.md) |
-| **Memory & Storage** | Долговременная память и схема SQLite | [MEMORY_ENGINE.md](docs/engine/MEMORY_ENGINE.md) |
+| **Memory & Storage** | Долгосрочная память и схема SQLite | [MEMORY_ENGINE.md](docs/engine/MEMORY_ENGINE.md) |
 | **UI Spec** | Спецификация компонентов интерфейса | [UI_SPEC.md](docs/engine/UI_SPEC.md) |
 | **Решения (ADR)** | Реестр принятых архитектурных решений | [docs/adr/README.md](docs/adr/README.md) |
