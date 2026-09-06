@@ -13,6 +13,13 @@ import {
   type SpritePoint,
 } from './types';
 
+/** Artist assets are absent; these aliases retain the existing contact pivot. */
+export const TRAVERSAL_SPRITE_FALLBACKS = {
+  grab_edge: { key: 'body_climb_wall', frame: 0 },
+  jump_travel: { key: 'body_jump', frame: 0 },
+  pull_up_edge: { key: 'body_climb_wall', frame: 3 },
+} as const;
+
 const DEFAULT_VIEWPORT = { width: 512, height: 512 };
 const ZERO_POINT: SpritePoint = { x: 0, y: 0 };
 type AnyAnimationIntent = AnimationIntent<AnyAnimationIntentKind>;
@@ -159,7 +166,14 @@ export class AssetResolver {
     const specialised = this.manifest.animations[`${preferredKey}_${intent.emotionalTone}`];
     const preferred = this.manifest.animations[preferredKey];
     const idle = this.manifest.animations.body_idle;
-    return selectAnimation(specialised, 'body') ?? selectAnimation(preferred, 'body') ?? selectAnimation(idle, 'body') ?? systemBody();
+    const body = selectAnimation(specialised, 'body') ?? selectAnimation(preferred, 'body') ?? selectAnimation(idle, 'body') ?? systemBody();
+    const fallback = intent.kind === 'jump' ? TRAVERSAL_SPRITE_FALLBACKS.jump_travel
+      : intent.kind === 'climb_wall' && intent.loop === 'none' ? TRAVERSAL_SPRITE_FALLBACKS.grab_edge : undefined;
+    if (fallback === undefined || body.key !== fallback.key) return body;
+    const frame = body.frames[fallback.frame];
+    if (frame === undefined) return body;
+    return { ...body, frames: [frame], framesCount: 1,
+      frameMeta: body.frameMeta?.slice(fallback.frame, fallback.frame + 1) };
   }
 
   private resolveFace(

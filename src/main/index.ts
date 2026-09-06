@@ -243,7 +243,8 @@ function initializeAutonomyComposition(): void {
       getCollisionInsets: () => DEFAULT_MOTION_CONSTRAINTS.collisionInsets,
       canAcceptVoluntaryMovement: () => orchestrator.canAcceptVoluntaryMovement(),
       requestVoluntaryMovement: (command) => orchestrator.requestVoluntaryMovement(command),
-      cancelVoluntaryMovement: () => orchestrator.cancelVoluntaryMovement(),
+      requestTraversal: (request) => orchestrator.requestTraversal(request),
+      cancelVoluntaryMovement: (forDrag) => orchestrator.cancelVoluntaryMovement(forDrag),
     },
     requestManualRootPosition: (targetRootPosition) => {
       return orchestrator.requestVoluntaryMovement({
@@ -324,8 +325,9 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
       defaultCharacterStateService.applyStimulus(stimulus);
     },
     createStimulusTimestamp: () => new Date().toISOString(),
-    onVoluntaryMovementCompleted: () => {
-      autonomyComposition?.notifyVoluntaryMovementCompleted();
+    onTraversalRejected: (request) => autonomyComposition?.notifyTraversalRejected(request),
+    onVoluntaryMovementCompleted: (completed) => {
+      autonomyComposition?.notifyVoluntaryMovementCompleted(completed);
     },
   });
   stopShimejiMotionLoopHandle = startShimejiMotionLoop({

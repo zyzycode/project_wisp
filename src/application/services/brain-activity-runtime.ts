@@ -1,3 +1,4 @@
+import { createExploreTraversalSteps, type TraversalAction } from '../../domain/behavior/traversal-route';
 import {
   ActivityRunner,
   DEFAULT_ACTIVITY_COOLDOWN_RULES,
@@ -45,13 +46,16 @@ export interface BrainActivityRuntimeOptions {
   readonly getRootPosition: () => Vector2Dto;
   readonly getCollisionInsets: () => CollisionInsets;
   readonly nextRandom: () => number;
+  readonly traversalEnabled?: boolean;
   readonly requestLocomotion: (request: {
     readonly runId: string;
+    readonly stepId: string;
+    readonly traversal?: TraversalAction;
     readonly targetRef: string;
     readonly gait: 'walk' | 'run' | 'crawl';
     readonly targetRootPosition?: Vector2Dto;
   }) => boolean;
-  readonly cancelLocomotion: () => boolean;
+  readonly cancelLocomotion: (forDrag?: boolean) => boolean;
   readonly createRunId: () => string;
   readonly cooldownRules?: readonly CooldownRule[];
   readonly onVisualIntent: (intent: AnimationIntent<AnimationIntentKind>) => void;
@@ -100,7 +104,12 @@ export class BrainActivityRuntime {
     if (selectedDefinition.id === 'explore' && selectedExplorePlan === null) return false;
     const definition = selectedExplorePlan === null
       ? selectedDefinition
-      : createExploreActivityDefinition(selectedExplorePlan);
+      : createExploreActivityDefinition(selectedExplorePlan, this.options.traversalEnabled
+          ? createExploreTraversalSteps(selectedExplorePlan, {
+              currentRootPosition: this.options.getRootPosition(), environment: selectionContext.environment,
+              collisionInsets: this.options.getCollisionInsets(), needs: selectionContext.character.needs,
+              tone: selectionContext.synthesizedTone, history: this.exploreHistory, nowMs,
+            }) : []);
     return this.startDefinition(definition, selectedExplorePlan, nowMs);
   }
 
@@ -135,12 +144,13 @@ export class BrainActivityRuntime {
     return this.applyUpdate(definition, update);
   }
 
-  public notifyLocomotionCompleted(): boolean {
+  public notifyLocomotionCompleted(completed?: { readonly runId: string; readonly stepId: string }): boolean {
     const definition = this.definition;
     const runtime = this.runtime;
     if (definition === null || runtime === null) return false;
     const step = definition.steps.find((candidate) => candidate.id === runtime.currentStepId);
-    if (step?.type !== 'locomotion') return false;
+    if (step?.type !== 'locomotion' || (completed !== undefined
+        && (completed.runId !== runtime.runId || completed.stepId !== runtime.currentStepId))) return false;
     return this.applyUpdate(
       definition,
       this.runner.update(
@@ -152,7 +162,7 @@ export class BrainActivityRuntime {
     );
   }
 
-  public cancel(reason: ActivityCancelReason): boolean {
+  public cancel(reason: ActivityCancelReason, forDrag = false): boolean {
     const definition = this.definition;
     const runtime = this.runtime;
     if (definition === null || runtime === null) return false;
@@ -161,8 +171,13 @@ export class BrainActivityRuntime {
     this.definition = null;
     this.runtime = null;
     this.explorePlan = null;
-    this.options.cancelLocomotion();
+    this.options.cancelLocomotion(forDrag);
     return true;
+  }
+
+  public isJumpStep(): boolean {
+    return this.definition?.steps.some((step) => step.id === this.runtime?.currentStepId
+      && step.type === 'locomotion' && step.traversal?.kind === 'directed_jump') ?? false;
   }
 
   public getRuntime(): ActivityRuntimeState | null {
@@ -194,11 +209,12 @@ export class BrainActivityRuntime {
     if (step === undefined) return false;
     if (step.type === 'locomotion' && !this.options.requestLocomotion({
       runId: this.runtime?.runId ?? '',
+      stepId: step.id,
+      traversal: step.traversal,
       targetRef: step.targetRef,
       gait: step.gait,
-      ...(this.explorePlan === null
-        ? {}
-        : { targetRootPosition: this.explorePlan.targetRootPosition }),
+      ...(step.targetRootPosition !== undefined ? { targetRootPosition: step.targetRootPosition }
+        : this.explorePlan === null ? {} : { targetRootPosition: this.explorePlan.targetRootPosition }),
     })) {
       const runtime = this.runtime;
       if (runtime === null) return false;

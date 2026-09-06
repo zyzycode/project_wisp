@@ -1,3 +1,4 @@
+import type { TraversalRequest } from '../domain/behavior/traversal-route';
 import {
   AutonomyCoordinator,
   type AutonomyClock,
@@ -84,6 +85,7 @@ export class MainAutonomyComposition {
   private enabled = true;
   private menuOpen = false;
   private cursorReactionActive = false;
+  private jumpFallAtMs: number | null = null;
   private readonly cursorProximityEngine = new CursorProximityEngine();
   private cursorProximityState: CursorProximityState = {
     withinSwatRange: false,
@@ -121,14 +123,19 @@ export class MainAutonomyComposition {
       getRootPosition: () => options.movement.getRootPosition(),
       getCollisionInsets: () => options.movement.getCollisionInsets(),
       nextRandom: () => options.prng.next(),
+      traversalEnabled: options.movement.requestTraversal !== undefined,
       requestLocomotion: (request) => {
+        if (request.traversal !== undefined) return options.movement.requestTraversal?.({
+          runId: request.runId, stepId: request.stepId, action: request.traversal,
+        }) ?? false;
         return this.coordinator.requestActivityLocomotion(request.targetRootPosition);
       },
-      cancelLocomotion: () => options.movement.cancelVoluntaryMovement(),
+      cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
       onTerminated: (result) => {
-        if (result.status !== 'completed' || result.activityId !== 'rest') {
+        if ((result.status !== 'completed' || result.activityId !== 'rest')
+            && options.movement.canAcceptVoluntaryMovement()) {
           this.setVisualKind('idle_blink', true, result.activityId === 'observe_cursor');
         }
         if (result.activityId === 'observe_cursor' && this.cursorReactionActive) {
@@ -175,7 +182,9 @@ export class MainAutonomyComposition {
     this.expireCursorObservation(nowMs);
     const needsChanged = this.tickNeeds(elapsedMs);
     const activityChanged = this.activity.tick(nowMs);
-    return needsChanged || activityChanged;
+    const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
+    if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
+    return needsChanged || activityChanged || showFall;
   }
 
   public setEnabled(enabled: boolean): void {
@@ -291,6 +300,7 @@ export class MainAutonomyComposition {
     ).resolvedIntent;
     if (intent === null) return false;
     this.suspendForUserInteraction();
+    if (!this.options.movement.canAcceptVoluntaryMovement()) { this.resumeAfterUserInteraction(); return false; }
     if (command.action === 'sleep') return this.activity.start(intent);
     this.setVisualKind('wake_up', true, true);
     this.resumeAfterUserInteraction();
@@ -300,6 +310,7 @@ export class MainAutonomyComposition {
   public handleClick(): boolean {
     const wasAwake = this.character.getSemanticSleepState() === 'awake';
     this.suspendForUserInteraction();
+    if (!this.options.movement.canAcceptVoluntaryMovement()) { this.resumeAfterUserInteraction(); return true; }
     if (wasAwake) {
       this.setVisualKind('happy_reaction', true, true);
       this.resumeAfterUserInteraction();
@@ -319,6 +330,10 @@ export class MainAutonomyComposition {
   }
 
   public handleCharacterInteraction(type: BodyInteractionTypeDTO): boolean {
+    if (type !== 'click') {
+      this.cancelActivity('user_interaction', true);
+      if (!this.options.movement.canAcceptVoluntaryMovement()) return false;
+    }
     if (type === 'click') return this.handleClick();
     if (type === 'double_click' || type === 'pet' || type === 'feed') {
       this.setVisualKind('happy_reaction', true, true);
@@ -342,7 +357,7 @@ export class MainAutonomyComposition {
   }
 
   public beginDrag(): void {
-    this.cancelActivity('user_interaction', true);
+    this.cancelActivity('user_interaction', true, true);
     this.coordinator.noteUserActivity();
     this.coordinator.interruptForcedMotion();
     this.character.resolveDirectIntent(
@@ -373,6 +388,12 @@ export class MainAutonomyComposition {
   }
 
   public handleMotionEvent(event: MotionEvent): void {
+    if (event.type === 'airborne_started' && event.cause === 'voluntary_jump' && this.activity.isJumpStep()) return;
+    if (event.type === 'jump_descending') {
+      if (this.activity.isJumpStep()) this.jumpFallAtMs = Math.max(this.options.clock.now(),
+        (this.activity.getRuntime()?.stepStartedAtMs ?? 0) + 120);
+      return;
+    }
     if (event.type === 'drag_started' || event.type === 'airborne_started') {
       this.cancelActivity('forced_motion', true);
       this.coordinator.interruptForcedMotion();
@@ -380,6 +401,8 @@ export class MainAutonomyComposition {
       return;
     }
     if (event.type === 'landed') {
+      this.jumpFallAtMs = null;
+      if (this.activity.isJumpStep()) return;
       this.setVisualKind(event.outcome === 'crash_landing' ? 'crash_landing' : 'land', true, true);
       this.coordinator.resumeAfterForcedMotion();
     }
@@ -390,8 +413,14 @@ export class MainAutonomyComposition {
     this.coordinator.interruptForcedMotion();
   }
 
-  public notifyVoluntaryMovementCompleted(): void {
-    if (!this.activity.notifyLocomotionCompleted()) {
+  public notifyTraversalRejected(request: Pick<TraversalRequest, 'runId' | 'stepId'>): void {
+    const runtime = this.activity.getRuntime();
+    if (runtime?.runId !== request.runId || runtime.currentStepId !== request.stepId) return;
+    if (this.cancelActivity('environment_invalidated', true)) this.finishActivityCadence();
+  }
+
+  public notifyVoluntaryMovementCompleted(completed?: Pick<TraversalRequest, 'runId' | 'stepId'>): void {
+    if (!this.activity.notifyLocomotionCompleted(completed) && completed === undefined) {
       this.setVisualKind('idle_blink', false);
       this.coordinator.notifyVoluntaryMovementCompleted();
     }
@@ -431,9 +460,10 @@ export class MainAutonomyComposition {
     }
   }
 
-  private cancelActivity(reason: ActivityCancelReason, publish: boolean): boolean {
+  private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
+    this.jumpFallAtMs = null;
     const wasCursorReaction = this.cursorReactionActive;
-    const cancelled = this.activity.cancel(reason);
+    const cancelled = this.activity.cancel(reason, forDrag);
     if (!cancelled) return false;
     if (wasCursorReaction) {
       this.cursorReactionActive = false;
@@ -443,7 +473,7 @@ export class MainAutonomyComposition {
     this.deferredUserInteractionResume = false;
     if (releaseUserInteraction) this.coordinator.resumeAfterUserInteraction();
     if (publish) {
-      this.setVisualKind('idle_blink', false, wasCursorReaction);
+      if (this.options.movement.canAcceptVoluntaryMovement()) this.setVisualKind('idle_blink', false, wasCursorReaction);
       this.options.onPresentationChanged();
     }
     return true;

@@ -1,3 +1,4 @@
+import { SCREEN_CLIMB_SPEED, type TraversalRequest } from '../../domain/behavior/traversal-route';
 import type { PetPositionPort } from '../ports/pet-position-port';
 import {
   calculateRootCollisionRange,
@@ -68,7 +69,8 @@ export interface ShimejiMotionOrchestratorOptions {
   readonly createStimulusTimestamp?: () => string;
   readonly dragHoldThresholdMs?: number;
   readonly createDragSessionId?: () => string;
-  readonly onVoluntaryMovementCompleted?: () => void;
+  readonly onTraversalRejected?: (request: TraversalRequest) => void;
+  readonly onVoluntaryMovementCompleted?: (completed?: Pick<TraversalRequest, 'runId' | 'stepId'>) => void;
 }
 
 export type VoluntaryRootCommand =
@@ -135,6 +137,10 @@ export class ShimejiMotionOrchestrator {
   private generatedSessionCount = 0;
   private voluntaryCommand: VoluntaryRootCommand | undefined;
   private presentationDirty = false;
+  private traversal: TraversalRequest | undefined;
+  private traversalStarted = false;
+  private attachmentRunId: string | undefined;
+  private completedTraversal: TraversalRequest | undefined;
 
   public constructor(private readonly options: ShimejiMotionOrchestratorOptions) {
     if (options.stimulusMapper !== undefined && options.createStimulusTimestamp === undefined) {
@@ -166,7 +172,7 @@ export class ShimejiMotionOrchestrator {
 
   public beginDrag(input: PointerInput): string | null {
     if (!isValidPointerInput(input) || this.dragSession !== undefined || this.hasQueuedBegin()) return null;
-    this.cancelVoluntaryMovement();
+    this.cancelVoluntaryMovement(true);
     const sessionId = this.options.createDragSessionId?.() ?? `drag-${++this.generatedSessionCount}`;
     const nowMs = this.options.now();
     this.dragSession = {
@@ -253,7 +259,11 @@ export class ShimejiMotionOrchestrator {
         this.motion.velocityPxPerSec.x !== motionAtTickStart.velocityPxPerSec.x ||
         this.motion.velocityPxPerSec.y !== motionAtTickStart.velocityPxPerSec.y);
     if (presentationChanged) this.presentationRevision += 1;
-    if (this.running && voluntaryMovementCompleted) {
+    const completed = this.completedTraversal;
+    this.completedTraversal = undefined;
+    if (this.running && completed !== undefined) {
+      this.options.onVoluntaryMovementCompleted?.(completed);
+    } else if (this.running && voluntaryMovementCompleted) {
       this.options.onVoluntaryMovementCompleted?.();
     }
     return presentationChanged;
@@ -277,7 +287,7 @@ export class ShimejiMotionOrchestrator {
       this.dragSession === undefined &&
       !this.hasQueuedBegin() &&
       this.motion.phase === 'grounded' &&
-      this.surface.phase === 'grounded'
+      this.surface.phase === 'grounded' && this.traversal === undefined
     );
   }
 
@@ -310,7 +320,68 @@ export class ShimejiMotionOrchestrator {
     return true;
   }
 
-  public cancelVoluntaryMovement(): boolean {
+  public requestTraversal(request: TraversalRequest): boolean {
+    if (!this.running || this.dragSession !== undefined || this.hasQueuedBegin()
+        || this.motion.phase !== 'grounded' || this.traversal !== undefined || this.voluntaryCommand !== undefined
+        || request.runId.trim().length === 0 || request.stepId.trim().length === 0
+        || (this.attachmentRunId !== undefined && this.attachmentRunId !== request.runId)) return false;
+    if (!this.isTraversalEnvironmentValid(request, this.options.environment())) return false;
+    const action = request.action;
+    let range;
+    try { range = calculateRootCollisionRange(action.bounds, this.constraints().collisionInsets); } catch { return false; }
+    if (!isFiniteVector(this.motion.position) || this.motion.position.y < range.minY || this.motion.position.y > range.maxY) return false;
+    if (action.kind === 'screen_climb') {
+      const x = action.side === 'left' ? range.minX : range.maxX;
+      if (Math.abs(this.motion.position.x - x) > 1
+          || (action.direction === 'up' && this.motion.position.y <= range.minY)
+          || (action.direction === 'down' && this.motion.position.y >= range.maxY)) return false;
+    } else if (this.jumpPlan(action.target, action.bounds) === null) return false;
+    this.traversal = { ...request, action: { ...action, bounds: { ...action.bounds },
+      ...(action.kind === 'directed_jump' ? { target: { ...action.target } } : {}) } };
+    this.traversalStarted = false;
+    return true;
+  }
+
+  private jumpPlan(target: Vector2Dto, bounds: EnvironmentSnapshot['screenBounds']) {
+    return this.options.motionEngine.planDirectedJump(this.motion.position, target, bounds);
+  }
+
+  private isTraversalEnvironmentValid(request: TraversalRequest, environment: EnvironmentSnapshot): boolean {
+    const a = request.action.bounds;
+    const b = environment.screenBounds;
+    if (a.id !== b.id || a.x !== b.x || a.y !== b.y || a.width !== b.width || a.height !== b.height) return false;
+    const support = environment.currentSurface;
+    if (support?.id !== request.action.supportId || !support.isValidSupport || support.kind !== 'screen_floor') return false;
+    if (request.action.kind === 'directed_jump') {
+      try {
+        const range = calculateRootCollisionRange(b, this.constraints().collisionInsets);
+        return request.action.target.y === range.maxY;
+      } catch { return false; }
+    }
+    return true;
+  }
+
+  public cancelVoluntaryMovement(forDrag = false): boolean {
+    const hadTraversal = this.traversal !== undefined || this.attachmentRunId !== undefined;
+    this.traversal = undefined;
+    this.completedTraversal = undefined;
+    this.traversalStarted = false;
+    this.attachmentRunId = undefined;
+    if (hadTraversal) {
+      this.motion = { ...this.motion, directedJump: undefined };
+      if (forDrag) {
+        this.surface = groundedSurface(this.simulationAtMs ?? this.options.now());
+      } else if (this.motion.phase === 'airborne' || this.surface.phase === 'climbing_wall') {
+        const lost = this.options.motionEngine.beginAirborne(this.motion, {
+          cause: 'support_lost', position: this.motion.position, velocityPxPerSec: this.motion.velocityPxPerSec,
+          boundsId: this.motion.activeBoundsId, atMs: this.options.now(),
+        });
+        this.motion = lost.state;
+        this.surface = { ...groundedSurface(this.simulationAtMs ?? this.options.now()), phase: 'airborne' };
+        this.presentationDirty = true;
+        this.routeEvents(lost.events, []);
+      }
+    }
     const hadVoluntaryMovement = this.voluntaryCommand !== undefined;
     const changed =
       this.voluntaryCommand !== undefined ||
@@ -324,7 +395,7 @@ export class ShimejiMotionOrchestrator {
       }
     }
     if (changed) this.presentationDirty = true;
-    return hadVoluntaryMovement;
+    return hadVoluntaryMovement || hadTraversal;
   }
 
   private constraints(): Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling' | 'collisionInsets'> {
@@ -427,6 +498,35 @@ export class ShimejiMotionOrchestrator {
   }
 
   private step(environment: EnvironmentSnapshot, nowMs: number, stepSec: number): boolean {
+    const request = this.traversal;
+    if (request !== undefined) {
+      if (!this.isTraversalEnvironmentValid(request, environment)) {
+        this.cancelVoluntaryMovement();
+        this.options.onTraversalRejected?.(request);
+      } else if (!this.traversalStarted) {
+        this.traversalStarted = true;
+        if (request.action.kind === 'screen_climb') {
+          const started = this.options.surfaceKinematics.startWallClimb({ motion: this.motion, environment,
+            side: request.action.side, verticalSpeedPxPerSec: request.action.direction === 'up' ? -SCREEN_CLIMB_SPEED : SCREEN_CLIMB_SPEED,
+            nowMs, climbLimits: calculateRootCollisionRange(environment.screenBounds, this.constraints().collisionInsets) });
+          if (started === null) { this.cancelVoluntaryMovement(); this.options.onTraversalRejected?.(request); return false; }
+          this.surface = started.state;
+          this.motion = started.motion.state;
+          this.attachmentRunId = request.runId;
+          this.routeEvents(started.motion.events, started.events);
+        } else {
+          const plan = this.jumpPlan(request.action.target, environment.screenBounds);
+          if (plan === null) { this.cancelVoluntaryMovement(); this.options.onTraversalRejected?.(request); return false; }
+          const launched = this.options.motionEngine.beginAirborne(this.motion, { cause: 'voluntary_jump',
+            position: this.motion.position, velocityPxPerSec: plan.initialVelocity,
+            boundsId: environment.screenBounds.id, atMs: nowMs, directedJump: plan });
+          this.motion = launched.state;
+          this.surface = { ...groundedSurface(nowMs), phase: 'airborne' };
+          this.attachmentRunId = undefined;
+          this.routeEvents(launched.events, []);
+        }
+      }
+    }
     const surfaceResult = this.options.surfaceKinematics.step(
       { state: this.surface, motion: this.motion, environment, nowMs },
       this.options.motionEngine
@@ -442,6 +542,16 @@ export class ShimejiMotionOrchestrator {
       const motionResult = this.options.motionEngine.step({ state: this.motion, stepSec, bounds: environment.screenBounds });
       this.motion = motionResult.state;
       motionEvents = [...motionEvents, ...motionResult.events];
+    }
+    if (motionEvents.some((event) => event.type === 'jump_missed')) this.cancelVoluntaryMovement();
+    if (this.motion.phase === 'grounded' && this.surface.phase === 'airborne') this.surface = groundedSurface(nowMs);
+    const completed = this.traversal;
+    if (completed !== undefined && (surfaceResult.events.some((event) => event.type === 'wall_limit_reached')
+        || motionEvents.some((event) => event.type === 'landed'))) {
+      this.completedTraversal = completed;
+      this.traversal = undefined;
+      this.traversalStarted = false;
+      if (this.surface.phase === 'grounded') this.attachmentRunId = undefined;
     }
     const voluntaryMovementCompleted = this.stepVoluntaryMovement(environment, stepSec);
     this.routeEvents(motionEvents, surfaceResult.events);

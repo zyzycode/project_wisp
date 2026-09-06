@@ -1,3 +1,4 @@
+import type { TraversalRequest } from '../../domain/behavior/traversal-route';
 import type {
   CharacterAutonomyResolution,
   CharacterAutonomySnapshot,
@@ -47,7 +48,8 @@ export interface VoluntaryMovementController {
     readonly targetRootPosition: Vector2Dto;
     readonly speedPxPerSec: number;
   }): boolean;
-  cancelVoluntaryMovement(): boolean;
+  requestTraversal?(request: TraversalRequest): boolean;
+  cancelVoluntaryMovement(forDrag?: boolean): boolean;
 }
 
 export interface AutonomyTraceEntry {

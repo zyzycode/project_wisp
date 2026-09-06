@@ -1,3 +1,5 @@
+import type { TraversalAction } from './traversal-route';
+import type { Vector2Dto } from './motion-engine';
 import type { AnimationIntent, AnimationIntentKind } from '../animation';
 import type { CharacterState, SynthesizedEmotionalTone } from '../character';
 import type { BehaviorIntent } from './behavior-intent';
@@ -35,7 +37,7 @@ export interface ActivityStepBase {
   readonly onGuardFalse?: ActivityStepTarget;
 }
 export interface AnimationActivityStep extends ActivityStepBase { readonly type: 'animation'; readonly intent: AnimationIntentTemplate; readonly completion: ActivityStepCompletion }
-export interface VoluntaryLocomotionStep extends ActivityStepBase { readonly type: 'locomotion'; readonly gait: 'walk' | 'run' | 'crawl'; readonly targetRef: string; readonly intent: AnimationIntentTemplate; readonly timeoutMs: number }
+export interface VoluntaryLocomotionStep extends ActivityStepBase { readonly traversal?: TraversalAction; readonly targetRootPosition?: Vector2Dto; readonly type: 'locomotion'; readonly gait: 'walk' | 'run' | 'crawl'; readonly targetRef: string; readonly intent: AnimationIntentTemplate; readonly timeoutMs: number }
 export interface DelayActivityStep extends ActivityStepBase { readonly type: 'delay'; readonly durationMs: number }
 export interface BranchActivityStep extends ActivityStepBase { readonly type: 'branch'; readonly condition: ActivityConditionId; readonly whenTrue: ActivityStepId | 'complete'; readonly whenFalse: ActivityStepTarget }
 export type ActivityStep = AnimationActivityStep | VoluntaryLocomotionStep | DelayActivityStep | BranchActivityStep;

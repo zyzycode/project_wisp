@@ -1,5 +1,6 @@
 import type {
   IMotionEngine,
+  RootCollisionRange,
   MonotonicMs,
   MotionState,
   MotionStepResult,
@@ -47,11 +48,13 @@ export interface SurfaceKinematicsState {
   readonly updatedAtMs: MonotonicMs;
   readonly surfaceId?: string;
   readonly wallSide?: WallSide;
+  readonly climbLimits?: RootCollisionRange;
   readonly supportY?: WorldPx;
   readonly locomotionVelocityPxPerSec: Vector2Dto;
 }
 
 export interface StartWallClimbInput {
+  readonly climbLimits?: RootCollisionRange;
   readonly motion: MotionState;
   readonly environment: EnvironmentSnapshot;
   readonly side: WallSide;
@@ -74,6 +77,7 @@ export interface SurfaceKinematicsStepInput {
 }
 
 export type SurfaceKinematicsEvent =
+  | { readonly type: 'wall_limit_reached'; readonly end: 'top' | 'floor' }
   | { readonly type: 'wall_climbed'; readonly side: WallSide }
   | { readonly type: 'ceiling_hung'; readonly surfaceId: string }
   | { readonly type: 'support_lost'; readonly surfaceId: string; readonly atMs: MonotonicMs };
@@ -126,10 +130,12 @@ export class SurfaceKinematics {
       return null;
     }
 
-    const position = {
-      x: wallX(input.environment.screenBounds, input.side),
-      y: input.motion.position.y,
-    };
+    const limits = input.climbLimits;
+    const x = limits === undefined ? wallX(input.environment.screenBounds, input.side)
+      : input.side === 'left' ? limits.minX : limits.maxX;
+    if (limits !== undefined && (Math.abs(input.motion.position.x - x) > 1
+        || input.motion.position.y < limits.minY || input.motion.position.y > limits.maxY)) return null;
+    const position = { x, y: input.motion.position.y };
     const motion = {
       ...input.motion,
       phase: 'grounded' as const,
@@ -144,6 +150,7 @@ export class SurfaceKinematics {
         updatedAtMs: input.nowMs,
         surfaceId: surface.id,
         wallSide: input.side,
+        climbLimits: input.climbLimits,
         locomotionVelocityPxPerSec: { x: 0, y: input.verticalSpeedPxPerSec },
       },
       motion: unchangedMotion(motion),
@@ -213,10 +220,24 @@ export class SurfaceKinematics {
     }
 
     const elapsedSec = (input.nowMs - input.state.updatedAtMs) / 1000;
+    const limits = input.state.climbLimits;
     const position = {
-      x: wallX(input.environment.screenBounds, input.state.wallSide),
+      x: limits === undefined ? wallX(input.environment.screenBounds, input.state.wallSide)
+        : input.state.wallSide === 'left' ? limits.minX : limits.maxX,
       y: input.motion.position.y + input.state.locomotionVelocityPxPerSec.y * elapsedSec,
     };
+    const speed = input.state.locomotionVelocityPxPerSec.y;
+    if (limits !== undefined && ((speed < 0 && position.y <= limits.minY) || (speed > 0 && position.y >= limits.maxY))) {
+      const end = speed < 0 ? 'top' : 'floor';
+      const velocity = { x: 0, y: 0 };
+      return {
+        state: { ...input.state, phase: end === 'floor' ? 'grounded' : 'climbing_wall',
+          updatedAtMs: input.nowMs, locomotionVelocityPxPerSec: velocity },
+        motion: unchangedMotion({ ...input.motion, position: { x: position.x, y: end === 'top' ? limits.minY : limits.maxY },
+          velocityPxPerSec: velocity }),
+        events: [{ type: 'wall_limit_reached', end }],
+      };
+    }
     if (!containsY(input.environment.screenBounds, position.y)) {
       return this.loseSupport(input, motionEngine, position);
     }

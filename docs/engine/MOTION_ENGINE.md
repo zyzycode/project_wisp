@@ -181,6 +181,17 @@ Drag имеет приоритет и отменяет attachment без доп�
    - `jump_travel`: использовать существующий кадр `jump` (фаза полёта) с последующим переходом в `fall`.
    - `grab_edge`: использовать существующий кадр зацепа `climb_wall`.
 
+
+#### Реализованный screen-only slice
+
+- `traversal-route.ts` строит маршрут внутри выбранного Explore: одна конечная floor-цель, без отдельного intent/timer. При energy ≥ 70 и comfort < 75 обычная цель до 300 DIP допускает jump; interesting-surface цель допускает approach до 500 DIP → grab (200 ms) → climb (220 DIP/s) → rebound → land (500 ms) → исходный осмотр.
+- Screen-climb использует `calculateRootCollisionRange` с collisionInsets, а не физическую границу дисплея. Верхний предел сохраняет attachment до следующего шага того же run; нижний завершает шаг на полу. Screen pull-up/ceiling transition не создаётся.
+- Directed arc: apex на 90 DIP выше более высокой точки, ограниченный верхним root-пределом; `vy = -sqrt(2*g*(originY-apexY))`, `T = (-vy+sqrt(vy²+2*g*(targetY-originY)))/g`, `vx = (targetX-originX)/T`. На верхнем пределе `vy=0`. Ограничения: 0.1 ≤ T ≤ 3 s, |vx| ≤ 900 DIP/s и Motion maxSpeed. Невыполнимые маршруты отбрасываются.
+- Во время принятого arc Motion вычисляет `p(t)=p0+v0*t+(0,g*t²/2)` без damping, при посадке обнуляет скорость и выдаёт один soft `landed`. Отмена/промах удаляет ballistic target, сохраняя текущие позицию/скорость; далее действует обычный damped fall/land solver.
+- Application проверяет неизменность screen geometry и валидность опоры каждый substep; completion/rejection связаны с `runId` + `stepId`. Pending rejection на полу не создаёт ложный forced-motion lifecycle. Drag удаляет attachment без дополнительного support_lost.
+- Brain сохраняет Activity при `voluntary_jump`, показывает jump минимум 120 ms, затем fall по факту нисходящей скорости; land phase завершается по Main clock. Renderer completion не участвует.
+- `AssetResolver.TRAVERSAL_SPRITE_FALLBACKS`: grab — `body_climb_wall[0]`, jump travel — `body_jump[0]`, резерв pull-up — последний `body_climb_wall[3]`. Кадр jump[1] содержит только motion marks, jump[2] — двух персонажей; для fallback выбран одиночный персонаж jump[0]. PNG и manifest не изменены. Window pull-up, target selection внешних окон и runtime внешних опор остаются в последующих window slices; фиктивные window surfaces не создаются.
+
 ## 8. Авторитет позиции: кто двигает окно
 
 ```mermaid

@@ -276,7 +276,7 @@ export function recordExplorePlan(
   };
 }
 
-export function createExploreActivityDefinition(plan: ExplorePlan): ActivityDefinition {
+export function createExploreActivityDefinition(plan: ExplorePlan, route: readonly ActivityDefinition['steps'][number][] = []): ActivityDefinition {
   const inspectNext = plan.pose === 'none'
     ? undefined
     : plan.pose === 'crouch' && plan.inspection === 'crouch_examine'
@@ -318,8 +318,8 @@ export function createExploreActivityDefinition(plan: ExplorePlan): ActivityDefi
     id: 'explore',
     priority: 'P4_autonomous',
     baseWeight: 1,
-    entryStepId: 'walk',
-    steps: Object.freeze(steps),
+    entryStepId: route[0]?.id ?? 'walk',
+    steps: Object.freeze(route.length === 0 ? steps : [...route, ...steps.slice(1)]),
     tags: Object.freeze([plan.pointKind, plan.surfaceKind, plan.choreographyKey]),
   });
 }

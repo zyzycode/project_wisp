@@ -15,6 +15,7 @@ export interface AirborneLaunch {
   readonly velocityPxPerSec: Vector2Dto;
   readonly boundsId: string;
   readonly atMs: MonotonicMs;
+  readonly directedJump?: DirectedJump;
 }
 
 export interface ThrowVector {
@@ -69,6 +70,37 @@ export interface MotionConstraints {
 
 export type LandingOutcome = 'soft_landing' | 'stumble' | 'crash_landing';
 
+/** An approved route's ballistic segment, entirely owned by Motion. */
+export interface DirectedJump {
+  readonly origin: Vector2Dto;
+  readonly target: Vector2Dto;
+  readonly initialVelocity: Vector2Dto;
+  readonly gravity: number;
+  readonly durationSec: number;
+}
+
+/** Reject unreachable arcs instead of clamping an intended route into another one. */
+export function planDirectedJump(
+  origin: Vector2Dto, target: Vector2Dto, bounds: ScreenBoundsDto,
+  constraints: MotionConstraints = DEFAULT_MOTION_CONSTRAINTS
+): DirectedJump | null {
+  let range: RootCollisionRange;
+  try { range = calculateRootCollisionRange(bounds, constraints.collisionInsets); } catch { return null; }
+  const inside = (p: Vector2Dto): boolean => Number.isFinite(p.x) && Number.isFinite(p.y)
+    && p.x >= range.minX && p.x <= range.maxX && p.y >= range.minY && p.y <= range.maxY;
+  if (!inside(origin) || !inside(target) || constraints.gravityPxPerSec2 <= 0) return null;
+  const gravity = constraints.gravityPxPerSec2;
+  // At the upper screen limit rebound is horizontal; elsewhere allow a modest arc.
+  const apexY = Math.max(range.minY, Math.min(origin.y, target.y) - 90);
+  const vy = origin.y === apexY ? 0 : -Math.sqrt(2 * gravity * (origin.y - apexY));
+  const durationSec = (-vy + Math.sqrt(vy * vy + 2 * gravity * (target.y - origin.y))) / gravity;
+  if (!Number.isFinite(durationSec) || durationSec < .1 || durationSec > 3) return null;
+  const vx = (target.x - origin.x) / durationSec;
+  if (Math.max(Math.hypot(vx, vy), Math.hypot(vx, vy + gravity * durationSec)) > constraints.maxSpeedPxPerSec
+      || Math.abs(vx) > 900) return null;
+  return { origin: { ...origin }, target: { ...target }, initialVelocity: { x: vx, y: vy }, gravity, durationSec };
+}
+
 export interface MotionState {
   readonly phase: MotionPhase;
   readonly position: Vector2Dto;
@@ -76,9 +108,12 @@ export interface MotionState {
   readonly activeBoundsId: string;
   readonly airborneElapsedSec: number;
   readonly peakGroundImpactSeverity: number;
+  readonly directedJump?: DirectedJump;
 }
 
 export type MotionEvent =
+  | { readonly type: 'jump_descending' }
+  | { readonly type: 'jump_missed' }
   | { readonly type: 'drag_started'; readonly atMs: MonotonicMs }
   | { readonly type: 'released'; readonly throwVector: ThrowVector }
   | { readonly type: 'airborne_started'; readonly cause: AirborneCause; readonly atMs: MonotonicMs }
@@ -106,6 +141,7 @@ export interface MotionStepInput {
 }
 
 export interface IMotionEngine {
+  planDirectedJump(origin: Vector2Dto, target: Vector2Dto, bounds: ScreenBoundsDto): DirectedJump | null;
   beginDrag(
     state: MotionState,
     pivotPosition: Vector2Dto,
@@ -287,6 +323,10 @@ export class MotionEngine implements IMotionEngine {
     validateConstraints(constraints);
   }
 
+  public planDirectedJump(origin: Vector2Dto, target: Vector2Dto, bounds: ScreenBoundsDto): DirectedJump | null {
+    return planDirectedJump(origin, target, bounds, this.constraints);
+  }
+
   public beginDrag(
     state: MotionState,
     pivotPosition: Vector2Dto,
@@ -296,6 +336,7 @@ export class MotionEngine implements IMotionEngine {
     return {
       state: {
         ...state,
+        directedJump: undefined,
         phase: 'dragged',
         position: pivotPosition,
         velocityPxPerSec: { x: 0, y: 0 },
@@ -431,6 +472,7 @@ export class MotionEngine implements IMotionEngine {
       state: {
         ...state,
         phase: 'airborne',
+        directedJump: launch.directedJump,
         position: launch.position,
         velocityPxPerSec: clampMagnitude(
           launch.velocityPxPerSec,
@@ -449,6 +491,30 @@ export class MotionEngine implements IMotionEngine {
     const limits = calculateRootCollisionRange(input.bounds, this.constraints.collisionInsets);
     if (input.state.phase !== 'airborne') {
       return { state: input.state, events: [] };
+    }
+
+    const jump = input.state.directedJump;
+    if (jump !== undefined) {
+      const t = Math.min(jump.durationSec, input.state.airborneElapsedSec + input.stepSec);
+      const position = {
+        x: jump.origin.x + jump.initialVelocity.x * t,
+        y: jump.origin.y + jump.initialVelocity.y * t + .5 * jump.gravity * t * t,
+      };
+      const velocity = { x: jump.initialVelocity.x, y: jump.initialVelocity.y + jump.gravity * t };
+      const descending = input.state.velocityPxPerSec.y <= 0 && velocity.y > 0;
+      const events: MotionEvent[] = descending ? [{ type: 'jump_descending' }] : [];
+      if (position.x < limits.minX - EPSILON || position.x > limits.maxX + EPSILON
+          || position.y < limits.minY - EPSILON || position.y > limits.maxY + EPSILON) {
+        const fallback = this.step({ ...input, state: { ...input.state, directedJump: undefined } });
+        return { ...fallback, events: [{ type: 'jump_missed' }, ...fallback.events] };
+      }
+      if (t >= jump.durationSec) {
+        return { state: { ...input.state, directedJump: undefined, phase: 'grounded',
+          position: jump.target, velocityPxPerSec: { x: 0, y: 0 }, airborneElapsedSec: t,
+          peakGroundImpactSeverity: 0 },
+          events: [...events, { type: 'landed', outcome: 'soft_landing', impactSeverity: 0 }] };
+      }
+      return { state: { ...input.state, position, velocityPxPerSec: velocity, airborneElapsedSec: t }, events };
     }
 
     const velocity = clampMagnitude(

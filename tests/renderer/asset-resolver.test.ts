@@ -63,6 +63,21 @@ function animation(
 }
 
 describe('Renderer: AssetResolver', () => {
+  it('holds existing grab/jump frames without moving pivots and keeps climb/ceiling/land clips intact', () => {
+    const rawManifest: unknown = JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8'));
+    const loaded = new ManifestLoader().load(rawManifest);
+    const resolver = new AssetResolver(loaded);
+    const grab = resolver.resolve(createSystemAnimationIntent('climb_wall', 'neutral', { loop: 'none' }));
+    const jump = resolver.resolve(createSystemAnimationIntent('jump'));
+    expect(grab.body.frames).toEqual([loaded.animations.body_climb_wall!.frames[0]]);
+    expect(jump.body.frames).toEqual([loaded.animations.body_jump!.frames[0]]);
+    expect(grab.rootPivot).toEqual(loaded.animations.body_climb_wall!.pivot);
+    expect(jump.rootPivot).toEqual(loaded.animations.body_jump!.pivot);
+    for (const kind of ['climb_wall', 'hang_ceiling', 'land'] as const) {
+      expect(resolver.resolve(createSystemAnimationIntent(kind)).body.frames).toHaveLength(4);
+    }
+  });
+
   it.each([
     ['idle_blink', 'body_idle'],
     ['settle', 'body_idle'],
