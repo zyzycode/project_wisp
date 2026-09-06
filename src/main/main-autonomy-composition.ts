@@ -9,7 +9,16 @@ import { BrainActivityRuntime } from '../application/services/brain-activity-run
 import type { BehaviorConfig, IPrng } from '../domain/behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../domain/behavior/behavior-intent';
 import type { ActivityCancelReason } from '../domain/behavior/activity-runner';
+import {
+  createCursorObserveActivityCandidates,
+  resolveCursorObserve,
+} from '../domain/behavior/cursor-observe-policy';
 import type { ExplorePlan } from '../domain/behavior/explore-planner';
+import {
+  CursorProximityEngine,
+  DEFAULT_CURSOR_REACTION_CONSTRAINTS,
+  type CursorProximityState,
+} from '../domain/behavior/gaze-engine';
 import type { MotionEvent, Vector2Dto } from '../domain/behavior/motion-engine';
 import { AutonomyCharacterEngine, type CharacterAutonomySnapshot } from '../domain/character';
 import {
@@ -72,6 +81,16 @@ export class MainAutonomyComposition {
   private lastBrainTickAtMs: number | null = null;
   private needsCatchUpMs = 0;
   private deferredUserInteractionResume = false;
+  private enabled = true;
+  private menuOpen = false;
+  private cursorReactionActive = false;
+  private readonly cursorProximityEngine = new CursorProximityEngine();
+  private cursorProximityState: CursorProximityState = {
+    withinSwatRange: false,
+    dwellWithinSwatRangeMs: 0,
+    updatedAtMs: 0,
+  };
+  private lastCursorObservedAtMs: number | null = null;
 
   public constructor(private readonly options: MainAutonomyCompositionOptions) {
     validateBrainLoopPolicy(this.brainLoopPolicy());
@@ -110,9 +129,14 @@ export class MainAutonomyComposition {
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
       onTerminated: (result) => {
         if (result.status !== 'completed' || result.activityId !== 'rest') {
-          this.setVisualKind('idle_blink', true);
+          this.setVisualKind('idle_blink', true, result.activityId === 'observe_cursor');
         }
-        this.finishActivityCadence();
+        if (result.activityId === 'observe_cursor' && this.cursorReactionActive) {
+          this.cursorReactionActive = false;
+          this.coordinator.resumeAfterReactiveActivity();
+        } else {
+          this.finishActivityCadence();
+        }
       },
     });
   }
@@ -148,6 +172,7 @@ export class MainAutonomyComposition {
     const previousTickAtMs = this.lastBrainTickAtMs ?? nowMs;
     this.lastBrainTickAtMs = nowMs;
     const elapsedMs = Number.isFinite(nowMs) ? Math.max(0, nowMs - previousTickAtMs) : 0;
+    this.expireCursorObservation(nowMs);
     const needsChanged = this.tickNeeds(elapsedMs);
     const activityChanged = this.activity.tick(nowMs);
     return needsChanged || activityChanged;
@@ -155,11 +180,13 @@ export class MainAutonomyComposition {
 
   public setEnabled(enabled: boolean): void {
     if (!enabled) this.cancelActivity('explicit_cancel', true);
+    this.enabled = enabled;
     this.coordinator.setEnabled(enabled);
   }
 
   public setMenuOpen(menuOpen: boolean): void {
     if (menuOpen) this.cancelActivity('explicit_cancel', true);
+    this.menuOpen = menuOpen;
     this.coordinator.setMenuOpen(menuOpen);
   }
 
@@ -186,6 +213,75 @@ export class MainAutonomyComposition {
 
   public getDecisionTrace(): readonly AutonomyTraceEntry[] {
     return this.coordinator.getDecisionTrace();
+  }
+
+  public handleCursorObservation(screenPosition: Vector2Dto): boolean {
+    if (!this.started || this.disposed) return false;
+    const nowMs = this.options.clock.now();
+    const compatible =
+      this.enabled &&
+      !this.menuOpen &&
+      this.activity.getRuntime() === null &&
+      this.visualEpisode.intent.kind === 'idle_blink' &&
+      this.character.isAutonomyEligible() &&
+      this.options.movement.canAcceptVoluntaryMovement();
+    const proximity = this.cursorProximityEngine.update(this.cursorProximityState, {
+      nowMs,
+      rootGlobalPosition: this.options.movement.getRootPosition(),
+      cursor: { globalPosition: screenPosition, capturedAtMs: nowMs },
+      compatible,
+    });
+    this.cursorProximityState = proximity.state;
+    this.lastCursorObservedAtMs = nowMs;
+    if (!compatible || proximity.signal === undefined) return false;
+
+    const snapshot = this.options.getCharacterSnapshot();
+    const update = resolveCursorObserve({
+      nowMs,
+      signal: proximity.signal,
+      needs: snapshot.needs,
+      tone: snapshot.synthesizedTone,
+      friendship: snapshot.relationship?.friendship ?? 0,
+      noticeRandomUnit: this.options.prng.next(),
+    });
+    if (!update.noticed || update.zone === undefined) return false;
+
+    const resolvedIntent = this.character.resolveDirectIntent({
+      kind: 'play',
+      source: 'system',
+      priority: 'normal',
+      reason: 'cursor_observe',
+    }, snapshot).resolvedIntent;
+    if (resolvedIntent === null) return false;
+
+    const playCandidates = createCursorObserveActivityCandidates({
+      zone: update.zone,
+      needs: snapshot.needs,
+      tone: snapshot.synthesizedTone,
+      friendship: snapshot.relationship?.friendship ?? 0,
+      gazeDirection: gazeDirectionTo(this.options.movement.getRootPosition(), screenPosition),
+    });
+
+    this.coordinator.suspendForReactiveActivity();
+    this.cursorReactionActive = true;
+    if (this.activity.start(resolvedIntent, { play: playCandidates })) return true;
+    this.cursorReactionActive = false;
+    this.coordinator.resumeAfterReactiveActivity();
+    return false;
+  }
+
+  private expireCursorObservation(nowMs: number): void {
+    const observedAtMs = this.lastCursorObservedAtMs;
+    if (
+      observedAtMs === null ||
+      nowMs - observedAtMs <= DEFAULT_CURSOR_REACTION_CONSTRAINTS.signalMaxAgeMs
+    ) return;
+    this.cursorProximityState = this.cursorProximityEngine.update(this.cursorProximityState, {
+      nowMs,
+      rootGlobalPosition: this.options.movement.getRootPosition(),
+      compatible: false,
+    }).state;
+    this.lastCursorObservedAtMs = null;
   }
 
   public requestSleepWake(command: SleepWakeCommand): boolean {
@@ -336,13 +432,18 @@ export class MainAutonomyComposition {
   }
 
   private cancelActivity(reason: ActivityCancelReason, publish: boolean): boolean {
+    const wasCursorReaction = this.cursorReactionActive;
     const cancelled = this.activity.cancel(reason);
     if (!cancelled) return false;
+    if (wasCursorReaction) {
+      this.cursorReactionActive = false;
+      this.coordinator.resumeAfterReactiveActivity();
+    }
     const releaseUserInteraction = this.deferredUserInteractionResume;
     this.deferredUserInteractionResume = false;
     if (releaseUserInteraction) this.coordinator.resumeAfterUserInteraction();
     if (publish) {
-      this.setVisualKind('idle_blink', false);
+      this.setVisualKind('idle_blink', false, wasCursorReaction);
       this.options.onPresentationChanged();
     }
     return true;
@@ -384,6 +485,13 @@ export class MainAutonomyComposition {
   private brainLoopPolicy(): BrainLoopPolicy {
     return this.options.brainLoopPolicy ?? DEFAULT_BRAIN_LOOP_POLICY;
   }
+}
+
+function gazeDirectionTo(origin: Vector2Dto, target: Vector2Dto): 'left' | 'right' | 'up' | 'down' {
+  const deltaX = target.x - origin.x;
+  const deltaY = target.y - origin.y;
+  if (Math.abs(deltaX) >= Math.abs(deltaY)) return deltaX < 0 ? 'left' : 'right';
+  return deltaY < 0 ? 'up' : 'down';
 }
 
 function validateBrainLoopPolicy(policy: BrainLoopPolicy): void {

@@ -91,16 +91,16 @@ export interface ICursorProximityEngine {
 }
 
 export const DEFAULT_GAZE_CONSTRAINTS: GazeConstraints = {
-  attentionRadiusWorldPx: 280,
+  attentionRadiusWorldPx: 360,
   deadZoneSourcePx: 12,
-  maxCursorAgeMs: 250,
+  maxCursorAgeMs: 300,
 };
 
 export const DEFAULT_CURSOR_REACTION_CONSTRAINTS: CursorReactionConstraints = {
-  attentionRadiusWorldPx: 280,
+  attentionRadiusWorldPx: 360,
   swatRadiusWorldPx: 64,
   swatDwellMs: 450,
-  signalMaxAgeMs: 250,
+  signalMaxAgeMs: 300,
   swatCooldownKey: 'swat_cursor',
 };
 
@@ -160,11 +160,8 @@ function desiredDirection(input: GazeInput, constraints: GazeConstraints): GazeD
     ? 0
     : constraints.attentionRadiusWorldPx / input.geometry.scale;
 
-  // Cursor gaze is deliberately global: once a cursor is known, the face
-  // holds its direction even when the pointer is far from the character.
-  // World points retain the bounded-attention policy used by domain callers.
   if (
-    (input.target.type !== 'cursor' && distance > attentionRadiusSourcePx) ||
+    distance > attentionRadiusSourcePx ||
     distance <= constraints.deadZoneSourcePx
   ) {
     return 'down';

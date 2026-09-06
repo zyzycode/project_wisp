@@ -350,6 +350,10 @@ function handleAcceptedBodyEvent(
   event: Exclude<BodyEventDTO, { readonly type: 'menu_visibility_changed' }>
 ): void {
   const orchestrator = shimejiMotionOrchestrator;
+  if (event.type === 'cursor_observed') {
+    autonomyComposition?.handleCursorObservation(event.screenPosition);
+    return;
+  }
   if (event.type === 'drag_started') {
     if (orchestrator === null) return;
     const dragSessionId = orchestrator.beginDrag({

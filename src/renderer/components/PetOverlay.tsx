@@ -90,6 +90,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         onAnimationCompleted={model.handleAnimationCompleted}
         onAnimationRejected={model.handleAnimationRejected}
         onGazeDirectionChanged={model.handleGazeDirectionChanged}
+        gazeEnabled={model.cursorObservationEnabled}
+        onCursorObserved={model.handleCursorObserved}
         onPointerDown={model.drag.onPointerDown}
         onClick={model.handlePetClick}
         onDoubleClick={model.handlePetDoubleClick}

@@ -92,6 +92,23 @@ describe('Renderer: Pet Body controller', () => {
     });
   });
 
+  it('posts raw cursor observations and suppresses them during an active drag', () => {
+    const { bridge, controller } = fixture();
+    controller.acceptBrainState(brainState(1));
+
+    expect(controller.postCursorObservation({ x: 150, y: 220 })).toBe(true);
+    const gestureId = controller.beginDrag(7, { x: 100, y: 200 });
+    expect(controller.postCursorObservation({ x: 160, y: 230 })).toBe(false);
+
+    expect(bridge.postBodyEvent).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      type: 'cursor_observed',
+      screenPosition: { x: 150, y: 220 },
+      sequence: 1,
+    }));
+    expect(gestureId).toBe('gesture-1');
+    expect(bridge.postBodyEvent).toHaveBeenCalledTimes(2);
+  });
+
   it('resets ordering only when a new subscription lifecycle starts', () => {
     const listeners: Array<(state: BrainStateDTO) => void> = [];
     const unsubscribe = vi.fn();

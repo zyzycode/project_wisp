@@ -33,6 +33,21 @@ Wisp немедленно и предсказуемо реагирует на п
 - Если reaction/play Activity не выбрана, semantic fallback остаётся в общем [`AUTONOMY_ENGINE.md`](../engine/AUTONOMY_ENGINE.md#7-scoring-и-arbitration), без синтеза нового intent в UI.
 - Missing visual не отменяет physical fact и обрабатывается [`ANIMATION_ENGINE.md`](../engine/ANIMATION_ENGINE.md).
 
+## AUTO-I02 asset coverage
+
+`face_gaze` и `body_wave` присутствуют в runtime manifest. Для первого vertical slice
+не хватает трёх специализированных body sheets, которые должен предоставить внешний
+sprite-artist; до этого используются следующие совместимые fallback-анимации:
+
+| Недостающий специализированный sheet | Runtime fallback |
+|---|---|
+| Cursor head tilt | `body_thinking` + `face_curious` |
+| Cursor pointing | `body_thinking` + `face_winking`/sparkle |
+| Cursor reach | `body_wave` + `face_curious` |
+
+Приветствие использует существующий `body_wave` + happy/heart overlay. Отсутствие
+специализированных sheets не меняет semantic Activity outcome и не разрешает движение.
+
 ## Acceptance scenarios
 
 - **Click reaction:** click создаёт один нормализованный candidate; Character решает его допустимость, а UI не выбирает Activity или clip.

@@ -19,6 +19,7 @@ export interface AnimationIntentTemplate {
   readonly kind: AnimationIntentKind;
   readonly category?: AnimationIntent['category'];
   readonly expressionHint?: AnimationIntent['expressionHint'];
+  readonly gazeDirection?: AnimationIntent['gazeDirection'];
   readonly propHint?: AnimationIntent['propHint'];
   readonly loop?: AnimationIntent['loop'];
 }
@@ -60,8 +61,14 @@ export interface CooldownEntry { readonly key: CooldownKey; readonly nextEligibl
 export interface CooldownState { readonly entries: readonly CooldownEntry[] }
 export const EMPTY_COOLDOWNS: CooldownState = { entries: [] };
 export const DEFAULT_ZOOMIES_COOLDOWN_MS = 30_000;
+export const DEFAULT_CURSOR_OBSERVE_COOLDOWN_MS = 6_000;
 export const DEFAULT_ACTIVITY_COOLDOWN_RULES: readonly CooldownRule[] = Object.freeze([
   Object.freeze({ key: 'zoomies', durationMs: DEFAULT_ZOOMIES_COOLDOWN_MS, startsOn: 'start' }),
+  Object.freeze({
+    key: 'observe_cursor',
+    durationMs: DEFAULT_CURSOR_OBSERVE_COOLDOWN_MS,
+    startsOn: 'start',
+  }),
 ]);
 
 export type ActivityRuntimeStatus = 'running' | 'completed' | 'cancelled' | 'failed';
@@ -214,19 +221,24 @@ export const REST_ACTIVITY: ActivityDefinition = { id: 'rest', priority: 'P4_aut
 /** A rare P3 reactive sprint; gates and cooldown are enforced by weightedActivity. */
 export const ZOOMIES_ACTIVITY: ActivityDefinition = { id: 'zoomies', priority: 'P3_reactive', baseWeight: .1, cooldownKey: 'zoomies', entryStepId: 'sprint', steps: [ { id: 'sprint', actionId: 'zoomies_sprint', stage: 'looping', type: 'locomotion', gait: 'run', targetRef: 'zoomies_target', intent: { kind: 'run' }, timeoutMs: 6000, next: 'settle' }, { id: 'settle', actionId: 'zoomies_settle', stage: 'exiting', type: 'animation', intent: { kind: 'settle' }, completion: { type: 'elapsed', durationMs: 3000 } } ] };
 
+export interface ActivitySelectionCatalog {
+  readonly play?: readonly ActivityDefinition[];
+}
+
 /** Pure Behavior Brain compatibility and eligibility selection for a resolved intent. */
 export function selectActivityForResolvedIntent(
   intent: BehaviorIntent,
   context: ActivitySelectionContext,
   nowMs: MonotonicMs,
-  randomUnit = 0
+  randomUnit = 0,
+  catalog: ActivitySelectionCatalog = {}
 ): ActivityDefinition | null {
   const candidates = intent.kind === 'wander'
     ? [EXPLORE_ACTIVITY]
     : intent.kind === 'sleep'
       ? [REST_ACTIVITY]
       : intent.kind === 'play'
-        ? [ZOOMIES_ACTIVITY]
+        ? catalog.play ?? [ZOOMIES_ACTIVITY]
         : [];
   return weightedActivity(candidates, context, nowMs, randomUnit);
 }

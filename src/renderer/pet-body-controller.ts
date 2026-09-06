@@ -13,6 +13,7 @@ import {
   subscribeToBrainState,
   type PetMainBridge,
 } from './pet-main-bridge';
+import type { CursorScreenPosition } from './body-ui-runtime';
 
 export interface PetBodySnapshot {
   readonly brain: BrainStateDTO;
@@ -160,6 +161,11 @@ export class PetBodyController {
 
   public postMenuVisibility(expanded: boolean): boolean {
     return this.emit({ type: 'menu_visibility_changed', expanded });
+  }
+
+  public postCursorObservation(screenPosition: CursorScreenPosition): boolean {
+    if (this.activeGesture !== null) return false;
+    return this.emit({ type: 'cursor_observed', screenPosition });
   }
 
   public beginDrag(

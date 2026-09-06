@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BodyInteractionTypeDTO, WispApiBridge } from '../../shared/ipc-contracts';
+import type { CursorScreenPosition } from '../body-ui-runtime';
 import {
   PetBodyController,
   type PetBodySnapshot,
@@ -9,6 +10,7 @@ export interface UsePetBodyControllerResult {
   readonly controller: PetBodyController;
   readonly snapshot: PetBodySnapshot | null;
   readonly postInteraction: (interaction: BodyInteractionTypeDTO, intensity?: number) => boolean;
+  readonly postCursorObservation: (position: CursorScreenPosition) => boolean;
 }
 
 /** Owns one Body lifecycle for the current Renderer document subscription. */
@@ -28,5 +30,10 @@ export function usePetBodyController(
     [controller]
   );
 
-  return { controller, snapshot, postInteraction };
+  const postCursorObservation = useCallback(
+    (position: CursorScreenPosition): boolean => controller.postCursorObservation(position),
+    [controller]
+  );
+
+  return { controller, snapshot, postInteraction, postCursorObservation };
 }

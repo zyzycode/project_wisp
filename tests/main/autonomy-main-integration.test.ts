@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_ZOOMIES_COOLDOWN_MS, type IPrng } from '../../src/domain/behavior';
+import {
+  DEFAULT_CURSOR_OBSERVE_COOLDOWN_MS,
+  DEFAULT_ZOOMIES_COOLDOWN_MS,
+  type IPrng,
+} from '../../src/domain/behavior';
 import type { Needs } from '../../src/domain/character';
 import { MainAutonomyComposition } from '../../src/main/main-autonomy-composition';
 
@@ -70,6 +74,7 @@ function createFixture(
         boredom: 80,
         ...needs,
       },
+      relationship: { friendship: 0 },
       synthesizedTone: 'neutral',
     }),
     tickNeeds,
@@ -115,7 +120,81 @@ function createFixture(
   };
 }
 
-describe('Main integration: AUTO-I08 Brain runtime', () => {
+describe('Main integration: Brain runtime', () => {
+  it('publishes the common gaze-only tier without changing root position', () => {
+    const fixture = createFixture(sequence(0.5, 0, 0.99));
+    fixture.composition.start();
+
+    expect(fixture.composition.handleCursorObservation({ x: 200, y: 200 })).toBe(true);
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({
+      activityId: 'observe_cursor', phaseEndsAtMs: 900,
+    });
+    expect(fixture.composition.getVisualEpisode().intent).toMatchObject({
+      kind: 'idle_blink', expressionHint: 'gaze', gazeDirection: 'right',
+    });
+    expect(fixture.requestVoluntaryMovement).not.toHaveBeenCalled();
+
+    fixture.scheduler.nowMs = 900;
+    fixture.composition.tick();
+    expect(fixture.composition.getVisualEpisode().intent).toMatchObject({
+      kind: 'idle_blink', expressionHint: 'idle',
+    });
+    expect(fixture.composition.getVisualEpisode().intent.gazeDirection).toBeUndefined();
+  });
+
+  it('runs a noticed cursor gesture as one stationary Brain Activity and returns to autonomy', () => {
+    const fixture = createFixture(sequence(0.5, 0, 0));
+    fixture.composition.start();
+
+    expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(true);
+    expect(fixture.composition.getActivityTimeline()).toMatchObject({
+      activityId: 'observe_cursor', phaseId: 'react', stage: 'looping', phaseEndsAtMs: 1_800,
+    });
+    expect(fixture.composition.getVisualEpisode().intent).toMatchObject({
+      kind: 'wave', expressionHint: 'curious', loop: 'bounded',
+    });
+    expect(fixture.requestVoluntaryMovement).not.toHaveBeenCalled();
+    expect(fixture.scheduler.size()).toBe(0);
+
+    fixture.scheduler.nowMs = 1_800;
+    fixture.composition.tick();
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    expect(fixture.scheduler.size()).toBe(1);
+    expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(false);
+
+    fixture.scheduler.nowMs = DEFAULT_CURSOR_OBSERVE_COOLDOWN_MS;
+    expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(true);
+  });
+
+  it('suppresses cursor reactions while another Activity owns the Brain timeline', () => {
+    const fixture = createFixture();
+    fixture.composition.start();
+    fixture.scheduler.take()?.();
+    const timeline = fixture.composition.getActivityTimeline();
+    expect(timeline?.activityId).toBe('explore');
+
+    expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(false);
+    expect(fixture.composition.getActivityTimeline()).toEqual(timeline);
+  });
+
+  it.each([
+    ['click', (composition: MainAutonomyComposition) => composition.handleClick()],
+    ['drag', (composition: MainAutonomyComposition) => composition.beginDrag()],
+    ['menu pause', (composition: MainAutonomyComposition) => composition.setMenuOpen(true)],
+    ['autonomy disable', (composition: MainAutonomyComposition) => composition.setEnabled(false)],
+    ['shutdown', (composition: MainAutonomyComposition) => composition.dispose()],
+  ])('interrupts Observe Cursor on %s', (_label, interrupt) => {
+    const fixture = createFixture(sequence(0.5, 0, 0));
+    fixture.composition.start();
+    expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(true);
+
+    interrupt(fixture.composition);
+
+    expect(fixture.composition.getActivityTimeline()).toBeNull();
+    expect(fixture.requestVoluntaryMovement).not.toHaveBeenCalled();
+  });
+
   it('starts Explore from the Character-resolved wander and exposes its causal timeline', () => {
     const fixture = createFixture();
     const initial = fixture.composition.getVisualEpisode();

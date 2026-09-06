@@ -74,7 +74,7 @@ describe('Domain: GazeEngine', () => {
     expect(distant.direction).toBe('down');
 
     const stale = engine.update(distant, {
-      nowMs: 400,
+      nowMs: 401,
       deltaSec: 0.08,
       target: {
         type: 'cursor',
@@ -86,27 +86,30 @@ describe('Domain: GazeEngine', () => {
     expect(stale.direction).toBe('down');
   });
 
-  it('tracks a fresh cursor at any distance and keeps that direction while it is current', () => {
+  it('tracks a fresh ambient cursor but ignores one outside the attention radius', () => {
     const engine = new GazeEngine();
-    const farCursor = {
+    const ambientCursor = {
       type: 'cursor' as const,
-      sample: { globalPosition: { x: 10_000, y: 100 }, capturedAtMs: 20 },
+      sample: { globalPosition: { x: 450, y: 100 }, capturedAtMs: 20 },
     };
     const initial = engine.update(gazeState(), {
       nowMs: 20,
       deltaSec: 0.02,
-      target: farCursor,
+      target: ambientCursor,
       geometry,
     });
-    const held = engine.update(initial, {
+    const far = engine.update(initial, {
       nowMs: 500,
       deltaSec: 0.02,
-      target: { ...farCursor, sample: { ...farCursor.sample, capturedAtMs: 500 } },
+      target: {
+        type: 'cursor',
+        sample: { globalPosition: { x: 10_000, y: 100 }, capturedAtMs: 500 },
+      },
       geometry,
     });
 
     expect(initial.direction).toBe('right');
-    expect(held.direction).toBe('right');
+    expect(far.direction).toBe('down');
   });
 
   it.each([
@@ -204,7 +207,7 @@ describe('Domain: CursorProximityEngine', () => {
     const stale = engine.update(primed, {
       ...common,
       nowMs: 1000,
-      cursor: { globalPosition: { x: 0, y: 0 }, capturedAtMs: 700 },
+      cursor: { globalPosition: { x: 0, y: 0 }, capturedAtMs: 699 },
     });
     expect(stale.state.dwellWithinSwatRangeMs).toBe(0);
   });

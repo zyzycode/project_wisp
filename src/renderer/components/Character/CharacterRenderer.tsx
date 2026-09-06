@@ -19,6 +19,7 @@ import {
 import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { useGaze } from '../../hooks/useGaze';
 import type { GazeDirection } from '../../../domain/behavior/gaze-engine';
+import type { CursorScreenPosition } from '../../body-ui-runtime';
 import { SpriteRenderer } from './SpriteRenderer';
 
 export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
@@ -81,6 +82,8 @@ export interface CharacterRendererProps {
   ) => void;
   onAnimationRejected?: (rejectedVisualEpisodeId: string | undefined) => void;
   onGazeDirectionChanged?: (direction: GazeDirection) => void;
+  gazeEnabled?: boolean;
+  onCursorObserved?: (position: CursorScreenPosition) => void;
   onClick?: () => void;
   onDoubleClick?: () => void;
   onPointerDown?: (event: React.PointerEvent) => void;
@@ -99,6 +102,8 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   onAnimationCompleted,
   onAnimationRejected,
   onGazeDirectionChanged,
+  gazeEnabled = true,
+  onCursorObserved,
   onClick,
   onDoubleClick,
   onPointerDown,
@@ -138,7 +143,10 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       ? bounds.left + (state.viewport.width - state.rootPivot.x) * scaleX
       : bounds.left + state.rootPivot.x * scaleX;
     return {
-      rootGlobalPosition: { x: rootX, y: bounds.top + state.rootPivot.y * scaleY },
+      rootGlobalPosition: {
+        x: window.screenX + rootX,
+        y: window.screenY + bounds.top + state.rootPivot.y * scaleY,
+      },
       gazeOriginSourcePx: {
         x: faceAnchor.x - state.rootPivot.x,
         y: faceAnchor.y - state.rootPivot.y,
@@ -153,9 +161,11 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   }, [onGazeDirectionChanged]);
 
   useGaze({
-    enabled: debugClip === undefined && faceAnchor !== undefined,
+    enabled: gazeEnabled && debugClip === undefined && faceAnchor !== undefined,
     getGeometry: getGazeGeometry,
     onGazeDirection: handleGazeDirection,
+    onCursorObserved,
+    observationLifecycleKey: visualState.streamId,
   });
 
   useEffect(() => {

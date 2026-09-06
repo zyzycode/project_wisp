@@ -91,7 +91,7 @@ export class AutonomyCoordinator {
   private enabled = true;
   private menuOpen = false;
   private readonly operationalSuspensions = new Set<
-    'user_interaction' | 'manual_movement' | 'forced_motion'
+    'user_interaction' | 'manual_movement' | 'forced_motion' | 'reactive_activity'
   >();
   private disposed = false;
   private generation = 0;
@@ -177,6 +177,17 @@ export class AutonomyCoordinator {
 
   public resumeAfterManualMovement(): void {
     if (!this.operationalSuspensions.delete('manual_movement')) return;
+    this.scheduleNextOpportunity();
+  }
+
+  public suspendForReactiveActivity(): void {
+    if (this.disposed) return;
+    this.cancelPendingWork(false);
+    this.operationalSuspensions.add('reactive_activity');
+  }
+
+  public resumeAfterReactiveActivity(): void {
+    if (!this.operationalSuspensions.delete('reactive_activity')) return;
     this.scheduleNextOpportunity();
   }
 

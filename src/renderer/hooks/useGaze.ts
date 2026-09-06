@@ -1,13 +1,17 @@
 import { useEffect, useRef } from 'react';
 import {
   GazeEngine,
-  CursorProximityEngine,
-  type CursorProximitySignal,
-  type CursorProximityState,
   type GazeGeometry,
   type GazeState,
   type GazeDirection,
 } from '../../domain/behavior/gaze-engine';
+import {
+  CursorObservationRefresh,
+  registerCursorObservationListeners,
+  type CursorScreenPosition,
+  type ListenerTarget,
+  type VisibilityListenerTarget,
+} from '../body-ui-runtime';
 
 const NEUTRAL_GAZE_DIRECTION: GazeDirection = 'down';
 
@@ -17,28 +21,38 @@ export interface UseGazeOptions {
   readonly getGeometry: () => GazeGeometry | undefined;
   /** Selects a discrete frame from the face_gaze overlay. */
   readonly onGazeDirection: (direction: GazeDirection) => void;
-  /** Semantic cursor signal for the behavior/activity orchestration boundary. */
-  readonly onCursorSignal?: (signal: CursorProximitySignal | undefined) => void;
+  /** Raw bounded cursor observation for the typed Body → Brain boundary. */
+  readonly onCursorObserved?: (position: CursorScreenPosition) => void;
+  /** Restarts capture when the owning Brain stream changes. */
+  readonly observationLifecycleKey?: string;
 }
 
 /**
  * Keeps cursor sampling and gaze animation in the renderer. The domain engine
  * owns all gaze math; this hook only supplies browser time and coordinates.
  */
-export function useGaze({ enabled, getGeometry, onGazeDirection, onCursorSignal }: UseGazeOptions): void {
-  const cursorRef = useRef<{ x: number; y: number; capturedAtMs: number } | undefined>(undefined);
+export function useGaze({
+  enabled,
+  getGeometry,
+  onGazeDirection,
+  onCursorObserved,
+  observationLifecycleKey,
+}: UseGazeOptions): void {
+  const cursorRef = useRef<{
+    readonly globalPosition: { readonly x: number; readonly y: number };
+  } | undefined>(undefined);
   const gazeStateRef = useRef<GazeState>({
     mode: 'neutral',
     direction: NEUTRAL_GAZE_DIRECTION,
     updatedAtMs: 0,
   });
   const gazeEngineRef = useRef(new GazeEngine());
-  const proximityEngineRef = useRef(new CursorProximityEngine());
-  const proximityStateRef = useRef<CursorProximityState>({
-    withinSwatRange: false,
-    dwellWithinSwatRangeMs: 0,
-    updatedAtMs: 0,
-  });
+  const getGeometryRef = useRef(getGeometry);
+  const onGazeDirectionRef = useRef(onGazeDirection);
+  const onCursorObservedRef = useRef(onCursorObserved);
+  getGeometryRef.current = getGeometry;
+  onGazeDirectionRef.current = onGazeDirection;
+  onCursorObservedRef.current = onCursorObserved;
 
   useEffect(() => {
     if (!enabled) {
@@ -48,37 +62,34 @@ export function useGaze({ enabled, getGeometry, onGazeDirection, onCursorSignal 
         direction: NEUTRAL_GAZE_DIRECTION,
         updatedAtMs: 0,
       };
-      proximityStateRef.current = {
-        withinSwatRange: false,
-        dwellWithinSwatRangeMs: 0,
-        updatedAtMs: 0,
-      };
-      onGazeDirection(NEUTRAL_GAZE_DIRECTION);
-      onCursorSignal?.(undefined);
+      onGazeDirectionRef.current(NEUTRAL_GAZE_DIRECTION);
       return undefined;
     }
 
-    let cursorFrameId: number | undefined;
-    let queuedCursor: MouseEvent | undefined;
-    const handleMouseMove = (event: MouseEvent): void => {
-      queuedCursor = event;
-      if (cursorFrameId !== undefined) return;
-      cursorFrameId = window.requestAnimationFrame((now) => {
-        cursorFrameId = undefined;
-        if (queuedCursor === undefined) return;
-        cursorRef.current = {
-          x: queuedCursor.clientX,
-          y: queuedCursor.clientY,
-          capturedAtMs: now,
-        };
-        queuedCursor = undefined;
-      });
+    const observationRefresh = new CursorObservationRefresh((position) => {
+      onCursorObservedRef.current?.(position);
+    }, {
+      now: () => performance.now(),
+      setTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+      clearTimeout: (handle) => window.clearTimeout(handle as number),
+    });
+    const handleMouseMove = (event: { readonly screenX: number; readonly screenY: number }): void => {
+      const screenPosition = { x: event.screenX, y: event.screenY };
+      cursorRef.current = {
+        globalPosition: screenPosition,
+      };
+      observationRefresh.observe(screenPosition);
+    };
+    const clearCursor = (): void => {
+      cursorRef.current = undefined;
+      observationRefresh.clear();
+      onGazeDirectionRef.current(NEUTRAL_GAZE_DIRECTION);
     };
 
     let gazeFrameId = 0;
     let previousNow: number | undefined;
     const tick = (now: number): void => {
-      const geometry = getGeometry();
+      const geometry = getGeometryRef.current();
       if (geometry !== undefined) {
         const cursor = cursorRef.current;
         const nextState = gazeEngineRef.current.update(gazeStateRef.current, {
@@ -89,38 +100,30 @@ export function useGaze({ enabled, getGeometry, onGazeDirection, onCursorSignal 
             : {
               type: 'cursor',
               sample: {
-                globalPosition: { x: cursor.x, y: cursor.y },
-                // The last observed cursor position remains the current
-                // target until another mousemove replaces it. This avoids a
-                // visible snap back after the stale-sample timeout.
+                globalPosition: cursor.globalPosition,
                 capturedAtMs: now,
               },
             },
           geometry,
         });
         gazeStateRef.current = nextState;
-        onGazeDirection(nextState.direction);
-        const proximity = proximityEngineRef.current.update(proximityStateRef.current, {
-          nowMs: now,
-          rootGlobalPosition: geometry.rootGlobalPosition,
-          cursor: cursor === undefined
-            ? undefined
-            : { globalPosition: { x: cursor.x, y: cursor.y }, capturedAtMs: cursor.capturedAtMs },
-          compatible: true,
-        });
-        proximityStateRef.current = proximity.state;
-        onCursorSignal?.(proximity.signal);
+        onGazeDirectionRef.current(nextState.direction);
       }
       previousNow = now;
       gazeFrameId = window.requestAnimationFrame(tick);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    const removeObservationListeners = registerCursorObservationListeners(
+      window as unknown as ListenerTarget,
+      document as unknown as VisibilityListenerTarget,
+      { move: handleMouseMove, unavailable: clearCursor }
+    );
     gazeFrameId = window.requestAnimationFrame(tick);
     return (): void => {
-      window.removeEventListener('mousemove', handleMouseMove);
+      removeObservationListeners();
       window.cancelAnimationFrame(gazeFrameId);
-      if (cursorFrameId !== undefined) window.cancelAnimationFrame(cursorFrameId);
+      observationRefresh.destroy();
+      cursorRef.current = undefined;
     };
-  }, [enabled, getGeometry, onCursorSignal, onGazeDirection]);
+  }, [enabled, observationLifecycleKey]);
 }

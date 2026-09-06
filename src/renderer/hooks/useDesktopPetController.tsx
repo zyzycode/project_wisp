@@ -38,6 +38,7 @@ import { usePetBodyController } from './usePetBodyController';
 import { usePetDialogue } from './usePetDialogue';
 import { usePetDragController } from './usePetDragController';
 import { useWindowOverlay } from './useWindowOverlay';
+import { isCursorObservationCompatible } from '../body-ui-runtime';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
 
@@ -93,6 +94,7 @@ export function useDesktopPetController({ aiProvider, bridge }: UseDesktopPetCon
     controller: bodyController,
     snapshot: bodySnapshot,
     postInteraction,
+    postCursorObservation,
   } = usePetBodyController(bridge);
   const dialogue = usePetDialogue({ aiProvider, animState, dispatchAnim });
   const overlay = useWindowOverlay({
@@ -328,6 +330,14 @@ export function useDesktopPetController({ aiProvider, bridge }: UseDesktopPetCon
   }, [bodyController]);
 
   const isSleeping = brain?.visualIntent.kind === 'sleep_start' || brain?.visualIntent.kind === 'sleep_loop';
+  const cursorObservationEnabled = isCursorObservationCompatible({
+    autonomyEnabled: autoWanderEnabled,
+    menuOpen: overlay.menuOpen,
+    dragging: isDragging,
+    motionPhase: brain?.motion.phase,
+    activityId: brain === null ? undefined : brain.activity?.activityId ?? null,
+    visualKind: brain?.visualIntent.kind,
+  });
 
   return {
     position,
@@ -357,6 +367,8 @@ export function useDesktopPetController({ aiProvider, bridge }: UseDesktopPetCon
     handleAnimationCompleted,
     handleAnimationRejected,
     handleGazeDirectionChanged,
+    handleCursorObserved: postCursorObservation,
+    cursorObservationEnabled,
     drag,
     handlePetClick,
     handlePetDoubleClick,

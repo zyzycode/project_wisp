@@ -7,13 +7,14 @@ import {
   type IPrng,
 } from '../behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../behavior/behavior-intent';
-import type { Needs, SynthesizedEmotionalTone } from './types';
+import type { Needs, Relationship, SynthesizedEmotionalTone } from './types';
 
 export type SemanticSleepState = 'awake' | 'sleeping';
 
 export interface CharacterAutonomySnapshot {
   readonly needs: Needs;
   readonly synthesizedTone: SynthesizedEmotionalTone;
+  readonly relationship?: Readonly<Pick<Relationship, 'friendship'>>;
 }
 
 export interface CharacterAutonomyResolution {

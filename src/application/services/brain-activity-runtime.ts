@@ -11,6 +11,7 @@ import {
   type ActivityResult,
   type ActivityRunnerUpdate,
   type ActivityRuntimeState,
+  type ActivitySelectionCatalog,
   type ActivitySelectionContext,
   type AnimationIntentTemplate,
   type CooldownRule,
@@ -70,7 +71,7 @@ export class BrainActivityRuntime {
 
   public constructor(private readonly options: BrainActivityRuntimeOptions) {}
 
-  public start(intent: BehaviorIntent): boolean {
+  public start(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): boolean {
     const nowMs = this.options.clock.now();
     const selectionContext = {
       ...this.options.getSelectionContext(),
@@ -80,7 +81,9 @@ export class BrainActivityRuntime {
     const selectedDefinition = selectActivityForResolvedIntent(
       intent,
       selectionContext,
-      nowMs
+      nowMs,
+      catalog === undefined ? 0 : this.options.nextRandom(),
+      catalog
     );
     if (selectedDefinition === null) return false;
     const selectedExplorePlan = selectedDefinition.id === 'explore'
@@ -98,6 +101,14 @@ export class BrainActivityRuntime {
     const definition = selectedExplorePlan === null
       ? selectedDefinition
       : createExploreActivityDefinition(selectedExplorePlan);
+    return this.startDefinition(definition, selectedExplorePlan, nowMs);
+  }
+
+  private startDefinition(
+    definition: ActivityDefinition,
+    selectedExplorePlan: ExplorePlan | null,
+    nowMs: number
+  ): boolean {
     this.cancel('higher_priority_activity');
     const runId = this.options.createRunId();
     requireRunId(runId, this.usedRunIds);
@@ -239,6 +250,7 @@ export class BrainActivityRuntime {
       {
         ...(template.category === undefined ? {} : { category: template.category }),
         ...(template.expressionHint === undefined ? {} : { expressionHint: template.expressionHint }),
+        ...(template.gazeDirection === undefined ? {} : { gazeDirection: template.gazeDirection }),
         ...(template.propHint === undefined ? {} : { propHint: template.propHint }),
         ...(template.loop === undefined ? {} : { loop: template.loop }),
       }

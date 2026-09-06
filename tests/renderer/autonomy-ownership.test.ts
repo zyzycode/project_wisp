@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   brainListener: undefined as ((state: BrainStateDTO) => void) | undefined,
   animationCompleted: undefined as ((_event: unknown, episodeId: string | undefined) => void) | undefined,
   animationRejected: undefined as ((episodeId: string | undefined) => void) | undefined,
+  cursorObserved: undefined as ((position: { readonly x: number; readonly y: number }) => void) | undefined,
+  gazeEnabled: undefined as boolean | undefined,
   animationState: 'idle',
   visualAgeMs: undefined as number | undefined,
 }));
@@ -21,10 +23,14 @@ vi.mock('../../src/renderer/components/Character/CharacterRenderer', () => ({
   CharacterRenderer: (props: {
     readonly onAnimationCompleted?: (_event: unknown, episodeId: string | undefined) => void;
     readonly onAnimationRejected?: (episodeId: string | undefined) => void;
+    readonly onCursorObserved?: (position: { readonly x: number; readonly y: number }) => void;
+    readonly gazeEnabled?: boolean;
     readonly visualState?: { readonly visualAgeMs: number };
   }) => {
     mocks.animationCompleted = props.onAnimationCompleted;
     mocks.animationRejected = props.onAnimationRejected;
+    mocks.cursorObserved = props.onCursorObserved;
+    mocks.gazeEnabled = props.gazeEnabled;
     mocks.visualAgeMs = props.visualState?.visualAgeMs;
     return React.createElement('div', { 'data-testid': 'character' });
   },
@@ -189,6 +195,8 @@ describe('Renderer: autonomy ownership', () => {
     mocks.brainListener = undefined;
     mocks.animationCompleted = undefined;
     mocks.animationRejected = undefined;
+    mocks.cursorObserved = undefined;
+    mocks.gazeEnabled = undefined;
     mocks.dispatch.mockClear();
     mocks.completeCurrentState.mockClear();
     mocks.synchronizeTerminalState.mockClear();
@@ -251,6 +259,16 @@ describe('Renderer: autonomy ownership', () => {
     const root = createRoot(container);
 
     await act(async () => root.render(React.createElement(DesktopPet)));
+
+    await act(async () => mocks.brainListener?.(brainState(1, 'episode-idle', 'idle_blink')));
+    expect(mocks.gazeEnabled).toBe(true);
+    await act(async () => mocks.cursorObserved?.({ x: 450, y: 320 }));
+    expect(api.postBodyEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'cursor_observed',
+      screenPosition: { x: 450, y: 320 },
+    }));
+    vi.mocked(api.postBodyEvent).mockClear();
+
     await act(async () => mocks.onToggleSleep?.());
     expect(api.requestSleepWake).toHaveBeenCalledWith({ action: 'sleep' });
     expect(mocks.dispatch).not.toHaveBeenCalledWith('START_SLEEP', true, true);
