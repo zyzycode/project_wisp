@@ -228,6 +228,7 @@ function lastFrame(track: ResolvedTrackBase): RenderableFrameDef {
 
 function createLayer(track: ResolvedTrackBase, frame: RenderableFrameDef, offset: SpritePoint = track.offset ?? ZERO_POINT): VisibleRenderLayerDef {
   return {
+    ...(track.canvasSize === undefined ? {} : { canvasSize: track.canvasSize }),
     id: track.id,
     category: track.category,
     zIndex: track.zIndex,

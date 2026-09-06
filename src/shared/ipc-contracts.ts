@@ -4,6 +4,23 @@
  * Only serializable data types and strict interfaces allowed.
  */
 
+/** Static presentation configuration shared by Main and Renderer; no new IPC channel. */
+export interface PetPresentationLayoutDTO {
+  /** Native window size and character rectangle in Electron DIP / CSS pixels. */
+  readonly compactWindowSize: { readonly width: number; readonly height: number };
+  readonly expandedWindowSize: { readonly width: number; readonly height: number };
+  /** Character origin stays fixed when the context menu expands the window. */
+  readonly characterRect: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  };
+  /** Canonical source-canvas coordinates, independent of the current animation. */
+  readonly spriteViewport: { readonly width: number; readonly height: number };
+  readonly spriteRootPivot: { readonly x: number; readonly y: number };
+}
+
 export interface SystemInfoDTO {
   platform: 'linux' | 'win32' | 'darwin';
   sessionType: string;

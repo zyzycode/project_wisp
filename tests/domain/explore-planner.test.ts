@@ -65,7 +65,7 @@ describe('Domain: Explore planner', () => {
     });
     expect(plans.every((plan) => isExplorePoseCompatible(plan.pose, plan.surfaceKind))).toBe(true);
     expect(plans.find((plan) => plan.pointKind === 'ordinary')?.pose).toBe('lie');
-    expect(isExplorePoseCompatible('lie', 'window_top')).toBe(false);
+    expect(isExplorePoseCompatible('lie', 'window_top')).toBe(true);
   });
 
   it('penalizes recent targets, routes, and choreography while strong need overcomes the penalty', () => {
@@ -105,7 +105,7 @@ describe('Domain: Explore planner', () => {
     expect(scoreExplorePlans([far], base)[0]!.distanceScore).toBeGreaterThan(
       scoreExplorePlans([near], base)[0]!.distanceScore
     );
-    expect(scoreExplorePlans([windowTop], base)[0]!.surfaceScore).toBeGreaterThan(
+    expect(scoreExplorePlans([windowTop], base)[0]!.surfaceScore).toBe(
       scoreExplorePlans([plan], base)[0]!.surfaceScore
     );
     expect(scoreExplorePlans([unknown], base)[0]!.surfaceScore).toBeLessThan(

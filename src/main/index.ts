@@ -37,6 +37,7 @@ import {
   nativeToRootPosition,
   rootToNativePosition,
 } from '../infrastructure/adapters/electron-pet-position-adapter';
+import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../shared/pet-presentation-layout';
 import { SeededPrng } from '../infrastructure/random/seeded-prng';
 import {
   toEnvironmentSnapshotDTO,
@@ -58,18 +59,15 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
-export const COMPACT_WINDOW_WIDTH = 280;
-export const COMPACT_WINDOW_HEIGHT = 320;
-export const EXPANDED_WINDOW_WIDTH = 1140;
-export const EXPANDED_WINDOW_HEIGHT = 620;
+export const COMPACT_WINDOW_WIDTH = PET_PRESENTATION_LAYOUT.compactWindowSize.width;
+export const COMPACT_WINDOW_HEIGHT = PET_PRESENTATION_LAYOUT.compactWindowSize.height;
+export const EXPANDED_WINDOW_WIDTH = PET_PRESENTATION_LAYOUT.expandedWindowSize.width;
+export const EXPANDED_WINDOW_HEIGHT = PET_PRESENTATION_LAYOUT.expandedWindowSize.height;
 
 export const WINDOW_WIDTH = COMPACT_WINDOW_WIDTH;
 export const WINDOW_HEIGHT = COMPACT_WINDOW_HEIGHT;
 
-const ROOT_PIVOT_OFFSET = {
-  x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
-  y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
-};
+const ROOT_PIVOT_OFFSET = calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT);
 const AUTONOMY_SEED = 0x5753_5031;
 
 let mainWindow: BrowserWindow | null = null;

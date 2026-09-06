@@ -7,7 +7,7 @@ import type {
 import type { CollisionInsets, ScreenBoundsDto, Vector2Dto } from '../../domain/behavior/motion-engine';
 import {
   calculateAutonomyOpportunityDelayMs,
-  calculateNextWanderTarget,
+  planWanderTarget,
   DEFAULT_AUTONOMOUS_INTENT_CONFIG,
   DEFAULT_BEHAVIOR_CONFIG,
   type AutonomousCandidate,
@@ -17,6 +17,9 @@ import {
 } from '../../domain/behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
 import type { EnvironmentSnapshot } from '../../domain/behavior/surface-kinematics';
+import type { WanderTargetPlanner } from '../ports/wander-target-planner';
+
+const wanderTargetPlanner: WanderTargetPlanner = planWanderTarget;
 
 export interface AutonomyClock {
   now(): number;
@@ -314,13 +317,14 @@ export class AutonomyCoordinator {
   private requestWander(targetRootPosition?: Vector2Dto): boolean {
     const start = this.options.movement.getRootPosition();
     const target = targetRootPosition === undefined
-      ? calculateNextWanderTarget(
-          start,
-          this.options.movement.getBounds(),
-          this.options.prng,
-          this.options.movement.getCollisionInsets(),
-          this.behaviorConfig()
-        )
+      ? wanderTargetPlanner({
+          currentPosition: start,
+          screenBounds: this.options.movement.getBounds(),
+          currentSurface: this.options.movement.getEnvironmentSnapshot().currentSurface,
+          prng: this.options.prng,
+          collisionInsets: this.options.movement.getCollisionInsets(),
+          config: this.behaviorConfig(),
+        })
       : {
           target: targetRootPosition,
           durationMs: Math.abs(targetRootPosition.x - start.x) > 0 ? 1 : 0,

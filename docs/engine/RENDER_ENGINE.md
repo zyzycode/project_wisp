@@ -23,6 +23,35 @@ BrainStateDTO
 
 Renderer не парсит provider DTO, не вычисляет `Needs`, не планирует Activity, не владеет authoritative position и не импортирует Electron/Node/platform APIs. DOM/canvas и resource handles не выходят из Renderer; Main/Application/Domain/Shared IPC получают только plain serializable DTO.
 
+### #43: общая геометрия окна и визуального root
+
+Контракт [`PetPresentationLayoutDTO`](../../src/shared/ipc-contracts.ts) описывает статическую
+presentation-конфигурацию. Единственный экземпляр и чистая проекция принадлежат Render
+Engine и размещены в [`pet-presentation-layout.ts`](../../src/shared/pet-presentation-layout.ts). Модуль
+не импортирует Renderer, DOM, React, Electron или Domain; Main и Renderer потребляют его напрямую.
+Новый IPC-канал, runtime layout service и измерение DOM для Main не нужны.
+
+- Текущие значения: compact 280×320, expanded 1140×620; character rect (20, 18, 240, 240),
+  viewport 512×512, canonical root (256, 460). CSS, CharacterRenderer, default viewport/pivot
+  и Main берут значения из общего экземпляра, без дублирующих числовых литералов.
+- Проекция `calculateWindowRootPivotOffset(layout)` вычисляет `s = min(width / viewport.width,
+  height / viewport.height)`, `letterbox = (characterSize - viewportSize * s) / 2`,
+  `offset = characterRect.origin + letterbox + spriteRootPivot * s`.
+  Для текущей конфигурации offset = (140, 233.625) DIP. SVG использует `xMidYMid meet`.
+- Адаптер позиции получает только готовый `pivotOffset`; его обязанности — перевод root ↔
+  native, округление, существующее ограничение координат и commit. Scale/letterbox в Infrastructure запрещены.
+- Main компонует зависимости и размеры BrowserWindow; собственных CSS/Render-констант не содержит.
+  Расширение меню сохраняет origin персонажа и root offset. Device pixel ratio не применяется
+  к DIP; преобразование нативных физических пикселей остаётся в platform adapters.
+- Skin совмещает pivot конкретного кадра с canonical root. Flip, squash и смена клипа
+  не меняют native offset и authoritative position. Asset handles остаются renderer-local.
+  Исходный `canvasSize` передаётся со слоем отдельно от фиксированного viewport;
+  нестандартный размер кадра не меняет масштаб всего presentation canvas.
+
+Тесты проекции находятся в `tests/shared/pet-presentation-layout.test.ts`: проверены
+несимметричный letterbox и compact/expanded parity. Renderer-тесты проверяют сохранение
+canonical root при смене кадра и позиционирование слоёв с нестандартным canvas/pivot.
+
 ### Renderer-local Skin contract
 
 `ISkinEngine`, `BodyVisualState` и presentation-reflex types объявлены в [`src/renderer/render-engine/skin-engine.ts`](../../src/renderer/render-engine/skin-engine.ts). Контракт renderer-local и не является Application port или shared IPC type.

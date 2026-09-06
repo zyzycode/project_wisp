@@ -27,6 +27,7 @@ public static class WispWindowSurfaces {
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hwnd);
     [DllImport("user32.dll")] static extern bool IsWindowEnabled(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int maximum);
     [DllImport("user32.dll", EntryPoint="GetWindowLongW")] static extern int GetWindowLong32(IntPtr hwnd, int index);
@@ -99,7 +100,15 @@ public static class WispWindowSurfaces {
             if (Cloaked(hwnd, 14, out cloaked, 4) != 0) throw new Exception("Cloaking unavailable");
             if (cloaked != 0) continue;
             RECT frame;
-            if (Frame(hwnd, 9, out frame, Marshal.SizeOf(typeof(RECT))) != 0 || frame.R <= frame.L || frame.B <= frame.T) throw new Exception("Frame unavailable");
+            if (Frame(hwnd, 9, out frame, Marshal.SizeOf(typeof(RECT))) != 0 || frame.R <= frame.L || frame.B <= frame.T) {
+                // Run holds a per-monitor-v2 DPI context: this rectangle is physical.
+                // Resize borders are conservative occlusion only, never support geometry.
+                if (!GetWindowRect(hwnd, out frame) || frame.R < frame.L || frame.B < frame.T) throw new Exception("Frame unavailable");
+                // A successfully measured empty window cannot cover any pixels.
+                if (frame.R == frame.L || frame.B == frame.T) continue;
+                above.Add(frame);
+                continue;
+            }
             var className = new StringBuilder(256);
             if (GetClassName(hwnd, className, className.Capacity) == 0) throw new Exception("Class unavailable");
             uint style = Style(hwnd, -16), extended = Style(hwnd, -20);

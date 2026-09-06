@@ -12,27 +12,25 @@ function context(): ExplorePlanningContext {
     tone: 'neutral', nowMs: 1000, history: { entries: [] }, externalSurfaces: [top] };
 }
 describe('AUTO-I06 rest and route planning', () => {
-  it('prefers a reachable window and gives nap an explicit wake phase', () => {
+  it('selects a reachable rest spot and gives nap an explicit wake phase', () => {
     const plan = selectRestSpot(context(), true)!;
-    expect(plan.target.surfaceKind).toBe('window_top');
     expect(plan.route[0]?.type).toBe('locomotion');
     const activity = createRestSpotActivity(plan);
     expect(activity.steps.find(s => s.id === 'sleep')).toMatchObject({ completion: { durationMs: 12000 }, next: 'wake' });
     expect(activity.steps.at(-1)?.id).toBe('wake');
   });
-  it('uses seated sleep only on a narrow support, including stationary rest', () => {
-    const narrow = { ...top, bounds: { ...top.bounds, width: 80 } };
-    const c = { ...context(), currentRootPosition: { x: 340, y: 400 }, externalSurfaces: [narrow], environment: { ...context().environment, currentSurface: narrow } };
-    const plan = selectRestSpot(c, false)!;
-    expect(plan.seated).toBe(true);
-    expect(createRestSpotActivity(plan).steps.filter(s => s.type === 'animation').map(s => s.intent.kind)).not.toContain('lie_down');
-    expect(createRestSpotActivity(plan).steps.at(-1)).toMatchObject({ id: 'sleep', intent: { kind: 'sit_edge' } });
+  it('uses the same sleep animations on windows and the floor', () => {
+    const plan = selectRestSpot(context(), false)!;
+    const animations = (surfaceKind: 'screen_floor' | 'window_top') => createRestSpotActivity({
+      ...plan, target: { ...plan.target, surfaceKind },
+    }).steps.filter(s => s.type === 'animation').map(s => s.intent.kind);
+    expect(animations('window_top')).toEqual(animations('screen_floor'));
+    expect(animations('window_top')).toContain('sleep_loop');
   });
   it('falls back to a quiet floor edge when external observations are unavailable', () => {
     const plan = selectRestSpot({ ...context(), externalSurfaces: [] }, true)!;
     expect(plan.target.surfaceKind).toBe('screen_floor');
     expect(['edge', 'corner']).toContain(plan.target.pointKind);
-    expect(plan.seated).toBe(false);
   });
   it('rejects routes entering an observed window and applies history to the same targets', () => {
     const c = context();

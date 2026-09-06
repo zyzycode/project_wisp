@@ -1,6 +1,5 @@
 import { createRestSpotActivity, selectRestSpot } from '../../domain/behavior/rest-spot-planner';
 import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
-import { createWindowPerchActivity } from '../../domain/behavior/external-surface-support';
 import { createExternalRoute, createExploreTraversalSteps, type TraversalAction } from '../../domain/behavior/traversal-route';
 import {
   ActivityRunner,
@@ -100,8 +99,8 @@ export class BrainActivityRuntime {
       tone: selectionContext.synthesizedTone, history: this.exploreHistory, nowMs,
       externalSurfaces: this.options.getExternalSurfaces?.() ?? [],
     };
-    if (selectedDefinition.id === 'rest' && (intent.source !== 'user' || context.environment.currentSurface?.kind === 'window_top')) {
-      const rest = selectRestSpot(context, intent.source !== 'user' && intent.reason !== 'vital_sleep');
+    if (selectedDefinition.id === 'rest' && intent.source !== 'user') {
+      const rest = selectRestSpot(context, intent.reason !== 'vital_sleep');
       if (rest === null) return false;
       return this.startDefinition(createRestSpotActivity(rest), rest.target, nowMs);
     }
@@ -137,13 +136,6 @@ export class BrainActivityRuntime {
       this.exploreHistory = recordExplorePlan(this.exploreHistory, selectedExplorePlan, nowMs);
     }
     return true;
-  }
-
-  /** Continuation of the already resolved user drag, never an autonomous target choice. */
-  public startWindowPerch(): boolean {
-    const surface = this.options.getSelectionContext().environment.currentSurface;
-    const definition = createWindowPerchActivity(surface, this.options.getRootPosition());
-    return definition !== null && this.startDefinition(definition, null, this.options.clock.now());
   }
 
   public tick(nowMs: number): boolean {

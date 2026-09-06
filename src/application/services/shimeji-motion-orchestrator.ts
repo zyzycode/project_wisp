@@ -1,6 +1,7 @@
 import type { ExternalWindowSurfacesPort, ExternalWindowSurfacesSnapshot } from '../ports/external-window-surfaces.port';
 import { isExternalSurface, isFreshExternalObservation, selectWindowTopForRelease } from '../../domain/behavior/external-surface-support';
 import { SCREEN_CLIMB_SPEED, type TraversalRequest } from '../../domain/behavior/traversal-route';
+import { ReleasedWindowLanding } from '../../domain/behavior/released-window-landing';
 import type { PetPositionPort } from '../ports/pet-position-port';
 import {
   calculateRootCollisionRange,
@@ -148,6 +149,7 @@ export class ShimejiMotionOrchestrator {
   private externalSnapshot: ExternalWindowSurfacesSnapshot | undefined;
   private selectedExternalId: string | undefined;
   private externalWalkTarget: number | undefined;
+  private readonly releasedWindowLanding = new ReleasedWindowLanding();
 
   public constructor(private readonly options: ShimejiMotionOrchestratorOptions) {
     if (options.stimulusMapper !== undefined && options.createStimulusTimestamp === undefined) {
@@ -172,6 +174,7 @@ export class ShimejiMotionOrchestrator {
 
   public stop(): void {
     this.running = false;
+    this.releasedWindowLanding.clear();
     this.cancelVoluntaryMovement();
     this.cancelScheduledTick?.();
     this.cancelScheduledTick = undefined;
@@ -179,6 +182,7 @@ export class ShimejiMotionOrchestrator {
 
   public beginDrag(input: PointerInput): string | null {
     if (!isValidPointerInput(input) || this.dragSession !== undefined || this.hasQueuedBegin()) return null;
+    this.releasedWindowLanding.clear();
     this.cancelVoluntaryMovement(true);
     const sessionId = this.options.createDragSessionId?.() ?? `drag-${++this.generatedSessionCount}`;
     const nowMs = this.options.now();
@@ -390,16 +394,19 @@ export class ShimejiMotionOrchestrator {
     const support = environment.currentSurface;
     if ((!this.traversalStarted || request.action.kind === 'screen_climb' || support?.id === request.action.supportId) && (support?.id !== request.action.supportId || !support.isValidSupport
         || (support.kind !== 'screen_floor' && support.kind !== 'window_top'))) return false;
+    // A detour climbs a screen wall, but still belongs to the selected window goal.
+    const target = request.action.targetSurface;
+    if (target !== undefined) {
+      const live = this.availableExternalSurfaces().find(s => s.id === target.id);
+      if (live?.kind !== 'window_top' || live.bounds.x !== target.bounds.x || live.bounds.y !== target.bounds.y
+          || live.bounds.width !== target.bounds.width || live.bounds.height !== target.bounds.height) return false;
+    }
     if (request.action.kind === 'directed_jump') {
       try {
         const range = calculateRootCollisionRange(b, this.constraints().collisionInsets);
-        const target = request.action.targetSurface;
         if (target !== undefined) {
-          const live = this.availableExternalSurfaces().find(s => s.id === target.id);
-          return live?.kind === 'window_top' && live.bounds.x === target.bounds.x && live.bounds.y === target.bounds.y
-            && live.bounds.width === target.bounds.width && live.bounds.height === target.bounds.height
-            && request.action.target.y === live.bounds.y && request.action.target.x >= live.bounds.x
-            && request.action.target.x <= live.bounds.x + live.bounds.width;
+          return request.action.target.y === target.bounds.y && request.action.target.x >= target.bounds.x
+            && request.action.target.x <= target.bounds.x + target.bounds.width;
         }
         return request.action.target.y === range.maxY;
       } catch { return false; }
@@ -540,6 +547,7 @@ export class ShimejiMotionOrchestrator {
         this.motion = released.state;
         this.surface = { ...groundedSurface(stepAtMs), phase: 'airborne' };
         this.routeEvents(released.events, []);
+        this.releasedWindowLanding.begin(this.availableExternalSurfaces(), this.motion.activeBoundsId);
         this.emitFeedback({
           type: 'drag_ended', eventId: `${session.id}:ended`, dragRunId: session.id,
           heldMs: Math.max(0, event.receivedAtMs - session.startedAtMs), atMs: event.receivedAtMs,
@@ -616,14 +624,34 @@ export class ShimejiMotionOrchestrator {
       this.selectedExternalId = undefined; this.externalWalkTarget = undefined;
     }
     let motionEvents = surfaceResult.motion.events;
+    const surfaceEvents = [...surfaceResult.events];
     if (
       this.motion.phase === 'airborne' &&
       this.surface.phase !== 'climbing_wall' &&
       this.surface.phase !== 'hanging_ceiling'
     ) {
-      const motionResult = this.options.motionEngine.step({ state: this.motion, stepSec, bounds: environment.screenBounds });
+      const previous = this.motion;
+      const motionResult = this.options.motionEngine.step({ state: previous, stepSec, bounds: environment.screenBounds });
       this.motion = motionResult.state;
       motionEvents = [...motionEvents, ...motionResult.events];
+      if (previous.directedJump === undefined && this.traversal === undefined) {
+        const landing = this.releasedWindowLanding.findLanding(previous.position, this.motion.position,
+          this.availableExternalSurfaces(), environment, this.constraints().collisionInsets);
+        if (landing !== null) {
+          const attached = this.options.surfaceKinematics.startExternalSupport({
+            motion: { ...this.motion, position: landing.root },
+            environment: { ...environment, capturedAtMs: this.externalSnapshot!.capturedAtMs, currentSurface: landing.surface },
+            nowMs, observationNowMs: this.options.now(), collisionInsets: this.constraints().collisionInsets,
+          });
+          if (attached !== null) {
+            this.selectedExternalId = landing.surface.id;
+            this.surface = attached.state; this.motion = attached.motion.state;
+            motionEvents = [...surfaceResult.motion.events, { type: 'landed', outcome: 'soft_landing', impactSeverity: 0 }];
+            surfaceEvents.push(...attached.events);
+          }
+        }
+      }
+      if (this.motion.phase === 'grounded') this.releasedWindowLanding.clear();
     }
     if (this.traversal?.action.kind === 'directed_jump' && this.traversal.action.targetSurface !== undefined
         && motionEvents.some(event => event.type === 'landed')) {
@@ -647,7 +675,7 @@ export class ShimejiMotionOrchestrator {
       if (this.surface.phase === 'grounded') this.attachmentRunId = undefined;
     }
     const voluntaryMovementCompleted = this.stepVoluntaryMovement(environment, stepSec);
-    this.routeEvents(motionEvents, surfaceResult.events);
+    this.routeEvents(motionEvents, surfaceEvents);
     return voluntaryMovementCompleted;
   }
 

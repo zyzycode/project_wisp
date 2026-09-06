@@ -367,3 +367,30 @@ describe('Application: AutonomyCoordinator', () => {
     });
   });
 });
+
+it('plans ordinary wandering on the current window at its support height', () => {
+  const moving = movement();
+  moving.getRootPosition = () => ({ x: 180, y: 200 });
+  moving.getEnvironmentSnapshot = () => ({ capturedAtMs: 0,
+    screenBounds: moving.getBounds(), currentSurface: { id: 'window', kind: 'window_top',
+      bounds: { x: 90, y: 200, width: 130, height: 100 }, supportY: 200, isValidSupport: true } });
+  const f = createCoordinator(new FakeScheduler(), sequencePrng(0, .99), moving);
+  expect(f.coordinator.requestActivityLocomotion()).toBe(true);
+  expect(moving.requestVoluntaryMovement).toHaveBeenCalledWith(expect.objectContaining({ targetRootPosition: { x: 90, y: 200 } }));
+});
+
+it('does not consume random values for an explicit activity target', () => {
+  const prng = { next: vi.fn(() => .5) };
+  const f = createCoordinator(new FakeScheduler(), prng);
+  expect(f.coordinator.requestActivityLocomotion({ x: 200, y: 390 })).toBe(true);
+  expect(prng.next).not.toHaveBeenCalled();
+});
+
+it('does not dispatch movement when a window has no screen intersection', () => {
+  const moving = movement();
+  moving.getEnvironmentSnapshot = () => ({ capturedAtMs: 0, screenBounds: moving.getBounds(),
+    currentSurface: { id: 'window', kind: 'window_top', bounds: { x: 700, y: 200, width: 100, height: 100 }, supportY: 200, isValidSupport: true } });
+  const f = createCoordinator(new FakeScheduler(), sequencePrng(.1), moving);
+  expect(f.coordinator.requestActivityLocomotion()).toBe(false);
+  expect(moving.requestVoluntaryMovement).not.toHaveBeenCalled();
+});

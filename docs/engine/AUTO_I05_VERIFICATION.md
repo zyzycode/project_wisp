@@ -14,8 +14,10 @@ The helper filters top-level windows, tracks lifetime tokens using native events
 removes any edge intersected by a higher window. Unsupported visible windows still occlude.
 Unknown geometry invalidates the full observation. Native handles, process IDs and class
 names remain inside the adapter. Only opaque IDs and normalized geometry reach Application.
-A frame must belong to exactly one display and fit its work area after Electron DIP
-conversion. Display topology changes restart the helper and invalidate attachment IDs.
+A frame must intersect exactly one display; each published edge must fit that display's
+work area after Electron DIP conversion. A body extending below the desktop or under a taskbar does not remove
+an otherwise valid top. Bounds are never clipped. Display topology changes restart the
+helper and invalidate attachment IDs.
 
 A gentle user drag release within 12 DIP of a valid top attaches the root. The bounded
 Activity performs land, an optional short support-local walk away from the corner, then

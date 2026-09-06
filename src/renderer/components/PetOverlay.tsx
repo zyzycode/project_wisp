@@ -1,4 +1,5 @@
 import React from 'react';
+import { PET_PRESENTATION_LAYOUT } from '../../shared/pet-presentation-layout';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
@@ -43,6 +44,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
   return (
     <div
       className={`pet-container ${model.isDragging ? 'is-dragging' : ''} ${model.isWandering ? 'is-wandering' : ''} ${model.menuOpen ? 'menu-is-open' : ''}`}
+      style={{ paddingLeft: PET_PRESENTATION_LAYOUT.characterRect.x,
+        paddingTop: PET_PRESENTATION_LAYOUT.characterRect.y }}
     >
       <SpeechBubble message={model.dialogue.currentMessage} onDismiss={model.dialogue.dismissMessage} />
       <ChatInput

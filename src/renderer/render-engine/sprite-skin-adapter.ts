@@ -244,6 +244,8 @@ function sameLayer(left: RenderLayerDef, right: RenderLayerDef | undefined): boo
     left.category !== right.category ||
     left.zIndex !== right.zIndex ||
     left.animationKey !== right.animationKey ||
+    left.canvasSize?.width !== right.canvasSize?.width ||
+    left.canvasSize?.height !== right.canvasSize?.height ||
     !samePoint(left.pivot, right.pivot) ||
     !samePoint(left.offset, right.offset) ||
     left.opacity !== right.opacity ||

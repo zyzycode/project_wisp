@@ -4,6 +4,7 @@
  */
 
 import type { Point2D, RectBounds } from '../models/position';
+import type { SurfaceSnapshotDto } from './surface-kinematics';
 import { calculateRootCollisionRange, type CollisionInsets } from './motion-engine';
 import type { SynthesizedEmotionalTone } from '../character';
 import type { Needs } from '../character';
@@ -27,8 +28,8 @@ export interface BehaviorConfig {
 }
 
 export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
-  minIdleDurationMs: 4000,
-  maxIdleDurationMs: 9000,
+  minIdleDurationMs: 5000,
+  maxIdleDurationMs: 11000,
   minWanderDurationMs: 2500,
   maxWanderDurationMs: 7000,
   wanderSpeedPxPerSec: 90,
@@ -68,12 +69,27 @@ export const DEFAULT_AUTONOMOUS_INTENT_CONFIG: AutonomousIntentConfig = {
  * to maintain constant ground elevation (Y).
  * Automatically detects screen edges and steers away from obstacles so the pet never walks in place.
  */
+export interface WanderPlanningInput {
+  readonly currentPosition: Point2D;
+  readonly screenBounds: RectBounds;
+  readonly currentSurface?: SurfaceSnapshotDto;
+  readonly collisionInsets: CollisionInsets;
+  readonly prng: IPrng;
+  readonly config: Readonly<BehaviorConfig>;
+}
+
+export function planWanderTarget(input: WanderPlanningInput): WanderTarget {
+  return calculateNextWanderTarget(input.currentPosition, input.screenBounds, input.prng,
+    input.collisionInsets, input.config, input.currentSurface);
+}
+
 export function calculateNextWanderTarget(
   currentPos: Point2D,
   screenBounds: RectBounds,
   prng: IPrng,
   collisionInsets: CollisionInsets,
-  config: BehaviorConfig = DEFAULT_BEHAVIOR_CONFIG
+  config: Readonly<BehaviorConfig> = DEFAULT_BEHAVIOR_CONFIG,
+  currentSurface?: SurfaceSnapshotDto
 ): WanderTarget {
   const randomAngle = nextRandom(prng) < 0.5 ? 0 : Math.PI;
   const randomDistanceFactor = 0.5 + nextRandom(prng) * 0.5;
@@ -86,7 +102,19 @@ export function calculateNextWanderTarget(
   } catch {
     return { target: { ...currentPos }, durationMs: 0 };
   }
-  const { minX, maxX, maxY } = range;
+  let { minX, maxX, maxY } = range;
+  if (currentSurface?.kind === 'window_top' && currentSurface.isValidSupport) {
+    const bounds = currentSurface.bounds;
+    const supportY = currentSurface.supportY ?? bounds.y;
+    minX = Math.max(minX, bounds.x);
+    maxX = Math.min(maxX, bounds.x + bounds.width);
+    if (![bounds.x, bounds.y, bounds.width, bounds.height, supportY, minX, maxX].every(Number.isFinite)
+        || bounds.width <= 0 || bounds.height <= 0 || minX >= maxX
+        || supportY < range.minY || supportY > range.maxY) {
+      return { target: { ...currentPos }, durationMs: 0 };
+    }
+    maxY = supportY;
+  }
 
   const roomRight = Math.max(0, maxX - currentPos.x);
   const roomLeft = Math.max(0, currentPos.x - minX);

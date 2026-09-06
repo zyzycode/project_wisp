@@ -101,7 +101,6 @@ export function isExplorePoseCompatible(
 ): boolean {
   if (pose === 'none') return true;
   if (surfaceKind === 'unknown') return false;
-  if (pose === 'lie') return surfaceKind === 'screen_floor';
   return surfaceKind === 'screen_floor' || surfaceKind === 'window_top';
 }
 
@@ -171,13 +170,16 @@ export function createExplorePlanCandidates(
   const targetY = surface.kind === 'screen_floor'
     ? collisionRange.maxY
     : surface.bounds.y;
+  if (targetY < collisionRange.minY || targetY > collisionRange.maxY) return [];
   const seen = new Set<string>();
   const plans: ExplorePlan[] = [];
   for (const seed of pointSeeds(minX, maxX, context.currentRootPosition.x, config)) {
     const x = Math.round(seed.x * 1000) / 1000;
+    if (x < minX || x > maxX) continue;
     const distancePx = surface.kind === 'screen_floor' ? Math.abs(x - context.currentRootPosition.x)
       : Math.hypot(x - context.currentRootPosition.x, targetY - context.currentRootPosition.y);
-    if (distancePx < minimumDistance || distancePx > maximumDistance) continue;
+    // The floor wander radius is not a reachability limit for external routes.
+    if (distancePx < minimumDistance || (surface.kind === 'screen_floor' && distancePx > maximumDistance)) continue;
     const key = `${x}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -233,7 +235,7 @@ export function scoreExplorePlans(
 ): readonly ScoredExplorePlan[] {
   return plans.map((plan) => {
     const distanceScore = 0.55 + 0.45 * Math.min(1, plan.distancePx / config.maxTargetDistancePx);
-    const surfaceScore = (plan.surfaceKind === 'window_top' ? 1.15 : plan.surfaceKind === 'screen_floor' ? 1 : 0.65)
+    const surfaceScore = (plan.surfaceKind === 'window_top' || plan.surfaceKind === 'screen_floor' ? 1 : 0.65)
       * (plan.pointKind === 'interesting_surface' ? 1.15 : plan.pointKind === 'corner' ? 1.08 : 1);
     const planStateScore = stateScore(plan, context.needs);
     const planRepetitionScore = repetitionScore(plan, context, config);

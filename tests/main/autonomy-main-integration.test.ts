@@ -163,17 +163,31 @@ describe('Main integration: Brain runtime', () => {
     f.composition.stop();
   });
 
-  it('lands, resolves a support-local walk against the latest window origin and perches', () => {
+  it('resumes the normal scheduler after window landing without a perch activity', () => {
     const surface: SurfaceSnapshotDto = { id: 'window', kind: 'window_top', bounds: { x: 90, y: 200, width: 400, height: 200 }, supportY: 200, isValidSupport: true };
     const f = createFixture(undefined, {}, [], surface);
-    f.composition.start(); f.composition.handleWindowSupportAttached();
+    f.composition.start(); f.composition.beginDrag();
+    f.composition.handleMotionEvent({ type: 'landed', outcome: 'soft_landing', impactSeverity: 0 });
+    f.composition.handleWindowSupportAttached();
+    expect(f.composition.getActivityTimeline()).toBeNull();
     expect(f.composition.getVisualEpisode().intent.kind).toBe('land');
-    Object.assign(surface.bounds, { x: 190 });
-    f.scheduler.nowMs = 500; f.composition.tick();
-    expect(f.requestVoluntaryMovement).toHaveBeenCalledWith(expect.objectContaining({ targetRootPosition: { x: 238, y: 200 } }));
-    f.composition.notifyVoluntaryMovementCompleted();
-    expect(f.composition.getVisualEpisode().intent.kind).toBe('sit_edge');
+    expect(f.scheduler.size()).toBe(1);
     f.composition.stop();
+  });
+  it('keeps ordinary sleep on a window and preserves the activity on attach', () => {
+    const surface: SurfaceSnapshotDto = { id: 'window', kind: 'window_top', bounds: { x: 90, y: 200, width: 400, height: 200 }, supportY: 200, isValidSupport: true };
+    const floor = createFixture();
+    const window = createFixture(undefined, {}, [], surface);
+    for (const f of [floor, window]) { f.composition.start(); f.composition.requestSleepWake({ action: 'sleep' }); }
+    expect(window.composition.getActivityTimeline()?.activityId).toBe(floor.composition.getActivityTimeline()?.activityId);
+    const active = window.composition.getActivityTimeline();
+    window.composition.handleWindowSupportAttached();
+    expect(window.composition.getActivityTimeline()).toEqual(active);
+    for (const ms of [1500, 3500, 7000]) {
+      for (const f of [floor, window]) { f.scheduler.nowMs = ms; f.composition.tick(); }
+      expect(window.composition.getVisualEpisode().intent.kind).toBe(floor.composition.getVisualEpisode().intent.kind);
+    }
+    floor.composition.stop(); window.composition.stop();
   });
   it('support loss wakes semantic sleep before the fall lifecycle', () => {
     const f = createFixture(); f.composition.start();

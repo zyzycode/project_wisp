@@ -85,7 +85,6 @@ export class MainAutonomyComposition {
   private enabled = true;
   private menuOpen = false;
   private cursorReactionActive = false;
-  private userPerchActive = false;
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
   private readonly cursorProximityEngine = new CursorProximityEngine();
@@ -139,13 +138,11 @@ export class MainAutonomyComposition {
       onTerminated: (result) => {
         if (result.activityId === 'rest_spot_sleep' && result.status === 'completed') this.stableRestSpotSleep = true;
         if (result.activityId === 'rest_spot_nap' || (result.activityId === 'rest_spot_sleep' && result.status !== 'completed')) this.character.finishRest();
-        if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'rest_spot_sleep' && result.activityId !== 'window_perch'))
+        if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'rest_spot_sleep'))
             && options.movement.canAcceptVoluntaryMovement()) {
           this.setVisualKind('idle_blink', true, result.activityId === 'observe_cursor');
         }
-        if (result.activityId === 'window_perch' && this.userPerchActive) {
-          this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity();
-        } else if (result.activityId === 'observe_cursor' && this.cursorReactionActive) {
+        if (result.activityId === 'observe_cursor' && this.cursorReactionActive) {
           this.cursorReactionActive = false;
           this.coordinator.resumeAfterReactiveActivity();
         } else {
@@ -432,14 +429,10 @@ export class MainAutonomyComposition {
   }
 
   public handleWindowSupportAttached(): void {
-    this.cancelActivity('user_interaction', false);
+    // An autonomous route owns its landing; attaching must not cancel its continuation.
+    if (this.activity.getRuntime() !== null) return;
+    this.setVisualKind('land', true, true);
     this.coordinator.resumeAfterForcedMotion();
-    if (this.menuOpen || !this.enabled) { this.setVisualKind('sit_edge', true, true); return; }
-    this.coordinator.suspendForReactiveActivity();
-    this.userPerchActive = true;
-    if (!this.activity.startWindowPerch()) {
-      this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity();
-    }
   }
 
   public handleSupportLost(): void {
@@ -476,9 +469,6 @@ export class MainAutonomyComposition {
   }
 
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
-    if (this.options.movement.getEnvironmentSnapshot().currentSurface?.kind === 'window_top') {
-      if (intent.kind === 'idle' || intent.kind === 'quiet') { this.setVisualKind('sit_edge', true); return true; }
-    }
     if (this.activity.start(intent)) return true;
     if (intent.kind === 'wander') return false;
     if (intent.kind === 'sleep') { this.character.finishRest(); this.setVisualKind('idle_blink', true); return false; }
@@ -502,7 +492,6 @@ export class MainAutonomyComposition {
   private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
     this.jumpFallAtMs = null;
     const wasCursorReaction = this.cursorReactionActive;
-    const wasPerching = this.userPerchActive;
     const restSpot = this.activity.getRuntime()?.activityId.startsWith('rest_spot_') ?? false;
     const cancelled = this.activity.cancel(reason, forDrag);
     if (this.stableRestSpotSleep) {
@@ -512,7 +501,6 @@ export class MainAutonomyComposition {
     }
     if (!cancelled) return false;
     if (restSpot) this.character.finishRest();
-    if (wasPerching) { this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity(); }
     if (wasCursorReaction) {
       this.cursorReactionActive = false;
       this.coordinator.resumeAfterReactiveActivity();
