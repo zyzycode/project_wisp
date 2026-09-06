@@ -26,6 +26,18 @@ function exposedApi(): WispApiBridge {
 }
 
 describe('Preload: Shimeji bridge', () => {
+  it('validates both directions of the dialogue command channel', async () => {
+    const api = exposedApi(); electronMocks.invoke.mockClear();
+    electronMocks.invoke.mockResolvedValueOnce({ status: 'accepted', conversationId: 'c' });
+    await expect(api.postDialogueCommand({ type: 'send', text: ' Привет ', streamId: 's', conversationId: 'c', sequence: 1 }))
+      .resolves.toEqual({ status: 'accepted', conversationId: 'c' });
+    expect(electronMocks.invoke).toHaveBeenCalledExactlyOnceWith('wisp:dialogue-command', { type: 'send', text: 'Привет', streamId: 's', conversationId: 'c', sequence: 1 });
+    await expect(api.postDialogueCommand({ type: 'send', text: '', streamId: 's', conversationId: 'c', sequence: 2 })).rejects.toThrow();
+    expect(electronMocks.invoke).toHaveBeenCalledTimes(1);
+    electronMocks.invoke.mockResolvedValueOnce({ status: 'accepted', conversationId: 'c', secret: true });
+    await expect(api.postDialogueCommand({ type: 'reset', streamId: 's', conversationId: 'c', sequence: 2 })).rejects.toThrow();
+    electronMocks.invoke.mockReset();
+  });
   it('uses exact Brain/Body channels, validates snapshots, and removes the exact listener', async () => {
     const api = exposedApi();
     const listener = vi.fn();
@@ -41,6 +53,7 @@ describe('Preload: Shimeji bridge', () => {
     await api.postBodyEvent(bodyEvent);
 
     const brainState: BrainStateDTO = {
+      dialogue: { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
       streamId: 'stream-1', revision: 1, sampledAtMs: 10,
       character: {
         needs: { energy: 80, attention: 30, play: 40, comfort: 50, boredom: 10 },

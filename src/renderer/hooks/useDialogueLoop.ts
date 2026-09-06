@@ -1,105 +1,32 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import type {
-  IAIProvider,
-  AIProviderContextMessage,
-} from '../../application/ports/ai-provider.interface';
-import {
-  processDialogueTurn,
-  applyBehaviorIntentToAnimation,
-} from '../../application/services/dialogue-loop.service';
-import type {
-  AnyAnimationState,
-  AnimationEvent,
-} from '../../domain/animation/animation-state-machine';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import type { BrainStateDTO, WispApiBridge } from '../../shared/ipc-contracts';
 import type { ChatMessage } from '../../domain/chat/chat-message';
 import { createChatMessage } from '../../domain/chat/chat-message';
-import { DialogueEffectLifecycle } from '../body-ui-runtime';
+import { getDialogueCommandClient } from '../dialogue-command-client';
 
 export interface UseDialogueLoopOptions {
-  aiProvider: IAIProvider;
-  animState: AnyAnimationState;
-  setCurrentMessage: (message: ChatMessage | null) => void;
-  dispatchAnim: (event: AnimationEvent, force?: boolean) => boolean;
-  locale?: string;
+  readonly bridge: Pick<WispApiBridge, 'postDialogueCommand'>;
+  readonly snapshot: BrainStateDTO | null;
+  readonly setCurrentMessage: (message: ChatMessage | null) => void;
 }
-
-export { applyBehaviorIntentToAnimation };
-
-/**
- * React hook orchestrating the offline dialogue loop:
- * ChatInput -> Thinking state -> AI Provider -> BehaviorIntent -> SpeechBubble & Animation FSM.
- */
-export function useDialogueLoop({
-  aiProvider,
-  setCurrentMessage,
-  dispatchAnim,
-  locale = 'ru',
-}: UseDialogueLoopOptions) {
-  const [isThinking, setIsThinking] = useState<boolean>(false);
-  const recentContextRef = useRef<AIProviderContextMessage[]>([]);
-  const lifecycleRef = useRef(new DialogueEffectLifecycle());
-
+/** UI command admission and presentation from the existing Brain snapshot. */
+export function useDialogueLoop({ bridge, snapshot, setCurrentMessage }: UseDialogueLoopOptions) {
+  const client = useMemo(() => getDialogueCommandClient(bridge), [bridge]);
+  const [transport, setTransport] = useState(client.getState());
+  const shown = useRef<string | null>(null);
+  useEffect(() => client.subscribe(() => setTransport(client.getState())), [client]);
   useEffect(() => {
-    lifecycleRef.current.mount();
-    return (): void => {
-      lifecycleRef.current.dispose();
-      recentContextRef.current = [];
-    };
-  }, []);
-
-  const handleSendMessage = useCallback(
-    async (userText: string) => {
-      // 1. Immediately transition character into thinking state
-      dispatchAnim('THINK', true);
-      setIsThinking(true);
-
-      try {
-        const turnResult = await processDialogueTurn({
-          aiProvider,
-          userText,
-          recentContext: recentContextRef.current,
-          locale,
-        });
-        if (!lifecycleRef.current.isActive()) return;
-
-        // Update context window
-        recentContextRef.current.push({
-          role: 'user',
-          text: userText,
-          createdAt: turnResult.userMessage.createdAt,
-        });
-
-        if (turnResult.contextMessage) {
-          recentContextRef.current.push(turnResult.contextMessage);
-        }
-
-        if (recentContextRef.current.length > 10) {
-          recentContextRef.current = recentContextRef.current.slice(-10);
-        }
-
-        // 2. Display reply in SpeechBubble
-        if (turnResult.replyText) {
-          setCurrentMessage(createChatMessage('pet', turnResult.replyText));
-        }
-
-        // 3. Update Animation FSM based on intent
-        applyBehaviorIntentToAnimation(turnResult.intent, dispatchAnim);
-      } catch (err) {
-        if (!lifecycleRef.current.isActive()) return;
-        console.error('Dialogue error:', err);
-        dispatchAnim('REACT_CONFUSED');
-        setCurrentMessage(
-          createChatMessage('pet', 'Ой, что-то пошло не так... Но я всё равно рядом!')
-        );
-      } finally {
-        if (lifecycleRef.current.isActive()) setIsThinking(false);
-      }
-    },
-    [aiProvider, setCurrentMessage, dispatchAnim, locale]
-  );
-
-  return {
-    isThinking,
-    handleSendMessage,
-  };
+    if (!snapshot) return;
+    client.accept(snapshot);
+    if (!client.isCurrent(snapshot)) return;
+    const turn = snapshot.dialogue.turn;
+    if (turn.phase === 'idle') { if (shown.current !== null) setCurrentMessage(null); shown.current = null; return; }
+    if (turn.phase !== 'completed' && turn.phase !== 'error') return;
+    const key = `${snapshot.streamId}:${snapshot.dialogue.conversationId}:${turn.requestId}`;
+    if (shown.current === key) return;
+    shown.current = key;
+    setCurrentMessage(createChatMessage('pet', turn.phase === 'completed' ? turn.replyText : turn.message));
+  }, [client, snapshot, setCurrentMessage]);
+  const handleSendMessage = useCallback((text: string) => client.send(text), [client]);
+  return { handleSendMessage, canSubmit: transport.canSubmit, error: transport.error, isThinking: snapshot?.dialogue.turn.phase === 'thinking' };
 }

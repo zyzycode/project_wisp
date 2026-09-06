@@ -236,20 +236,3 @@ export function registerOverlayMouseListener(
   target.addEventListener('mousemove', typedListener);
   return (): void => target.removeEventListener('mousemove', typedListener);
 }
-
-/** Prevents an async provider result from mutating presentation after unmount. */
-export class DialogueEffectLifecycle {
-  private active = false;
-
-  public mount(): void {
-    this.active = true;
-  }
-
-  public dispose(): void {
-    this.active = false;
-  }
-
-  public isActive(): boolean {
-    return this.active;
-  }
-}

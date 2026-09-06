@@ -157,6 +157,7 @@ export interface BrainVisualIntentDTO {
 }
 
 export interface BrainStateDTO {
+  readonly dialogue: DialoguePresentationDTO;
   readonly streamId: string;
   readonly revision: number;
   readonly sampledAtMs: number;
@@ -176,7 +177,7 @@ export interface BodyEventMetaDTO {
   readonly observedAtMs: number;
 }
 
-/** P17-A02 target declarations; activate atomically with the dialogue runtime cutover. */
+/** Dialogue commands use their own sequence within the Brain stream. */
 export interface DialogueCommandMetaDTO {
   readonly streamId: string;
   readonly conversationId: string;
@@ -226,16 +227,6 @@ export interface DialoguePresentationDTO {
   /** False while a provider call is outstanding, including a retired timed-out call. */
   readonly canSubmit: boolean;
   readonly turn: DialogueTurnPresentationDTO;
-}
-
-/** Target shape on the existing wisp:brain-state channel, not a second state stream. */
-export interface DialogueBrainStateDTO extends BrainStateDTO {
-  readonly dialogue: DialoguePresentationDTO;
-}
-
-/** Merge into WispApiBridge when implementing P17-A02; no optional runtime API. */
-export interface DialogueCommandBridge {
-  postDialogueCommand(command: DialogueCommandDTO): Promise<DialogueCommandReceiptDTO>;
 }
 
 export type BodyInteractionTypeDTO =
@@ -331,6 +322,7 @@ export interface DebugTelemetryDTO {
 }
 
 export interface WispApiBridge {
+  postDialogueCommand(command: DialogueCommandDTO): Promise<DialogueCommandReceiptDTO>;
   readonly debugEnabled: boolean;
   ping: (message: string) => Promise<PingResponseDTO>;
   getSystemInfo: () => Promise<SystemInfoDTO>;

@@ -155,6 +155,7 @@ function brainState(
   phase: BrainStateDTO['motion']['phase'] = 'grounded'
 ): BrainStateDTO {
   return {
+    dialogue: { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
     streamId: 'stream-1',
     revision,
     sampledAtMs: revision * 10,

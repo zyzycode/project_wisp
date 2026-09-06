@@ -87,6 +87,8 @@ export class MainAutonomyComposition {
   private cursorReactionActive = false;
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
+  private interactionGeneration = 0;
+  private dialogueOwner: { requestId: string; generation: number; episodeId: string | null } | null = null;
   private readonly cursorProximityEngine = new CursorProximityEngine();
   private cursorProximityState: CursorProximityState = {
     withinSwatRange: false,
@@ -441,6 +443,32 @@ export class MainAutonomyComposition {
     this.coordinator.interruptForcedMotion();
   }
 
+  public beginDialogueThinking(requestId: string): void {
+    this.dialogueOwner = { requestId, generation: this.interactionGeneration, episodeId: null };
+    if (this.menuOpen || !this.options.movement.canAcceptVoluntaryMovement() || this.activity.getRuntime() !== null) return;
+    const candidate: BehaviorIntent = { kind: 'think', source: 'provider', priority: 'normal', requestId };
+    if (this.character.resolveProviderIntent(candidate, this.options.getCharacterSnapshot()) === null) return;
+    this.coordinator.suspendForReactiveActivity();
+    this.setVisualKind('thinking_loop', true);
+    this.dialogueOwner.episodeId = this.getVisualEpisode().id;
+  }
+
+  public endDialogueThinking(requestId: string): void {
+    const owner = this.dialogueOwner;
+    if (owner?.requestId !== requestId || owner.episodeId === null) return;
+    if (this.getVisualEpisode().id === owner.episodeId && this.options.movement.canAcceptVoluntaryMovement()) this.setVisualKind('idle_blink', true);
+    owner.episodeId = null;
+    this.coordinator.resumeAfterReactiveActivity();
+  }
+
+  public offerDialogueIntent(intent: BehaviorIntent): void {
+    const owner = this.dialogueOwner;
+    if (!owner || owner.requestId !== intent.requestId || owner.generation !== this.interactionGeneration
+        || this.menuOpen || !this.options.movement.canAcceptVoluntaryMovement() || this.activity.getRuntime() !== null) return;
+    const resolved = this.character.resolveProviderIntent(intent, this.options.getCharacterSnapshot());
+    if (resolved !== null) this.handleResolvedIntent(resolved);
+  }
+
   public notifyTraversalRejected(request: Pick<TraversalRequest, 'runId' | 'stepId'>): void {
     const runtime = this.activity.getRuntime();
     if (runtime?.runId !== request.runId || runtime.currentStepId !== request.stepId) return;
@@ -490,6 +518,10 @@ export class MainAutonomyComposition {
   }
 
   private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
+    if (reason === 'user_interaction' || reason === 'forced_motion') {
+      this.interactionGeneration++;
+    }
+    if (this.dialogueOwner) this.endDialogueThinking(this.dialogueOwner.requestId);
     this.jumpFallAtMs = null;
     const wasCursorReaction = this.cursorReactionActive;
     const restSpot = this.activity.getRuntime()?.activityId.startsWith('rest_spot_') ?? false;

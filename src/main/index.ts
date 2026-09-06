@@ -48,6 +48,9 @@ import { MainAutonomyComposition } from './main-autonomy-composition';
 import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
 import { BodyEventIngress } from './body-event-ingress';
 import { BrainStatePublisher } from './brain-state-publisher';
+import { DialogueRuntime } from '../application/services/dialogue-loop.service';
+import { MockAIProvider } from '../infrastructure/ai/mock-ai-provider';
+import { registerDialogueIpc } from './dialogue-ipc-registration';
 import { ShimejiStimulusMapper } from '../application/services/shimeji-stimulus.mapper';
 
 process.env.APP_ROOT = path.join(__dirname, '../..');
@@ -79,6 +82,8 @@ let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let externalWindowSurfaces: ExternalWindowSurfacesPort | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
+let dialogueRuntime: DialogueRuntime | null = null;
+let unregisterDialogue: (() => void) | null = null;
 let activeBodyDrag: {
   readonly gestureId: string;
   readonly pointerId: number;
@@ -96,12 +101,13 @@ const appLogger = new AppLogger({
 });
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: randomUUID,
+  createStreamId: () => { const id = randomUUID(); dialogueRuntime?.replaceStream(id); return id; },
   createSnapshot: ({ streamId, revision, sampledAtMs }) => {
-    if (shimejiMotionOrchestrator === null || autonomyComposition === null) {
+    if (shimejiMotionOrchestrator === null || autonomyComposition === null || dialogueRuntime === null) {
       throw new Error('Brain state sources are unavailable');
     }
     return toBrainStateDTO({
+      dialogue: dialogueRuntime.getPresentation(),
       streamId,
       revision,
       sampledAtMs,
@@ -210,6 +216,7 @@ function beginBrainStream(): void {
 function clearBrainStream(): void {
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
+  dialogueRuntime?.detachStream();
 }
 
 function stopShimejiMotionLoop(): void {
@@ -260,6 +267,19 @@ function initializeAutonomyComposition(): void {
     onPresentationChanged: publishBrainState,
   });
   autonomyComposition.start();
+  if (dialogueRuntime === null) {
+    dialogueRuntime = new DialogueRuntime({
+      provider: new MockAIProvider({ simulatedLatencyMs: 300 }), now: () => performance.now(),
+      timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
+      getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
+      applyStimulus: stimulus => { defaultCharacterStateService.applyStimulus(stimulus); },
+      beginThinking: id => autonomyComposition?.beginDialogueThinking(id),
+      endThinking: id => autonomyComposition?.endDialogueThinking(id),
+      offerIntent: intent => autonomyComposition?.offerDialogueIntent(intent),
+      transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } },
+      publish: publishBrainState,
+    });
+  }
 }
 
 function createMainAutonomyScheduler(): {
@@ -426,6 +446,11 @@ function handleAcceptedBodyEvent(
 }
 
 function registerIpcHandlers(): void {
+  unregisterDialogue = registerDialogueIpc({
+    register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
+    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null,
+    receive: payload => dialogueRuntime?.receive(payload) ?? { status: 'rejected', reason: 'unavailable' },
+  });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
@@ -646,6 +671,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();

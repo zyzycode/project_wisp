@@ -10,6 +10,7 @@ import type { CharacterAutonomySnapshot } from '../../domain/character';
 import type { BrainVisualEpisode } from '../main-autonomy-composition';
 
 export interface BrainStateSource {
+  readonly dialogue: BrainStateDTO['dialogue'];
   readonly streamId: string;
   readonly revision: number;
   readonly sampledAtMs: number;
@@ -80,6 +81,7 @@ function toBrainVisualIntentDTO(episode: BrainVisualEpisode): BrainVisualIntentD
 
 export function toBrainStateDTO(state: BrainStateSource): BrainStateDTO {
   return {
+    dialogue: state.dialogue,
     streamId: state.streamId,
     revision: state.revision,
     sampledAtMs: state.sampledAtMs,

@@ -49,6 +49,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
     >
       <SpeechBubble message={model.dialogue.currentMessage} onDismiss={model.dialogue.dismissMessage} />
       <ChatInput
+        canSubmit={model.dialogue.canSubmit}
+        errorMessage={model.dialogue.error}
         isOpen={model.dialogue.chatOpen}
         onSendMessage={model.dialogue.handleSendMessage}
         onClose={model.dialogue.closeChat}

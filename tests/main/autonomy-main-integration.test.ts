@@ -123,6 +123,34 @@ function createFixture(
 }
 
 describe('Main integration: Brain runtime', () => {
+  it('releases only dialogue-owned thinking and offers a reply through Character gates', () => {
+    const f = createFixture(); f.composition.start();
+    f.composition.beginDialogueThinking('request');
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('thinking_loop');
+    f.composition.endDialogueThinking('foreign');
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('thinking_loop');
+    f.composition.endDialogueThinking('request');
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    f.composition.offerDialogueIntent({ kind: 'respond', source: 'provider', priority: 'normal', requestId: 'request' });
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('talking'); f.composition.dispose();
+  });
+  it('does not let a late dialogue result overwrite user input or forced motion', () => {
+    const f = createFixture(); f.composition.start(); f.composition.beginDialogueThinking('request');
+    f.composition.handleClick(); const clicked = f.composition.getVisualEpisode();
+    const intent = { kind: 'respond' as const, source: 'provider' as const, priority: 'normal' as const, requestId: 'request' };
+    f.composition.endDialogueThinking('request'); f.composition.offerDialogueIntent(intent);
+    expect(f.composition.getVisualEpisode()).toEqual(clicked);
+    f.composition.beginDialogueThinking('next'); f.composition.handleMotionEvent({ type: 'drag_started', atMs: 10 });
+    f.composition.endDialogueThinking('next'); f.composition.offerDialogueIntent({ ...intent, requestId: 'next' });
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('dragged'); f.composition.dispose();
+  });
+  it('preserves user sleep when a provider proposes an active response', () => {
+    const f = createFixture(); f.composition.start(); f.composition.requestSleepWake({ action: 'sleep' });
+    const sleeping = f.composition.getActivityTimeline(); f.composition.beginDialogueThinking('request');
+    f.composition.endDialogueThinking('request');
+    f.composition.offerDialogueIntent({ kind: 'play', source: 'provider', priority: 'normal', requestId: 'request' });
+    expect(f.composition.getActivityTimeline()).toEqual(sleeping); f.composition.dispose();
+  });
   it('restores full sleep at the Character energy threshold and exposes recovery only during sleep', () => {
     const needs = { energy: 10 };
     const f = createFixture(sequence(0), needs);

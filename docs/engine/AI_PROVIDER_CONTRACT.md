@@ -86,10 +86,10 @@ Application boundary обязан проверять известные поля
 
 ## Dialogue runtime и IPC — P17-A02 (#19)
 
-Это целевой контракт миграции текущего Renderer dialogue loop. Объявление типов не означает,
-что Main runtime уже реализован. Канонические target DTO находятся в
+Миграция реализована в P17-I01 (#44): `DialogueRuntime` исполняется в Main/Application.
+Канонические DTO находятся в
 [`ipc-contracts.ts`](../../src/shared/ipc-contracts.ts): `DialogueCommandDTO`,
-`DialogueCommandReceiptDTO`, `DialoguePresentationDTO`, `DialogueBrainStateDTO`, `DialogueCommandBridge`.
+`DialogueCommandReceiptDTO`, `DialoguePresentationDTO`, `BrainStateDTO`, `WispApiBridge`.
 
 ### Единственный владелец и композиция
 
@@ -108,7 +108,7 @@ Main создаёт runtime после Character/Brain composition, до рег�
 Clock/scheduler передаются структурными интерфейсами по существующему проектному образцу;
 новые npm-зависимости, singleton внутри Renderer и параллельный Character service не нужны.
 
-Текущий `processDialogueTurn` требует разделения await provider и semantic commit:
+[`DialogueRuntime`](../../src/application/services/dialogue-loop.service.ts) разделяет await provider и semantic commit:
 ни один continuation не применяет `provider_response`, context или intent до проверки generation/deadline.
 `ProviderResponseIntentMapper` создаёт candidate, а Character gating принимает окончательное решение.
 Прямой `applyBehaviorIntentToAnimation` из dialogue hook удаляется при миграции.
@@ -124,12 +124,11 @@ Clock/scheduler передаются структурными интерфейс
 | `DialogueCommandDTO` | `send(text)` или `reset`, текущие stream/conversation ID и возрастающая sequence. Locale выбирает Main из конфигурации; UI не передаёт snapshot, историю или provider settings. |
 | `DialogueCommandReceiptDTO` | Только accepted/rejected: `busy`, `stale`, `invalid_input`, `unavailable`. Accepted reset возвращает новый conversationId. Receipt не содержит ответа, visual intent или состояния персонажа. |
 | `DialoguePresentationDTO` | Текущая conversationId, canSubmit и последний turn: idle/thinking/completed/error. Текст ошибки уже пригоден для UI, без stack trace. |
-| `DialogueBrainStateDTO` | Целевая форма прежнего BrainStateDTO с обязательным dialogue; отдельного onDialogueState/getDialogueState нет. |
+| `BrainStateDTO.dialogue` | Обязательная projection в полном Brain snapshot; отдельного onDialogueState/getDialogueState нет. |
 
-При cutover поле `dialogue` переносится в сам `BrainStateDTO`, а `postDialogueCommand` —
-в `WispApiBridge`; временные target wrappers удаляются. Validators, publisher, preload и
-Renderer обновляются одной change-set. Optional dialogue и dual publish запрещены.
-До cutover текущие validators продолжают отвергать новую форму; target declarations не меняют runtime.
+Поле `dialogue` находится в `BrainStateDTO`, а `postDialogueCommand` — в `WispApiBridge`;
+временные target wrappers удалены. Validators, publisher, preload и Renderer подключены
+атомарно. Optional dialogue и dual publish запрещены; snapshot без dialogue отвергается.
 
 Все payload принимаются как unknown и копируются после exact-shape проверки по правилам
 [`UI_SPEC.md §6`](./UI_SPEC.md#6-brain--body-ipc). ID — trimmed непустые строки до 128 символов,

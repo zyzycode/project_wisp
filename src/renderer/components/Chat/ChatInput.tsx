@@ -3,7 +3,9 @@ import { sanitizeUserMessage } from '../../../domain/chat/chat-message';
 
 export interface ChatInputProps {
   isOpen: boolean;
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string) => Promise<boolean>;
+  canSubmit: boolean;
+  errorMessage?: string | null;
   onClose: () => void;
   placeholder?: string;
 }
@@ -12,10 +14,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   isOpen,
   onSendMessage,
   onClose,
+  canSubmit,
+  errorMessage,
   placeholder = 'Напишите Wisp...',
 }) => {
   const [text, setText] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const latestText = useRef(text);
+  latestText.current = text;
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -33,11 +39,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const sanitized = sanitizeUserMessage(text);
-    if (sanitized.length > 0) {
-      onSendMessage(sanitized);
+    if (canSubmit && sanitized.length > 0 && await onSendMessage(sanitized) && latestText.current === text) {
       setText('');
       onClose();
     }
@@ -70,7 +75,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <button
           type="submit"
           className="chat-send-btn"
-          disabled={text.trim().length === 0}
+          disabled={!canSubmit || text.trim().length === 0}
         >
           ➤
         </button>
@@ -82,6 +87,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           ✕
         </button>
       </form>
+      {errorMessage ? <div role="alert">{errorMessage}</div> : null}
       <div className="chat-input-arrow" />
     </div>
   );
