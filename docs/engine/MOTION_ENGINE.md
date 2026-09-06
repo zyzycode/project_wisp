@@ -245,3 +245,13 @@ flowchart TD
 - **Независимость домена**: математика движения в [`MotionEngine`](../../src/domain/behavior/motion-engine.ts) и [`SurfaceKinematics`](../../src/domain/behavior/surface-kinematics.ts) не зависит от Electron, DOM, таймеров Node.js и файловой системы.
 - **Детерминизм**: одинаковый входной снимок и констрейнты дают строго идентичное положение и события независимо от FPS рендера.
 - **Безопасность авторитета**: окно Electron двигается только через адаптер [`PetPositionPort`](../../src/application/ports/pet-position-port.ts); race conditions и параллельное перемещение окна несколькими источниками исключены.
+
+### AUTO-I06: arrival на выбранную внешнюю опору
+
+Directed route может нести normalized `targetSurface` в `TraversalAction`. Brain проверяет
+достижимость до scoring, Motion перед запуском и на каждом шаге проверяет identity,
+geometry, freshness и display bounds цели. Изменение цели в полёте отменяет направленную
+дугу в обычный fall/land; исходное окно после отрыва больше не является attachment.
+При успешном arrival Motion атомарно принимает top attachment без запуска user-perch
+Activity: исходный Explore/Rest продолжает свой Brain timeline. Same-top walk использует
+локальную координату цели, поэтому перемещение окна не сдвигает выбранную точку на опоре.

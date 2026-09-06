@@ -1,5 +1,7 @@
+import { createRestSpotActivity, selectRestSpot } from '../../domain/behavior/rest-spot-planner';
+import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
 import { createWindowPerchActivity } from '../../domain/behavior/external-surface-support';
-import { createExploreTraversalSteps, type TraversalAction } from '../../domain/behavior/traversal-route';
+import { createExternalRoute, createExploreTraversalSteps, type TraversalAction } from '../../domain/behavior/traversal-route';
 import {
   ActivityRunner,
   DEFAULT_ACTIVITY_COOLDOWN_RULES,
@@ -48,6 +50,7 @@ export interface BrainActivityRuntimeOptions {
   readonly getCollisionInsets: () => CollisionInsets;
   readonly nextRandom: () => number;
   readonly traversalEnabled?: boolean;
+  readonly getExternalSurfaces?: () => readonly ExternalWindowSurface[];
   readonly requestLocomotion: (request: {
     readonly runId: string;
     readonly stepId: string;
@@ -91,26 +94,26 @@ export class BrainActivityRuntime {
       catalog
     );
     if (selectedDefinition === null) return false;
+    const context = {
+      currentRootPosition: this.options.getRootPosition(), environment: selectionContext.environment,
+      collisionInsets: this.options.getCollisionInsets(), needs: selectionContext.character.needs,
+      tone: selectionContext.synthesizedTone, history: this.exploreHistory, nowMs,
+      externalSurfaces: this.options.getExternalSurfaces?.() ?? [],
+    };
+    if (selectedDefinition.id === 'rest' && (intent.source !== 'user' || context.environment.currentSurface?.kind === 'window_top')) {
+      const rest = selectRestSpot(context, intent.source !== 'user' && intent.reason !== 'vital_sleep');
+      if (rest === null) return false;
+      return this.startDefinition(createRestSpotActivity(rest), rest.target, nowMs);
+    }
     const selectedExplorePlan = selectedDefinition.id === 'explore'
-      ? selectExplorePlan({
-          currentRootPosition: this.options.getRootPosition(),
-          environment: selectionContext.environment,
-          collisionInsets: this.options.getCollisionInsets(),
-          needs: selectionContext.character.needs,
-          tone: selectionContext.synthesizedTone,
-          history: this.exploreHistory,
-          nowMs,
-        }, this.options.nextRandom())
-      : null;
+      ? selectExplorePlan({ ...context, isReachable: plan => {
+          if (plan.targetSurface === undefined && context.environment.currentSurface?.kind !== 'window_top') return true;
+          return this.options.traversalEnabled === true && createExternalRoute(plan, context) !== null;
+        } }, this.options.nextRandom()) : null;
     if (selectedDefinition.id === 'explore' && selectedExplorePlan === null) return false;
-    const definition = selectedExplorePlan === null
-      ? selectedDefinition
+    const definition = selectedExplorePlan === null ? selectedDefinition
       : createExploreActivityDefinition(selectedExplorePlan, this.options.traversalEnabled
-          ? createExploreTraversalSteps(selectedExplorePlan, {
-              currentRootPosition: this.options.getRootPosition(), environment: selectionContext.environment,
-              collisionInsets: this.options.getCollisionInsets(), needs: selectionContext.character.needs,
-              tone: selectionContext.synthesizedTone, history: this.exploreHistory, nowMs,
-            }) : []);
+          ? createExploreTraversalSteps(selectedExplorePlan, context) : []);
     return this.startDefinition(definition, selectedExplorePlan, nowMs);
   }
 

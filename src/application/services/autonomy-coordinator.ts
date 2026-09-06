@@ -1,3 +1,4 @@
+import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
 import type { TraversalRequest } from '../../domain/behavior/traversal-route';
 import type {
   CharacterAutonomyResolution,
@@ -38,6 +39,7 @@ export interface CharacterAutonomyBoundary {
 }
 
 export interface VoluntaryMovementController {
+  getExternalSurfaces?(): readonly ExternalWindowSurface[];
   getRootPosition(): Vector2Dto;
   getBounds(): ScreenBoundsDto;
   getEnvironmentSnapshot(): EnvironmentSnapshot;

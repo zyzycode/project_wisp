@@ -238,10 +238,11 @@ function initializeAutonomyComposition(): void {
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
     tickNeeds: (deltaMs) => {
-      defaultCharacterStateService.tickNeeds(deltaMs);
+      defaultCharacterStateService.tickNeeds(deltaMs, autonomyComposition?.isSleepingForRecovery() ? 'sleepy' : undefined);
     },
     movement: {
       getRootPosition: () => orchestrator.getMotionState().position,
+      getExternalSurfaces: () => orchestrator.availableExternalSurfaces(),
       getBounds: () => orchestrator.getEnvironmentSnapshot().screenBounds,
       getEnvironmentSnapshot: () => orchestrator.getEnvironmentSnapshot(),
       getCollisionInsets: () => DEFAULT_MOTION_CONSTRAINTS.collisionInsets,

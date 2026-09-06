@@ -276,7 +276,7 @@ export class ShimejiMotionOrchestrator {
     return presentationChanged;
   }
 
-  private availableExternalSurfaces(): readonly ExternalWindowSurface[] {
+  public availableExternalSurfaces(): readonly ExternalWindowSurface[] {
     const snapshot = this.options.externalWindows?.getSnapshot();
     if (snapshot !== undefined && Number.isSafeInteger(snapshot.revision) && snapshot.revision >= 0
         && (this.externalSnapshot === undefined || snapshot.revision > this.externalSnapshot.revision)) {
@@ -388,10 +388,19 @@ export class ShimejiMotionOrchestrator {
     const b = environment.screenBounds;
     if (a.id !== b.id || a.x !== b.x || a.y !== b.y || a.width !== b.width || a.height !== b.height) return false;
     const support = environment.currentSurface;
-    if (support?.id !== request.action.supportId || !support.isValidSupport || support.kind !== 'screen_floor') return false;
+    if ((!this.traversalStarted || request.action.kind === 'screen_climb' || support?.id === request.action.supportId) && (support?.id !== request.action.supportId || !support.isValidSupport
+        || (support.kind !== 'screen_floor' && support.kind !== 'window_top'))) return false;
     if (request.action.kind === 'directed_jump') {
       try {
         const range = calculateRootCollisionRange(b, this.constraints().collisionInsets);
+        const target = request.action.targetSurface;
+        if (target !== undefined) {
+          const live = this.availableExternalSurfaces().find(s => s.id === target.id);
+          return live?.kind === 'window_top' && live.bounds.x === target.bounds.x && live.bounds.y === target.bounds.y
+            && live.bounds.width === target.bounds.width && live.bounds.height === target.bounds.height
+            && request.action.target.y === live.bounds.y && request.action.target.x >= live.bounds.x
+            && request.action.target.x <= live.bounds.x + live.bounds.width;
+        }
         return request.action.target.y === range.maxY;
       } catch { return false; }
     }
@@ -582,6 +591,7 @@ export class ShimejiMotionOrchestrator {
           const launched = this.options.motionEngine.beginAirborne(this.motion, { cause: 'voluntary_jump',
             position: this.motion.position, velocityPxPerSec: plan.initialVelocity,
             boundsId: environment.screenBounds.id, atMs: nowMs, directedJump: plan });
+          this.selectedExternalId = undefined;
           this.motion = launched.state;
           this.surface = { ...groundedSurface(nowMs), phase: 'airborne' };
           this.attachmentRunId = undefined;
@@ -614,6 +624,17 @@ export class ShimejiMotionOrchestrator {
       const motionResult = this.options.motionEngine.step({ state: this.motion, stepSec, bounds: environment.screenBounds });
       this.motion = motionResult.state;
       motionEvents = [...motionEvents, ...motionResult.events];
+    }
+    if (this.traversal?.action.kind === 'directed_jump' && this.traversal.action.targetSurface !== undefined
+        && motionEvents.some(event => event.type === 'landed')) {
+      const targetId = this.traversal.action.targetSurface.id;
+      const target = this.availableExternalSurfaces().find(s => s.id === targetId);
+      const attached = target === undefined ? null : this.options.surfaceKinematics.startExternalSupport({
+        motion: this.motion, environment: { ...environment, capturedAtMs: this.externalSnapshot!.capturedAtMs, currentSurface: target },
+        nowMs, observationNowMs: this.options.now(), collisionInsets: this.constraints().collisionInsets });
+      if (attached !== null) {
+        this.selectedExternalId = target!.id; this.surface = attached.state; this.motion = attached.motion.state;
+      }
     }
     if (motionEvents.some((event) => event.type === 'jump_missed')) this.cancelVoluntaryMovement();
     if (this.motion.phase === 'grounded' && this.surface.phase === 'airborne') this.surface = groundedSurface(nowMs);

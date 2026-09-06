@@ -213,3 +213,27 @@ Renderer не выбирает Activity и не управляет её жизн
 - cooldown является hard gate, repetition — положительным soft factor;
 - одинаковые inputs и explicit random source дают одинаковый selection/lifecycle result;
 - Activity не принимает semantic, physics или visual priority decisions.
+
+### AUTO-I06: Explore и Rest Spot
+
+`rest-spot-planner.ts` и `explore-planner.ts` используют один bounded target/route/action
+history. External candidates поступают только из свежего Application snapshot. До scoring
+отсекаются недостижимые маршруты: same-support walk/traverse либо проверенная directed arc;
+существующий screen approach/grab/climb/rebound остаётся частью выбранного Explore.
+Пересечение параболой внутренности наблюдаемого окна запрещено. Изменение геометрии
+целевого окна в полёте отменяет arc; дальнейшее движение — обычное fall/land.
+
+Rest Spot остаётся Activity внутри resolved `sleep`: верх достижимого окна предпочтительнее
+тихой кромки/угла пола, затем безопасного пола. Верх окна начинает с `sit_edge`, затем settle;
+опора уже 240 DIP и край допускают только сидячую подготовку/сон. Широкий центр и пол
+допускают `lie_down`/`sleep_loop`. Доступные клипы задают временный visual fallback,
+а не длительность Brain phases; арт-долг — [реестр](../art/SPRITE_REQUESTS.md).
+
+Добровольный nap: prepare 1200 ms → settle 1500 ms → sleep 12000 ms → wake 1500 ms,
+после чего Character снова awake и возвращается единственный opportunity scheduler.
+`vital_sleep` и прямой user sleep не имеют nap deadline: после подготовки сохраняется
+sleep visual/semantic state до energy ≥80 либо прямого действия/потери опоры.
+Click/drag, menu pause, disable и shutdown отменяют активную Rest Spot рутину.
+Небольшое движение уже принятой опоры сохраняет local distance по Motion §7.1.
+Во время sleep phase/stable sleep Main передаёт существующий `sleepy` профиль метаболизма
+в CharacterStateService; во время подхода/подготовки он не применяется. Нового needs timer нет.

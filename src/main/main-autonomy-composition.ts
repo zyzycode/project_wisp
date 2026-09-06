@@ -86,6 +86,7 @@ export class MainAutonomyComposition {
   private menuOpen = false;
   private cursorReactionActive = false;
   private userPerchActive = false;
+  private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
   private readonly cursorProximityEngine = new CursorProximityEngine();
   private cursorProximityState: CursorProximityState = {
@@ -125,6 +126,7 @@ export class MainAutonomyComposition {
       getCollisionInsets: () => options.movement.getCollisionInsets(),
       nextRandom: () => options.prng.next(),
       traversalEnabled: options.movement.requestTraversal !== undefined,
+      getExternalSurfaces: () => options.movement.getExternalSurfaces?.() ?? [],
       requestLocomotion: (request) => {
         if (request.traversal !== undefined) return options.movement.requestTraversal?.({
           runId: request.runId, stepId: request.stepId, action: request.traversal,
@@ -135,7 +137,9 @@ export class MainAutonomyComposition {
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
       onTerminated: (result) => {
-        if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'window_perch'))
+        if (result.activityId === 'rest_spot_sleep' && result.status === 'completed') this.stableRestSpotSleep = true;
+        if (result.activityId === 'rest_spot_nap' || (result.activityId === 'rest_spot_sleep' && result.status !== 'completed')) this.character.finishRest();
+        if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'rest_spot_sleep' && result.activityId !== 'window_perch'))
             && options.movement.canAcceptVoluntaryMovement()) {
           this.setVisualKind('idle_blink', true, result.activityId === 'observe_cursor');
         }
@@ -184,6 +188,13 @@ export class MainAutonomyComposition {
     const elapsedMs = Number.isFinite(nowMs) ? Math.max(0, nowMs - previousTickAtMs) : 0;
     this.expireCursorObservation(nowMs);
     const needsChanged = this.tickNeeds(elapsedMs);
+    if (this.character.getSemanticSleepState() === 'sleeping'
+        && this.activity.getRuntime()?.activityId !== 'rest_spot_nap'
+        && this.options.getCharacterSnapshot().needs.energy >= 80) {
+      this.character.resolveDirectIntent({ kind: 'wake', source: 'system', priority: 'normal', reason: 'restored_energy' }, this.options.getCharacterSnapshot());
+      this.cancelActivity('user_interaction', false);
+      this.setVisualKind('wake_up', true, true); this.finishActivityCadence();
+    }
     const activityChanged = this.activity.tick(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
     if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
@@ -217,6 +228,12 @@ export class MainAutonomyComposition {
       phaseStartedAtMs: runtime.stepStartedAtMs,
       phaseEndsAtMs: runtime.phaseEndsAtMs,
     };
+  }
+
+  public isSleepingForRecovery(): boolean {
+    const runtime = this.activity.getRuntime();
+    return this.character.getSemanticSleepState() === 'sleeping'
+      && (runtime === null || runtime.currentStepId === 'sleep' || runtime.currentStepId === 'sleep_loop');
   }
 
   public getExplorePlan(): ExplorePlan | null {
@@ -318,6 +335,9 @@ export class MainAutonomyComposition {
       this.setVisualKind('happy_reaction', true, true);
       this.resumeAfterUserInteraction();
       return true;
+    }
+    if (this.character.isAutonomyEligible()) {
+      this.setVisualKind('wake_up', true, true); this.resumeAfterUserInteraction(); return true;
     }
     const intent = this.character.resolveDirectIntent(
       { kind: 'wake', source: 'user', priority: 'critical', reason: 'user_click_wake' },
@@ -457,11 +477,11 @@ export class MainAutonomyComposition {
 
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
     if (this.options.movement.getEnvironmentSnapshot().currentSurface?.kind === 'window_top') {
-      if (intent.kind === 'wander') return false; // AUTO-I06 owns autonomous external target selection.
       if (intent.kind === 'idle' || intent.kind === 'quiet') { this.setVisualKind('sit_edge', true); return true; }
     }
     if (this.activity.start(intent)) return true;
     if (intent.kind === 'wander') return false;
+    if (intent.kind === 'sleep') { this.character.finishRest(); this.setVisualKind('idle_blink', true); return false; }
     this.setVisualIntent(
       mapBehaviorIntentToAnimationIntent(intent, this.options.getCharacterSnapshot().synthesizedTone),
       true,
@@ -483,8 +503,15 @@ export class MainAutonomyComposition {
     this.jumpFallAtMs = null;
     const wasCursorReaction = this.cursorReactionActive;
     const wasPerching = this.userPerchActive;
+    const restSpot = this.activity.getRuntime()?.activityId.startsWith('rest_spot_') ?? false;
     const cancelled = this.activity.cancel(reason, forDrag);
+    if (this.stableRestSpotSleep) {
+      this.stableRestSpotSleep = false; this.character.finishRest();
+      if (publish) this.setVisualKind('idle_blink', true);
+      if (!cancelled) return true;
+    }
     if (!cancelled) return false;
+    if (restSpot) this.character.finishRest();
     if (wasPerching) { this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity(); }
     if (wasCursorReaction) {
       this.cursorReactionActive = false;

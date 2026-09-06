@@ -123,6 +123,46 @@ function createFixture(
 }
 
 describe('Main integration: Brain runtime', () => {
+  it('restores full sleep at the Character energy threshold and exposes recovery only during sleep', () => {
+    const needs = { energy: 10 };
+    const f = createFixture(sequence(0), needs);
+    f.composition.start(); f.scheduler.take()?.();
+    expect(f.composition.isSleepingForRecovery()).toBe(false);
+    f.composition.notifyVoluntaryMovementCompleted();
+    for (const ms of [1500, 3500, 7000]) { f.scheduler.nowMs = ms; f.composition.tick(); }
+    expect(f.composition.isSleepingForRecovery()).toBe(true);
+    needs.energy = 80; f.scheduler.nowMs = 7100; f.composition.tick();
+    expect(f.composition.isSleepingForRecovery()).toBe(false);
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('wake_up');
+    expect(f.scheduler.size()).toBe(1); f.composition.stop();
+  });
+
+  it('ends an autonomous nap awake and resumes the single opportunity scheduler', () => {
+    const f = createFixture(sequence(0, .05), { energy: 90 });
+    f.composition.start(); f.scheduler.take()?.();
+    expect(f.composition.getActivityTimeline()?.activityId).toBe('rest_spot_nap');
+    f.composition.notifyVoluntaryMovementCompleted();
+    for (const ms of [1500, 3500, 16000, 18000, 21000]) { f.scheduler.nowMs = ms; f.composition.tick(); }
+    expect(f.composition.getActivityTimeline()).toBeNull();
+    expect(f.composition.requestSleepWake({ action: 'wake' })).toBe(false);
+    expect(f.scheduler.size()).toBe(1);
+    f.composition.stop();
+  });
+  it('critical fatigue preserves sleep after preparation; disabling autonomy cancels stable sleep', () => {
+    const f = createFixture(sequence(0), { energy: 10 });
+    f.composition.start(); f.scheduler.take()?.();
+    expect(f.composition.getActivityTimeline()?.activityId).toBe('rest_spot_sleep');
+    f.composition.notifyVoluntaryMovementCompleted();
+    for (const ms of [1500, 3500, 7000]) { f.scheduler.nowMs = ms; f.composition.tick(); }
+    expect(f.composition.getActivityTimeline()).toBeNull();
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('sleep_loop');
+    expect(f.scheduler.size()).toBe(0);
+    f.composition.setEnabled(false);
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    expect(f.composition.requestSleepWake({ action: 'wake' })).toBe(false);
+    f.composition.stop();
+  });
+
   it('lands, resolves a support-local walk against the latest window origin and perches', () => {
     const surface: SurfaceSnapshotDto = { id: 'window', kind: 'window_top', bounds: { x: 90, y: 200, width: 400, height: 200 }, supportY: 200, isValidSupport: true };
     const f = createFixture(undefined, {}, [], surface);

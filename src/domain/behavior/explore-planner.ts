@@ -1,3 +1,4 @@
+import { isExternalSurface } from './external-surface-support';
 import type { Needs, SynthesizedEmotionalTone } from '../character';
 import type { ActivityDefinition } from './activity-runner';
 import {
@@ -5,7 +6,7 @@ import {
   type CollisionInsets,
   type Vector2Dto,
 } from './motion-engine';
-import type { EnvironmentSnapshot, SurfaceKind } from './surface-kinematics';
+import type { ExternalWindowSurface, EnvironmentSnapshot, SurfaceKind } from './surface-kinematics';
 
 export type ExplorePointKind = 'ordinary' | 'corner' | 'edge' | 'interesting_surface';
 export type ExploreInspectionKind =
@@ -26,6 +27,8 @@ export interface ExplorePlan {
   readonly pose: ExplorePose;
   readonly choreographyKey: string;
   readonly distancePx: number;
+  readonly targetSurface?: ExternalWindowSurface;
+  readonly supportLocalDistancePx?: number;
 }
 
 export interface ExploreHistoryEntry {
@@ -56,6 +59,8 @@ export const DEFAULT_EXPLORE_PLANNER_CONFIG: ExplorePlannerConfig = Object.freez
 });
 
 export interface ExplorePlanningContext {
+  readonly externalSurfaces?: readonly ExternalWindowSurface[];
+  readonly isReachable?: (plan: ExplorePlan) => boolean;
   readonly currentRootPosition: Vector2Dto;
   readonly environment: EnvironmentSnapshot;
   readonly collisionInsets: CollisionInsets;
@@ -142,7 +147,8 @@ export function createExplorePlanCandidates(
   config: ExplorePlannerConfig = DEFAULT_EXPLORE_PLANNER_CONFIG
 ): readonly ExplorePlan[] {
   const surface = context.environment.currentSurface;
-  if (surface === undefined || !surface.isValidSupport) return [];
+  if (surface === undefined || !surface.isValidSupport || (surface.kind !== 'screen_floor' && surface.kind !== 'window_top')
+      || (surface.kind === 'window_top' && !isExternalSurface(surface))) return [];
   let collisionRange;
   try {
     collisionRange = calculateRootCollisionRange(
@@ -155,7 +161,7 @@ export function createExplorePlanCandidates(
   const minX = Math.max(collisionRange.minX, surface.bounds.x);
   const maxX = Math.min(collisionRange.maxX, surface.bounds.x + surface.bounds.width);
   if (minX >= maxX) return [];
-  const maximumDistance = Math.min(config.maxTargetDistancePx, maxX - minX);
+  const maximumDistance = surface.kind === 'window_top' ? config.maxTargetDistancePx : Math.min(config.maxTargetDistancePx, maxX - minX);
   const minimumDistance = Math.min(
     config.minTargetDistancePx,
     maximumDistance * 0.5,
@@ -164,12 +170,13 @@ export function createExplorePlanCandidates(
   if (minimumDistance < 20) return [];
   const targetY = surface.kind === 'screen_floor'
     ? collisionRange.maxY
-    : context.currentRootPosition.y;
+    : surface.bounds.y;
   const seen = new Set<string>();
   const plans: ExplorePlan[] = [];
   for (const seed of pointSeeds(minX, maxX, context.currentRootPosition.x, config)) {
     const x = Math.round(seed.x * 1000) / 1000;
-    const distancePx = Math.abs(x - context.currentRootPosition.x);
+    const distancePx = surface.kind === 'screen_floor' ? Math.abs(x - context.currentRootPosition.x)
+      : Math.hypot(x - context.currentRootPosition.x, targetY - context.currentRootPosition.y);
     if (distancePx < minimumDistance || distancePx > maximumDistance) continue;
     const key = `${x}`;
     if (seen.has(key)) continue;
@@ -179,7 +186,7 @@ export function createExplorePlanCandidates(
     const inspection = inspectionFor(seed.kind);
     const pose = poseFor(seed.kind, surface.kind, context.needs, context.tone);
     plans.push(Object.freeze({
-      targetId: `${surface.id}:${x}`,
+      targetId: `${surface.id}:${surface.kind === 'window_top' ? x - surface.bounds.x : x}`,
       targetRootPosition: { x, y: targetY },
       pointKind: seed.kind,
       surfaceId: surface.id,
@@ -189,9 +196,10 @@ export function createExplorePlanCandidates(
       pose,
       choreographyKey: `${inspection}:${pose}`,
       distancePx,
+      ...(surface.kind === 'window_top' ? { targetSurface: surface as ExternalWindowSurface, supportLocalDistancePx: x - surface.bounds.x } : {}),
     }));
   }
-  return plans;
+  return plans.filter(plan => context.isReachable?.(plan) ?? true);
 }
 
 function repetitionScore(plan: ExplorePlan, context: ExplorePlanningContext, config: ExplorePlannerConfig): number {
@@ -248,7 +256,11 @@ export function selectExplorePlan(
   if (!Number.isFinite(randomUnit) || randomUnit < 0 || randomUnit >= 1) {
     throw new RangeError('Explore randomUnit must be finite and in [0, 1)');
   }
-  const scored = scoreExplorePlans(createExplorePlanCandidates(context, config), context, config)
+  const scored = scoreExplorePlans([
+    ...createExplorePlanCandidates(context, config),
+    ...(context.externalSurfaces ?? []).filter(surface => surface.kind === 'window_top' && surface.id !== context.environment.currentSurface?.id)
+      .flatMap(surface => createExplorePlanCandidates({ ...context, environment: { ...context.environment, currentSurface: surface } }, config)),
+  ], context, config)
     .filter((candidate) => candidate.weight > 0);
   const total = scored.reduce((sum, candidate) => sum + candidate.weight, 0);
   if (total <= 0) return null;
