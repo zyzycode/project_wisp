@@ -60,10 +60,9 @@ Reviewer не зависит от предоставленного diff, handoff
 - Correctness, edge cases, race conditions, cleanup таймеров/listeners.
 - Electron security: `contextIsolation`, no raw `ipcRenderer`, IPC/URL validation.
 - Architecture boundaries: no Node/Electron в Renderer, no provider leak в Domain/UI, no `process.platform` вне adapters.
-- **Изоляция внешних директорий (`asset-pipeline/` и `discord_orcestrations/`):**
-  - Никакой продуктовый diff не должен затрагивать `asset-pipeline/` или `discord_orcestrations/`;
-  - Наличие изменений в этих директориях — безусловный `Changes requested` (Severity: High);
-  - Проверка создания спрайтов: разработчик не должен генерировать/нарезать спрайты самостоятельно (графика принадлежит `sprite-artist`).
+- **Границы продуктового скоупа и ассеты:**
+  - Продуктовый diff должен затрагивать только продуктовые области приложения (`src/`, `public/`, `tests/`, `docs/`). Изменения вне продуктового скоупа недопустимы (`Changes requested`);
+  - Проверка спрайтов: разработчик не должен рисовать или генерировать спрайты в рамках продуктовых задач (графика поступает от внешнего художника в `public/assets/sprites/`).
 - Cross-platform: переносимые пути и точное совпадение регистра импортов на Linux.
 - TypeScript strictness: no `any`, dangerous casts или error suppression.
 - Tests and verification sufficient for risk (`npm run typecheck` для архитектурных контрактов, `npm test` для логики).
@@ -74,7 +73,7 @@ Reviewer не зависит от предоставленного diff, handoff
 Finding указывает файл и строку в diff, объясняет проблему и последствия, предлагает минимальное исправление.
 
 - **Critical:** Уязвимости безопасности Electron, падения приложения, утечка Node API в Renderer, нарушение IPC/security contracts.
-- **High:** Нарушение архитектурных границ слоёв, изменения в изолированных `asset-pipeline/` или `discord_orcestrations/`, бизнес-логика в UI, размазывание `process.platform` вне адаптеров, race condition, невыполненные acceptance criteria.
+- **High:** Нарушение архитектурных границ слоёв, изменения вне продуктового скоупа, бизнес-логика в UI, размазывание `process.platform` вне адаптеров, race condition, невыполненные acceptance criteria.
 - **Medium:** Missing tests для сложной логики, избыточное усложнение типов, неоптимальные ререндеры, дублирование кода, scope creep без немедленной поломки.
 - **Low:** Именование, локальная читаемость, мелкая документационная неоднозначность.
 
