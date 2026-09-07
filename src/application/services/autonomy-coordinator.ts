@@ -1,3 +1,4 @@
+import { LOCAL_TUNING_VERSION, type LocalSelectionContext, type LocalSelectionTrace } from '../../domain/behavior/local-activity-policy';
 import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
 import type { TraversalRequest } from '../../domain/behavior/traversal-route';
 import type {
@@ -38,6 +39,7 @@ export interface CharacterAutonomyBoundary {
     readonly candidates: readonly AutonomousCandidate[];
     readonly prng: IPrng;
     readonly config: typeof DEFAULT_AUTONOMOUS_INTENT_CONFIG;
+    readonly selection?: LocalSelectionContext;
   }): CharacterAutonomyResolution;
 }
 
@@ -58,6 +60,8 @@ export interface VoluntaryMovementController {
 }
 
 export interface AutonomyTraceEntry {
+  readonly tuningVersion?: string;
+  readonly selection?: readonly LocalSelectionTrace[];
   readonly decisionSequence: number;
   readonly opportunityAtMs: number;
   readonly orderedCandidateKinds: readonly AutonomousCandidate['kind'][];
@@ -78,6 +82,7 @@ export interface AutonomyCoordinatorOptions {
     intent: BehaviorIntent,
     opportunity: { readonly decisionSequence: number; readonly opportunityAtMs: number }
   ) => boolean;
+  readonly getLocalSelection?: () => LocalSelectionContext;
   readonly onMovementStopped?: () => void;
   readonly behaviorConfig?: BehaviorConfig;
   readonly traceCapacity?: number;
@@ -212,9 +217,9 @@ export class AutonomyCoordinator {
     this.scheduleNextOpportunity();
   }
 
-  public requestActivityLocomotion(targetRootPosition?: Vector2Dto): boolean {
+  public requestActivityLocomotion(targetRootPosition?: Vector2Dto, gait: 'walk' | 'run' | 'crawl' = 'walk'): boolean {
     if (this.disposed) return false;
-    return this.requestWander(targetRootPosition);
+    return this.requestWander(targetRootPosition, gait);
   }
 
   public noteUserActivity(): void {
@@ -274,6 +279,7 @@ export class AutonomyCoordinator {
         ),
       },
       snapshot,
+      selection: this.options.getLocalSelection?.(),
       candidates,
       prng: this.options.prng,
       config: {
@@ -286,6 +292,8 @@ export class AutonomyCoordinator {
       decisionSequence,
       opportunityAtMs,
       orderedCandidateKinds: candidates.map((candidate) => candidate.kind),
+      tuningVersion: LOCAL_TUNING_VERSION,
+      selection: resolution.selectionTrace,
       outcomeKind: resolved?.kind ?? null,
       outcomeReason: resolved?.reason ?? 'no_candidate_accepted',
       prng: { ...this.options.prngMetadata },
@@ -310,11 +318,10 @@ export class AutonomyCoordinator {
       }
       return;
     }
-    this.options.onIntentResolved(resolved, { decisionSequence, opportunityAtMs });
-    this.scheduleNextOpportunity();
+    if (!this.options.onIntentResolved(resolved, { decisionSequence, opportunityAtMs })) this.scheduleNextOpportunity();
   }
 
-  private requestWander(targetRootPosition?: Vector2Dto): boolean {
+  private requestWander(targetRootPosition?: Vector2Dto, gait: 'walk' | 'run' | 'crawl' = 'walk'): boolean {
     const start = this.options.movement.getRootPosition();
     const target = targetRootPosition === undefined
       ? wanderTargetPlanner({
@@ -332,7 +339,7 @@ export class AutonomyCoordinator {
     return target.durationMs > 0 && this.options.movement.requestVoluntaryMovement({
       kind: 'horizontal_wander',
       targetRootPosition: target.target,
-      speedPxPerSec: this.behaviorConfig().wanderSpeedPxPerSec,
+      speedPxPerSec: this.behaviorConfig().wanderSpeedPxPerSec * (gait === 'run' ? 2 : gait === 'crawl' ? .5 : 1),
     });
   }
 
@@ -379,7 +386,7 @@ export class AutonomyCoordinator {
 
   private pushTrace(entry: AutonomyTraceEntry): void {
     this.trace.push(Object.freeze(entry));
-    const capacity = Math.max(1, Math.floor(this.options.traceCapacity ?? 32));
+    const capacity = Math.max(1, Math.floor(this.options.traceCapacity ?? 64));
     if (this.trace.length > capacity) this.trace.splice(0, this.trace.length - capacity);
   }
 

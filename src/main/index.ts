@@ -241,7 +241,12 @@ function initializeAutonomyComposition(): void {
     scheduler: createMainAutonomyScheduler(),
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
-    getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
+    getCharacterSnapshot: () => {
+      const axes = defaultCharacterStateService.getState().personality.axes;
+      return { ...defaultCharacterStateService.getSnapshot(), localTraits: {
+        openness: axes.openness.current, playfulness: axes.playfulness.current,
+        independence: axes.independence.current, extraversion: axes.extraversion.current } };
+    },
     onActivityOutcome: event => {
       const stimulus = shimejiStimulusMapper.map(event, { createdAtIso: new Date().toISOString(),
         landingThresholds: DEFAULT_MOTION_CONSTRAINTS });

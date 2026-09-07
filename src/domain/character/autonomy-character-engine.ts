@@ -7,17 +7,20 @@ import {
   type IPrng,
 } from '../behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../behavior/behavior-intent';
+import { selectLocalActivity, type LocalSelectionContext, type LocalSelectionTrace } from '../behavior/local-activity-policy';
 import type { Needs, Relationship, SynthesizedEmotionalTone } from './types';
 
 export type SemanticSleepState = 'awake' | 'sleeping';
 
 export interface CharacterAutonomySnapshot {
   readonly needs: Needs;
+  readonly localTraits?: { readonly openness: number; readonly playfulness: number; readonly independence: number; readonly extraversion: number };
   readonly synthesizedTone: SynthesizedEmotionalTone;
   readonly relationship?: Readonly<Pick<Relationship, 'friendship'>>;
 }
 
 export interface CharacterAutonomyResolution {
+  readonly selectionTrace?: readonly LocalSelectionTrace[];
   readonly resolvedIntent: BehaviorIntent | null;
   readonly autonomyEligible: boolean;
   readonly semanticSleepState: SemanticSleepState;
@@ -52,12 +55,18 @@ export class AutonomyCharacterEngine {
     readonly candidates: readonly AutonomousCandidate[];
     readonly prng: IPrng;
     readonly config?: AutonomousIntentConfig;
+    readonly selection?: LocalSelectionContext;
   }): CharacterAutonomyResolution {
     if (this.sleepState === 'sleeping') return this.resolution(null);
 
     const { needs } = input.snapshot;
     const vitalSleep = needs.energy <= SLEEP_ENERGY_MAX || needs.comfort >= SLEEP_COMFORT_MIN;
     const sleepCandidate = input.candidates.find((candidate) => candidate.kind === 'sleep');
+    if (!vitalSleep && input.selection) {
+      const selection = selectLocalActivity(input.snapshot, input.selection, input.prng.next());
+      if (selection.intent.kind === 'sleep') this.sleepState = 'sleeping';
+      return { ...this.resolution(selection.intent), selectionTrace: selection.trace };
+    }
     const resolvedIntent = vitalSleep
       ? sleepCandidate === undefined
         ? null

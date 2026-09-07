@@ -78,6 +78,7 @@ export class MainAutonomyComposition {
   private readonly activity: BrainActivityRuntime;
   private readonly usedVisualEpisodeIds = new Set<string>();
   private visualEpisode: BrainVisualEpisode;
+  private readonly localHistory: { kind: string; atMs: number }[] = [];
   private activityRunSequence = 0;
   private started = false;
   private disposed = false;
@@ -110,6 +111,10 @@ export class MainAutonomyComposition {
       character: this.character,
       getCharacterSnapshot: options.getCharacterSnapshot,
       movement: options.movement,
+      getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
+        canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
+        canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
+        canRest: this.activity.canStart({ kind: 'sleep', source: 'timer', priority: 'normal' }) }),
       onIntentResolved: (intent) => this.handleResolvedIntent(intent),
       onMovementStopped: () => this.setVisualKind('idle_blink', true),
       ...(options.behaviorConfig === undefined ? {} : { behaviorConfig: options.behaviorConfig }),
@@ -134,7 +139,7 @@ export class MainAutonomyComposition {
         if (request.traversal !== undefined) return options.movement.requestTraversal?.({
           runId: request.runId, stepId: request.stepId, action: request.traversal,
         }) ?? false;
-        return this.coordinator.requestActivityLocomotion(request.targetRootPosition);
+        return this.coordinator.requestActivityLocomotion(request.targetRootPosition, request.gait);
       },
       cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
@@ -501,7 +506,13 @@ export class MainAutonomyComposition {
   }
 
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
-    if (this.activity.start(intent)) return true;
+    if (this.activity.getRuntime() !== null && intent.reason !== 'vital_sleep') return false;
+    if (this.activity.start(intent)) {
+      this.localHistory.push({ kind: intent.kind, atMs: this.options.clock.now() });
+      if (intent.calmPose) this.localHistory.push({ kind: `calm:${intent.calmPose}`, atMs: this.options.clock.now() });
+      if (this.localHistory.length > 16) this.localHistory.splice(0, this.localHistory.length - 16);
+      return true;
+    }
     if (intent.kind === 'wander') return false;
     if (intent.kind === 'sleep') { this.character.finishRest(); this.setVisualKind('idle_blink', true); return false; }
     this.setVisualIntent(

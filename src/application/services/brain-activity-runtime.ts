@@ -83,7 +83,16 @@ export class BrainActivityRuntime {
 
   public constructor(private readonly options: BrainActivityRuntimeOptions) {}
 
+  public canStart(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): boolean {
+    return this.prepare(intent, catalog) !== null;
+  }
+
   public start(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): boolean {
+    const prepared = this.prepare(intent, catalog);
+    return prepared !== null && this.startDefinition(prepared.definition, prepared.plan, this.options.clock.now(), intent);
+  }
+
+  private prepare(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): { definition: ActivityDefinition; plan: ExplorePlan | null } | null {
     const nowMs = this.options.clock.now();
     const selectionContext = {
       ...this.options.getSelectionContext(),
@@ -97,7 +106,7 @@ export class BrainActivityRuntime {
       catalog === undefined ? 0 : this.options.nextRandom(),
       catalog
     );
-    if (selectedDefinition === null) return false;
+    if (selectedDefinition === null) return null;
     const context = {
       currentRootPosition: this.options.getRootPosition(), environment: selectionContext.environment,
       collisionInsets: this.options.getCollisionInsets(), needs: selectionContext.character.needs,
@@ -106,19 +115,19 @@ export class BrainActivityRuntime {
     };
     if (selectedDefinition.id === 'rest') {
       const rest = selectRestSpot(context, intent.reason !== 'vital_sleep' && intent.source !== 'user');
-      if (rest === null) return false;
-      return this.startDefinition(createRestSpotActivity(rest), rest.target, nowMs, intent);
+      if (rest === null) return null;
+      return { definition: createRestSpotActivity(rest), plan: rest.target };
     }
     const selectedExplorePlan = selectedDefinition.id === 'explore'
       ? selectExplorePlan({ ...context, isReachable: plan => {
           if (plan.targetSurface === undefined && context.environment.currentSurface?.kind !== 'window_top') return true;
           return this.options.traversalEnabled === true && createExternalRoute(plan, context) !== null;
         } }, this.options.nextRandom()) : null;
-    if (selectedDefinition.id === 'explore' && selectedExplorePlan === null) return false;
+    if (selectedDefinition.id === 'explore' && selectedExplorePlan === null) return null;
     const definition = selectedExplorePlan === null ? selectedDefinition
       : createExploreActivityDefinition(selectedExplorePlan, this.options.traversalEnabled
           ? createExploreTraversalSteps(selectedExplorePlan, context) : []);
-    return this.startDefinition(definition, selectedExplorePlan, nowMs, intent);
+    return { definition, plan: selectedExplorePlan };
   }
 
   private startDefinition(

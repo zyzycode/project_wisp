@@ -40,4 +40,6 @@ export interface BehaviorIntent {
   moodHint?: BehaviorIntentMoodHint;
   reason?: string;
   requestId?: string;
+  readonly calmPose?: 'idle_blink' | 'look_around';
+  readonly activityFamily?: 'social_bid';
 }
