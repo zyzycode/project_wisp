@@ -1,0 +1,1088 @@
+{
+  "reference": "etalon.png",
+  "headHeight": 140,
+  "note": "Manually reviewed crown/chin/contact landmarks in isolated source-crop pixels. All transforms uniform. Seated loops return through the centre; one-shot actions have reviewed boundary reuse.",
+  "animations": {
+    "body_grab_edge": {
+      "source": "generated_images/body_grab_edge.png",
+      "durationMs": 160,
+      "frames": [
+        {
+          "index": 0,
+          "crown": [
+            214,
+            35
+          ],
+          "chin": [
+            214,
+            270
+          ],
+          "origin": [
+            214,
+            40
+          ],
+          "destination": [
+            256,
+            70
+          ],
+          "pivot": [
+            214,
+            40
+          ],
+          "anchors": {
+            "root": [
+              214,
+              40
+            ],
+            "head": [
+              214,
+              35
+            ],
+            "face": [
+              214,
+              215
+            ],
+            "leftHand": [
+              88,
+              40
+            ],
+            "rightHand": [
+              340,
+              40
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "crown": [
+            223,
+            10
+          ],
+          "chin": [
+            223,
+            252
+          ],
+          "origin": [
+            223,
+            37
+          ],
+          "destination": [
+            256,
+            70
+          ],
+          "pivot": [
+            223,
+            37
+          ],
+          "anchors": {
+            "root": [
+              223,
+              37
+            ],
+            "head": [
+              223,
+              10
+            ],
+            "face": [
+              223,
+              197
+            ],
+            "leftHand": [
+              88,
+              37
+            ],
+            "rightHand": [
+              356,
+              37
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "crown": [
+            220,
+            15
+          ],
+          "chin": [
+            220,
+            258
+          ],
+          "origin": [
+            220,
+            42
+          ],
+          "destination": [
+            256,
+            70
+          ],
+          "pivot": [
+            220,
+            42
+          ],
+          "anchors": {
+            "root": [
+              220,
+              42
+            ],
+            "head": [
+              220,
+              15
+            ],
+            "face": [
+              220,
+              203
+            ],
+            "leftHand": [
+              87,
+              42
+            ],
+            "rightHand": [
+              353,
+              42
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "crown": [
+            219,
+            12
+          ],
+          "chin": [
+            219,
+            255
+          ],
+          "origin": [
+            219,
+            38
+          ],
+          "destination": [
+            256,
+            70
+          ],
+          "pivot": [
+            219,
+            38
+          ],
+          "anchors": {
+            "root": [
+              219,
+              38
+            ],
+            "head": [
+              219,
+              12
+            ],
+            "face": [
+              219,
+              200
+            ],
+            "leftHand": [
+              86,
+              38
+            ],
+            "rightHand": [
+              352,
+              38
+            ]
+          }
+        }
+      ]
+    },
+    "body_jump_travel": {
+      "source": "generated_images/body_jump_travel.png",
+      "durationMs": 160,
+      "frames": [
+        {
+          "index": 0,
+          "crown": [
+            405,
+            10
+          ],
+          "chin": [
+            410,
+            260
+          ],
+          "origin": [
+            355,
+            320
+          ],
+          "destination": [
+            256,
+            285
+          ],
+          "pivot": [
+            355,
+            320
+          ],
+          "anchors": {
+            "root": [
+              355,
+              320
+            ],
+            "head": [
+              405,
+              10
+            ],
+            "face": [
+              407.5,
+              205
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "crown": [
+            475,
+            8
+          ],
+          "chin": [
+            475,
+            262
+          ],
+          "origin": [
+            446,
+            320
+          ],
+          "destination": [
+            256,
+            285
+          ],
+          "pivot": [
+            446,
+            320
+          ],
+          "anchors": {
+            "root": [
+              446,
+              320
+            ],
+            "head": [
+              475,
+              8
+            ],
+            "face": [
+              475,
+              207
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "crown": [
+            380,
+            8
+          ],
+          "chin": [
+            386,
+            259
+          ],
+          "origin": [
+            350,
+            315
+          ],
+          "destination": [
+            256,
+            285
+          ],
+          "pivot": [
+            350,
+            315
+          ],
+          "anchors": {
+            "root": [
+              350,
+              315
+            ],
+            "head": [
+              380,
+              8
+            ],
+            "face": [
+              383,
+              204
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "crown": [
+            345,
+            10
+          ],
+          "chin": [
+            349,
+            275
+          ],
+          "origin": [
+            320,
+            340
+          ],
+          "destination": [
+            256,
+            285
+          ],
+          "pivot": [
+            320,
+            340
+          ],
+          "anchors": {
+            "root": [
+              320,
+              340
+            ],
+            "head": [
+              345,
+              10
+            ],
+            "face": [
+              347,
+              220
+            ]
+          }
+        }
+      ]
+    },
+    "body_pull_up_edge": {
+      "source": "generated_images/body_pull_up_edge.png",
+      "durationMs": 200,
+      "frames": [
+        {
+          "reuse": [
+            "body_grab_edge",
+            3
+          ]
+        },
+        {
+          "index": 1,
+          "crown": [
+            245,
+            5
+          ],
+          "chin": [
+            245,
+            250
+          ],
+          "origin": [
+            245,
+            5
+          ],
+          "destination": [
+            256,
+            70
+          ],
+          "pivot": [
+            245,
+            80
+          ],
+          "anchors": {
+            "root": [
+              245,
+              80
+            ],
+            "head": [
+              245,
+              5
+            ],
+            "face": [
+              245,
+              195
+            ],
+            "leftHand": [
+              130,
+              80
+            ],
+            "rightHand": [
+              360,
+              80
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "crown": [
+            230,
+            12
+          ],
+          "chin": [
+            230,
+            267
+          ],
+          "origin": [
+            230,
+            12
+          ],
+          "destination": [
+            256,
+            70
+          ],
+          "pivot": [
+            232,
+            354
+          ],
+          "anchors": {
+            "root": [
+              232,
+              354
+            ],
+            "head": [
+              230,
+              12
+            ],
+            "face": [
+              230,
+              212
+            ],
+            "leftHand": [
+              140,
+              354
+            ],
+            "rightHand": [
+              324,
+              354
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "crown": [
+            210,
+            6
+          ],
+          "chin": [
+            210,
+            259
+          ],
+          "origin": [
+            210,
+            6
+          ],
+          "destination": [
+            256,
+            70
+          ],
+          "pivot": [
+            260,
+            465
+          ],
+          "anchors": {
+            "root": [
+              260,
+              465
+            ],
+            "head": [
+              210,
+              6
+            ],
+            "face": [
+              210,
+              204
+            ],
+            "leftHand": [
+              192,
+              465
+            ],
+            "rightHand": [
+              340,
+              465
+            ]
+          }
+        }
+      ]
+    },
+    "body_sit_edge": {
+      "source": "generated_images/refined/body_sit_edge.png",
+      "durationMs": 240,
+      "frames": [
+        {
+          "index": 0,
+          "crown": [
+            255,
+            4
+          ],
+          "chin": [
+            255,
+            305
+          ],
+          "origin": [
+            255,
+            540
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            255,
+            540
+          ],
+          "anchors": {
+            "root": [
+              255,
+              540
+            ],
+            "head": [
+              255,
+              4
+            ],
+            "face": [
+              255,
+              250
+            ],
+            "hips": [
+              255,
+              540
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "crown": [
+            245,
+            4
+          ],
+          "chin": [
+            245,
+            306
+          ],
+          "origin": [
+            245,
+            540
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            245,
+            540
+          ],
+          "anchors": {
+            "root": [
+              245,
+              540
+            ],
+            "head": [
+              245,
+              4
+            ],
+            "face": [
+              245,
+              251
+            ],
+            "hips": [
+              245,
+              540
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "crown": [
+            258,
+            4
+          ],
+          "chin": [
+            258,
+            306
+          ],
+          "origin": [
+            258,
+            540
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            258,
+            540
+          ],
+          "anchors": {
+            "root": [
+              258,
+              540
+            ],
+            "head": [
+              258,
+              4
+            ],
+            "face": [
+              258,
+              251
+            ],
+            "hips": [
+              258,
+              540
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "crown": [
+            245,
+            4
+          ],
+          "chin": [
+            245,
+            306
+          ],
+          "origin": [
+            245,
+            540
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            245,
+            540
+          ],
+          "anchors": {
+            "root": [
+              245,
+              540
+            ],
+            "head": [
+              245,
+              4
+            ],
+            "face": [
+              245,
+              251
+            ],
+            "hips": [
+              245,
+              540
+            ]
+          }
+        }
+      ]
+    },
+    "body_sit_edge_sleep": {
+      "source": "generated_images/refined/body_sit_edge_sleep_short.png",
+      "durationMs": 500,
+      "frames": [
+        {
+          "index": 0,
+          "crown": [
+            254,
+            8
+          ],
+          "chin": [
+            254,
+            304
+          ],
+          "origin": [
+            254,
+            570
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            254,
+            570
+          ],
+          "anchors": {
+            "root": [
+              254,
+              570
+            ],
+            "head": [
+              254,
+              8
+            ],
+            "face": [
+              254,
+              249
+            ],
+            "hips": [
+              254,
+              570
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "crown": [
+            245,
+            6
+          ],
+          "chin": [
+            245,
+            302
+          ],
+          "origin": [
+            245,
+            570
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            245,
+            570
+          ],
+          "anchors": {
+            "root": [
+              245,
+              570
+            ],
+            "head": [
+              245,
+              6
+            ],
+            "face": [
+              245,
+              247
+            ],
+            "hips": [
+              245,
+              570
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "crown": [
+            250,
+            6
+          ],
+          "chin": [
+            250,
+            302
+          ],
+          "origin": [
+            250,
+            568
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            250,
+            568
+          ],
+          "anchors": {
+            "root": [
+              250,
+              568
+            ],
+            "head": [
+              250,
+              6
+            ],
+            "face": [
+              250,
+              247
+            ],
+            "hips": [
+              250,
+              568
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "crown": [
+            245,
+            6
+          ],
+          "chin": [
+            245,
+            302
+          ],
+          "origin": [
+            245,
+            570
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            245,
+            570
+          ],
+          "anchors": {
+            "root": [
+              245,
+              570
+            ],
+            "head": [
+              245,
+              6
+            ],
+            "face": [
+              245,
+              247
+            ],
+            "hips": [
+              245,
+              570
+            ]
+          }
+        }
+      ]
+    },
+    "body_sit_edge_settle": {
+      "source": "generated_images/refined/body_sit_edge_settle_spaced.png",
+      "durationMs": 300,
+      "frames": [
+        {
+          "reuse": [
+            "body_sit_edge",
+            1
+          ]
+        },
+        {
+          "index": 1,
+          "crown": [
+            144,
+            5
+          ],
+          "chin": [
+            144,
+            184
+          ],
+          "origin": [
+            144,
+            325
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            144,
+            325
+          ],
+          "anchors": {
+            "root": [
+              144,
+              325
+            ],
+            "head": [
+              144,
+              5
+            ],
+            "face": [
+              144,
+              129
+            ],
+            "hips": [
+              144,
+              325
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "crown": [
+            150,
+            5
+          ],
+          "chin": [
+            150,
+            190
+          ],
+          "origin": [
+            150,
+            333
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            150,
+            333
+          ],
+          "anchors": {
+            "root": [
+              150,
+              333
+            ],
+            "head": [
+              150,
+              5
+            ],
+            "face": [
+              150,
+              135
+            ],
+            "hips": [
+              150,
+              333
+            ]
+          }
+        },
+        {
+          "reuse": [
+            "body_sit_edge_sleep",
+            0
+          ]
+        }
+      ]
+    },
+    "body_cursor_play": {
+      "source": "generated_images/body_cursor_play.png",
+      "durationMs": 180,
+      "frames": [
+        {
+          "index": 0,
+          "crown": [
+            244,
+            8
+          ],
+          "chin": [
+            244,
+            287
+          ],
+          "origin": [
+            244,
+            703
+          ],
+          "destination": [
+            256,
+            460
+          ],
+          "pivot": [
+            244,
+            703
+          ],
+          "anchors": {
+            "root": [
+              244,
+              703
+            ],
+            "head": [
+              244,
+              8
+            ],
+            "face": [
+              244,
+              232
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "crown": [
+            258,
+            8
+          ],
+          "chin": [
+            258,
+            283
+          ],
+          "origin": [
+            253,
+            705
+          ],
+          "destination": [
+            256,
+            460
+          ],
+          "pivot": [
+            253,
+            705
+          ],
+          "anchors": {
+            "root": [
+              253,
+              705
+            ],
+            "head": [
+              258,
+              8
+            ],
+            "face": [
+              258,
+              228
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "crown": [
+            266,
+            8
+          ],
+          "chin": [
+            266,
+            290
+          ],
+          "origin": [
+            258,
+            703
+          ],
+          "destination": [
+            256,
+            460
+          ],
+          "pivot": [
+            258,
+            703
+          ],
+          "anchors": {
+            "root": [
+              258,
+              703
+            ],
+            "head": [
+              266,
+              8
+            ],
+            "face": [
+              266,
+              235
+            ]
+          }
+        },
+        {
+          "index": 0,
+          "crown": [
+            244,
+            8
+          ],
+          "chin": [
+            244,
+            287
+          ],
+          "origin": [
+            244,
+            703
+          ],
+          "destination": [
+            256,
+            460
+          ],
+          "pivot": [
+            244,
+            703
+          ],
+          "anchors": {
+            "root": [
+              244,
+              703
+            ],
+            "head": [
+              244,
+              8
+            ],
+            "face": [
+              244,
+              232
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

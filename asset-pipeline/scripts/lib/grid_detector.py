@@ -11,7 +11,6 @@ import re
 from typing import List, Optional, Tuple
 
 import numpy as np
-import scipy.ndimage as ndi
 from PIL import Image
 
 
@@ -183,6 +182,9 @@ def extract_frames_from_sheet(
                 cell_arr[:, :, 3] = np.where(cell_arr[:, :, 3] < 15, 0, cell_arr[:, :, 3])
                 frames.append(Image.fromarray(cell_arr))
         return frames
+
+    # SciPy is needed only for connected-component extraction, not uniform slicing.
+    import scipy.ndimage as ndi
 
     # Connected component analysis for character body
     labeled, num_features = ndi.label(clean_a > 0)

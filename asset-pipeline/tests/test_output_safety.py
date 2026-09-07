@@ -25,7 +25,7 @@ class PipelineSafetyTests(unittest.TestCase):
         self.scripts = self.pipeline / "scripts"
         shutil.copytree(SCRIPTS, self.scripts, ignore=shutil.ignore_patterns("__pycache__"))
         self.output = self.pipeline / "output"
-        self.input = self.pipeline / "input"
+        self.input = self.pipeline / "generated_images"
         self.input.mkdir()
         self.production = self.root / "public/assets/sprites"
         self.production.mkdir(parents=True)
@@ -147,6 +147,16 @@ class PipelineSafetyTests(unittest.TestCase):
         self.assertFalse(self.output.exists())
         self.assertEqual(self.snapshot(self.production), self.before)
 
+    def test_reviewed_recipe_prevents_generic_rescaling_even_with_force(self):
+        references = self.pipeline / 'references'
+        references.mkdir()
+        (references / 'requested-sprites-export.json').write_text(json.dumps({
+            'animations': {'face_happy': {}},
+        }))
+        result = self.run_tool('process_sprites.py', '--force')
+        self.assertIn('export_requested.py', result.stdout)
+        self.assertEqual(self.snapshot(self.production), self.before)
+
     def test_legacy_input_can_be_read_without_moving_or_modifying_it(self):
         legacy = self.root / "generated_images"
         legacy.mkdir()
@@ -254,7 +264,7 @@ class PipelineSafetyTests(unittest.TestCase):
         frame = self.frames / "face_happy_00.png"
         for target in (self.manifest, self.unrelated):
             with self.subTest(target=target):
-                frame.unlink()
+                frame.unlink(missing_ok=True)
                 self.symlink(frame, target)
                 target_before = target.read_bytes()
                 self.run_tool("process_sprites.py", expected=1)

@@ -685,5 +685,1006 @@
       "/assets/sprites/faces/gaze/face_gaze_03.png"
     ],
     "sourceFile": "face_gaze.png"
+  },
+  "body_grab_edge": {
+    "category": "body/grab_edge",
+    "frames": [
+      {
+        "pivot": {
+          "x": 256.49,
+          "y": 69.83
+        },
+        "anchors": {
+          "root": {
+            "x": 256.49,
+            "y": 69.83
+          },
+          "head": {
+            "x": 256.49,
+            "y": 66.85
+          },
+          "face": {
+            "x": 256.49,
+            "y": 174.09
+          },
+          "leftHand": {
+            "x": 181.43,
+            "y": 69.83
+          },
+          "rightHand": {
+            "x": 331.55,
+            "y": 69.83
+          }
+        },
+        "source": "/assets/sprites/body/grab_edge/body_grab_edge_00.png",
+        "durationMs": 160,
+        "bounds": {
+          "x": 129,
+          "y": 46,
+          "width": 254,
+          "height": 431
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.01,
+          "y": 70.4
+        },
+        "anchors": {
+          "root": {
+            "x": 256.01,
+            "y": 70.4
+          },
+          "head": {
+            "x": 256.01,
+            "y": 54.79
+          },
+          "face": {
+            "x": 256.01,
+            "y": 162.97
+          },
+          "leftHand": {
+            "x": 177.91,
+            "y": 70.4
+          },
+          "rightHand": {
+            "x": 332.95,
+            "y": 70.4
+          }
+        },
+        "source": "/assets/sprites/body/grab_edge/body_grab_edge_01.png",
+        "durationMs": 160,
+        "bounds": {
+          "x": 127,
+          "y": 49,
+          "width": 258,
+          "height": 363
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.75,
+          "y": 70.2
+        },
+        "anchors": {
+          "root": {
+            "x": 255.75,
+            "y": 70.2
+          },
+          "head": {
+            "x": 255.75,
+            "y": 54.64
+          },
+          "face": {
+            "x": 255.75,
+            "y": 162.95
+          },
+          "leftHand": {
+            "x": 179.12,
+            "y": 70.2
+          },
+          "rightHand": {
+            "x": 332.37,
+            "y": 70.2
+          }
+        },
+        "source": "/assets/sprites/body/grab_edge/body_grab_edge_02.png",
+        "durationMs": 160,
+        "bounds": {
+          "x": 129,
+          "y": 46,
+          "width": 254,
+          "height": 405
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.17,
+          "y": 69.89
+        },
+        "anchors": {
+          "root": {
+            "x": 256.17,
+            "y": 69.89
+          },
+          "head": {
+            "x": 256.17,
+            "y": 54.91
+          },
+          "face": {
+            "x": 256.17,
+            "y": 163.23
+          },
+          "leftHand": {
+            "x": 179.55,
+            "y": 69.89
+          },
+          "rightHand": {
+            "x": 332.8,
+            "y": 69.89
+          }
+        },
+        "source": "/assets/sprites/body/grab_edge/body_grab_edge_03.png",
+        "durationMs": 160,
+        "bounds": {
+          "x": 130,
+          "y": 48,
+          "width": 252,
+          "height": 407
+        }
+      }
+    ],
+    "framesCount": 4,
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "fps": 6.25,
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    }
+  },
+  "body_jump_travel": {
+    "category": "body/jump_travel",
+    "frames": [
+      {
+        "pivot": {
+          "x": 255.8,
+          "y": 285.2
+        },
+        "anchors": {
+          "root": {
+            "x": 255.8,
+            "y": 285.2
+          },
+          "head": {
+            "x": 283.8,
+            "y": 111.6
+          },
+          "face": {
+            "x": 285.2,
+            "y": 220.8
+          }
+        },
+        "source": "/assets/sprites/body/jump_travel/body_jump_travel_00.png",
+        "durationMs": 160,
+        "bounds": {
+          "x": 57,
+          "y": 106,
+          "width": 318,
+          "height": 321
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.83,
+          "y": 285.38
+        },
+        "anchors": {
+          "root": {
+            "x": 255.83,
+            "y": 285.38
+          },
+          "head": {
+            "x": 271.81,
+            "y": 113.41
+          },
+          "face": {
+            "x": 271.81,
+            "y": 223.09
+          }
+        },
+        "source": "/assets/sprites/body/jump_travel/body_jump_travel_01.png",
+        "durationMs": 160,
+        "bounds": {
+          "x": 10,
+          "y": 109,
+          "width": 341,
+          "height": 279
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.22,
+          "y": 284.7
+        },
+        "anchors": {
+          "root": {
+            "x": 256.22,
+            "y": 284.7
+          },
+          "head": {
+            "x": 272.95,
+            "y": 113.46
+          },
+          "face": {
+            "x": 274.63,
+            "y": 222.78
+          }
+        },
+        "source": "/assets/sprites/body/jump_travel/body_jump_travel_02.png",
+        "durationMs": 160,
+        "bounds": {
+          "x": 61,
+          "y": 109,
+          "width": 282,
+          "height": 283
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.06,
+          "y": 284.62
+        },
+        "anchors": {
+          "root": {
+            "x": 256.06,
+            "y": 284.62
+          },
+          "head": {
+            "x": 269.26,
+            "y": 110.28
+          },
+          "face": {
+            "x": 270.32,
+            "y": 221.23
+          }
+        },
+        "source": "/assets/sprites/body/jump_travel/body_jump_travel_03.png",
+        "durationMs": 160,
+        "bounds": {
+          "x": 87,
+          "y": 105,
+          "width": 259,
+          "height": 312
+        }
+      }
+    ],
+    "framesCount": 4,
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "fps": 6.25,
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    }
+  },
+  "body_pull_up_edge": {
+    "category": "body/pull_up_edge",
+    "frames": [
+      {
+        "pivot": {
+          "x": 256.17,
+          "y": 69.89
+        },
+        "anchors": {
+          "root": {
+            "x": 256.17,
+            "y": 69.89
+          },
+          "head": {
+            "x": 256.17,
+            "y": 54.91
+          },
+          "face": {
+            "x": 256.17,
+            "y": 163.23
+          },
+          "leftHand": {
+            "x": 179.55,
+            "y": 69.89
+          },
+          "rightHand": {
+            "x": 332.8,
+            "y": 69.89
+          }
+        },
+        "source": "/assets/sprites/body/pull_up_edge/body_pull_up_edge_00.png",
+        "durationMs": 200,
+        "bounds": {
+          "x": 130,
+          "y": 48,
+          "width": 252,
+          "height": 407
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.0,
+          "y": 112.71
+        },
+        "anchors": {
+          "root": {
+            "x": 256.0,
+            "y": 112.71
+          },
+          "head": {
+            "x": 256.0,
+            "y": 69.86
+          },
+          "face": {
+            "x": 256.0,
+            "y": 178.43
+          },
+          "leftHand": {
+            "x": 190.29,
+            "y": 112.71
+          },
+          "rightHand": {
+            "x": 321.71,
+            "y": 112.71
+          }
+        },
+        "source": "/assets/sprites/body/pull_up_edge/body_pull_up_edge_01.png",
+        "durationMs": 200,
+        "bounds": {
+          "x": 116,
+          "y": 67,
+          "width": 278,
+          "height": 419
+        }
+      },
+      {
+        "pivot": {
+          "x": 257.37,
+          "y": 257.35
+        },
+        "anchors": {
+          "root": {
+            "x": 257.37,
+            "y": 257.35
+          },
+          "head": {
+            "x": 256.27,
+            "y": 69.59
+          },
+          "face": {
+            "x": 256.27,
+            "y": 179.39
+          },
+          "leftHand": {
+            "x": 206.86,
+            "y": 257.35
+          },
+          "rightHand": {
+            "x": 307.88,
+            "y": 257.35
+          }
+        },
+        "source": "/assets/sprites/body/pull_up_edge/body_pull_up_edge_02.png",
+        "durationMs": 200,
+        "bounds": {
+          "x": 130,
+          "y": 63,
+          "width": 254,
+          "height": 304
+        }
+      },
+      {
+        "pivot": {
+          "x": 283.87,
+          "y": 324.31
+        },
+        "anchors": {
+          "root": {
+            "x": 283.87,
+            "y": 324.31
+          },
+          "head": {
+            "x": 256.21,
+            "y": 70.32
+          },
+          "face": {
+            "x": 256.21,
+            "y": 179.89
+          },
+          "leftHand": {
+            "x": 246.25,
+            "y": 324.31
+          },
+          "rightHand": {
+            "x": 328.14,
+            "y": 324.31
+          }
+        },
+        "source": "/assets/sprites/body/pull_up_edge/body_pull_up_edge_03.png",
+        "durationMs": 200,
+        "bounds": {
+          "x": 140,
+          "y": 67,
+          "width": 236,
+          "height": 269
+        }
+      }
+    ],
+    "framesCount": 4,
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "fps": 5.0,
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    }
+  },
+  "body_sit_edge": {
+    "category": "body/sit_edge",
+    "frames": [
+      {
+        "pivot": {
+          "x": 255.6,
+          "y": 330.16
+        },
+        "anchors": {
+          "root": {
+            "x": 255.6,
+            "y": 330.16
+          },
+          "head": {
+            "x": 255.6,
+            "y": 80.86
+          },
+          "face": {
+            "x": 255.6,
+            "y": 195.28
+          },
+          "hips": {
+            "x": 255.6,
+            "y": 330.16
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge/body_sit_edge_00.png",
+        "durationMs": 240,
+        "bounds": {
+          "x": 137,
+          "y": 79,
+          "width": 237,
+          "height": 340
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.58,
+          "y": 330.33
+        },
+        "anchors": {
+          "root": {
+            "x": 255.58,
+            "y": 330.33
+          },
+          "head": {
+            "x": 255.58,
+            "y": 81.85
+          },
+          "face": {
+            "x": 255.58,
+            "y": 196.36
+          },
+          "hips": {
+            "x": 255.58,
+            "y": 330.33
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge/body_sit_edge_01.png",
+        "durationMs": 240,
+        "bounds": {
+          "x": 142,
+          "y": 80,
+          "width": 237,
+          "height": 338
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.6,
+          "y": 330.33
+        },
+        "anchors": {
+          "root": {
+            "x": 255.6,
+            "y": 330.33
+          },
+          "head": {
+            "x": 255.6,
+            "y": 81.85
+          },
+          "face": {
+            "x": 255.6,
+            "y": 196.36
+          },
+          "hips": {
+            "x": 255.6,
+            "y": 330.33
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge/body_sit_edge_02.png",
+        "durationMs": 240,
+        "bounds": {
+          "x": 136,
+          "y": 80,
+          "width": 239,
+          "height": 339
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.58,
+          "y": 330.33
+        },
+        "anchors": {
+          "root": {
+            "x": 255.58,
+            "y": 330.33
+          },
+          "head": {
+            "x": 255.58,
+            "y": 81.85
+          },
+          "face": {
+            "x": 255.58,
+            "y": 196.36
+          },
+          "hips": {
+            "x": 255.58,
+            "y": 330.33
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge/body_sit_edge_03.png",
+        "durationMs": 240,
+        "bounds": {
+          "x": 142,
+          "y": 80,
+          "width": 237,
+          "height": 338
+        }
+      }
+    ],
+    "framesCount": 4,
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "fps": 4.166666666666667,
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    }
+  },
+  "body_sit_edge_sleep": {
+    "category": "body/sit_edge_sleep",
+    "frames": [
+      {
+        "pivot": {
+          "x": 256.14,
+          "y": 329.59
+        },
+        "anchors": {
+          "root": {
+            "x": 256.14,
+            "y": 329.59
+          },
+          "head": {
+            "x": 256.14,
+            "y": 63.78
+          },
+          "face": {
+            "x": 256.14,
+            "y": 177.77
+          },
+          "hips": {
+            "x": 256.14,
+            "y": 329.59
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_00.png",
+        "durationMs": 500,
+        "bounds": {
+          "x": 136,
+          "y": 60,
+          "width": 240,
+          "height": 358
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.88,
+          "y": 329.59
+        },
+        "anchors": {
+          "root": {
+            "x": 255.88,
+            "y": 329.59
+          },
+          "head": {
+            "x": 255.88,
+            "y": 62.84
+          },
+          "face": {
+            "x": 255.88,
+            "y": 176.82
+          },
+          "hips": {
+            "x": 255.88,
+            "y": 329.59
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_01.png",
+        "durationMs": 500,
+        "bounds": {
+          "x": 140,
+          "y": 60,
+          "width": 240,
+          "height": 358
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.24,
+          "y": 329.65
+        },
+        "anchors": {
+          "root": {
+            "x": 256.24,
+            "y": 329.65
+          },
+          "head": {
+            "x": 256.24,
+            "y": 63.84
+          },
+          "face": {
+            "x": 256.24,
+            "y": 177.82
+          },
+          "hips": {
+            "x": 256.24,
+            "y": 329.65
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_02.png",
+        "durationMs": 500,
+        "bounds": {
+          "x": 138,
+          "y": 61,
+          "width": 241,
+          "height": 355
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.88,
+          "y": 329.59
+        },
+        "anchors": {
+          "root": {
+            "x": 255.88,
+            "y": 329.59
+          },
+          "head": {
+            "x": 255.88,
+            "y": 62.84
+          },
+          "face": {
+            "x": 255.88,
+            "y": 176.82
+          },
+          "hips": {
+            "x": 255.88,
+            "y": 329.59
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_03.png",
+        "durationMs": 500,
+        "bounds": {
+          "x": 140,
+          "y": 60,
+          "width": 240,
+          "height": 358
+        }
+      }
+    ],
+    "framesCount": 4,
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "fps": 2.0,
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    }
+  },
+  "body_sit_edge_settle": {
+    "category": "body/sit_edge_settle",
+    "frames": [
+      {
+        "pivot": {
+          "x": 255.58,
+          "y": 330.33
+        },
+        "anchors": {
+          "root": {
+            "x": 255.58,
+            "y": 330.33
+          },
+          "head": {
+            "x": 255.58,
+            "y": 81.85
+          },
+          "face": {
+            "x": 255.58,
+            "y": 196.36
+          },
+          "hips": {
+            "x": 255.58,
+            "y": 330.33
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_00.png",
+        "durationMs": 300,
+        "bounds": {
+          "x": 142,
+          "y": 80,
+          "width": 237,
+          "height": 338
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.63,
+          "y": 330.19
+        },
+        "anchors": {
+          "root": {
+            "x": 255.63,
+            "y": 330.19
+          },
+          "head": {
+            "x": 255.63,
+            "y": 79.91
+          },
+          "face": {
+            "x": 255.63,
+            "y": 176.89
+          },
+          "hips": {
+            "x": 255.63,
+            "y": 330.19
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_01.png",
+        "durationMs": 300,
+        "bounds": {
+          "x": 143,
+          "y": 76,
+          "width": 224,
+          "height": 347
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.51,
+          "y": 330.0
+        },
+        "anchors": {
+          "root": {
+            "x": 255.51,
+            "y": 330.0
+          },
+          "head": {
+            "x": 255.51,
+            "y": 81.78
+          },
+          "face": {
+            "x": 255.51,
+            "y": 180.16
+          },
+          "hips": {
+            "x": 255.51,
+            "y": 330.0
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_02.png",
+        "durationMs": 300,
+        "bounds": {
+          "x": 142,
+          "y": 78,
+          "width": 229,
+          "height": 343
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.14,
+          "y": 329.59
+        },
+        "anchors": {
+          "root": {
+            "x": 256.14,
+            "y": 329.59
+          },
+          "head": {
+            "x": 256.14,
+            "y": 63.78
+          },
+          "face": {
+            "x": 256.14,
+            "y": 177.77
+          },
+          "hips": {
+            "x": 256.14,
+            "y": 329.59
+          }
+        },
+        "source": "/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_03.png",
+        "durationMs": 300,
+        "bounds": {
+          "x": 136,
+          "y": 60,
+          "width": 240,
+          "height": 358
+        }
+      }
+    ],
+    "framesCount": 4,
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "fps": 3.3333333333333335,
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    }
+  },
+  "body_cursor_play": {
+    "category": "body/cursor_play",
+    "frames": [
+      {
+        "pivot": {
+          "x": 256.44,
+          "y": 459.76
+        },
+        "anchors": {
+          "root": {
+            "x": 256.44,
+            "y": 459.76
+          },
+          "head": {
+            "x": 256.44,
+            "y": 111.01
+          },
+          "face": {
+            "x": 256.44,
+            "y": 223.42
+          }
+        },
+        "source": "/assets/sprites/body/cursor_play/body_cursor_play_00.png",
+        "durationMs": 180,
+        "bounds": {
+          "x": 134,
+          "y": 107,
+          "width": 244,
+          "height": 356
+        }
+      },
+      {
+        "pivot": {
+          "x": 255.8,
+          "y": 459.91
+        },
+        "anchors": {
+          "root": {
+            "x": 255.8,
+            "y": 459.91
+          },
+          "head": {
+            "x": 258.35,
+            "y": 105.07
+          },
+          "face": {
+            "x": 258.35,
+            "y": 217.07
+          }
+        },
+        "source": "/assets/sprites/body/cursor_play/body_cursor_play_01.png",
+        "durationMs": 180,
+        "bounds": {
+          "x": 127,
+          "y": 101,
+          "width": 261,
+          "height": 362
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.09,
+          "y": 460.01
+        },
+        "anchors": {
+          "root": {
+            "x": 256.09,
+            "y": 460.01
+          },
+          "head": {
+            "x": 260.06,
+            "y": 114.97
+          },
+          "face": {
+            "x": 260.06,
+            "y": 227.67
+          }
+        },
+        "source": "/assets/sprites/body/cursor_play/body_cursor_play_02.png",
+        "durationMs": 180,
+        "bounds": {
+          "x": 128,
+          "y": 111,
+          "width": 257,
+          "height": 352
+        }
+      },
+      {
+        "pivot": {
+          "x": 256.44,
+          "y": 459.76
+        },
+        "anchors": {
+          "root": {
+            "x": 256.44,
+            "y": 459.76
+          },
+          "head": {
+            "x": 256.44,
+            "y": 111.01
+          },
+          "face": {
+            "x": 256.44,
+            "y": 223.42
+          }
+        },
+        "source": "/assets/sprites/body/cursor_play/body_cursor_play_03.png",
+        "durationMs": 180,
+        "bounds": {
+          "x": 134,
+          "y": 107,
+          "width": 244,
+          "height": 356
+        }
+      }
+    ],
+    "framesCount": 4,
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "fps": 5.555555555555555,
+    "faceOverlay": {
+      "mode": "baked_in",
+      "fallback": "none"
+    }
   }
 }

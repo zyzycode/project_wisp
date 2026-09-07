@@ -2,7 +2,7 @@
 """
 Project Wisp — Sprite Sheet Processor CLI
 =========================================
-Processes raw PNG/WebP sheets from asset-pipeline/input/:
+Processes raw PNG/WebP sheets from asset-pipeline/generated_images/:
 1. Detects grid dimensions & extracts frames (Connected components for body, uniform cells for faces/props).
 2. Rescales and centers frames on a standardized 512x512 canvas.
 3. Saves final PNGs directly to public/assets/sprites/<category>/<prefix>_<index>.png.
@@ -196,6 +196,12 @@ def run_pipeline(
         print(f"ℹ️ No PNG/WebP sheets in {GENERATED_DIR}; add input or use --file.")
         return
 
+    recipe_path = os.path.join(SCRIPTS_DIR, '..', 'references', 'requested-sprites-export.json')
+    reviewed_keys = set()
+    if os.path.isfile(recipe_path):
+        with open(recipe_path, encoding='utf-8') as recipe_file:
+            reviewed_keys = set(json.load(recipe_file)['animations'])
+
     processed_count = 0
     for fpath in all_files:
         # Absolute source keys avoid sharing cached results between input folders.
@@ -203,6 +209,9 @@ def run_pipeline(
         current_hash = get_file_hash(fpath)
         routing = {**candidates, **production_manifest}
         prefix = get_target_info(os.path.basename(fpath), routing)[1]
+        if prefix in reviewed_keys:
+            print(f'{prefix}: preserved reviewed placement; use export_requested.py --recipe {recipe_path}')
+            continue
         previous_frames = candidates.get(prefix, {}).get("frames", [])
         outputs_exist = bool(previous_frames) and all(
             frame.startswith("/assets/sprites/") and sprite_path(os.path.join(

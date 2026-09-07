@@ -18,7 +18,7 @@ PUBLIC_DIR = os.path.join(ROOT_DIR, "public")
 PRODUCTION_SPRITES_DIR = os.path.join(PUBLIC_DIR, "assets", "sprites")
 # The application manifest is read-only input; proposal metadata is never installed.
 MANIFEST_PATH = os.path.join(PRODUCTION_SPRITES_DIR, "manifest.json")
-GENERATED_DIR = os.path.join(PIPELINE_DIR, "input")
+GENERATED_DIR = os.path.join(PIPELINE_DIR, "generated_images")
 OUTPUT_DIR = os.path.join(PIPELINE_DIR, "output")
 SPRITES_DIR = PRODUCTION_SPRITES_DIR
 PREVIEWS_DIR = os.path.join(OUTPUT_DIR, "previews")
