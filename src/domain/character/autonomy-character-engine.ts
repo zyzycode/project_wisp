@@ -31,6 +31,16 @@ const SLEEP_COMFORT_MIN = 80;
 const WAKE_ATTENTION_MIN = 90;
 const WAKE_ENERGY_MIN = 80;
 
+export function requiresVitalSleep(snapshot: CharacterAutonomySnapshot): boolean {
+  return snapshot.needs.energy <= SLEEP_ENERGY_MAX || snapshot.needs.comfort >= SLEEP_COMFORT_MIN;
+}
+export function permitsAutomaticWake(snapshot: CharacterAutonomySnapshot): boolean {
+  return snapshot.needs.attention >= WAKE_ATTENTION_MIN || snapshot.needs.energy >= WAKE_ENERGY_MIN;
+}
+export function isQuietCompatible(intent: BehaviorIntent, quiet: boolean): boolean {
+  return !quiet || intent.source === 'user' || !['play', 'respond', 'react_happy'].includes(intent.kind);
+}
+
 /** Character-owned semantic sleep state and autonomy-resolution transaction. */
 export class AutonomyCharacterEngine {
   private sleepState: SemanticSleepState = 'awake';
@@ -59,8 +69,7 @@ export class AutonomyCharacterEngine {
   }): CharacterAutonomyResolution {
     if (this.sleepState === 'sleeping') return this.resolution(null);
 
-    const { needs } = input.snapshot;
-    const vitalSleep = needs.energy <= SLEEP_ENERGY_MAX || needs.comfort >= SLEEP_COMFORT_MIN;
+    const vitalSleep = requiresVitalSleep(input.snapshot);
     const sleepCandidate = input.candidates.find((candidate) => candidate.kind === 'sleep');
     if (!vitalSleep && input.selection) {
       const selection = selectLocalActivity(input.snapshot, input.selection, input.prng.next());
@@ -96,7 +105,7 @@ export class AutonomyCharacterEngine {
       return this.resolution(intent);
     }
     if ((intent.kind === 'play' || intent.kind === 'think') && this.sleepState === 'awake'
-        && snapshot.needs.energy > SLEEP_ENERGY_MAX && snapshot.needs.comfort < SLEEP_COMFORT_MIN) {
+        && !requiresVitalSleep(snapshot)) {
       return this.resolution(intent);
     }
     if (
@@ -127,7 +136,7 @@ export class AutonomyCharacterEngine {
     if (intent.kind === 'sleep') {
       this.sleepState = 'sleeping'; return intent;
     }
-    if (snapshot.needs.energy <= SLEEP_ENERGY_MAX || snapshot.needs.comfort >= SLEEP_COMFORT_MIN) return null;
+    if (requiresVitalSleep(snapshot)) return null;
     return intent;
   }
 }

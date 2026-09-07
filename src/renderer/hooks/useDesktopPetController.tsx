@@ -57,8 +57,6 @@ export interface UseDesktopPetControllerOptions {
 
 export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptions) {
   const [position, setPosition] = useState<PetPositionDTO>({ x: 300, y: 300 });
-  const [quietMode, setQuietMode] = useState(false);
-  useEffect(() => bridge.onBrainState(state => setQuietMode(state.autonomy.quiet)), [bridge]);
   const [autoWanderEnabled, setAutoWanderEnabled] = useState(true);
   const [dragInteractionActive, setDragInteractionActive] = useState(false);
   const [localTerminalVisualKind, setLocalTerminalVisualKind] =
@@ -120,6 +118,7 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
   });
 
   const brain = bodySnapshot?.brain ?? null;
+  const quietMode = brain?.autonomy.quiet ?? false;
   const visual = bodySnapshot?.visual ?? null;
   const isWandering = brain?.visualIntent.kind === 'walk';
   const isDragging = drag.isDragging || brain?.motion.phase === 'dragged';

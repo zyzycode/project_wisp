@@ -1,3 +1,4 @@
+import type { ProviderBehaviorOffer } from '../../src/application/ports/behavior-admission-port';
 import type { SurfaceSnapshotDto } from '../../src/domain/behavior/surface-kinematics';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
@@ -47,7 +48,7 @@ function sequence(...values: number[]): IPrng {
 }
 
 function createFixture(
-  random: IPrng = sequence(0, 0.4, 0.9, 0.5, 0),
+  random: IPrng = sequence(0, 0.2, 0.9, 0.5, 0),
   needs: Partial<Needs> = {},
   cancelMovementResults: readonly boolean[] = [],
   externalSurface?: SurfaceSnapshotDto
@@ -125,30 +126,30 @@ function createFixture(
 describe('Main integration: Brain runtime', () => {
   it('releases only dialogue-owned thinking and offers a reply through Character gates', () => {
     const f = createFixture(); f.composition.start();
-    f.composition.beginDialogueThinking('request');
-    expect(f.composition.getVisualEpisode().intent.kind).toBe('thinking_loop');
+    f.composition.setBehaviorContext({ requestId: 'request', conversationId: 'c', generation: 0, requestedAtMs: f.scheduler.nowMs }); f.composition.beginDialogueThinking('request');
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
     f.composition.endDialogueThinking('foreign');
-    expect(f.composition.getVisualEpisode().intent.kind).toBe('thinking_loop');
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
     f.composition.endDialogueThinking('request');
     expect(f.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
-    f.composition.offerDialogueIntent({ kind: 'respond', source: 'provider', priority: 'normal', requestId: 'request' });
+    f.composition.offerDialogueIntent(providerOffer('respond', 'request', f.scheduler.nowMs));
     expect(f.composition.getVisualEpisode().intent.kind).toBe('talking'); f.composition.dispose();
   });
   it('does not let a late dialogue result overwrite user input or forced motion', () => {
-    const f = createFixture(); f.composition.start(); f.composition.beginDialogueThinking('request');
+    const f = createFixture(); f.composition.start(); f.composition.setBehaviorContext({ requestId: 'request', conversationId: 'c', generation: 0, requestedAtMs: f.scheduler.nowMs }); f.composition.beginDialogueThinking('request');
     f.composition.handleClick(); const clicked = f.composition.getVisualEpisode();
-    const intent = { kind: 'respond' as const, source: 'provider' as const, priority: 'normal' as const, requestId: 'request' };
+    const intent = providerOffer('respond', 'request', f.scheduler.nowMs);
     f.composition.endDialogueThinking('request'); f.composition.offerDialogueIntent(intent);
     expect(f.composition.getVisualEpisode()).toEqual(clicked);
     f.composition.beginDialogueThinking('next'); f.composition.handleMotionEvent({ type: 'drag_started', atMs: 10 });
-    f.composition.endDialogueThinking('next'); f.composition.offerDialogueIntent({ ...intent, requestId: 'next' });
+    f.composition.endDialogueThinking('next'); f.composition.offerDialogueIntent(providerOffer('respond', 'next', f.scheduler.nowMs));
     expect(f.composition.getVisualEpisode().intent.kind).toBe('dragged'); f.composition.dispose();
   });
   it('preserves user sleep when a provider proposes an active response', () => {
     const f = createFixture(); f.composition.start(); f.composition.requestSleepWake({ action: 'sleep' });
-    const sleeping = f.composition.getActivityTimeline(); f.composition.beginDialogueThinking('request');
+    const sleeping = f.composition.getActivityTimeline(); f.composition.setBehaviorContext({ requestId: 'request', conversationId: 'c', generation: 0, requestedAtMs: f.scheduler.nowMs }); f.composition.beginDialogueThinking('request');
     f.composition.endDialogueThinking('request');
-    f.composition.offerDialogueIntent({ kind: 'play', source: 'provider', priority: 'normal', requestId: 'request' });
+    f.composition.offerDialogueIntent(providerOffer('play', 'request', f.scheduler.nowMs));
     expect(f.composition.getActivityTimeline()).toEqual(sleeping); f.composition.dispose();
   });
   it('restores full sleep at the Character energy threshold and exposes recovery only during sleep', () => {
@@ -166,7 +167,7 @@ describe('Main integration: Brain runtime', () => {
   });
 
   it('ends an autonomous nap awake and resumes the single opportunity scheduler', () => {
-    const f = createFixture(sequence(0, .05), { energy: 90 });
+    const f = createFixture(sequence(0, .95), { energy: 70, boredom: 40, play: 30 });
     f.composition.start(); f.scheduler.take()?.();
     expect(f.composition.getActivityTimeline()?.activityId).toBe('rest_spot_nap');
     f.composition.notifyVoluntaryMovementCompleted();
@@ -344,41 +345,17 @@ describe('Main integration: Brain runtime', () => {
     expect(fixture.scheduler.size()).toBe(1);
   });
 
-  it('advances Rest phases by Main-monotonic deadlines without Skin completion', () => {
-    const fixture = createFixture();
-    fixture.composition.start();
-
-    expect(fixture.composition.requestSleepWake({ action: 'sleep' })).toBe(true);
-    expect(fixture.composition.getVisualEpisode()).toMatchObject({
-      intent: { kind: 'idle_blink' },
-    });
-    expect(fixture.composition.getActivityTimeline()).toMatchObject({
-      activityId: 'rest', phaseId: 'yawn', stage: 'entering', phaseEndsAtMs: 3_000,
-    });
-    expect(fixture.scheduler.size()).toBe(0);
-    expect(fixture.composition.requestSleepWake({ action: 'sleep' })).toBe(false);
-
-    fixture.scheduler.nowMs = 3_000;
-    expect(fixture.composition.tick()).toBe(true);
-    expect(fixture.composition.getActivityTimeline()).toMatchObject({ phaseId: 'lie_down' });
-    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('lie_down');
-    fixture.scheduler.nowMs = 6_000;
-    fixture.composition.tick();
-    expect(fixture.composition.getActivityTimeline()).toMatchObject({ phaseId: 'sleep_start' });
-    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('sleep_start');
-    fixture.scheduler.nowMs = 9_000;
-    fixture.composition.tick();
-    expect(fixture.composition.getActivityTimeline()).toMatchObject({
-      phaseId: 'sleep_loop', stage: 'looping', phaseEndsAtMs: 12_000,
-    });
-    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('sleep_loop');
-
-    expect(fixture.composition.requestSleepWake({ action: 'wake' })).toBe(true);
-    expect(fixture.composition.getVisualEpisode()).toMatchObject({
-      intent: { kind: 'wake_up' },
-    });
-    expect(fixture.composition.getActivityTimeline()).toBeNull();
-    expect(fixture.scheduler.size()).toBe(1);
+  it('advances user Rest through route and Brain phases, then wakes', () => {
+    const f = createFixture(); f.composition.start();
+    expect(f.composition.requestSleepWake({ action: 'sleep' })).toBe(true);
+    expect(f.composition.getActivityTimeline()?.activityId).toBe('rest_spot_sleep');
+    f.composition.notifyVoluntaryMovementCompleted();
+    for (const ms of [1200, 2700, 5700]) { f.scheduler.nowMs = ms; f.composition.tick(); }
+    expect(f.composition.isSleepingForRecovery()).toBe(true);
+    expect(f.composition.requestSleepWake({ action: 'wake' })).toBe(true);
+    expect(f.composition.getActivityTimeline()).toBeNull();
+    expect(f.composition.getVisualEpisode().intent.kind).toBe('wake_up');
+    expect(f.scheduler.size()).toBe(1);
   });
 
   it('starts Zoomies only after a Character-resolved play intent', () => {
@@ -435,11 +412,11 @@ describe('Main integration: Brain runtime', () => {
     expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
   });
 
-  it('commits Activity cancellation even when the visual kind stays idle', () => {
+  it('commits cancellation of a user Rest route', () => {
     const fixture = createFixture();
     fixture.composition.start();
     expect(fixture.composition.requestSleepWake({ action: 'sleep' })).toBe(true);
-    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
+    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('walk');
     fixture.onPresentationChanged.mockClear();
 
     fixture.composition.setMenuOpen(true);
@@ -526,7 +503,7 @@ describe('Main integration: Brain runtime', () => {
 
     expect(fixture.composition.getVisualEpisode().intent).toMatchObject({
       kind: 'thinking_loop',
-      requestedBy: 'think',
+      requestedBy: 'system',
     });
     expect(fixture.onPresentationChanged).toHaveBeenCalledOnce();
   });
@@ -585,3 +562,8 @@ describe('Main integration: Brain runtime', () => {
     expect(source).not.toMatch(/watchdog|lifecycle result|terminal outcome/i);
   });
 });
+
+function providerOffer(kind: 'respond' | 'play', requestId: string, nowMs: number): ProviderBehaviorOffer {
+  return { intent: { kind, requestId, source: 'provider', priority: 'normal' }, conversationId: 'c', generation: 0,
+    requestedAtMs: nowMs, receivedAtMs: nowMs, expiresAtMs: nowMs + 30000 };
+}

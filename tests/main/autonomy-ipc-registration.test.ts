@@ -27,6 +27,7 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
     setSize: vi.fn(),
   };
   const controller = {
+    setQuietMode: vi.fn((enabled: boolean) => ({ quiet: enabled })),
     setMenuOpen: vi.fn(),
     setEnabled: vi.fn(),
     requestSleepWake: vi.fn(),

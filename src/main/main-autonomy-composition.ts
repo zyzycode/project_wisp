@@ -1,3 +1,4 @@
+import { requiresVitalSleep, permitsAutomaticWake, isQuietCompatible } from '../domain/character/autonomy-character-engine';
 import { ProviderBehaviorAdmission } from '../application/services/provider-behavior-admission';
 import type { ProviderBehaviorOffer, BehaviorTurnContext, BehaviorAdmissionReceipt, BehaviorAdmissionRejection } from '../application/ports/behavior-admission-port';
 import { createSocialBidActivity } from '../domain/behavior/social-bid-activity';
@@ -99,7 +100,6 @@ export class MainAutonomyComposition {
   private cursorEpisode: { endsAtMs: number; supportId: string | undefined } | null = null;
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
-  private interactionGeneration = 0;
 
   private readonly cursorProximityEngine = new CursorProximityEngine();
   private cursorProximityState: CursorProximityState = {
@@ -155,10 +155,10 @@ export class MainAutonomyComposition {
       },
       cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
-      onOutcome: options.onActivityOutcome,
+      onOutcome: event => { options.onActivityOutcome?.(event); this.coordinator.noteActivityOutcome(event); },
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
+      onSettled: (runId, result) => this.providerAdmission?.terminated(runId, result),
       onTerminated: (result) => {
-        this.providerAdmission?.terminated(result);
         if (result.activityId === 'rest_spot_sleep' && result.status === 'completed') this.stableRestSpotSleep = true;
         if (result.activityId === 'rest_spot_nap' || (result.activityId === 'rest_spot_sleep' && result.status !== 'completed')) this.character.finishRest();
         if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'rest_spot_sleep'))
@@ -183,9 +183,9 @@ export class MainAutonomyComposition {
       start: intent => {
         // Selection is checked before cancelling the current local run.
         if (!this.activity.canStart(intent)) return null;
+        this.cancelActivity('higher_priority_activity', false);
         const resolved = this.character.resolveProviderIntent(intent, options.getCharacterSnapshot());
         if (!resolved) return null;
-        this.cancelActivity('higher_priority_activity', false);
         this.coordinator.suspendForReactiveActivity();
         if (!this.activity.start(resolved)) { this.coordinator.resumeAfterReactiveActivity(); return null; }
         return this.activity.getRuntime();
@@ -230,8 +230,7 @@ export class MainAutonomyComposition {
     this.expireCursorObservation(nowMs);
     const needsChanged = this.tickNeeds(elapsedMs);
     if (this.character.getSemanticSleepState() === 'sleeping'
-        && (this.options.getCharacterSnapshot().needs.energy >= 80
-          || this.options.getCharacterSnapshot().needs.attention >= 90)) {
+        && permitsAutomaticWake(this.options.getCharacterSnapshot())) {
       this.character.resolveDirectIntent({ kind: 'wake', source: 'system', priority: 'normal', reason: 'restored_energy' }, this.options.getCharacterSnapshot());
       this.cancelActivity('user_interaction', false);
       this.setVisualKind('wake_up', true, true); this.finishActivityCadence();
@@ -240,8 +239,7 @@ export class MainAutonomyComposition {
         this.options.movement.getEnvironmentSnapshot().currentSurface?.id !== this.cursorEpisode.supportId)) {
       this.cancelActivity('environment_invalidated', true);
     }
-    const needs = this.options.getCharacterSnapshot().needs;
-    if (this.character.isAutonomyEligible() && (needs.energy <= 20 || needs.comfort >= 80)
+    if (this.character.isAutonomyEligible() && requiresVitalSleep(this.options.getCharacterSnapshot())
         && this.options.movement.canAcceptVoluntaryMovement() && this.enabled && !this.menuOpen
         && !this.deferredUserInteractionResume) {
       this.providerAdmission.invalidate('critical_need');
@@ -263,7 +261,7 @@ export class MainAutonomyComposition {
   public setQuietMode(enabled: boolean): { readonly quiet: boolean } {
     if (this.quiet === enabled) return this.getAutonomyMode();
     this.quiet = enabled;
-    if (enabled) this.providerAdmission.invalidate('quiet');
+    if (enabled) this.providerAdmission.invalidateIncompatibleQuiet();
     this.resetCursorInterest();
     if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
       this.cancelActivity('explicit_cancel', true);
@@ -376,6 +374,7 @@ export class MainAutonomyComposition {
     const budgetAvailable = !this.quiet && this.initiativeBudget.available(nowMs);
     if (!budgetAvailable) playCandidates = playCandidates.filter(candidate => candidate.tags?.includes('gaze_only'));
     if (budgetAvailable && snapshot.needs.energy >= 65 && snapshot.needs.play >= 50
+        && this.cursorProximityState.dwellWithinSwatRangeMs >= DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs
         && (snapshot.relationship?.friendship ?? 0) >= 100 && update.zone !== 'far') {
       const approach = createCursorInterestActivity({ root: this.options.movement.getRootPosition(),
         cursor: screenPosition, environment: this.options.movement.getEnvironmentSnapshot(),
@@ -419,7 +418,11 @@ export class MainAutonomyComposition {
     if (intent === null) return false;
     this.suspendForUserInteraction();
     if (!this.options.movement.canAcceptVoluntaryMovement()) { this.resumeAfterUserInteraction(); return false; }
-    if (command.action === 'sleep') return this.activity.start(intent);
+    if (command.action === 'sleep') {
+      const started = this.activity.start(intent);
+      this.resumeAfterUserInteraction();
+      return started;
+    }
     this.setVisualKind('wake_up', true, true);
     this.resumeAfterUserInteraction();
     return true;
@@ -559,11 +562,11 @@ export class MainAutonomyComposition {
   private providerGate(intent: BehaviorIntent): BehaviorAdmissionRejection | null {
     if (!this.started || this.disposed || !this.enabled || this.menuOpen) return 'disabled';
     if (['drag', 'land', 'wake', 'quiet'].includes(intent.kind)) return 'no_behavior_command';
-    const needs = this.options.getCharacterSnapshot().needs;
-    if (needs.energy <= 20 || needs.comfort >= 80 || !this.character.isAutonomyEligible()) return 'character_gate';
-    if (this.quiet && ['play', 'respond', 'react_happy'].includes(intent.kind)) return 'quiet';
+    if (requiresVitalSleep(this.options.getCharacterSnapshot()) ||
+        (!this.character.isAutonomyEligible() && this.activity.getRuntime()?.activityId !== 'rest_spot_nap')) return 'character_gate';
+    if (!isQuietCompatible(intent, this.quiet)) return 'quiet';
     if (!this.options.movement.canAcceptVoluntaryMovement() && !this.activity.isTraversalStep()) return 'forced_motion';
-    if (this.deferredUserInteractionResume) return 'user_conflict';
+    if (this.deferredUserInteractionResume || this.activity.getSource() === 'user') return 'user_conflict';
     if (!this.activity.canStart(intent)) return 'no_activity';
     return null;
   }
@@ -601,7 +604,7 @@ export class MainAutonomyComposition {
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
     if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;
     const social = intent.activityFamily === 'social_bid';
-    if (intent.source !== 'user' && this.quiet && (intent.kind === 'play' || intent.kind === 'respond')) return false;
+    if (!isQuietCompatible(intent, this.quiet)) return false;
     if (social && !this.initiativeBudget.available(this.options.clock.now())) return false;
     if (this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined)) {
       if (social) this.initiativeBudget.start(this.options.clock.now());
@@ -632,7 +635,6 @@ export class MainAutonomyComposition {
 
   private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
     if (reason === 'user_interaction' || reason === 'forced_motion') {
-      this.interactionGeneration++;
       this.providerAdmission?.invalidate(reason);
     }
 

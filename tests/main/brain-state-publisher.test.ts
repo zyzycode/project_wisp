@@ -16,6 +16,7 @@ interface ProjectionControls {
 
 function snapshot(meta: BrainStateSnapshotMeta, controls: ProjectionControls): BrainStateDTO {
   return {
+    autonomy: { quiet: false },
     dialogue: controls.dialogue ?? { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
     ...meta,
     character: {

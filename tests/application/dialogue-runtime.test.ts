@@ -82,3 +82,19 @@ it('publishes safe error without a partial context pair if terminal presentation
   f.runtime.receive(f.command(2)); await flush();
   expect(f.provider.generateResponse.mock.calls[1]![0].recentContext).toEqual([]);
 });
+
+it('offers explicit behavior with Main-owned request freshness metadata only after settlement', async () => {
+  const f = fixture(); const conversationId = f.runtime.getPresentation().conversationId;
+  f.runtime.receive(f.command()); await flush(); expect(f.offerIntent).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(1000);
+  const response = { ...f.success(), suggestedBehavior: 'wander' as const };
+  f.response.resolve(response); await flush();
+  expect(f.offerIntent).toHaveBeenCalledExactlyOnceWith({
+    intent: expect.objectContaining({ kind: 'wander', source: 'provider', requestId: response.requestId }),
+    conversationId, generation: 1, requestedAtMs: 0, receivedAtMs: 1000, expiresAtMs: 30000,
+  });
+});
+it('keeps text-only success out of behavior admission', async () => {
+  const f = fixture(); f.runtime.receive(f.command()); await flush(); f.response.resolve(f.success()); await flush();
+  expect(f.runtime.getPresentation().turn.phase).toBe('completed'); expect(f.offerIntent).not.toHaveBeenCalled();
+});

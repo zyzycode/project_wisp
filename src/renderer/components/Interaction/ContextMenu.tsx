@@ -293,6 +293,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                   {action.label}
                 </button>
               ))}
+              <button type="button" className={`menu-action-btn ${quietMode ? 'active' : ''}`} onClick={onToggleQuietMode}>
+                {quietMode ? 'Тихий режим: ВКЛ' : 'Тихий режим: ВЫКЛ'}
+              </button>
               <button type="button" className="menu-action-btn" onClick={onToggleSleep}>
                 {isSleeping ? 'body_land (Разбудить)' : 'body_sleep (Усыпить)'}
               </button>

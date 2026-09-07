@@ -22,3 +22,23 @@ it('defers only until its bounded safe boundary and never starts at the deadline
   now = 3100; safe = true; admission.tick();
   expect(start).not.toHaveBeenCalled(); expect(admission.hasPending()).toBe(false);
 });
+
+it('starts a deferred offer at a safe boundary once, and reset cancels ownership', () => {
+  let now = 100; let safe = false; const cancel = vi.fn();
+  const start = vi.fn(() => ({ runId: 'run', startedAtMs: now }));
+  const admission = new ProviderBehaviorAdmission({ now: () => now, gate: () => null, safeToStart: () => safe, canDefer: () => true, start, cancel });
+  const context = { requestId: 'request', conversationId: 'conversation', generation: 1, requestedAtMs: 0 };
+  admission.setContext(context); admission.offer(offer); now = 1000; safe = true; admission.tick(); admission.tick();
+  expect(start).toHaveBeenCalledTimes(1); expect(admission.getOwnedRun()?.ownership.source).toBe('provider');
+  admission.setContext(null); expect(cancel).toHaveBeenCalledTimes(1);
+  expect(admission.offer(offer)).toEqual({ status: 'rejected', reason: 'stale_generation' });
+});
+it('rejects expired, malformed and obsolete offers without cancelling a local run', () => {
+  const start = vi.fn(() => null); const cancel = vi.fn(); let now = 100;
+  const admission = new ProviderBehaviorAdmission({ now: () => now, gate: () => null, safeToStart: () => true, canDefer: () => false, start, cancel });
+  admission.setContext({ requestId: 'request', conversationId: 'conversation', generation: 1, requestedAtMs: 0 });
+  expect(admission.offer({ ...offer, receivedAtMs: Number.NaN })).toEqual({ status: 'rejected', reason: 'invalid_offer' });
+  expect(admission.offer({ ...offer, generation: 0 })).toEqual({ status: 'rejected', reason: 'stale_generation' });
+  now = 30000; expect(admission.offer(offer)).toEqual({ status: 'rejected', reason: 'expired' });
+  expect(start).not.toHaveBeenCalled(); expect(cancel).not.toHaveBeenCalled();
+});

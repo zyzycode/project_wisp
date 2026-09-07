@@ -1,3 +1,4 @@
+import type { ActivityOutcomeFeedback } from '../ports/shimeji-feedback-port';
 import { LOCAL_TUNING_VERSION, type LocalSelectionContext, type LocalSelectionTrace } from '../../domain/behavior/local-activity-policy';
 import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
 import type { TraversalRequest } from '../../domain/behavior/traversal-route';
@@ -60,6 +61,7 @@ export interface VoluntaryMovementController {
 }
 
 export interface AutonomyTraceEntry {
+  readonly activityResult?: Pick<ActivityOutcomeFeedback, 'family' | 'outcome' | 'executedMs'>;
   readonly tuningVersion?: string;
   readonly selection?: readonly LocalSelectionTrace[];
   readonly decisionSequence: number;
@@ -88,8 +90,9 @@ export interface AutonomyCoordinatorOptions {
   readonly traceCapacity?: number;
 }
 
-function candidateSet(): readonly AutonomousCandidate[] {
+function candidateSet(includePlay = false): readonly AutonomousCandidate[] {
   return Object.freeze([
+    ...(includePlay ? [Object.freeze({ kind: 'play' as const, source: 'timer' as const, priority: 'normal' as const, reason: 'autonomous_game' })] : []),
     Object.freeze({ kind: 'idle', source: 'timer', priority: 'low', reason: 'autonomous_idle' }),
     Object.freeze({ kind: 'wander', source: 'timer', priority: 'normal', reason: 'autonomous_wander' }),
     Object.freeze({ kind: 'sleep', source: 'timer', priority: 'high', moodHint: 'sleepy', reason: 'autonomous_nap' }),
@@ -227,10 +230,19 @@ export class AutonomyCoordinator {
     this.lastUserActivityAtMs = this.options.clock.now();
   }
 
+  public noteActivityOutcome(event: ActivityOutcomeFeedback): void {
+    const index = this.trace.length - 1;
+    const current = this.trace[index];
+    if (current) this.trace[index] = { ...current, activityResult: {
+      family: event.family, outcome: event.outcome, executedMs: event.executedMs } };
+  }
+
   public getDecisionTrace(): readonly AutonomyTraceEntry[] {
     return this.trace.map((entry) => ({
       ...entry,
       orderedCandidateKinds: [...entry.orderedCandidateKinds],
+      selection: entry.selection?.map(row => ({ ...row, factors: { ...row.factors } })),
+      ...(entry.activityResult ? { activityResult: { ...entry.activityResult } } : {}),
       prng: { ...entry.prng },
     }));
   }
@@ -266,7 +278,7 @@ export class AutonomyCoordinator {
     const opportunityAtMs = Math.max(observedAtMs, this.lastOpportunityAtMs + 0.001);
     this.lastOpportunityAtMs = opportunityAtMs;
     const decisionSequence = ++this.decisionSequence;
-    const candidates = candidateSet();
+    const candidates = candidateSet(this.options.getLocalSelection !== undefined);
     const snapshot = this.options.getCharacterSnapshot();
     const resolution = this.options.character.resolveAutonomousOpportunity({
       context: {

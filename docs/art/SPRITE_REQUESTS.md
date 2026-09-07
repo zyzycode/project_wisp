@@ -20,5 +20,4 @@
 | AUTO-I04 | `body_pull_up_edge` | Последний кадр `body_climb_wall` | 2-4 кадра: выход из виса на верхнюю грань опоры | Ожидает художника |
 | AUTO-I05 | `body_sit_edge` | `body_sit` (сидение на полу) | 4-кадровый бесшовный луп: сидит на верхней кромке окна, болтает ножками вниз (левая -> центр -> правая -> возврат), прозрачный фон, стабильный pivot | Ожидает художника |
 | AUTO-I06 | `body_sit_edge` / seated sleep / settle | `sit_edge` → существующий `body_sit`; сидячий сон — та же поза с `sleepy`; settle — существующий `sit_edge` или `lie_down` | Поддержать нейтральную посадку, успокаивание и сон сидя на узкой опоре; стабильные root/face anchors, без нарисованной опоры. Основной `body_sit_edge` запрошен в AUTO-I05. | Ожидает художника |
-
-| #48 | cursor_play | `wave` with happy expression | Short playful gesture after a bounded approach; dedicated frames supplied by human artist. |
+| #48 | `cursor_play` | `wave` с happy expression | Короткий игровой жест после ограниченного подхода; отдельные кадры предоставляет художник-человек. | Ожидает художника |

@@ -13,7 +13,7 @@ export function createCursorInterestActivity(input: {
   const range = calculateRootCollisionRange(environment.screenBounds, input.collisionInsets);
   const minX = Math.max(range.minX, surface.bounds.x);
   const maxX = Math.min(range.maxX, surface.bounds.x + surface.bounds.width);
-  const supportY = surface.supportY ?? surface.bounds.y;
+  const supportY = surface.kind === 'screen_floor' ? range.maxY : surface.supportY ?? surface.bounds.y;
   if (Math.abs(root.y - supportY) > 2 || Math.abs(cursor.y - root.y) > 160 || minX >= maxX) return null;
   const x = Math.max(minX, Math.min(maxX, root.x + Math.max(-input.maxDistance, Math.min(input.maxDistance, cursor.x - root.x))));
   if (Math.abs(x - root.x) < 20) return null;

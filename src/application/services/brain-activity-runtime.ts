@@ -64,6 +64,7 @@ export interface BrainActivityRuntimeOptions {
   readonly cooldownRules?: readonly CooldownRule[];
   readonly onVisualIntent: (intent: AnimationIntent<AnimationIntentKind>) => void;
   readonly onOutcome?: (event: ActivityOutcomeFeedback) => void;
+  readonly onSettled?: (runId: string, result: ActivityResult) => void;
   readonly onTerminated: (result: ActivityResult) => void;
 }
 
@@ -78,13 +79,14 @@ export class BrainActivityRuntime {
   private exploreHistory: ExploreHistory = { entries: [] };
   private participation: ActivityOutcomeFeedback['participation'] = 'solitary';
   private playCompleted = false;
+  private source: 'local' | 'user' | 'character' | 'provider' = 'local';
   private readonly terminalRuns = new Set<string>();
   private explorePlan: ExplorePlan | null = null;
 
   public constructor(private readonly options: BrainActivityRuntimeOptions) {}
 
   public canStart(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): boolean {
-    return this.prepare(intent, catalog) !== null;
+    return this.prepare(intent, catalog, true) !== null;
   }
 
   public start(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): boolean {
@@ -92,7 +94,7 @@ export class BrainActivityRuntime {
     return prepared !== null && this.startDefinition(prepared.definition, prepared.plan, this.options.clock.now(), intent);
   }
 
-  private prepare(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): { definition: ActivityDefinition; plan: ExplorePlan | null } | null {
+  private prepare(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog, preview = false): { definition: ActivityDefinition; plan: ExplorePlan | null } | null {
     const nowMs = this.options.clock.now();
     const selectionContext = {
       ...this.options.getSelectionContext(),
@@ -103,7 +105,7 @@ export class BrainActivityRuntime {
       intent,
       selectionContext,
       nowMs,
-      catalog === undefined ? 0 : this.options.nextRandom(),
+      preview || catalog === undefined ? 0 : this.options.nextRandom(),
       catalog
     );
     if (selectedDefinition === null) return null;
@@ -122,7 +124,7 @@ export class BrainActivityRuntime {
       ? selectExplorePlan({ ...context, isReachable: plan => {
           if (plan.targetSurface === undefined && context.environment.currentSurface?.kind !== 'window_top') return true;
           return this.options.traversalEnabled === true && createExternalRoute(plan, context) !== null;
-        } }, this.options.nextRandom()) : null;
+        } }, preview ? 0 : this.options.nextRandom()) : null;
     if (selectedDefinition.id === 'explore' && selectedExplorePlan === null) return null;
     const definition = selectedExplorePlan === null ? selectedDefinition
       : createExploreActivityDefinition(selectedExplorePlan, this.options.traversalEnabled
@@ -139,6 +141,7 @@ export class BrainActivityRuntime {
     this.cancel('higher_priority_activity');
     this.participation = intent.source === 'user' ? 'user_engaged' : 'solitary';
     this.playCompleted = false;
+    this.source = intent.reason === 'vital_sleep' ? 'character' : intent.source === 'user' ? 'user' : intent.source === 'provider' ? 'provider' : 'local';
     const runId = this.options.createRunId();
     requireRunId(runId, this.usedRunIds);
     const update = this.runner.start(definition, runId, nowMs);
@@ -187,13 +190,15 @@ export class BrainActivityRuntime {
     const runtime = this.runtime;
     if (definition === null || runtime === null) return false;
     const update = this.runner.cancel(runtime, reason, this.options.clock.now());
-    this.recordTerminal(definition, runtime, update.result!);
     this.definition = null;
     this.runtime = null;
     this.explorePlan = null;
     this.options.cancelLocomotion(forDrag);
+    this.recordTerminal(definition, runtime, update.result!);
     return true;
   }
+
+  public getSource(): 'local' | 'user' | 'character' | 'provider' | null { return this.runtime ? this.source : null; }
 
   public isTraversalStep(): boolean {
     return this.definition?.steps.some(step => step.id === this.runtime?.currentStepId && step.type === 'locomotion' && step.traversal !== undefined) ?? false;
@@ -231,11 +236,11 @@ export class BrainActivityRuntime {
     }
     if (update.result !== undefined) {
       const runtime = this.runtime;
-      if (runtime !== null) this.recordTerminal(definition, runtime, update.result);
       this.definition = null;
       this.runtime = null;
       this.explorePlan = null;
       if (update.result.status !== 'completed') this.options.cancelLocomotion();
+      if (runtime !== null) this.recordTerminal(definition, runtime, update.result);
       this.options.onTerminated(update.result);
       return true;
     }
@@ -297,6 +302,7 @@ export class BrainActivityRuntime {
       activityRunId: runtime.runId, atMs, family, outcome: result.status,
       participation: this.participation, executedMs: Math.max(0, atMs - runtime.startedAtMs),
       playCompleted: this.playCompleted });
+    this.options.onSettled?.(runtime.runId, result);
     this.repetition = recordRunResult(this.repetition, runtime, result);
     if (result.status === 'completed') {
       this.applyCooldown(definition, 'completion', result.completedAtMs);

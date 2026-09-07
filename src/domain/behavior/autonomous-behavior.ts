@@ -50,7 +50,7 @@ export interface AutonomousDecisionContext {
 }
 
 export type AutonomousCandidate = BehaviorIntent & {
-  readonly kind: 'idle' | 'wander' | 'sleep';
+  readonly kind: 'idle' | 'wander' | 'sleep' | 'play';
 };
 
 export interface AutonomousIntentConfig {

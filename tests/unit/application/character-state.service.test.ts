@@ -86,7 +86,7 @@ describe('Application: CharacterStateService', () => {
 
     const after = service.tickNeeds(14 * 24 * 60 * 60 * 1000, 'neutral');
 
-    expect(after.lastUpdated).toBe(14 * 24 * 60 * 60 * 1000 + 1000);
+    expect(after.lastUpdated).toBe(60_000 + 1000);
     expect(after.needs.attention).toBeGreaterThan(0);
     expect(after.needs.play).toBeGreaterThan(0);
     expect(after.needs.boredom ?? 0).toBeGreaterThan(10);

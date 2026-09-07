@@ -1,3 +1,4 @@
+import { isQuietCompatible } from '../../domain/character/autonomy-character-engine';
 import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
 import type { ActivityResult } from '../../domain/behavior/activity-runner';
 import type { BehaviorAdmissionReceipt, BehaviorAdmissionRejection, BehaviorTurnContext,
@@ -18,15 +19,24 @@ export class ProviderBehaviorAdmission implements IBehaviorAdmission {
   private consumed = false;
   private pending: Pending | null = null;
   private owned: OwnedActivityRun | null = null;
+  private ownedIntent: BehaviorIntent | null = null;
   private sequence = 0;
   private readonly trace: AdmissionTrace[] = [];
   public constructor(private readonly options: ProviderAdmissionOptions) {}
   public setContext(context: BehaviorTurnContext | null): void {
+    if (context && this.context && context.requestId === this.context.requestId
+        && context.conversationId === this.context.conversationId && context.generation === this.context.generation
+        && context.requestedAtMs === this.context.requestedAtMs) return;
     if (context === null || (this.context && (context.generation !== this.context.generation || context.conversationId !== this.context.conversationId))) this.invalidate('reset');
     this.context = context;
     this.consumed = false;
   }
   public getOwnedRun(): OwnedActivityRun | null { return this.owned ? { ...this.owned, ownership: { ...this.owned.ownership } } : null; }
+  public invalidateIncompatibleQuiet(): void {
+    const incompatible = (intent: BehaviorIntent) => !isQuietCompatible(intent, true);
+    if ((this.ownedIntent && this.owned && incompatible(this.ownedIntent)) ||
+        (this.pending && incompatible(this.pending.offer.intent))) this.invalidate('quiet');
+  }
   public hasPending(): boolean { return this.pending !== null; }
   public getTrace(): readonly AdmissionTrace[] { return this.trace.map(row => ({ ...row })); }
   public offer(offer: ProviderBehaviorOffer): BehaviorAdmissionReceipt {
@@ -69,8 +79,8 @@ export class ProviderBehaviorAdmission implements IBehaviorAdmission {
     if (rejection) { this.pending = null; this.record('not_started', rejection); return; }
     if (this.options.safeToStart()) { this.pending = null; this.start(pending); }
   }
-  public terminated(result: ActivityResult): void {
-    if (!this.owned) return;
+  public terminated(runId: string, result: ActivityResult): void {
+    if (!this.owned || this.owned.runId !== runId) return;
     this.record(result.status);
     this.owned = null;
   }
@@ -82,6 +92,7 @@ export class ProviderBehaviorAdmission implements IBehaviorAdmission {
   private start(pending: Pending): boolean {
     const runtime = this.options.start(pending.offer.intent);
     if (!runtime) { this.record('not_started', 'no_activity'); return false; }
+    this.ownedIntent = pending.offer.intent;
     this.owned = { ...runtime, executionEndsAtMs: Math.min(pending.offer.expiresAtMs, runtime.startedAtMs + 20000),
       ownership: { source: 'provider', rank: 'P3_reactive', admissionId: pending.id,
         requestId: pending.offer.intent.requestId, conversationId: pending.offer.conversationId,

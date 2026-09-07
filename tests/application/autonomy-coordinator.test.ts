@@ -354,7 +354,11 @@ describe('Application: AutonomyCoordinator', () => {
     const scheduler = new FakeScheduler();
     const fixture = createCoordinator(scheduler, sequencePrng(0, 0.95), movement(), 2);
     fixture.coordinator.start();
-    scheduler.advanceBy(30);
+    scheduler.advanceBy(10);
+    fixture.coordinator.notifyActivityFinished();
+    scheduler.advanceBy(10);
+    fixture.coordinator.notifyActivityFinished();
+    scheduler.advanceBy(10);
 
     const trace = fixture.coordinator.getDecisionTrace();
     expect(trace).toHaveLength(2);

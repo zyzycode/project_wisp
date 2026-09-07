@@ -31,7 +31,7 @@ export function isCursorObservationCompatible(input: CursorObservationCompatibil
     !input.menuOpen &&
     !input.dragging &&
     input.motionPhase === 'grounded' &&
-    (input.activityId === 'observe_cursor' ||
+    (input.activityId === 'observe_cursor' || input.activityId === 'cursor_interest' ||
       (input.activityId === null && input.visualKind === 'idle_blink'))
   );
 }

@@ -53,7 +53,8 @@ describe('Preload: Shimeji bridge', () => {
     await api.postBodyEvent(bodyEvent);
 
     const brainState: BrainStateDTO = {
-      dialogue: { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
+      autonomy: { quiet: false },
+    dialogue: { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
       streamId: 'stream-1', revision: 1, sampledAtMs: 10,
       character: {
         needs: { energy: 80, attention: 30, play: 40, comfort: 50, boredom: 10 },
