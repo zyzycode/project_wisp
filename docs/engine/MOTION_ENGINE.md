@@ -226,6 +226,34 @@ flowchart TD
      $$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_x, \dots)), \quad y_{\text{native}} = \text{round}(\text{clamp}(y_{\text{root}} - \text{offset}_y, \dots))$$
    - `BrowserWindow.setPosition` вызывается **строго при изменении целочисленных координат**, исключая спам IPC и дергание окна.
 
+### #43: wander в пределах текущей опоры
+
+Application вызывает чистую Domain-функцию по контракту
+[`WanderTargetPlanner`](../../src/application/ports/wander-target-planner.ts), передавая
+реальные `screenBounds`, `currentSurface`, root, collision insets, config и явный PRNG.
+Application не синтезирует screen bounds из `window_top` и не вычисляет диапазон хождения.
+Контракт описывает вызов функции, не требует класса, DI-сервиса или нового IPC.
+Domain объявляет собственные структурно совместимые типы и не импортирует Application.
+
+- `planWanderTarget` размещён рядом с `calculateNextWanderTarget` в Domain; сохраняются текущие
+  direction/distance/duration policy и порядок потребления PRNG (два значения на random wander).
+- Для валидной `window_top`: `minX = max(screen.x + insets.left, surface.bounds.x)`,
+  `maxX = min(screen.x + screen.width - insets.right, surface.bounds.x + surface.bounds.width)`,
+  `targetY = surface.supportY ?? surface.bounds.y`. Insets применяются к экрану один раз;
+  внешний support ограничивает контактный root, а не полный sprite rectangle.
+- Пустое пересечение, недопустимая геометрия или supportY за вертикальным collision range
+  дают durationMs = 0 и неизменный root; команда движения не отправляется.
+- При отсутствии валидной `window_top` сохраняется прежний screen-floor planner;
+  eligibility и support-loss FSM остаются ответственностью Motion/Surface engines.
+- Явный `targetRootPosition` существующего directed activity route не проходит random planner
+  и не потребляет PRNG; его проверка остаётся в существующем Motion/traversal пути.
+
+Регрессии в `tests/domain/wander-target-planner.test.ts` проверяют window top, частично за экраном,
+отрицательный origin монитора, пустой диапазон, invalid support, screen-floor parity и PRNG parity.
+Application-тесты проверяют отсутствие команды при пустом диапазоне и PRNG для явной цели.
+Расчёт искусственных bounds удалён из AutonomyCoordinator. Общая visual geometry
+для native offset описана в [`RENDER_ENGINE.md`](./RENDER_ENGINE.md); Domain её не потребляет.
+
 ## 9. Оркестрация (ShimejiMotionOrchestrator)
 
 Главный координатор в Application-слое ([`shimeji-motion-orchestrator.ts`](../../src/application/services/shimeji-motion-orchestrator.ts)) управляет жизненным циклом физического цикла:

@@ -20,6 +20,8 @@ export interface ContextMenuProps {
   currentTheme: CharacterTheme;
   scale: number;
   autoWanderEnabled: boolean;
+  quietMode?: boolean;
+  onToggleQuietMode?: () => void;
   isSleeping: boolean;
   debugHudEnabled: boolean;
   debugHudVisible?: boolean;
@@ -164,6 +166,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   currentTheme,
   scale,
   autoWanderEnabled,
+  quietMode = false,
+  onToggleQuietMode,
   isSleeping,
   debugHudEnabled,
   debugHudVisible = false,
@@ -289,6 +293,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                   {action.label}
                 </button>
               ))}
+              <button type="button" className={`menu-action-btn ${quietMode ? 'active' : ''}`} onClick={onToggleQuietMode}>
+                {quietMode ? 'Тихий режим: ВКЛ' : 'Тихий режим: ВЫКЛ'}
+              </button>
               <button type="button" className="menu-action-btn" onClick={onToggleSleep}>
                 {isSleeping ? 'body_land (Разбудить)' : 'body_sleep (Усыпить)'}
               </button>

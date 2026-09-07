@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  DialogueEffectLifecycle,
   isInteractiveOverlayPoint,
   LatestAnimationFrameQueue,
   registerOverlayMouseListener,
@@ -68,13 +67,4 @@ describe('Renderer: Body UI runtime', () => {
       .toBe(false);
   });
 
-  it('closes the dialogue effect gate during unmount cleanup', () => {
-    const lifecycle = new DialogueEffectLifecycle();
-    lifecycle.mount();
-    expect(lifecycle.isActive()).toBe(true);
-
-    lifecycle.dispose();
-
-    expect(lifecycle.isActive()).toBe(false);
-  });
 });

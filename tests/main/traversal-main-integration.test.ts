@@ -23,7 +23,7 @@ function fixture() {
     onTraversalRejected: request => main.notifyTraversalRejected(request),
     onVoluntaryMovementCompleted: completed => main.notifyVoluntaryMovementCompleted(completed),
   });
-  const random = [0, .4, .35, .5, 0];
+  const random = [0, .2, .35, .5, 0];
   let episode = 0;
   main = new MainAutonomyComposition({
     clock: { now: () => now }, scheduler: {

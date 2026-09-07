@@ -31,7 +31,7 @@ export function isCursorObservationCompatible(input: CursorObservationCompatibil
     !input.menuOpen &&
     !input.dragging &&
     input.motionPhase === 'grounded' &&
-    (input.activityId === 'observe_cursor' ||
+    (input.activityId === 'observe_cursor' || input.activityId === 'cursor_interest' ||
       (input.activityId === null && input.visualKind === 'idle_blink'))
   );
 }
@@ -235,21 +235,4 @@ export function registerOverlayMouseListener(
   const typedListener = listener as (event: never) => void;
   target.addEventListener('mousemove', typedListener);
   return (): void => target.removeEventListener('mousemove', typedListener);
-}
-
-/** Prevents an async provider result from mutating presentation after unmount. */
-export class DialogueEffectLifecycle {
-  private active = false;
-
-  public mount(): void {
-    this.active = true;
-  }
-
-  public dispose(): void {
-    this.active = false;
-  }
-
-  public isActive(): boolean {
-    return this.active;
-  }
 }

@@ -199,7 +199,9 @@ describe('Phase 13: render and telemetry pipeline', () => {
     });
     const markup = renderToStaticMarkup(<SpriteRenderer state={states[0]} />);
     expect(markup).toContain('face_sleep_0.png');
-    expect(markup).toMatch(/data-layer-id="face"[^>]*x="0" y="0" width="400" height="240"/);
+    expect(states[0]?.rootPivot).toEqual({ x: 256, y: 460 });
+    expect(markup).toContain('viewBox="0 0 512 512"');
+    expect(markup).toMatch(/data-layer-id="face"[^>]*x="136" y="280" width="400" height="240"/);
   });
 
   it('renders Main-compatible structured log entries and current needs in DebugHUD', () => {

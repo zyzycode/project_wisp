@@ -32,6 +32,10 @@ function contains(outer: SurfaceBoundsDto, inner: SurfaceBoundsDto): boolean {
   return inner.x >= outer.x && inner.y >= outer.y
     && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
 }
+function intersects(a: SurfaceBoundsDto, b: SurfaceBoundsDto): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x
+    && a.y < b.y + b.height && a.y + a.height > b.y;
+}
 /** No division by scaleFactor; Electron converts the physical rectangle once. */
 export function normalizeBridgeWindows(
   windows: readonly BridgeWindow[], displays: readonly SurfaceDisplay[],
@@ -40,16 +44,25 @@ export function normalizeBridgeWindows(
   const surfaces: ExternalWindowSurface[] = [];
   for (const window of windows) {
     const physical = { x: window.x, y: window.y, width: window.width, height: window.height };
-    const matching = displays.filter(display => contains(display.physicalBounds, physical));
-    if (matching.length !== 1) continue; // Spanning or unmappable geometry is never clipped.
+    // Off-desktop body area does not remove an otherwise fully visible edge.
+    // Spanning geometry across two real displays is still unsupported in this slice.
+    const matching = displays.filter(display => intersects(display.physicalBounds, physical));
+    if (matching.length !== 1) continue;
     const bounds = screenToDipRect(physical);
     if (![bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite) || bounds.width <= 0 || bounds.height <= 0) throw new Error('Invalid DIP geometry');
-    if (!contains(matching[0]!.workArea, bounds)) continue;
+    const workArea = matching[0]!.workArea;
     const common = { bounds: Object.freeze({ ...bounds }), isValidSupport: true } as const;
     const id = `${epoch}:${window.token}`;
-    if (window.top) surfaces.push(Object.freeze({ ...common, id: `${id}:top`, kind: 'window_top', supportY: bounds.y }));
+    // Test complete observed edges, not the entire body (which may extend under a taskbar).
+    // Keep original bounds: clipping them would create fictitious support geometry.
+    if (window.top && contains(workArea, { x: bounds.x, y: bounds.y, width: bounds.width, height: 0 })) {
+      surfaces.push(Object.freeze({ ...common, id: `${id}:top`, kind: 'window_top', supportY: bounds.y }));
+    }
     for (const side of ['left', 'right'] as const) {
-      if (window[side]) surfaces.push(Object.freeze({ ...common, id: `${id}:${side}`, kind: 'window_side', side }));
+      const x = side === 'left' ? bounds.x : bounds.x + bounds.width;
+      if (window[side] && contains(workArea, { x, y: bounds.y, width: 0, height: bounds.height })) {
+        surfaces.push(Object.freeze({ ...common, id: `${id}:${side}`, kind: 'window_side', side }));
+      }
     }
   }
   return Object.freeze(surfaces);

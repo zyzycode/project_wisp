@@ -23,8 +23,8 @@ export const PropsOverlay: React.FC<PropsOverlayProps> = ({ layers, viewport, ro
           href={resolveSpriteSource(layer.frame.source)}
           x={x}
           y={y}
-          width={viewport.width}
-          height={viewport.height}
+          width={layer.canvasSize?.width ?? viewport.width}
+          height={layer.canvasSize?.height ?? viewport.height}
           opacity={layer.opacity}
           style={{ mixBlendMode: layer.blendMode === 'additive' ? 'screen' : layer.blendMode }}
           preserveAspectRatio="xMidYMid meet"

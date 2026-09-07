@@ -6,6 +6,7 @@ import {
 } from '../../src/main/brain-state-publisher';
 
 interface ProjectionControls {
+  dialogue?: BrainStateDTO['dialogue'];
   positionX: number;
   phase: BrainStateDTO['motion']['phase'];
   positionAuthority: BrainStateDTO['motion']['positionAuthority'];
@@ -15,6 +16,8 @@ interface ProjectionControls {
 
 function snapshot(meta: BrainStateSnapshotMeta, controls: ProjectionControls): BrainStateDTO {
   return {
+    autonomy: { quiet: false },
+    dialogue: controls.dialogue ?? { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
     ...meta,
     character: {
       needs: {
@@ -85,6 +88,18 @@ function createFixture(
 }
 
 describe('Main: Brain state publisher', () => {
+  it('preserves dialogue transitions between motion updates and deduplicates identical terminal snapshots', async () => {
+    const f = createFixture(); f.publisher.replaceStream(); await f.runScheduled();
+    f.controls.dialogue = { conversationId: 'conversation-1', canSubmit: false, turn: { phase: 'thinking', requestId: 'r' } };
+    f.publisher.requestCommit(); f.controls.positionX++; f.publisher.requestCommit();
+    f.publisher.beginTransaction();
+    f.controls.needsEnergy = 40; f.publisher.requestCommit();
+    f.controls.dialogue = { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'completed', requestId: 'r', replyText: 'Ответ', outcome: { kind: 'success' } } };
+    f.publisher.requestCommit(); f.publisher.commitTransaction(); f.publisher.requestCommit();
+    await f.runScheduled();
+    expect(f.delivered.map(s => s.dialogue.turn.phase)).toEqual(['idle', 'thinking', 'thinking', 'completed']);
+    expect(f.delivered.at(-1)?.character.needs.energy).toBe(40);
+  });
   it('publishes the initial snapshot and one final snapshot per transaction', async () => {
     const fixture = createFixture();
     fixture.publisher.replaceStream();

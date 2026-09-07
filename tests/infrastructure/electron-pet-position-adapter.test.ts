@@ -1,7 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ElectronPetPositionAdapter } from '../../src/infrastructure/adapters/electron-pet-position-adapter';
+import {
+  ElectronPetPositionAdapter,
+  rootToNativePosition,
+} from '../../src/infrastructure/adapters/electron-pet-position-adapter';
 
 describe('Infrastructure: ElectronPetPositionAdapter', () => {
+  it('keeps the rendered sprite root on the Windows work-area floor', () => {
+    const pivotOffset = { x: 140, y: 233.625 };
+    const bounds = { id: 'primary', x: 0, y: 0, width: 1_920, height: 1_080 };
+    const nativePosition = rootToNativePosition(
+      { x: 960, y: 1_070 },
+      bounds,
+      pivotOffset
+    );
+
+    expect(nativePosition).toEqual({ x: 820, y: 836 });
+    expect(nativePosition.y + pivotOffset.y).toBeCloseTo(1_070, 0);
+  });
+
   it('translates the root pivot, clamps to the selected bounds, and skips equal integer positions', () => {
     const setPosition = vi.fn();
     const window = { isDestroyed: () => false, setPosition } as unknown as Electron.BrowserWindow;

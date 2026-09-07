@@ -36,6 +36,7 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
       className="wisp-sprite-canvas"
       data-testid="sprite-renderer"
       viewBox={`0 0 ${viewport.width} ${viewport.height}`}
+      preserveAspectRatio="xMidYMid meet"
       width="100%"
       height="100%"
       aria-label="Wisp sprite animation"
@@ -87,8 +88,8 @@ function SpriteLayer({
       href={resolveSpriteSource(layer.frame.source)}
       x={x}
       y={y}
-      width={state.viewport.width}
-      height={state.viewport.height}
+      width={layer.canvasSize?.width ?? state.viewport.width}
+      height={layer.canvasSize?.height ?? state.viewport.height}
       opacity={layer.opacity}
       style={{ mixBlendMode: layer.blendMode === 'additive' ? 'screen' : layer.blendMode }}
       preserveAspectRatio="xMidYMid meet"

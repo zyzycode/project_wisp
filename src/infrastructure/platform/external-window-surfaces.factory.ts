@@ -36,7 +36,7 @@ export function createExternalWindowSurfaces(): ExternalWindowSurfacesPort {
     now: () => performance.now(),
     spawn: () => {
       epoch = randomUUID();
-      return spawn(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(directory, 'observe.ps1')],
+      return spawn(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', path.join(directory, 'observe.ps1')],
         { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     },
     ownProcessIds: () => [...new Set([process.pid, ...app.getAppMetrics().map(metric => metric.pid)])],

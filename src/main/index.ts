@@ -37,6 +37,7 @@ import {
   nativeToRootPosition,
   rootToNativePosition,
 } from '../infrastructure/adapters/electron-pet-position-adapter';
+import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../shared/pet-presentation-layout';
 import { SeededPrng } from '../infrastructure/random/seeded-prng';
 import {
   toEnvironmentSnapshotDTO,
@@ -47,6 +48,9 @@ import { MainAutonomyComposition } from './main-autonomy-composition';
 import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
 import { BodyEventIngress } from './body-event-ingress';
 import { BrainStatePublisher } from './brain-state-publisher';
+import { DialogueRuntime } from '../application/services/dialogue-loop.service';
+import { MockAIProvider } from '../infrastructure/ai/mock-ai-provider';
+import { registerDialogueIpc } from './dialogue-ipc-registration';
 import { ShimejiStimulusMapper } from '../application/services/shimeji-stimulus.mapper';
 
 process.env.APP_ROOT = path.join(__dirname, '../..');
@@ -58,18 +62,15 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
-export const COMPACT_WINDOW_WIDTH = 280;
-export const COMPACT_WINDOW_HEIGHT = 320;
-export const EXPANDED_WINDOW_WIDTH = 1140;
-export const EXPANDED_WINDOW_HEIGHT = 620;
+export const COMPACT_WINDOW_WIDTH = PET_PRESENTATION_LAYOUT.compactWindowSize.width;
+export const COMPACT_WINDOW_HEIGHT = PET_PRESENTATION_LAYOUT.compactWindowSize.height;
+export const EXPANDED_WINDOW_WIDTH = PET_PRESENTATION_LAYOUT.expandedWindowSize.width;
+export const EXPANDED_WINDOW_HEIGHT = PET_PRESENTATION_LAYOUT.expandedWindowSize.height;
 
 export const WINDOW_WIDTH = COMPACT_WINDOW_WIDTH;
 export const WINDOW_HEIGHT = COMPACT_WINDOW_HEIGHT;
 
-const ROOT_PIVOT_OFFSET = {
-  x: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.left,
-  y: DEFAULT_MOTION_CONSTRAINTS.collisionInsets.top,
-};
+const ROOT_PIVOT_OFFSET = calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT);
 const AUTONOMY_SEED = 0x5753_5031;
 
 let mainWindow: BrowserWindow | null = null;
@@ -81,6 +82,8 @@ let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let externalWindowSurfaces: ExternalWindowSurfacesPort | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
+let dialogueRuntime: DialogueRuntime | null = null;
+let unregisterDialogue: (() => void) | null = null;
 let activeBodyDrag: {
   readonly gestureId: string;
   readonly pointerId: number;
@@ -98,17 +101,19 @@ const appLogger = new AppLogger({
 });
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: randomUUID,
+  createStreamId: () => { const id = randomUUID(); dialogueRuntime?.replaceStream(id); return id; },
   createSnapshot: ({ streamId, revision, sampledAtMs }) => {
-    if (shimejiMotionOrchestrator === null || autonomyComposition === null) {
+    if (shimejiMotionOrchestrator === null || autonomyComposition === null || dialogueRuntime === null) {
       throw new Error('Brain state sources are unavailable');
     }
     return toBrainStateDTO({
+      dialogue: dialogueRuntime.getPresentation(),
       streamId,
       revision,
       sampledAtMs,
       character: defaultCharacterStateService.getSnapshot(),
       activity: autonomyComposition.getActivityTimeline(),
+      autonomy: autonomyComposition.getAutonomyMode(),
       motion: shimejiMotionOrchestrator.getMotionState(),
       visualEpisode: autonomyComposition.getVisualEpisode(),
     });
@@ -212,6 +217,7 @@ function beginBrainStream(): void {
 function clearBrainStream(): void {
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
+  dialogueRuntime?.detachStream();
 }
 
 function stopShimejiMotionLoop(): void {
@@ -236,7 +242,17 @@ function initializeAutonomyComposition(): void {
     scheduler: createMainAutonomyScheduler(),
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
-    getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
+    getCharacterSnapshot: () => {
+      const axes = defaultCharacterStateService.getState().personality.axes;
+      return { ...defaultCharacterStateService.getSnapshot(), localTraits: {
+        openness: axes.openness.current, playfulness: axes.playfulness.current,
+        independence: axes.independence.current, extraversion: axes.extraversion.current } };
+    },
+    onActivityOutcome: event => {
+      const stimulus = shimejiStimulusMapper.map(event, { createdAtIso: new Date().toISOString(),
+        landingThresholds: DEFAULT_MOTION_CONSTRAINTS });
+      if (stimulus) defaultCharacterStateService.applyStimulus(stimulus);
+    },
     tickNeeds: (deltaMs) => {
       defaultCharacterStateService.tickNeeds(deltaMs, autonomyComposition?.isSleepingForRecovery() ? 'sleepy' : undefined);
     },
@@ -262,6 +278,20 @@ function initializeAutonomyComposition(): void {
     onPresentationChanged: publishBrainState,
   });
   autonomyComposition.start();
+  if (dialogueRuntime === null) {
+    dialogueRuntime = new DialogueRuntime({
+      provider: new MockAIProvider({ simulatedLatencyMs: 300 }), now: () => performance.now(),
+      timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
+      getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
+      applyStimulus: stimulus => { defaultCharacterStateService.applyStimulus(stimulus); },
+      beginThinking: id => autonomyComposition?.beginDialogueThinking(id),
+      endThinking: id => autonomyComposition?.endDialogueThinking(id),
+      setBehaviorContext: context => autonomyComposition?.setBehaviorContext(context),
+      offerIntent: offer => autonomyComposition?.offerDialogueIntent(offer) ?? { status: 'rejected', reason: 'disabled' },
+      transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } },
+      publish: publishBrainState,
+    });
+  }
 }
 
 function createMainAutonomyScheduler(): {
@@ -428,6 +458,11 @@ function handleAcceptedBodyEvent(
 }
 
 function registerIpcHandlers(): void {
+  unregisterDialogue = registerDialogueIpc({
+    register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
+    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null,
+    receive: payload => dialogueRuntime?.receive(payload) ?? { status: 'rejected', reason: 'unavailable' },
+  });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
@@ -648,6 +683,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();

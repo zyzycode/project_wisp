@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { IAIProvider } from '../../application/ports/ai-provider.interface';
 import type { CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
 import type {
@@ -53,11 +52,10 @@ const EMPTY_DEBUG_TELEMETRY: DebugTelemetryDTO = {
 };
 
 export interface UseDesktopPetControllerOptions {
-  readonly aiProvider: IAIProvider;
   readonly bridge: WispApiBridge;
 }
 
-export function useDesktopPetController({ aiProvider, bridge }: UseDesktopPetControllerOptions) {
+export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptions) {
   const [position, setPosition] = useState<PetPositionDTO>({ x: 300, y: 300 });
   const [autoWanderEnabled, setAutoWanderEnabled] = useState(true);
   const [dragInteractionActive, setDragInteractionActive] = useState(false);
@@ -96,7 +94,7 @@ export function useDesktopPetController({ aiProvider, bridge }: UseDesktopPetCon
     postInteraction,
     postCursorObservation,
   } = usePetBodyController(bridge);
-  const dialogue = usePetDialogue({ aiProvider, animState, dispatchAnim });
+  const dialogue = usePetDialogue({ bridge, snapshot: bodySnapshot?.brain ?? null });
   const overlay = useWindowOverlay({
     bridge,
     controller: bodyController,
@@ -120,6 +118,7 @@ export function useDesktopPetController({ aiProvider, bridge }: UseDesktopPetCon
   });
 
   const brain = bodySnapshot?.brain ?? null;
+  const quietMode = brain?.autonomy.quiet ?? false;
   const visual = bodySnapshot?.visual ?? null;
   const isWandering = brain?.visualIntent.kind === 'walk';
   const isDragging = drag.isDragging || brain?.motion.phase === 'dragged';
@@ -377,6 +376,8 @@ export function useDesktopPetController({ aiProvider, bridge }: UseDesktopPetCon
     handleSelectFace,
     handlePlayAnimation,
     autoWanderEnabled,
+    quietMode,
+    toggleQuietMode: () => { void bridge.setQuietMode({ enabled: !quietMode }).catch((error: unknown) => console.error('Quiet mode failed:', error)); },
     isSleeping,
     debugHudEnabled,
     debugHudVisible,

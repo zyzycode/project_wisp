@@ -1,3 +1,10 @@
+import { requiresVitalSleep, permitsAutomaticWake, isQuietCompatible } from '../domain/character/autonomy-character-engine';
+import { ProviderBehaviorAdmission } from '../application/services/provider-behavior-admission';
+import type { ProviderBehaviorOffer, BehaviorTurnContext, BehaviorAdmissionReceipt, BehaviorAdmissionRejection } from '../application/ports/behavior-admission-port';
+import { createSocialBidActivity } from '../domain/behavior/social-bid-activity';
+import { InitiativeBudget, INITIATIVE_TUNING } from '../application/services/initiative-budget';
+import { createCursorInterestActivity } from '../domain/behavior/cursor-interest-activity';
+import type { ActivityOutcomeFeedback } from '../application/ports/shimeji-feedback-port';
 import type { TraversalRequest } from '../domain/behavior/traversal-route';
 import {
   AutonomyCoordinator,
@@ -50,7 +57,7 @@ export interface BrainLoopPolicy {
 
 export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
   needsTickIntervalMs: 1_000,
-  maxNeedsCatchUpSteps: 4,
+  maxNeedsCatchUpSteps: 60,
 };
 
 export interface MainAutonomyCompositionOptions {
@@ -59,6 +66,7 @@ export interface MainAutonomyCompositionOptions {
   readonly prng: IPrng;
   readonly prngMetadata: { readonly algorithm: string; readonly seed: number };
   readonly getCharacterSnapshot: () => CharacterAutonomySnapshot;
+  readonly onActivityOutcome?: (event: ActivityOutcomeFeedback) => void;
   readonly tickNeeds?: (deltaMs: number) => void;
   readonly brainLoopPolicy?: BrainLoopPolicy;
   readonly movement: VoluntaryMovementController;
@@ -74,8 +82,10 @@ export class MainAutonomyComposition {
   private readonly character = new AutonomyCharacterEngine();
   private readonly coordinator: AutonomyCoordinator;
   private readonly activity: BrainActivityRuntime;
+  private readonly providerAdmission: ProviderBehaviorAdmission;
   private readonly usedVisualEpisodeIds = new Set<string>();
   private visualEpisode: BrainVisualEpisode;
+  private readonly localHistory: { kind: string; atMs: number }[] = [];
   private activityRunSequence = 0;
   private started = false;
   private disposed = false;
@@ -83,11 +93,14 @@ export class MainAutonomyComposition {
   private needsCatchUpMs = 0;
   private deferredUserInteractionResume = false;
   private enabled = true;
+  private quiet = false;
   private menuOpen = false;
   private cursorReactionActive = false;
-  private userPerchActive = false;
+  private readonly initiativeBudget = new InitiativeBudget();
+  private cursorEpisode: { endsAtMs: number; supportId: string | undefined } | null = null;
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
+
   private readonly cursorProximityEngine = new CursorProximityEngine();
   private cursorProximityState: CursorProximityState = {
     withinSwatRange: false,
@@ -107,6 +120,13 @@ export class MainAutonomyComposition {
       character: this.character,
       getCharacterSnapshot: options.getCharacterSnapshot,
       movement: options.movement,
+      getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
+        quiet: this.quiet,
+        canSocial: this.initiativeBudget.available(options.clock.now()) && options.getCharacterSnapshot().needs.attention >= 80
+          && (options.getCharacterSnapshot().relationship?.friendship ?? 0) >= 100,
+        canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
+        canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
+        canRest: this.activity.canStart({ kind: 'sleep', source: 'timer', priority: 'normal' }) }),
       onIntentResolved: (intent) => this.handleResolvedIntent(intent),
       onMovementStopped: () => this.setVisualKind('idle_blink', true),
       ...(options.behaviorConfig === undefined ? {} : { behaviorConfig: options.behaviorConfig }),
@@ -131,26 +151,44 @@ export class MainAutonomyComposition {
         if (request.traversal !== undefined) return options.movement.requestTraversal?.({
           runId: request.runId, stepId: request.stepId, action: request.traversal,
         }) ?? false;
-        return this.coordinator.requestActivityLocomotion(request.targetRootPosition);
+        return this.coordinator.requestActivityLocomotion(request.targetRootPosition, request.gait);
       },
       cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
+      onOutcome: event => { options.onActivityOutcome?.(event); this.coordinator.noteActivityOutcome(event); },
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
+      onSettled: (runId, result) => this.providerAdmission?.terminated(runId, result),
       onTerminated: (result) => {
         if (result.activityId === 'rest_spot_sleep' && result.status === 'completed') this.stableRestSpotSleep = true;
         if (result.activityId === 'rest_spot_nap' || (result.activityId === 'rest_spot_sleep' && result.status !== 'completed')) this.character.finishRest();
-        if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'rest_spot_sleep' && result.activityId !== 'window_perch'))
+        if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'rest_spot_sleep'))
             && options.movement.canAcceptVoluntaryMovement()) {
           this.setVisualKind('idle_blink', true, result.activityId === 'observe_cursor');
         }
-        if (result.activityId === 'window_perch' && this.userPerchActive) {
-          this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity();
-        } else if (result.activityId === 'observe_cursor' && this.cursorReactionActive) {
+        if (this.cursorReactionActive) {
           this.cursorReactionActive = false;
+          this.cursorEpisode = null;
           this.coordinator.resumeAfterReactiveActivity();
         } else {
           this.finishActivityCadence();
         }
+      },
+    });
+    this.providerAdmission = new ProviderBehaviorAdmission({
+      now: () => options.clock.now(),
+      gate: intent => this.providerGate(intent),
+      safeToStart: () => options.movement.canAcceptVoluntaryMovement(),
+      canDefer: () => this.activity.isTraversalStep(),
+      cancel: () => { this.cancelActivity('step_timeout', true); this.finishActivityCadence(); },
+      start: intent => {
+        // Selection is checked before cancelling the current local run.
+        if (!this.activity.canStart(intent)) return null;
+        this.cancelActivity('higher_priority_activity', false);
+        const resolved = this.character.resolveProviderIntent(intent, options.getCharacterSnapshot());
+        if (!resolved) return null;
+        this.coordinator.suspendForReactiveActivity();
+        if (!this.activity.start(resolved)) { this.coordinator.resumeAfterReactiveActivity(); return null; }
+        return this.activity.getRuntime();
       },
     });
   }
@@ -164,6 +202,7 @@ export class MainAutonomyComposition {
 
   public stop(): void {
     if (this.disposed) return;
+    this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
     this.started = false;
     this.resetBrainLoop();
@@ -172,6 +211,7 @@ export class MainAutonomyComposition {
 
   public dispose(): void {
     if (this.disposed) return;
+    this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
     this.disposed = true;
     this.started = false;
@@ -184,30 +224,69 @@ export class MainAutonomyComposition {
     if (!this.started || this.disposed) return false;
     const nowMs = this.options.clock.now();
     const previousTickAtMs = this.lastBrainTickAtMs ?? nowMs;
+    if (!Number.isFinite(nowMs) || nowMs < previousTickAtMs) return false;
     this.lastBrainTickAtMs = nowMs;
     const elapsedMs = Number.isFinite(nowMs) ? Math.max(0, nowMs - previousTickAtMs) : 0;
     this.expireCursorObservation(nowMs);
     const needsChanged = this.tickNeeds(elapsedMs);
     if (this.character.getSemanticSleepState() === 'sleeping'
-        && this.activity.getRuntime()?.activityId !== 'rest_spot_nap'
-        && this.options.getCharacterSnapshot().needs.energy >= 80) {
+        && permitsAutomaticWake(this.options.getCharacterSnapshot())) {
       this.character.resolveDirectIntent({ kind: 'wake', source: 'system', priority: 'normal', reason: 'restored_energy' }, this.options.getCharacterSnapshot());
       this.cancelActivity('user_interaction', false);
       this.setVisualKind('wake_up', true, true); this.finishActivityCadence();
     }
+    if (this.cursorEpisode && (nowMs >= this.cursorEpisode.endsAtMs ||
+        this.options.movement.getEnvironmentSnapshot().currentSurface?.id !== this.cursorEpisode.supportId)) {
+      this.cancelActivity('environment_invalidated', true);
+    }
+    if (this.character.isAutonomyEligible() && requiresVitalSleep(this.options.getCharacterSnapshot())
+        && this.options.movement.canAcceptVoluntaryMovement() && this.enabled && !this.menuOpen
+        && !this.deferredUserInteractionResume) {
+      this.providerAdmission.invalidate('critical_need');
+      this.cancelActivity('critical_need', false);
+      const resolution = this.character.resolveAutonomousOpportunity({ context: { decisionSequence: 0, opportunityAtMs: nowMs,
+        tone: this.options.getCharacterSnapshot().synthesizedTone }, snapshot: this.options.getCharacterSnapshot(),
+        candidates: [{ kind: 'sleep', source: 'system', priority: 'high' }], prng: this.options.prng });
+      if (resolution.resolvedIntent) this.handleResolvedIntent(resolution.resolvedIntent);
+    }
+    this.providerAdmission.tick();
     const activityChanged = this.activity.tick(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
     if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
     return needsChanged || activityChanged || showFall;
   }
 
+  public getAutonomyMode(): { readonly quiet: boolean } { return { quiet: this.quiet }; }
+
+  public setQuietMode(enabled: boolean): { readonly quiet: boolean } {
+    if (this.quiet === enabled) return this.getAutonomyMode();
+    this.quiet = enabled;
+    if (enabled) this.providerAdmission.invalidateIncompatibleQuiet();
+    this.resetCursorInterest();
+    if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
+      this.cancelActivity('explicit_cancel', true);
+    }
+    this.coordinator.notifyActivityFinished();
+    this.options.onPresentationChanged();
+    return this.getAutonomyMode();
+  }
+
+  private resetCursorInterest(): void {
+    this.lastCursorObservedAtMs = null;
+    this.cursorProximityState = { withinSwatRange: false, dwellWithinSwatRangeMs: 0, updatedAtMs: this.options.clock.now() };
+  }
+
   public setEnabled(enabled: boolean): void {
+    this.resetCursorInterest();
+    if (!enabled) this.providerAdmission.invalidate('disabled');
     if (!enabled) this.cancelActivity('explicit_cancel', true);
     this.enabled = enabled;
     this.coordinator.setEnabled(enabled);
   }
 
   public setMenuOpen(menuOpen: boolean): void {
+    this.resetCursorInterest();
+    if (menuOpen) this.providerAdmission.invalidate('disabled');
     if (menuOpen) this.cancelActivity('explicit_cancel', true);
     this.menuOpen = menuOpen;
     this.coordinator.setMenuOpen(menuOpen);
@@ -248,10 +327,11 @@ export class MainAutonomyComposition {
     if (!this.started || this.disposed) return false;
     const nowMs = this.options.clock.now();
     const compatible =
+      this.providerAdmission.getOwnedRun() === null && !this.providerAdmission.hasPending() &&
       this.enabled &&
       !this.menuOpen &&
       this.activity.getRuntime() === null &&
-      this.visualEpisode.intent.kind === 'idle_blink' &&
+      (this.visualEpisode.intent.kind === 'idle_blink' || this.visualEpisode.intent.kind === 'look_around') &&
       this.character.isAutonomyEligible() &&
       this.options.movement.canAcceptVoluntaryMovement();
     const proximity = this.cursorProximityEngine.update(this.cursorProximityState, {
@@ -283,7 +363,7 @@ export class MainAutonomyComposition {
     }, snapshot).resolvedIntent;
     if (resolvedIntent === null) return false;
 
-    const playCandidates = createCursorObserveActivityCandidates({
+    let playCandidates = createCursorObserveActivityCandidates({
       zone: update.zone,
       needs: snapshot.needs,
       tone: snapshot.synthesizedTone,
@@ -291,9 +371,25 @@ export class MainAutonomyComposition {
       gazeDirection: gazeDirectionTo(this.options.movement.getRootPosition(), screenPosition),
     });
 
+    const budgetAvailable = !this.quiet && this.initiativeBudget.available(nowMs);
+    if (!budgetAvailable) playCandidates = playCandidates.filter(candidate => candidate.tags?.includes('gaze_only'));
+    if (budgetAvailable && snapshot.needs.energy >= 65 && snapshot.needs.play >= 50
+        && this.cursorProximityState.dwellWithinSwatRangeMs >= DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs
+        && (snapshot.relationship?.friendship ?? 0) >= 100 && update.zone !== 'far') {
+      const approach = createCursorInterestActivity({ root: this.options.movement.getRootPosition(),
+        cursor: screenPosition, environment: this.options.movement.getEnvironmentSnapshot(),
+        collisionInsets: this.options.movement.getCollisionInsets(), maxDistance: INITIATIVE_TUNING.cursorApproachMaxDistanceDip,
+        maxDurationMs: INITIATIVE_TUNING.cursorEpisodeMaxMs });
+      if (approach && this.options.prng.next() < .25) playCandidates = [approach];
+    }
     this.coordinator.suspendForReactiveActivity();
     this.cursorReactionActive = true;
-    if (this.activity.start(resolvedIntent, { play: playCandidates })) return true;
+    if (this.activity.start(resolvedIntent, { play: playCandidates })) {
+      if (this.activity.isInitiative()) this.initiativeBudget.start(nowMs);
+      this.cursorEpisode = { endsAtMs: nowMs + INITIATIVE_TUNING.cursorEpisodeMaxMs,
+        supportId: this.options.movement.getEnvironmentSnapshot().currentSurface?.id };
+      return true;
+    }
     this.cursorReactionActive = false;
     this.coordinator.resumeAfterReactiveActivity();
     return false;
@@ -311,6 +407,7 @@ export class MainAutonomyComposition {
       compatible: false,
     }).state;
     this.lastCursorObservedAtMs = null;
+    if (this.cursorReactionActive) this.cancelActivity('environment_invalidated', true);
   }
 
   public requestSleepWake(command: SleepWakeCommand): boolean {
@@ -321,7 +418,11 @@ export class MainAutonomyComposition {
     if (intent === null) return false;
     this.suspendForUserInteraction();
     if (!this.options.movement.canAcceptVoluntaryMovement()) { this.resumeAfterUserInteraction(); return false; }
-    if (command.action === 'sleep') return this.activity.start(intent);
+    if (command.action === 'sleep') {
+      const started = this.activity.start(intent);
+      this.resumeAfterUserInteraction();
+      return started;
+    }
     this.setVisualKind('wake_up', true, true);
     this.resumeAfterUserInteraction();
     return true;
@@ -432,20 +533,42 @@ export class MainAutonomyComposition {
   }
 
   public handleWindowSupportAttached(): void {
-    this.cancelActivity('user_interaction', false);
+    // An autonomous route owns its landing; attaching must not cancel its continuation.
+    if (this.activity.getRuntime() !== null) return;
+    this.setVisualKind('land', true, true);
     this.coordinator.resumeAfterForcedMotion();
-    if (this.menuOpen || !this.enabled) { this.setVisualKind('sit_edge', true, true); return; }
-    this.coordinator.suspendForReactiveActivity();
-    this.userPerchActive = true;
-    if (!this.activity.startWindowPerch()) {
-      this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity();
-    }
   }
 
   public handleSupportLost(): void {
     this.character.wakeForSupportLoss();
     this.cancelActivity('forced_motion', true);
     this.coordinator.interruptForcedMotion();
+  }
+
+  public beginDialogueThinking(_requestId: string): void {
+    // Dialogue presentation owns thinking; it never suspends the Brain scheduler.
+  }
+
+  public endDialogueThinking(_requestId: string): void {}
+
+  public setBehaviorContext(context: BehaviorTurnContext | null): void { this.providerAdmission.setContext(context); }
+
+  public offerDialogueIntent(offer: ProviderBehaviorOffer): BehaviorAdmissionReceipt {
+    return this.providerAdmission.offer(offer);
+  }
+
+  public getAdmissionTrace() { return this.providerAdmission.getTrace(); }
+
+  private providerGate(intent: BehaviorIntent): BehaviorAdmissionRejection | null {
+    if (!this.started || this.disposed || !this.enabled || this.menuOpen) return 'disabled';
+    if (['drag', 'land', 'wake', 'quiet'].includes(intent.kind)) return 'no_behavior_command';
+    if (requiresVitalSleep(this.options.getCharacterSnapshot()) ||
+        (!this.character.isAutonomyEligible() && this.activity.getRuntime()?.activityId !== 'rest_spot_nap')) return 'character_gate';
+    if (!isQuietCompatible(intent, this.quiet)) return 'quiet';
+    if (!this.options.movement.canAcceptVoluntaryMovement() && !this.activity.isTraversalStep()) return 'forced_motion';
+    if (this.deferredUserInteractionResume || this.activity.getSource() === 'user') return 'user_conflict';
+    if (!this.activity.canStart(intent)) return 'no_activity';
+    return null;
   }
 
   public notifyTraversalRejected(request: Pick<TraversalRequest, 'runId' | 'stepId'>): void {
@@ -455,6 +578,9 @@ export class MainAutonomyComposition {
   }
 
   public notifyVoluntaryMovementCompleted(completed?: Pick<TraversalRequest, 'runId' | 'stepId'>): void {
+    const previousRun = this.activity.getRuntime()?.runId;
+    this.providerAdmission.tick();
+    if (previousRun !== this.activity.getRuntime()?.runId) return;
     if (!this.activity.notifyLocomotionCompleted(completed) && completed === undefined) {
       this.setVisualKind('idle_blink', false);
       this.coordinator.notifyVoluntaryMovementCompleted();
@@ -476,10 +602,17 @@ export class MainAutonomyComposition {
   }
 
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
-    if (this.options.movement.getEnvironmentSnapshot().currentSurface?.kind === 'window_top') {
-      if (intent.kind === 'idle' || intent.kind === 'quiet') { this.setVisualKind('sit_edge', true); return true; }
+    if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;
+    const social = intent.activityFamily === 'social_bid';
+    if (!isQuietCompatible(intent, this.quiet)) return false;
+    if (social && !this.initiativeBudget.available(this.options.clock.now())) return false;
+    if (this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined)) {
+      if (social) this.initiativeBudget.start(this.options.clock.now());
+      this.localHistory.push({ kind: social ? 'social_bid' : intent.kind, atMs: this.options.clock.now() });
+      if (intent.calmPose) this.localHistory.push({ kind: `calm:${intent.calmPose}`, atMs: this.options.clock.now() });
+      if (this.localHistory.length > 16) this.localHistory.splice(0, this.localHistory.length - 16);
+      return true;
     }
-    if (this.activity.start(intent)) return true;
     if (intent.kind === 'wander') return false;
     if (intent.kind === 'sleep') { this.character.finishRest(); this.setVisualKind('idle_blink', true); return false; }
     this.setVisualIntent(
@@ -491,6 +624,7 @@ export class MainAutonomyComposition {
   }
 
   private finishActivityCadence(): void {
+    this.coordinator.resumeAfterReactiveActivity();
     if (this.deferredUserInteractionResume) {
       this.deferredUserInteractionResume = false;
       this.coordinator.resumeAfterUserInteraction();
@@ -500,9 +634,13 @@ export class MainAutonomyComposition {
   }
 
   private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
+    if (reason === 'user_interaction' || reason === 'forced_motion') {
+      this.providerAdmission?.invalidate(reason);
+    }
+
     this.jumpFallAtMs = null;
+    this.cursorEpisode = null;
     const wasCursorReaction = this.cursorReactionActive;
-    const wasPerching = this.userPerchActive;
     const restSpot = this.activity.getRuntime()?.activityId.startsWith('rest_spot_') ?? false;
     const cancelled = this.activity.cancel(reason, forDrag);
     if (this.stableRestSpotSleep) {
@@ -512,7 +650,6 @@ export class MainAutonomyComposition {
     }
     if (!cancelled) return false;
     if (restSpot) this.character.finishRest();
-    if (wasPerching) { this.userPerchActive = false; this.coordinator.resumeAfterReactiveActivity(); }
     if (wasCursorReaction) {
       this.cursorReactionActive = false;
       this.coordinator.resumeAfterReactiveActivity();

@@ -122,7 +122,24 @@ Starting thresholds сохраняются: `swatRadiusWorldPx=64`, `swatDwellMs
 
 Dwell сбрасывается при exit/stale/missing/incompatible state. Perception подавляет сигнал при `dragged`, fall lifecycle, land lifecycle, crash/recover и sleep visual lifecycle. Названия visual states здесь являются consumer compatibility list, а их transitions принадлежат Animation Engine.
 
-Look-at остаётся gaze. Swat/chase/avoid — P3 Activity decisions и не стартуют внутри Perception.
+Look-at остаётся gaze. Swat/avoid — local P3 Activity decisions и не стартуют внутри Perception.
+AUTO-A09 не вводит постоянную chase: ограниченный cursor interest подчинён
+[общему admission/budget](./AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость).
+
+### 6.1. AUTO-A09: bounded cursor interest
+
+Stationary Observe Cursor из #23 сохраняется: gaze, существующий доступный gesture,
+без locomotion по умолчанию. Новая approach Activity внутри `play` выбирается явно в #48
+только после freshness/dwell, Character Needs/friendship, cooldown и общего budget gate.
+Усталость может оставить только gaze; P2 и AI ownership запрещают новую local Activity.
+Один эпизод использует один run, deadline и максимум одну фиксированную цель на той же
+достижимой опоре; новые samples обновляют gaze/валидность, но не retarget и не продлевают run.
+Approach — существующий walk с ограничением суммарной дистанции из `InitiativeTuning`;
+новые прыжки/traversal primitives и переход между опорами для погони не допускаются.
+Потеря freshness, уход курсора за область интереса, исчезновение/недостижимость цели,
+user/physics interruption или deadline завершают эпизод с обычным cleanup и свежим local выбором.
+Движение курсора не перезапускает эпизод. Gaze-only не расходует budget и не даёт play reward;
+подтверждённая игровая фаза использует once-only [Activity outcome](./ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership).
 
 ## 7. Normalized environment signals
 
@@ -170,6 +187,11 @@ Infrastructure публикует полный набор кандидатов; 
 | `side` | Только для `window_side`, обязательно `left` или `right`; x равен bounds.x либо bounds.x + width, y от bounds.y до bounds.y + height. |
 | `isValidSupport` | true только для прошедшей все проверки кромки; false никогда не становится опорой. |
 
+Верх окна и пол используют общий выбор поведения и поз: прогулка, наблюдение,
+сидение, отдых и сон. Тип опоры не даёт бонуса при выборе цели и не запускает
+отдельную Activity после посадки. Геометрия влияет на доступный маршрут и границы
+ходьбы; движение окна переносит персонажа, потеря опоры запускает падение.
+
 Окно даёт до трёх кромок, с различными ID. Все наблюдения immutable; набор — полная замена, не delta.
 `revision` строго возрастает на каждый новый снимок в экземпляре порта, включая unavailable/recovery; меньшие/повторные revision игнорируются.
 `capturedAtMs` — Main monotonic request-start time, не время доставки и не часы helper. Чтение cache не освежает timestamp.
@@ -206,7 +228,7 @@ TTL = 300 ms: `0 <= nowMs - capturedAtMs <= 300`. После TTL Application н�
 Бюджет одного запроса 250 ms; отрицательный age, неполный/повреждённый ответ, разрыв последовательности или изменение topology во время выборки инвалидируют её.
 
 Источник frame — `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)` (physical px). `GetWindowRect` не подставляется как равнозначный: он DPI-virtualized и может включать невидимые resize borders.
-Для первого slice окно должно целиком лежать на одном физическом дисплее; spanning окна исключаются до явного расширения контракта.
+Frame должен пересекать ровно один физический дисплей; пересечение двух дисплеев (spanning) исключается. AUTO-V01 допускает выход тела окна за внешний край desktop, если публикуемая кромка целиком внутри workArea; исходные bounds сохраняются без clipping.
 Infrastructure конвертирует rectangle ровно один раз через Electron `screen.screenToDipRect(null, rect)`; нельзя делить global x/y на scaleFactor или использовать дисплей Wisp вместо дисплея frame.
 Кромка принимается только если полностью внутри workArea соответствующего дисплея; clipping, создающий ложную кромку, запрещён.
 Разные окна могут находиться на разных DPI-дисплеях. Глобальные DIP согласованы с `ScreenBoundsDto`; перед коммитом Application выбирает bounds того же дисплея и проверяет допустимость root с collisionInsets.

@@ -1,3 +1,4 @@
+import { parseAutonomyMode } from './quiet-mode-validation';
 import type {
   BodyEventDTO,
   BrainActivityTimelineDTO,
@@ -7,6 +8,7 @@ import type {
   BrainVisualIntentDTO,
 } from './ipc-contracts';
 
+import { parseDialoguePresentation } from './dialogue-ipc-validation';
 const MAX_ID_LENGTH = 128;
 
 const EMOTIONAL_TONES = [
@@ -270,6 +272,8 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
     'activity',
     'motion',
     'visualIntent',
+    'dialogue',
+    'autonomy',
   ]);
   const sampledAtMs = finiteNumber(own(record, 'sampledAtMs'), 0);
   const character = asRecord(own(record, 'character'));
@@ -278,6 +282,8 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
   requireExactKeys(needs, ['energy', 'attention', 'play', 'comfort', 'boredom']);
   return {
     streamId: boundedId(own(record, 'streamId')),
+    dialogue: parseDialoguePresentation(own(record, 'dialogue')),
+    autonomy: parseAutonomyMode(own(record, 'autonomy')),
     revision: safeInteger(own(record, 'revision'), 1),
     sampledAtMs,
     character: {

@@ -26,16 +26,16 @@ function createState(): CharacterState {
 }
 
 describe('Application: CharacterInteractionUseCase', () => {
-  it('applies semantic play stimulus to character needs', () => {
+  it('does not reward a play request before execution', () => {
     const stateService = new CharacterStateService({ initialState: createState() });
     const useCase = new CharacterInteractionUseCase(stateService);
 
     const after = useCase.execute({ type: 'play' });
 
-    expect(after.needs.play).toBe(55);
-    expect(after.needs.energy).toBe(57);
-    expect(after.needs.boredom).toBe(32);
-    expect(after.relationship.friendship).toBe(13);
+    expect(after.needs.play).toBe(70);
+    expect(after.needs.energy).toBe(60);
+    expect(after.needs.boredom).toBe(50);
+    expect(after.relationship.friendship).toBe(10);
   });
 
   it('applies semantic feed stimulus instead of a no-op system event', () => {

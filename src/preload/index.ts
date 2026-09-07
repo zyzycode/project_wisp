@@ -1,3 +1,4 @@
+import { parseQuietModeCommand, parseAutonomyMode } from '../shared/quiet-mode-validation';
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
   WispApiBridge,
@@ -18,6 +19,7 @@ import {
   parseBrainStateDTO,
 } from '../shared/brain-body-ipc-validation';
 import { isDebugMode } from '../shared/debug-mode';
+import { parseDialogueCommand, parseDialogueReceipt } from '../shared/dialogue-ipc-validation';
 
 const brainStateListeners = new Set<(state: BrainStateDTO) => void>();
 let latestBrainState: BrainStateDTO | null = null;
@@ -43,6 +45,8 @@ const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown):
 ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
+  setQuietMode: async command => parseAutonomyMode(await ipcRenderer.invoke('wisp:set-quiet-mode', parseQuietModeCommand(command))),
+  postDialogueCommand: async command => parseDialogueReceipt(await ipcRenderer.invoke('wisp:dialogue-command', parseDialogueCommand(command))),
   debugEnabled: isDebugMode(),
   ping: (message: string): Promise<PingResponseDTO> => {
     return ipcRenderer.invoke('wisp:ping', message);

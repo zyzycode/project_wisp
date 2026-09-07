@@ -1,4 +1,5 @@
 import React from 'react';
+import { PET_PRESENTATION_LAYOUT } from '../../shared/pet-presentation-layout';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
@@ -43,9 +44,13 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
   return (
     <div
       className={`pet-container ${model.isDragging ? 'is-dragging' : ''} ${model.isWandering ? 'is-wandering' : ''} ${model.menuOpen ? 'menu-is-open' : ''}`}
+      style={{ paddingLeft: PET_PRESENTATION_LAYOUT.characterRect.x,
+        paddingTop: PET_PRESENTATION_LAYOUT.characterRect.y }}
     >
       <SpeechBubble message={model.dialogue.currentMessage} onDismiss={model.dialogue.dismissMessage} />
       <ChatInput
+        canSubmit={model.dialogue.canSubmit}
+        errorMessage={model.dialogue.error}
         isOpen={model.dialogue.chatOpen}
         onSendMessage={model.dialogue.handleSendMessage}
         onClose={model.dialogue.closeChat}
@@ -56,6 +61,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         currentTheme={model.currentTheme}
         scale={model.scale}
         autoWanderEnabled={model.autoWanderEnabled}
+        quietMode={model.quietMode}
+        onToggleQuietMode={model.toggleQuietMode}
         isSleeping={model.isSleeping}
         debugHudEnabled={model.debugHudEnabled}
         debugHudVisible={model.debugHudVisible}

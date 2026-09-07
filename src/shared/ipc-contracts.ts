@@ -4,6 +4,23 @@
  * Only serializable data types and strict interfaces allowed.
  */
 
+/** Static presentation configuration shared by Main and Renderer; no new IPC channel. */
+export interface PetPresentationLayoutDTO {
+  /** Native window size and character rectangle in Electron DIP / CSS pixels. */
+  readonly compactWindowSize: { readonly width: number; readonly height: number };
+  readonly expandedWindowSize: { readonly width: number; readonly height: number };
+  /** Character origin stays fixed when the context menu expands the window. */
+  readonly characterRect: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  };
+  /** Canonical source-canvas coordinates, independent of the current animation. */
+  readonly spriteViewport: { readonly width: number; readonly height: number };
+  readonly spriteRootPivot: { readonly x: number; readonly y: number };
+}
+
 export interface SystemInfoDTO {
   platform: 'linux' | 'win32' | 'darwin';
   sessionType: string;
@@ -25,6 +42,15 @@ export interface IgnoreMouseEventsDTO {
 
 export interface SetAutonomyEnabledDTO {
   readonly enabled: boolean;
+}
+
+/** AUTO-A09 target command/state; wired atomically with Main/Preload/UI in #49. */
+export interface SetQuietModeDTO {
+  readonly enabled: boolean;
+}
+
+export interface AutonomyModeDTO {
+  readonly quiet: boolean;
 }
 
 export type SleepWakeCommandDTO =
@@ -140,6 +166,8 @@ export interface BrainVisualIntentDTO {
 }
 
 export interface BrainStateDTO {
+  readonly autonomy: AutonomyModeDTO;
+  readonly dialogue: DialoguePresentationDTO;
   readonly streamId: string;
   readonly revision: number;
   readonly sampledAtMs: number;
@@ -157,6 +185,58 @@ export interface BodyEventMetaDTO {
   readonly sequence: number;
   readonly basedOnRevision: number;
   readonly observedAtMs: number;
+}
+
+/** Dialogue commands use their own sequence within the Brain stream. */
+export interface DialogueCommandMetaDTO {
+  readonly streamId: string;
+  readonly conversationId: string;
+  /** Increasing per Brain stream; independent of BodyEventDTO.sequence. */
+  readonly sequence: number;
+}
+
+export type DialogueCommandDTO = DialogueCommandMetaDTO & (
+  | { readonly type: 'send'; readonly text: string }
+  | { readonly type: 'reset' }
+);
+
+/** Admission only; replies and lifecycle are delivered in the complete Brain snapshot. */
+export type DialogueCommandReceiptDTO =
+  | { readonly status: 'accepted'; readonly conversationId: string }
+  | {
+      readonly status: 'rejected';
+      readonly reason: 'busy' | 'stale' | 'invalid_input' | 'unavailable';
+    };
+
+export type DialogueFallbackReasonDTO =
+  | 'degraded'
+  | 'offline'
+  | 'timeout'
+  | 'provider_error'
+  | 'invalid_response';
+
+export type DialogueTurnPresentationDTO =
+  | { readonly phase: 'idle' }
+  | { readonly phase: 'thinking'; readonly requestId: string }
+  | {
+      readonly phase: 'completed';
+      readonly requestId: string;
+      readonly replyText: string;
+      readonly outcome:
+        | { readonly kind: 'success' }
+        | { readonly kind: 'fallback'; readonly reason: DialogueFallbackReasonDTO };
+    }
+  | {
+      readonly phase: 'error';
+      readonly requestId: string;
+      readonly message: string;
+    };
+
+export interface DialoguePresentationDTO {
+  readonly conversationId: string;
+  /** False while a provider call is outstanding, including a retired timed-out call. */
+  readonly canSubmit: boolean;
+  readonly turn: DialogueTurnPresentationDTO;
 }
 
 export type BodyInteractionTypeDTO =
@@ -252,6 +332,8 @@ export interface DebugTelemetryDTO {
 }
 
 export interface WispApiBridge {
+  setQuietMode(command: SetQuietModeDTO): Promise<AutonomyModeDTO>;
+  postDialogueCommand(command: DialogueCommandDTO): Promise<DialogueCommandReceiptDTO>;
   readonly debugEnabled: boolean;
   ping: (message: string) => Promise<PingResponseDTO>;
   getSystemInfo: () => Promise<SystemInfoDTO>;

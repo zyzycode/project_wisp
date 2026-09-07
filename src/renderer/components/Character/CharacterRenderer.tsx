@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PET_PRESENTATION_LAYOUT } from '../../../shared/pet-presentation-layout';
 import bundledManifest from '../../../../public/assets/sprites/manifest.json';
 import { createSystemAnimationIntent } from '../../../domain/animation/animation-intent';
 import type {
@@ -23,7 +24,7 @@ import type { GazeDirection } from '../../../domain/behavior/gaze-engine';
 import type { CursorScreenPosition } from '../../body-ui-runtime';
 import { SpriteRenderer, resolveSpriteSource } from './SpriteRenderer';
 
-export const BASE_CHARACTER_SIZE = { width: 240, height: 240 };
+export const BASE_CHARACTER_SIZE = PET_PRESENTATION_LAYOUT.characterRect;
 
 const FALLBACK_INTENT = createSystemAnimationIntent('idle_blink');
 const FALLBACK_VISUAL_STATE: BodyVisualState = {

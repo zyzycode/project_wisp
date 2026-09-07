@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AssetResolver, ManifestLoader, type NormalizedSpriteAnimationDef, type NormalizedSpriteManifest } from '../../src/renderer/render-engine';
 import { createSystemAnimationIntent } from '../../src/domain/animation/animation-intent';
+import { PET_PRESENTATION_LAYOUT } from '../../src/shared/pet-presentation-layout';
+import { AnimationPlayer } from '../../src/renderer/render-engine/animation-player';
 
 const manifest: NormalizedSpriteManifest = {
   schemaVersion: 1,
@@ -63,6 +65,24 @@ function animation(
 }
 
 describe('Renderer: AssetResolver', () => {
+  it('aligns changing frame and clip pivots to the fixed canonical root', () => {
+    const body = { ...animation('body_idle', 'body/idle', 'body'), pivot: { x: 200, y: 400 },
+      frames: [{ source: 'first.png', durationMs: 100, pivot: { x: 200, y: 400 } },
+        { source: 'second.png', durationMs: 100, pivot: { x: 240, y: 430 } }] };
+    const resolver = new AssetResolver({ schemaVersion: 1, animations: { body_idle: body } });
+    const clip = resolver.resolve(createSystemAnimationIntent('idle_blink'));
+    expect(clip.rootPivot).toEqual(PET_PRESENTATION_LAYOUT.spriteRootPivot);
+    const player = new AnimationPlayer({ render: () => {}, destroy: () => {} });
+    player.play(clip, { type: 'until_replaced' });
+    for (const elapsed of [0, 100]) {
+      player.tick(elapsed);
+      const state = player.getPresentationState()!;
+      const layer = state.layers[0]!;
+      expect(state.rootPivot).toEqual(PET_PRESENTATION_LAYOUT.spriteRootPivot);
+      expect(state.rootPivot.y + layer.offset.y - layer.pivot.y + layer.pivot.y).toBe(460);
+    }
+    expect(resolver.resolveDebugSelection('body_idle').rootPivot).toEqual(clip.rootPivot);
+  });
   it('uses the existing sit asset and pivot for missing sit_edge artwork', () => {
     const loaded = new ManifestLoader().load(JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8')));
     const result = new AssetResolver(loaded).resolve(createSystemAnimationIntent('sit_edge'));

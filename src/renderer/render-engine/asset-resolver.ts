@@ -1,4 +1,5 @@
 import type { AnimationIntent, AnyAnimationIntentKind } from '../../domain/animation/animation-intent';
+import { PET_PRESENTATION_LAYOUT } from '../../shared/pet-presentation-layout';
 import {
   DEFAULT_FACE_PIVOT,
   DEFAULT_SPRITE_PIVOT,
@@ -20,7 +21,7 @@ export const TRAVERSAL_SPRITE_FALLBACKS = {
   pull_up_edge: { key: 'body_climb_wall', frame: 3 },
 } as const;
 
-const DEFAULT_VIEWPORT = { width: 512, height: 512 };
+const DEFAULT_VIEWPORT = PET_PRESENTATION_LAYOUT.spriteViewport;
 const ZERO_POINT: SpritePoint = { x: 0, y: 0 };
 type AnyAnimationIntent = AnimationIntent<AnyAnimationIntentKind>;
 
@@ -114,12 +115,12 @@ export class AssetResolver {
     const face = this.resolveFace(intent, body);
     const expression = this.resolveExpression(intent);
     const prop = this.resolveProp(intent);
-    const rootPivot = body.pivot ?? DEFAULT_SPRITE_PIVOT;
+    const rootPivot = DEFAULT_SPRITE_PIVOT;
     const hasBlush = intent.expressionHint === 'blush' || intent.emotionalTone === 'flustered' || intent.emotionalTone === 'shy';
 
     return {
       key: body.key,
-      viewport: body.canvasSize ?? DEFAULT_VIEWPORT,
+      viewport: DEFAULT_VIEWPORT,
       rootPivot,
       transform: { flipX: false, scale: 1 },
       body: toBodyTrack(body),
@@ -138,14 +139,15 @@ export class AssetResolver {
     const faceAnimation = faceKey === undefined
       ? undefined
       : selectAnimation(this.manifest.animations[faceKey], 'face');
-    const rootPivot = body.pivot ?? DEFAULT_SPRITE_PIVOT;
+    const rootPivot = DEFAULT_SPRITE_PIVOT;
     const face = faceAnimation === undefined
       ? undefined
-      : toDebugFullCanvasFaceTrack(faceAnimation, rootPivot);
+      : { ...toDebugFullCanvasFaceTrack(faceAnimation, body.pivot ?? DEFAULT_SPRITE_PIVOT),
+          canvasSize: body.canvasSize ?? DEFAULT_VIEWPORT };
 
     return {
       key: faceAnimation === undefined ? body.key : `${body.key}::${faceAnimation.key}`,
-      viewport: body.canvasSize ?? DEFAULT_VIEWPORT,
+      viewport: DEFAULT_VIEWPORT,
       rootPivot,
       transform: { flipX: false, scale: 1 },
       body: toBodyTrack(body),
@@ -257,6 +259,7 @@ function selectAnimation(
 
 function toBodyTrack(animation: NormalizedSpriteAnimationDef): ResolvedBodyTrack {
   return {
+    canvasSize: animation.canvasSize ?? DEFAULT_VIEWPORT,
     id: 'base_body',
     category: 'body',
     animationKey: animation.key,
@@ -282,6 +285,7 @@ function toOverlayTrack<TCategory extends 'face' | 'expression' | 'props'>(
 ): ResolvedOverlayTrack & { readonly category: TCategory } {
   const defaultPivot = category === 'face' || category === 'expression' ? DEFAULT_FACE_PIVOT : DEFAULT_SPRITE_PIVOT;
   return {
+    canvasSize: animation.canvasSize ?? DEFAULT_VIEWPORT,
     id: id as ResolvedOverlayTrack['id'],
     category,
     animationKey: animation.key,

@@ -1,3 +1,5 @@
+import type { ActivityOutcomeFeedback } from '../ports/shimeji-feedback-port';
+import { LOCAL_TUNING_VERSION, type LocalSelectionContext, type LocalSelectionTrace } from '../../domain/behavior/local-activity-policy';
 import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
 import type { TraversalRequest } from '../../domain/behavior/traversal-route';
 import type {
@@ -7,7 +9,7 @@ import type {
 import type { CollisionInsets, ScreenBoundsDto, Vector2Dto } from '../../domain/behavior/motion-engine';
 import {
   calculateAutonomyOpportunityDelayMs,
-  calculateNextWanderTarget,
+  planWanderTarget,
   DEFAULT_AUTONOMOUS_INTENT_CONFIG,
   DEFAULT_BEHAVIOR_CONFIG,
   type AutonomousCandidate,
@@ -17,6 +19,9 @@ import {
 } from '../../domain/behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
 import type { EnvironmentSnapshot } from '../../domain/behavior/surface-kinematics';
+import type { WanderTargetPlanner } from '../ports/wander-target-planner';
+
+const wanderTargetPlanner: WanderTargetPlanner = planWanderTarget;
 
 export interface AutonomyClock {
   now(): number;
@@ -35,6 +40,7 @@ export interface CharacterAutonomyBoundary {
     readonly candidates: readonly AutonomousCandidate[];
     readonly prng: IPrng;
     readonly config: typeof DEFAULT_AUTONOMOUS_INTENT_CONFIG;
+    readonly selection?: LocalSelectionContext;
   }): CharacterAutonomyResolution;
 }
 
@@ -55,6 +61,9 @@ export interface VoluntaryMovementController {
 }
 
 export interface AutonomyTraceEntry {
+  readonly activityResult?: Pick<ActivityOutcomeFeedback, 'family' | 'outcome' | 'executedMs'>;
+  readonly tuningVersion?: string;
+  readonly selection?: readonly LocalSelectionTrace[];
   readonly decisionSequence: number;
   readonly opportunityAtMs: number;
   readonly orderedCandidateKinds: readonly AutonomousCandidate['kind'][];
@@ -75,13 +84,15 @@ export interface AutonomyCoordinatorOptions {
     intent: BehaviorIntent,
     opportunity: { readonly decisionSequence: number; readonly opportunityAtMs: number }
   ) => boolean;
+  readonly getLocalSelection?: () => LocalSelectionContext;
   readonly onMovementStopped?: () => void;
   readonly behaviorConfig?: BehaviorConfig;
   readonly traceCapacity?: number;
 }
 
-function candidateSet(): readonly AutonomousCandidate[] {
+function candidateSet(includePlay = false): readonly AutonomousCandidate[] {
   return Object.freeze([
+    ...(includePlay ? [Object.freeze({ kind: 'play' as const, source: 'timer' as const, priority: 'normal' as const, reason: 'autonomous_game' })] : []),
     Object.freeze({ kind: 'idle', source: 'timer', priority: 'low', reason: 'autonomous_idle' }),
     Object.freeze({ kind: 'wander', source: 'timer', priority: 'normal', reason: 'autonomous_wander' }),
     Object.freeze({ kind: 'sleep', source: 'timer', priority: 'high', moodHint: 'sleepy', reason: 'autonomous_nap' }),
@@ -209,9 +220,9 @@ export class AutonomyCoordinator {
     this.scheduleNextOpportunity();
   }
 
-  public requestActivityLocomotion(targetRootPosition?: Vector2Dto): boolean {
+  public requestActivityLocomotion(targetRootPosition?: Vector2Dto, gait: 'walk' | 'run' | 'crawl' = 'walk'): boolean {
     if (this.disposed) return false;
-    return this.requestWander(targetRootPosition);
+    return this.requestWander(targetRootPosition, gait);
   }
 
   public noteUserActivity(): void {
@@ -219,10 +230,19 @@ export class AutonomyCoordinator {
     this.lastUserActivityAtMs = this.options.clock.now();
   }
 
+  public noteActivityOutcome(event: ActivityOutcomeFeedback): void {
+    const index = this.trace.length - 1;
+    const current = this.trace[index];
+    if (current) this.trace[index] = { ...current, activityResult: {
+      family: event.family, outcome: event.outcome, executedMs: event.executedMs } };
+  }
+
   public getDecisionTrace(): readonly AutonomyTraceEntry[] {
     return this.trace.map((entry) => ({
       ...entry,
       orderedCandidateKinds: [...entry.orderedCandidateKinds],
+      selection: entry.selection?.map(row => ({ ...row, factors: { ...row.factors } })),
+      ...(entry.activityResult ? { activityResult: { ...entry.activityResult } } : {}),
       prng: { ...entry.prng },
     }));
   }
@@ -258,7 +278,7 @@ export class AutonomyCoordinator {
     const opportunityAtMs = Math.max(observedAtMs, this.lastOpportunityAtMs + 0.001);
     this.lastOpportunityAtMs = opportunityAtMs;
     const decisionSequence = ++this.decisionSequence;
-    const candidates = candidateSet();
+    const candidates = candidateSet(this.options.getLocalSelection !== undefined);
     const snapshot = this.options.getCharacterSnapshot();
     const resolution = this.options.character.resolveAutonomousOpportunity({
       context: {
@@ -271,6 +291,7 @@ export class AutonomyCoordinator {
         ),
       },
       snapshot,
+      selection: this.options.getLocalSelection?.(),
       candidates,
       prng: this.options.prng,
       config: {
@@ -283,6 +304,8 @@ export class AutonomyCoordinator {
       decisionSequence,
       opportunityAtMs,
       orderedCandidateKinds: candidates.map((candidate) => candidate.kind),
+      tuningVersion: LOCAL_TUNING_VERSION,
+      selection: resolution.selectionTrace,
       outcomeKind: resolved?.kind ?? null,
       outcomeReason: resolved?.reason ?? 'no_candidate_accepted',
       prng: { ...this.options.prngMetadata },
@@ -307,20 +330,20 @@ export class AutonomyCoordinator {
       }
       return;
     }
-    this.options.onIntentResolved(resolved, { decisionSequence, opportunityAtMs });
-    this.scheduleNextOpportunity();
+    if (!this.options.onIntentResolved(resolved, { decisionSequence, opportunityAtMs })) this.scheduleNextOpportunity();
   }
 
-  private requestWander(targetRootPosition?: Vector2Dto): boolean {
+  private requestWander(targetRootPosition?: Vector2Dto, gait: 'walk' | 'run' | 'crawl' = 'walk'): boolean {
     const start = this.options.movement.getRootPosition();
     const target = targetRootPosition === undefined
-      ? calculateNextWanderTarget(
-          start,
-          this.options.movement.getBounds(),
-          this.options.prng,
-          this.options.movement.getCollisionInsets(),
-          this.behaviorConfig()
-        )
+      ? wanderTargetPlanner({
+          currentPosition: start,
+          screenBounds: this.options.movement.getBounds(),
+          currentSurface: this.options.movement.getEnvironmentSnapshot().currentSurface,
+          prng: this.options.prng,
+          collisionInsets: this.options.movement.getCollisionInsets(),
+          config: this.behaviorConfig(),
+        })
       : {
           target: targetRootPosition,
           durationMs: Math.abs(targetRootPosition.x - start.x) > 0 ? 1 : 0,
@@ -328,7 +351,7 @@ export class AutonomyCoordinator {
     return target.durationMs > 0 && this.options.movement.requestVoluntaryMovement({
       kind: 'horizontal_wander',
       targetRootPosition: target.target,
-      speedPxPerSec: this.behaviorConfig().wanderSpeedPxPerSec,
+      speedPxPerSec: this.behaviorConfig().wanderSpeedPxPerSec * (gait === 'run' ? 2 : gait === 'crawl' ? .5 : 1),
     });
   }
 
@@ -375,7 +398,7 @@ export class AutonomyCoordinator {
 
   private pushTrace(entry: AutonomyTraceEntry): void {
     this.trace.push(Object.freeze(entry));
-    const capacity = Math.max(1, Math.floor(this.options.traceCapacity ?? 32));
+    const capacity = Math.max(1, Math.floor(this.options.traceCapacity ?? 64));
     if (this.trace.length > capacity) this.trace.splice(0, this.trace.length - capacity);
   }
 

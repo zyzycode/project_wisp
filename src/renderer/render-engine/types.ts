@@ -1,7 +1,8 @@
+import { PET_PRESENTATION_LAYOUT } from '../../shared/pet-presentation-layout';
 /** The manifest may override this per animation or frame. */
 export const DEFAULT_SPRITE_FPS = 5;
 export const DEFAULT_FACE_FPS = 3;
-export const DEFAULT_SPRITE_PIVOT: SpritePoint = { x: 256, y: 460 };
+export const DEFAULT_SPRITE_PIVOT: SpritePoint = PET_PRESENTATION_LAYOUT.spriteRootPivot;
 export const DEFAULT_FACE_PIVOT: SpritePoint = { x: 256, y: 180 };
 
 export type SpriteLayerCategory = 'body' | 'face' | 'expression' | 'props';
@@ -135,6 +136,8 @@ export interface RenderableFrameDef extends SpriteFrameDef {
 }
 
 export interface RenderLayerBase {
+  /** Source-canvas extent; independent of the fixed presentation viewport. */
+  readonly canvasSize?: { readonly width: number; readonly height: number };
   readonly id: NonProceduralRenderLayerId;
   readonly category: SpriteLayerCategory;
   readonly zIndex: number;
@@ -185,6 +188,7 @@ export interface RenderPresentationState {
 export type TrackPlaybackMode = 'loop' | 'hold' | 'once';
 
 export interface ResolvedTrackBase {
+  readonly canvasSize?: { readonly width: number; readonly height: number };
   readonly id: NonProceduralRenderLayerId;
   readonly category: SpriteLayerCategory;
   readonly animationKey: SpriteAnimationKey;

@@ -214,3 +214,23 @@ Main обрабатывает Body event в таком порядке:
 - [AUTO-I04 #35](https://github.com/zyzycode/project_wisp/issues/35): climb/jump остаются Brain Activity + authoritative Motion route; Body/Skin только отображают phases.
 - [AUTO-I05 #36](https://github.com/zyzycode/project_wisp/issues/36): внешняя window geometry нормализуется Infrastructure/Main и не передаёт native handles или platform types в Body/Skin.
 - [AUTO-I06 #37](https://github.com/zyzycode/project_wisp/issues/37): Explore/Rest arbitration, route и sleep kind принадлежат Brain timeline; Skin fallback не меняет outcome.
+
+## AUTO-A09: quiet command и presentation
+
+Целевые типы [`SetQuietModeDTO`, `AutonomyModeDTO`, `QuietModeBridge`, `QuietModeBrainStateDTO`](../../src/shared/ipc-contracts.ts)
+объявлены для #49. При реализации `setQuietMode` становится обязательным методом `WispApiBridge`,
+а `autonomy.quiet` — обязательным полем полного `BrainStateDTO`; временные target interfaces
+сворачиваются в эти канонические типы в том же change-set. До #49 это declarations, не runtime capability.
+Main регистрирует один `wisp:set-quiet-mode` invoke через typed Preload, проверяет trusted sender
+и exact payload `{ enabled: boolean }` (без coercion/лишних полей), затем применяет mode в Brain transaction.
+Response содержит authoritative mode; UI отображает `autonomy.quiet` из ordered Brain snapshot,
+включая первый snapshot/reload. Нет отдельной очереди mode events или renderer-owned quiet state.
+Повтор команды с тем же boolean идемпотентен и не запускает повторную autonomy opportunity.
+Invalid payload отклоняется без state mutation.
+
+Quiet toggle доступен через существующее меню. Он не включает sleep и не меняет autonomy enabled.
+Семантика и отмена несовместимых занятий — [Character §2.2](./CHARACTER_ENGINE.md#22-устойчивый-quiet-auto-a09).
+Renderer передаёт команду и отображает state; не рассчитывает budget, cooldown или admission.
+Disable/menu pause остаются отдельными blockers; закрытие меню не снимает quiet.
+Provider thinking отражается существующим `dialogue.turn`, не замораживает locomotion/Activity
+и не выдаёт Renderer право менять Brain lifecycle. AI ownership и trace остаются внутренними.

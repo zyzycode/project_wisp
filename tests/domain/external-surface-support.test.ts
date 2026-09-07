@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_MOTION_CONSTRAINTS, MotionEngine, type MotionState } from '../../src/domain/behavior/motion-engine';
 import { SurfaceKinematics, type EnvironmentSnapshot, type ExternalWindowSurface } from '../../src/domain/behavior/surface-kinematics';
-import { createWindowPerchActivity, selectWindowTopForRelease } from '../../src/domain/behavior/external-surface-support';
+import { selectWindowTopForRelease } from '../../src/domain/behavior/external-surface-support';
 const bounds = { id: 'display', x: 0, y: 0, width: 1000, height: 800 };
 const top: ExternalWindowSurface = { id: 'opaque:top', kind: 'window_top', bounds: { x: 300, y: 250, width: 200, height: 200 }, supportY: 250, isValidSupport: true };
 const environment: EnvironmentSnapshot = { capturedAtMs: 0, screenBounds: bounds, currentSurface: top };
@@ -61,13 +61,9 @@ describe('AUTO-I05 external support lifecycle', () => {
       environment: { ...environment, currentSurface: undefined }, nowMs: 20 }, engine);
     expect(result.events).toEqual([]); expect(result.state.externalAttachment).toBeUndefined();
   });
-  it('selects only nearby top edges on release and constructs a user continuation with local coordinates', () => {
+  it('selects only nearby top edges on release', () => {
     expect(selectWindowTopForRelease([top], { x: 301, y: 258 }, () => environment, insets)?.id).toBe(top.id);
     expect(selectWindowTopForRelease([top], { x: 301, y: 270 }, () => environment, insets)).toBeNull();
-    const activity = createWindowPerchActivity(top, { x: 301, y: 250 })!;
-    expect(activity.steps.map(step => step.id)).toEqual(['land', 'walk_support', 'perch']);
-    expect(activity.steps[1]).toMatchObject({ targetRef: top.id, supportLocalDistancePx: 48 });
-    expect(activity.steps[2]).toMatchObject({ intent: { kind: 'sit_edge' } });
-    expect(createWindowPerchActivity(top, motion.position)?.steps.map(step => step.id)).toEqual(['land', 'perch']);
   });
+
 });

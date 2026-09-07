@@ -75,11 +75,12 @@ function createDefaultCharacterState(now: () => number): CharacterState {
 }
 
 function normalizeDeltaMs(deltaMs: number): number {
-  return Number.isFinite(deltaMs) ? Math.max(0, deltaMs) : 0;
+  return Number.isFinite(deltaMs) ? Math.min(60_000, Math.max(0, deltaMs)) : 0;
 }
 
 export class CharacterStateService {
   private state: CharacterState;
+  private readonly activityEffects = new Set<string>();
   private readonly now: () => number;
 
   constructor(options: CharacterStateServiceOptions = {}) {
@@ -99,6 +100,14 @@ export class CharacterStateService {
   }
 
   public applyStimulus(stimulus: CharacterStimulus): CharacterState {
+    const runId = stimulus.metadata?.activityRunId;
+    const effect = stimulus.type === 'play' ? 'play' : stimulus.metadata?.activityOutcome === 'explore_completed' ? 'explore' : null;
+    if (typeof runId === 'string' && effect) {
+      const key = `${runId}:${effect}`;
+      if (this.activityEffects.has(key)) return this.getState();
+      this.activityEffects.add(key);
+      if (this.activityEffects.size > 64) this.activityEffects.delete(this.activityEffects.values().next().value!);
+    }
     this.state = processStimulus(this.state, stimulus);
     return this.getState();
   }
@@ -112,7 +121,8 @@ export class CharacterStateService {
     if (tone !== undefined) {
       metadata.tone = tone;
     } else {
-      metadata.tone = synthesizeEmotionalTone(this.state);
+      const synthesized = synthesizeEmotionalTone(this.state);
+      metadata.tone = synthesized === 'sleepy' ? 'neutral' : synthesized;
     }
 
     return this.applyStimulus({

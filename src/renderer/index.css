@@ -39,8 +39,7 @@ html, body {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  align-items: center;
-  padding-top: 18px;
+  align-items: flex-start;
   padding-bottom: 14px;
   touch-action: none;
   cursor: grab;
@@ -54,8 +53,6 @@ html, body {
 .pet-container.menu-is-open {
   align-items: flex-start;
   justify-content: flex-start;
-  padding-left: 20px;
-  padding-top: 18px;
 }
 
 .pet-container.menu-is-open .wisp-character-root,

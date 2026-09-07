@@ -9,6 +9,8 @@ import type { BrainStateDTO } from '../../src/shared/ipc-contracts';
 
 function brainState(revision = 1, episodeId = 'episode-1'): BrainStateDTO {
   return {
+    autonomy: { quiet: false },
+    dialogue: { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
     streamId: 'stream-1', revision, sampledAtMs: 20,
     character: {
       needs: { energy: 80, attention: 30, play: 40, comfort: 50, boredom: 10 },
