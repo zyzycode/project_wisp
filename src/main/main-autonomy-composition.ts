@@ -1,3 +1,5 @@
+import { ProviderBehaviorAdmission } from '../application/services/provider-behavior-admission';
+import type { ProviderBehaviorOffer, BehaviorTurnContext, BehaviorAdmissionReceipt, BehaviorAdmissionRejection } from '../application/ports/behavior-admission-port';
 import { createSocialBidActivity } from '../domain/behavior/social-bid-activity';
 import { InitiativeBudget, INITIATIVE_TUNING } from '../application/services/initiative-budget';
 import { createCursorInterestActivity } from '../domain/behavior/cursor-interest-activity';
@@ -79,6 +81,7 @@ export class MainAutonomyComposition {
   private readonly character = new AutonomyCharacterEngine();
   private readonly coordinator: AutonomyCoordinator;
   private readonly activity: BrainActivityRuntime;
+  private readonly providerAdmission: ProviderBehaviorAdmission;
   private readonly usedVisualEpisodeIds = new Set<string>();
   private visualEpisode: BrainVisualEpisode;
   private readonly localHistory: { kind: string; atMs: number }[] = [];
@@ -97,7 +100,7 @@ export class MainAutonomyComposition {
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
   private interactionGeneration = 0;
-  private dialogueOwner: { requestId: string; generation: number; episodeId: string | null } | null = null;
+
   private readonly cursorProximityEngine = new CursorProximityEngine();
   private cursorProximityState: CursorProximityState = {
     withinSwatRange: false,
@@ -155,6 +158,7 @@ export class MainAutonomyComposition {
       onOutcome: options.onActivityOutcome,
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
       onTerminated: (result) => {
+        this.providerAdmission?.terminated(result);
         if (result.activityId === 'rest_spot_sleep' && result.status === 'completed') this.stableRestSpotSleep = true;
         if (result.activityId === 'rest_spot_nap' || (result.activityId === 'rest_spot_sleep' && result.status !== 'completed')) this.character.finishRest();
         if ((result.status !== 'completed' || (result.activityId !== 'rest' && result.activityId !== 'rest_spot_sleep'))
@@ -170,6 +174,23 @@ export class MainAutonomyComposition {
         }
       },
     });
+    this.providerAdmission = new ProviderBehaviorAdmission({
+      now: () => options.clock.now(),
+      gate: intent => this.providerGate(intent),
+      safeToStart: () => options.movement.canAcceptVoluntaryMovement(),
+      canDefer: () => this.activity.isTraversalStep(),
+      cancel: () => { this.cancelActivity('step_timeout', true); this.finishActivityCadence(); },
+      start: intent => {
+        // Selection is checked before cancelling the current local run.
+        if (!this.activity.canStart(intent)) return null;
+        const resolved = this.character.resolveProviderIntent(intent, options.getCharacterSnapshot());
+        if (!resolved) return null;
+        this.cancelActivity('higher_priority_activity', false);
+        this.coordinator.suspendForReactiveActivity();
+        if (!this.activity.start(resolved)) { this.coordinator.resumeAfterReactiveActivity(); return null; }
+        return this.activity.getRuntime();
+      },
+    });
   }
 
   public start(): void {
@@ -181,6 +202,7 @@ export class MainAutonomyComposition {
 
   public stop(): void {
     if (this.disposed) return;
+    this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
     this.started = false;
     this.resetBrainLoop();
@@ -189,6 +211,7 @@ export class MainAutonomyComposition {
 
   public dispose(): void {
     if (this.disposed) return;
+    this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
     this.disposed = true;
     this.started = false;
@@ -217,6 +240,18 @@ export class MainAutonomyComposition {
         this.options.movement.getEnvironmentSnapshot().currentSurface?.id !== this.cursorEpisode.supportId)) {
       this.cancelActivity('environment_invalidated', true);
     }
+    const needs = this.options.getCharacterSnapshot().needs;
+    if (this.character.isAutonomyEligible() && (needs.energy <= 20 || needs.comfort >= 80)
+        && this.options.movement.canAcceptVoluntaryMovement() && this.enabled && !this.menuOpen
+        && !this.deferredUserInteractionResume) {
+      this.providerAdmission.invalidate('critical_need');
+      this.cancelActivity('critical_need', false);
+      const resolution = this.character.resolveAutonomousOpportunity({ context: { decisionSequence: 0, opportunityAtMs: nowMs,
+        tone: this.options.getCharacterSnapshot().synthesizedTone }, snapshot: this.options.getCharacterSnapshot(),
+        candidates: [{ kind: 'sleep', source: 'system', priority: 'high' }], prng: this.options.prng });
+      if (resolution.resolvedIntent) this.handleResolvedIntent(resolution.resolvedIntent);
+    }
+    this.providerAdmission.tick();
     const activityChanged = this.activity.tick(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
     if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
@@ -228,6 +263,7 @@ export class MainAutonomyComposition {
   public setQuietMode(enabled: boolean): { readonly quiet: boolean } {
     if (this.quiet === enabled) return this.getAutonomyMode();
     this.quiet = enabled;
+    if (enabled) this.providerAdmission.invalidate('quiet');
     this.resetCursorInterest();
     if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
       this.cancelActivity('explicit_cancel', true);
@@ -244,6 +280,7 @@ export class MainAutonomyComposition {
 
   public setEnabled(enabled: boolean): void {
     this.resetCursorInterest();
+    if (!enabled) this.providerAdmission.invalidate('disabled');
     if (!enabled) this.cancelActivity('explicit_cancel', true);
     this.enabled = enabled;
     this.coordinator.setEnabled(enabled);
@@ -251,6 +288,7 @@ export class MainAutonomyComposition {
 
   public setMenuOpen(menuOpen: boolean): void {
     this.resetCursorInterest();
+    if (menuOpen) this.providerAdmission.invalidate('disabled');
     if (menuOpen) this.cancelActivity('explicit_cancel', true);
     this.menuOpen = menuOpen;
     this.coordinator.setMenuOpen(menuOpen);
@@ -291,6 +329,7 @@ export class MainAutonomyComposition {
     if (!this.started || this.disposed) return false;
     const nowMs = this.options.clock.now();
     const compatible =
+      this.providerAdmission.getOwnedRun() === null && !this.providerAdmission.hasPending() &&
       this.enabled &&
       !this.menuOpen &&
       this.activity.getRuntime() === null &&
@@ -503,30 +542,30 @@ export class MainAutonomyComposition {
     this.coordinator.interruptForcedMotion();
   }
 
-  public beginDialogueThinking(requestId: string): void {
-    this.dialogueOwner = { requestId, generation: this.interactionGeneration, episodeId: null };
-    if (this.menuOpen || !this.options.movement.canAcceptVoluntaryMovement() || this.activity.getRuntime() !== null) return;
-    const candidate: BehaviorIntent = { kind: 'think', source: 'provider', priority: 'normal', requestId };
-    if (this.character.resolveProviderIntent(candidate, this.options.getCharacterSnapshot()) === null) return;
-    this.coordinator.suspendForReactiveActivity();
-    this.setVisualKind('thinking_loop', true);
-    this.dialogueOwner.episodeId = this.getVisualEpisode().id;
+  public beginDialogueThinking(_requestId: string): void {
+    // Dialogue presentation owns thinking; it never suspends the Brain scheduler.
   }
 
-  public endDialogueThinking(requestId: string): void {
-    const owner = this.dialogueOwner;
-    if (owner?.requestId !== requestId || owner.episodeId === null) return;
-    if (this.getVisualEpisode().id === owner.episodeId && this.options.movement.canAcceptVoluntaryMovement()) this.setVisualKind('idle_blink', true);
-    owner.episodeId = null;
-    this.coordinator.resumeAfterReactiveActivity();
+  public endDialogueThinking(_requestId: string): void {}
+
+  public setBehaviorContext(context: BehaviorTurnContext | null): void { this.providerAdmission.setContext(context); }
+
+  public offerDialogueIntent(offer: ProviderBehaviorOffer): BehaviorAdmissionReceipt {
+    return this.providerAdmission.offer(offer);
   }
 
-  public offerDialogueIntent(intent: BehaviorIntent): void {
-    const owner = this.dialogueOwner;
-    if (!owner || owner.requestId !== intent.requestId || owner.generation !== this.interactionGeneration
-        || this.menuOpen || !this.options.movement.canAcceptVoluntaryMovement() || this.activity.getRuntime() !== null) return;
-    const resolved = this.character.resolveProviderIntent(intent, this.options.getCharacterSnapshot());
-    if (resolved !== null) this.handleResolvedIntent(resolved);
+  public getAdmissionTrace() { return this.providerAdmission.getTrace(); }
+
+  private providerGate(intent: BehaviorIntent): BehaviorAdmissionRejection | null {
+    if (!this.started || this.disposed || !this.enabled || this.menuOpen) return 'disabled';
+    if (['drag', 'land', 'wake', 'quiet'].includes(intent.kind)) return 'no_behavior_command';
+    const needs = this.options.getCharacterSnapshot().needs;
+    if (needs.energy <= 20 || needs.comfort >= 80 || !this.character.isAutonomyEligible()) return 'character_gate';
+    if (this.quiet && ['play', 'respond', 'react_happy'].includes(intent.kind)) return 'quiet';
+    if (!this.options.movement.canAcceptVoluntaryMovement() && !this.activity.isTraversalStep()) return 'forced_motion';
+    if (this.deferredUserInteractionResume) return 'user_conflict';
+    if (!this.activity.canStart(intent)) return 'no_activity';
+    return null;
   }
 
   public notifyTraversalRejected(request: Pick<TraversalRequest, 'runId' | 'stepId'>): void {
@@ -536,6 +575,9 @@ export class MainAutonomyComposition {
   }
 
   public notifyVoluntaryMovementCompleted(completed?: Pick<TraversalRequest, 'runId' | 'stepId'>): void {
+    const previousRun = this.activity.getRuntime()?.runId;
+    this.providerAdmission.tick();
+    if (previousRun !== this.activity.getRuntime()?.runId) return;
     if (!this.activity.notifyLocomotionCompleted(completed) && completed === undefined) {
       this.setVisualKind('idle_blink', false);
       this.coordinator.notifyVoluntaryMovementCompleted();
@@ -557,7 +599,7 @@ export class MainAutonomyComposition {
   }
 
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
-    if (this.activity.getRuntime() !== null && intent.reason !== 'vital_sleep') return false;
+    if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;
     const social = intent.activityFamily === 'social_bid';
     if (intent.source !== 'user' && this.quiet && (intent.kind === 'play' || intent.kind === 'respond')) return false;
     if (social && !this.initiativeBudget.available(this.options.clock.now())) return false;
@@ -579,6 +621,7 @@ export class MainAutonomyComposition {
   }
 
   private finishActivityCadence(): void {
+    this.coordinator.resumeAfterReactiveActivity();
     if (this.deferredUserInteractionResume) {
       this.deferredUserInteractionResume = false;
       this.coordinator.resumeAfterUserInteraction();
@@ -590,8 +633,9 @@ export class MainAutonomyComposition {
   private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
     if (reason === 'user_interaction' || reason === 'forced_motion') {
       this.interactionGeneration++;
+      this.providerAdmission?.invalidate(reason);
     }
-    if (this.dialogueOwner) this.endDialogueThinking(this.dialogueOwner.requestId);
+
     this.jumpFallAtMs = null;
     this.cursorEpisode = null;
     const wasCursorReaction = this.cursorReactionActive;

@@ -92,3 +92,11 @@ export interface InitiativeTuning {
   readonly cursorApproachMaxDistanceDip: number;
   readonly socialWaitMaxMs: number;
 }
+
+/** Current Main dialogue turn; only its successful settlement may offer behavior. */
+export interface BehaviorTurnContext {
+  readonly requestId: string;
+  readonly conversationId: string;
+  readonly generation: number;
+  readonly requestedAtMs: MonotonicMs;
+}

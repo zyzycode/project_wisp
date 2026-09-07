@@ -1,6 +1,6 @@
 import type { IAIProvider } from './ai-provider.interface';
 import type { CharacterSnapshot, CharacterStimulus } from '../../domain/character';
-import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
+import type { ProviderBehaviorOffer, BehaviorAdmissionReceipt, BehaviorTurnContext } from './behavior-admission-port';
 
 /** All effects are injected by Main; provider execution belongs to one app lifecycle. */
 export interface DialogueRuntimeOptions {
@@ -13,7 +13,8 @@ export interface DialogueRuntimeOptions {
   readonly applyStimulus: (stimulus: CharacterStimulus) => void;
   readonly beginThinking: (requestId: string) => void;
   readonly endThinking: (requestId: string) => void;
-  readonly offerIntent: (intent: BehaviorIntent) => void;
+  readonly setBehaviorContext?: (context: BehaviorTurnContext | null) => void;
+  readonly offerIntent: (offer: ProviderBehaviorOffer) => BehaviorAdmissionReceipt;
   readonly transaction: (commit: () => void) => void;
   readonly publish: () => void;
   readonly locale?: string;

@@ -286,7 +286,8 @@ function initializeAutonomyComposition(): void {
       applyStimulus: stimulus => { defaultCharacterStateService.applyStimulus(stimulus); },
       beginThinking: id => autonomyComposition?.beginDialogueThinking(id),
       endThinking: id => autonomyComposition?.endDialogueThinking(id),
-      offerIntent: intent => autonomyComposition?.offerDialogueIntent(intent),
+      setBehaviorContext: context => autonomyComposition?.setBehaviorContext(context),
+      offerIntent: offer => autonomyComposition?.offerDialogueIntent(offer) ?? { status: 'rejected', reason: 'disabled' },
       transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } },
       publish: publishBrainState,
     });

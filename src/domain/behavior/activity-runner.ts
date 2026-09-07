@@ -237,6 +237,8 @@ export function selectActivityForResolvedIntent(
 ): ActivityDefinition | null {
   const candidates = intent.kind === 'wander'
     ? [EXPLORE_ACTIVITY]
+    : ['respond', 'think', 'react_happy', 'react_confused'].includes(intent.kind)
+      ? [{ id: 'expression', priority: 'P3_reactive', baseWeight: 1, entryStepId: 'expression', steps: [{ id: 'expression', actionId: 'expression', stage: 'looping', type: 'animation', intent: { kind: intent.kind === 'respond' ? 'talking' : intent.kind === 'think' ? 'thinking_loop' : intent.kind === 'react_happy' ? 'happy_reaction' : 'confused_reaction' }, completion: { type: 'elapsed', durationMs: 3000 } }] } satisfies ActivityDefinition]
     : intent.kind === 'sleep'
       ? [REST_ACTIVITY]
       : intent.kind === 'idle'

@@ -122,10 +122,9 @@ export class AutonomyCharacterEngine {
 
   public resolveProviderIntent(intent: BehaviorIntent, snapshot: CharacterAutonomySnapshot): BehaviorIntent | null {
     if (intent.source !== 'provider') return null;
-    if (intent.kind === 'wake') return this.resolveDirectIntent(intent, snapshot).resolvedIntent;
+    if (['wake', 'drag', 'land', 'quiet'].includes(intent.kind)) return null;
     if (this.sleepState !== 'awake') return null;
     if (intent.kind === 'sleep') {
-      if (snapshot.needs.energy > SLEEP_ENERGY_MAX && snapshot.needs.comfort < SLEEP_COMFORT_MIN) return null;
       this.sleepState = 'sleeping'; return intent;
     }
     if (snapshot.needs.energy <= SLEEP_ENERGY_MAX || snapshot.needs.comfort >= SLEEP_COMFORT_MIN) return null;

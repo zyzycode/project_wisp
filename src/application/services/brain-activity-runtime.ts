@@ -195,6 +195,10 @@ export class BrainActivityRuntime {
     return true;
   }
 
+  public isTraversalStep(): boolean {
+    return this.definition?.steps.some(step => step.id === this.runtime?.currentStepId && step.type === 'locomotion' && step.traversal !== undefined) ?? false;
+  }
+
   public isJumpStep(): boolean {
     return this.definition?.steps.some((step) => step.id === this.runtime?.currentStepId
       && step.type === 'locomotion' && step.traversal?.kind === 'directed_jump') ?? false;

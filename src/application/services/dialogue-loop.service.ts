@@ -5,7 +5,7 @@ import { parseDialogueCommand, parseDialoguePresentation } from '../../shared/di
 import { parseProviderResponse, parseProviderStatus, fallbackReason, DIALOGUE_FALLBACK } from './dialogue-provider-result';
 import { mapProviderResponseToBehaviorIntent } from './provider-response-intent-mapper';
 
-interface Turn { readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; }
+interface Turn { readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; }
 
 /** One instance per Main lifecycle, including while its window is closed. */
 export class DialogueRuntime {
@@ -47,15 +47,17 @@ export class DialogueRuntime {
     if (this.executing) return { status: 'rejected', reason: 'busy' };
     const requestId = this.options.createId();
     const createdAt = this.options.timestamp();
-    const deadline = this.options.now() + 15000;
+    const requestedAtMs = this.options.now();
+    const deadline = requestedAtMs + 15000;
     this.executing = true;
     this.options.transaction(() => {
       this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
       const request: AIProviderRequest = { requestId, userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };
-      const active: Turn = { request, generation: this.generation, deadline };
+      const active: Turn = { request, generation: this.generation, deadline, requestedAtMs };
       this.active = active; this.turn = { phase: 'thinking', requestId };
       this.timer = this.options.scheduler.setTimeout(() => this.finish(active, 'timeout'), Math.max(0, deadline - this.options.now()));
+      this.options.setBehaviorContext?.({ requestId, conversationId: this.conversationId, generation: this.generation, requestedAtMs });
       this.options.beginThinking(requestId); this.options.publish();
       void Promise.resolve().then(() => this.execute(active));
     });
@@ -63,6 +65,7 @@ export class DialogueRuntime {
   }
   private reset(): void {
     this.generation++; this.cancelTimer();
+    this.options.setBehaviorContext?.(null);
     if (this.active) this.options.endThinking(this.active.request.requestId);
     this.active = null; this.context = []; this.turn = { phase: 'idle' }; this.conversationId = this.options.createId();
   }
@@ -123,7 +126,12 @@ export class DialogueRuntime {
         const tone = response.reply.tone;
         this.options.applyStimulus({ type: 'provider_response', source: 'provider', text: replyText, requestId, createdAt,
           metadata: { tone: tone === 'warm' ? 'affectionate' : tone === 'confused' || tone === 'quiet' ? 'neutral' : tone ?? null } });
-        this.options.offerIntent(mapProviderResponseToBehaviorIntent(response));
+        if (response.suggestedBehavior !== undefined) {
+          const intent = mapProviderResponseToBehaviorIntent(response);
+          this.options.offerIntent({ intent: { ...intent, source: 'provider', requestId },
+            conversationId: this.conversationId, generation: active.generation,
+            requestedAtMs: active.requestedAtMs, receivedAtMs: this.options.now(), expiresAtMs: active.requestedAtMs + 30000 });
+        }
       }
       this.options.publish();
     });
