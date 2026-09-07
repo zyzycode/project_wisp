@@ -55,7 +55,9 @@ describe('AUTO-I06 Activity → real Motion integration', () => {
     expect(goal!.distancePx).toBeGreaterThan(500);
     f.advance(45000);
     expect(f.visual).toContain('climb_wall');
-    expect(f.visual).toContain('jump');
+    expect(f.visual).toContain('grab_edge');
+    expect(f.visual).toContain('jump_travel');
+    expect(f.visual).toContain('pull_up_edge');
     expect(f.motion.getSurfaceState().externalAttachment?.surface.id).toBe('window');
     expect(f.motion.getMotionState().position).toEqual(goal?.targetRootPosition);
     expect(f.outcomes).toEqual(['completed']);

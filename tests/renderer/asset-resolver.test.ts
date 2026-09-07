@@ -85,10 +85,20 @@ describe('Renderer: AssetResolver', () => {
   });
   it('uses the existing sit asset and pivot for missing sit_edge artwork', () => {
     const loaded = new ManifestLoader().load(JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8')));
-    const result = new AssetResolver(loaded).resolve(createSystemAnimationIntent('sit_edge'));
-    expect(loaded.animations.body_sit_edge).toBeUndefined();
+    const withoutSitEdge = { ...loaded, animations: Object.fromEntries(
+      Object.entries(loaded.animations).filter(([key]) => key !== 'body_sit_edge')
+    ) };
+    const result = new AssetResolver(withoutSitEdge).resolve(createSystemAnimationIntent('sit_edge'));
     expect(result.body.animationKey).toBe('body_sit');
     expect(result.rootPivot).toEqual(loaded.animations.body_sit!.pivot);
+  });
+
+  it('selects registered sit_edge artwork with its baked-in face', () => {
+    const loaded = new ManifestLoader().load(JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8')));
+    const result = new AssetResolver(loaded).resolve(createSystemAnimationIntent('sit_edge'));
+    expect(result.body.animationKey).toBe('body_sit_edge');
+    expect(result.body.frames).toHaveLength(4);
+    expect(loaded.animations.body_sit_edge!.faceOverlay?.mode).toBe('baked_in');
   });
 
   it('holds existing grab/jump frames without moving pivots and keeps climb/ceiling/land clips intact', () => {
@@ -109,6 +119,13 @@ describe('Renderer: AssetResolver', () => {
   it.each([
     ['idle_blink', 'body_idle'],
     ['settle', 'body_idle'],
+    ['grab_edge', 'body_grab_edge'],
+    ['jump_travel', 'body_jump_travel'],
+    ['pull_up_edge', 'body_pull_up_edge'],
+    ['sit_edge', 'body_sit_edge'],
+    ['sit_edge_settle', 'body_sit_edge_settle'],
+    ['sit_edge_sleep', 'body_sit_edge_sleep'],
+    ['cursor_play', 'body_cursor_play'],
     ['walk', 'body_walk'],
     ['run', 'body_run'],
     ['fall', 'body_fall'],
@@ -153,10 +170,15 @@ describe('Renderer: AssetResolver', () => {
     ]);
   });
 
+  it('does not synthesize blush from persistent mood during neutral idle', () => {
+    const clip = new AssetResolver(manifest).resolve(createSystemAnimationIntent('idle_blink', 'shy'));
+    expect(clip.proceduralBlush).toBeUndefined();
+  });
+
   it('resolves face, expression, procedural blush, and prop tracks with normative z-indexes', () => {
     const resolver = new AssetResolver(manifest);
     const happy = resolver.resolve(createSystemAnimationIntent('happy_reaction', 'neutral', { expressionHint: 'happy' }));
-    const blushHeart = resolver.resolve(createSystemAnimationIntent('idle_blink', 'flustered'));
+    const blushHeart = resolver.resolve(createSystemAnimationIntent('idle_blink', 'flustered', { expressionHint: 'blush', propHint: 'heart' }));
     const sparkle = resolver.resolve(createSystemAnimationIntent('walk', 'playful'));
     const wink = resolver.resolve(createSystemAnimationIntent('idle_blink', 'playful', { expressionHint: 'winking', propHint: 'none' }));
 

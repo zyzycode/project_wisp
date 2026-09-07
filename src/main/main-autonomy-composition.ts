@@ -1,4 +1,5 @@
 import { requiresVitalSleep, permitsAutomaticWake, isQuietCompatible } from '../domain/character/autonomy-character-engine';
+import { LANDING_RECOVERY_MS } from '../domain/behavior/autonomous-behavior';
 import { ProviderBehaviorAdmission } from '../application/services/provider-behavior-admission';
 import type { ProviderBehaviorOffer, BehaviorTurnContext, BehaviorAdmissionReceipt, BehaviorAdmissionRejection } from '../application/ports/behavior-admission-port';
 import { createSocialBidActivity } from '../domain/behavior/social-bid-activity';
@@ -528,7 +529,9 @@ export class MainAutonomyComposition {
       this.jumpFallAtMs = null;
       if (this.activity.isJumpStep()) return;
       this.setVisualKind(event.outcome === 'crash_landing' ? 'crash_landing' : 'land', true, true);
-      this.coordinator.resumeAfterForcedMotion();
+      this.coordinator.resumeAfterForcedMotion(
+        event.outcome === 'crash_landing' ? LANDING_RECOVERY_MS.crash : LANDING_RECOVERY_MS.normal
+      );
     }
   }
 
@@ -536,7 +539,7 @@ export class MainAutonomyComposition {
     // An autonomous route owns its landing; attaching must not cancel its continuation.
     if (this.activity.getRuntime() !== null) return;
     this.setVisualKind('land', true, true);
-    this.coordinator.resumeAfterForcedMotion();
+    this.coordinator.resumeAfterForcedMotion(LANDING_RECOVERY_MS.normal);
   }
 
   public handleSupportLost(): void {

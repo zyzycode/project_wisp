@@ -44,6 +44,7 @@ const VISUAL_KINDS = [
   'land',
   'sit',
   'sit_edge',
+  'grab_edge', 'jump_travel', 'pull_up_edge', 'sit_edge_settle', 'sit_edge_sleep', 'cursor_play',
   'stand_up',
   'lie_down',
   'get_up',

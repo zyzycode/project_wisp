@@ -37,6 +37,9 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   maxWanderDistancePx: 500,
 };
 
+/** Main-owned recovery time; independent of Skin clip playback. */
+export const LANDING_RECOVERY_MS = { normal: 800, crash: 1600 } as const;
+
 export interface WanderTarget {
   target: Point2D;
   durationMs: number;

@@ -37,7 +37,7 @@ function clearSegment(a: Vector2Dto, b: Vector2Dto, surfaces: readonly ExternalW
 
 function jumpSteps(plan: ExplorePlan, context: ExplorePlanningContext, target = plan.targetRootPosition, next = 'inspect'): readonly ActivityStep[] {
   return [{ id: 'jump_travel', actionId: `jump:${plan.routeKey}`, type: 'locomotion', stage: 'entering',
-    gait: 'walk', targetRef: plan.surfaceId, intent: { kind: 'jump' }, timeoutMs: 4000,
+    gait: 'walk', targetRef: plan.surfaceId, intent: { kind: 'jump_travel' }, timeoutMs: 4000,
     traversal: { kind: 'directed_jump', supportId: context.environment.currentSurface!.id, bounds: context.environment.screenBounds,
       target, targetSurface: plan.targetSurface }, next: 'route_land' },
   { id: 'route_land', actionId: 'land', type: 'animation', stage: 'entering', intent: { kind: 'land' },
@@ -92,13 +92,14 @@ export function createExternalRoute(plan: ExplorePlan, context: ExplorePlanningC
       timeoutMs: walkTimeout(Math.abs(context.currentRootPosition.x - x)), next: 'grab_edge',
     });
     steps.push(
-      { id: 'grab_edge', actionId: 'grab_edge', type: 'animation', stage: 'entering', intent: { kind: 'climb_wall', loop: 'none' },
+      { id: 'grab_edge', actionId: 'grab_edge', type: 'animation', stage: 'entering', intent: { kind: 'grab_edge', loop: 'none' },
         completion: { type: 'elapsed', durationMs: 200 }, next: 'climb' },
       { id: 'climb', actionId: 'screen_climb', type: 'locomotion', stage: 'looping', gait: 'crawl',
         targetRef: `${source.id}:${side}:top`, intent: { kind: 'climb_wall' },
         timeoutMs: (range.maxY - range.minY) / SCREEN_CLIMB_SPEED * 1000 + 1000,
         traversal: { kind: 'screen_climb', bounds, supportId: source.id, side, direction: 'up', targetSurface: top }, next: 'jump_travel' },
-      ...jumpSteps(plan, context, landing, walkDistance >= 1 ? 'walk_support' : 'inspect'),
+      ...jumpSteps(plan, context, landing, walkDistance >= 1 ? 'walk_support' : 'inspect').map(step =>
+        step.id === 'route_land' ? { ...step, actionId: 'pull_up_edge', intent: { kind: 'pull_up_edge' as const } } : step),
     );
     if (walkDistance >= 1) steps.push({
       id: 'walk_support', actionId: `walk:${plan.routeKey}`, type: 'locomotion', stage: 'entering', gait: 'walk',

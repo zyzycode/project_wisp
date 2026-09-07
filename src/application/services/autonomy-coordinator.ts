@@ -178,9 +178,9 @@ export class AutonomyCoordinator {
     this.operationalSuspensions.add('forced_motion');
   }
 
-  public resumeAfterForcedMotion(): void {
+  public resumeAfterForcedMotion(recoveryMs?: number): void {
     if (!this.operationalSuspensions.delete('forced_motion')) return;
-    this.scheduleNextOpportunity();
+    this.scheduleNextOpportunity(recoveryMs);
   }
 
   public suspendForManualMovement(): void {
@@ -247,13 +247,13 @@ export class AutonomyCoordinator {
     }));
   }
 
-  private scheduleNextOpportunity(): void {
+  private scheduleNextOpportunity(delayOverrideMs?: number): void {
     this.clearTimer();
     if (!this.isCadenceEligible()) return;
     const config = this.behaviorConfig();
     const nowMs = this.options.clock.now();
     const idleElapsedMs = Math.max(0, nowMs - (this.lastUserActivityAtMs ?? nowMs));
-    const delayMs = calculateAutonomyOpportunityDelayMs(
+    const delayMs = delayOverrideMs ?? calculateAutonomyOpportunityDelayMs(
       this.nextRandom(),
       this.options.getCharacterSnapshot().needs,
       idleElapsedMs,

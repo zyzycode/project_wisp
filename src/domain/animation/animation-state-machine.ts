@@ -715,6 +715,7 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
       case 'spook':
         return 'spook';
       case 'wave':
+      case 'cursor_play':
         return 'wave';
       case 'celebrate':
         return 'celebrate';
@@ -723,11 +724,13 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
       case 'sleep_start':
         return 'sleep_start';
       case 'sleep_loop':
+      case 'sit_edge_sleep':
         return 'sleep_loop';
       case 'wake_up':
         return 'wake_up';
       case 'sit':
       case 'sit_edge':
+      case 'sit_edge_settle':
         return 'sit';
       case 'stand_up':
         return 'stand_up';
@@ -738,12 +741,15 @@ export class AnimationStateMachine<TState extends string = AnimationState> {
       case 'run':
         return 'run';
       case 'jump':
+      case 'jump_travel':
         return 'jump';
       case 'fall':
         return 'fall';
       case 'crawl':
         return 'crawl';
       case 'climb_wall':
+      case 'grab_edge':
+      case 'pull_up_edge':
         return 'climb_wall';
       case 'hang_ceiling':
         return 'hang_ceiling';

@@ -14,7 +14,7 @@ import {
   type SpritePoint,
 } from './types';
 
-/** Artist assets are absent; these aliases retain the existing contact pivot. */
+/** Compatibility aliases for manifests without the dedicated artist assets. */
 export const TRAVERSAL_SPRITE_FALLBACKS = {
   grab_edge: { key: 'body_climb_wall', frame: 0 },
   jump_travel: { key: 'body_jump', frame: 0 },
@@ -26,6 +26,12 @@ const ZERO_POINT: SpritePoint = { x: 0, y: 0 };
 type AnyAnimationIntent = AnimationIntent<AnyAnimationIntentKind>;
 
 const BODY_KEYS: Readonly<Record<AnyAnimationIntentKind, string>> = {
+  grab_edge: 'body_grab_edge',
+  jump_travel: 'body_jump_travel',
+  pull_up_edge: 'body_pull_up_edge',
+  sit_edge_settle: 'body_sit_edge_settle',
+  sit_edge_sleep: 'body_sit_edge_sleep',
+  cursor_play: 'body_cursor_play',
   walk: 'body_walk',
   idle_blink: 'body_idle',
   settle: 'body_idle',
@@ -116,7 +122,7 @@ export class AssetResolver {
     const expression = this.resolveExpression(intent);
     const prop = this.resolveProp(intent);
     const rootPivot = DEFAULT_SPRITE_PIVOT;
-    const hasBlush = intent.expressionHint === 'blush' || intent.emotionalTone === 'flustered' || intent.emotionalTone === 'shy';
+    const hasBlush = intent.expressionHint === 'blush';
 
     return {
       key: body.key,
@@ -169,10 +175,18 @@ export class AssetResolver {
     const specialised = this.manifest.animations[`${preferredKey}_${intent.emotionalTone}`];
     const preferred = this.manifest.animations[preferredKey];
     const idle = this.manifest.animations.body_idle;
+    const legacyKeys: Partial<Record<AnyAnimationIntentKind, string>> = {
+      grab_edge: 'body_climb_wall', jump_travel: 'body_jump', pull_up_edge: 'body_climb_wall',
+      sit_edge_settle: 'body_sit', sit_edge_sleep: 'body_sleep', cursor_play: 'body_wave',
+    };
+    const legacyKey = legacyKeys[intent.kind];
     const body = selectAnimation(specialised, 'body') ?? selectAnimation(preferred, 'body')
+      ?? (legacyKey === undefined ? undefined : selectAnimation(this.manifest.animations[legacyKey], 'body'))
       ?? (intent.kind === 'sit_edge' ? selectAnimation(this.manifest.animations.body_sit, 'body') : undefined)
       ?? selectAnimation(idle, 'body') ?? systemBody();
-    const fallback = intent.kind === 'jump' ? TRAVERSAL_SPRITE_FALLBACKS.jump_travel
+    const fallback = intent.kind === 'pull_up_edge' ? TRAVERSAL_SPRITE_FALLBACKS.pull_up_edge
+      : intent.kind === 'grab_edge' ? TRAVERSAL_SPRITE_FALLBACKS.grab_edge
+      : intent.kind === 'jump_travel' || intent.kind === 'jump' ? TRAVERSAL_SPRITE_FALLBACKS.jump_travel
       : intent.kind === 'climb_wall' && intent.loop === 'none' ? TRAVERSAL_SPRITE_FALLBACKS.grab_edge : undefined;
     if (fallback === undefined || body.key !== fallback.key) return body;
     const frame = body.frames[fallback.frame];

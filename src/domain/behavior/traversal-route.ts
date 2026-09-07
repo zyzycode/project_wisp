@@ -34,7 +34,7 @@ export function createExploreTraversalSteps(plan: ExplorePlan, context: ExploreP
   const common = { bounds: { ...bounds }, supportId: surface.id };
   const jumpStep: VoluntaryLocomotionStep = {
     id: 'jump_travel', actionId: 'jump_travel', type: 'locomotion', stage: 'looping',
-    gait: 'walk', targetRef: plan.targetId, intent: { kind: 'jump' }, timeoutMs: 4_000,
+    gait: 'walk', targetRef: plan.targetId, intent: { kind: 'jump_travel' }, timeoutMs: 4_000,
     traversal: { ...common, kind: 'directed_jump', target: plan.targetRootPosition }, next: 'route_land',
   };
   const landing: ActivityStep = { id: 'route_land', actionId: 'land', type: 'animation', stage: 'exiting',
@@ -56,7 +56,7 @@ export function createExploreTraversalSteps(plan: ExplorePlan, context: ExploreP
       targetRef: `${surface.id}:${side}`, targetRootPosition: { x, y: range.maxY },
       intent: { kind: 'walk' }, timeoutMs: 7_000, next: 'grab_edge' },
     { id: 'grab_edge', actionId: 'grab_edge', type: 'animation', stage: 'entering',
-      intent: { kind: 'climb_wall', loop: 'none' },
+      intent: { kind: 'grab_edge', loop: 'none' },
       completion: { type: 'elapsed', durationMs: 200 }, next: 'climb' },
     { id: 'climb', actionId: 'screen_climb', type: 'locomotion', stage: 'looping', gait: 'crawl',
       targetRef: `${surface.id}:${side}:top`, intent: { kind: 'climb_wall' },

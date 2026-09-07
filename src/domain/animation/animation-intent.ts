@@ -24,6 +24,12 @@ export type CoreAnimationIntentKind =
   | 'land';
 
 export type LocomotionAnimationIntentKind =
+  | 'grab_edge'
+  | 'jump_travel'
+  | 'pull_up_edge'
+  | 'sit_edge_settle'
+  | 'sit_edge_sleep'
+  | 'cursor_play'
   | 'sit'
   | 'sit_edge'
   | 'stand_up'
@@ -135,6 +141,12 @@ const DEFAULT_TONE_HINTS: Record<SynthesizedEmotionalTone, ToneHints> = {
 };
 
 const INTENT_POLICIES: Record<AnimationIntentKind, IntentPolicy> = {
+  grab_edge: { category: 'transition', priority: 'normal', interrupt: 'yes', loop: 'none' },
+  jump_travel: { category: 'movement', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
+  pull_up_edge: { category: 'transition', priority: 'high', interrupt: 'yes', loop: 'none' },
+  sit_edge_settle: { category: 'transition', priority: 'low', interrupt: 'yes', loop: 'none' },
+  sit_edge_sleep: { category: 'sleep', priority: 'high', interrupt: 'yes', loop: 'until_replaced' },
+  cursor_play: { category: 'reaction', priority: 'normal', interrupt: 'yes', loop: 'bounded' },
   idle_blink: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
   thinking_loop: { category: 'dialogue', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
   look_around: { category: 'gesture', priority: 'low', interrupt: 'yes', loop: 'bounded' },
@@ -311,13 +323,20 @@ function resolveBehaviorMapping(
   return mapping;
 }
 
+function defaultVisualHints(kind: AnimationIntentKind, tone: SynthesizedEmotionalTone): HintOverride {
+  // Mood persists; an ambient pose must not turn it into a permanent reaction.
+  return ['idle_blink', 'look_around', 'settle', 'sit', 'sit_edge'].includes(kind)
+    ? { expressionHint: 'idle', propHint: 'none' }
+    : DEFAULT_TONE_HINTS[tone];
+}
+
 export function mapBehaviorIntentToAnimationIntent(
   intent: BehaviorIntent,
   tone: SynthesizedEmotionalTone
 ): AnimationIntent<any> {
   const mapping = resolveBehaviorMapping(intent, tone);
   const policy = INTENT_POLICIES[mapping.kind];
-  const toneHints = DEFAULT_TONE_HINTS[tone];
+  const toneHints = defaultVisualHints(mapping.kind, tone);
   const hintOverride = mapping.hintsByTone[tone];
 
   return {
@@ -339,7 +358,7 @@ export function createSystemAnimationIntent(
   overrides: Partial<Omit<AnimationIntent, 'kind' | 'requestedBy' | 'emotionalTone'>> = {}
 ): AnimationIntent<any> {
   const policy = INTENT_POLICIES[kind];
-  const toneHints = DEFAULT_TONE_HINTS[emotionalTone];
+  const toneHints = defaultVisualHints(kind, emotionalTone);
 
   return {
     kind,

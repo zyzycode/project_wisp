@@ -70,7 +70,7 @@ describe('AUTO-I04 Brain → Motion integration', () => {
     const runId = f.main.getActivityTimeline()!.runId;
     f.advance(12000);
     expect(f.phases).toEqual(['approach', 'grab_edge', 'climb', 'jump_travel', 'route_land', 'inspect', 'pose', 'leave_pose']);
-    expect(f.visuals).toEqual(expect.arrayContaining(['climb_wall', 'jump', 'fall', 'land']));
+    expect(f.visuals).toEqual(expect.arrayContaining(['grab_edge', 'climb_wall', 'jump_travel', 'fall', 'land']));
     expect(f.motion.getMotionState().position).toEqual(goal);
     f.advance(6000);
     expect(f.main.getActivityTimeline()).toBeNull();

@@ -25,7 +25,7 @@ export function createCursorInterestActivity(input: {
         targetRef: surface.id, targetRootPosition: { x, y: supportY },
         ...(surface.kind === 'window_top' ? { supportLocalDistancePx: x - surface.bounds.x } : {}),
         timeoutMs: input.maxDurationMs - 2200, intent: { kind: 'walk' }, next: 'play' },
-      { id: 'play', actionId: 'cursor_play', type: 'animation', stage: 'looping', intent: { kind: 'wave', expressionHint: 'happy' },
+      { id: 'play', actionId: 'cursor_play', type: 'animation', stage: 'looping', intent: { kind: 'cursor_play', expressionHint: 'happy' },
         completion: { type: 'elapsed', durationMs: 1000 }, next: 'settle' },
       { id: 'settle', actionId: 'cursor_settle', type: 'animation', stage: 'exiting', intent: { kind: 'settle' },
         completion: { type: 'elapsed', durationMs: 600 } },

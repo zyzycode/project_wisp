@@ -375,10 +375,10 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
         { kind: 'idle', source: 'timer', priority: 'low' },
         'shy'
       );
-      expect(shyIdle.expressionHint).toBe('blush');
+      expect(shyIdle.expressionHint).toBe('idle');
     });
 
-    it('generates sparkle propHint for playful tone in reactions and idle', () => {
+    it('generates sparkle for playful reactions but keeps idle neutral', () => {
       const playfulReact = mapBehaviorIntentToAnimationIntent(
         { kind: 'react_happy', source: 'user', priority: 'normal' },
         'playful'
@@ -390,7 +390,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
         { kind: 'idle', source: 'timer', priority: 'low' },
         'playful'
       );
-      expect(playfulIdle.propHint).toBe('sparkle');
+      expect(playfulIdle.propHint).toBe('none');
     });
 
     it('generates question propHint and curious expressionHint for curious tone', () => {
@@ -429,8 +429,8 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
         { kind: 'idle', source: 'timer', priority: 'low' },
         'affectionate'
       );
-      expect(affecIdle.expressionHint).toBe('happy');
-      expect(affecIdle.propHint).toBe('heart');
+      expect(affecIdle.expressionHint).toBe('idle');
+      expect(affecIdle.propHint).toBe('none');
 
       const affecRespond = mapBehaviorIntentToAnimationIntent(
         { kind: 'respond', source: 'provider', priority: 'normal' },

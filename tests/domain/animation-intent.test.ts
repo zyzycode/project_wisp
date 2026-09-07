@@ -135,22 +135,22 @@ const EXPECTED_MATRIX: Record<BehaviorKind, Record<Tone, ExpectedMapping>> = {
     flustered: { kind: 'walk', expressionHint: 'blush', propHint: 'heart' },
   },
   idle: {
-    shy: { kind: 'idle_blink', expressionHint: 'blush', propHint: 'none' },
-    sleepy: { kind: 'idle_blink', expressionHint: 'sleepy', propHint: 'none' },
-    playful: { kind: 'idle_blink', expressionHint: 'winking', propHint: 'sparkle' },
-    curious: { kind: 'idle_blink', expressionHint: 'curious', propHint: 'question' },
+    shy: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
+    sleepy: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
+    playful: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
+    curious: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
     neutral: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
-    affectionate: { kind: 'idle_blink', expressionHint: 'happy', propHint: 'heart' },
-    flustered: { kind: 'idle_blink', expressionHint: 'blush', propHint: 'heart' },
+    affectionate: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
+    flustered: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
   },
   quiet: {
-    shy: { kind: 'idle_blink', expressionHint: 'blush', propHint: 'none' },
+    shy: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
     sleepy: { kind: 'sleep_loop', expressionHint: 'sleepy', propHint: 'pillow' },
     playful: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
-    curious: { kind: 'idle_blink', expressionHint: 'curious', propHint: 'none' },
+    curious: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
     neutral: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
-    affectionate: { kind: 'idle_blink', expressionHint: 'happy', propHint: 'none' },
-    flustered: { kind: 'idle_blink', expressionHint: 'blush', propHint: 'none' },
+    affectionate: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
+    flustered: { kind: 'idle_blink', expressionHint: 'idle', propHint: 'none' },
   },
 };
 
@@ -158,6 +158,12 @@ const EXPECTED_POLICY: Record<AnimationIntentKind, {
   readonly category: AnimationIntentCategory;
   readonly priority: AnimationPriority;
 }> = {
+  grab_edge: { category: 'transition', priority: 'normal' },
+  jump_travel: { category: 'movement', priority: 'normal' },
+  pull_up_edge: { category: 'transition', priority: 'high' },
+  sit_edge_settle: { category: 'transition', priority: 'low' },
+  sit_edge_sleep: { category: 'sleep', priority: 'high' },
+  cursor_play: { category: 'reaction', priority: 'normal' },
   idle_blink: { category: 'idle', priority: 'low' },
   thinking_loop: { category: 'dialogue', priority: 'normal' },
   look_around: { category: 'gesture', priority: 'low' },

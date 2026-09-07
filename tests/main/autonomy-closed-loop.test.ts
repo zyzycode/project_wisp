@@ -2,6 +2,34 @@ import { metabolizeNeeds } from '../../src/domain/character/metabolism';
 import { describe, expect, it } from 'vitest';
 import { scenario } from './autonomy-scenario-fixture';
 describe('real Character closed loop', () => {
+  it.each([
+    ['soft_landing', 800], ['stumble', 800], ['crash_landing', 1600],
+  ] as const)('selects an activity after %s recovery without another idle delay', (outcome, recoveryMs) => {
+    const f = scenario({}, 0);
+    f.main.beginDrag();
+    f.main.handleMotionEvent({ type: 'landed', outcome, impactSeverity: 0 });
+    expect(f.timers.size).toBe(1);
+    expect([...f.timers.values()][0]?.atMs).toBe(f.now() + recoveryMs);
+    expect(f.main.getActivityTimeline()).toBeNull();
+    f.pulse();
+    expect(f.main.getActivityTimeline()).not.toBeNull();
+    f.finish();
+    expect([...f.timers.values()][0]!.atMs - f.now()).toBeGreaterThanOrEqual(5000);
+    f.main.dispose();
+  });
+
+  it('cancels the pending landing continuation when picked up again', () => {
+    const f = scenario();
+    f.main.beginDrag();
+    f.main.handleMotionEvent({ type: 'landed', outcome: 'soft_landing', impactSeverity: 0 });
+    const stale = [...f.timers.values()][0]!.callback;
+    f.main.beginDrag();
+    stale();
+    expect(f.timers.size).toBe(0);
+    expect(f.main.getActivityTimeline()).toBeNull();
+    f.main.dispose();
+  });
+
   it('admits user play before reward, saturates once and blocks the next game', () => {
     const f = scenario(); const before = f.character.getState();
     expect(f.play()).toBe(true); expect(f.character.getState()).toEqual(before);

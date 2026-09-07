@@ -34,16 +34,18 @@ export function selectRestSpot(context: ExplorePlanningContext, nap: boolean): R
 }
 
 export function createRestSpotActivity(plan: RestSpotPlan): ActivityDefinition {
-  const phase = (id: string, kind: 'lie_down' | 'sleep_loop' | 'wake_up', durationMs: number, next?: string): ActivityStep => ({
+  const atEdge = plan.target.surfaceKind === 'window_top'
+    && (plan.target.pointKind === 'edge' || plan.target.pointKind === 'corner');
+  const phase = (id: string, kind: 'lie_down' | 'sleep_loop' | 'wake_up' | 'sit_edge' | 'sit_edge_settle' | 'sit_edge_sleep', durationMs: number, next?: string): ActivityStep => ({
     id, actionId: `rest:${id}`, type: 'animation', stage: id === 'wake' ? 'exiting' : 'looping',
     intent: { kind, ...(id === 'sleep' ? { expressionHint: 'sleepy' as const, loop: 'until_replaced' as const } : {}) },
     completion: { type: 'elapsed', durationMs }, ...(next === undefined ? {} : { next }),
   });
   const steps: ActivityStep[] = [
     ...plan.route.map(s => s.next === 'inspect' ? { ...s, next: 'prepare' } : s),
-    phase('prepare', 'lie_down', 1200, 'settle'),
-    phase('settle', 'lie_down', 1500, 'sleep'),
-    phase('sleep', 'sleep_loop', plan.nap ? 12_000 : 3000, plan.nap ? 'wake' : undefined),
+    phase('prepare', atEdge ? 'sit_edge' : 'lie_down', 1200, 'settle'),
+    phase('settle', atEdge ? 'sit_edge_settle' : 'lie_down', 1500, 'sleep'),
+    phase('sleep', atEdge ? 'sit_edge_sleep' : 'sleep_loop', plan.nap ? 12_000 : 3000, plan.nap ? 'wake' : undefined),
   ];
   if (plan.nap) steps.push(phase('wake', 'wake_up', 1500));
   return { id: plan.nap ? 'rest_spot_nap' : 'rest_spot_sleep', priority: 'P4_autonomous', baseWeight: 1,

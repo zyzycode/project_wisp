@@ -19,13 +19,13 @@ describe('AUTO-I06 rest and route planning', () => {
     expect(activity.steps.find(s => s.id === 'sleep')).toMatchObject({ completion: { durationMs: 12000 }, next: 'wake' });
     expect(activity.steps.at(-1)?.id).toBe('wake');
   });
-  it('uses the same sleep animations on windows and the floor', () => {
+  it('uses dedicated seated sleep at a window edge and retains floor sleep', () => {
     const plan = selectRestSpot(context(), false)!;
     const animations = (surfaceKind: 'screen_floor' | 'window_top') => createRestSpotActivity({
-      ...plan, target: { ...plan.target, surfaceKind },
+      ...plan, target: { ...plan.target, surfaceKind, pointKind: 'edge' },
     }).steps.filter(s => s.type === 'animation').map(s => s.intent.kind);
-    expect(animations('window_top')).toEqual(animations('screen_floor'));
-    expect(animations('window_top')).toContain('sleep_loop');
+    expect(animations('window_top')).toEqual(expect.arrayContaining(['sit_edge', 'sit_edge_settle', 'sit_edge_sleep']));
+    expect(animations('screen_floor')).toEqual(expect.arrayContaining(['lie_down', 'sleep_loop']));
   });
   it('falls back to a quiet floor edge when external observations are unavailable', () => {
     const plan = selectRestSpot({ ...context(), externalSurfaces: [] }, true)!;

@@ -476,6 +476,8 @@ function synchronizeLocalAnimationState(
     return;
   }
   const events: Partial<Record<AnimationIntentKind, AnimationEvent>> = {
+    grab_edge: 'CLIMB_WALL', jump_travel: 'JUMP', pull_up_edge: 'LAND',
+    sit_edge_settle: 'SIT', sit_edge_sleep: 'START_SLEEP', cursor_play: 'WAVE',
     walk: 'START_FLOAT', sleep_start: 'START_SLEEP', wake_up: 'WAKE_UP',
     happy_reaction: 'REACT_HAPPY', confused_reaction: 'REACT_CONFUSED',
     thinking_loop: 'THINK', bored: 'BORED', wave: 'WAVE', celebrate: 'CELEBRATE',
