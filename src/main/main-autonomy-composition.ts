@@ -1,3 +1,5 @@
+import { InitiativeBudget, INITIATIVE_TUNING } from '../application/services/initiative-budget';
+import { createCursorInterestActivity } from '../domain/behavior/cursor-interest-activity';
 import type { ActivityOutcomeFeedback } from '../application/ports/shimeji-feedback-port';
 import type { TraversalRequest } from '../domain/behavior/traversal-route';
 import {
@@ -88,6 +90,8 @@ export class MainAutonomyComposition {
   private enabled = true;
   private menuOpen = false;
   private cursorReactionActive = false;
+  private readonly initiativeBudget = new InitiativeBudget();
+  private cursorEpisode: { endsAtMs: number; supportId: string | undefined } | null = null;
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
   private interactionGeneration = 0;
@@ -152,8 +156,9 @@ export class MainAutonomyComposition {
             && options.movement.canAcceptVoluntaryMovement()) {
           this.setVisualKind('idle_blink', true, result.activityId === 'observe_cursor');
         }
-        if (result.activityId === 'observe_cursor' && this.cursorReactionActive) {
+        if (this.cursorReactionActive) {
           this.cursorReactionActive = false;
+          this.cursorEpisode = null;
           this.coordinator.resumeAfterReactiveActivity();
         } else {
           this.finishActivityCadence();
@@ -202,6 +207,10 @@ export class MainAutonomyComposition {
       this.character.resolveDirectIntent({ kind: 'wake', source: 'system', priority: 'normal', reason: 'restored_energy' }, this.options.getCharacterSnapshot());
       this.cancelActivity('user_interaction', false);
       this.setVisualKind('wake_up', true, true); this.finishActivityCadence();
+    }
+    if (this.cursorEpisode && (nowMs >= this.cursorEpisode.endsAtMs ||
+        this.options.movement.getEnvironmentSnapshot().currentSurface?.id !== this.cursorEpisode.supportId)) {
+      this.cancelActivity('environment_invalidated', true);
     }
     const activityChanged = this.activity.tick(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
@@ -259,7 +268,7 @@ export class MainAutonomyComposition {
       this.enabled &&
       !this.menuOpen &&
       this.activity.getRuntime() === null &&
-      this.visualEpisode.intent.kind === 'idle_blink' &&
+      (this.visualEpisode.intent.kind === 'idle_blink' || this.visualEpisode.intent.kind === 'look_around') &&
       this.character.isAutonomyEligible() &&
       this.options.movement.canAcceptVoluntaryMovement();
     const proximity = this.cursorProximityEngine.update(this.cursorProximityState, {
@@ -291,7 +300,7 @@ export class MainAutonomyComposition {
     }, snapshot).resolvedIntent;
     if (resolvedIntent === null) return false;
 
-    const playCandidates = createCursorObserveActivityCandidates({
+    let playCandidates = createCursorObserveActivityCandidates({
       zone: update.zone,
       needs: snapshot.needs,
       tone: snapshot.synthesizedTone,
@@ -299,9 +308,24 @@ export class MainAutonomyComposition {
       gazeDirection: gazeDirectionTo(this.options.movement.getRootPosition(), screenPosition),
     });
 
+    const budgetAvailable = this.initiativeBudget.available(nowMs);
+    if (!budgetAvailable) playCandidates = playCandidates.filter(candidate => candidate.tags?.includes('gaze_only'));
+    if (budgetAvailable && snapshot.needs.energy >= 65 && snapshot.needs.play >= 50
+        && (snapshot.relationship?.friendship ?? 0) >= 100 && update.zone !== 'far') {
+      const approach = createCursorInterestActivity({ root: this.options.movement.getRootPosition(),
+        cursor: screenPosition, environment: this.options.movement.getEnvironmentSnapshot(),
+        collisionInsets: this.options.movement.getCollisionInsets(), maxDistance: INITIATIVE_TUNING.cursorApproachMaxDistanceDip,
+        maxDurationMs: INITIATIVE_TUNING.cursorEpisodeMaxMs });
+      if (approach && this.options.prng.next() < .25) playCandidates = [approach];
+    }
     this.coordinator.suspendForReactiveActivity();
     this.cursorReactionActive = true;
-    if (this.activity.start(resolvedIntent, { play: playCandidates })) return true;
+    if (this.activity.start(resolvedIntent, { play: playCandidates })) {
+      if (this.activity.isInitiative()) this.initiativeBudget.start(nowMs);
+      this.cursorEpisode = { endsAtMs: nowMs + INITIATIVE_TUNING.cursorEpisodeMaxMs,
+        supportId: this.options.movement.getEnvironmentSnapshot().currentSurface?.id };
+      return true;
+    }
     this.cursorReactionActive = false;
     this.coordinator.resumeAfterReactiveActivity();
     return false;
@@ -319,6 +343,7 @@ export class MainAutonomyComposition {
       compatible: false,
     }).state;
     this.lastCursorObservedAtMs = null;
+    if (this.cursorReactionActive) this.cancelActivity('environment_invalidated', true);
   }
 
   public requestSleepWake(command: SleepWakeCommand): boolean {
@@ -538,6 +563,7 @@ export class MainAutonomyComposition {
     }
     if (this.dialogueOwner) this.endDialogueThinking(this.dialogueOwner.requestId);
     this.jumpFallAtMs = null;
+    this.cursorEpisode = null;
     const wasCursorReaction = this.cursorReactionActive;
     const restSpot = this.activity.getRuntime()?.activityId.startsWith('rest_spot_') ?? false;
     const cancelled = this.activity.cancel(reason, forDrag);

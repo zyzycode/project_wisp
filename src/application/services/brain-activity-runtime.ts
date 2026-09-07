@@ -200,6 +200,10 @@ export class BrainActivityRuntime {
       && step.type === 'locomotion' && step.traversal?.kind === 'directed_jump') ?? false;
   }
 
+  public isInitiative(): boolean {
+    return this.definition?.tags?.includes('cursor') === true && !this.definition.tags.includes('gaze_only');
+  }
+
   public getRuntime(): ActivityRuntimeState | null {
     return this.runtime === null ? null : { ...this.runtime };
   }
@@ -218,7 +222,7 @@ export class BrainActivityRuntime {
     if (prior && (update.result?.status === 'completed' ||
         (update.runtime && update.runtime.currentStepId !== prior.currentStepId))) {
       const phase = definition.steps.find(step => step.id === prior.currentStepId);
-      if (phase?.actionId === 'zoomies_sprint' || definition.tags?.includes('semantic_play')) this.playCompleted = true;
+      if (phase?.actionId === 'zoomies_sprint' || phase?.actionId === 'cursor_play') this.playCompleted = true;
     }
     if (update.result !== undefined) {
       const runtime = this.runtime;
