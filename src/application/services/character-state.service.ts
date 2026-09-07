@@ -75,7 +75,7 @@ function createDefaultCharacterState(now: () => number): CharacterState {
 }
 
 function normalizeDeltaMs(deltaMs: number): number {
-  return Number.isFinite(deltaMs) ? Math.max(0, deltaMs) : 0;
+  return Number.isFinite(deltaMs) ? Math.min(60_000, Math.max(0, deltaMs)) : 0;
 }
 
 export class CharacterStateService {

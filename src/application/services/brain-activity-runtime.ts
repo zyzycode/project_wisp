@@ -1,3 +1,4 @@
+import type { ActivityOutcomeFeedback } from '../ports/shimeji-feedback-port';
 import { createRestSpotActivity, selectRestSpot } from '../../domain/behavior/rest-spot-planner';
 import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
 import { createExternalRoute, createExploreTraversalSteps, type TraversalAction } from '../../domain/behavior/traversal-route';
@@ -62,6 +63,7 @@ export interface BrainActivityRuntimeOptions {
   readonly createRunId: () => string;
   readonly cooldownRules?: readonly CooldownRule[];
   readonly onVisualIntent: (intent: AnimationIntent<AnimationIntentKind>) => void;
+  readonly onOutcome?: (event: ActivityOutcomeFeedback) => void;
   readonly onTerminated: (result: ActivityResult) => void;
 }
 
@@ -74,6 +76,9 @@ export class BrainActivityRuntime {
   private repetition: RepetitionHistory = { activities: [], actions: [] };
   private cooldowns: CooldownState = EMPTY_COOLDOWNS;
   private exploreHistory: ExploreHistory = { entries: [] };
+  private participation: ActivityOutcomeFeedback['participation'] = 'solitary';
+  private playCompleted = false;
+  private readonly terminalRuns = new Set<string>();
   private explorePlan: ExplorePlan | null = null;
 
   public constructor(private readonly options: BrainActivityRuntimeOptions) {}
@@ -99,10 +104,10 @@ export class BrainActivityRuntime {
       tone: selectionContext.synthesizedTone, history: this.exploreHistory, nowMs,
       externalSurfaces: this.options.getExternalSurfaces?.() ?? [],
     };
-    if (selectedDefinition.id === 'rest' && intent.source !== 'user') {
-      const rest = selectRestSpot(context, intent.reason !== 'vital_sleep');
+    if (selectedDefinition.id === 'rest') {
+      const rest = selectRestSpot(context, intent.reason !== 'vital_sleep' && intent.source !== 'user');
       if (rest === null) return false;
-      return this.startDefinition(createRestSpotActivity(rest), rest.target, nowMs);
+      return this.startDefinition(createRestSpotActivity(rest), rest.target, nowMs, intent);
     }
     const selectedExplorePlan = selectedDefinition.id === 'explore'
       ? selectExplorePlan({ ...context, isReachable: plan => {
@@ -113,15 +118,18 @@ export class BrainActivityRuntime {
     const definition = selectedExplorePlan === null ? selectedDefinition
       : createExploreActivityDefinition(selectedExplorePlan, this.options.traversalEnabled
           ? createExploreTraversalSteps(selectedExplorePlan, context) : []);
-    return this.startDefinition(definition, selectedExplorePlan, nowMs);
+    return this.startDefinition(definition, selectedExplorePlan, nowMs, intent);
   }
 
   private startDefinition(
     definition: ActivityDefinition,
     selectedExplorePlan: ExplorePlan | null,
-    nowMs: number
+    nowMs: number,
+    intent: BehaviorIntent
   ): boolean {
     this.cancel('higher_priority_activity');
+    this.participation = intent.source === 'user' ? 'user_engaged' : 'solitary';
+    this.playCompleted = false;
     const runId = this.options.createRunId();
     requireRunId(runId, this.usedRunIds);
     const update = this.runner.start(definition, runId, nowMs);
@@ -197,6 +205,12 @@ export class BrainActivityRuntime {
     definition: ActivityDefinition,
     update: ActivityRunnerUpdate
   ): boolean {
+    const prior = this.runtime;
+    if (prior && (update.result?.status === 'completed' ||
+        (update.runtime && update.runtime.currentStepId !== prior.currentStepId))) {
+      const phase = definition.steps.find(step => step.id === prior.currentStepId);
+      if (phase?.actionId === 'zoomies_sprint' || definition.tags?.includes('semantic_play')) this.playCompleted = true;
+    }
     if (update.result !== undefined) {
       const runtime = this.runtime;
       if (runtime !== null) this.recordTerminal(definition, runtime, update.result);
@@ -252,6 +266,19 @@ export class BrainActivityRuntime {
     runtime: ActivityRuntimeState,
     result: ActivityResult
   ): void {
+    if (this.terminalRuns.has(runtime.runId)) return;
+    this.terminalRuns.add(runtime.runId);
+    if (this.terminalRuns.size > 64) this.terminalRuns.delete(this.terminalRuns.values().next().value!);
+    const atMs = result.status === 'completed' ? result.completedAtMs
+      : result.status === 'cancelled' ? result.cancelledAtMs : result.failedAtMs;
+    const family = definition.id.startsWith('explore') ? 'explore'
+      : definition.id === 'zoomies' ? 'play'
+      : definition.tags?.includes('cursor') ? 'cursor_interest'
+      : definition.id.startsWith('rest') ? 'rest' : 'calm';
+    this.options.onOutcome?.({ type: 'activity_outcome', eventId: `${runtime.runId}:terminal`,
+      activityRunId: runtime.runId, atMs, family, outcome: result.status,
+      participation: this.participation, executedMs: Math.max(0, atMs - runtime.startedAtMs),
+      playCompleted: this.playCompleted });
     this.repetition = recordRunResult(this.repetition, runtime, result);
     if (result.status === 'completed') {
       this.applyCooldown(definition, 'completion', result.completedAtMs);

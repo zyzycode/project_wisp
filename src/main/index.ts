@@ -242,6 +242,11 @@ function initializeAutonomyComposition(): void {
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
+    onActivityOutcome: event => {
+      const stimulus = shimejiStimulusMapper.map(event, { createdAtIso: new Date().toISOString(),
+        landingThresholds: DEFAULT_MOTION_CONSTRAINTS });
+      if (stimulus) defaultCharacterStateService.applyStimulus(stimulus);
+    },
     tickNeeds: (deltaMs) => {
       defaultCharacterStateService.tickNeeds(deltaMs, autonomyComposition?.isSleepingForRecovery() ? 'sleepy' : undefined);
     },

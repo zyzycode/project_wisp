@@ -327,7 +327,20 @@ export function processStimulus(state: CharacterState, stimulus: CharacterStimul
   const lastUpdated = lastUpdatedFor(state, stimulus, deltaMs);
   const tone = metadataTone(stimulus) ?? synthesizeEmotionalTone(state);
   const metabolizedNeeds = metabolizeNeeds(state.needs, deltaMs, tone);
-  const deltas = interactionDeltas(normalizedType, intensity);
+  let deltas = interactionDeltas(normalizedType, intensity);
+  if (normalizedType === 'play' && stimulus.metadata?.participation === 'solitary') {
+    deltas = { ...deltas, friendship: 0, needs: { ...deltas.needs, attention: 0 } };
+  }
+  if (stimulus.type === 'system_event') {
+    const meta = stimulus.metadata;
+    const needs: Partial<Needs> = meta?.activityOutcome === 'explore_completed'
+      ? { energy: -1, boredom: -8 }
+      : meta?.landingOutcome === 'crash_landing' ? { energy: -2, comfort: 6 }
+      : meta?.landingOutcome === 'stumble' ? { energy: -1, comfort: 2 }
+      : typeof meta?.dragRunId === 'string' && typeof meta.heldMs === 'number'
+        ? { comfort: 2 } : {};
+    deltas = { ...deltas, needs };
+  }
   const relationship = progressRelationship(state.relationship, deltas.friendship, deltas.love);
   const intimacy = applyIntimacyShift(state.intimacy, deltas.intimacy);
   const preferences =

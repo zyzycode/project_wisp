@@ -1,3 +1,4 @@
+import type { ActivityOutcomeFeedback } from '../application/ports/shimeji-feedback-port';
 import type { TraversalRequest } from '../domain/behavior/traversal-route';
 import {
   AutonomyCoordinator,
@@ -50,7 +51,7 @@ export interface BrainLoopPolicy {
 
 export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
   needsTickIntervalMs: 1_000,
-  maxNeedsCatchUpSteps: 4,
+  maxNeedsCatchUpSteps: 60,
 };
 
 export interface MainAutonomyCompositionOptions {
@@ -59,6 +60,7 @@ export interface MainAutonomyCompositionOptions {
   readonly prng: IPrng;
   readonly prngMetadata: { readonly algorithm: string; readonly seed: number };
   readonly getCharacterSnapshot: () => CharacterAutonomySnapshot;
+  readonly onActivityOutcome?: (event: ActivityOutcomeFeedback) => void;
   readonly tickNeeds?: (deltaMs: number) => void;
   readonly brainLoopPolicy?: BrainLoopPolicy;
   readonly movement: VoluntaryMovementController;
@@ -136,6 +138,7 @@ export class MainAutonomyComposition {
       },
       cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
+      onOutcome: options.onActivityOutcome,
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
       onTerminated: (result) => {
         if (result.activityId === 'rest_spot_sleep' && result.status === 'completed') this.stableRestSpotSleep = true;
@@ -183,13 +186,14 @@ export class MainAutonomyComposition {
     if (!this.started || this.disposed) return false;
     const nowMs = this.options.clock.now();
     const previousTickAtMs = this.lastBrainTickAtMs ?? nowMs;
+    if (!Number.isFinite(nowMs) || nowMs < previousTickAtMs) return false;
     this.lastBrainTickAtMs = nowMs;
     const elapsedMs = Number.isFinite(nowMs) ? Math.max(0, nowMs - previousTickAtMs) : 0;
     this.expireCursorObservation(nowMs);
     const needsChanged = this.tickNeeds(elapsedMs);
     if (this.character.getSemanticSleepState() === 'sleeping'
-        && this.activity.getRuntime()?.activityId !== 'rest_spot_nap'
-        && this.options.getCharacterSnapshot().needs.energy >= 80) {
+        && (this.options.getCharacterSnapshot().needs.energy >= 80
+          || this.options.getCharacterSnapshot().needs.attention >= 90)) {
       this.character.resolveDirectIntent({ kind: 'wake', source: 'system', priority: 'normal', reason: 'restored_energy' }, this.options.getCharacterSnapshot());
       this.cancelActivity('user_interaction', false);
       this.setVisualKind('wake_up', true, true); this.finishActivityCadence();

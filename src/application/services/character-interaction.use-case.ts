@@ -32,6 +32,7 @@ export class CharacterInteractionUseCase {
   constructor(private readonly characterStateService: CharacterStateService) {}
 
   public execute(interaction: CharacterInteraction): CharacterState {
+    if (interaction.type === 'play') return this.characterStateService.getState();
     return this.characterStateService.applyStimulus({
       type: STIMULUS_BY_INTERACTION[interaction.type],
       source: 'user',
