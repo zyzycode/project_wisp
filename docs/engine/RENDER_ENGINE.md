@@ -1,60 +1,29 @@
 # Контракт Render Engine
 
-`RENDER_ENGINE.md` — source of truth для визуального слоя Project Wisp: манифеста спрайтов, нарезки кадров, таймингов, композиции слоев и fallback-резолвинга.
-
-Документ является архитектурным контрактом ядра. Implementer-агенты не меняют этот contract без Architect review.
+Канонические manifest/frame timing/composition/fallback правила. Изменение семантики требует Architect review.
 
 ## Владение и границы ответственности
 
-Render Engine — Skin-часть архитектуры `Brain → Body → Skin` и не принимает решений о поведении персонажа. Renderer Body получает `BrainStateDTO`, добавляет только быстрые visual reflexes и формирует renderer-local `BodyVisualState`; Skin детерминированно отображает его.
+`BrainStateDTO → PetBodyController → BodyVisualState → ISkinEngine → SpriteSkinAdapter → Asset/Fallback Resolver → Animation Player → ICharacterRenderer`.
 
-```text
-BrainStateDTO
-  -> PetBodyController
-  -> BodyVisualState
-  -> ISkinEngine
-  -> SpriteSkinAdapter
-  -> Asset/Fallback Resolver -> Animation Player -> ICharacterRenderer
-```
+Brain владеет semantic `AnimationIntent`, Activity phase/Needs/authoritative motion, публикует DTO без asset keys. Body добавляет renderer-local input/reflex projection (gaze/drag squash-stretch на RAF без per-frame IPC). Skin выбирает assets/fallback, считает frames по Renderer-monotonic delta.
 
-- **Brain:** владеет semantic `AnimationIntent`, Activity phase, needs и authoritative motion; сериализует их как часть `BrainStateDTO` без asset keys.
-- **Body:** владеет только renderer-local visual projection и input/reflex lifecycle. Gaze и drag squash/stretch могут обновляться на RAF без per-frame IPC, но не меняют semantic intent.
-- **Skin:** renderer-local adapter, который выбирает concrete asset/fallback, вычисляет frame по Renderer-monotonic delta и отображает результат.
-
-Renderer не парсит provider DTO, не вычисляет `Needs`, не планирует Activity, не владеет authoritative position и не импортирует Electron/Node/platform APIs. DOM/canvas и resource handles не выходят из Renderer; Main/Application/Domain/Shared IPC получают только plain serializable DTO.
+Renderer не парсит provider DTO, не считает Needs/Activity/authoritative position, не импортирует Electron/Node/platform APIs. DOM/canvas/resources остаются локальны; Main/Application/Domain/Shared получают plain serializable DTO.
 
 ### #43: общая геометрия окна и визуального root
 
-Контракт [`PetPresentationLayoutDTO`](../../src/shared/ipc-contracts.ts) описывает статическую
-presentation-конфигурацию. Единственный экземпляр и чистая проекция принадлежат Render
-Engine и размещены в [`pet-presentation-layout.ts`](../../src/shared/pet-presentation-layout.ts). Модуль
-не импортирует Renderer, DOM, React, Electron или Domain; Main и Renderer потребляют его напрямую.
-Новый IPC-канал, runtime layout service и измерение DOM для Main не нужны.
+[PetPresentationLayoutDTO](../../src/shared/ipc-contracts.ts) — статическая конфигурация; один экземпляр и pure projection в [pet-presentation-layout.ts](../../src/shared/pet-presentation-layout.ts) принадлежат Render и напрямую потребляются Main/Renderer. Shared-модуль без Renderer/DOM/React/Electron/Domain imports; новый IPC/runtime layout service/DOM measurement для Main не нужны.
 
-- Текущие значения: compact 280×320, expanded 1140×620; character rect (20, 18, 240, 240),
-  viewport 512×512, canonical root (256, 460). CSS, CharacterRenderer, default viewport/pivot
-  и Main берут значения из общего экземпляра, без дублирующих числовых литералов.
-- Проекция `calculateWindowRootPivotOffset(layout)` вычисляет `s = min(width / viewport.width,
-  height / viewport.height)`, `letterbox = (characterSize - viewportSize * s) / 2`,
-  `offset = characterRect.origin + letterbox + spriteRootPivot * s`.
-  Для текущей конфигурации offset = (140, 233.625) DIP. SVG использует `xMidYMid meet`.
-- Адаптер позиции получает только готовый `pivotOffset`; его обязанности — перевод root ↔
-  native, округление, существующее ограничение координат и commit. Scale/letterbox в Infrastructure запрещены.
-- Main компонует зависимости и размеры BrowserWindow; собственных CSS/Render-констант не содержит.
-  Расширение меню сохраняет origin персонажа и root offset. Device pixel ratio не применяется
-  к DIP; преобразование нативных физических пикселей остаётся в platform adapters.
-- Skin совмещает pivot конкретного кадра с canonical root. Flip, squash и смена клипа
-  не меняют native offset и authoritative position. Asset handles остаются renderer-local.
-  Исходный `canvasSize` передаётся со слоем отдельно от фиксированного viewport;
-  нестандартный размер кадра не меняет масштаб всего presentation canvas.
+- Compact 280×320, expanded 1140×620; character rect (20, 18, 240, 240), viewport 512×512, root (256, 460). CSS/CharacterRenderer/default viewport-pivot/Main используют общий экземпляр, без копий чисел.
+- `calculateWindowRootPivotOffset(layout)`: `s = min(width / viewport.width, height / viewport.height)`; `letterbox = (characterSize - viewportSize * s) / 2`; `offset = characterRect.origin + letterbox + spriteRootPivot * s`. Сейчас offset=(140, 233.625) DIP, SVG `xMidYMid meet`.
+- Position adapter получает готовый `pivotOffset`: root↔native, rounding/clamp/commit; scale/letterbox не считает. Main компонует размеры/DI без собственных CSS/Render constants. Меню сохраняет origin/root offset; DPR к DIP не применяется, physical-pixel conversion — platform adapters.
+- Skin совмещает frame pivot с canonical root. Flip/squash/смена клипа не меняют native offset/position authority. Исходный `canvasSize` передаётся отдельно от fixed viewport; нестандартный frame не меняет масштаб всего canvas.
 
-Тесты проекции находятся в `tests/shared/pet-presentation-layout.test.ts`: проверены
-несимметричный letterbox и compact/expanded parity. Renderer-тесты проверяют сохранение
-canonical root при смене кадра и позиционирование слоёв с нестандартным canvas/pivot.
+Проверки: `tests/shared/pet-presentation-layout.test.ts` — asymmetric letterbox, compact/expanded parity; Renderer — canonical root при frame change и нестандартные canvas/pivots.
 
 ### Renderer-local Skin contract
 
-`ISkinEngine`, `BodyVisualState` и presentation-reflex types объявлены в [`src/renderer/render-engine/skin-engine.ts`](../../src/renderer/render-engine/skin-engine.ts). Контракт renderer-local и не является Application port или shared IPC type.
+[skin-engine.ts](../../src/renderer/render-engine/skin-engine.ts): `ISkinEngine`, `BodyVisualState`, reflex types — только Renderer, не Application port/shared IPC.
 
 | `BodyVisualState` поле | Назначение | Инвариант |
 |---|---|---|
@@ -71,20 +40,17 @@ canonical root при смене кадра и позиционирование 
 | `update(state)` | Применить последнюю полную `BodyVisualState` | Не принимает partial patch; повтор revision не создаёт React/render update. |
 | `destroy()` | Остановить RAF/player callbacks и освободить resources | После возврата новые updates запрещены. |
 
-- `SpriteSkinAdapter` — единственный допустимый adapter текущего scope. Он оборачивает существующие resolver/player/renderer и текущий `manifest.json` без миграции формата.
-- Base clip стартует/replay-ится только при смене renderer-local ключа `(streamId, visualIntent.episodeId)` и начинает с переданного `visualAgeMs`; Brain revision и локальные reflex updates с прежним episode не сбрасывают playback.
-- Spine/Live2D adapters, placeholders, package dependencies и adapter IDs вне AUTO-A08/AUTO-I10; они требуют отдельного Dependency/Implementation Gate и готовых rig assets.
-- Skin clip completion остаётся локальной деталью адаптера: callback не входит в `BodyEventDTO` и не меняет Brain state.
+`SpriteSkinAdapter` — единственный adapter scope, оборачивает текущие resolver/player/renderer/manifest без format migration. Base clip стартует/replay только при новой паре `(streamId, visualIntent.episodeId)` с baseline `visualAgeMs`; Brain revision/reflex старого episode не сбрасывают playback. Completion локален, не входит в `BodyEventDTO` и не создаёт Brain outcome.
 
----
+Spine/Live2D, placeholders, dependencies/adapter IDs вне AUTO-A08/AUTO-I10; требуют отдельных Dependency/Implementation Gate и готовых rig assets.
 
 ## 1. Manifest & Asset Metadata
 
-`public/assets/sprites/manifest.json` является реестром доступных визуальных ресурсов.
+Реестр: `public/assets/sprites/manifest.json`.
 
 ### 1.1. Идентификаторы и категории
 
-Animation key обязан быть стабильным snake_case идентификатором: `<layer>_<name>[_<variant>]`.
+Стабильный snake_case animation key: `<layer>_<name>[_<variant>]`.
 
 | Layer category | Назначение | Примеры keys | Manifest category |
 |---|---|---|---|
@@ -93,54 +59,31 @@ Animation key обязан быть стабильным snake_case иденти
 | `expression` / `emotion` | Частичная мимика и эмоции поверх лица | `expression_blush`, `expression_wink`, `expression_pout` | `expression/<name>` |
 | `props` / `prop` | Реквизит и визуальные эффекты | `prop_pillow`, `prop_heart`, `prop_question`, `prop_sparkle` | `props/<name>` (нормализация `fx/*` в `props`) |
 
-Нормативные правила:
-- `body_*` используется исключительно для базового слоя тела.
-- `face_*` и `expression_*` не могут заменять тело в цепочке fallback.
-- `prop_*` используется для физического реквизита и визуальных эффектов.
-- Legacy-категория `faces/<name>` нормализуется в `face/<name>`.
+`body_*` только для тела; face/expression не заменяют его fallback. Prop — реквизит/эффекты. Legacy `faces/<name>` нормализуется в `face/<name>`.
 
 ### 1.2. Спецификация манифеста и типы
 
-Полная спецификация типов манифеста и ассетов определена в коде: [src/renderer/render-engine/types.ts](../../src/renderer/render-engine/types.ts).
+[types.ts](../../src/renderer/render-engine/types.ts): слои body/face/emotion/prop; animation fields `frames`, `fps`, `loop`, `pivot`, `faceOverlay`, `frameMeta`. `emotionalTone` использует [Character SynthesizedEmotionalTone](CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения).
 
-**Выжимка структуры:**
-- **4 категории слоёв:** `body`, `face`, `emotion`, `prop`.
-- **Поля анимации:** `frames` (пути или дефиниции кадров), `fps`, `loop`, `pivot`, `faceOverlay`, `frameMeta`.
-- `emotionalTone` в манифесте использует authoritative `SynthesizedEmotionalTone` из [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения).
-
-**Правила валидации:**
-- `frames` обязан быть непустым; `framesCount` (при наличии) строго равен `frames.length`.
-- `fps` и `durationMs` обязаны быть строго больше `0` (нулевой FPS запрещён).
-- `sourceRect` и `canvasSize` обязаны иметь положительные width и height.
-- `pivot.x` и `pivot.y` задаются в исходных пикселях канваса (`source-canvas pixels`).
-- Пути к файлам должны быть относительными либо от корня `/assets/...`; path traversal (`..`) запрещён.
-- Отсутствие `schemaVersion` допустимо для плоского манифеста; загрузчик нормализует его во внутренний реестр `animations`.
-- `faceOverlay` — обязательные метаданные для всех анимаций `body_*`.
+Validation: непустые frames, optional `framesCount = frames.length`; fps/durationMs >0; sourceRect/canvasSize width/height >0; pivot.x/y в source-canvas pixels. Пути относительные либо `/assets/...`, traversal `..` запрещён. Flat manifest допускает отсутствие schemaVersion и нормализуется в `animations`; body требует faceOverlay.
 
 ### 1.3. Frame Timing
 
-Длительность кадра рассчитывается на монотонных часах (`performance.now()`):
+Monotonic `performance.now()`:
 
 ```text
 frameDurationMs = 1000 / fps
 ```
 
-Приоритет разрешения: `frame.durationMs -> 1000 / animation.fps -> 1000 / DEFAULT_SPRITE_FPS`.  
-Дефолтные значения: `DEFAULT_SPRITE_FPS = 5` (тело), `DEFAULT_FACE_FPS = 3` (лицо).
-
-Animation Player использует elapsed monotonic time. При больших скачках `deltaMs` происходит математический скачок к целевому кадру или завершению без пошагового цикла.
+Приоритет: `frame.durationMs -> 1000 / animation.fps -> 1000 / DEFAULT_SPRITE_FPS`; `DEFAULT_SPRITE_FPS = 5` body, `DEFAULT_FACE_FPS = 3` face. Большой deltaMs сразу математически выбирает frame/completion, без покадрового цикла.
 
 ### 1.4. Sprite Slicing
 
-- Отдельные кадры могут быть путями к PNG или вырезками атласа через `SpriteFrameDef.sourceRect`.
-- Координаты `sourceRect` задаются относительно верхнего левого угла `source`.
-- Разрешение pivot: `frame.pivot -> animation.pivot -> layer default`.
-- Default pivot тела — точка контакта персонажа с поверхностью (`{ x: 256, y: 460 }`).
-- Не-body слои объявляют явные pivots (`DEFAULT_FACE_PIVOT = { x: 256, y: 180 }`).
+Frames — PNG paths либо atlas `SpriteFrameDef.sourceRect`, отсчитываемый от верхнего левого source. Pivot: `frame.pivot -> animation.pivot -> layer default`. Body default contact: `{ x: 256, y: 460 }`; non-body pivots явные, `DEFAULT_FACE_PIVOT = { x: 256, y: 180 }`.
 
 ### 1.5. Body-to-Face Compatibility (`faceOverlay`)
 
-Каждая запись `body_*` **обязана** объявлять объект `faceOverlay`. Он определяет возможность динамической композиции лица поверх позы тела.
+Каждый body объявляет faceOverlay; для face/expression/prop это поле запрещено.
 
 | Режим | Описание | Обязательные поля | Поведение рендера |
 |---|---|---|---|
@@ -148,41 +91,23 @@ Animation Player использует elapsed monotonic time. При больш�
 | `baked_in` | Лицо врисовано непосредственно в спрайт тела (движение/реакции). | `fallback: "none"`; запрещены `allowedFaceKeys` и `anchor`. | Оверлей полного лица никогда не рисуется. |
 | `none` | Поза несовместима с оверлеем лица и не имеет врисованного лица. | `fallback: "none"`; запрещены `allowedFaceKeys` и `anchor`. | Слой лица полностью скрывается. |
 
-**Актуальная спецификация по `manifest.json`:**
-- **Режим `overlay`** (`body_idle`, `body_stand_up`, `body_sit`, `body_lie`): лицо отсутствует на спрайте тела и динамически накладывается поверх по якорю `face`. Поддерживаются 13 треков `face_*`: `face_happy`, `face_sad`, `face_shocked`, `face_sleep`, `face_talking`, `face_thinking`, `face_angry`, `face_pout`, `face_winking`, `face_curious`, `face_dizzy`, `face_flirty`, `face_gaze` (`fallback: "face_happy"`).
-- **Режим `baked_in`** (`body_walk`, `body_run`, `body_dragged`, `body_fall`, `body_land`, `body_sleep` и др.): лицо врисовано в спрайт движения, оверлей скрыт (`fallback: "none"`).
+Для overlay: только face/* keys; объявленный `anchor` в `defaultAnchors`/`frameMeta`; fallback входит в allowedFaceKeys либо `none`. Baked-in/none никогда не получают allowedFaceKeys/anchor, fallback только none. Без якоря overlay запрещён; expression не заменяет полный face track.
 
-**Правила валидации:**
-- `faceOverlay` обязателен для всех `body_*` и запрещён для `face_*`, `expression_*`, `prop_*`.
-- Для `overlay` допустимы только ключи из категории `face/*`; `anchor` обязан ссылаться на объявленный якорь; `fallback` обязан входить в `allowedFaceKeys` либо быть `"none"`.
-- Для `baked_in` и `none` запрещены `allowedFaceKeys` и `anchor`, а `fallback` обязан быть `"none"` (защита от случайного «двойного лица» и угадывания позиционирования).
-- Запрещён вывод оверлея без объявленного якоря в `defaultAnchors` или `frameMeta`.
-- Частичный слой `expression_*` не заменяет полноразмерный трек `face_*`.
+Текущие назначения/allowedFaceKeys — в [manifest.json](../../public/assets/sprites/manifest.json): overlay у body_idle/stand_up/sit/lie, baked-in у motion/reaction body_walk/run/dragged/fall/land/sleep. Каталог конкретных face keys читается из манифеста, не копируется сюда.
 
 ### 1.6. Система координат (Face Anchor & Pivot)
 
-Все координаты задаются в исходных пикселях канваса спрайта (`source-canvas pixels`):
-- Origin `(0, 0)` — верхний левый угол нерастянутого холста кадра; ось X направлена вправо, ось Y — вниз. Не используются CSS-пиксели и нормализованные проценты.
-- **Позиционирование лица:** точка якоря тела `frameMeta[i].anchors[name] ?? defaultAnchors[name]` совмещается с локальной точкой опоры лица `faceFrame.pivot ?? faceAnimation.pivot`. При отсутствии объявленного якоря наложение недопустимо.
-- **Body `pivot`:** точка опоры/контакта персонажа с поверхностью в мировых координатах (`frame.pivot ?? animation.pivot ?? DEFAULT_SPRITE_PIVOT`).
-- **Тайминг треков:** кадры тела и лица независимы по таймингу и длине; для композиции на каждом тике берутся текущий активный кадр тела и текущий активный кадр оверлея.
+Source-canvas pixels: origin (0,0) сверху слева нерастянутого frame, X вправо/Y вниз; не CSS pixels/проценты.
+
+- Anchor тела `frameMeta[i].anchors[name] ?? defaultAnchors[name]` совмещается с `faceFrame.pivot ?? faceAnimation.pivot`; отсутствующий anchor запрещает overlay.
+- Body contact: `frame.pivot ?? animation.pivot ?? DEFAULT_SPRITE_PIVOT`.
+- Body/face независимы по timing/length, композиция использует текущий frame каждого track.
 
 ### 1.7. Стандарт количества кадров (Frame Count Contract)
 
-> [!IMPORTANT]
-> **ПРАВИЛО КОЛИЧЕСТВА КАДРОВ В АНИМАЦИЯХ:**
-> 1. **Минимум 4 кадра на анимацию:** Любая анимация персонажа (`body_*`), оверлея лица (`face_*`), изолированных зрачков (`pupils_*`) и эффектов должна содержать **4 или более кадров** (`>= 4 frames`).
-> 2. **Запрет 2- и 3-кадровых анимаций:** Короткие 2- и 3-кадровые анимации **не допускаются**, так как они вызывают стробоскопический эффект и визуальные рывки при интерполяции слоёв.
-> 3. **Стандартная раскладка спрайт-шитов:**
->    - **4 кадра (базовый стандарт):** 1 горизонтальный ряд × 4 колонки (`1 row × 4 columns wide strip` / файлы `_00.png`..`_03.png`).
->    - **8 кадров (расширенный стандарт, например `body_idle`):** 2 ряда × 4 колонки (`2 rows × 4 columns` / файлы `_00.png`..`_07.png`).
->    - Допускаются более длинные последовательности (>= 4 кадров), если это требуется для плавности сложного перехода или действия.
-
----
+Для body/face/pupils/effects минимум **4 frames**; 2–3 запрещены из-за стробирования. 4 frames: 1 row ×4 columns, `_00.png`..`_03.png`; 8 frames (например body_idle): 2 rows ×4 columns, `_00.png`..`_07.png`. Более длинные последовательности ≥4 допустимы для плавного действия/перехода.
 
 ## 2. Layer Ordering & Blend
-
-Разрешённое состояние рендера представляет собой детерминированный стек слоёв.
 
 | Слой | Z-Index | Opacity | Blend Mode | Назначение |
 |---|---|---|---|---|
@@ -191,31 +116,18 @@ Animation Player использует elapsed monotonic time. При больш�
 | `emotion` | 30 | 0.9 | `normal` | Мимика, эмоции и процедурный румянец (`expression`, `procedural_blush`) |
 | `prop` | 40 | 1.0 | `normal` / `additive` / `screen` | Реквизит и спецэффекты (`prop_*`) |
 
-**Правила композиции:**
-- Процедурный румянец использует SVG radial gradient tint поверх щек и не вытесняет спрайтовые слои.
-- Оверлеи реквизита позиционируются относительно root pivot персонажа.
-- Реквизит с `blendMode: 'additive'` или `blendMode: 'screen'` рендерится без клиппинга базового тела.
-
----
+Procedural blush — SVG radial-gradient tint поверх щёк без вытеснения sprite layers. Props привязаны к root pivot; `blendMode: 'additive'`/`blendMode: 'screen'` не clip-ятся базовым телом.
 
 ## 3. Fallback Resolver & Детерминизм
 
 ### 3-уровневый Fallback Resolver
 
-1. **Level 1 (Точный арт):**  
-   Прямое совпадение `(kind, emotionalTone, hints)` с ключами манифеста. Отрисовывается специализированный спрайт/оверлей.
-2. **Level 2 (Базовая поза + независимый оверлей):**  
-   Если точный вариант отсутствует (`body_<kind>_<tone>` не найден), выбирается базовая поза категории (`body_<kind> -> body_idle`) с независимым наложением доступного слоя эмоции/реквизита.
-3. **Level 3 (Emergency fallback):**  
-   Если безопасный арт категории или слоя отсутствует, происходит откат к `body_idle` + `face_idle`. При отсутствии `face_idle` оверлей лица скрывается (`silent degradation`). При отсутствии `body_idle` активируется процедурный плейсхолдер с выводом предупреждения в лог.
+1. Exact `(kind, emotionalTone, hints)` → специализированный sprite/overlay.
+2. Нет `body_<kind>_<tone>` → `body_<kind> -> body_idle` + доступный независимый emotion/prop overlay.
+3. Нет safe category/layer art → `body_idle + face_idle`; отсутствующий face_idle скрыть, отсутствующий body_idle → procedural placeholder + warning.
 
 ### Ключевые инварианты
 
-- **Безопасность выполнения:** Fallback никогда не выбрасывает необработанных исключений во время активного геймплея. Отсутствующие опциональные слои деградируют до отображения базового тела.
-- **Сохранение семантики:** Fallback меняет исключительно визуальное представление, но **не переписывает исходный `AnimationIntent` / `BehaviorIntent`** в логике персонажа.
-- **Экспрессивность:** Fallback не повышает эмоциональную экспрессивность (при отсутствии `shy` происходит откат к `idle`, а не повышение до `affectionate`).
-- **Детерминированность:**
-  - Нулевой FPS запрещён (`fps > 0`).
-  - Отсутствие асинхронной загрузки посреди тика рендера: все ассеты должны быть загружены заранее; тик рендера синхронен и детерминирован.
-  - Одинаковый входной `RenderPresentationState` гарантирует строго идентичный визуальный кадр независимо от частоты тиков.
-- **Границы ответственности:** Render Engine исключительно отображает `RenderPresentationState`, не принимает поведенческих решений и не меняет semantic FSM. UI-framework/DOM детали не выходят из Renderer, platform APIs запрещены.
+Fallback не бросает unhandled exceptions, optional layers деградируют до base body; меняется только presentation, не исходные `AnimationIntent`/`BehaviorIntent`. Экспрессивность не повышать: shy→idle, не affectionate.
+
+`fps > 0`; assets загружены **до** синхронного render tick, без async loading посреди него. Одинаковый `RenderPresentationState` даёт идентичный frame независимо от tick frequency. Render не меняет semantic FSM; UI/DOM/resources локальны, platform APIs запрещены.

@@ -1,16 +1,8 @@
 # Архитектурный бриф UI / Renderer
 
-`UI_SPEC.md` — архитектурный бриф UI-слоя Project Wisp. Документ фиксирует UX-принципы приложения-компаньона, правила взаимодействия окна с операционной системой, границы ответственности (ownership) и поток данных между процессами.
-
-> [!NOTE]
-> **Источник правды (Single Source of Truth):**  
-> Спецификация не дублирует стили, точные пиксельные размеры, цветовую палитру и DOM-структуру компонентов. Источником правды для разметки, стилизации и композиции является React-код и CSS в каталоге [`src/renderer/`](../../src/renderer/).
-
----
+UX, ownership и межпроцессный обмен. Разметка, стили, размеры и композиция определены в [src/renderer/](../../src/renderer/), а не в этом контракте.
 
 ## 1. Поток данных и границы ответственности (Ownership)
-
-UI функционирует по модели однонаправленного потока данных (Unidirectional Data Flow):
 
 ```mermaid
 flowchart LR
@@ -32,70 +24,29 @@ flowchart LR
 | **Типизированный мост** | Preload (`window.wispAPI`) | Вызов строго типизированных методов API и подписка на события. | Использование `ipcRenderer`, доступ к Node.js API, знание имён каналов IPC. |
 | **Локальный UI-контекст** | React Surfaces | Черновик ввода чата, фокус, открытость меню/табов, ховер. | Превращение временного UI-состояния в персистентное без подтверждения Main. |
 
----
-
 ## 2. UX-принцип: Прозрачное окно-оверлей (Transparent Overlay)
 
-1. **Бесшовное присутствие на рабочем столе:**
-   - Окно персонажа работает в режиме прозрачного безрамочного оверлея (`frameless`, `transparent`, без теней окна и без отображения в панели задач).
-   - Персонаж визуально существует прямо на рабочем столе поверх окон других приложений (`always-on-top`).
-2. **Динамическая поверхность окна:**
-   - В базовом режиме размер окна минимизирован до компактных границ самого персонажа и всплывающих мыслей.
-   - При открытии расширенных интерфейсов (контекстное меню, диалоговый чат, HUD) размер нативного окна динамически адаптируется под габариты открытой поверхности через координацию с Main-процессом, предотвращая обрезку контента.
-3. **Безопасность границ экрана (Clamping & Viewport Awareness):**
-   - Все всплывающие элементы (облака диалога, меню) позиционируются относительно персонажа с обязательным учётом экранных границ (`workArea`), чтобы элементы интерфейса никогда не выходили за пределы видимости дисплея.
-
----
+Окно — transparent/frameless, без теней и taskbar, always-on-top. Базовые границы компактны: персонаж и мысли. Меню/chat/HUD расширяют нативную поверхность через Main без обрезки; всплывающие элементы привязаны к персонажу и clamped в `workArea`.
 
 ## 3. UX-принцип: Клик сквозь окно (Ignore Mouse Events)
 
-Главная цель — **ненавязчивость (non-intrusive presence)**: оверлей не должен блокировать взаимодействие пользователя с его рабочим окружением и окнами сторонних приложений.
+Прозрачная неактивная область пропускает ввод: `window.setIgnoreMouseEvents(true, { forward: true })`. Захват (`setIgnoreMouseEvents(false)`) разрешён только над sprite/hitbox, Speech/Thought bubbles, chat input, menu/debug controls.
 
-1. **Сквозной клик по умолчанию:**
-   - Любая область окна, где отсутствует активный UI-элемент (полностью прозрачные пиксели холста), пропускает клики и события мыши насквозь к окнам под оверлеем (`window.setIgnoreMouseEvents(true, { forward: true })`).
-2. **Интерактивные зоны (Hit-testing):**
-   - События мыши перехватываются (`setIgnoreMouseEvents(false)`) исключительно при наведении курсора на интерактивные поверхности:
-     - Сам спрайт/хитбокс персонажа;
-     - Всплывающие диалоговые облака (Speech/Thought bubbles);
-     - Поле ввода чата;
-     - Контекстное меню и элементы панели отладки.
-3. **Перетаскивание персонажа (Pointer Drag Lifecycle):**
-   - Зажатие левой кнопки мыши на персонаже с преодолением порога смещения переводит систему в режим перетаскивания (Drag).
-   - Renderer захватывает события указателя и передаёт нормализованный поток координат в Main-процесс. Авторитетное перемещение окна и физику броска/падения рассчитывает Motion Engine.
-
----
+Левая кнопка на персонаже + порог смещения начинают Drag. Renderer захватывает pointer и передаёт normalized coordinates; перемещение окна, throw/fall physics принадлежат Motion Engine.
 
 ## 4. UX-принцип: Поведение контекстного меню (Context Menu)
 
-Контекстное меню предоставляет доступ к управлению персонажем, настройкам и режимам взаимодействия.
+Правый клик открывает меню и расширяет окно/включает interactive mode. Outside/backdrop click, `Escape` или terminal action закрывают его и возвращают компактное окно.
 
-1. **Жизненный цикл открытия и закрытия:**
-   - **Открытие:** по правому клику (контекстному нажатию) на персонаже.
-   - **Закрытие:** по клику вне области меню (outside click / backdrop click), по нажатию клавиши `Escape` или после выбора терминального действия (например, "Выйти").
-   - При открытии меню окно автоматически переводится в интерактивный режим и расширяет рабочую область; при закрытии — возвращается в компактное состояние.
-2. **Иерархия действий:**
-   - **Взаимодействие (Interactions):** прямые семантические стимулы (погладить, покормить, поиграть, подумать).
-   - **Жизненный цикл (Vitality):** явные команды перехода в сон и пробуждения (`sleep` / `wake`).
-   - **Автономия (Autonomy):** включение/выключение свободного перемещения персонажа по экрану (прогулка).
-   - **Персонализация:** выбор визуальной темы, ручная смена выражений и масштаба персонажа.
-   - **Системные контролы:** сброс позиции персонажа в центр рабочего стола, закрепление поверх окон, выход из приложения.
-3. **Изоляция Debug-интерфейса:**
-   - Вкладка/панель телеметрии (`Debug HUD`) доступна исключительно при наличии явного флага/возможности `debugEnabled`.
-   - В production-режиме отладочные элементы полностью исключаются из рендера, а не маскируются через CSS.
-
----
+Группы действий: interactions (погладить/кормить/играть/думать), `sleep`/`wake`, autonomy movement, theme/expression/scale, reset position/always-on-top/quit. Debug HUD требует явного `debugEnabled`; в production исключён из render, не скрыт CSS.
 
 ## 5. Инварианты безопасности и приватности
 
-1. **Изоляция окружения:** Renderer функционирует в режиме строгой изоляции (`contextIsolation: true`, `sandbox: true`).
-2. **Отсутствие доступа к приватным данным:** Renderer не имеет доступа к локальной файловой системе, SQLite, системным промптам нейросетей, API-ключам и полным слепкам памяти персонажа.
-3. **Семантические намерения:** Любое действие пользователя из UI формирует высокоуровневый семантический интент (User Intent DTO), отправляемый через `window.wispAPI`. UI не имеет права напрямую мутировать внутреннее состояние движков ядра.
-
----
+Общие Electron/security правила — [AGENTS.md](../../AGENTS.md#3-безопасность-electron-и-ipc). Renderer не получает файлы, SQLite, system prompts, API-ключи или полный memory snapshot. User actions идут semantic DTO через `window.wispAPI`, без прямой мутации engines.
 
 ## 6. Brain → Body IPC
 
-`BrainStateDTO` — единственный полный state stream Main → Renderer. `BodyEventDTO` — ограниченный input/observation stream Renderer → Main. Канонические target declarations находятся в [`src/shared/ipc-contracts.ts`](../../src/shared/ipc-contracts.ts); shared не импортирует Domain, React, DOM/canvas, Electron или Skin types. Само наличие типов не активирует новые каналы до атомарного runtime-cutover AUTO-I07.
+`BrainStateDTO` — единственный полный Main → Renderer state stream; `BodyEventDTO` — ограниченный input/observation stream обратно. Типы: [ipc-contracts.ts](../../src/shared/ipc-contracts.ts). Shared не импортирует Domain, React, DOM/canvas, Electron или Skin. Target declarations сами не включают runtime-каналы; cutover — §6.6.
 
 ### 6.1. Shared DTO
 
@@ -137,35 +88,33 @@ flowchart LR
 | `drag_ended`: те же поля + `cancelled` | Терминальное событие gesture | Ровно один terminal event для active пары gesture/pointer. |
 | `menu_visibility_changed.expanded` | Наблюдение состояния меню | Boolean; не является visual completion или behavior decision. |
 
-`activity: null` означает отсутствие active Activity. `phaseEndsAtMs: null` допустим только для фазы, ожидающей Brain-owned causal event или явного interruption; Skin completion таким событием не является. `visualIntent.kind` — semantic animation kind из [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md), не `manifest.json` key или имя клипа.
+`phaseEndsAtMs: null` допускает только Brain-owned causal event/interruption, не Skin completion. `visualIntent.kind` — семантика [Animation](ANIMATION_ENGINE.md), не manifest/clip key.
 
-`visualIntent.episodeId` — Brain-generated identity одного visual episode, уникальная и не переиспользуемая внутри `streamId`. Brain создаёт новый ID и фиксирует `episodeStartedAtMs` при каждом намеренном старте/replay, даже если `kind` и остальные visual fields совпадают: новая Activity visual phase, повторный click/direct reaction, landing или forced visual transition. Поэтому episode однозначен и при `activity: null`.
+Brain создаёт непереиспользуемый внутри stream `episodeId` и фиксирует `episodeStartedAtMs` на каждом намеренном старте/replay: Activity visual phase, повторной direct/click reaction, landing, forced transition — даже при прежних visual fields и `activity: null`. Все поля одного `(streamId, episodeId)` immutable; Motion/Needs-only revision сохраняет episode. Только новая пара перезапускает base Skin playback. Brain завершает episode публикацией следующего episode/state, без visual outcome.
 
-Для одного `(streamId, episodeId)` `episodeStartedAtMs` и все остальные поля `visualIntent` неизменны во всех snapshots. Motion/Needs-only revision сохраняет episode. Body начинает или перезапускает base Skin playback только при новой паре `(streamId, episodeId)`; новая `revision` с прежним episode не перезапускает его. Brain завершает episode только публикацией следующего episode/state и не ждёт обратного visual outcome.
-
-`gestureId` создаётся Body один раз на pointer gesture (trimmed non-empty, до 128 символов) и служит только корреляцией input; Main делает его active лишь после valid `drag_started`. Он не даёт Body position authority и не заменяет общий `sequence`.
+Body создаёт один `gestureId` на gesture (trimmed non-empty, до 128 символов). Main активирует его после valid `drag_started`; ID служит корреляции ввода, не даёт position authority и не заменяет `sequence`.
 
 ### 6.2. Время, revision и order
 
-- `streamId` — Main-generated непустой opaque ID (до 128 символов) текущего trusted document stream. При reload/replacement Main создаёт новый ID; snapshot этого stream начинается с revision `1`.
-- `revision` — положительный safe integer, строго возрастающий на каждую опубликованную полную snapshot в одном stream. Пропуски допустимы из-за coalescing; равная или меньшая revision stale.
-- `sampledAtMs`, activity `startedAtMs` / `phaseStartedAtMs` / `phaseEndsAtMs` и `visualIntent.episodeStartedAtMs` используют одну Main-monotonic шкалу, конечны и неотрицательны. Для Activity выполняется `startedAtMs <= phaseStartedAtMs <= sampledAtMs`; для опубликованной bounded active phase — `sampledAtMs < phaseEndsAtMs`, иначе Brain сначала совершает transition. Для visual episode всегда `episodeStartedAtMs <= sampledAtMs`.
-- `observedAtMs` использует Renderer-monotonic `performance.now()` и упорядочивает/диагностирует только события одного Body stream. Main не вычитает его из своих timestamps и ставит собственный monotonic receive time перед Domain/Application mapping.
-- Body не emits до первого принятого snapshot. Каждый event копирует active `streamId`, последнюю принятую `basedOnRevision` и следующий положительный safe-integer `sequence`; sequence gaps разрешены, повтор или уменьшение stale.
+- Main генерирует opaque `streamId` (до 128 символов) для trusted document; reload/replacement создаёт новый stream с revision `1`.
+- `revision` строго возрастает на каждую полную snapshot: положительный safe integer, gaps допустимы; равная/меньшая stale.
+- Все Main timestamps конечны, неотрицательны, на одной monotonic шкале: `sampledAtMs`, `startedAtMs`, `phaseStartedAtMs`, `phaseEndsAtMs`, `episodeStartedAtMs`. Требуется `startedAtMs <= phaseStartedAtMs <= sampledAtMs`, для bounded active phase `sampledAtMs < phaseEndsAtMs` (иначе сначала transition), для episode `episodeStartedAtMs <= sampledAtMs`.
+- `observedAtMs` — Renderer-monotonic `performance.now()`, только для порядка/диагностики внутри Body stream. Main ставит собственный receive time до mapping, не вычитает часы Renderer.
+- До первого принятого snapshot Body не emits. Event несёт active stream, последнюю принятую `basedOnRevision`, следующий положительный safe-integer `sequence`; gaps допустимы, повторы/уменьшение stale.
 
-Body принимает первый полный snapshot текущей subscription, затем только matching `streamId` и `revision > lastAcceptedRevision`. Snapshot заменяет presentation projection атомарно; частичных patches нет. Если уже принятый `episodeId` пришёл с другим `episodeStartedAtMs` или любым другим полем `visualIntent`, Body отклоняет всю snapshot, сохраняет последний valid state и пишет bounded protocol diagnostic. Смена stream допустима только после нового subscribe lifecycle, который сбрасывает локальные revision/sequence и visual resources.
+Body принимает первый полный snapshot текущей subscription, далее только matching stream с `revision > lastAcceptedRevision`, атомарно и без partial patches. Изменённые поля уже принятого episode отклоняют **весь** snapshot: сохранить valid state и bounded protocol diagnostic. Новый stream допустим лишь через новый subscribe lifecycle со сбросом revision/sequence/resources.
 
-Body вычисляет `BodyVisualState.visualAgeMs = sampledAtMs - visualIntent.episodeStartedAtMs`. Skin использует этот same-clock duration как baseline при инициализации нового `(streamId, episodeId)`, затем продвигает кадры Renderer-monotonic delta; обновление прежнего episode не перезапускает playback. Ни Body, ни Skin не сравнивают Main timestamps с `performance.now()`, не используют Activity presence для correlation и не переключают semantic phase при достижении `phaseEndsAtMs`.
+`BodyVisualState.visualAgeMs = sampledAtMs - visualIntent.episodeStartedAtMs` — same-clock baseline нового episode. Далее Skin продвигает кадры по Renderer-monotonic delta; прежний episode не рестартует. Body/Skin не сравнивают Main time с `performance.now()`, не коррелируют по наличию Activity и не переключают semantic phase по `phaseEndsAtMs`.
 
 ### 6.3. Cadence и coalescing
 
-- Brain публикует snapshot после committed semantic/Activity/Motion change и сразу после создания нового subscription. Неизменённый heartbeat запрещён; semantic/Activity/position-authority transitions между разными transactions не отбрасываются.
-- Все mutations одной Application transaction сливаются в одну snapshot. Physics fixed substeps одного внешнего Motion tick также сливаются; наружу уходит не более одного состояния за этот tick.
-- При IPC backpressure только pending motion-only snapshots coalesce по latest-wins; pending semantic/Activity/position-authority transition сохраняет порядок. Поэтому revision gaps допустимы, а semantic phase не скрывается coalescing-ом.
-- `cursor_observed` не привязан к RAF: один Body-owned refresh loop использует `CURSOR_OBSERVATION_INTERVAL_MS = 100` (не более 10 событий/с). Первый valid local cursor sample после subscribe отправляется сразу; пока sample остаётся доступным, каждый следующий 100-ms tick отправляет текущую latest position, включая неизменную, с новым `observedAtMs`/`sequence`. Pointer moves внутри интервала только заменяют pending position; задержанный tick отправляет один current sample без catch-up burst.
-- Cursor refresh останавливается и pending sample очищается при `pointerleave`/`pointercancel`, hidden document/window teardown, active drag, unsubscribe/unmount или stream replacement. После остановки Brain TTL естественно делает observation stale; отдельный unavailable event не нужен. Это единственный допустимый unchanged Body refresh: прочие Body events и Brain snapshots не имеют heartbeat.
-- `drag_moved` coalesce-ится latest-wins не чаще одного события за Renderer animation frame. `drag_started`, `drag_ended`, `interaction` и `menu_visibility_changed` отправляются немедленно и не coalesce между собой. Общий `sequence` назначается в момент фактической отправки любого Body event.
-- Skin RAF/frame callbacks локальны. Clip completion/rejection/interruption не создают `BodyEventDTO` и не влияют на Brain cadence.
+- Brain публикует после committed semantic/Activity/Motion change и сразу при subscribe. Unchanged heartbeat запрещён; semantic/Activity/position-authority transitions разных transactions не теряются.
+- Одна Application transaction → одна snapshot; physics substeps одного внешнего Motion tick также дают максимум одну snapshot.
+- При backpressure только pending motion-only snapshots coalesce latest-wins; semantic/Activity/authority transitions сохраняют порядок. Revision gaps не скрывают semantic phase.
+- `cursor_observed`: один Body refresh loop, независимо от RAF, `CURSOR_OBSERVATION_INTERVAL_MS = 100` (до 10 событий/с). Первый valid local sample после subscribe сразу; далее каждый 100-ms tick — latest position, даже неизменная, с новыми `observedAtMs`/`sequence`. Pointer moves заменяют pending position; delayed tick не делает catch-up burst.
+- Остановить cursor refresh и очистить pending при `pointerleave`/`pointercancel`, hidden document/window teardown, drag, unsubscribe/unmount, stream replacement. Brain TTL делает sample stale без unavailable event. Это единственный допустимый unchanged Body refresh.
+- `drag_moved` coalesce latest-wins максимум раз за Renderer frame. `drag_started`, `drag_ended`, `interaction`, `menu_visibility_changed` немедленны и не coalesce; sequence присваивается при фактической отправке.
+- Skin RAF/clip completion/rejection/interruption локальны, не создают Body events и не задают Brain cadence.
 
 ### 6.4. Channels и Preload
 
@@ -174,63 +123,54 @@ Main --wisp:brain-state(BrainStateDTO)--> onBrainState(listener) --> Body
 Body --postBodyEvent(BodyEventDTO)--> wisp:body-event --> Main
 ```
 
-`window.wispAPI` предоставляет только `onBrainState(listener): () => void` и `postBodyEvent(event): Promise<void>` для этой пары потоков. `Promise<void>` подтверждает validation/delivery в Main handler, но не semantic acceptance. Raw `ipcRenderer`, generic `send/on/invoke`, dynamic channel names и Skin API через Preload запрещены.
+Для этих потоков bridge предоставляет только `onBrainState(listener): () => void` и `postBodyEvent(event): Promise<void>`. Promise подтверждает validation/delivery, не semantic acceptance. Raw `ipcRenderer`, generic `send/on/invoke`, dynamic channels и Skin API через Preload запрещены.
 
 ### 6.5. Validation и stale-event policy
 
-Обе стороны сначала принимают `unknown`, проверяют plain non-null exact-shape object и копируют его в новый DTO. Extra keys, prototype-bearing objects, методы, классы, cyclic values, `NaN`/`Infinity` и неизвестные enum variants отклоняются; optional fields либо отсутствуют, либо содержат валидное значение. Для `interaction` значение `think` валидируется как отдельный exact literal и маппится Application boundary в candidate `BehaviorIntent<'think'>`, который проходит обычный Character gating; оно не запускает visual state напрямую. Needs/intensity должны быть конечными в `[0, 100]`/`[0, 1]`; revision, sequence и `basedOnRevision` — положительными safe integers; pointer ID — неотрицательным safe integer; координаты/скорости и все timestamps — конечными. Все ID, включая `episodeId`, — trimmed non-empty строки до 128 символов. Body дополнительно проверяет неизменность payload для повторного `episodeId`; Main проверяет current trusted `webContents`.
+Обе стороны принимают `unknown`, валидируют plain non-null exact-shape object, копируют в новый DTO. Запрещены extra keys, prototype-bearing objects, methods/classes, cycles, `NaN`/`Infinity`, unknown enums; optional fields отсутствуют либо валидны. Needs/intensity: finite `[0, 100]`/`[0, 1]`; revision/sequence/`basedOnRevision`: positive safe integers; pointer ID: nonnegative safe integer; coordinates/velocity/timestamps: finite. Все ID, включая episode: trimmed non-empty до 128 символов.
 
-Main обрабатывает Body event в таком порядке:
+Body проверяет immutable episode payload; Main — trusted current `webContents`. `think` — exact interaction literal, который Application маппит в candidate `BehaviorIntent<'think'>` через Character gating, не прямо в visual state.
 
-1. malformed payload, untrusted sender или foreign `streamId` отклоняется до Application;
-2. `sequence <= lastAcceptedSequence` — идемпотентный no-op; gap принимается;
-3. `basedOnRevision > currentRevision` отклоняется как impossible future event;
-4. event на старой revision не восстанавливает старый state: Main повторно проверяет current Character/Activity/Motion/menu/autonomy gates и принимает либо no-op/reject;
-5. drag event дополнительно сверяется с active `gestureId`/`pointerId`; semantic stimulus дедуплицируется ключом `(streamId, sequence)`.
+Порядок Main validation:
 
-Даже валидный Body event является только input/observation. Brain может прервать или выбрать behavior по своим текущим правилам, но никогда не ждёт Body event, не трактует отсутствие события как failure и не принимает visual outcome.
+1. Malformed/untrusted/foreign stream отклонить до Application.
+2. `sequence <= lastAcceptedSequence` → idempotent no-op; gap допустим.
+3. `basedOnRevision > currentRevision` → reject impossible future.
+4. Старую revision перепроверить по **текущим** Character/Activity/Motion/menu/autonomy gates: accept/no-op/reject без восстановления старого state.
+5. Drag сверить с active `gestureId`/`pointerId`; stimulus dedupe по `(streamId, sequence)`.
+
+Валидный event остаётся input/observation. Brain принимает свои решения, не ждёт Body, не считает отсутствие event failure и не принимает visual outcome.
 
 ### 6.6. Атомарная миграция с legacy protocol
 
-[AUTO-A06 #31](https://github.com/zyzycode/project_wisp/issues/31) **superseded** в части animation-completion handshake. AUTO-I07 выполняет один атомарный runtime cutover без compatibility bridge или feature flag:
+[AUTO-A06 #31](https://github.com/zyzycode/project_wisp/issues/31) superseded для animation-completion handshake. AUTO-I07 — единый runtime cutover, без compatibility bridge/feature flag:
 
-1. использовать объявленные shared types и добавить exact validators/mappers, `wisp:brain-state`, `wisp:body-event` и точечные Preload methods;
-2. в той же AUTO-I07 change-set переключить Main publisher и Renderer consumer с `PetPresentationStateDTO` на полный `BrainStateDTO`;
-3. удалить `AnimationLifecycleOutcomeDTO`, `AnimationLifecycleResultDTO`, `PetPresentationStateDTO.animationRequestId`, `notifyAnimationLifecycleResult`, lifecycle IPC channel/handler, pending request/context и `ANIMATION_LIFECYCLE_WATCHDOG_MS`;
-4. не оставлять dual publish, dual subscribe, DTO adapter или Renderer-to-Main terminal outcomes; первый snapshot после reload полностью восстанавливает Body/Skin projection;
-5. AUTO-I09 переводит перечисленные input producers на `BodyEventDTO` и в той же change-set удаляет заменённые specialized drag/interaction/menu channels; до этого они остаются только transitional input, не presentation/lifecycle protocol;
-6. сохранить отдельные typed commands, которые не являются Body observation (например, sleep/wake, autonomy setting и system/window controls), без расширения generic IPC.
+1. Shared exact validators/mappers + `wisp:brain-state`/`wisp:body-event` + точечные Preload methods; в том же change-set Main publisher/Renderer consumer переходят с `PetPresentationStateDTO` на полный Brain state.
+2. Удалить `AnimationLifecycleOutcomeDTO`, `AnimationLifecycleResultDTO`, `PetPresentationStateDTO.animationRequestId`, `notifyAnimationLifecycleResult`, lifecycle channel/handler, pending request/context и `ANIMATION_LIFECYCLE_WATCHDOG_MS`.
+3. Без dual publish/subscribe, DTO adapter и Renderer-to-Main terminal outcomes. Первый snapshot после reload полностью восстанавливает Body/Skin.
+4. AUTO-I09 одновременно переводит input producers на Body events и удаляет specialized drag/interaction/menu channels; до этого они только transitional input, не presentation/lifecycle protocol.
+5. Отдельные typed sleep/wake, autonomy setting, system/window commands сохраняются; generic IPC не расширять.
 
-До implementation merge [`src/shared/ipc-contracts.ts`](../../src/shared/ipc-contracts.ts) содержит target declarations рядом с legacy runtime DTO. Это не dual protocol: publishers, channels и consumers остаются legacy до единого cutover AUTO-I07.
+Соседство target/legacy типов в shared до implementation merge не означает dual runtime protocol: переключение publishers/channels/consumers атомарно.
 
 ### 6.7. Последствия для Phase 14 slices
 
-- [AUTO-I07 #39](https://github.com/zyzycode/project_wisp/issues/39): вводит exact DTO/validators/channels и атомарно удаляет legacy presentation/lifecycle handshake.
-- [AUTO-I08 #41](https://github.com/zyzycode/project_wisp/issues/41): переводит `ActivityRunner`, needs и stimuli на единый Main-monotonic Brain loop без Skin completion.
-- [AUTO-I09 #40](https://github.com/zyzycode/project_wisp/issues/40): создаёт Body Controller, мигрирует input producers и оставляет `DesktopPet` composition root.
-- [AUTO-I10 #42](https://github.com/zyzycode/project_wisp/issues/42): вводит только renderer-local `ISkinEngine` / `SpriteSkinAdapter` и revision-based render update.
-- [AUTO-I02 #33](https://github.com/zyzycode/project_wisp/issues/33): Body может показать локальный gaze сразу; только Brain использует bounded-refresh до 10 Hz `cursor_observed` для semantic gesture eligibility.
-- [AUTO-I03 #34](https://github.com/zyzycode/project_wisp/issues/34): Explore route/phase/history живут в Brain; отсутствие или длительность осмотрового клипа не задерживает routine.
-- [AUTO-I04 #35](https://github.com/zyzycode/project_wisp/issues/35): climb/jump остаются Brain Activity + authoritative Motion route; Body/Skin только отображают phases.
-- [AUTO-I05 #36](https://github.com/zyzycode/project_wisp/issues/36): внешняя window geometry нормализуется Infrastructure/Main и не передаёт native handles или platform types в Body/Skin.
-- [AUTO-I06 #37](https://github.com/zyzycode/project_wisp/issues/37): Explore/Rest arbitration, route и sleep kind принадлежат Brain timeline; Skin fallback не меняет outcome.
+| Задача | Обязательное последствие |
+|---|---|
+| [AUTO-I07 #39](https://github.com/zyzycode/project_wisp/issues/39) | Exact DTO/validators/channels, удаление legacy handshake (§6.6). |
+| [AUTO-I08 #41](https://github.com/zyzycode/project_wisp/issues/41) | ActivityRunner/Needs/stimuli — Main-monotonic loop, без Skin completion. |
+| [AUTO-I09 #40](https://github.com/zyzycode/project_wisp/issues/40) | Body Controller/input migration; DesktopPet — composition root. |
+| [AUTO-I10 #42](https://github.com/zyzycode/project_wisp/issues/42) | Renderer-local ISkinEngine/SpriteSkinAdapter, revision-based render update. |
+| [AUTO-I02 #33](https://github.com/zyzycode/project_wisp/issues/33) | Local gaze сразу; semantic eligibility — только Brain по cursor refresh до 10 Hz. |
+| [AUTO-I03 #34](https://github.com/zyzycode/project_wisp/issues/34) | Explore route/phase/history — Brain; клип не задерживает routine. |
+| [AUTO-I04 #35](https://github.com/zyzycode/project_wisp/issues/35) | Climb/jump — Brain Activity + Motion route; Body/Skin отображают. |
+| [AUTO-I05 #36](https://github.com/zyzycode/project_wisp/issues/36) | Geometry — Infrastructure/Main normalization, без native handles/platform types в Body/Skin. |
+| [AUTO-I06 #37](https://github.com/zyzycode/project_wisp/issues/37) | Explore/Rest arbitration/route/sleep kind — Brain; fallback не меняет outcome. |
 
 ## AUTO-A09: quiet command и presentation
 
-Целевые типы [`SetQuietModeDTO`, `AutonomyModeDTO`, `QuietModeBridge`, `QuietModeBrainStateDTO`](../../src/shared/ipc-contracts.ts)
-объявлены для #49. При реализации `setQuietMode` становится обязательным методом `WispApiBridge`,
-а `autonomy.quiet` — обязательным полем полного `BrainStateDTO`; временные target interfaces
-сворачиваются в эти канонические типы в том же change-set. До #49 это declarations, не runtime capability.
-Main регистрирует один `wisp:set-quiet-mode` invoke через typed Preload, проверяет trusted sender
-и exact payload `{ enabled: boolean }` (без coercion/лишних полей), затем применяет mode в Brain transaction.
-Response содержит authoritative mode; UI отображает `autonomy.quiet` из ordered Brain snapshot,
-включая первый snapshot/reload. Нет отдельной очереди mode events или renderer-owned quiet state.
-Повтор команды с тем же boolean идемпотентен и не запускает повторную autonomy opportunity.
-Invalid payload отклоняется без state mutation.
+[SetQuietModeDTO, AutonomyModeDTO, QuietModeBridge, QuietModeBrainStateDTO](../../src/shared/ipc-contracts.ts) — target #49. При реализации `setQuietMode` становится обязательным в `WispApiBridge`, `autonomy.quiet` — в полном `BrainStateDTO`; временные interfaces сворачиваются в том же change-set. До #49 declarations не означают runtime capability.
 
-Quiet toggle доступен через существующее меню. Он не включает sleep и не меняет autonomy enabled.
-Семантика и отмена несовместимых занятий — [Character §2.2](./CHARACTER_ENGINE.md#22-устойчивый-quiet-auto-a09).
-Renderer передаёт команду и отображает state; не рассчитывает budget, cooldown или admission.
-Disable/menu pause остаются отдельными blockers; закрытие меню не снимает quiet.
-Provider thinking отражается существующим `dialogue.turn`, не замораживает locomotion/Activity
-и не выдаёт Renderer право менять Brain lifecycle. AI ownership и trace остаются внутренними.
+Один Main invoke `wisp:set-quiet-mode` через typed Preload: trusted sender, exact `{ enabled: boolean }` без coercion/extra keys, применение в Brain transaction. Response — authoritative mode; UI читает quiet из ordered snapshot, включая первый/reload. Отдельных mode-event очередей/renderer-owned state нет; повтор boolean идемпотентен, без новой opportunity; invalid payload не мутирует state.
+
+Toggle в существующем меню не включает sleep и не меняет autonomy enabled. Семантика/cancel — [Character §2.2](CHARACTER_ENGINE.md#22-устойчивый-quiet-auto-a09). Renderer не считает budget/cooldown/admission. Disable/menu pause — отдельные blockers, закрытие меню не снимает quiet. `dialogue.turn` отображает provider thinking без заморозки locomotion/Activity; AI ownership/trace внутренние, Renderer не меняет Brain lifecycle.

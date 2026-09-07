@@ -1,33 +1,12 @@
 # Контракт Motion Engine
 
-`MOTION_ENGINE.md` — source of truth для физических расчётов (drag, throw, fall, collision, crawl/support kinematics), правил авторитета позиции и границ применения перемещения окна.
-
-Motion Engine фиксирует **физические факты** и принудительную позицию, но не выбирает автономное поведение персонажа. Архитектурное обоснование lightweight solver для native window вынесено в [`ADR-014`](../adr/ADR-014-native-window-motion.md). Доменные типы определены в [`motion-engine.ts`](../../src/domain/behavior/motion-engine.ts) и [`surface-kinematics.ts`](../../src/domain/behavior/surface-kinematics.ts).
+Физические факты drag/throw/fall/collision/crawl и position authority, без выбора автономного поведения. Lightweight native-window solver обоснован в [ADR-014](../adr/ADR-014-native-window-motion.md). Типы: [motion-engine.ts](../../src/domain/behavior/motion-engine.ts), [surface-kinematics.ts](../../src/domain/behavior/surface-kinematics.ts).
 
 ## 1. Владение и поток
 
-```mermaid
-flowchart LR
-  R[Renderer pointer input] -->|typed IPC| O[Main/Application orchestrator]
-  E[Environment adapter] -->|normalized snapshot| O
-  C[Main monotonic clock] --> O
-  O --> M[Motion Engine]
-  O --> S[Surface Kinematics]
-  M --> P[PetPositionService]
-  S --> P
-  P --> PP[PetPositionPort]
-  PP --> W[Electron window adapter]
-  M -->|MotionEvent| A[Brain visual intent mapping]
-  O -->|BrainStateDTO.motion| R
-```
+Renderer pointer + normalized environment + Main monotonic clock → Application orchestrator → pure Motion/Surface Kinematics → PetPositionService → PetPositionPort → Electron adapter. MotionEvent идёт в Brain visual mapping, authoritative projection — в BrainStateDTO.motion.
 
-- **Motion Engine (Domain):** чистый физический солвер (drag, airborne, grounded, crawl/support), расчёт скоростей, коллизий и фактов посадки. Не управляет таймерами, окнами ОС и не принимает решений по поведению.
-- **Surface Kinematics (Domain):** кинематика поверхностей опоры (wall climb, ceiling hang/crawl) и отрыв.
-- **Main / Application Orchestrator:** агрегат состояния, интеграция по времени (fixed-step accumulator), валидация drag-сессий, диспатчеризация `MotionEvent`.
-- **Infrastructure:** платформенные адаптеры экранов и реализация `PetPositionPort` (перемещение BrowserWindow).
-- **Renderer:** пассивный рендеринг и захват событий указателя мыши. Не владеет физикой и авторитетной позицией.
-
-Приоритеты P0–P5 определены в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md); визуальные анимации — в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md).
+Domain считает physics/surface kinematics, не timers/OS/behavior. Main/Application владеет aggregate, fixed-step accumulator, drag-session validation и event dispatch. Infrastructure — screens/position adapters. Renderer только input/render. [P0–P5](AUTONOMY_ENGINE.md), [visual rules](ANIMATION_ENGINE.md).
 
 ## 2. Координаты и базовые DTO
 
@@ -137,9 +116,7 @@ AND abs(y - maxY) <= ε
 
 ### 7.1. Lifecycle внешней опоры — целевой AUTO-A07
 
-Кандидаты, filtering, identity, capability, TTL и DIP conversion принадлежат [Perception §10](./PERCEPTION_ENGINE.md#10-внешние-окна--целевой-контракт-auto-a07).
-Domain принимает только выбранный нормализованный `ExternalWindowSurface`; native tracking и выбор окна здесь отсутствуют.
-`window_side` использует `climbing_wall`, `window_top` — существующий `hanging_ceiling`; название фазы не означает нижнюю грань окна.
+[Perception §10](PERCEPTION_ENGINE.md#10-внешние-окна--целевой-контракт-auto-a07) владеет filtering/identity/capability/TTL/DIP. Domain получает выбранный normalized `ExternalWindowSurface`, не выбирает/не tracks native windows. `window_side → climbing_wall`; `window_top → hanging_ceiling` (название не означает нижнюю грань).
 
 | Наблюдение на очередном Main tick | Результат |
 |---|---|
@@ -150,136 +127,77 @@ Domain принимает только выбранный нормализова
 | Unavailable, stale > 300 ms, invalid geometry, topology/DPI invalidation | `support_lost`, удалить attachment baseline. |
 | Restore/recovery/new window | Только новый кандидат; автоматического reattach нет. |
 
-Для top начало кромки a=(bounds.x,bounds.y), касательная t=(1,0), длина L=width.
-Для left/right начало a=(bounds.x либо bounds.x+width,bounds.y), t=(0,1), L=height.
-Пусть s — сохранённое расстояние от начала предыдущей кромки в DIP, v — voluntary tangential velocity:
-` s' = s + v * dt; root' = a_new + t * s' `, только если `0 <= s' <= L_new`.
-На resize s не масштабируется пропорционально длине и не clamp-ится: иначе возникнет скрытая телепортация.
-При move+resize применяются новый origin и новая длина атомарно. Delta применяется один раз относительно предыдущей geometry; повторный snapshot не прибавляет её снова.
+Top: a=(bounds.x,bounds.y), t=(1,0), L=width. Left/right: a=(bounds.x либо bounds.x+width,bounds.y), t=(0,1), L=height. Сохранённое расстояние s в DIP и voluntary tangential v:
+`s' = s + v * dt; root' = a_new + t * s'`, только при `0 <= s' <= L_new`.
 
-Application хранит предыдущий accepted snapshot и передаёт его в будущую pure кинематику вместе с Main monotonic time. Алгоритм и расширение step input реализует app-developer.
-Если follow/recompute выводит root за допустимые screen bounds с collisionInsets, выполняется `support_lost`, а не clamped attachment.
-При потере опоры airborne начинается с последней принятой root position и текущей locomotion velocity; скорость перемещения окна не наследуется, импульс не оценивается по poll delta.
-`support_lost` генерируется один раз при attached → airborne; дальнейшие stale/unavailable не повторяют событие. Экранный floor остаётся fallback для физики после отрыва, не мгновенной заменой опоры.
-Drag имеет приоритет и отменяет attachment без дополнительного `support_lost` в том же шаге.
+Resize не масштабирует/clamp-ит s: это скрытая телепортация. Move+resize применяются атомарно; delta относительно предыдущей geometry применяется однократно, повтор snapshot не сдвигает root.
+
+Application хранит previous accepted snapshot и передаёт с Main time в pure kinematics; алгоритм/step input реализует developer. Выход follow/recompute за screen collision bounds → support_lost, не clamped attachment.
+
+Отрыв начинается с последней принятой root/current locomotion velocity, без наследования window velocity/poll impulse. `support_lost` — один раз attached→airborne, без повторов stale/unavailable. Screen floor — последующий physics fallback, не мгновенная новая опора. Drag отменяет attachment приоритетно, без дополнительного support_lost в том же step.
 
 ### 7.2 Traversal и направленные прыжки (AUTO-I04)
 
-1. **Screen-Edge Traversal и отскок (Ninja Rebound):**
-   - При карабкании по вертикальной стене экрана (`screen wall`) вверх Wisp поднимается до верхнего предела кромки экрана.
-   - Вместо перехода на потолок Wisp выполняет **отскок ниндзя (Ninja Rebound)**: отталкивается от стены горизонтальным импульсом в сторону центра экрана и переходит в направленный прыжок/свободное падение (`jump -> fall -> land`).
-   - При карабкании вниз до нижнего предела — Wisp плавно встаёт на пол (`floor`) и переходит в `walk` или `idle`.
+Screen wall вверх → верхний предел → Ninja Rebound к центру (`jump -> fall -> land`), не ceiling. Вниз → плавный floor contact → walk/idle.
 
-2. **Направленные прыжки (Directed Jumps):**
-   - Прыжок запускается как целевое действие Activity route: со стены, пола или кромки окна в сторону целевой опоры (пол, шапка окна) либо в направлении позиции курсора.
-   - Траектория вычисляется параболически с начальным горизонтальным и вертикальным импульсом `(vx, vy)` и гравитацией.
-   - При достижении целевой опоры выполняется мягкое приземление (`land`).
-   - При прерывании (drag, menu, потеря цели) или промахе — переход в безопасный `fall -> land` на экранный пол (`floor`).
+Activity route направляет jump со стены/пола/окна к floor/window top/cursor. Парабола по (vx,vy)/gravity, target arrival → soft land; interruption (drag/menu/target loss)/miss → safe fall/land на floor.
 
-3. **Fallback-анимации для отсутствующих спрайтов:**
-   - `pull_up_edge`: для экранов не используется (заменён на Ninja Rebound); для кромок окон fallback на `climb_wall` (последний кадр) -> `idle` / `body_sit_edge`.
-   - `jump_travel`: использовать существующий кадр `jump` (фаза полёта) с последующим переходом в `fall`.
-   - `grab_edge`: использовать существующий кадр зацепа `climb_wall`.
-
+Sprite fallbacks: `pull_up_edge` только для окон → последний climb_wall → idle/body_sit_edge (на экране rebound); `jump_travel` → jump flight frame → fall; `grab_edge` → climb_wall grab frame.
 
 #### Реализованный screen-only slice
 
-- `traversal-route.ts` строит маршрут внутри выбранного Explore: одна конечная floor-цель, без отдельного intent/timer. При energy ≥ 70 и comfort < 75 обычная цель до 300 DIP допускает jump; interesting-surface цель допускает approach до 500 DIP → grab (200 ms) → climb (220 DIP/s) → rebound → land (500 ms) → исходный осмотр.
-- Screen-climb использует `calculateRootCollisionRange` с collisionInsets, а не физическую границу дисплея. Верхний предел сохраняет attachment до следующего шага того же run; нижний завершает шаг на полу. Screen pull-up/ceiling transition не создаётся.
-- Directed arc: apex на 90 DIP выше более высокой точки, ограниченный верхним root-пределом; `vy = -sqrt(2*g*(originY-apexY))`, `T = (-vy+sqrt(vy²+2*g*(targetY-originY)))/g`, `vx = (targetX-originX)/T`. На верхнем пределе `vy=0`. Ограничения: 0.1 ≤ T ≤ 3 s, |vx| ≤ 900 DIP/s и Motion maxSpeed. Невыполнимые маршруты отбрасываются.
-- Во время принятого arc Motion вычисляет `p(t)=p0+v0*t+(0,g*t²/2)` без damping, при посадке обнуляет скорость и выдаёт один soft `landed`. Отмена/промах удаляет ballistic target, сохраняя текущие позицию/скорость; далее действует обычный damped fall/land solver.
-- Application проверяет неизменность screen geometry и валидность опоры каждый substep; completion/rejection связаны с `runId` + `stepId`. Pending rejection на полу не создаёт ложный forced-motion lifecycle. Drag удаляет attachment без дополнительного support_lost.
-- Brain сохраняет Activity при `voluntary_jump`, показывает jump минимум 120 ms, затем fall по факту нисходящей скорости; land phase завершается по Main clock. Renderer completion не участвует.
-- `AssetResolver.TRAVERSAL_SPRITE_FALLBACKS`: grab — `body_climb_wall[0]`, jump travel — `body_jump[0]`, резерв pull-up — последний `body_climb_wall[3]`. Кадр jump[1] содержит только motion marks, jump[2] — двух персонажей; для fallback выбран одиночный персонаж jump[0]. PNG и manifest не изменены. Window pull-up, target selection внешних окон и runtime внешних опор остаются в последующих window slices; фиктивные window surfaces не создаются.
+- `traversal-route.ts`: одна finite floor target внутри Explore, без отдельного intent/timer. Energy ≥70, comfort <75, обычная цель ≤300 DIP допускают jump. Interesting surface: approach ≤500 DIP → grab 200 ms → climb 220 DIP/s → rebound → land 500 ms → исходный observe.
+- Screen-climb использует `calculateRootCollisionRange`/insets. Верх сохраняет attachment до следующего шага того же run, низ завершает на floor; screen pull-up/ceiling transition нет.
+- Apex на 90 DIP выше верхней точки, clamped верхним root-пределом. `vy = -sqrt(2*g*(originY-apexY))`, `T = (-vy+sqrt(vy²+2*g*(targetY-originY)))/g`, `vx = (targetX-originX)/T`; на верхнем пределе vy=0. Нужно 0.1 ≤ T ≤3 s, |vx| ≤900 DIP/s и Motion maxSpeed; невозможные маршруты отбрасываются.
+- Принятый arc: `p(t)=p0+v0*t+(0,g*t²/2)`, без damping. Arrival обнуляет velocity и даёт один soft `landed`. Cancel/miss удаляет ballistic target, сохраняя current position/velocity для damped fall/land.
+- Application проверяет screen geometry/support каждый substep; completion/rejection коррелирует `runId + stepId`. Pending rejection на floor не создаёт forced-motion lifecycle; drag отменяет attachment без дополнительного support_lost.
+- `voluntary_jump` сохраняет Activity; jump показывается минимум 120 ms, затем fall при нисходящей velocity; land phase — Main clock, без Renderer completion.
+- `AssetResolver.TRAVERSAL_SPRITE_FALLBACKS`: grab `body_climb_wall[0]`, jump travel `body_jump[0]`, reserve pull-up `body_climb_wall[3]`. Jump[0] выбран как одиночный персонаж (jump[1] motion marks, jump[2] два персонажа). Slice не меняет PNG/manifest; window pull-up/selection/runtime support — последующие slices, фиктивных surfaces нет.
+
+<a id="8-forced-motion-и-position-authority"></a>
 
 ## 8. Авторитет позиции: кто двигает окно
 
-```mermaid
-flowchart TD
-  subgraph Input
-    UI[Pointer input] -->|IPC| MO[Main Orchestrator]
-  end
-
-  subgraph Physics & Authority
-    MO -->|forced drag/fall/land| ME[MotionEngine]
-    MO -->|voluntary walk/crawl| BE[Behavior & Surface Engine]
-    ME -->|authoritative rootPosition| PPS[PetPositionService]
-    BE -->|authoritative rootPosition| PPS
-  end
-
-  subgraph Native Window Commit
-    PPS -->|commitRootPosition| Port[PetPositionPort]
-    Port --> Adapter[ElectronPetPositionAdapter]
-    Adapter -->|Math.round root - pivotOffset| NativePos[Native X, Y]
-    NativePos -->|if changed| Win[BrowserWindow.setPosition]
-  end
-```
+Forced Motion или voluntary Behavior/Surface → PetPositionService → `commitRootPosition`/`PetPositionPort` → ElectronPetPositionAdapter → native coordinates → `BrowserWindow.setPosition`.
 
 ### Правила авторитета (Authority Rules)
-1. **Renderer никогда не двигает окно**: окно не перемещается из Renderer-процесса и не имеет прямого доступа к окну Electron. Renderer лишь захватывает pointer events и отправляет их в Main через типизированный IPC.
-2. **Forced vs Voluntary Motion**:
-   - **Forced motion (P1/P0)**: при возникновении drag, throw release или support loss управление позицией монопольно захватывается Motion Engine. Текущие Activity немедленно отменяются. Никакие автономные команды перемещения не применяются.
-   - **Voluntary motion**: возвращается персонажу **только** после полного завершения приземления, когда состояние стало `grounded` и FSM вошёл в стабильное состояние `settle`.
-3. **Единая точка коммита позиции окна**:
-   - Логический центр контакта `rootPosition` передаётся через интерфейс [`PetPositionPort`](../../src/application/ports/pet-position-port.ts).
-   - Инфраструктурный адаптер [`ElectronPetPositionAdapter`](../../src/infrastructure/adapters/electron-pet-position-adapter.ts) переводит контактный pivot в верхний левый угол окна:
-     $$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_x, \dots)), \quad y_{\text{native}} = \text{round}(\text{clamp}(y_{\text{root}} - \text{offset}_y, \dots))$$
-   - `BrowserWindow.setPosition` вызывается **строго при изменении целочисленных координат**, исключая спам IPC и дергание окна.
+
+1. Renderer отправляет typed pointer events, не двигает окно и не получает Electron window.
+2. Drag/throw release/support loss (P1/P0) монопольно передают position Motion и немедленно отменяют Activity; voluntary commands не применяются до grounded + stable settle.
+3. Contact root идёт через [PetPositionPort](../../src/application/ports/pet-position-port.ts). [ElectronPetPositionAdapter](../../src/infrastructure/adapters/electron-pet-position-adapter.ts) делает root→native:
+$$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_x, \dots)), \quad y_{\text{native}} = \text{round}(\text{clamp}(y_{\text{root}} - \text{offset}_y, \dots))$$
+4. `BrowserWindow.setPosition` — только при изменении integer coordinates, без параллельных владельцев позиции.
 
 ### #43: wander в пределах текущей опоры
 
-Application вызывает чистую Domain-функцию по контракту
-[`WanderTargetPlanner`](../../src/application/ports/wander-target-planner.ts), передавая
-реальные `screenBounds`, `currentSurface`, root, collision insets, config и явный PRNG.
-Application не синтезирует screen bounds из `window_top` и не вычисляет диапазон хождения.
-Контракт описывает вызов функции, не требует класса, DI-сервиса или нового IPC.
-Domain объявляет собственные структурно совместимые типы и не импортирует Application.
+[WanderTargetPlanner](../../src/application/ports/wander-target-planner.ts) — вызов pure Domain function, не требование класса/DI/new IPC. Application передаёт реальные screenBounds/currentSurface/root/insets/config/PRNG, не синтезирует screen bounds из window_top и не считает walking range. Domain использует собственные structural types, без Application imports.
 
-- `planWanderTarget` размещён рядом с `calculateNextWanderTarget` в Domain; сохраняются текущие
-  direction/distance/duration policy и порядок потребления PRNG (два значения на random wander).
-- Для валидной `window_top`: `minX = max(screen.x + insets.left, surface.bounds.x)`,
-  `maxX = min(screen.x + screen.width - insets.right, surface.bounds.x + surface.bounds.width)`,
-  `targetY = surface.supportY ?? surface.bounds.y`. Insets применяются к экрану один раз;
-  внешний support ограничивает контактный root, а не полный sprite rectangle.
-- Пустое пересечение, недопустимая геометрия или supportY за вертикальным collision range
-  дают durationMs = 0 и неизменный root; команда движения не отправляется.
-- При отсутствии валидной `window_top` сохраняется прежний screen-floor planner;
-  eligibility и support-loss FSM остаются ответственностью Motion/Surface engines.
-- Явный `targetRootPosition` существующего directed activity route не проходит random planner
-  и не потребляет PRNG; его проверка остаётся в существующем Motion/traversal пути.
+- `planWanderTarget` рядом с `calculateNextWanderTarget`; direction/distance/duration policy и два PRNG values на random wander сохраняются.
+- Window top: `minX = max(screen.x + insets.left, surface.bounds.x)`, `maxX = min(screen.x + screen.width - insets.right, surface.bounds.x + surface.bounds.width)`, `targetY = surface.supportY ?? surface.bounds.y`. Insets применены к screen один раз; support ограничивает contact root, не sprite rectangle.
+- Empty intersection/invalid geometry/supportY вне vertical collision range → durationMs=0, прежний root, без movement command.
+- Нет valid window_top → прежний screen-floor planner; eligibility/support-loss — Motion/Surface.
+- Явный `targetRootPosition` directed route минует random planner/PRNG; проверяется Motion/traversal.
 
-Регрессии в `tests/domain/wander-target-planner.test.ts` проверяют window top, частично за экраном,
-отрицательный origin монитора, пустой диапазон, invalid support, screen-floor parity и PRNG parity.
-Application-тесты проверяют отсутствие команды при пустом диапазоне и PRNG для явной цели.
-Расчёт искусственных bounds удалён из AutonomyCoordinator. Общая visual geometry
-для native offset описана в [`RENDER_ENGINE.md`](./RENDER_ENGINE.md); Domain её не потребляет.
+Регрессии `tests/domain/wander-target-planner.test.ts`: window top/часть вне screen/negative monitor origin/empty/invalid support/floor+PRNG parity. Application: отсутствие команды при empty и PRNG для explicit target. Искусственные bounds удалены из AutonomyCoordinator. [Visual native-offset geometry](RENDER_ENGINE.md) Domain не потребляет.
 
 ## 9. Оркестрация (ShimejiMotionOrchestrator)
 
-Главный координатор в Application-слое ([`shimeji-motion-orchestrator.ts`](../../src/application/services/shimeji-motion-orchestrator.ts)) управляет жизненным циклом физического цикла:
-- Владеет монотонными часами Main-процесса, аккумулятором времени и текущей drag-сессией.
-- На каждом такте накапливает $\Delta t$ кадра (с отсечкой `maxFrameDeltaSec = 0.25`), исполняет дискретные шаги `fixedStepSec` и передаёт результат в [`PetPositionPort`](../../src/application/ports/pet-position-port.ts).
-- Передаёт агрегатору Brain authoritative motion projection; Brain публикует не более одного цельного `BrainStateDTO` на внешний commit одного тика.
+[shimeji-motion-orchestrator.ts](../../src/application/services/shimeji-motion-orchestrator.ts) владеет Main clock, accumulator и drag session. На tick накапливает delta (cap `maxFrameDeltaSec = 0.25`), исполняет fixedStepSec и передаёт результат position port. Brain получает authoritative motion; максимум один цельный snapshot на внешний tick commit.
+
+<a id="10-typed-ipc"></a>
 
 ## 10. Граница IPC (Typed IPC Boundary)
 
-Взаимодействие между процессами строится через контракт [`ipc-contracts.ts`](../../src/shared/ipc-contracts.ts):
-- **События Drag**: целевой Body посылает варианты `drag_started` / `drag_moved` / `drag_ended` единого `BodyEventDTO` с общим порядком, `gestureId`, pointer ID и экранными координатами. Main регистрирует gesture только после valid start и отбрасывает stale/foreign события. Текущие отдельные drag methods являются migration input до AUTO-I09, а не вторым presentation protocol.
-- **Состояние Brain**: Main рассылает `BrainStateDTO`; его поле `motion` содержит текущую фазу (`dragged` / `airborne` / `grounded`), authoritative root position, velocity и тип авторитета (`forced` / `voluntary`). Порядок, cadence и точная форма определены в [`UI_SPEC.md`](./UI_SPEC.md#6-brain--body-ipc).
-- Контракты IPC являются независимым листом зависимостей и не содержат дескрипторов ОС, классов рендеринга или прямых ссылок на Electron.
+[ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — leaf без OS descriptors/renderer classes/Electron refs. `BodyEventDTO`: `drag_started` / `drag_moved` / `drag_ended` несут общий порядок, gestureId/pointer ID/screen coordinates; Main принимает gesture после valid start, отбрасывает stale/foreign. Specialized drag methods до AUTO-I09 — transitional input, не второй presentation protocol.
+
+BrainStateDTO.motion содержит dragged/airborne/grounded, root/velocity, forced/voluntary authority. Exact shape/order/cadence — [UI §6](UI_SPEC.md#6-brain--body-ipc).
 
 ## 11. Изоляция и проверяемые свойства
 
-- **Независимость домена**: математика движения в [`MotionEngine`](../../src/domain/behavior/motion-engine.ts) и [`SurfaceKinematics`](../../src/domain/behavior/surface-kinematics.ts) не зависит от Electron, DOM, таймеров Node.js и файловой системы.
-- **Детерминизм**: одинаковый входной снимок и констрейнты дают строго идентичное положение и события независимо от FPS рендера.
-- **Безопасность авторитета**: окно Electron двигается только через адаптер [`PetPositionPort`](../../src/application/ports/pet-position-port.ts); race conditions и параллельное перемещение окна несколькими источниками исключены.
+MotionEngine/SurfaceKinematics не зависят от Electron/DOM/Node timers/FS. Одинаковые snapshot/constraints дают одинаковые position/events независимо от Renderer FPS; native window имеет единственный commit path через adapter.
 
 ### AUTO-I06: arrival на выбранную внешнюю опору
 
-Directed route может нести normalized `targetSurface` в `TraversalAction`. Brain проверяет
-достижимость до scoring, Motion перед запуском и на каждом шаге проверяет identity,
-geometry, freshness и display bounds цели. Изменение цели в полёте отменяет направленную
-дугу в обычный fall/land; исходное окно после отрыва больше не является attachment.
-При успешном arrival Motion атомарно принимает top attachment без запуска user-perch
-Activity: исходный Explore/Rest продолжает свой Brain timeline. Same-top walk использует
-локальную координату цели, поэтому перемещение окна не сдвигает выбранную точку на опоре.
+`TraversalAction.targetSurface` normalized. Brain проверяет reachability до scoring; Motion — identity/geometry/freshness/display bounds перед запуском и каждый step. Target change отменяет arc → fall/land; исходное окно после отрыва не attachment.
+
+Arrival атомарно принимает top attachment, без user-perch Activity: исходный Explore/Rest продолжает timeline. Same-top walk хранит local target coordinate, движение окна не меняет выбранную точку на опоре.

@@ -1,30 +1,10 @@
 # Контракт BehaviorIntent
 
-`BehaviorIntent` — внутреннее semantic намерение поведения Wisp. Он описывает, что персонаж пытается сделать, но не описывает React UI, DOM, CSS, sprite/SVG asset, animation clip, frame index или render props.
-
-Документ является архитектурным контрактом ядра. Implementer-агенты не меняют этот contract без Architect review.
+Внутреннее semantic намерение: что сделать, не React/DOM/CSS, sprite/SVG/clip/frame/render props. Изменение семантики контракта требует Architect review.
 
 ## Поток ответственности
 
-```mermaid
-flowchart LR
-  Source[Provider hint / user, timer or system event]
-  Mapper[Application mapper]
-  Candidate[Candidate BehaviorIntent]
-  Character[Character Engine]
-  Resolved[Resolved BehaviorIntent]
-  Brain[Behavior Brain]
-  Activity[Activity Runner]
-  Visual[AnimationIntent]
-  Controller[Animation Controller]
-  Motion[Motion Engine]
-
-  Source --> Mapper --> Candidate --> Character --> Resolved
-  Resolved -->|Activity-backed behavior| Brain --> Activity --> Visual --> Controller
-  Source -->|forced physical fact| Motion -->|MotionEvent| Controller
-```
-
-`Candidate` и `Resolved` обозначают этапы жизни той же формы `BehaviorIntent`, а не новые public DTO или `kind`.
+Source hint/user/timer/system → Application mapper → candidate → Character → resolved BehaviorIntent → Behavior Brain (Activity-backed) → Runner → AnimationIntent → Controller. Forced fact идёт отдельно через MotionEvent в тот же Controller. Candidate/Resolved — стадии одной public формы, не новые DTO/kinds.
 
 | Этап | Единственный authoritative owner | Результат и граница |
 |---|---|---|
@@ -37,11 +17,13 @@ flowchart LR
 | Forced motion | Motion Engine | Владеет позицией при drag/fall/collision/landing и выдаёт `MotionEvent`; не создаёт resolved behavior. |
 | Visual intent | Activity Runner | Выпускает `AnimationIntent` по mapping contract; Animation Controller разрешает visual priority/interrupt/FSM, но не behavior. |
 
-Forced physical facts — отдельная safety-ветка, а не параллельное принятие поведения. Они немедленно отменяют активную Activity и через `MotionEvent` управляют тем же Animation Controller. В той же Application transaction валидный drag input или `landed` event нормализуется в обязательный lifecycle intent `drag`/`land`: Character Engine остаётся owner его semantic resolution, но не может отменить уже произошедший P1/P0 физический факт. Support loss/collision без public intent kind остаётся только `MotionEvent` и не расширяет каталог. Physical authority зафиксирован в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md#8-авторитет-позиции-кто-двигает-окно), общий safety order — в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md#3-safety-order-p0p5), visual mapping — в [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md#1-поток-ответственности-brain--body--skin).
+Forced facts — safety, не второй behavior arbiter. Они сразу отменяют Activity; в той же Application transaction valid drag input/landed нормализуется в обязательный lifecycle intent drag/land. Character разрешает semantic часть, но не отменяет P1/P0 физический факт. Support loss/collision без public kind остаются MotionEvent, каталог не расширяют.
+
+[Position authority](MOTION_ENGINE.md#8-авторитет-позиции-кто-двигает-окно), [safety](AUTONOMY_ENGINE.md#3-safety-order-p0p5), [visual mapping](ANIMATION_ENGINE.md#1-поток-ответственности-brain--body--skin).
 
 ## Форма intent
 
-Интерфейс BehaviorIntent и тип BehaviorIntentKind определены в [src/domain/behavior/behavior-intent.ts](../../src/domain/behavior/behavior-intent.ts).
+[behavior-intent.ts](../../src/domain/behavior/behavior-intent.ts): BehaviorIntent/BehaviorIntentKind.
 
 | Поле | Назначение |
 |---|---|
@@ -52,13 +34,11 @@ Forced physical facts — отдельная safety-ветка, а не пара
 | `toneHint` | Опциональная тональность или эмоциональная подсказка |
 | `reason` | Опциональное пояснение причины формирования намерения |
 
-`priority` здесь является входной подсказкой. Character Engine может повысить, понизить, отклонить или отложить intent; исключение — уже произошедший P0 forced physical fact, который semantic gating не отменяет.
-
-Utility AI не вводит новый `BehaviorIntentKind`: Application формирует конечный набор обычных candidates, а Character Engine возвращает не более одного resolved intent. Provider candidate и timer/autonomy candidate проходят одну boundary; provider никогда не становится вторым decision-maker.
+Priority — входная подсказка: Character может повысить/понизить/reject/defer, но не отменить уже случившийся P0 fact. Utility получает finite normal candidate set от Application, возвращает максимум один resolved; provider/timer/autonomy проходят общую boundary, provider не второй decision-maker.
 
 ## Начальный каталог
 
-`BehaviorIntentKind` ниже является каноническим списком намерений. Generic `react` не используется как public intent kind: реакции называются конкретно (`react_happy`, `react_confused`, будущие `react_*`). `play` является настоящим behavior intent для игровых/дружелюбных действий.
+Канонические kinds ниже. Generic `react` запрещён: конкретные `react_happy`, `react_confused`, будущие `react_*`. Play — полноценный игровой/дружелюбный intent.
 
 | `kind` | Ответственность | Типичные источники |
 |---|---|---|
@@ -94,23 +74,14 @@ Utility AI не вводит новый `BehaviorIntentKind`: Application фор
 
 ## Правила принятия
 
-- User `drag` и прямые click/input intents имеют больший приоритет, чем provider/timer intents.
-- Character Engine может отклонить `sleep`, если пользователь активно взаимодействует с Wisp.
-- Character Engine может отклонить `respond`, если включён quiet mode; Application может сохранить ответ для более позднего показа только после отдельного решения.
-- Provider hints не обходят cooldowns, no-spam rules и sleep/quiet restrictions.
-- Unknown provider hints не допускаются как priority behavior; безопасная dialogue presentation не меняет quiet.
-- Provider-origin intents не должны создавать `drag` или `land`; эти intents принадлежат прямому user/system interaction flow.
+User drag/click/input приоритетнее provider/timer. Active user interaction может отклонить sleep. Quiet может отклонить respond; хранение ответа для позднего показа требует отдельного решения. Safe dialogue presentation quiet не меняет.
+
+Provider hints не обходят cooldown/no-spam/sleep/quiet; unknown hints не становятся priority behavior. Provider-origin drag/land запрещены: это user/system flow.
 
 ## Архитектурные границы
 
-AUTO-A09 сохраняет каталог kinds. Calm использует `idle`; Explore — `wander`; игра,
-ограниченный cursor interest и невербальный SocialBid — Activities внутри `play`.
-`quiet` — устойчивый mode по user/settings boundary, не поза и не отключение Needs clock.
-Provider `source` не означает P1 и не обходит Character gates; admissible provider выше local
-по [Autonomy §12](./AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
-Request/admission/start/terminal и ownership объявлены отдельно в
-[`behavior-admission-port.ts`](../../src/application/ports/behavior-admission-port.ts),
-не расширяют provider DTO и не добавляют asset/target fields в `BehaviorIntent`.
-`reason` не используется для передачи pose, gait, ownership или выбора семейства.
+AUTO-A09 сохраняет kinds: calm→idle, Explore→wander, игра/bounded cursor interest/nonverbal SocialBid — Activities внутри play. Quiet — устойчивый user/settings mode, не поза и не выключение Needs clock.
 
-`BehaviorIntent` — чистый семантический DTO доменного слоя ([`src/domain/behavior/behavior-intent.ts`](../../src/domain/behavior/behavior-intent.ts)). Согласно [инвариантам изоляции Clean Architecture](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture), он не содержит UI-разметки (React/DOM/CSS), путей к ассетам, параметров кадров/FPS, дескрипторов окон ОС или каналов IPC.
+Provider source не P1; допустимый provider выше local по [Autonomy §12](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием). Request/admission/start/terminal/ownership — отдельный [behavior-admission-port.ts](../../src/application/ports/behavior-admission-port.ts), без расширения provider DTO и asset/target fields BehaviorIntent. Reason — диагностика, не transport pose/gait/ownership/family.
+
+DTO остаётся pure Domain, без UI/assets/frames/FPS/OS descriptors/IPC channels; [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).

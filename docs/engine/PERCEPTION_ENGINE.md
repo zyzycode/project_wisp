@@ -1,34 +1,18 @@
 # Контракт Perception Engine
 
-`PERCEPTION_ENGINE.md` — source of truth для gaze, cursor proximity, freshness и normalized environment signals. Perception вычисляет наблюдение и presentation offset, но не запускает Activity и не принимает semantic или motion decisions.
-
-Координатные primitives `MonotonicMs`, `WorldPx`, `SourcePx`, `Vector2Dto` и `ScreenBoundsDto` определены в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md#2-координаты-и-базовые-dto) и здесь не дублируются.
+Gaze, cursor proximity/freshness и normalized environment observations; без Activity/semantic/motion decisions. Координатные primitives `MonotonicMs`/`WorldPx`/`SourcePx`/`Vector2Dto`/`ScreenBoundsDto` — [Motion §2](MOTION_ENGINE.md#2-координаты-и-базовые-dto).
 
 ## 1. Владение
 
-- **Gaze Engine (pure):** расчёт смещения зрачков (`PupilOffset`), состояний слежения/нейтрали и локальной visual freshness. Renderer Body может вызывать эту чистую функцию на RAF; она не управляет локомоцией и семантическими реакциями.
-- **Cursor Proximity Engine (Domain):** расчёт нормализованного сигнала дистанции, диапазона и dwell курсора.
-- **Environment Adapter (Infrastructure):** снятие геометрии дисплеев ОС и нормализация в `EnvironmentSnapshot`.
-- **Внешние связи:** Body показывает быстрый gaze локально и refresh-ит доступный `cursor_observed` с bounded cadence 10 Hz по [Brain → Body cadence](./UI_SPEC.md#63-cadence-и-coalescing), независимо от RAF. Application ставит Main-monotonic receive time; Behavior Brain использует только нормализованный proximity signal для eligibility реактивных P3-активностей. Матрица контрактов — в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
+Gaze Engine — pure pupil offset/tracking/neutral/visual freshness, вызываемый Body на RAF. Cursor Proximity (Domain) — normalized distance/range/dwell. Environment adapter (Infrastructure) — OS display geometry → immutable EnvironmentSnapshot.
+
+Body показывает gaze локально и refresh-ит cursor_observed до 10 Hz независимо от RAF ([UI cadence](UI_SPEC.md#63-cadence-и-coalescing)). Application ставит Main receive time; Brain использует proximity для P3 eligibility. [Ownership](README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Поток perception
 
-```mermaid
-flowchart LR
-  OS[OS / platform adapter] --> N[Boundary normalization]
-  Body[Renderer Body cursor observation] -->|BodyEventDTO| N
-  N --> E[EnvironmentSnapshot]
-  Body --> G[Gaze Engine: local visual reflex]
-  E --> G
-  E --> C[Cursor Proximity Engine]
-  PG[Presentation geometry] --> G
-  G --> P[PupilOffset presentation]
-  C --> S[Fresh CursorProximitySignal]
-  S --> B[Behavior Brain eligibility]
-  E --> M[Motion support input]
-```
+OS/platform + BodyEventDTO cursor → boundary normalization → EnvironmentSnapshot → proximity → Brain eligibility / Motion support. Body cursor + presentation geometry → gaze → PupilOffset.
 
-EnvironmentSnapshot — наблюдение, а не команда. Gaze output — presentation component, proximity output — normalized signal. Ни один из них не является `BehaviorIntent` или `AnimationIntent`.
+Environment — observation, gaze — presentation, proximity — signal; ни один не BehaviorIntent/AnimationIntent и не команда.
 
 ## 3. Gaze DTO и контракт взгляда
 
@@ -128,55 +112,33 @@ AUTO-A09 не вводит постоянную chase: ограниченный 
 
 ### 6.1. AUTO-A09: bounded cursor interest
 
-Stationary Observe Cursor из #23 сохраняется: gaze, существующий доступный gesture,
-без locomotion по умолчанию. Новая approach Activity внутри `play` выбирается явно в #48
-только после freshness/dwell, Character Needs/friendship, cooldown и общего budget gate.
-Усталость может оставить только gaze; P2 и AI ownership запрещают новую local Activity.
-Один эпизод использует один run, deadline и максимум одну фиксированную цель на той же
-достижимой опоре; новые samples обновляют gaze/валидность, но не retarget и не продлевают run.
-Approach — существующий walk с ограничением суммарной дистанции из `InitiativeTuning`;
-новые прыжки/traversal primitives и переход между опорами для погони не допускаются.
-Потеря freshness, уход курсора за область интереса, исчезновение/недостижимость цели,
-user/physics interruption или deadline завершают эпизод с обычным cleanup и свежим local выбором.
-Движение курсора не перезапускает эпизод. Gaze-only не расходует budget и не даёт play reward;
-подтверждённая игровая фаза использует once-only [Activity outcome](./ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership).
+Stationary Observe Cursor #23 сохраняет gaze/доступный gesture без default locomotion. Approach внутри `play` в #48 требует freshness/dwell, Character Needs/friendship, cooldown и общий budget. Fatigue может оставить только gaze; P2/AI ownership запрещают новую local Activity.
+
+Эпизод — один run/deadline и максимум одна fixed target на той же достижимой опоре. Samples обновляют gaze/валидность, не retarget/deadline. Approach использует walk с total-distance limit `InitiativeTuning`; chase jumps/traversal/new primitives/переход между опорами запрещены.
+
+Stale/выход курсора из interest area/исчезнувшая или недостижимая цель/user/physics/deadline → completion с cleanup и fresh local выбором. Cursor motion не рестартует эпизод. Gaze-only не тратит budget/не даёт play reward; игра — once-only [Activity outcome](ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership).
 
 ## 7. Normalized environment signals
 
-Доменные типы снимка окружения и поверхностей определены в [src/domain/behavior/surface-kinematics.ts](../../src/domain/behavior/surface-kinematics.ts).
+Типы: [surface-kinematics.ts](../../src/domain/behavior/surface-kinematics.ts). Immutable snapshot выбирает usable work area и нормализует OS limitations; missing cursor/surface = unavailable observation. Test/production форма одинакова, без handles/PID/z-order/platform-source names/DOM/callbacks. Native metadata не выходят из Infrastructure.
 
-Snapshot immutable. Adapter выбирает usable work area и нормализует OS limitations. Отсутствующий cursor/surface означает unavailable observation.
-
-Snapshot не содержит native handles, PID, z-order, platform/source names, DOM objects или callbacks. Test и production snapshots эквивалентны. Целевой контракт внешних окон AUTO-A07 определён ниже; native metadata не пересекают Infrastructure boundary.
-
-Perception сообщает observed `isValidSupport`; решение начать `support_lost` и дальнейшая physics принадлежат Motion Engine. Environment data не создаёт behavior intent самостоятельно.
+Perception сообщает `isValidSupport`, Motion решает support_lost/physics; environment не создаёт intent.
 
 ## 8. Environment IPC boundary
 
-Shared IPC shapes остаются самостоятельными serializable DTO и не импортируют Domain types. Контракты IPC определены в [src/shared/ipc-contracts.ts](../../src/shared/ipc-contracts.ts). Main boundary mapper выполняет `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`.
-
-Shared IPC уже не импортирует Domain. AUTO-A07 объявляет целевое поле `side`; обновление mapper и подключение stream выполняет app-developer одновременно с реализацией. Текущий runtime остаётся screen-only.
+[ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — standalone serializable DTO без Domain imports; Main mapper: `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`. AUTO-A07 добавляет target `side`; developer подключает mapper/stream вместе с реализацией. Здесь зафиксирован screen-only runtime на момент gate, не подтверждение готовности внешних опор.
 
 ## 9. Изоляция и проверяемые свойства
 
-- Gaze/proximity update — pure и полностью определяется explicit inputs/constraints.
-- Freshness использует переданный monotonic `nowMs`, не `Date.now()`.
-- Missing/stale input никогда не продолжает dwell.
-- `flipX` применяется ровно один раз.
-- Gaze offset не запускает Activity; proximity signal не является resolved behavior.
-- Platform adapter отдаёт только normalized immutable snapshot.
-- Body может вычислять только локальную visual freshness для gaze; authoritative semantic freshness/proximity вычисляется Brain по Main receive time.
-- Motion получает observation и сам владеет support/physics transition.
+Pure updates по explicit inputs/constraints; freshness по monotonic `nowMs`, не `Date.now()`; missing/stale не продолжают dwell; flipX ровно один раз. Adapter отдаёт normalized immutable snapshot. Body считает только local gaze freshness, semantic freshness/proximity — Brain по Main receive time. Gaze не запускает Activity, proximity не resolved behavior, support transition — Motion.
 
 ## 10. Внешние окна — целевой контракт AUTO-A07
 
-Это спецификация следующего implementation slice, а не утверждение о готовности runtime.
-Порт [ExternalWindowSurfacesPort](../../src/application/ports/external-window-surfaces.port.ts) отделён от существующего Electron-aware `IPlatformAdapter`.
-Infrastructure публикует полный набор кандидатов; Application выбирает `currentSurface` и передаёт его Motion. Renderer не выбирает опору.
+Target implementation contract, не утверждение runtime readiness. [ExternalWindowSurfacesPort](../../src/application/ports/external-window-surfaces.port.ts) отделён от Electron-aware `IPlatformAdapter`. Infrastructure отдаёт полный набор, Application выбирает currentSurface для Motion; Renderer опору не выбирает.
 
 ### Модель и capability
 
-Нормализованный [ExternalWindowSurface](../../src/domain/behavior/surface-kinematics.ts) — discriminated union поверх существующего snapshot.
+[ExternalWindowSurface](../../src/domain/behavior/surface-kinematics.ts) — discriminated union:
 
 | Поле | Инвариант |
 |---|---|
@@ -187,62 +149,54 @@ Infrastructure публикует полный набор кандидатов; 
 | `side` | Только для `window_side`, обязательно `left` или `right`; x равен bounds.x либо bounds.x + width, y от bounds.y до bounds.y + height. |
 | `isValidSupport` | true только для прошедшей все проверки кромки; false никогда не становится опорой. |
 
-Верх окна и пол используют общий выбор поведения и поз: прогулка, наблюдение,
-сидение, отдых и сон. Тип опоры не даёт бонуса при выборе цели и не запускает
-отдельную Activity после посадки. Геометрия влияет на доступный маршрут и границы
-ходьбы; движение окна переносит персонажа, потеря опоры запускает падение.
+Window top/floor используют общий behavior/pose selection (walk/observe/sit/rest/sleep); тип опоры не даёт бонуса target selection/отдельной arrival Activity. Геометрия ограничивает routes/walking; move переносит персонажа, support loss вызывает fall.
 
-Окно даёт до трёх кромок, с различными ID. Все наблюдения immutable; набор — полная замена, не delta.
-`revision` строго возрастает на каждый новый снимок в экземпляре порта, включая unavailable/recovery; меньшие/повторные revision игнорируются.
-`capturedAtMs` — Main monotonic request-start time, не время доставки и не часы helper. Чтение cache не освежает timestamp.
+До трёх edges с разными IDs на окно; immutable full replacement, не delta. `revision` строго возрастает в экземпляре порта, включая unavailable/recovery; меньшие/повторные игнорируются. `capturedAtMs` — Main monotonic **request-start**, не delivery/helper time; cache read timestamp не освежает.
 
-- Windows: `available` только после успешной полной выборки и нормализации; пустой массив означает отсутствие подходящих окон.
-- Windows startup: `unavailable/initializing`; timeout, parse/API failure или запрещённый bridge: `unavailable/bridge_failed`; TTL: `unavailable/stale`.
-- Linux (Wayland/X11) и macOS: `unavailable/unsupported`, пустой набор внешних поверхностей; существующий screen-floor/work-area продолжает работать. Вызовов Win32 на этих платформах нет.
-- `unavailable` всегда несёт пустой массив. Нельзя подменять им screen capability или придумывать window geometry. Возврат `available` не прикрепляет персонажа автоматически.
-- Порт отдаёт cache синхронно, subscribe — полные ordered snapshots; dispose останавливает helper, sampling и callbacks. Main владеет lifecycle.
+- Windows available только после complete valid sample; пустой массив = нет подходящих окон.
+- Startup: `unavailable/initializing`; timeout/parse/API failure/запрещённый bridge: `unavailable/bridge_failed`; TTL: `unavailable/stale`.
+- Linux Wayland/X11 и macOS: `unavailable/unsupported`, пустые external surfaces, без Win32; screen-floor/work-area продолжают работать.
+- Любой unavailable несёт пустой массив, не заменяет screen capability/не выдумывает geometry. Recovery available не делает auto-reattach.
+- Cache read синхронен, subscribe отдаёт full ordered snapshots; Main владеет lifecycle, dispose останавливает helper/sampling/callbacks.
 
 ### Filtering и приватность
 
-Первый slice допускает только обычные прямоугольные desktop top-level окна текущего интерактивного desktop.
-Внутри bridge: `EnumWindows`, `GetAncestor(GA_ROOT)`, `GetWindow(GW_OWNER)`, styles, `IsWindowVisible`, `IsIconic`, DWM attributes.
-Исключаются child/owned окна; `WS_POPUP`, `WS_EX_TOOLWINDOW`, `WS_EX_NOACTIVATE`, `WS_EX_TRANSPARENT`, `WS_EX_LAYERED`; отключённые окна и окна с нестандартным region.
-Это намеренно консервативный набор: borderless/translucent приложения могут не стать поверхностью.
-Исключаются все процессы/окна Wisp (включая helper, меню и devtools), desktop/shell (`GetDesktopWindow`, `GetShellWindow`, классы `Progman`, `WorkerW`, `Shell_TrayWnd`, `Shell_SecondaryTrayWnd`), меню, tooltip и диалоги (`#32768`, `tooltips_class32`, `#32770`).
-Невидимые, minimized, `DWMWA_CLOAKED != 0`, окна вне work area и недоступные для проверки объекты не дают опор.
-Titles не запрашиваются вообще; PID/handles/classes/styles нужны только внутри Infrastructure и не попадают в Domain, Renderer, trace, persistence или тексты ошибок.
+Только обычные прямоугольные top-level окна текущего interactive desktop. Bridge проверяет `EnumWindows`, `GetAncestor(GA_ROOT)`, `GetWindow(GW_OWNER)`, styles, `IsWindowVisible`, `IsIconic`, DWM attributes.
 
-`IsWindowVisible` не доказывает отсутствие перекрытия. Bridge консервативно исключает всю кромку, если её пересекает прямоугольник любого более высокого видимого не-cloaked окна (включая transient; исключая Wisp).
-Частичные открытые сегменты в этом slice не строятся. При неизвестной геометрии возможного occluder выборка считается неуспешной.
-Z-order используется только внутри bridge и наружу не передаётся. Результат не обещает pixel-perfect occlusion или поддержку secure desktop.
+Исключить:
+- child/owned/disabled/custom-region; `WS_POPUP`, `WS_EX_TOOLWINDOW`, `WS_EX_NOACTIVATE`, `WS_EX_TRANSPARENT`, `WS_EX_LAYERED` (borderless/translucent могут не поддерживаться);
+- все Wisp windows/processes, включая helper/menu/devtools;
+- desktop/shell: `GetDesktopWindow`, `GetShellWindow`, `Progman`, `WorkerW`, `Shell_TrayWnd`, `Shell_SecondaryTrayWnd`;
+- menu/tooltip/dialog: `#32768`, `tooltips_class32`, `#32770`;
+- invisible/minimized/`DWMWA_CLOAKED != 0`, вне work area, недоступные для проверки.
+
+Titles не запрашивать; handles/PID/classes/styles не выводить из Infrastructure в Domain/Renderer/trace/persistence/errors.
+
+Visibility не гарантирует отсутствие occlusion. Любое пересечение edge прямоугольником более высокого visible non-cloaked окна (включая transient, исключая Wisp) удаляет **всю** кромку. Частичные сегменты не строятся; неизвестная occluder geometry проваливает sample. Z-order внутренний; pixel-perfect occlusion/secure desktop не обещаются.
 
 ### Identity, sampling и geometry
 
-Bridge хранит приватное соответствие native window lifetime → opaque token; три ID кромок производны только от этого token.
-Move/resize не меняют ID. При destroy, пропуске окна в полной выборке, minimize/hide/filter-out или перезапуске bridge token безвозвратно удаляется; возвращённое окно получает новый.
-HWND может переиспользоваться даже между poll: для сохранения ID обязательна доставка lifecycle create/destroy через `SetWinEventHook` с message loop; при потере непрерывности helper сбрасывает всю identity epoch. Poll-only reuse HWND как identity запрещён.
-Callbacks — только сигнал повторной выборки; не authoritative geometry. Трекинг и его реализация в AUTO-A07 не входят.
+Private native lifetime→opaque token; edge IDs производны только от token. Move/resize сохраняют ID; destroy/пропуск в полной выборке/minimize/hide/filter-out/bridge restart навсегда удаляют token. Возвращённое окно получает новый.
 
-Целевая частота полной выборки — не чаще 10 Hz, один запрос in flight, без catch-up очереди. Event invalidation может немедленно снять опору; положительная geometry публикуется только полной выборкой.
-TTL = 300 ms: `0 <= nowMs - capturedAtMs <= 300`. После TTL Application не использует старую опору даже при зависшем helper; recovery требует новой выборки.
-Бюджет одного запроса 250 ms; отрицательный age, неполный/повреждённый ответ, разрыв последовательности или изменение topology во время выборки инвалидируют её.
+HWND reuse между poll требует lifecycle create/destroy через `SetWinEventHook` + message loop. Потеря непрерывности сбрасывает identity epoch; poll-only HWND identity запрещена. Callbacks только инвалидируют/инициируют sample, не задают geometry. Реализация tracking вне AUTO-A07.
 
-Источник frame — `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)` (physical px). `GetWindowRect` не подставляется как равнозначный: он DPI-virtualized и может включать невидимые resize borders.
-Frame должен пересекать ровно один физический дисплей; пересечение двух дисплеев (spanning) исключается. AUTO-V01 допускает выход тела окна за внешний край desktop, если публикуемая кромка целиком внутри workArea; исходные bounds сохраняются без clipping.
-Infrastructure конвертирует rectangle ровно один раз через Electron `screen.screenToDipRect(null, rect)`; нельзя делить global x/y на scaleFactor или использовать дисплей Wisp вместо дисплея frame.
-Кромка принимается только если полностью внутри workArea соответствующего дисплея; clipping, создающий ложную кромку, запрещён.
-Разные окна могут находиться на разных DPI-дисплеях. Глобальные DIP согласованы с `ScreenBoundsDto`; перед коммитом Application выбирает bounds того же дисплея и проверяет допустимость root с collisionInsets.
-При `display-added/removed/metrics-changed` все внешние опоры инвалидируются до новой полной выборки; предыдущий geometry baseline для follow удаляется. Невозможность нормализации означает unavailable.
+Полная выборка ≤10 Hz, один in-flight, без catch-up queue. Invalidation может сразу снять опору, положительная geometry — только из complete sample. TTL: `0 <= nowMs - capturedAtMs <= 300` ms; stale не используется даже при hung helper, recovery требует нового sample. Request budget 250 ms; negative age/partial-corrupt response/sequence gap/topology change во время выборки инвалидируют её.
+
+Frame source: `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)` physical pixels; `GetWindowRect` не эквивалентен (DPI virtualization/invisible resize borders). Frame пересекает **ровно один** physical display; spanning исключён. AUTO-V01 допускает body окна за внешним краем desktop, если edge полностью внутри workArea; bounds сохраняются без clipping.
+
+Infrastructure ровно один раз применяет `screen.screenToDipRect(null, rect)`; нельзя делить global x/y на scaleFactor или брать display Wisp вместо display frame. Edge целиком в workArea своего display, clipping с ложной кромкой запрещён. Разные окна могут иметь разный DPI; глобальные DIP согласованы со ScreenBoundsDto. Перед commit Application выбирает bounds того же display и проверяет root/insets.
+
+`display-added/removed/metrics-changed` инвалидируют все external supports и previous follow baseline до нового full sample. Ошибка normalization → unavailable.
 
 ### Dependency Review: Win32 bridge (2026-09-06)
 
-**Решение: approved — системный Windows PowerShell 5.1 + собственный C# P/Invoke helper, новая npm-зависимость не нужна.**
-Это одобрение архитектуры Windows-first наблюдателя с fallback, а не подтверждение производительности готовой реализации.
-`Add-Type` объявляет только нужные read-only User32/Dwmapi вызовы и lifecycle hook; helper живёт одним дочерним процессом, а не запускается на каждый poll.
-Node `child_process.spawn` уже доступен в Electron Main; bridge/paths/OS branches целиком в `src/infrastructure/platform/`.
-Путь executable определяется системным каталогом и `path.join`, shell=false, фиксированный bundled script, `-NoProfile -NonInteractive`, скрытое окно; нет динамического кода из titles/IPC, elevation, ExecutionPolicy bypass, downloads или сторонних PowerShell modules.
-Запрет Add-Type политикой, отсутствие executable или неподдерживаемая среда дают unavailable, без обхода политики. На shutdown helper завершается.
-Helper выводит ограниченный newline JSON с token/physical geometry; handles/PID не сериализуются. Infrastructure валидирует schema, число записей (не более 512), размер ответа (не более 256 KiB) и deadline до публикации; превышение даёт unavailable, не частичный набор.
+**Approved: системный Windows PowerShell 5.1 + собственный C# P/Invoke helper, без новой npm-зависимости.** Это архитектурное разрешение Windows-first observer с fallback, не измерение готовой производительности.
+
+Один child process на lifecycle, не на poll. `Add-Type` только для read-only User32/Dwmapi + lifecycle hook; `child_process.spawn` из Main, bridge/paths/OS branches только в `src/infrastructure/platform/`.
+
+Executable из system directory через `path.join`; shell=false, fixed bundled script, `-NoProfile -NonInteractive`, hidden window. Без dynamic titles/IPC code, elevation, ExecutionPolicy bypass, downloads/сторонних modules. Add-Type denied/missing executable/unsupported environment → unavailable без обхода policy; shutdown завершает helper.
+
+Bounded newline JSON: token/physical geometry, без handles/PID. До публикации Infrastructure валидирует schema, ≤512 records, ≤256 KiB и deadline. Превышение → unavailable, не partial sample.
 
 | Критерий AGENTS.md | Оценка |
 |---|---|
@@ -252,9 +206,9 @@ Helper выводит ограниченный newline JSON с token/physical ge
 | 4. Native bindings | Нет Node C++ addon/node-gyp или Electron ABI rebuild; P/Invoke остаётся native interop в отдельном системном процессе. Pure JS/WASM не предоставляет User32 enumeration/hooks. |
 | 5. Альтернатива 50–100 строк | Узкие P/Invoke declarations возможны без общего FFI package; полный безопасный observer с lifetime/timeout/filtering больше 100 строк. Это не причина тащить универсальный addon: выбирается собственный ограниченный helper с явным runtime fallback. |
 
-`package.json` и lockfile остаются без изменений. Koffi/ffi-napi не одобряются этим решением и не добавляются; их выбор потребует отдельного Dependency Review.
-Для implementation verification обязательны Windows smoke: packaged helper discovery, shutdown, Add-Type denied, timeout, HWND reuse, mixed DPI (100/150/200%), spanning exclusion, occlusion и move/resize/minimize/close. Linux screen-only regression обязателен.
-Если наблюдатель не укладывается в cadence/TTL, он остаётся unavailable; менять bridge или ослаблять freshness без review нельзя.
+`package.json`/lockfile не меняются; Koffi/ffi-napi не одобрены, требуют отдельного Dependency Review. Обязательные Windows smoke: packaged helper discovery/shutdown/Add-Type denied/timeout/HWND reuse/mixed DPI 100/150/200%/spanning/occlusion/move-resize-minimize-close; Linux screen-only regression.
+
+Не укладывается cadence/TTL → unavailable. Менять bridge/ослаблять freshness без review запрещено.
 
 ### Primary documentation, сверено 2026-09-06
 

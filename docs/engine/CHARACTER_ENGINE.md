@@ -1,88 +1,43 @@
 # Контракт Character Engine
 
-`CHARACTER_ENGINE.md` — концептуальный и поведенческий контракт модели персонажа Wisp: витальных потребностей, шкал отношений, личностных осей, пластичности характера, романтического гейтинга и динамического эмоционального тона.
-
-Персонаж управляется чистой доменной логикой (Domain Layer) и служит психологическим контекстом как для выбора автономного поведения (Utility arbitration), так и для AI Provider.
-
-> [!NOTE]
-> **TypeScript-код является единственным источником правды для типов и DTO.**
-> Все контракты, интерфейсы и фабрики моделей определены в директории [`src/domain/character/`](../../src/domain/character/).
-
----
+Needs, отношения, личность/пластичность, romantic gating и эмоциональный тон. Типы/фабрики — в [src/domain/character/](../../src/domain/character/); этот документ задаёт семантику.
 
 ## Владение
 
-- **Domain Layer ([`src/domain/character/`](../../src/domain/character/), [`src/domain/behavior/`](../../src/domain/behavior/)):** полностью владеет структурой `CharacterState`, метаболизмом потребностей (`Needs`), шкалами отношений (`Relationship`), осями личности (`Personality`), динамическим синтезом эмоционального тона, гейтингом романтики (`IntimacyState`), семантическим гейтингом и Utility arbitration P4 автономных кандидатов.
-- **Внешние связи:** Application Layer нормализует входные стимулы (`StimulusEvent`) и формирует проекцию `CharacterSnapshot`. Renderer и AI Provider не имеют прямого доступа к доменным сущностям. Полная матрица — в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
-
----
+Domain ([character](../../src/domain/character/), [behavior](../../src/domain/behavior/)) владеет `CharacterState`, Needs/metabolism, Relationship, Personality, `IntimacyState`, tone, semantic gating и P4 Utility arbitration. Application нормализует `StimulusEvent` и формирует `CharacterSnapshot`; Renderer/provider не получают прямой доступ к Domain entities. [Ownership](README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## Поток ответственности
 
-```mermaid
-flowchart LR
-    Source["Provider hint / User / Timer / System event"] --> Mapper["Application mapper"]
-    Autonomy["Autonomy opportunity"] --> Candidate["Candidate BehaviorIntent(s)"]
-    Mapper --> Candidate
-    Candidate --> Character["Character Engine\n(gating / Utility arbitration)"]
-    Character --> Resolved["Resolved BehaviorIntent"]
-    Resolved --> Brain["Behavior Brain\n(Activity selection)"]
-    Brain --> Runner["Activity Runner"]
-    Runner --> Visual["AnimationIntent"]
-    Visual --> Controller["Animation Controller"]
-```
+Provider/User/Timer/System → Application mapper; autonomy opportunity → candidates; Character gating/Utility → resolved `BehaviorIntent` → Behavior Brain selection → Runner → `AnimationIntent` → Animation Controller.
 
-Character Engine — единственный владелец семантического гейтинга и разрешения `BehaviorIntent`, но не выбирает Activity, физический исход, спрайты или кадры анимаций:
-- Правила Utility arbitration зафиксированы в [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md).
-- Матрица владения интентами и исключения forced-motion — в [`BEHAVIOR_INTENTS.md`](./BEHAVIOR_INTENTS.md#поток-ответственности).
-- Входные стимулы поступают в канонической форме `StimulusEvent` (см. [`src/domain/character/types.ts`](../../src/domain/character/types.ts)); жизненный цикл стимулов и правила дедупликации описаны в [`ACTIVITY_ENGINE.md`](./ACTIVITY_ENGINE.md#13-feedback-boundary).
-
----
+Character не выбирает Activity, physical outcome, sprites/frames. Policy: [Autonomy](AUTONOMY_ENGINE.md); intent ownership/forced-motion exceptions: [Behavior Intents](BEHAVIOR_INTENTS.md#поток-ответственности). Stimuli: [types.ts](../../src/domain/character/types.ts), lifecycle/dedupe: [Activity feedback](ACTIVITY_ENGINE.md#13-feedback-boundary).
 
 ## 1. Главная идея
 
-Wisp должна ощущаться живым существом, а не сухой таблицей статов. Это персонаж со своим характером, настроением, уязвимостями, привязанностью и постепенным раскрытием.
-
-Параметры состояния служат глубоким психологическим контекстом для поведения и генераций AI:
-- почему Wisp сейчас молчит или смущается;
-- почему держит дистанцию или, наоборот, ищет внимания;
-- как меняется её доверие после заботы и откровенных бесед;
-- как формируются её личные симпатии и предпочтения к темам.
-
----
+Устойчивый характер, текущее настроение и постепенное доверие определяют инициативу, дистанцию, смущение и интересы Wisp; то же состояние служит психологическим контекстом AI.
 
 ## 2. Needs (Витальные потребности)
 
-> Контракты типов и значения по умолчанию: [`src/domain/character/needs.ts`](../../src/domain/character/needs.ts).
-
-Потребности персонажа представлены шкалами `0–100`:
-- **`energy`** (ресурс): `100` = полная бодрость, `0` = крайнее истощение.
-- **`attention`** (дефицит): `100` = сильное одиночество, `0` = внимание насыщено.
-- **`play`** (дефицит): `100` = острая скука, `0` = интерес удовлетворен.
-- **`comfort`** (дефицит): `100` = сенсорный перегруз / стресс, `0` = максимальный уют и покой.
-- **`boredom`** (дефицит): `100` = монотонность, отсутствие новых стимулов.
+[needs.ts](../../src/domain/character/needs.ts): шкалы `0–100`. `energy` — ресурс (100 бодрость, 0 истощение); остальные — дефициты: `attention` (100 одиночество, 0 насыщение вниманием), `play` (100 скука, 0 удовлетворённый интерес), `comfort` (100 перегруз/стресс, 0 покой), `boredom` (100 монотонность).
 
 ### Поведенческая интерпретация:
-- `energy <= 20`: усталость — реплики короче, замедление, стремление сесть или заснуть.
-- `attention >= 80`: потребность в контакте — поворот к пользователю, сокращение дистанции, мягкие намеки.
-- `play >= 75`: скука — поиск движения, реакция на курсор, игривые анимации.
-- `comfort >= 80`: перегруз — стремление к тишине, покою и спокойному idle.
+
+- `energy <= 20`: короткие реплики, замедление, sit/sleep.
+- `attention >= 80`: поиск контакта, меньшая дистанция, мягкие намёки.
+- `play >= 75`: движение, cursor reaction, игривость.
+- `comfort >= 80`: quiet/calm idle.
 
 ### Метаболизм и формулы дрейфа
-> Реализация: [`src/domain/character/metabolism.ts`](../../src/domain/character/metabolism.ts) и [`src/domain/character/stimuli-reducer.ts`](../../src/domain/character/stimuli-reducer.ts).
 
-С течением времени потребности персонажа непрерывно дрейфуют к целевым значениям в зависимости от текущего эмоционального тона (`SynthesizedEmotionalTone`).
+[metabolism.ts](../../src/domain/character/metabolism.ts): drift к tone-dependent targets за интервал $\Delta t$ в часах:
 
-Формула асимптотического приближения за интервал $\Delta t$ (в часах):
 $$V_{\text{new}} = V_{\text{current}} + (V_{\text{target}} - V_{\text{current}}) \times \left(1 - e^{-\text{ratePerHour} \times \Delta t}\right)$$
 
-Динамические дискретные сдвиги при интеракциях (клики, поглаживания, диалог, кормление) рассчитываются редьюсером стимулов (`stimuli-reducer.ts`).
-
----
+Дискретные click/pet/dialogue/feed effects — [stimuli-reducer.ts](../../src/domain/character/stimuli-reducer.ts).
 
 ### 2.1. Каноническая семантика сна и пробуждения
 
-Character Engine — единственный источник правды для семантического состояния сна и пробуждения.
+Единственный semantic sleep/wake owner — Character.
 
 ```mermaid
 stateDiagram-v2
@@ -99,128 +54,64 @@ stateDiagram-v2
 | `wake` | `BehaviorIntentKind`, разрешаемый Character Engine для выхода из семантического сна. |
 | `sleep_start` / `sleep_loop` / `wake_up` | Исключительно визуальные клипы [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md); не принимают решений о поведении. |
 
-**Канонические правила:**
-1. `energy <= 20` **или** `comfort >= 80` инициирует детерминированный P2 `sleep` (после P0 физики и P1 прямого взаимодействия).
-2. Прямой клик пользователя, `attention >= 90` или восстановление `energy >= 80` разрешает `wake`.
-3. Прямой `drag` обладает авторитетом P1: прерывает активный сон через связку `drag -> land -> settle` без ожидания отдельного `wake_up`.
-4. Внутренние автономные события (`respond`, `think`, `play`, таймерный `idle` / `wander`) пробуждения сами по себе не вызывают.
-5. Если после пробуждения условие сна всё ещё истинно, Character Engine может вновь разрешить `sleep` по завершении приоритетного взаимодействия.
+P2 sleep срабатывает после P0 physics/P1 input. Direct drag (P1) прерывает сон через `drag -> land -> settle`, без ожидания `wake_up`. Внутренние respond/think/play/timer idle/wander сами не будят. Если после wake условие sleep ещё истинно, новый sleep допустим после приоритетного взаимодействия. Пороги и прямой click/wake заданы FSM выше.
 
 ### 2.2. Устойчивый quiet (AUTO-A09)
 
-Quiet — отдельный session mode Character gating context в Brain, изначально false.
-`quiet` включает его по user/settings boundary; выключение — явная команда `SetQuietModeDTO`.
-Обычный idle, wake, completion, reply или смена Activity не выключает quiet.
-Provider не меняет mode. Quiet не равен semantic sleep, menu pause или autonomy disabled.
-Sleep/wake thresholds из §2.1 действуют и в quiet; wake оставляет quiet включённым.
+Quiet — session mode Brain/Character gating context, default false. Включается user/settings `quiet`, выключается явной `SetQuietModeDTO`; idle/wake/completion/reply/Activity/provider его не выключают. Это не sleep/menu pause/autonomy disabled; sleep/wake пороги действуют, wake сохраняет quiet.
 
-В quiet допускаются P0/P1/P2, calm, безопасное ненавязчивое Explore и Rest;
-подавляются unsolicited SocialBid, cursor gestures/approach, шумная игра/Zoomies и talking behavior.
-Gaze-only остаётся visual reflex. Прямые user команды, включая play/chat, проходят обычные
-Character gates и могут дать ответ пользователю, но не снимают quiet и не обходят critical state.
-Текст ответа на прямой chat доступен в dialogue presentation; unsolicited talking/жест не обязателен.
-Включение quiet отменяет несовместимый active/deferred run без восстановления;
-выключение создаёт один свежий opportunity без очереди. Budget/cooldown сохраняются.
-Runtime reload Renderer получает текущий mode из полного Brain snapshot; перезапуск Main
-сбрасывает session mode. Persistence не входит в AUTO-A09.
+Разрешены P0/P1/P2, calm, безопасное ненавязчивое Explore/Rest. Подавлены unsolicited SocialBid, cursor gesture/approach, шумная play/Zoomies, talking behavior; gaze-only остаётся reflex. Прямые user play/chat проходят current gates, не обходят critical state и не снимают quiet. Ответ на direct chat доступен в dialogue presentation, unsolicited talking/gesture не обязателен.
 
-Типы команды, bridge и snapshot — [`ipc-contracts.ts`](../../src/shared/ipc-contracts.ts);
-общий budget и priority — [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md).
-
----
+Enable отменяет несовместимые active/deferred runs без восстановления. Disable создаёт одну fresh opportunity без очереди; budget/cooldowns сохраняются. Renderer reload получает mode из полного Brain snapshot; Main restart сбрасывает session mode, persistence вне AUTO-A09. [Команда/bridge/DTO](../../src/shared/ipc-contracts.ts), [budget/priority](AUTONOMY_ENGINE.md).
 
 ## 3. Relationship (Система отношений)
 
-> Контракты типов: [`src/domain/character/types.ts`](../../src/domain/character/types.ts).
-
-Отношения с пользователем моделируются двумя шкалами `0–1000`:
-- **`friendship`**: базовое доверие, комфорт, безопасность и привыкание.
-- **`love`**: глубокая эмоциональная и романтическая привязанность (изначально заблокирована: `loveUnlocked: false`).
+[types.ts](../../src/domain/character/types.ts): `friendship` — доверие/безопасность/привыкание, `love` — романтическая привязанность; обе шкалы `0–1000`, изначально `loveUnlocked: false`.
 
 ### Правила прогрессии:
-- `friendship` растет от регулярного взаимодействия, диалогов, поглаживаний и совместного времени.
-- `love` разблокируется только при достижении порога дружбы: **`friendship >= 400`** и явного пользовательского согласия (`userConsentEnabled`). Не накручивается спам-кликами.
-- **Принцип отсутствия вины (No-guilt design):** Wisp не наказывает пользователя за долгое отсутствие. Применяется сверхмягкий `soft decay` без драматических штрафов и укоряющих реплик.
 
----
+Friendship растёт от регулярного контакта/dialogue/pet/совместного времени. Love unlock требует **`friendship >= 400` и `userConsentEnabled`**, без накрутки spam clicks. No-guilt: только сверхмягкий soft decay за отсутствие, без наказания/укоряющих реплик.
 
 ## 4. Personality (Оси личности)
 
-> Контракты шкал: [`src/domain/character/types.ts`](../../src/domain/character/types.ts).
-
-Личность выражается через 7 нормализованных осей (`0.0–1.0`):
-- **`openness`**: любопытство, интерес к новым темам, фантазия.
-- **`extraversion`**: социальная энергия, готовность первой проявлять инициативу.
-- **`agreeableness`**: мягкость, эмпатия, уступчивость, заботливость.
-- **`sensitivity`**: глубина эмоционального отклика на тон и происходящее.
-- **`playfulness`**: игривость, склонность к юмору и шалостям.
-- **`boldness`**: раскованность, уверенность, смелость в выражении чувств.
-- **`independence`**: способность комфортно находиться рядом без постоянного внимания.
+[types.ts](../../src/domain/character/types.ts): семь осей `0.0–1.0`: `openness` (любопытство/фантазия), `extraversion` (социальная инициатива), `agreeableness` (эмпатия/мягкость), `sensitivity` (глубина отклика), `playfulness` (игра/юмор), `boldness` (уверенность), `independence` (комфорт без постоянного внимания).
 
 ### Синтез производных черт
-> Реализация: [`src/domain/character/derived-traits.ts`](../../src/domain/character/derived-traits.ts).
 
-Производные черты рассчитываются динамически из осей личности.
+[derived-traits.ts](../../src/domain/character/derived-traits.ts), динамическая `shyness`:
 
-Формула застенчивости (`shyness`):
 $$\text{shyness} = \text{sensitivity} \times 0.45 + (1 - \text{boldness}) \times 0.35 + (1 - \text{extraversion}) \times 0.2$$
-
----
 
 ## 5. Soft Lock / Hard Lock и пластичность
 
-> Контракты значений и логика адаптации: [`src/domain/character/types.ts`](../../src/domain/character/types.ts) и [`src/domain/character/personality-plasticity.ts`](../../src/domain/character/personality-plasticity.ts).
+[types.ts](../../src/domain/character/types.ts), [personality-plasticity.ts](../../src/domain/character/personality-plasticity.ts): `AxisValue` содержит `base` (identity), `current`, `softMin/softMax` (комфорт), `hardMin/hardMax` (абсолютные пределы), `plasticity` (скорость/глубина адаптации).
 
-Каждая ось личности обладает коридором вариативности (`AxisValue`):
-- **`base`**: ядро идентичности персонажа.
-- **`current`**: текущее динамическое значение.
-- **`softMin` / `softMax`**: границы повседневной комфортной зоны.
-- **`hardMin` / `hardMax`**: абсолютные пределы, сохраняющие целостность персонажа.
-- **`plasticity`**: скорость и глубина адаптации черты под влиянием регулярных стимулов.
-
-**Правила устойчивости:**
-- `Soft lock`: персонаж выходит за пределы комфортной зоны лишь кратковременно и под воздействием сильных стимулов.
-- `Hard lock`: идентичность защищена — застенчивая Wisp не станет вульгарной или агрессивной даже на пиковых уровнях отношений.
-
----
+Soft lock допускает лишь краткий выход при сильных стимулах. Hard lock сохраняет identity: застенчивая Wisp не становится вульгарной/агрессивной даже при максимальных отношениях.
 
 ## 6. Стартовый архетип: Shy Dream Girl
 
-Базовый образ Wisp: **аниме-девушка-мечта — нежная, застенчивая, медленно привязывающаяся, сохраняющая лёгкое смущение даже при глубокой близости.**
+Нежная застенчивая аниме-девушка, медленно привязывается и сохраняет смущение при близости. [personality-presets.ts](../../src/domain/character/personality-presets.ts).
 
 ### Динамика раскрытия:
-1. **Начало:** осторожность, деликатность, краткие мягкие ответы, частое смущение, тихое созерцание издалека.
-2. **Развитая дружба:** сокращение физической дистанции, охотные игры, дружеское поддразнивание, самостоятельная инициатива диалога.
-3. **Развитая любовь:** доверительная нежность, забота, тонкий флирт через смущение (*румянец, паузы, отвод взгляда, тихие искренние реплики*).
 
-Конфигурации пресетов определены в [`src/domain/character/personality-presets.ts`](../../src/domain/character/personality-presets.ts).
-
----
+Начало — деликатность, короткие ответы, созерцание издалека; дружба — сближение, игры/поддразнивание/инициатива; любовь — доверие, забота и тонкий флирт через румянец, паузы, отвод взгляда.
 
 ## 7. Intimacy & Romantic Charge
 
-> Типы состояния и логика гейтинга: [`src/domain/character/types.ts`](../../src/domain/character/types.ts) и [`src/domain/character/intimacy-rules.ts`](../../src/domain/character/intimacy-rules.ts).
-
-Романтическое состояние управляется через:
-- **`flirtiness`** (0–100): внешнее проявление кокетства / флирта.
-- **`romanticCharge`** (0–100): накопленное внутреннее романтическое напряжение.
-- **`userConsentEnabled`** / **`boundariesKnown`**: флаги этических границ и явного согласия пользователя.
+[types.ts](../../src/domain/character/types.ts), [intimacy-rules.ts](../../src/domain/character/intimacy-rules.ts): `flirtiness` — внешнее проявление, `romanticCharge` — накопленное напряжение (оба 0–100); `userConsentEnabled`/`boundariesKnown` — consent/boundary flags.
 
 ### Условия разрешения романтического выражения (`canExpressFlirt`):
-Флирт и романтический контент активируются **исключительно** при одновременном выполнении условий:
-1. `userConsentEnabled === true` (согласие пользователя включено);
-2. `relationship.loveUnlocked === true` (шкала любви разблокирована);
-3. `relationship.friendship >= 500` (высокий уровень доверия);
-4. `needs.energy >= 30` (персонаж не истощён);
-5. `needs.comfort <= 60` (отсутствует сенсорный перегруз).
 
----
+Все условия одновременно:
+1. `userConsentEnabled === true`;
+2. `relationship.loveUnlocked === true`;
+3. `relationship.friendship >= 500`;
+4. `needs.energy >= 30`;
+5. `needs.comfort <= 60`.
 
 ## 8. Эмоциональный тон (Синтез настроения)
 
-> Словарь тонов и логика синтеза: [`src/domain/character/types.ts`](../../src/domain/character/types.ts) и [`src/domain/character/emotional-tone.ts`](../../src/domain/character/emotional-tone.ts).
-
-Вместо плоского статического перечисления `mood`, эмоциональный тон (`SynthesizedEmotionalTone`) синтезируется на каждом тике из актуальных потребностей, осей и отношений:
+[types.ts](../../src/domain/character/types.ts), [emotional-tone.ts](../../src/domain/character/emotional-tone.ts): `SynthesizedEmotionalTone` пересчитывается на каждом tick по текущим Needs/axes/relationship.
 
 ```mermaid
 stateDiagram-v2
@@ -237,50 +128,26 @@ stateDiagram-v2
 ```
 
 ### Приоритетная матрица синтеза:
-1. `energy <= 20` или `comfort >= 80` $\to$ `'sleepy'`
-2. `shyness >= 0.65` при `friendship < 400` $\to$ `'shy'`
-3. `love >= 500` при `friendship >= 500` $\to$ `'affectionate'`
-4. `play >= 70` (при достаточной энергии) $\to$ `'playful'`
-5. Иначе $\to$ `'neutral'` или `'curious'`
 
----
+1. `energy <= 20` или `comfort >= 80` → `sleepy`.
+2. `shyness >= 0.65` и `friendship < 400` → `shy`.
+3. `love >= 500` и `friendship >= 500` → `affectionate`.
+4. `play >= 70` при достаточной энергии → `playful`.
+5. Иначе `neutral`/`curious`.
 
 ## 9. Taste & Preferences (Вкусы и предпочтения)
 
-> Модель предпочтений и алгоритм трекинга: [`src/domain/character/preferences.ts`](../../src/domain/character/preferences.ts).
-
-Предпочтения персонажа к темам и жанрам формируются на основе опыта:
-- **`value`** (`-100..100`): отношение к теме (симпатия / антипатия).
-- **`confidence`** (`0.0..1.0`): уверенность в оценке на базе повторяющихся контактов.
-- **`samples`**: количество зафиксированных диалогов или событий с данной темой.
-
-Wisp способна мягко перенимать интересы пользователя благодаря механизму эмпатии и привязанности.
-
----
+[preferences.ts](../../src/domain/character/preferences.ts): `value` `-100..100` — отношение к теме, `confidence` `0.0..1.0` — уверенность, `samples` — число тематических dialogues/events. Опыт, эмпатия и привязанность могут мягко сближать интересы с пользователем.
 
 ## 10. Сводная модель CharacterState v2
 
-> Полные контракты состояния и проекций: [`src/domain/character/types.ts`](../../src/domain/character/types.ts) и [`src/domain/character/character-snapshot.ts`](../../src/domain/character/character-snapshot.ts).
-
-Итоговый доменный агрегат `CharacterState` объединяет:
-- `needs`: витальные потребности;
-- `relationship`: шкалы дружбы и любви;
-- `personality`: пресет и динамические значения осей;
-- `intimacy`: уровень романтического напряжения и флаги границ;
-- `preferences`: карту интересов и вкусов;
-- `lastUpdated`: временную метку последнего пересчёта.
-
----
+[types.ts](../../src/domain/character/types.ts), [character-snapshot.ts](../../src/domain/character/character-snapshot.ts): `needs`, `relationship`, `personality` (preset/axes), `intimacy`, `preferences`, `lastUpdated` (последний пересчёт).
 
 ## 11. AUTO-A09: последствия и восстановление
 
-Request/admission не равны выполнению: игровой effect применяется только по подтверждённой
-semantic play phase из [Activity feedback](./ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership).
-Ни request `play`, ни отклонённая игра не уменьшают дефициты до проверки Character gate.
-Стимулы физических фактов и прямого pet input сохраняются независимо от исхода Activity.
+Play effect требует подтверждённой semantic play phase [Activity](ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership). Request/admission/rejected play не уменьшают дефициты до Character gate; physical facts/direct pet stimuli сохраняются независимо от Activity.
 
-Обязательны направления effects, once-only и clamp `[0,100]`; следующие deltas — начальный
-versioned tuning #46, а не новые шкалы/thresholds. Все неуказанные изменения равны нулю.
+Направления effects, once-only, clamp `[0,100]` обязательны. Deltas — начальный versioned tuning #46, не новые шкалы/пороги; неуказанные deltas нулевые.
 
 | Подтверждённый факт | Начальные deltas |
 |---|---|
@@ -292,33 +159,16 @@ versioned tuning #46, а не новые шкалы/thresholds. Все неук�
 | stumble / crash_landing | comfort +2 / +6; energy −1 / −2 соответственно. |
 | soft landing, calm, SocialBid без ответа | Нулевой дискретный effect. |
 
-Игровые personality deltas существующего reducer сохраняются только при подтверждённой игре.
-Solitary play не считается социальным контактом; presence курсора не доказывает участие.
-Настоящий user input во время SocialBid получает собственный обычный stimulus, без второго
-reward за answered outcome. Cancel/failure до игровой фазы не начисляет её deltas;
-минимальный slice не вводит пропорциональную оплату каждого шага или отдельный ресурсный timer.
-Explore mapping использует `system_event.activityOutcome`, drag hold — `dragRunId/heldMs`,
-landing — существующий `landingOutcome`; reducer должен явно обработать эти факты в #46.
-Строки здесь обозначают metadata, не новые public intent kinds.
+Существующие play personality deltas — только за подтверждённую игру. Solitary play/cursor presence не доказывают социального участия. User input во время SocialBid даёт обычный stimulus, без второго reward за answered outcome. Cancel/failure до play phase не начисляет effect; пропорциональная оплата шагов/новый resource timer вне slice.
 
-Единственный Needs clock — существующий Brain/CharacterStateService loop.
-Semantic sleep phase/stable sleep использует `sleepy` профиль; подход/prepare/calm/quiet
-не включает принудительно профиль сна. Тон `sleepy` сам по себе не доказывает semantic sleep.
-Начальные target/rates сохраняются из [`metabolism.ts`](../../src/domain/character/metabolism.ts):
-sleep energy стремится к 82 при rate 0.3/hour; comfort — к 12 при rate 0.32/hour.
-Это медленное восстановление: 12-секундный nap не обязан полностью восстановить energy.
-Full sleep достигает wake threshold за конечное время; ускорение допускается только как
-явно versioned tuning с приложенным временным сценарием, не скрытая поправка ради теста.
+Reducer #46 обрабатывает metadata `system_event.activityOutcome`, `dragRunId/heldMs`, `landingOutcome`; это не новые public intent kinds.
 
-На каждом pulse elapsed считается от последнего применённого Main-monotonic времени;
-отрицательный/non-finite elapsed отвергается, повторное время не даёт повторного метаболизма.
-Catch-up ограничен начально 60000 ms за transaction; избыток после stall отбрасывается,
-а не ставится в очередь. Дискретный outcome несёт `deltaMs=0`, исключая двойной дрейф.
-Threshold crossing пересчитывается после Needs update тем же scheduler. P2 отменяет optional
-Activity/AI owner; pending intent не мешает обязательному сну или пробуждению.
-Optional nap завершается своим Brain deadline, full user/vital sleep — Character wake gate.
-Ни Skin completion, ни provider response не будят автоматически; quiet после wake сохраняется.
+Единственный Needs clock — Brain/CharacterStateService. Semantic/stable sleep использует `sleepy` metabolism; approach/prepare/calm/quiet не включают его принудительно. Сам tone sleepy не доказывает сон. Defaults [metabolism.ts](../../src/domain/character/metabolism.ts): sleep energy →82, rate 0.3/hour; comfort →12, rate 0.32/hour. Nap 12 секунд не обязан восстановить energy полностью. Full sleep достигает wake threshold за конечное время; ускорение — только versioned tuning с временным сценарием, не скрытая поправка ради теста.
+
+Pulse elapsed от последнего применённого Main-monotonic time: negative/non-finite отклоняется, повторное время не даёт drift. Catch-up максимум 60000 ms/transaction, избыток после stall отбрасывается без очереди. Outcome несёт `deltaMs=0` против двойного drift; тот же scheduler проверяет thresholds после Needs update.
+
+P2 отменяет optional Activity/AI owner; pending intent не блокирует sleep/wake. Nap завершается Brain deadline, full user/vital sleep — Character wake gate. Skin/provider не будят автоматически; quiet после wake сохраняется.
 
 ## Архитектурные границы
 
-Character Engine является чистым модулем доменного слоя (`src/domain/character/`). Общие правила изоляции и запрещённые зависимости зафиксированы в [README.md](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).
+Чистый Domain `src/domain/character/`; [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).

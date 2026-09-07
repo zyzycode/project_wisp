@@ -1,67 +1,31 @@
 # Контракт Activity Engine
 
-`ACTIVITY_ENGINE.md` — source of truth для Activity definitions, выбора Activity внутри resolved behavior, lifecycle одного run, chains, guards, cooldown и repetition.
-
-Activity Engine не принимает semantic решение. Character Engine передаёт единственный resolved `BehaviorIntent`; Behavior Brain выбирает совместимую Activity только внутри его `kind`; Activity Runner исполняет выбранное определение.
+Definitions, selection, lifecycle, chains, guards, cooldown/repetition. Character передаёт один resolved `BehaviorIntent`; Activity не меняет его семантику.
 
 ## 1. Владение
 
-- **Behavior Brain (Domain):** взвешенный выбор `ActivityDefinition` строго внутри переданного resolved `BehaviorIntent`. Не принимает решений о смене семантического намерения.
-- **Activity Runner (Domain):** жизненный цикл выполнения шагов активного `runId`, проверка гардов, переходы по цепочке шагов, эмиссия `AnimationIntent`, отмена и завершение.
-- **Внешние связи:** Application Layer поставляет монотонное время и оркестрирует causal events/deadlines шагов. Полная матрица распределения ответственности зафиксирована в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
+Behavior Brain (Domain) выбирает совместимую `ActivityDefinition` внутри resolved kind; Runner (Domain) исполняет steps/run, guards, transitions, `AnimationIntent`, cancel/completion. Application доставляет monotonic time/causal events и оркестрирует deadlines. [Ownership](README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Поток Activity
 
-```mermaid
-flowchart LR
-  R[Resolved BehaviorIntent] --> B[Behavior Brain]
-  S[Immutable selection context] --> B
-  B --> D[One ActivityDefinition]
-  D --> A[Activity Runner]
-  A -->|AnimationIntent + phase timeline| BS[BrainStateDTO]
-  A -->|voluntary locomotion| M[Motion/Application boundary]
-  E[Causal event / deadline / guard] --> A
-  P[Forced motion or direct user interruption] --> C[Cancel run]
-  C --> A
-  A -->|result + feedback| O[Application]
-```
+`resolved intent + immutable context → Behavior Brain → one definition → Runner → AnimationIntent/phase timeline → BrainStateDTO`.
+Voluntary locomotion идёт через Motion/Application; causal event/deadline/guard продвигает Runner, forced motion/direct input отменяет run, result/feedback возвращается Application.
 
-Behavior Brain получает только уже resolved intent и не сравнивает semantic candidates. Если для intent нет compatible Activity, он возвращает отсутствие выбора; fallback остаётся частью semantic/Application flow, а не скрытым созданием нового intent.
+Нет compatible Activity → отсутствие выбора; fallback остаётся semantic/Application flow, не скрытым новым intent. Semantic candidates Brain повторно не сравнивает.
 
 ## 3. ActivityDefinition
 
-`ActivityDefinition` — конечная направленная chain graph с:
+Конечный directed chain graph: unique Activity id, один `entryStepId`, interruption rank, finite positive `baseWeight`, optional `cooldownKey`, конечные steps с уникальными `ActivityStepId`.
 
-- уникальным Activity id;
-- одним `entryStepId`;
-- rank для interruption boundary;
-- положительным конечным `baseWeight`;
-- необязательным `cooldownKey`;
-- конечным набором steps с уникальными `ActivityStepId`.
-
-Step имеет ровно один тип: semantic animation request, voluntary locomotion request, explicit delay либо guarded branch. Он может ссылаться только на существующий следующий step или завершать chain. Animation step содержит только `AnimationIntent`-совместимую semantic форму; locomotion step — только voluntary command, а не world-position commit.
-
-Definition не содержит React component, DOM event, asset path/frame, Electron/OS handle, provider DTO, mutable Character state, wall-clock callback или произвольный effect function.
+Step — ровно один тип: semantic animation, voluntary locomotion, explicit delay, guarded branch; target существует либо terminal. Animation — только `AnimationIntent`-совместимая форма; locomotion не коммитит world position. Запрещены React/DOM, assets/frames, Electron/OS handles, provider DTO, mutable Character, wall-clock callbacks, произвольные effects.
 
 ## 4. Валидация definitions
 
-До запуска definition должна удовлетворять всем условиям:
+До старта проверить: непустые уникальные IDs в своём scope; существующие entry/targets (либо terminal); finite positive weights/timeouts; зарегистрированный cooldown tuning key; отсутствие unconditional cycle; bounded exit/timeout у guarded cycle; один тип request на step; отсутствие неявного расширения `BehaviorIntentKind`/`AnimationIntentKind`.
 
-- Activity id, entry и step ids непустые и уникальные в соответствующем scope;
-- entry ссылается на существующий step;
-- каждый target ссылается на существующий step либо terminal outcome;
-- weights и timeouts положительны и конечны;
-- cooldown key, если задан, относится к зарегистрированному tuning key;
-- безусловный branch cycle запрещён;
-- guarded cycle обязан иметь явный bounded exit/timeout;
-- step не может одновременно выпускать animation и locomotion request разных типов;
-- definition не расширяет public `BehaviorIntentKind` или `AnimationIntentKind` неявно.
-
-Invalid definition не стартует и даёт deterministic failed result `invalid_definition`. Runtime не пытается чинить graph или угадывать target.
+Invalid graph не чинится/не угадывается: deterministic failed `invalid_definition`, без старта.
 
 ## 5. Начальные chains
-
-Существующие канонические последовательности сохраняются:
 
 ```text
 Explore: walk(target) -> observe -> sit -> look_around -> stand_up
@@ -69,24 +33,13 @@ Rest: yawn -> lie_down -> sleep_start -> sleep_loop (complete on stable state)
 Zoomies: sprint(target) -> settle
 ```
 
-Это Activity chains, а не public behavior catalog. Их совместимость с resolved intent задаётся Behavior Brain. Конкретные visual kinds и переходы проверяются по [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md); physical feasibility voluntary command — по [`MOTION_ENGINE.md`](./MOTION_ENGINE.md).
-
-Отдельный behavior catalog в `docs/behaviors/` этой миграцией не создаётся.
+Это Activity chains, не public behavior catalog; compatibility задаёт Brain. Visual kinds/transitions — [Animation](ANIMATION_ENGINE.md), physical feasibility — [Motion](MOTION_ENGINE.md). Миграция не создаёт отдельный каталог в `docs/behaviors/`.
 
 ## 6. Behavior Brain selection
 
-Selection выполняется только среди definitions, совместимых с resolved intent и текущим immutable context. Hard filters применяются до веса:
+Hard filters **до** weights: intent/state/guard compatibility, истёкший cooldown, нужная environment capability, отсутствие несовместимого forced-motion lifecycle, специальные eligibility rules.
 
-- intent compatibility;
-- state/guard compatibility;
-- истёкший Activity cooldown;
-- доступность требуемой environment capability;
-- отсутствие несовместимого forced-motion lifecycle;
-- специальные существующие eligibility rules Activity.
-
-Существующая compatibility сохраняется: resolved `wander` ограничивает выбор Explore/Run, `idle` — Sit, `sleep` — Rest/Sleep, `play` — Zoomies/Swat. Resolved `quiet` сам по себе не выбирает Rest/Sleep. Zoomies требует достаточных energy/stimulation, низкого overload и истёкшего cooldown; значения и Character semantics здесь не переопределяются.
-
-Вес Activity отличается от Utility score behavior candidate:
+Compatibility: `wander → Explore/Run`, `idle → Sit`, `sleep → Rest/Sleep`, `play → Zoomies/Swat`; `quiet` сам по себе не выбирает Rest/Sleep. Zoomies требует достаточных energy/stimulation, низкого overload и истёкшего cooldown; Character thresholds не переопределять.
 
 ```text
 finalWeight = baseWeight
@@ -99,82 +52,45 @@ finalWeight = baseWeight
 P(activity) = finalWeight(activity) / Σ finalWeight(eligible activities)
 ```
 
-Character values здесь являются read-only snapshot factors и не переопределяют Needs/tone semantics. P4 Utility уже завершена до Activity selection и не пересчитывается.
-
-Selection использует явно переданный `randomUnit`/seeded source из orchestration boundary. `Math.random()` и wall-clock reads внутри Behavior Brain запрещены. При нулевой сумме положительных weights Activity не выбирается.
+Snapshot factors read-only; завершённую P4 Utility не пересчитывать. RNG — явный `randomUnit`/seeded source из orchestration; `Math.random()`/wall-clock reads запрещены. Нулевая сумма положительных weights → нет выбора.
 
 ## 7. Lifecycle одного run
 
-Структуры ActivityDefinition, Step и рантайм-контракты определены в [src/domain/behavior/activity-runner.ts](../../src/domain/behavior/activity-runner.ts).
+Типы: [activity-runner.ts](../../src/domain/behavior/activity-runner.ts). Одновременно максимум один run; каждый старт имеет новый уникальный `runId`. Terminal `completed`/`failed`/`cancelled` детерминирован и необратим; interruption — cancelled с причиной.
 
-- `runId` уникален для каждого запуска.
-- Завершение всегда детерминировано одним из статусов: `completed`, `failed`, `cancelled`; interruption — `cancelled` с причиной.
-
-В каждый момент Activity Runner исполняет не более одной Activity. Terminal run не возобновляется; повторный запуск той же Activity получает новый `runId`.
-
-Runner:
-
-- принимает monotonic `nowMs` аргументом;
-- не создаёт timers;
-- выпускает не более одного step request за update transition;
-- сохраняет `stepStartedAtMs` и вычисленный Brain-owned deadline для time-bounded шага;
-- сопоставляет causal guard/locomotion event только с текущим `runId`;
-- игнорирует stale/foreign events без изменения runtime;
-- возвращает cleanup scope только для завершившегося run.
+Runner принимает `nowMs`, не создаёт timers; выпускает максимум один step request за update transition, сохраняет `stepStartedAtMs`/Brain deadline для bounded step. Causal guard/locomotion event сопоставляется только с current run; stale/foreign игнорируются без мутации. Cleanup scope возвращается только для завершившегося run.
 
 ## 8. Completion и timeouts
 
-Step завершается только своим объявленным completion condition:
+Только объявленное условие: `nowMs >= phaseEndsAtMs` для bounded animation/pose; authoritative Motion/Application target/result; explicit delay elapsed; guard outcome; bounded timeout. Application задаёт стабильный sequence для causal event/deadline одной transaction; Runner лишь сравнивает переданное monotonic time со start/deadline.
 
-- time-bounded animation/pose phase: `nowMs >= phaseEndsAtMs`;
-- locomotion target/result event от authoritative Motion/Application boundary;
-- explicit delay elapsed по переданному `nowMs`;
-- guard outcome;
-- bounded timeout.
+Skin completion, visual FSM, RAF, `BodyEventDTO` не завершают steps. Legacy `animation_completed`/`state_entered`, external animation request IDs/timeouts — migration debt до AUTO-I08; после AUTO-A08 каждая semantic visual phase имеет Brain duration/deadline. Skin completion/repeat/truncation/fallback не меняет timeline.
 
-Timeout не является скрытым scheduler. Application вызывает Runner с Main-monotonic time; Runner сравнивает его с сохранённым start/deadline. Causal event и deadline, попавшие в одну transaction, обрабатываются в стабильном порядке, установленном Application sequence.
-
-Skin clip completion, Renderer visual FSM state, RAF callback и `BodyEventDTO` не входят в completion conditions. Конфигурации `animation_completed` / `state_entered`, external animation request ids и animation timeout из текущей реализации являются migration debt до AUTO-I08; целевой контракт после AUTO-A08 использует Brain-owned duration/deadline для каждой semantic visual phase. Skin может завершить, повторить, сократить или заменить клип fallback-ом, не меняя Activity timeline.
-
-После завершения шага Runner атомарно переходит к target и выпускает следующий request. Terminal step завершает Activity ровно один раз.
+Step completion атомарно переходит к target и выпускает следующий request; terminal завершает run ровно один раз.
 
 ## 9. Guards и branches
 
-Guard читает только immutable normalized context и явный event. Он не меняет Character, Motion, Animation или environment state и не вызывает provider.
-
-Guard result выбирает один из definition targets. Отсутствующий outcome, invalid target или exception boundary нормализуется в deterministic failed result; Runner не продолжает произвольную ветку.
-
-Branches не могут создавать semantic intent. Если chain требует другого поведения, текущая Activity завершается/отменяется, а новый candidate проходит Character Engine в следующей decision opportunity.
+Guard читает immutable normalized context/event, не мутирует engines/environment и не вызывает provider. Missing outcome/invalid target/exception → deterministic failed, без произвольной ветки. Для другого behavior завершить/отменить chain; новый candidate проходит Character на следующей opportunity.
 
 ## 10. Interruption и cancel
 
-Interruption всегда означает cancel текущего run и новый `runId` для последующей Activity. Pause/resume запрещены.
+Всегда cancel + новый run, без pause/resume. P0 → `forced_motion`, P1 → `user_interaction`; остальные ranks — [Autonomy P0–P5](AUTONOMY_ENGINE.md#3-safety-order-p0p5).
 
-- P0 forced motion отменяет Activity с причиной `forced_motion`.
-- P1 direct user flow отменяет Activity с причиной `user_interaction`.
-- остальные rank interactions следуют единственной таблице [`AUTONOMY_ENGINE.md`](./AUTONOMY_ENGINE.md#3-safety-order-p0p5).
-
-Cancel прекращает новые step emissions и возвращает точный cleanup scope. Уже доставленный physical fact не откатывается. Body самостоятельно применяет visual interrupt rules только к локальной projection; Activity Runner не подменяет их и не ждёт visual outcome.
+Cancel прекращает emissions и возвращает точный cleanup scope; доставленный physical fact не откатывается. Body применяет свои visual interrupt rules локально, Runner не подменяет их и не ждёт outcome.
 
 ## 11. Cooldown
 
-`CooldownEntry { key, nextEligibleAtMs }` — hard eligibility gate. Он отделён от repetition multiplier и сравнивается только с явно переданным monotonic time.
+`CooldownEntry { key, nextEligibleAtMs }` — hard gate по explicit monotonic time, отдельно от repetition. Zoomies/rare actions/Stretch/Swat имеют отдельные keys. `sleep_after_wake` обходит только P2 по Autonomy/Character. Durations — tuning data, новых значений здесь нет.
 
-Zoomies, rare actions, Stretch и Swat используют отдельные keys. `sleep_after_wake` может обходиться только P2 согласно Autonomy/Character boundary. Все durations являются tuning data; этот документ не вводит новые значения.
-
-Cooldown устанавливается по определённому lifecycle event Activity, а не по render frame или попытке scoring. Неуспешный candidate, не выбранная Activity и stale causal event не продлевают cooldown неявно.
+Обновлять только по объявленному lifecycle event; render frame, scoring attempt, rejected candidate, невыбранная Activity и stale event cooldown не продлевают.
 
 ## 12. Repetition
 
-History bounded: первоначально до 8 Activity entries и до 16 action entries. Старые записи вытесняются, а penalty экспоненциально ослабевает со временем.
-
-Repetition multiplier имеет положительный configured floor, поэтому не запрещает единственную eligible Activity. Это soft weighting factor, а не hard cooldown.
-
-History обновляется только подтверждённым запуском/выполнением соответствующего lifecycle event. Preview, eligibility check и повторная оценка одного snapshot не добавляют entries.
+Bounded history: до 8 Activity entries и 16 action entries; вытеснение старых, exponential time decay. Положительный configured floor сохраняет шанс единственной eligible Activity; это soft weight, не hard gate. Записи добавляет только подтверждённый start/execution lifecycle event, не preview/eligibility/repeated scoring.
 
 ## 13. Feedback boundary
 
-Activity/Motion/user semantic outcomes поступают в Application mapper как `ShimejiFeedbackEvent`, а затем не более одного раза становятся canonical `StimulusDto` Character Engine. Канонические declarations feedback union, mapping context и mapper port находятся в [`src/application/ports/shimeji-feedback-port.ts`](../../src/application/ports/shimeji-feedback-port.ts). Форма `StimulusDto` и изменения Needs/Relationship принадлежат [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md).
+`ShimejiFeedbackEvent → Application mapper → StimulusDto` не более одного раза. Union/context/port: [shimeji-feedback-port.ts](../../src/application/ports/shimeji-feedback-port.ts); deltas/StimulusDto — [Character](CHARACTER_ENGINE.md).
 
 | Variant `ShimejiFeedbackEvent` | Поля payload | Назначение и инвариант |
 |---|---|---|
@@ -192,76 +108,37 @@ Activity/Motion/user semantic outcomes поступают в Application mapper 
 | `landingThresholds.stumbleMaxSeverity` | Минимальный context для landing mapping | Берётся из текущих `MotionConstraints`, не копируется в Domain event. |
 | `IShimejiStimulusMapper.map(...)` | Преобразовать semantic feedback в `StimulusDto` или `null` | Чистое deterministic mapping; не применяет stimulus и не владеет дедупликацией. |
 
-Сохраняется mapping: drag start/hold/end становятся user stimuli; `stumble`/`crash_landing` — system stimuli; petting и completed Swat применяют configured deltas. Soft landing не создаёт дополнительный stimulus. Raw pointer events, physics substeps, bounces и animation frames не размножают feedback.
+Drag start/hold/end → user stimuli; `stumble`/`crash_landing` → system; petting/completed Swat → configured deltas. Soft landing, raw pointer events, physics substeps/bounces/frames не размножают feedback. Application дедуплицирует eventId; hold — максимум один на run после configured hold, completed feedback связан с `activityRunId`.
 
-Application дедуплицирует semantic event id. `drag_hold` создаётся не более одного раза на drag run после configured hold; completed activity feedback связывается с `activityRunId`.
-
-Character Engine clamp-ит собственные шкалы и синтезирует tone. Application публикует новый selection snapshot только после завершения landing `settle`/`recover`, поэтому feedback не запускает arbitration посреди forced-motion lifecycle.
+Character clamp-ит шкалы/синтезирует tone. Новый selection snapshot публикуется только после landing `settle`/`recover`, без arbitration посреди forced motion.
 
 ## 14. Изоляция
 
-Behavior Brain и Activity Runner — чистые модули Domain Layer (`src/domain/behavior/`). Общие правила изоляции и запрещённые зависимости зафиксированы в [README.md](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).
-Renderer не выбирает Activity и не управляет её жизненным циклом. Application доставляет нормализованные события/время и оркестрирует завершение шагов.
+Brain/Runner — чистые `src/domain/behavior/`, [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture). Renderer не выбирает/не исполняет Activity; Application оркестрирует normalized time/events/completion.
 
 ## 15. Проверяемые свойства
 
-- Activity выбирается только внутри resolved intent;
-- одновременно активен не более одного `runId`;
-- invalid definitions детерминированно отклоняются;
-- stale/foreign causal events не меняют runtime;
-- interruption — cancel, никогда pause/resume;
-- cooldown является hard gate, repetition — положительным soft factor;
-- одинаковые inputs и explicit random source дают одинаковый selection/lifecycle result;
-- Activity не принимает semantic, physics или visual priority decisions.
+Проверять §3–12: выбор внутри resolved intent, один active run, invalid-definition rejection, stale-event no-op, cancel без resume, hard cooldown/positive repetition, детерминизм при одинаковых inputs/RNG, отсутствие semantic/physics/visual-priority решений Activity.
 
 ### AUTO-I06: Explore и Rest Spot
 
-`rest-spot-planner.ts` и `explore-planner.ts` используют один bounded target/route/action
-history. External candidates поступают только из свежего Application snapshot. До scoring
-отсекаются недостижимые маршруты: same-support walk/traverse либо проверенная directed arc;
-существующий screen approach/grab/climb/rebound остаётся частью выбранного Explore.
-Пересечение параболой внутренности наблюдаемого окна запрещено. Изменение геометрии
-целевого окна в полёте отменяет arc; дальнейшее движение — обычное fall/land.
+`rest-spot-planner.ts`/`explore-planner.ts` разделяют bounded target/route/action history. External candidates только из fresh Application snapshot. До scoring — reachable same-support walk/traverse или проверенная directed arc; screen approach/grab/climb/rebound сохраняется в Explore. Нельзя пересекать параболой внутренность наблюдаемого окна; изменение target geometry в полёте отменяет arc → обычные fall/land.
 
-Rest Spot остаётся Activity внутри resolved `sleep`: верх достижимого окна предпочтительнее
-тихой кромки/угла пола, затем безопасного пола. Верх окна начинает с `sit_edge`, затем settle;
-опора уже 240 DIP и край допускают только сидячую подготовку/сон. Широкий центр и пол
-допускают `lie_down`/`sleep_loop`. Доступные клипы задают временный visual fallback,
-а не длительность Brain phases; арт-долг — [реестр](../art/SPRITE_REQUESTS.md).
+Rest Spot только внутри resolved `sleep`: reachable window top предпочтительнее тихой кромки/угла пола, затем safe floor. На окне `sit_edge → settle`; опора уже 240 DIP или край допускают только сидячую подготовку/сон, широкий центр/пол — `lie_down`/`sleep_loop`. Clips задают fallback, не Brain duration; [арт-долг](../art/SPRITE_REQUESTS.md).
 
-Добровольный nap: prepare 1200 ms → settle 1500 ms → sleep 12000 ms → wake 1500 ms,
-после чего Character снова awake и возвращается единственный opportunity scheduler.
-`vital_sleep` и прямой user sleep не имеют nap deadline: после подготовки сохраняется
-sleep visual/semantic state до energy ≥80 либо прямого действия/потери опоры.
-Click/drag, menu pause, disable и shutdown отменяют активную Rest Spot рутину.
-Небольшое движение уже принятой опоры сохраняет local distance по Motion §7.1.
-Во время sleep phase/stable sleep Main передаёт существующий `sleepy` профиль метаболизма
-в CharacterStateService; во время подхода/подготовки он не применяется. Нового needs timer нет.
+Nap: prepare 1200 ms → settle 1500 ms → sleep 12000 ms → wake 1500 ms → awake и единственный opportunity scheduler. `vital_sleep`/user sleep без nap deadline: после prepare sleep до energy ≥80, прямого действия или потери опоры. Click/drag, menu pause, disable/shutdown отменяют Rest Spot. Небольшое смещение принятой опоры сохраняет local distance (Motion §7.1).
+
+Sleep phase/stable sleep использует существующий `sleepy` metabolism CharacterStateService; approach/prepare — нет. Новый needs timer запрещён.
 
 ## 16. AUTO-A09: единый outcome и ownership
 
-Целевые declarations [`ActivityOutcomeFeedback`](../../src/application/ports/shimeji-feedback-port.ts)
-и [`OwnedActivityRun`](../../src/application/ports/behavior-admission-port.ts) подключаются в #46/#50.
-Они дополняют Application boundary существующего Runner; Domain не импортирует Application types.
-Effective rank хранится рядом с run в Brain и определяется причиной запуска/источником.
-Отсутствие нового Activity kind не означает одинаковый приоритет user/local/provider запуска.
-Подробные admission/deadlines — [Autonomy §12](./AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
+Target [ActivityOutcomeFeedback](../../src/application/ports/shimeji-feedback-port.ts)/[OwnedActivityRun](../../src/application/ports/behavior-admission-port.ts) подключаются #46/#50 вокруг существующего Runner; Domain не импортирует Application. Effective rank хранится рядом с run в Brain по причине/источнику запуска: одинаковый kind не уравнивает user/local/provider. [Admission/deadlines](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
 
-Request → admission → started run → terminal outcome — разные факты.
-Команда `play` сначала проходит Character gate по состоянию **до игрового эффекта**.
-Rejected/no compatible Activity не создаёт игрового stimulus, execution history или полного cooldown.
-Accepted/deferred ещё не означает выполнения; budget/history старта фиксируются только при `started`.
-Любая ветка Runner, включая explicit cancel, failure, timeout, disable и shutdown,
-доставляет ровно один terminal outcome и cleanup. `clearedRunId` связывает `ActivityResult` с run.
+Request/admission/started/terminal — разные факты. User `play` проходит Character gate **до** игрового эффекта. Rejected/no compatible Activity не создаёт play stimulus/history/full cooldown; accepted/deferred не означает execution, start budget/history фиксируются только при started.
 
-`ActivityOutcomeFeedback` — фактический terminal снимок: family, outcome, executedMs,
-participation и playCompleted. ID/run непустые; `atMs` и `executedMs` конечны и неотрицательны.
-`executedMs` не включает provider wait/defer; pause/resume нет.
-`playCompleted` true только после полностью выполненной Brain semantic play phase:
-Swat/игровой gesture/Zoomies, но не gaze, approach, arrival или social wave.
-Флаг сохраняется до terminal; отмена после этой фазы может дать её эффект, отмена до — нет.
-Для Explore/calm/rest/social_bid флаг false. User engagement означает фактическое игровое участие,
-а не источник provider или существование курсора; это нормализует Application.
+Любая ветка, включая cancel/failure/timeout/disable/shutdown, доставляет ровно один terminal outcome/cleanup; `clearedRunId` связывает `ActivityResult` с run.
+
+Terminal snapshot содержит family/outcome/executedMs/participation/playCompleted. IDs/run непустые, `atMs`/`executedMs` finite nonnegative; execution не включает provider wait/defer, pause/resume нет. `playCompleted` true лишь после полной **Brain semantic play phase** Swat/gesture/Zoomies, не gaze/approach/arrival/social wave. Флаг сохраняется до terminal: cancel после игры может дать эффект, до — нет; Explore/calm/rest/social_bid → false. Application нормализует фактическое user engagement, не наличие курсора/provider source.
 
 | Outcome | Mapping в существующий `StimulusDto` |
 |---|---|
@@ -270,31 +147,14 @@ Swat/игровой gesture/Zoomies, но не gaze, approach, arrival или so
 | Cancel/failure до выполненной игровой фазы | `null`, без полного эффекта; реальный Motion feedback сохраняется. |
 | calm/rest/cursor gaze/SocialBid без игры | `null`; только история, cooldown/budget и обычный метаболизм. |
 
-Explore terminal completion означает конец существующей route/action chain, не одно прибытие.
-Новые deltas применяет только Character reducer; mapper не мутирует Needs.
-В #46 `IActivityOutcomeStimulusMapper` заменяет старый mapper consumer атомарно;
-не создаётся второй обработчик feedback. Legacy `swat_cursor_completed` нормализуется
-в тот же completed-play key `activityRunId`, затем его отдельная emission удаляется.
-Дедупликация проверяет **eventId и semantic key run+effect**: другой eventId не позволяет
-повторно начислить тот же эффект. Поздний outcome foreign/terminal run игнорируется.
-Bounded terminal ledger живёт в Brain generation; события прошлой generation отклоняются.
+Explore completed — конец route/action chain, не просто arrival. Deltas меняет Character reducer, mapper Needs не мутирует. В #46 `IActivityOutcomeStimulusMapper` атомарно заменяет старого consumer без второго handler. Legacy `swat_cursor_completed` сначала нормализуется в тот же completed-play key `activityRunId`, затем отдельная emission удаляется.
 
-Drag start ID служит dragRunId для hold/end; один hold и один end на известный run.
-Landing outcome применяется один раз на Motion landing episode после settle/recover;
-soft landing не даёт stimulus, bounce/substep/повтор IPC не даёт второго эффекта.
-Drag/landing не превращаются в `play`, не начисляют дружбу за физическое перемещение.
-Character deltas и bounded recovery — [Character §11](./CHARACTER_ENGINE.md#11-auto-a09-последствия-и-восстановление).
+Dedupe по **eventId и run+effect semantic key**: новый eventId не повторяет эффект. Foreign/terminal run и прошлая generation игнорируются; bounded terminal ledger принадлежит Brain generation.
 
-Terminal transaction: завершить run/locomotion cleanup → применить once-only feedback →
-обновить history/cooldowns → получить Character snapshot/gates → один opportunity.
-При forced landing выбор ждёт recover, даже если Needs уже пересчитаны.
-Game/Explore reward не привязан к визуальному успеху Skin и не пересчитывается каждый pulse.
+Drag start ID = dragRunId, один hold/end на известный run. Landing — один эффект на Motion landing episode после settle/recover; soft/bounce/substep/repeated IPC не добавляют эффект. Drag/landing не становятся play и не дают дружбы за перемещение. [Character deltas/recovery](CHARACTER_ENGINE.md#11-auto-a09-последствия-и-восстановление).
+
+Terminal transaction: run/locomotion cleanup → once-only feedback → history/cooldowns → Character snapshot/gates → одна opportunity. Forced landing ждёт recover даже после пересчёта Needs. Game/Explore reward не зависит от Skin success и не пересчитывается на pulse.
 
 ### Проверки для implementation
 
-- rejected user play при critical Needs не меняет исходный gate игровым эффектом;
-- completed Explore/Swat/Zoomies насыщает Needs ровно один раз, duplicate с новым ID тоже игнорируется;
-- cancel до/после игровой фазы различается; no-start и foreign run не дают feedback;
-- отмена AI/nap/игры через drag не теряет реальные drag/landing последствия;
-- immediate и safe-deferred AI дают максимум один run, timeout не прерывает физическую безопасность;
-- nap/full sleep обновляет Needs существующим clock; после wake возвращается один local flow.
+Регрессии: rejected play не улучшает свой gate; Explore/Swat/Zoomies reward once-only, включая duplicate с новым ID; cancel до/после игры, no-start/foreign; drag cancel AI/nap/play сохраняет реальные physical consequences; immediate/safe-deferred AI дают максимум один run, timeout сохраняет safety; nap/full sleep используют существующий clock, wake возвращает один local flow.

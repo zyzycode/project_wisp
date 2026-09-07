@@ -1,51 +1,29 @@
 # Контракт Autonomy Engine
 
-`AUTONOMY_ENGINE.md` — source of truth для приоритетов P0–P5, eligibility и Utility arbitration автономных semantic candidates, детерминированной cadence, diagnostic trace и safety-порядка.
-
-Autonomy Engine не является отдельным runtime actor или вторым владельцем поведения. Это контракт внутренней pure policy Character Engine и Application-owned orchestration вокруг неё. Причина отказа от XState зафиксирована в [`ADR-015`](../adr/ADR-015-utility-ai-without-xstate.md).
+P0–P5, Utility eligibility/scoring/arbitration, cadence/trace/safety. Это pure Character policy + Application orchestration, не отдельный runtime actor/второй behavior owner. Отказ от XState — [ADR-015](../adr/ADR-015-utility-ai-without-xstate.md).
 
 ## 1. Владение
 
-- **Character Engine (Domain):** семантический гейтинг кандидатов, порядок безопасности P0–P5, Utility eligibility, scoring и арбитраж P4, возврат ровно одного resolved `BehaviorIntent`. Не владеет выбором Activity, физикой, кадрами анимации и часами.
-- **Brain (Main/Application runtime):** единственный владелец текущего semantic state, Activity timeline, Character needs и агрегированной authoritative motion projection. Brain оркестрирует чистые Domain engines, передаёт им явное монотонное время и публикует цельный `BrainStateDTO`; это архитектурная граница, а не новый Domain engine.
-- **Application Orchestrator внутри Brain:** нормализация входов, сборка неизменяемого снапшота, формирование конечного набора кандидатов, монотонный пульс возможностей (`opportunityAtMs`) и сериализация Activity/Motion transitions. Не вычисляет семантические веса.
-- **Body и Skin (Renderer):** Body потребляет ordered `BrainStateDTO`, захватывает input и вычисляет только быстрые визуальные рефлексы; Skin отображает renderer-local `BodyVisualState`. Они не выбирают behavior/Activity и не подтверждают Brain progression.
-- **Внешние связи:** Полная матрица распределения ответственности смежных движков зафиксирована в [README.md](./README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
+- Character (Domain): semantic gating/P0–P5/P4 и один resolved BehaviorIntent; не Activity selection/physics/frames/clocks.
+- Brain (Main/Application): semantic state/Activity timeline/Needs/authoritative motion projection; оркестрирует pure engines с explicit time и публикует полный BrainStateDTO, не является новым Domain engine.
+- Application: normalization, immutable snapshot, finite candidates, `opportunityAtMs`, сериализация transitions; не semantic weights.
+- Body: ordered snapshots, input/visual reflexes; Skin: BodyVisualState render. Behavior/Activity/Brain progression им не принадлежат. [Общий ownership](README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
 ## 2. Единственная цепочка решений
 
-```mermaid
-flowchart LR
-  B[Boundary input] --> M[Application mapper]
-  M --> C[Finite candidate set]
-  O[Autonomy opportunity] --> S[Immutable snapshot]
-  C --> G[Character Engine gate]
-  S --> G
-  G --> U[P4 Utility policy]
-  U --> R[One resolved BehaviorIntent]
-  R --> BB[Behavior Brain]
-  BB --> AR[Activity Runner]
-  AR --> BT[Brain-owned activity timeline]
-  BT --> BS[BrainStateDTO]
-  BS --> Body[Renderer Body]
-  Body --> Skin[Renderer Skin]
-  P[Forced physical fact] --> ME[Motion Engine]
-  ME --> BS
-```
+Boundary input → Application mapper → finite candidates + opportunity snapshot → Character gate/P4 policy → resolved BehaviorIntent → Behavior Brain → Activity Runner → Brain timeline/state → Body → Skin.
 
-`Candidate` и `Resolved` — стадии одной public формы `BehaviorIntent`, а не новые DTO. Application mapper может собрать candidates из user/system events, локального catalog или provider hint, но не принимает решение. Character Engine возвращает не более одного resolved intent.
-
-Forced physical fact не является semantic candidate: Motion Engine применяет его независимо, отменяет активную Activity через Application transaction и отражает `MotionEvent` в следующем цельном Brain state/visual intent. Если физический lifecycle также представлен public intent, Character Engine разрешает его semantic часть, но не может отменить уже произошедший факт.
+Candidate/Resolved — стадии одной public формы, не новые DTO. Mapper нормализует user/system/catalog/provider, Character возвращает максимум один intent. Forced facts идут независимо в Motion: отменяют Activity в Application transaction, попадают MotionEvent в следующий полный Brain/visual state. Public physical lifecycle intent разрешает Character, не отменяя уже случившийся факт.
 
 ### 2.1. Activity timeline не зависит от визуального playback
 
-`ActivityRunner` переключает semantic-фазы только в Brain transaction: по явно переданному Main-monotonic `nowMs`, Brain-owned guard/locomotion result или authoritative interruption. Для time-bounded фазы Runner сохраняет `phaseStartedAtMs` и `phaseEndsAtMs`; при `nowMs >= phaseEndsAtMs` он атомарно выбирает следующий шаг и публикует новую revision.
+Runner переключает фазы только в Brain transaction: explicit Main-monotonic nowMs, Brain guard/locomotion/interruption. Bounded phase хранит phaseStartedAtMs/phaseEndsAtMs; `nowMs >= phaseEndsAtMs` атомарно выбирает следующий step/revision.
 
-Фактическое завершение, отказ, fallback или прерывание Skin-клипа не является Activity event. Brain не ожидает Renderer callback, не копирует длительность клипа и не ставит animation watchdog. `BodyEventDTO` может сообщать только пользовательский input/наблюдение; ни один его вариант не подтверждает визуальное completion и не гейтит cadence. Точная IPC-форма и правила времени заданы в [`UI_SPEC.md`](./UI_SPEC.md#6-brain--body-ipc).
+Skin completion/rejection/fallback/interruption не Activity events. Нет Renderer callback ожидания, копии clip duration или animation watchdog. BodyEventDTO только input/observation, не visual outcome/cadence gate. [IPC/time](UI_SPEC.md#6-brain--body-ipc).
 
 ## 3. Safety order P0–P5
 
-Порядок ниже — единственная шкала behavior arbitration. `AnimationPriority` — отдельная visual шкала из [`ANIMATION_ENGINE.md`](./ANIMATION_ENGINE.md) и не заменяет P0–P5.
+Единственная behavior rank scale; [AnimationPriority](ANIMATION_ENGINE.md) — отдельная visual policy.
 
 | Rank | Источник | Arbitration и interruption |
 |---|---|---|
@@ -56,48 +34,30 @@ Forced physical fact не является semantic candidate: Motion Engine п�
 | P4 autonomous | Explore, optional Rest, calm, самостоятельная игра/Zoomies, SocialBid | Заменяет P5; local peers не заменяют active P4 по умолчанию. |
 | P5 ambient | blink, micro-idle | Прерывается всеми higher ranks. |
 
-Character Engine применяет authoritative sleep/quiet rules из [`CHARACTER_ENGINE.md`](./CHARACTER_ENGINE.md#21-каноническая-семантика-сна-и-пробуждения); этот документ не повторяет их thresholds или значение. Motion ordering и возврат position authority определены в [`MOTION_ENGINE.md`](./MOTION_ENGINE.md#8-авторитет-позиции-кто-двигает-окно).
+[Character sleep/quiet](CHARACTER_ENGINE.md#21-каноническая-семантика-сна-и-пробуждения) владеет thresholds/семантикой; [Motion](MOTION_ENGINE.md#8-авторитет-позиции-кто-двигает-окно) — ordering/возврат position authority.
 
 ## 4. P4 opportunity и нормализация
 
-Application создаёт P4 decision opportunity только по явной причине:
+После forced landing следующая opportunity использует только semantic recovery из
+`LANDING_RECOVERY_MS`: 800 мс для soft/stumble и attachment, 1600 мс для crash.
+Обычная idle-задержка 5–11 с к recovery не добавляется. Используется существующий
+отменяемый таймер coordinator; Skin completion не участвует в возобновлении.
 
-- завершение или отмена Activity;
-- пересечение semantic threshold, определённого Character Engine;
-- изменение quiet/settings boundary;
-- поступление candidate;
-- редкий configured autonomy pulse.
+Причины opportunity: Activity terminal/cancel; Character threshold crossing; quiet/settings change; candidate; редкий configured pulse.
 
-Application собирает все входы, накопленные до transaction boundary, нормализует их один раз и передаёт:
+Application один раз нормализует всё до transaction boundary: возрастающий `decisionSequence`, monotonic `opportunityAtMs`, immutable Character, active Activity/rank, bounded cooldown/repetition, normalized environment/fresh reactive signals, finite ordered candidates, versioned tuning. Catalog/normalization задают порядок независимо от async callback arrival.
 
-- возрастающий `decisionSequence`;
-- `opportunityAtMs` из monotonic clock;
-- immutable Character snapshot;
-- active Activity summary с rank;
-- bounded cooldown/repetition snapshot из Activity subsystem;
-- normalized environment snapshot и свежие reactive signals;
-- конечный упорядоченный candidate set;
-- versioned tuning configuration.
-
-Domain policy не читает clock самостоятельно. `opportunityAtMs` является аргументом, а не скрытым wall-clock dependency. Candidate order стабилен и задаётся catalog/Application normalization, а не порядком прихода асинхронных callbacks.
-
-Pulse не привязан к physics, animation или render tick, не прерывает peer P4 Activity и не запускает provider request. После shutdown или window destruction новые opportunities не создаются.
+Domain не читает clock. Pulse не привязан к physics/animation/render, не прерывает peer P4 и не вызывает provider. После shutdown/window destruction opportunities запрещены.
 
 ## 5. Допустимые и запрещённые inputs
 
-Utility policy читает только нормализованные доменные значения:
-- Character snapshot: Needs, synthesized tone, Personality и relationship/intimacy gates;
-- готовые quiet/sleep gating facts без повторения их семантики;
-- rank активной Activity;
-- сводку cooldown/repetition;
-- геометрию окружения и свежие реактивные сигналы из [`PERCEPTION_ENGINE.md`](./PERCEPTION_ENGINE.md);
-- метаданные кандидата (`source`, `priority`, `requestId`) и identity каталога.
+Только normalized Character Needs/tone/personality/relationship/intimacy, готовые quiet/sleep gates, Activity rank/cooldown/repetition, [Perception geometry/signals](PERCEPTION_ENGINE.md), candidate `source`/`priority`/`requestId` и catalog identity.
 
-**Запрещено:** согласно [инвариантам изоляции Clean Architecture](./README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture), Utility policy не получает сырой ответ провайдера, текст памяти, DOM/React/Electron handles, пути ассетов, клипы/фреймы, `Date.now()`, `Math.random()`, тикрейт рендера/физики или мутабельный `CharacterState`.
+[Запрещены](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture): raw provider/memory text, DOM/React/Electron handles, assets/clips/frames, Date.now/Math.random, renderer/physics tickrate, mutable CharacterState.
 
 ## 6. Eligibility
 
-Для каждого P4 candidate Character Engine применяет hard gates до scoring:
+Hard gates **до** P4 scoring:
 
 ```text
 eligible(c) = catalog(c)
@@ -107,13 +67,9 @@ eligible(c) = catalog(c)
            AND environment(c)
 ```
 
-Гейты проверяют только принадлежность существующему `BehaviorIntentKind`, совместимость с текущим semantic состоянием, safety/order, Activity-owned cooldown snapshot и доступность нормализованной среды. Candidate с отрицательным результатом не участвует в score comparison.
-
-Eligibility reason должен быть машинно-стабильным diagnostic code. Он не становится новым IPC DTO, provider response или persisted memory schema. Никакой score не может компенсировать failed hard gate.
+Проверяются существующий BehaviorIntentKind, current semantic compatibility/safety, Activity-owned cooldown и normalized environment. Failed candidate исключён; score не компенсирует gate. Reason — stable machine diagnostic code, не новый IPC/provider/persistence contract.
 
 ## 7. Scoring и arbitration
-
-Для eligible P4 candidate используется утверждённая формула:
 
 ```text
 U(c) = clamp(
@@ -128,62 +84,31 @@ U(c) = clamp(
 )
 ```
 
-Коэффициенты являются versioned tuning data. Autonomy Engine не переопределяет Character semantics и Activity history: он потребляет соответствующие нормализованные factors. Positive factor меняет относительную полезность, но не отменяет hard gate или P0–P3 order.
+Versioned factors потребляют Character semantics и Activity history, не переопределяют их. Positive factor меняет utility, не hard gates/P0–P3.
 
-Arbitration:
-
-1. Сохранить только eligible P4 candidates.
-2. Вычислить bounded `U(c)` для каждого в стабильном catalog order.
-3. Выбрать candidate с максимальным score.
-4. При равенстве выбрать первый по стабильному catalog order.
-5. При пустом eligible set использовать существующий safe `idle` fallback через обычный Character gate.
-6. Вернуть не более одного resolved `BehaviorIntent`.
-
-P0–P3 не конкурируют с P4 по score. P5 не является P4 fallback candidate и запускается только после общего safety order.
+Из eligible P4 выбрать max bounded U в stable catalog order, tie → первый. Пустой set → safe `idle` через обычный Character gate. Результат — максимум один resolved intent. P0–P3 не участвуют в score; P5 не P4 fallback, запускается лишь после общего safety order.
 
 ## 8. Детерминизм
 
-Одинаковые snapshot, ordered candidates, history, tuning и `decisionSequence` дают одинаковые eligibility, scores и winner. Pure policy не мутирует inputs и не планирует следующую оценку.
+Одинаковые snapshot/ordered candidates/history/tuning/decisionSequence → одинаковые eligibility/scores/winner. Policy immutable, не планирует переоценку. Будущая вариативность только explicit seeded PRNG с seed в fixture/trace; wall-clock seed/provider randomness запрещены.
 
-Неявная случайность запрещена. Если catalog впоследствии потребует вариативности, допустим только явно переданный seeded PRNG; seed входит в test fixture и trace. Это не разрешает wall-clock seed или provider-controlled randomness.
-
-Application сериализует opportunities: одновременно выполняется не более одной decision transaction. Inputs, поступившие во время неё, относятся к следующему sequence. Resolved intent публикуется после завершения всей transaction, поэтому Behavior Brain не видит промежуточный candidate set.
+Application исполняет одну decision transaction одновременно; новые inputs идут в следующий sequence. Resolved intent публикуется после полной transaction, без промежуточных candidates для Brain selection.
 
 ## 9. Diagnostic trace
 
-Каждая P4 transaction формирует внутренний diagnostic trace:
+Внутренний trace каждой P4 transaction: reason/time/sequence; ordered identities/sources; eligibility/reasons; normalized factors/scores; tie/winner/fallback; tuning version/optional explicit seed.
 
-- opportunity reason, monotonic time и decision sequence;
-- ordered candidate identities и sources;
-- eligibility outcome/reason каждого candidate;
-- normalized factors и итоговый bounded score eligible candidates;
-- tie-break outcome, winner либо safe fallback;
-- tuning version и optional explicit PRNG seed.
-
-Trace не содержит raw provider text, memory content, OS/window identifiers или mutable references. Он не является public IPC/persistence/provider contract. Любая будущая экспозиция trace требует отдельного Architect review и privacy boundary.
+Без raw provider/memory text, OS/window identifiers, mutable refs. Public IPC/persistence/provider exposure требует отдельного Architect review/privacy boundary.
 
 ## 10. Coexistence и safety invariants
 
-- Character Engine остаётся единственным semantic decision owner.
-- Behavior Brain не оценивает candidates между разными intent kinds.
-- Activity Runner не ждёт Skin/Renderer lifecycle и не мигрирует в параллельную state machine.
-- Motion Engine не принимает behavior decisions; forced facts обходят Utility.
-- Application владеет clocks, sequence и boundary normalization, но не score.
-- Body/Skin не создают autonomy opportunity и не могут остановить или продолжить Brain cadence.
-- Provider необязателен и никогда не запускается фоновым autonomy pulse.
-- Shutdown отменяет scheduler lifecycle; catch-up opportunity после shutdown запрещён.
-- Новый public intent kind, IPC/port или Character threshold требует отдельного Architect review.
+Сохраняются owners §1: Character — единственный semantic owner, Behavior Brain не сравнивает разные kinds, Runner не ждёт Skin и не становится параллельной FSM, Motion не выбирает behavior. Body/Skin не создают/не гейтят cadence. Provider необязателен, pulse его не вызывает. Shutdown отменяет scheduler без catch-up.
+
+Новый public intent kind, IPC/port или Character threshold требует отдельного Architect review.
 
 ## 11. Проверяемые свойства
 
-- повторяемые eligibility, scores, ties и fallback для одинаковых inputs;
-- один resolved intent на decision sequence;
-- P0–P3 никогда не понижаются до P4 score competition;
-- peer P4 не прерывается обычным pulse;
-- Character sleep/quiet gate применяется без локальной копии thresholds;
-- provider-offline и provider-present candidates проходят одну policy boundary;
-- trace не меняет outcome и не расширяет public contracts;
-- ни один render/animation/physics tick не создаёт скрытую autonomy cadence.
+Повторяемость scores/ties/fallback; один resolved/sequence; P0–P3 вне Utility; peer P4 не прерывается pulse; нет копий sleep/quiet thresholds; offline/present provider candidates проходят общую boundary; trace не меняет outcome/контракты; render/animation/physics ticks не создают скрытую cadence.
 
 ## 12. AUTO-A09: admission и владение AI-занятием
 

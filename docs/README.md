@@ -1,32 +1,23 @@
 # База знаний Project Wisp
 
-Выберите область задачи. Не читайте все документы подряд: инструкции роли, одна карточка и нужные разделы контракта достаточны для начала.
+Старт: [AGENTS.md](../AGENTS.md) → назначенная роль → текущая Issue/запрос → нужные разделы одного контракта. Уже переданные инструкции не перечитывать. При изменении обмена проверить обе стороны границы, а не ограничиваться одним файлом.
 
-| Вопрос | Основной документ |
+| Нужная информация | Источник |
 |---|---|
-| Ограничения, базовые правила и стандарты кода | [AGENTS.md](../AGENTS.md) |
-| Фазы и активная работа | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
-| Роли основного приложения | [Роли и ссылки на инструкции](../AGENTS.md#9-роли-агентов) |
-| Обзор устройства приложения для людей | [ARCHITECTURE.md](../ARCHITECTURE.md) — объяснения и схемы, не технический контракт |
-| Причины архитектурных решений | [Architecture Decision Records](adr/README.md) |
-| Состояние и личность персонажа | [CHARACTER_ENGINE.md](engine/CHARACTER_ENGINE.md) |
-| Намерения поведения | [BEHAVIOR_INTENTS.md](engine/BEHAVIOR_INTENTS.md) |
-| Приоритеты и Utility autonomy | [AUTONOMY_ENGINE.md](engine/AUTONOMY_ENGINE.md) |
-| Activity lifecycle, chains и repetition | [ACTIVITY_ENGINE.md](engine/ACTIVITY_ENGINE.md) |
-| Физика, surfaces и position orchestration | [MOTION_ENGINE.md](engine/MOTION_ENGINE.md) |
-| Gaze, cursor и environment signals | [PERCEPTION_ENGINE.md](engine/PERCEPTION_ENGINE.md) |
-| AnimationIntent, FSM и прерывания | [ANIMATION_ENGINE.md](engine/ANIMATION_ENGINE.md) |
-| Сквозные сценарии автономного поведения | [Behavior catalog](behaviors/README.md) — неканонические packs, связывающие пользовательские сценарии с engine contracts |
-| Формат ассетов, anchors, слои и воспроизведение | [RENDER_ENGINE.md](engine/RENDER_ENGINE.md) |
-| Меню, чат и остальные элементы интерфейса | [UI_SPEC.md](engine/UI_SPEC.md) |
-| Память | [MEMORY_ENGINE.md](engine/MEMORY_ENGINE.md) |
-| Граница AI-провайдера | [AI_PROVIDER_CONTRACT.md](engine/AI_PROVIDER_CONTRACT.md) |
-| Создание, нарезка и обработка спрайтов | [Asset Pipeline](../asset-pipeline/README.md) — отдельный скоуп и локальный агент |
-| Регистрация ассетов и изменения runtime | [GitHub Project](https://github.com/users/zyzycode/projects/1); текущая интеграция Renderer — [#1 P14-P01](https://github.com/zyzycode/project_wisp/issues/1) |
+| Инженерные инварианты, роли, verification | [AGENTS.md](../AGENTS.md) |
+| Задачи, зависимости и фактические статусы | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
+| Владельцы правил движков и разделы для чтения | [Индекс engine contracts](engine/README.md) |
+| Точные формы портов/IPC | [Application ports](../src/application/ports/), [IPC DTO](../src/shared/ipc-contracts.ts) |
+| Сценарии автономного поведения | [Behavior catalog](behaviors/README.md), только нужный pack; не заменяет contracts |
+| Почему принято архитектурное решение | [ADR](adr/README.md), только связанная запись |
+| Недостающие спрайты и fallback | [SPRITE_REQUESTS](art/SPRITE_REQUESTS.md) |
+| Создание Issue, выдача/закрытие спринта | [Шаблоны менеджера](workflow/ISSUE_HANDOFF.md), только для этой операции |
+| Обзор для человека | [ARCHITECTURE.md](../ARCHITECTURE.md), необязателен для агентной задачи |
 
-## Два маршрута
+Для поиска внутри выбранного файла: `rg -n '^#{1,3} |<имя типа или правила>' <путь>`, затем прочитать владение и нужные разделы. Весь каталог движков, все роли и историю отчётов заранее не загружать.
 
-- **Приложение:** одна карточка из основной очереди → инструкция назначенной роли → соответствующий контракт и файлы кода. Промпты генерации не нужны.
-- **Подготовка ассетов:** запрос пользователя → [локальные инструкции](../asset-pipeline/AGENTS.md) → [стандарт и шаблон промпта](../asset-pipeline/STANDARDS.md) → нужные строки [таблицы ассетов](../asset-pipeline/ASSETS.md). Пайплайн размещает готовые PNG сразу в рабочих папках. Манифест и render contract доступны для чтения; отдельная задача приложения нужна только для изменения регистрации или runtime.
+Каноническая спецификация задаёт семантику, код — форму типов; расхождение требует architect gate для затронутой части. Навигаторы, behavior packs и отчёты не переопределяют contracts. Связанные с Issue `ARCHITECT RESULT`/`Implementation consequences` обязательны, даже если лежат в отдельном отчёте.
 
-В пайплайне разрешена краткая копия технических требований со ссылкой на render contract. Она не переопределяет его. Этот навигатор указывает документы по областям; он не разрешает уже существующие противоречия между контрактами и не заменяет Architect review.
+Аудиты `AUTONOMY_AUDIT_*`, `AUTO_46_50_IMPLEMENTATION.md` и engine `*_VERIFICATION.md` читать только при расследовании соответствующей задачи/регрессии; они не показывают актуальный статус всего продукта.
+
+`asset-pipeline/` и `discord_orcestrations/` — внешние скоупы, не маршрут чтения для продуктовых ролей. Графику предоставляет художник-человек; интеграция готовых файлов из `public/assets/sprites/` принадлежит приложению.
