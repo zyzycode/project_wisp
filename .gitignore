@@ -101,7 +101,6 @@ env/
 *.sqlite3-wal
 
 # Local generated images and quarantine
-generated_images/
 new_generated/
 **/delete_me/
 .quarantine/
