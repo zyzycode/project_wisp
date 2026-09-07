@@ -1,3 +1,5 @@
+import { parseQuietModeCommand } from '../shared/quiet-mode-validation';
+import type { AutonomyModeDTO } from '../shared/ipc-contracts';
 import type { ScreenBoundsDto, Vector2Dto } from '../domain/behavior/motion-engine';
 import { nativeToRootPosition } from '../infrastructure/adapters/electron-pet-position-adapter';
 import type { BodyEventDTO, PetPositionDTO } from '../shared/ipc-contracts';
@@ -36,6 +38,7 @@ interface MainAutonomyIpcController
   extends AutonomyIpcController,
     MenuAutonomyController,
     SleepWakeCommandController {
+  setQuietMode(enabled: boolean): AutonomyModeDTO;
   requestManualRootPosition(targetRootPosition: Vector2Dto): boolean;
 }
 
@@ -113,6 +116,11 @@ function runInBrainTransaction<Result>(
 }
 
 export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlersOptions): void {
+  options.register('wisp:set-quiet-mode', async (event, payload) => {
+    const { controller } = requireTrustedContext(options, event);
+    const command = parseQuietModeCommand(payload);
+    return runInBrainTransaction(options, () => controller.setQuietMode(command.enabled));
+  });
   options.register('wisp:set-autonomy-enabled', async (event, payload): Promise<void> => {
     const { controller } = requireTrustedContext(options, event);
     runInBrainTransaction(options, () => handleSetAutonomyEnabled(controller, payload));

@@ -201,7 +201,8 @@ export class BrainActivityRuntime {
   }
 
   public isInitiative(): boolean {
-    return this.definition?.tags?.includes('cursor') === true && !this.definition.tags.includes('gaze_only');
+    return this.definition?.tags?.includes('social') === true ||
+      (this.definition?.tags?.includes('cursor') === true && !this.definition.tags.includes('gaze_only'));
   }
 
   public getRuntime(): ActivityRuntimeState | null {
@@ -287,7 +288,7 @@ export class BrainActivityRuntime {
     const family = definition.id.startsWith('explore') ? 'explore'
       : definition.id === 'zoomies' ? 'play'
       : definition.tags?.includes('cursor') ? 'cursor_interest'
-      : definition.id.startsWith('rest') ? 'rest' : 'calm';
+      : definition.id === 'social_bid' ? 'social_bid' : definition.id.startsWith('rest') ? 'rest' : 'calm';
     this.options.onOutcome?.({ type: 'activity_outcome', eventId: `${runtime.runId}:terminal`,
       activityRunId: runtime.runId, atMs, family, outcome: result.status,
       participation: this.participation, executedMs: Math.max(0, atMs - runtime.startedAtMs),

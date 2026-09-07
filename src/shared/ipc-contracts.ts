@@ -53,16 +53,6 @@ export interface AutonomyModeDTO {
   readonly quiet: boolean;
 }
 
-/** Target bridge extension; becomes required on WispApiBridge at #49 cutover. */
-export interface QuietModeBridge {
-  setQuietMode(command: SetQuietModeDTO): Promise<AutonomyModeDTO>;
-}
-
-/** Target full snapshot, including initial/reload quiet state; no parallel state stream. */
-export type QuietModeBrainStateDTO = BrainStateDTO & {
-  readonly autonomy: AutonomyModeDTO;
-};
-
 export type SleepWakeCommandDTO =
   | { readonly action: 'sleep' }
   | { readonly action: 'wake' };
@@ -176,6 +166,7 @@ export interface BrainVisualIntentDTO {
 }
 
 export interface BrainStateDTO {
+  readonly autonomy: AutonomyModeDTO;
   readonly dialogue: DialoguePresentationDTO;
   readonly streamId: string;
   readonly revision: number;
@@ -341,6 +332,7 @@ export interface DebugTelemetryDTO {
 }
 
 export interface WispApiBridge {
+  setQuietMode(command: SetQuietModeDTO): Promise<AutonomyModeDTO>;
   postDialogueCommand(command: DialogueCommandDTO): Promise<DialogueCommandReceiptDTO>;
   readonly debugEnabled: boolean;
   ping: (message: string) => Promise<PingResponseDTO>;

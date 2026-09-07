@@ -1,3 +1,4 @@
+import { createSocialBidActivity } from '../domain/behavior/social-bid-activity';
 import { InitiativeBudget, INITIATIVE_TUNING } from '../application/services/initiative-budget';
 import { createCursorInterestActivity } from '../domain/behavior/cursor-interest-activity';
 import type { ActivityOutcomeFeedback } from '../application/ports/shimeji-feedback-port';
@@ -88,6 +89,7 @@ export class MainAutonomyComposition {
   private needsCatchUpMs = 0;
   private deferredUserInteractionResume = false;
   private enabled = true;
+  private quiet = false;
   private menuOpen = false;
   private cursorReactionActive = false;
   private readonly initiativeBudget = new InitiativeBudget();
@@ -116,6 +118,9 @@ export class MainAutonomyComposition {
       getCharacterSnapshot: options.getCharacterSnapshot,
       movement: options.movement,
       getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
+        quiet: this.quiet,
+        canSocial: this.initiativeBudget.available(options.clock.now()) && options.getCharacterSnapshot().needs.attention >= 80
+          && (options.getCharacterSnapshot().relationship?.friendship ?? 0) >= 100,
         canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
         canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
         canRest: this.activity.canStart({ kind: 'sleep', source: 'timer', priority: 'normal' }) }),
@@ -218,13 +223,34 @@ export class MainAutonomyComposition {
     return needsChanged || activityChanged || showFall;
   }
 
+  public getAutonomyMode(): { readonly quiet: boolean } { return { quiet: this.quiet }; }
+
+  public setQuietMode(enabled: boolean): { readonly quiet: boolean } {
+    if (this.quiet === enabled) return this.getAutonomyMode();
+    this.quiet = enabled;
+    this.resetCursorInterest();
+    if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
+      this.cancelActivity('explicit_cancel', true);
+    }
+    this.coordinator.notifyActivityFinished();
+    this.options.onPresentationChanged();
+    return this.getAutonomyMode();
+  }
+
+  private resetCursorInterest(): void {
+    this.lastCursorObservedAtMs = null;
+    this.cursorProximityState = { withinSwatRange: false, dwellWithinSwatRangeMs: 0, updatedAtMs: this.options.clock.now() };
+  }
+
   public setEnabled(enabled: boolean): void {
+    this.resetCursorInterest();
     if (!enabled) this.cancelActivity('explicit_cancel', true);
     this.enabled = enabled;
     this.coordinator.setEnabled(enabled);
   }
 
   public setMenuOpen(menuOpen: boolean): void {
+    this.resetCursorInterest();
     if (menuOpen) this.cancelActivity('explicit_cancel', true);
     this.menuOpen = menuOpen;
     this.coordinator.setMenuOpen(menuOpen);
@@ -308,7 +334,7 @@ export class MainAutonomyComposition {
       gazeDirection: gazeDirectionTo(this.options.movement.getRootPosition(), screenPosition),
     });
 
-    const budgetAvailable = this.initiativeBudget.available(nowMs);
+    const budgetAvailable = !this.quiet && this.initiativeBudget.available(nowMs);
     if (!budgetAvailable) playCandidates = playCandidates.filter(candidate => candidate.tags?.includes('gaze_only'));
     if (budgetAvailable && snapshot.needs.energy >= 65 && snapshot.needs.play >= 50
         && (snapshot.relationship?.friendship ?? 0) >= 100 && update.zone !== 'far') {
@@ -532,8 +558,12 @@ export class MainAutonomyComposition {
 
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
     if (this.activity.getRuntime() !== null && intent.reason !== 'vital_sleep') return false;
-    if (this.activity.start(intent)) {
-      this.localHistory.push({ kind: intent.kind, atMs: this.options.clock.now() });
+    const social = intent.activityFamily === 'social_bid';
+    if (intent.source !== 'user' && this.quiet && (intent.kind === 'play' || intent.kind === 'respond')) return false;
+    if (social && !this.initiativeBudget.available(this.options.clock.now())) return false;
+    if (this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined)) {
+      if (social) this.initiativeBudget.start(this.options.clock.now());
+      this.localHistory.push({ kind: social ? 'social_bid' : intent.kind, atMs: this.options.clock.now() });
       if (intent.calmPose) this.localHistory.push({ kind: `calm:${intent.calmPose}`, atMs: this.options.clock.now() });
       if (this.localHistory.length > 16) this.localHistory.splice(0, this.localHistory.length - 16);
       return true;

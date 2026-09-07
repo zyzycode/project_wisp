@@ -61,6 +61,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         currentTheme={model.currentTheme}
         scale={model.scale}
         autoWanderEnabled={model.autoWanderEnabled}
+        quietMode={model.quietMode}
+        onToggleQuietMode={model.toggleQuietMode}
         isSleeping={model.isSleeping}
         debugHudEnabled={model.debugHudEnabled}
         debugHudVisible={model.debugHudVisible}

@@ -57,6 +57,8 @@ export interface UseDesktopPetControllerOptions {
 
 export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptions) {
   const [position, setPosition] = useState<PetPositionDTO>({ x: 300, y: 300 });
+  const [quietMode, setQuietMode] = useState(false);
+  useEffect(() => bridge.onBrainState(state => setQuietMode(state.autonomy.quiet)), [bridge]);
   const [autoWanderEnabled, setAutoWanderEnabled] = useState(true);
   const [dragInteractionActive, setDragInteractionActive] = useState(false);
   const [localTerminalVisualKind, setLocalTerminalVisualKind] =
@@ -375,6 +377,8 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     handleSelectFace,
     handlePlayAnimation,
     autoWanderEnabled,
+    quietMode,
+    toggleQuietMode: () => { void bridge.setQuietMode({ enabled: !quietMode }).catch((error: unknown) => console.error('Quiet mode failed:', error)); },
     isSleeping,
     debugHudEnabled,
     debugHudVisible,

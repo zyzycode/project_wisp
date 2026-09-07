@@ -113,6 +113,7 @@ const brainStatePublisher = new BrainStatePublisher({
       sampledAtMs,
       character: defaultCharacterStateService.getSnapshot(),
       activity: autonomyComposition.getActivityTimeline(),
+      autonomy: autonomyComposition.getAutonomyMode(),
       motion: shimejiMotionOrchestrator.getMotionState(),
       visualEpisode: autonomyComposition.getVisualEpisode(),
     });
