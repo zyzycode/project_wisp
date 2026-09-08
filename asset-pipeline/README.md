@@ -48,4 +48,9 @@ $env:PYTHONUTF8='1'
 | Другие параметры | `scale_overlay.py --help`: внешнему input нужен `--output` рабочей папки; все CLI имеют `--help` |
 | Тесты инструментов | `python3 -m unittest discover -s asset-pipeline/tests -p 'test_*.py'` |
 
+CURSOR-GAME-V1: два шестикадровых набора пересобираются командой
+`python3 asset-pipeline/scripts/export_cursor_game.py` из исходников в
+`generated_images/cursor_game/`. Скрипт сохраняет PNG по папкам, формирует GIF и метаданные
+в `output/cursor_game/`. [Промпты, приёмка и проверки](references/CURSOR_GAME_QA.md).
+
 Корневая `generated_images/` и прежняя `asset-pipeline/input/` объединены в `asset-pipeline/generated_images/`. Исходники из старой корневой папки отслеживались Git; новый каталог не исключён из Git. Промежуточные варианты хранятся в `generated_images/attempts/`: автоматическая обработка не обходит вложенные папки. Любой отдельный лист можно передать через `--file`. `output/` не входит в Git. `references/legacy-sprites-*.json` — неиспользуемые снимки; новые референсы добавлять в Git осознанно.
