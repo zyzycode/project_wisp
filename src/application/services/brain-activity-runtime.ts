@@ -1,4 +1,6 @@
 import type { ActivityOutcomeFeedback } from '../ports/shimeji-feedback-port';
+import { advanceCursorGame, initialCursorGame, type GameState, type GameObservation } from '../../domain/behavior/cursor-game';
+import { DEFAULT_CURSOR_GAME_TUNING, type CursorGameResult } from '../ports/cursor-game-contract';
 import { createRestSpotActivity, selectRestSpot } from '../../domain/behavior/rest-spot-planner';
 import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
 import { createExternalRoute, createExploreTraversalSteps, type TraversalAction } from '../../domain/behavior/traversal-route';
@@ -40,6 +42,9 @@ import type { CharacterAutonomySnapshot } from '../../domain/character';
 import type { AutonomyClock } from './autonomy-coordinator';
 
 export interface BrainActivityRuntimeOptions {
+  readonly getCursorObservation?: () => GameObservation;
+  readonly onCursorGamePhase?: (runId: string, phase: string, outcome: CursorGameResult['outcome'] | null) => void;
+  readonly onCursorGameResult?: (result: CursorGameResult) => void;
   readonly clock: AutonomyClock;
   readonly getCharacterSnapshot: () => CharacterAutonomySnapshot;
   readonly getSelectionContext: () => Pick<
@@ -82,6 +87,7 @@ export class BrainActivityRuntime {
   private source: 'local' | 'user' | 'character' | 'provider' = 'local';
   private readonly terminalRuns = new Set<string>();
   private explorePlan: ExplorePlan | null = null;
+  private cursorGame: GameState | null = null;
 
   public constructor(private readonly options: BrainActivityRuntimeOptions) {}
 
@@ -109,6 +115,7 @@ export class BrainActivityRuntime {
       catalog
     );
     if (selectedDefinition === null) return null;
+    if (selectedDefinition.id === 'cursor_interest' && !this.options.getCursorObservation) return null;
     const context = {
       currentRootPosition: this.options.getRootPosition(), environment: selectionContext.environment,
       collisionInsets: this.options.getCollisionInsets(), needs: selectionContext.character.needs,
@@ -148,6 +155,9 @@ export class BrainActivityRuntime {
     if (update.runtime === undefined) return false;
     this.definition = definition;
     this.runtime = update.runtime;
+    this.cursorGame = definition.id === 'cursor_interest' && this.options.getCursorObservation
+      ? initialCursorGame(this.options.getCursorObservation()) : null;
+    if (this.cursorGame) this.options.onCursorGamePhase?.(runId, 'notice', null);
     this.explorePlan = selectedExplorePlan;
     this.applyCooldown(definition, 'start', nowMs);
     this.applyUpdate(definition, update);
@@ -162,6 +172,7 @@ export class BrainActivityRuntime {
     const definition = this.definition;
     const runtime = this.runtime;
     if (definition === null || runtime === null) return false;
+    if (this.cursorGame) return this.updateCursorGame(nowMs);
     const update = this.runner.tick(definition, runtime, nowMs);
     if (update.runtime === runtime && update.result === undefined) return false;
     return this.applyUpdate(definition, update);
@@ -174,6 +185,7 @@ export class BrainActivityRuntime {
     const step = definition.steps.find((candidate) => candidate.id === runtime.currentStepId);
     if (step?.type !== 'locomotion' || (completed !== undefined
         && (completed.runId !== runtime.runId || completed.stepId !== runtime.currentStepId))) return false;
+    if (this.cursorGame) return this.updateCursorGame(this.options.clock.now(), true);
     return this.applyUpdate(
       definition,
       this.runner.update(
@@ -232,7 +244,7 @@ export class BrainActivityRuntime {
     if (prior && (update.result?.status === 'completed' ||
         (update.runtime && update.runtime.currentStepId !== prior.currentStepId))) {
       const phase = definition.steps.find(step => step.id === prior.currentStepId);
-      if (phase?.actionId === 'zoomies_sprint' || phase?.actionId === 'cursor_play') this.playCompleted = true;
+      if (!this.cursorGame && (phase?.actionId === 'zoomies_sprint' || phase?.actionId === 'cursor_play')) this.playCompleted = true;
     }
     if (update.result !== undefined) {
       const runtime = this.runtime;
@@ -247,6 +259,9 @@ export class BrainActivityRuntime {
     if (update.runtime !== undefined) this.runtime = update.runtime;
     const step = update.emittedStep;
     if (step === undefined) return false;
+    if (step.id === 'wait' && step.type === 'delay' && prior?.currentStepId !== 'wait') {
+      this.options.onVisualIntent(this.animationIntentFor({ kind: 'look_around' }));
+    }
     let supportTarget: Vector2Dto | undefined;
     if (step.type === 'locomotion' && step.supportLocalDistancePx !== undefined) {
       const surface = this.options.getSelectionContext().environment.currentSurface;
@@ -268,6 +283,7 @@ export class BrainActivityRuntime {
     })) {
       const runtime = this.runtime;
       if (runtime === null) return false;
+      if (this.cursorGame) this.cursorGame = { ...this.cursorGame, outcome: this.cursorGame.outcome ?? 'lost_target' };
       return this.applyUpdate(
         definition,
         this.runner.cancel(runtime, 'environment_invalidated', this.options.clock.now()),
@@ -294,6 +310,12 @@ export class BrainActivityRuntime {
     if (this.terminalRuns.size > 64) this.terminalRuns.delete(this.terminalRuns.values().next().value!);
     const atMs = result.status === 'completed' ? result.completedAtMs
       : result.status === 'cancelled' ? result.cancelledAtMs : result.failedAtMs;
+    if (this.cursorGame) {
+      this.options.onCursorGameResult?.({ activityRunId: runtime.runId, atMs,
+        outcome: this.cursorGame.outcome ?? 'cancelled', playCompleted: this.cursorGame.playCompleted,
+        executedMs: Math.max(0, atMs - runtime.startedAtMs) });
+      this.cursorGame = null;
+    }
     const family = definition.id.startsWith('explore') ? 'explore'
       : definition.id === 'zoomies' ? 'play'
       : definition.tags?.includes('cursor') ? 'cursor_interest'
@@ -309,6 +331,21 @@ export class BrainActivityRuntime {
     } else if (result.status === 'cancelled') {
       this.applyCooldown(definition, 'cancelled', result.cancelledAtMs);
     }
+  }
+
+  private updateCursorGame(nowMs: number, arrived = false): boolean {
+    if (!this.cursorGame || !this.runtime || !this.definition || !this.options.getCursorObservation) return false;
+    const change = advanceCursorGame(this.cursorGame, this.runtime, this.options.getCursorObservation(),
+      DEFAULT_CURSOR_GAME_TUNING, nowMs, arrived);
+    this.cursorGame = change.game;
+    this.playCompleted = change.game.playCompleted;
+    if (change.stopMotion) this.options.cancelLocomotion();
+    if (change.update.emittedStep) {
+      const step = change.update.emittedStep;
+      this.definition = { ...this.definition, steps: [...this.definition.steps.filter(s => s.id !== step.id), step] };
+      this.options.onCursorGamePhase?.(this.runtime.runId, step.id, change.game.outcome);
+    }
+    return this.applyUpdate(this.definition, change.update);
   }
 
   private applyCooldown(

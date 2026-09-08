@@ -31,7 +31,7 @@ describe('Main: Shimeji IPC mappers', () => {
   it('maps one complete Brain snapshot with authoritative forced motion', () => {
     expect(
       toBrainStateDTO({
-        autonomy: { quiet: false },
+        autonomy: { quiet: false }, cursorGame: null,
     dialogue: { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
         streamId: 'stream-1',
         revision: 3,
@@ -55,7 +55,7 @@ describe('Main: Shimeji IPC mappers', () => {
         },
       })
     ).toEqual({
-      autonomy: { quiet: false },
+      autonomy: { quiet: false }, cursorGame: null,
     dialogue: { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
       streamId: 'stream-1',
       revision: 3,

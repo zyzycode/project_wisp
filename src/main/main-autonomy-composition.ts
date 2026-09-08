@@ -1,3 +1,5 @@
+import { CursorGamePresentation } from '../application/services/cursor-game-presentation';
+import type { GameObservation } from '../domain/behavior/cursor-game';
 import { requiresVitalSleep, permitsAutomaticWake, isQuietCompatible } from '../domain/character/autonomy-character-engine';
 import { LANDING_RECOVERY_MS } from '../domain/behavior/autonomous-behavior';
 import { ProviderBehaviorAdmission } from '../application/services/provider-behavior-admission';
@@ -62,6 +64,7 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
+  readonly locale?: 'ru' | 'en';
   readonly clock: AutonomyClock;
   readonly scheduler: AutonomyScheduler;
   readonly prng: IPrng;
@@ -99,6 +102,9 @@ export class MainAutonomyComposition {
   private cursorReactionActive = false;
   private readonly initiativeBudget = new InitiativeBudget();
   private cursorEpisode: { endsAtMs: number; supportId: string | undefined } | null = null;
+  private readonly gamePresentation: CursorGamePresentation;
+  private latestCursor: GameObservation['cursor'] = null;
+  private cursorMustExit = false;
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
 
@@ -111,6 +117,7 @@ export class MainAutonomyComposition {
   private lastCursorObservedAtMs: number | null = null;
 
   public constructor(private readonly options: MainAutonomyCompositionOptions) {
+    this.gamePresentation = new CursorGamePresentation(() => options.clock.now(), () => options.locale ?? 'ru');
     validateBrainLoopPolicy(this.brainLoopPolicy());
     this.visualEpisode = this.createVisualEpisode('idle_blink');
     this.coordinator = new AutonomyCoordinator({
@@ -134,6 +141,9 @@ export class MainAutonomyComposition {
     });
     this.activity = new BrainActivityRuntime({
       clock: options.clock,
+      getCursorObservation: () => this.getCursorObservation(),
+      onCursorGamePhase: (runId, phase, outcome) => this.gamePresentation.phase(runId, phase, outcome),
+      onCursorGameResult: result => this.gamePresentation.terminal(result.activityRunId, result.outcome),
       getCharacterSnapshot: options.getCharacterSnapshot,
       getSelectionContext: () => {
         const snapshot = options.getCharacterSnapshot();
@@ -229,6 +239,7 @@ export class MainAutonomyComposition {
     this.lastBrainTickAtMs = nowMs;
     const elapsedMs = Number.isFinite(nowMs) ? Math.max(0, nowMs - previousTickAtMs) : 0;
     this.expireCursorObservation(nowMs);
+    const speechChanged = this.gamePresentation.tick();
     const needsChanged = this.tickNeeds(elapsedMs);
     if (this.character.getSemanticSleepState() === 'sleeping'
         && permitsAutomaticWake(this.options.getCharacterSnapshot())) {
@@ -236,7 +247,7 @@ export class MainAutonomyComposition {
       this.cancelActivity('user_interaction', false);
       this.setVisualKind('wake_up', true, true); this.finishActivityCadence();
     }
-    if (this.cursorEpisode && (nowMs >= this.cursorEpisode.endsAtMs ||
+    if (this.activity.getRuntime()?.activityId !== 'cursor_interest' && this.cursorEpisode && (nowMs >= this.cursorEpisode.endsAtMs ||
         this.options.movement.getEnvironmentSnapshot().currentSurface?.id !== this.cursorEpisode.supportId)) {
       this.cancelActivity('environment_invalidated', true);
     }
@@ -254,8 +265,24 @@ export class MainAutonomyComposition {
     const activityChanged = this.activity.tick(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
     if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
-    return needsChanged || activityChanged || showFall;
+    return needsChanged || activityChanged || showFall || speechChanged;
   }
+
+  private getCursorObservation(): GameObservation {
+    const nowMs = this.options.clock.now();
+    const root = this.options.movement.getRootPosition();
+    this.cursorProximityState = this.cursorProximityEngine.update(this.cursorProximityState, {
+      nowMs, rootGlobalPosition: root, ...(this.latestCursor ? { cursor: this.latestCursor } : {}), compatible: true,
+    }).state;
+    return { root, cursor: this.latestCursor, environment: this.options.movement.getEnvironmentSnapshot(),
+      collisionInsets: this.options.movement.getCollisionInsets(), dwellMs: this.cursorProximityState.dwellWithinSwatRangeMs };
+  }
+
+  public getCursorGamePresentation() { this.gamePresentation.tick(); return this.gamePresentation.get(); }
+  public observeDialoguePresentation(value: import('../shared/ipc-contracts').DialoguePresentationDTO): void {
+    this.gamePresentation.observeDialogue(value);
+  }
+  public resetCursorGame(): void { if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true); this.resetCursorInterest(); this.gamePresentation.reset(); }
 
   public getAutonomyMode(): { readonly quiet: boolean } { return { quiet: this.quiet }; }
 
@@ -274,6 +301,8 @@ export class MainAutonomyComposition {
 
   private resetCursorInterest(): void {
     this.lastCursorObservedAtMs = null;
+    this.latestCursor = null;
+    this.gamePresentation.clear();
     this.cursorProximityState = { withinSwatRange: false, dwellWithinSwatRangeMs: 0, updatedAtMs: this.options.clock.now() };
   }
 
@@ -327,14 +356,18 @@ export class MainAutonomyComposition {
   public handleCursorObservation(screenPosition: Vector2Dto): boolean {
     if (!this.started || this.disposed) return false;
     const nowMs = this.options.clock.now();
-    const compatible =
+    const playing = this.activity.getRuntime()?.activityId === 'cursor_interest';
+    const compatible = playing || (
       this.providerAdmission.getOwnedRun() === null && !this.providerAdmission.hasPending() &&
       this.enabled &&
       !this.menuOpen &&
       this.activity.getRuntime() === null &&
       (this.visualEpisode.intent.kind === 'idle_blink' || this.visualEpisode.intent.kind === 'look_around') &&
       this.character.isAutonomyEligible() &&
-      this.options.movement.canAcceptVoluntaryMovement();
+      this.options.movement.canAcceptVoluntaryMovement());
+    this.latestCursor = { globalPosition: screenPosition, capturedAtMs: nowMs };
+    if (Math.hypot(screenPosition.x - this.options.movement.getRootPosition().x,
+      screenPosition.y - this.options.movement.getRootPosition().y) > 360) this.cursorMustExit = false;
     const proximity = this.cursorProximityEngine.update(this.cursorProximityState, {
       nowMs,
       rootGlobalPosition: this.options.movement.getRootPosition(),
@@ -343,7 +376,7 @@ export class MainAutonomyComposition {
     });
     this.cursorProximityState = proximity.state;
     this.lastCursorObservedAtMs = nowMs;
-    if (!compatible || proximity.signal === undefined) return false;
+    if (playing || !compatible || proximity.signal === undefined) return false;
 
     const snapshot = this.options.getCharacterSnapshot();
     const update = resolveCursorObserve({
@@ -374,19 +407,19 @@ export class MainAutonomyComposition {
 
     const budgetAvailable = !this.quiet && this.initiativeBudget.available(nowMs);
     if (!budgetAvailable) playCandidates = playCandidates.filter(candidate => candidate.tags?.includes('gaze_only'));
-    if (budgetAvailable && snapshot.needs.energy >= 65 && snapshot.needs.play >= 50
+    if (!this.cursorMustExit && budgetAvailable && snapshot.needs.energy >= 65 && snapshot.needs.play >= 50
         && this.cursorProximityState.dwellWithinSwatRangeMs >= DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs
         && (snapshot.relationship?.friendship ?? 0) >= 100 && update.zone !== 'far') {
       const approach = createCursorInterestActivity({ root: this.options.movement.getRootPosition(),
         cursor: screenPosition, environment: this.options.movement.getEnvironmentSnapshot(),
-        collisionInsets: this.options.movement.getCollisionInsets(), maxDistance: INITIATIVE_TUNING.cursorApproachMaxDistanceDip,
-        maxDurationMs: INITIATIVE_TUNING.cursorEpisodeMaxMs });
+        collisionInsets: this.options.movement.getCollisionInsets() });
       if (approach && this.options.prng.next() < .25) playCandidates = [approach];
     }
     this.coordinator.suspendForReactiveActivity();
     this.cursorReactionActive = true;
     if (this.activity.start(resolvedIntent, { play: playCandidates })) {
       if (this.activity.isInitiative()) this.initiativeBudget.start(nowMs);
+      if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cursorMustExit = true;
       this.cursorEpisode = { endsAtMs: nowMs + INITIATIVE_TUNING.cursorEpisodeMaxMs,
         supportId: this.options.movement.getEnvironmentSnapshot().currentSurface?.id };
       return true;
@@ -408,7 +441,8 @@ export class MainAutonomyComposition {
       compatible: false,
     }).state;
     this.lastCursorObservedAtMs = null;
-    if (this.cursorReactionActive) this.cancelActivity('environment_invalidated', true);
+    this.cursorMustExit = false;
+    if (this.cursorReactionActive && this.activity.getRuntime()?.activityId !== 'cursor_interest') this.cancelActivity('environment_invalidated', true);
   }
 
   public requestSleepWake(command: SleepWakeCommand): boolean {
@@ -549,7 +583,8 @@ export class MainAutonomyComposition {
   }
 
   public beginDialogueThinking(_requestId: string): void {
-    // Dialogue presentation owns thinking; it never suspends the Brain scheduler.
+    // Release the game without invalidating the newly admitted dialogue context.
+    if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true);
   }
 
   public endDialogueThinking(_requestId: string): void {}
@@ -641,11 +676,13 @@ export class MainAutonomyComposition {
       this.providerAdmission?.invalidate(reason);
     }
 
+    this.gamePresentation.clear();
     this.jumpFallAtMs = null;
     this.cursorEpisode = null;
     const wasCursorReaction = this.cursorReactionActive;
     const restSpot = this.activity.getRuntime()?.activityId.startsWith('rest_spot_') ?? false;
     const cancelled = this.activity.cancel(reason, forDrag);
+    this.gamePresentation.clear();
     if (this.stableRestSpotSleep) {
       this.stableRestSpotSleep = false; this.character.finishRest();
       if (publish) this.setVisualKind('idle_blink', true);

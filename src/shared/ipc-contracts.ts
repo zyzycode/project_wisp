@@ -171,7 +171,20 @@ export interface BrainVisualIntentDTO {
   readonly propHint?: 'pillow' | 'heart' | 'question' | 'sparkle' | 'none';
 }
 
+/** Local game presentation; geometry and outcome decisions remain in Brain. */
+export interface CursorGamePresentationDTO {
+  readonly runId: string;
+  readonly outcome: 'caught' | 'missed' | 'lost_target' | 'cancelled' | null;
+  readonly speech: {
+    readonly id: string;
+    readonly text: string;
+    readonly startedAtMs: number;
+    readonly expiresAtMs: number;
+  } | null;
+}
+
 export interface BrainStateDTO {
+  readonly cursorGame: CursorGamePresentationDTO | null;
   readonly autonomy: AutonomyModeDTO;
   readonly dialogue: DialoguePresentationDTO;
   readonly streamId: string;

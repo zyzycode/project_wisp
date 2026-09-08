@@ -13,7 +13,7 @@
 
 ## Открытые запросы
 
-На **2026-09-07** открытых запросов нет. AUTO-I04/I05/I06 и #48 закрыты:
+AUTO-I04/I05/I06 и #48 закрыты:
 семь наборов (28 PNG) зарегистрированы в [манифесте](../../public/assets/sprites/manifest.json).
 Подключение в приложении: `grab_edge`, `jump_travel`, `pull_up_edge` (выход на опору
 в маршруте через стену), `sit_edge`, `sit_edge_settle`, `sit_edge_sleep` и `cursor_play`
@@ -23,3 +23,5 @@
 
 | Task ID | Имя спрайта / Ключ | Текущий fallback в коде | Требования к кадрам и движению | Статус |
 |---|---|---|---|---|
+| CURSOR-GAME-V1 | `body_cursor_caught` | `happy_reaction` → `body_petting` в [asset-resolver.ts](../../src/renderer/render-engine/asset-resolver.ts) | Внешнему художнику-человеку: короткая радость после условной поимки, 6 кадров на 600 ms; стопы и root неподвижны, руки завершают хватательный жест, затем нейтральная поза. Прозрачный фон; геометрия и pivot совместимы с `body_cursor_play`. Не изображать и не перемещать системный курсор. | Открыт; выделенный clip опционален, сейчас используется общий reaction intent. |
+| CURSOR-GAME-V1 | `body_cursor_missed` | `confused_reaction` → `body_scared` в [asset-resolver.ts](../../src/renderer/render-engine/asset-resolver.ts) | Внешнему художнику-человеку: лёгкое удивление после промаха/потери цели без обиды на пользователя, 6 кадров на 600 ms; взгляд вслед цели, мягкое опускание рук, устойчивые стопы и завершение в нейтральной позе. Геометрия, фон и pivot как у `body_cursor_play`. | Открыт; выделенный clip опционален, сейчас используется общий reaction intent. |

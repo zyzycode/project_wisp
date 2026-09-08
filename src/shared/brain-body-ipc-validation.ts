@@ -1,4 +1,5 @@
 import { parseAutonomyMode } from './quiet-mode-validation';
+import { parseCursorGame } from './cursor-game-validation';
 import type {
   BodyEventDTO,
   BrainActivityTimelineDTO,
@@ -275,6 +276,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
     'visualIntent',
     'dialogue',
     'autonomy',
+    'cursorGame',
   ]);
   const sampledAtMs = finiteNumber(own(record, 'sampledAtMs'), 0);
   const character = asRecord(own(record, 'character'));
@@ -284,6 +286,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
   return {
     streamId: boundedId(own(record, 'streamId')),
     dialogue: parseDialoguePresentation(own(record, 'dialogue')),
+    cursorGame: parseCursorGame(own(record, 'cursorGame'), sampledAtMs),
     autonomy: parseAutonomyMode(own(record, 'autonomy')),
     revision: safeInteger(own(record, 'revision'), 1),
     sampledAtMs,

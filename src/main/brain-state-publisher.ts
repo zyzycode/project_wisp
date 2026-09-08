@@ -212,6 +212,7 @@ export class BrainStatePublisher {
 
 function createProjectionSignature(state: BrainStateDTO): string {
   return JSON.stringify({
+    cursorGame: state.cursorGame,
     dialogue: state.dialogue,
     autonomy: state.autonomy,
     character: state.character,
@@ -223,6 +224,7 @@ function createProjectionSignature(state: BrainStateDTO): string {
 
 function createSemanticSignature(state: BrainStateDTO): string {
   return JSON.stringify({
+    cursorGame: state.cursorGame,
     dialogue: state.dialogue,
     autonomy: state.autonomy,
     character: state.character,

@@ -94,6 +94,14 @@ Brain создаёт непереиспользуемый внутри stream `e
 
 Body создаёт один `gestureId` на gesture (trimmed non-empty, до 128 символов). Main активирует его после valid `drag_started`; ID служит корреляции ввода, не даёт position authority и не заменяет `sequence`.
 
+### 6.1.1. Cursor-game-v1 presentation
+
+Форма `CursorGamePresentationDTO` объявлена в shared. Обязательное поле `BrainStateDTO.cursorGame: CursorGamePresentationDTO | null` подключено в publisher, validators, preload, UI и fixtures. Отдельного канала/game command не требуется: cursor — существующий Body observation, игра выбирается локально. `null` — нет текущей игры/её terminal presentation; outcome=null пока исход не определён. Run ID и speech ID непустые до 128 символов, текст plain ≤240 code units, времена finite nonnegative, `expiresAtMs > startedAtMs`.
+
+Application выбирает текст по Activity outcome и locale, владеет сроком 2000 ms от создания реплики и публикует expiry/null через существующий scheduler. Outcome speech заменяет attempt speech. При terminal допускается держать outcome projection до expiry; новый run заменяет старую projection. Cancel/reset/reload/dispose/quiet очищают projection сразу. Late timer старого run/speech не очищает новую реплику. Renderer не запускает игру, не вычисляет caught и не возвращает speech completion в Brain.
+
+При accepted user send скрыть game speech; пока dialogue thinking и 5000 ms после terminal dialogue commit новую игровую реплику не создавать (историю диалога не стирать). Срок считает Main по injected monotonic time; reset снимает этот speech guard. Затем новая game speech может заменить уже показанную dialogue bubble, не переигрывая старый ответ при expiry. Пропущенные фразы не ставятся в очередь. Reload/snapshot не продлевает expiry и не проигрывает speech повторно; dedupe по streamId + speech.id. Существующие visual intents/Skin остаются независимы от речи. Обязательны fixtures отсутствующей/невалидной projection, смены run, expiry, dialogue priority и once-only отображения.
+
 ### 6.2. Время, revision и order
 
 - Main генерирует opaque `streamId` (до 128 символов) для trusted document; reload/replacement создаёт новый stream с revision `1`.

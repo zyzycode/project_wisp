@@ -1,7 +1,9 @@
 import type { InitiativeBudgetSnapshot, InitiativeTuning } from '../ports/behavior-admission-port';
+import { DEFAULT_CURSOR_GAME_TUNING } from '../ports/cursor-game-contract';
 export const INITIATIVE_TUNING: InitiativeTuning = {
   version: 'AUTO-A09-v1', windowMs: 120000, maxEpisodesPerWindow: 2, minIntervalMs: 30000,
-  cursorEpisodeMaxMs: 6000, cursorApproachMaxDistanceDip: 160, socialWaitMaxMs: 4000,
+  cursorEpisodeMaxMs: DEFAULT_CURSOR_GAME_TUNING.maxEpisodeMs,
+  cursorApproachMaxDistanceDip: DEFAULT_CURSOR_GAME_TUNING.maxTravelDip, socialWaitMaxMs: 4000,
 };
 /** Shared session ledger; admission is free, only actual starts spend a token. */
 export class InitiativeBudget {

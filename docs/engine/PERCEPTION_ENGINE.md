@@ -107,16 +107,22 @@ Starting thresholds сохраняются: `swatRadiusWorldPx=64`, `swatDwellMs
 Dwell сбрасывается при exit/stale/missing/incompatible state. Perception подавляет сигнал при `dragged`, fall lifecycle, land lifecycle, crash/recover и sleep visual lifecycle. Названия visual states здесь являются consumer compatibility list, а их transitions принадлежат Animation Engine.
 
 Look-at остаётся gaze. Swat/avoid — local P3 Activity decisions и не стартуют внутри Perception.
-AUTO-A09 не вводит постоянную chase: ограниченный cursor interest подчинён
+Ограниченный cursor interest подчинён
 [общему admission/budget](./AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость).
 
-### 6.1. AUTO-A09: bounded cursor interest
+### 6.1. Cursor game v1: ограниченное преследование
 
-Stationary Observe Cursor #23 сохраняет gaze/доступный gesture без default locomotion. Approach внутри `play` в #48 требует freshness/dwell, Character Needs/friendship, cooldown и общий budget. Fatigue может оставить только gaze; P2/AI ownership запрещают новую local Activity.
+Целевое расширение существующего `cursor_interest` (#48): stationary Observe Cursor сохраняет gaze/gesture; игра внутри `play` требует freshness/dwell, Character gates, cooldown и общий initiative budget. Fatigue может оставить только gaze; P2/AI ownership запрещают новую local Activity. API для каждого sample не вызывается. Никаких global hooks для захвата мыши, перемещения/блокировки системного курсора или кликов за пользователя.
 
-Эпизод — один run/deadline и максимум одна fixed target на той же достижимой опоре. Samples обновляют gaze/валидность, не retarget/deadline. Approach использует walk с total-distance limit `InitiativeTuning`; chase jumps/traversal/new primitives/переход между опорами запрещены.
+В cursor-game-v1 разрешён ограниченный retarget **только между завершёнными grounded locomotion legs**: не чаще одного раза в 500 ms, максимум четыре цели вместе с первой, новая цель отличается от прошлой минимум на 20 DIP. Samples обновляют наблюдение, а не заменяют активную Motion command. Один run/deadline 6000 ms и общий пройденный путь ≤160 DIP, без сброса при retarget. Значения — [CursorGameTuning](../../src/application/ports/cursor-game-contract.ts); прежние одноимённые пределы InitiativeTuning берутся из того же tuning, не два независимых лимита.
 
-Stale/выход курсора из interest area/исчезнувшая или недостижимая цель/user/physics/deadline → completion с cleanup и fresh local выбором. Cursor motion не рестартует эпизод. Gaze-only не тратит budget/не даёт play reward; игра — once-only [Activity outcome](ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership).
+Travel budget считает сумму абсолютных voluntary перемещений вдоль опоры, включая смену направления; перенос самой опорой не расходует его. Между legs до retarget interval допустим bounded stationary wait, если остаётся время на следующий leg и хвост фаз; иначе missed. Sample не продлевает wait/deadline. Пороги и общий лимит проверяются до каждой Motion command, а не после выхода за границу.
+
+Цель лежит на той же достижимой `screen_floor`/`window_top` опоре; проекция cursor x ограничена usable support bounds, collision insets и оставшимся travel budget. Cursor y от root ≤160 DIP; недостижимая цель или отсутствие usable support запрещают approach. Walk использует существующий Motion planner. Chase jumps, смена опоры и новые locomotion primitives вне v1. Перемещение самой опоры обрабатывает Motion; topology/identity loss прекращает игру. Стоячая попытка допустима при уже достигнутом reaction gate без лишнего approach.
+
+Для начала попытки используются существующие `swatRadiusWorldPx=64`, dwell=450 ms и TTL=300 ms (§6), без второй геометрии по визуальному спрайту. Perception сообщает только fresh/within/dwell; поимку определяет Activity в момент semantic checkpoint. Cursor исчез/устарел/вышел из ambient зоны/недостижим → `lost_target`; user/forced physics/quiet/menu/disable/reset/dispose → `cancelled`. Граница deadline имеет приоритет перед поимкой. Исходы и once-only feedback — [Activity §17](ACTIVITY_ENGINE.md#17-cursor-game-v1).
+
+Windows — первая платформа приёмки. Источник глобальных samples остаётся за текущей platform boundary и нормализацией DIP; Body refresh ≤10 Hz и Main TTL сохраняются. При недоступном источнике нет выдуманных координат или игры из последнего sample; на Linux/macOS без нужной capability остаются stationary gaze при доступном input и обычная screen-floor автономность. Smoke: 100/150/200% DPI, отрицательные координаты и несколько мониторов, смена display, выход из окна Wisp, stale input и исчезновение опоры. Runtime не переносит `process.platform` в Application/Domain/Renderer.
 
 ## 7. Normalized environment signals
 

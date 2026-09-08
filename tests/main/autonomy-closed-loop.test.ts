@@ -126,7 +126,8 @@ describe('real Character closed loop', () => {
     for (let i = 0; i < 6; i++) { f.main.handleCursorObservation({ x: 470 + i, y: 790 }); f.advance(100); }
     expect(f.main.getActivityTimeline()?.runId).toBe(runId); expect(f.move).toHaveBeenCalledTimes(1);
     expect(Math.abs(f.move.mock.calls[0]![0].targetRootPosition.x - 400)).toBeLessThanOrEqual(160);
-    f.advance(301); expect(f.main.getActivityTimeline()).toBeNull();
+    f.advance(301); expect(f.main.getActivityTimeline()?.phaseId).toBe('reaction');
+    f.advance(600); f.advance(600); expect(f.main.getActivityTimeline()).toBeNull();
     expect(f.outcomes[0]?.playCompleted).toBe(false); expect(f.timers.size).toBe(1); f.main.dispose();
   });
   it('returns from AI sleep on timeout without keeping a sleeping local scheduler', () => {

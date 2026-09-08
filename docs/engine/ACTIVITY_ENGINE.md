@@ -158,3 +158,27 @@ Terminal transaction: run/locomotion cleanup → once-only feedback → history/
 ### Проверки для implementation
 
 Регрессии: rejected play не улучшает свой gate; Explore/Swat/Zoomies reward once-only, включая duplicate с новым ID; cancel до/после игры, no-start/foreign; drag cancel AI/nap/play сохраняет реальные physical consequences; immediate/safe-deferred AI дают максимум один run, timeout сохраняет safety; nap/full sleep используют существующий clock, wake возвращает один local flow.
+
+## 17. Cursor game v1
+
+Целевое расширение `cursor_interest` в существующем Domain/behavior, без нового public BehaviorIntentKind. Нормализованный результат и tuning — [cursor-game-contract.ts](../../src/application/ports/cursor-game-contract.ts); Domain получает значения явными входами, не импортирует Application. Perception владеет [freshness и достижимостью](PERCEPTION_ENGINE.md#61-cursor-game-v1-ограниченное-преследование), Motion — фактическим перемещением, Activity — фазами/исходом, Application — локальным текстом, feedback и публикацией. Backend не участвует в control loop.
+
+| Фаза | Завершение и переход |
+|---|---|
+| notice | `look_around`, 600 ms; затем approach либо attempt, если reaction gate уже выполнен. |
+| approach | Одна walk leg к фиксированной цели; после arrival свежий reaction gate → attempt, иначе допустимый retarget → следующая leg. |
+| attempt | `cursor_play`, 1000 ms; в конце один authoritative checkpoint свежего proximity. Попытка максимум одна на run. |
+| reaction | `happy_reaction` при caught, `confused_reaction` при missed/lost_target, 600 ms. |
+| settle | `settle`, 600 ms, затем terminal completed. |
+
+Новый leg/attempt допускается только если до общего deadline остаётся соответственно время на его bounded выполнение + attempt/reaction/settle (2200 ms для полного хвоста). Notice входит в 6000 ms; leg timeout не позже deadline−2200 ms. Если времени/целей/travel больше нет, но fresh reachable cursor остаётся — missed → reaction/settle, пока позволяет общий deadline. На deadline немедленный terminal; не доигрывать reaction после него. Cancel не запускает новую реакцию и не задерживает P0/P1/P2. Для lost_target остановить voluntary leg, затем bounded reaction/settle только при сохранении безопасной опоры и оставшегося времени.
+
+`caught`: в конце полной attempt-фазы cursor fresh и withinSwatRange; игровая условная поимка, ОС-курсор не захватывается. `missed`: fresh reachable cursor вне swat radius на checkpoint либо исчерпан chase budget. `lost_target`: отсутствующий/stale/out-of-area/unreachable cursor или утрата опоры, если не сработал более приоритетный cancel. `cancelled`: пользователь, forced physics, mode/lifecycle cancellation; deadline без уже установленного outcome даёт missed при fresh reachable cursor, иначе lost_target. Порядок совпавших условий: P0/P1/P2/mode/lifecycle → deadline → lost_target → checkpoint → retarget. Зафиксированный caught/missed/lost_target больше не меняется, но status run может стать cancelled; результат публикуется ровно один раз на terminal.
+
+`CursorGameResult.playCompleted=true` только после всей attempt-фазы, независимо от caught/missed; chase/notice/time exhaustion до attempt не дают reward. `executedMs` — фактическое время semantic run, не provider wait. Result мапится в существующий ActivityOutcome и once-only stimulus (§16) по `activityRunId`; новый путь не дублирует `swat_cursor_completed`. Cancel после завершённой попытки сохраняет флаг; награда и изменения Needs принадлежат Character. Исход не создаёт дополнительный relationship bonus и не записывает автоматически устойчивое предпочтение пользователя.
+
+Локальный каталог реплик ru/en: при первом attempt «Стой, я почти поймала!» / “Wait, I almost caught you!”, caught «Поймала!» / “Caught you!”, missed «В этот раз ты быстрее.» / “You were faster this time.”, lost_target «Куда ты делся?» / “Where did you go?”, cancelled — без новой реплики. Одна attempt-реплика и максимум одна outcome-реплика на run; quiet и отмена скрывают принадлежащую игре реплику. Tone выбирается по текущему Character; отсутствие варианта → указанная нейтральная реплика соответствующей локали. Renderer отображает projection, не определяет исход/текст. Форма IPC, срок реплики и приоритет диалога определены в [UI §6.1.1](UI_SPEC.md#611-cursor-game-v1-presentation); raw game geometry в UI не отправляется.
+
+Visual phases используют готовые intent/assets: notice/look_around, walk, cursor_play, happy_reaction, confused_reaction, settle. Новые спрайты и новые public visual kinds не требуются; Render/Animation сохраняют выбор clip и fallback. Отдельные авторские catch/miss sheets могут появиться позже через SPRITE_REQUESTS, а физический успех от них не зависит.
+
+Implementation consequences: заменить fixed-target episode на bounded legs в существующих Activity/Motion adapters без live retarget команды; нормализовать result и локальную speech projection, сохранить один owner/cooldown/budget. Проверки: caught/missed/lost/cancel, stale ровно после TTL, checkpoint ровно на deadline, 4-target/160-DIP/6000-ms caps, moving support, interrupted attempt до/после playCompleted, duplicate terminal и отсутствие LLM-вызовов. История между перезапусками и inference предпочтений — отдельная Memory-задача; этот runtime-контракт не задаёт новую persistence schema.

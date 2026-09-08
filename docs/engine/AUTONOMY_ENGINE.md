@@ -196,6 +196,8 @@ timeout/reset retires result, но до settlement реального promise bu
 Reset/reload/dispose инвалидируют generation и её offer/run; поздний result не допускается.
 Periodic provider polling и параллельные запросы этим контрактом не вводятся.
 
+Сетевые события и отдельный request/token budget определены в [AI Provider v1](AI_PROVIDER_CONTRACT.md#desktop--backend-v1). InitiativeBudget ограничивает навязчивость локальных действий и не заменяет бюджет backend; cursor episodes и SocialBid сами не вызывают модель.
+
 ## 13. AUTO-A09: локальная жизнь и ненавязчивость
 
 Utility использует существующие Needs/history/environment/personality, без новых шкал.
@@ -258,3 +260,5 @@ Resume допускает один свежий выбор, не накопле�
 обязательна в trace. Cursor freshness/dwell остаются Perception-owned, не копируются сюда.
 Trace bounded (начально 64 decisions): gates, factors, winner, ownership, receipt, run result;
 provider raw text, память, OS IDs и публичный debug IPC не добавляются.
+
+Cursor-game-v1 расширяет fixed-target episode bounded retarget между legs по [Perception §6.1](PERCEPTION_ENGINE.md#61-cursor-game-v1-ограниченное-преследование); один run, общий initiative token и пределы из таблицы сохраняются. Движение cursor не создаёт новый episode, не продлевает deadline и не расходует новый token. При terminal без участия пользователя следующий unsolicited эпизод требует заново пройденного dwell после выхода/возврата курсора; stationary samples не создают серию игр. Общий cooldown/minimum interval также сохраняется.

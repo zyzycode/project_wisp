@@ -108,6 +108,7 @@ const brainStatePublisher = new BrainStatePublisher({
     }
     return toBrainStateDTO({
       dialogue: dialogueRuntime.getPresentation(),
+      cursorGame: autonomyComposition.getCursorGamePresentation(),
       streamId,
       revision,
       sampledAtMs,
@@ -286,10 +287,10 @@ function initializeAutonomyComposition(): void {
       applyStimulus: stimulus => { defaultCharacterStateService.applyStimulus(stimulus); },
       beginThinking: id => autonomyComposition?.beginDialogueThinking(id),
       endThinking: id => autonomyComposition?.endDialogueThinking(id),
-      setBehaviorContext: context => autonomyComposition?.setBehaviorContext(context),
+      setBehaviorContext: context => { autonomyComposition?.setBehaviorContext(context); if (context === null) autonomyComposition?.resetCursorGame(); },
       offerIntent: offer => autonomyComposition?.offerDialogueIntent(offer) ?? { status: 'rejected', reason: 'disabled' },
       transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } },
-      publish: publishBrainState,
+      publish: () => { if (dialogueRuntime) autonomyComposition?.observeDialoguePresentation(dialogueRuntime.getPresentation()); publishBrainState(); },
     });
   }
 }
