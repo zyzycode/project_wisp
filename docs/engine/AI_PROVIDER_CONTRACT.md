@@ -1,6 +1,6 @@
 # Контракт AI Provider
 
-`IAIProvider` генерирует текст и semantic hints по Character context; финальные behavior decisions и UI ему не принадлежат. Default — локальный offline `MockAIProvider`. Будущий `ExternalAIProviderClient` вызывает LLM прямо из Main; без backend/proxy/server/внешней БД.
+`IAIProvider` генерирует текст и semantic hints по Character context; финальные behavior decisions и UI ему не принадлежат. Default — локальный offline `MockAIProvider`. Будущий `ExternalAIProviderClient` обращается к backend либо напрямую к LLM через Infrastructure adapter в Main; выбор маршрута не меняет семантический порт. Общая граница backend — [AGENTS.md](../../AGENTS.md#2-архитектура-и-контракты).
 
 ## Владение
 
@@ -154,7 +154,51 @@ Application нормализует `AIProviderFallbackReason`: `empty_input`, `m
 
 ### `ExternalAIProviderClient`
 
-Будущий Main/Infrastructure adapter прямого LLM-вызова; требует Architect review. Без backend/proxy/server/внешней БД/сети в Renderer. Credentials policy, auth/API keys и SDK вне P17-A02.
+Infrastructure adapter, создаваемый Main, для backend API v1 ниже. Адаптер преобразует transport DTO в `AIProviderResponse`, валидирует недоверенный ответ и скрывает transport/provider internals от Application и Renderer. Backend владеет своими вызовами LLM; семантический порт не даёт доступа к серверной БД. Существующие single-flight, fallback и защита от поздних результатов сохраняются. Прямой LLM-адаптер допускается общей архитектурой, но не реализуется как автоматический обход backend или его квоты.
+
+## Desktop ↔ backend v1
+
+Внешний протокол вынесен в самостоятельный [BACKEND_API_CONTRACT.md](BACKEND_API_CONTRACT.md): транспорт, диапазоны, HTTP-статусы и общие JSON fixtures. [Wire types](../../src/application/ports/backend-ai-contract.ts) не имеют импортов/алиасов из Domain или IAIProvider. Backend использует их независимо от внутренней модели desktop; adapter явно преобразует canonical CharacterSnapshot и provider DTO. Этот раздел владеет только клиентским lifecycle и policy.
+
+### Projection и допустимые решения
+
+Adapter создаёт явную wire projection без произвольных Needs keys, памяти, экранных данных и координат курсора. self-concept обрезается до 500 code units; locale ru/en, неподдерживаемая настройка даёт ru. Последние три полные пары volatile context отображаются из user/wisp в user/assistant; текущее user добавляется последним. Snapshot и ranges проверяются до отправки; reset очищает локальный контекст. Wire shape не меняется вслед за изменением Domain.
+
+Валидный текст без decision отображается в semantic response с suggestedBehavior=respond, confidence=1 (это transport default, не достоверность текста). Wire decision явно отображается в локальные provider enums; неизвестный/невалидный hint удаляется целиком. Модель не управляет FSM, физикой или сохранёнными числовыми состояниями. После mapping сохраняются ProviderResponseIntentMapper → IBehaviorAdmission → Character, current generation, P0–P5 и once-only commit. play выбирает доступную локальную Activity, а не обещает игру/поимку курсора; sleep/wake/quiet остаются candidates, не меняют настройки и не обходят P2.
+
+### События
+
+| Событие | Вызов модели v1 |
+|---|---|
+| Принятая typed send(text) пользователя | Ровно один после validation/current IDs, single-flight и локальных ограничений. |
+| Reset, reload, dispose | Ноль; инвалидируют generation и результат. |
+| Cursor sample/dwell, старт/поимка/промах/конец игры | Ноль; локальные decisions и каталог реплик. |
+| Autonomy pulse, idle, Needs, sleep/wake, pet/drag, Motion/Skin/frame | Ноль. |
+| Собственная социальная инициатива | Локальная; сетевые события требуют отдельного согласования. |
+
+Нет polling, автоматического приветствия при запуске, фонового summary или второго LLM-вызова на fallback. Будущие сетевые события не маскируются под синтетическое пользовательское сообщение.
+
+### Клиентские ограничения и deadline
+
+[AIRequestPolicy](../../src/application/ports/ai-request-policy.ts) — desktop-only policy: один in-flight, 6 отправок за скользящие 60 000 ms Main-monotonic time и 100 за Main session. Это не серверная quota и не гарантированный доступный бюджет backend. Application проверяет их атомарно вместе с admission. Validation/busy/local rejection/Mock бесплатны; фактическая отправка, включая ошибочную, расходует единицу. Reset/reload/quiet не обнуляют счётчики, restart обнуляет только клиентский session guard.
+
+Минутный интервал (now−60000, now]; левая граница истекает. Session cap → unavailable и canSubmit=false до restart с локальным сообщением. Очереди нет, автоматических retries — 0. При новом ручном обращении Main создаёт новый UUID; серверная обработка повторённого ID не предполагается, пока не согласовано предложение backend.
+
+Desktop transport timeout 12 000 ms от fetch start, runtime deadline 15 000 ms от dialogue admission. Adapter abort-ит fetch и settle на timeout; reset/dispose логически инвалидируют результат, существующий guard держится до settlement. getStatus читает локальную конфигурацию/cooldown без network call. Серверный upstream deadline рекомендуем укладывать в клиентский transport timeout; клиент не полагается на физическую отмену вычисления у провайдера.
+
+### Обработка HTTP на desktop
+
+HTTP/code mapping определён только [wire-контрактом](BACKEND_API_CONTRACT.md#3-http-и-ошибки). Timeout → AIProviderFallbackReason.timeout; сеть/429/503 → provider_unavailable; остальные ошибки → unexpected_error. Невалидный wire envelope, JSON, requestId или HTTP/code mismatch отклоняет promise и даёт runtime provider_error fallback. Невалидный semantic response другого provider остаётся runtime invalid_response. Безопасный текст берётся из локального каталога.
+
+429 блокирует новые sends по optional retryAfterMs; при отсутствии/невалидном значении desktop использует локальный cooldown 60 000 ms. Это не предположение о периоде серверной квоты. Для network/TLS/502/503/504/неожиданного HTTP или malformed response cooldown 30 000 ms; для 400/409/413 auto-retry также отсутствует. Истечение cooldown только разрешает ручной send, не посылает новый запрос.
+
+### Implementation consequences и проверка
+
+Wire DTO и клиентская policy объявлены; HTTP adapter и backend подключаются отдельной реализацией. Существующих DialogueCommandDTO, receipt unavailable и presentation fallback/error достаточно: новый IPC канал и передача transport/quota/auth в Renderer не нужны. canSubmit учитывает локальные guard/cooldown; истечение публикует snapshot через существующий scheduler, без network polling. Draft сохраняется при rejection; server error после admission завершает turn безопасным сообщением.
+
+Desktop реализует policy, exact validators/projection и aborting adapter через Main DI; при отсутствии backend URL остаётся Mock. Backend реализует endpoint/schema, prompt mapping и validation model output; quota и повтор requestId ждут его отдельного предложения по wire-контракту. Его стек и провайдер проходят соответствующий инфраструктурный gate, клиентские лимиты не становятся серверными.
+
+Общие JSON fixtures находятся в wire-контракте. Developer добавляет проверки ranges/enum/projection, text-only и invalid hint, malformed/oversize, ID mismatch, локальных minute/session boundaries, absence auto-retry, timeout/late/reset/dispose, сохранения локального ввода и отсутствия утечки экранных данных. Windows smoke включает HTTPS/offline/timeout и работающие drag/курсор; Linux/macOS — capability fallback. Typecheck затем npm test по developer gate; независимый reviewer проверяет контракт отдельно.
 
 ## Запрещённые знания provider-а
 
@@ -170,4 +214,4 @@ Application нормализует `AIProviderFallbackReason`: `empty_input`, `m
 
 ## ARCHITECT RESULT — P17-A02 (#19)
 
-Принято: один Main/Application runtime, bounded volatile context, single-flight и единый Brain stream. Объявлены target command/receipt/presentation/bridge; обязательные injection/lifecycle/order/deadline/fallback/reset/cutover — в разделе «Dialogue runtime и IPC». На момент architect gate runtime ещё не мигрирован (последующее P17-I01 описано выше); без dependencies/network/persistence/backend/settings, sprites: none. Typecheck/ссылки/лимит/diff прошли, tests — при реализации. Gate: reviewer контрактов → app-developer.
+Принято: один Main/Application runtime, bounded volatile context, single-flight и единый Brain stream. Объявлены target command/receipt/presentation/bridge; обязательные injection/lifecycle/order/deadline/fallback/reset/cutover — в разделе «Dialogue runtime и IPC». На момент architect gate runtime ещё не мигрирован (последующее P17-I01 описано выше). В рамках P17-A02 зависимости, сетевые интеграции, persistence, backend и settings не менялись; sprites: none. Typecheck/ссылки/лимит/diff прошли, tests — при реализации. Gate: reviewer контрактов → app-developer.

@@ -12,7 +12,7 @@
 - Domain владеет `CharacterState`, не JSON/SQL/путями/lifecycle БД.
 - Application объявляет порты, оркестрирует чтение/сохранение и собирает ограниченный контекст для `IAIProvider`.
 - Infrastructure реализует SQLite, миграции и параметризованные запросы; Preload/Renderer передают только команды и presentation DTO, без SQLite handles.
-- База — только в `app.getPath('userData')`, без cloud sync, аккаунта, сети, API-ключа или локального сервера. Внешний provider получает явно собранный context, не файл БД/SQLite dump.
+- Локальная SQLite-база хранится в `app.getPath('userData')`; её операции не требуют сети, аккаунта, API-ключа или сервера. Серверное хранение и sync определяются отдельным контрактом (§6). Внешний provider получает явно собранный context, не файл БД/SQLite dump.
 
 ## 2. Схема SQLite
 
@@ -160,9 +160,11 @@ Foreign keys обеспечивают целостность, WAL — чтени
 
 При ошибке — rollback и нейтральная typed Application/IPC error без SQL/путей в UI. Это memory reset, не factory reset; appearance/behavior settings сохраняются. UI-редактирование отдельных facts/memories вне MVP.
 
-## 6. Явные нецели
+## 6. Явные нецели локального Memory MVP
 
-- Cloud sync, telemetry export, внешние LLM SDK, backend/proxy/server, пользовательские AI credentials.
+Эти нецели ограничивают локальный Memory MVP. Backend входит в архитектуру проекта; общие требования к серверным данным определены в [AGENTS.md](../../AGENTS.md#2-архитектура-и-контракты). Серверное хранение и sync требуют отдельного контракта; текущая локальная очистка не означает удаление серверных данных.
+
+- Этот контракт не определяет cloud sync, telemetry export, серверные API/хранилища, внешние LLM SDK и пользовательские AI credentials; они относятся к соответствующим интеграциям.
 - Автоизвлечение facts/memories, сегментация/summary, semantic search, embeddings, recall ranking, забывание.
 - Multi-value/inferred facts, `origin`, `fact_evidence`/provenance до отдельных use cases.
 - SQL, Node.js, Electron и persistence types в Domain, Renderer, public Preload API, DTO `IAIProvider` или `CharacterEngine`.

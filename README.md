@@ -1,8 +1,8 @@
 # Project Wisp
 
-Desktop AI-компаньон на Electron + React + TypeScript: персонаж живёт в прозрачном окне, реагирует на действия пользователя и выражает состояние через анимации. Базовая платформа — Ubuntu (Wayland/X11), целевые — Windows и macOS.
+Desktop AI-компаньон на Electron + React + TypeScript: персонаж живёт в прозрачном окне, реагирует на действия пользователя и выражает состояние через анимации. Первая целевая платформа — Windows; Linux (Ubuntu, Wayland/X11) и macOS сохраняются с capability fallback.
 
-Offline-first: вычисления и данные локальны. Серверные прослойки, внешние БД и микросервисы исключены; внешний LLM допускается только прямым вызовом через `IAIProvider` из Main. Renderer изолирован от сети, Node.js и persistence.
+Целевая архитектура включает desktop-клиент и backend. Runtime персонажа и локальные данные сохраняют offline-first поведение; сетевые функции могут требовать подключения. Клиент обращается к backend через адаптеры в Main, AI — через `IAIProvider`. Renderer изолирован от сети, Node.js и persistence. Потоки и границы описаны в [архитектуре проекта](ARCHITECTURE.md).
 
 ## Разработка
 

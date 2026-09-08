@@ -19,6 +19,7 @@
 | UI/Renderer и Brain → Body | [UI_SPEC.md](UI_SPEC.md) | Ownership; typed IPC; revision/order/cadence; validation; cleanup/privacy |
 | Локальная память | [MEMORY_ENGINE.md](MEMORY_ENGINE.md) | SQLite schema; порты; bounded context; restore/reset |
 | AI-диалог | [AI_PROVIDER_CONTRACT.md](AI_PROVIDER_CONTRACT.md) | Request/response; runtime ownership; admission/deadline; fallback/reset; mapper |
+| Desktop ↔ Backend API | [BACKEND_API_CONTRACT.md](BACKEND_API_CONTRACT.md) | Независимый wire v1; диапазоны; HTTP/errors; общие JSON fixtures; открытые quota/idempotency |
 
 <a id="4-матрица-межмодульных-контрактов-кто-от-кого-зависит"></a>
 

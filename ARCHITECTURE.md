@@ -2,6 +2,10 @@
 
 Высокоуровневый обзор архитектуры настольного AI-компаньона Project Wisp. Документ фиксирует границы ответственности подсистем и поток данных между ними.
 
+Целевая архитектура включает desktop-клиент и backend. Runtime персонажа работает локально; сетевые функции используют сервер через адаптеры в Main. Backend владеет своими API, интеграциями и серверным хранением. Конкретные серверные функции, стек и размещение определяются в задачах интеграции.
+
+Windows-first: первая приёмка desktop проходит на Windows; OS-specific код остаётся в platform adapters. Linux/macOS используют доступные capabilities и screen-floor fallback. Первый backend API и бюджет определены в [AI Provider contract](docs/engine/AI_PROVIDER_CONTRACT.md#desktop--backend-v1); расширенная локальная игра с курсором — в [Perception](docs/engine/PERCEPTION_ENGINE.md#61-cursor-game-v1-ограниченное-преследование) и [Activity](docs/engine/ACTIVITY_ENGINE.md#17-cursor-game-v1).
+
 > **Единый источник правды:** обязательные инженерные правила и ограничения зафиксированы в [AGENTS.md](AGENTS.md), предметные спецификации движков — в [docs/engine/](docs/engine/README.md), текущий статус задач — в [GitHub Issues](https://github.com/zyzycode/project_wisp/issues).
 
 ---
@@ -56,6 +60,12 @@ flowchart TD
 - **Renderer $\to$ Main:** через строгий типизированный мост `window.wispAPI` (`ipcRenderer.invoke` $\to$ `ipcMain.handle`). У Renderer нет прямого доступа к Node.js и системным API.
 - **Main $\to$ Renderer:** доставка изменений состояния и push-событий через `webContents.send` и типизированные подписки в Renderer.
 - **Контракты IPC:** DTO и интерфейсы сообщений централизованы в [`src/shared/ipc-contracts.ts`](src/shared/ipc-contracts.ts).
+
+### Граница backend
+
+Поток сетевого запроса: Renderer → typed preload/IPC → Main/Application use case → Application port → Infrastructure adapter в Main → backend API. Ответ проверяется и преобразуется адаптером в клиентский DTO; Renderer получает только presentation state через IPC. Серверный API имеет собственный wire contract и не определяется автоматически формой локального порта.
+
+AI-интеграция использует `IAIProvider` как для backend, так и для прямого LLM-вызова. Backend не управляет локальными FSM, физикой и анимацией: семантические предложения проходят существующие Domain gates. При потере связи локальный runtime и ввод продолжают работать; поведение сетевой функции задаёт её контракт. Общие требования к API, данным и безопасности — в [AGENTS.md](AGENTS.md#2-архитектура-и-контракты).
 
 ---
 
