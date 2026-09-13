@@ -45,6 +45,7 @@ import {
 } from './mappers/shimeji-ipc.mapper';
 import { startShimejiMotionLoop } from './shimeji-motion-loop';
 import { MainAutonomyComposition } from './main-autonomy-composition';
+import { initialPetWindowPosition } from './initial-pet-position';
 import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
 import { BodyEventIngress } from './body-event-ingress';
 import { BrainStatePublisher } from './brain-state-publisher';
@@ -144,14 +145,7 @@ function resolvePreloadPath(): string {
 }
 
 function calculateInitialPosition(): { x: number; y: number } {
-  const workArea = platformAdapter.getDisplayWorkArea();
-  const initialX = Math.round(
-    workArea.x + Math.max(20, workArea.width - WINDOW_WIDTH - 60)
-  );
-  const initialY = Math.round(
-    workArea.y + Math.max(20, workArea.height - WINDOW_HEIGHT - 60)
-  );
-  return { x: initialX, y: initialY };
+  return initialPetWindowPosition(platformAdapter.getDisplayWorkArea());
 }
 
 function initializeServices(): void {
@@ -239,6 +233,7 @@ function initializeAutonomyComposition(): void {
   if (orchestrator === null) return;
   const prng = new SeededPrng(AUTONOMY_SEED);
   autonomyComposition = new MainAutonomyComposition({
+    cursorPosition: platformAdapter,
     clock: { now: () => performance.now() },
     scheduler: createMainAutonomyScheduler(),
     prng,

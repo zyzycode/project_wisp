@@ -1,4 +1,5 @@
 import { CursorGamePresentation } from '../application/services/cursor-game-presentation';
+import type { IPlatformAdapter } from '../application/ports/platform-adapter.interface';
 import type { GameObservation } from '../domain/behavior/cursor-game';
 import { requiresVitalSleep, permitsAutomaticWake, isQuietCompatible } from '../domain/character/autonomy-character-engine';
 import { LANDING_RECOVERY_MS } from '../domain/behavior/autonomous-behavior';
@@ -22,6 +23,8 @@ import type { BehaviorIntent } from '../domain/behavior/behavior-intent';
 import type { ActivityCancelReason } from '../domain/behavior/activity-runner';
 import {
   createCursorObserveActivityCandidates,
+  canPlayWithCursor,
+  DEFAULT_CURSOR_OBSERVE_CONSTRAINTS,
   resolveCursorObserve,
 } from '../domain/behavior/cursor-observe-policy';
 import type { ExplorePlan } from '../domain/behavior/explore-planner';
@@ -64,6 +67,7 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
+  readonly cursorPosition?: Pick<IPlatformAdapter, 'getCursorScreenPosition'>;
   readonly locale?: 'ru' | 'en';
   readonly clock: AutonomyClock;
   readonly scheduler: AutonomyScheduler;
@@ -104,6 +108,8 @@ export class MainAutonomyComposition {
   private cursorEpisode: { endsAtMs: number; supportId: string | undefined } | null = null;
   private readonly gamePresentation: CursorGamePresentation;
   private latestCursor: GameObservation['cursor'] = null;
+  private nextCursorPollAtMs = 0;
+  private globalCursorActive = false;
   private cursorMustExit = false;
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
@@ -262,10 +268,11 @@ export class MainAutonomyComposition {
       if (resolution.resolvedIntent) this.handleResolvedIntent(resolution.resolvedIntent);
     }
     this.providerAdmission.tick();
+    const cursorChanged = this.pollCursor(nowMs);
     const activityChanged = this.activity.tick(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
     if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
-    return needsChanged || activityChanged || showFall || speechChanged;
+    return needsChanged || activityChanged || showFall || speechChanged || cursorChanged;
   }
 
   private getCursorObservation(): GameObservation {
@@ -300,6 +307,7 @@ export class MainAutonomyComposition {
   }
 
   private resetCursorInterest(): void {
+    this.globalCursorActive = false;
     this.lastCursorObservedAtMs = null;
     this.latestCursor = null;
     this.gamePresentation.clear();
@@ -354,6 +362,29 @@ export class MainAutonomyComposition {
   }
 
   public handleCursorObservation(screenPosition: Vector2Dto): boolean {
+    if (this.globalCursorActive) return false;
+    return this.observeCursor(screenPosition);
+  }
+
+  private pollCursor(nowMs: number): boolean {
+    if (!this.options.cursorPosition || nowMs < this.nextCursorPollAtMs || !this.enabled || this.menuOpen) return false;
+    this.nextCursorPollAtMs = nowMs + 100;
+    const position = this.options.cursorPosition.getCursorScreenPosition();
+    if (position === null) {
+      if (this.globalCursorActive) {
+        this.latestCursor = null;
+        this.lastCursorObservedAtMs = null;
+        this.cursorMustExit = false;
+        this.cursorProximityState = { withinSwatRange: false, dwellWithinSwatRangeMs: 0, updatedAtMs: nowMs };
+      }
+      this.globalCursorActive = false;
+      return false;
+    }
+    this.globalCursorActive = true;
+    return this.observeCursor(position);
+  }
+
+  private observeCursor(screenPosition: Vector2Dto): boolean {
     if (!this.started || this.disposed) return false;
     const nowMs = this.options.clock.now();
     const playing = this.activity.getRuntime()?.activityId === 'cursor_interest';
@@ -361,13 +392,15 @@ export class MainAutonomyComposition {
       this.providerAdmission.getOwnedRun() === null && !this.providerAdmission.hasPending() &&
       this.enabled &&
       !this.menuOpen &&
-      this.activity.getRuntime() === null &&
+      !this.deferredUserInteractionResume &&
+      (this.activity.getRuntime() === null ||
+        (this.activity.getRuntime()?.activityId === 'calm' && this.activity.getSource() === 'local')) &&
       (this.visualEpisode.intent.kind === 'idle_blink' || this.visualEpisode.intent.kind === 'look_around') &&
       this.character.isAutonomyEligible() &&
       this.options.movement.canAcceptVoluntaryMovement());
     this.latestCursor = { globalPosition: screenPosition, capturedAtMs: nowMs };
     if (Math.hypot(screenPosition.x - this.options.movement.getRootPosition().x,
-      screenPosition.y - this.options.movement.getRootPosition().y) > 360) this.cursorMustExit = false;
+      screenPosition.y - this.options.movement.getRootPosition().y) > DEFAULT_CURSOR_OBSERVE_CONSTRAINTS.ambientRadiusWorldPx) this.cursorMustExit = false;
     const proximity = this.cursorProximityEngine.update(this.cursorProximityState, {
       nowMs,
       rootGlobalPosition: this.options.movement.getRootPosition(),
@@ -377,8 +410,18 @@ export class MainAutonomyComposition {
     this.cursorProximityState = proximity.state;
     this.lastCursorObservedAtMs = nowMs;
     if (playing || !compatible || proximity.signal === undefined) return false;
+    if (proximity.signal.distanceToRootWorldPx > DEFAULT_CURSOR_OBSERVE_CONSTRAINTS.ambientRadiusWorldPx) return false;
 
     const snapshot = this.options.getCharacterSnapshot();
+    const budgetAvailable = !this.quiet && this.initiativeBudget.available(nowMs);
+    const gameCandidate = (this.options.cursorPosition === undefined || this.globalCursorActive)
+      && !this.cursorMustExit && budgetAvailable && canPlayWithCursor(snapshot.needs, snapshot.synthesizedTone)
+      ? createCursorInterestActivity({ root: this.options.movement.getRootPosition(), cursor: screenPosition,
+          environment: this.options.movement.getEnvironmentSnapshot(), collisionInsets: this.options.movement.getCollisionInsets() })
+      : null;
+    // Keep observing until dwell matures; a gaze Activity here would reset it and consume cooldown.
+    if (gameCandidate && proximity.state.withinSwatRange
+        && proximity.state.dwellWithinSwatRangeMs < DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs) return false;
     const update = resolveCursorObserve({
       nowMs,
       signal: proximity.signal,
@@ -405,15 +448,9 @@ export class MainAutonomyComposition {
       gazeDirection: gazeDirectionTo(this.options.movement.getRootPosition(), screenPosition),
     });
 
-    const budgetAvailable = !this.quiet && this.initiativeBudget.available(nowMs);
     if (!budgetAvailable) playCandidates = playCandidates.filter(candidate => candidate.tags?.includes('gaze_only'));
-    if (!this.cursorMustExit && budgetAvailable && snapshot.needs.energy >= 65 && snapshot.needs.play >= 50
-        && this.cursorProximityState.dwellWithinSwatRangeMs >= DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs
-        && (snapshot.relationship?.friendship ?? 0) >= 100 && update.zone !== 'far') {
-      const approach = createCursorInterestActivity({ root: this.options.movement.getRootPosition(),
-        cursor: screenPosition, environment: this.options.movement.getEnvironmentSnapshot(),
-        collisionInsets: this.options.movement.getCollisionInsets() });
-      if (approach && this.options.prng.next() < .25) playCandidates = [approach];
+    if (gameCandidate && this.cursorProximityState.dwellWithinSwatRangeMs >= DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs) {
+      playCandidates = [gameCandidate];
     }
     this.coordinator.suspendForReactiveActivity();
     this.cursorReactionActive = true;

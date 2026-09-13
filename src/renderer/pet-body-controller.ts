@@ -231,6 +231,11 @@ export class PetBodyController {
     brain: BrainStateDTO,
     reflex: BodyVisualReflexState
   ): PetBodySnapshot {
+    const game = brain.cursorGame;
+    const cursorGameReaction = brain.activity?.activityId === 'cursor_interest'
+      && brain.activity.phaseId === 'reaction' && brain.activity.runId === game?.runId
+      && (game.outcome === 'caught' || game.outcome === 'missed' || game.outcome === 'lost_target')
+      ? game.outcome : undefined;
     const snapshot: PetBodySnapshot = {
       brain,
       visual: {
@@ -238,6 +243,7 @@ export class PetBodyController {
         revision: ++this.visualRevision,
         visualIntent: brain.visualIntent,
         visualAgeMs: brain.sampledAtMs - brain.visualIntent.episodeStartedAtMs,
+        ...(cursorGameReaction === undefined ? {} : { cursorGameReaction }),
         reflex,
       },
     };

@@ -1,4 +1,5 @@
 import type { BrainVisualIntentDTO } from '../../shared/ipc-contracts';
+import type { SpriteResolutionContext } from './types';
 
 export interface BodyVisualReflexState {
   readonly pupilOffset: { readonly x: number; readonly y: number };
@@ -11,7 +12,7 @@ export interface BodyVisualReflexState {
 }
 
 /** Renderer-local projection consumed by a Skin adapter; never crosses IPC. */
-export interface BodyVisualState {
+export interface BodyVisualState extends SpriteResolutionContext {
   readonly streamId: string;
   readonly revision: number;
   readonly visualIntent: Readonly<BrainVisualIntentDTO>;

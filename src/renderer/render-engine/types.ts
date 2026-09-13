@@ -203,6 +203,11 @@ export interface ResolvedTrackBase {
   readonly blendMode?: RenderBlendMode;
 }
 
+/** Semantic context for choosing artwork inside Renderer; no asset keys in Brain. */
+export interface SpriteResolutionContext {
+  readonly cursorGameReaction?: 'caught' | 'missed' | 'lost_target';
+}
+
 export interface ResolvedBodyTrack extends ResolvedTrackBase {
   readonly id: 'base_body';
   readonly category: 'body';

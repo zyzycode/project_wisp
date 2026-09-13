@@ -12,6 +12,7 @@ import {
   type ResolvedOverlayTrack,
   type SpriteLayerCategory,
   type SpritePoint,
+  type SpriteResolutionContext,
 } from './types';
 
 /** Compatibility aliases for manifests without the dedicated artist assets. */
@@ -116,8 +117,8 @@ export class AssetResolver {
     this.enableFaceOverlays = options.enableFaceOverlays ?? true;
   }
 
-  resolve(intent: AnyAnimationIntent): ResolvedAnimationClip {
-    const body = this.resolveBody(intent);
+  resolve(intent: AnyAnimationIntent, context: SpriteResolutionContext = {}): ResolvedAnimationClip {
+    const body = this.resolveBody(intent, context);
     const face = this.resolveFace(intent, body);
     const expression = this.resolveExpression(intent);
     const prop = this.resolveProp(intent);
@@ -170,7 +171,12 @@ export class AssetResolver {
       .sort((left, right) => left.localeCompare(right));
   }
 
-  private resolveBody(intent: AnyAnimationIntent): NormalizedSpriteAnimationDef {
+  private resolveBody(intent: AnyAnimationIntent, context: SpriteResolutionContext): NormalizedSpriteAnimationDef {
+    const gameKey = context.cursorGameReaction === 'caught' && intent.kind === 'happy_reaction' ? 'body_cursor_caught'
+      : (context.cursorGameReaction === 'missed' || context.cursorGameReaction === 'lost_target')
+        && intent.kind === 'confused_reaction' ? 'body_cursor_missed' : undefined;
+    const gameBody = gameKey === undefined ? undefined : selectAnimation(this.manifest.animations[gameKey], 'body');
+    if (gameBody !== undefined) return gameBody;
     const preferredKey = BODY_KEYS[intent.kind] ?? 'body_idle';
     const specialised = this.manifest.animations[`${preferredKey}_${intent.emotionalTone}`];
     const preferred = this.manifest.animations[preferredKey];

@@ -116,6 +116,8 @@ function runInBrainTransaction<Result>(
 }
 
 export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlersOptions): void {
+  let menuPlacement: { readonly window: AutonomyIpcWindow; readonly original: PetPositionDTO;
+    readonly expanded: PetPositionDTO } | null = null;
   options.register('wisp:set-quiet-mode', async (event, payload) => {
     const { controller } = requireTrustedContext(options, event);
     const command = parseQuietModeCommand(payload);
@@ -143,14 +145,22 @@ export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlers
       const expanded = handleMenuVisibilityChanged(controller, accepted.expanded);
       const size = expanded ? options.expandedSize : options.compactSize;
       const currentPosition = options.getNativePosition();
-      const nextPosition = clampNativePositionForWindow(
-        currentPosition,
-        options.getScreenBounds(),
-        size
-      );
-      controller.requestManualRootPosition(
-        nativeToRootPosition(nextPosition, options.pivotOffset)
-      );
+      if (expanded) {
+        const nextPosition = clampNativePositionForWindow(currentPosition, options.getScreenBounds(), size);
+        if (controller.requestManualRootPosition(nativeToRootPosition(nextPosition, options.pivotOffset))
+            && menuPlacement?.window !== window) {
+          menuPlacement = { window, original: { ...currentPosition }, expanded: nextPosition };
+        }
+      } else {
+        // A closed-menu notification also occurs during React's dev lifecycle. It must not
+        // clamp the transparent compact window and lift a grounded root off its support.
+        const saved = menuPlacement;
+        menuPlacement = null;
+        if (saved?.window === window && [saved.expanded, saved.original].some(position =>
+          currentPosition.x === position.x && currentPosition.y === position.y)) {
+          controller.requestManualRootPosition(nativeToRootPosition(saved.original, options.pivotOffset));
+        }
+      }
       window.setResizable(true);
       window.setSize(size.width, size.height);
     });

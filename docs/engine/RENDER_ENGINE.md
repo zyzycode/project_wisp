@@ -31,6 +31,7 @@ Renderer не парсит provider DTO, не считает Needs/Activity/auth
 | `revision` | Порядок полных visual projections, включая локальные reflex updates | Положительный safe integer; update с уже применённой revision не публикуется повторно. |
 | `visualIntent` | Immutable semantic intent текущего Brain episode | Для пары `(streamId, episodeId)` payload неизменен; asset keys отсутствуют. |
 | `visualAgeMs` | Same-clock baseline возраста visual episode, вычисленный Body | Равен `sampledAtMs - episodeStartedAtMs`, конечен и неотрицателен; Skin не сравнивает Main и Renderer clocks. |
+| `cursorGameReaction?` | Контекст выбора игрового клипа: `caught`, `missed`, `lost_target` | Только для `cursor_interest/reaction` при совпадении run ID с готовым Brain outcome. Skin выбирает `body_cursor_caught`/`body_cursor_missed`; отсутствие ассета сохраняет общий reaction fallback. Исход и границы фазы остаются в Brain. |
 | `reflex.pupilOffset` | Renderer-local смещение взгляда | Обе компоненты конечны и нормализованы в `[-1, 1]`; не пересекают IPC. |
 | `reflex.transform` | `flipX`, `scaleX`, `scaleY`, `rotationDeg` для gaze/drag squash/stretch | Числа конечны, масштабы положительны; transform не меняет motion authority. |
 

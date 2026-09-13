@@ -40,6 +40,11 @@ export const DEFAULT_CURSOR_OBSERVE_CONSTRAINTS: CursorObserveConstraints = Obje
   signalMaxAgeMs: 300,
 });
 
+/** New acquaintances can play; friendship influences noticing, not permission to play. */
+export function canPlayWithCursor(needs: Readonly<Needs>, tone: SynthesizedEmotionalTone): boolean {
+  return needs.energy > 35 && tone !== 'sleepy';
+}
+
 function clampUnit(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
@@ -170,7 +175,7 @@ export interface CursorObserveActivityContext {
 export function createCursorObserveActivityCandidates(
   context: CursorObserveActivityContext
 ): readonly ActivityDefinition[] {
-  if (context.needs.energy <= 35 || context.tone === 'sleepy') {
+  if (!canPlayWithCursor(context.needs, context.tone)) {
     return Object.freeze([createCursorObserveActivity('gaze_only', context.gazeDirection, 1)]);
   }
 

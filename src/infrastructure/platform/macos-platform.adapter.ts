@@ -1,4 +1,5 @@
 import { screen, BrowserWindow } from 'electron';
+import { readCursorScreenPosition } from './cursor-screen-position';
 import type {
   IPlatformAdapter,
   ScreenBounds,
@@ -6,6 +7,8 @@ import type {
 } from '../../application/ports/platform-adapter.interface';
 
 export class MacOSPlatformAdapter implements IPlatformAdapter {
+  getCursorScreenPosition() { return readCursorScreenPosition(); }
+
   getPlatformName(): SupportedPlatform {
     return 'darwin';
   }

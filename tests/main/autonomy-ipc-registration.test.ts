@@ -73,6 +73,50 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
 }
 
 describe('Main: autonomy IPC registration', () => {
+  it('does not reposition a grounded pet for the initial closed-menu notification', async () => {
+    const fixture = createRegistrationFixture({ x: 1600, y: 980 });
+    await fixture.handler('wisp:body-event')({ sender: fixture.trustedSender }, {
+      ...bodyEvent('menu_visibility_changed'), expanded: false,
+    });
+    expect(fixture.controller.requestManualRootPosition).not.toHaveBeenCalled();
+    expect(fixture.window.setSize).toHaveBeenCalledWith(280, 320);
+  });
+
+  it('restores the original support position after the expanded menu closes', async () => {
+    const position = { x: 1600, y: 980 };
+    const fixture = createRegistrationFixture(position);
+    await fixture.handler('wisp:body-event')({ sender: fixture.trustedSender }, bodyEvent('menu_visibility_changed'));
+    Object.assign(position, { x: 780, y: 460 });
+    await fixture.handler('wisp:body-event')({ sender: fixture.trustedSender }, bodyEvent('menu_visibility_changed', 2));
+    fixture.controller.requestManualRootPosition.mockClear();
+    await fixture.handler('wisp:body-event')({ sender: fixture.trustedSender }, {
+      ...bodyEvent('menu_visibility_changed', 3), expanded: false,
+    });
+    expect(fixture.controller.requestManualRootPosition).toHaveBeenCalledWith({ x: 1650, y: 1070 });
+  });
+
+  it('does not restore a stale menu position after the pet has moved', async () => {
+    const position = { x: 1600, y: 980 };
+    const fixture = createRegistrationFixture(position);
+    await fixture.handler('wisp:body-event')({ sender: fixture.trustedSender }, bodyEvent('menu_visibility_changed'));
+    Object.assign(position, { x: 600, y: 400 });
+    fixture.controller.requestManualRootPosition.mockClear();
+    await fixture.handler('wisp:body-event')({ sender: fixture.trustedSender }, {
+      ...bodyEvent('menu_visibility_changed', 2), expanded: false,
+    });
+    expect(fixture.controller.requestManualRootPosition).not.toHaveBeenCalled();
+  });
+
+  it('replaces the pending menu movement when closed before the next Motion tick', async () => {
+    const fixture = createRegistrationFixture({ x: 1600, y: 980 });
+    await fixture.handler('wisp:body-event')({ sender: fixture.trustedSender }, bodyEvent('menu_visibility_changed'));
+    fixture.controller.requestManualRootPosition.mockClear();
+    await fixture.handler('wisp:body-event')({ sender: fixture.trustedSender }, {
+      ...bodyEvent('menu_visibility_changed', 2), expanded: false,
+    });
+    expect(fixture.controller.requestManualRootPosition).toHaveBeenCalledWith({ x: 1650, y: 1070 });
+  });
+
   it('rejects foreign senders before any menu, autonomy, or sleep/wake mutation', async () => {
     const fixture = createRegistrationFixture();
     const foreignEvent = { sender: {} };

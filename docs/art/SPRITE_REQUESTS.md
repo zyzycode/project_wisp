@@ -27,5 +27,8 @@ AUTO-I04/I05/I06 и #48 закрыты:
 CURSOR-GAME-V1: арт-запросы закрыты **2026-09-08**. `body_cursor_caught` и
 `body_cursor_missed` зарегистрированы в манифесте: по 6 кадров, 600 ms.
 [Результат и воспроизведение](../../asset-pipeline/references/CURSOR_GAME_QA.md).
-Выделенные ассеты доступны; выбор этих клипов вместо общих reaction intents остаётся
-отдельным изменением логики приложения. Открытых арт-запросов на эту дату нет.
+Выделенные ассеты подключены в [AssetResolver](../../src/renderer/render-engine/asset-resolver.ts)
+через контекст текущей игровой реакции Body → Skin: caught → `body_cursor_caught`,
+missed/lost_target → `body_cursor_missed`. Старые манифесты сохраняют fallback
+`body_petting`/`body_scared`; общие реакции вне игры не изменены.
+Открытых арт-запросов на эту дату нет.

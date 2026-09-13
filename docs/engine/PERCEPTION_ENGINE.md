@@ -8,6 +8,8 @@ Gaze Engine — pure pupil offset/tracking/neutral/visual freshness, вызыв�
 
 Body показывает gaze локально и refresh-ит cursor_observed до 10 Hz независимо от RAF ([UI cadence](UI_SPEC.md#63-cadence-и-coalescing)). Application ставит Main receive time; Brain использует proximity для P3 eligibility. [Ownership](README.md#4-матрица-межмодульных-контрактов-кто-от-кого-зависит).
 
+Main также читает глобальную позицию через `IPlatformAdapter.getCursorScreenPosition()` раз в ≥100 ms из существующего Brain tick, без отдельного таймера. Windows/macOS/X11 используют [Electron getCursorScreenPoint](https://www.electronjs.org/docs/latest/api/screen#screengetcursorscreenpoint), который уже возвращает DIP; повторное масштабирование запрещено. Wayland/ошибка/невалидные координаты → `null`. Свежий глобальный источник имеет приоритет над Body events; при недоступности остаётся локальный Body fallback для stationary Observe Cursor, без старта chase. Потеря глобального источника инвалидирует его sample, stale не продлевается. Курсор вне ambient зоны не создаёт Activity и не расходует initiative budget.
+
 ## 2. Поток perception
 
 OS/platform + BodyEventDTO cursor → boundary normalization → EnvironmentSnapshot → proximity → Brain eligibility / Motion support. Body cursor + presentation geometry → gaze → PupilOffset.
@@ -112,7 +114,9 @@ Look-at остаётся gaze. Swat/avoid — local P3 Activity decisions и н�
 
 ### 6.1. Cursor game v1: ограниченное преследование
 
-Целевое расширение существующего `cursor_interest` (#48): stationary Observe Cursor сохраняет gaze/gesture; игра внутри `play` требует freshness/dwell, Character gates, cooldown и общий initiative budget. Fatigue может оставить только gaze; P2/AI ownership запрещают новую local Activity. API для каждого sample не вызывается. Никаких global hooks для захвата мыши, перемещения/блокировки системного курсора или кликов за пользователя.
+Расширение существующего `cursor_interest` (#48): stationary Observe Cursor сохраняет gaze/gesture; игра внутри `play` требует freshness/dwell, Character gates, cooldown и общий initiative budget. Fatigue может оставить только gaze; P2/AI ownership запрещают новую local Activity. Внешний AI API для samples не вызывается. Никаких global hooks для захвата мыши, перемещения/блокировки системного курсора или кликов за пользователя.
+
+Допуск игры использует существующий fatigue gate Observe Cursor (`energy >35`, tone не sleepy), без отдельного требования friendship≥100 или play≥50. Friendship/Needs влияют на вероятность заметить курсор; начальное состояние нового персонажа не исключает игру. Локальный calm с idle/look-around допускает P3 reaction; user/provider-owned Activity защищена. Пока свежий достижимый курсор накапливает swat dwell, не запускать конкурирующий Observe Cursor и не расходовать его cooldown. После dwell и notice выбирать игру без второго случайного veto. Проверка: [startup scenarios](../../tests/main/cursor-game-startup.test.ts) с реальными defaults и 10-Hz samples.
 
 В cursor-game-v1 разрешён ограниченный retarget **только между завершёнными grounded locomotion legs**: не чаще одного раза в 500 ms, максимум четыре цели вместе с первой, новая цель отличается от прошлой минимум на 20 DIP. Samples обновляют наблюдение, а не заменяют активную Motion command. Один run/deadline 6000 ms и общий пройденный путь ≤160 DIP, без сброса при retarget. Значения — [CursorGameTuning](../../src/application/ports/cursor-game-contract.ts); прежние одноимённые пределы InitiativeTuning берутся из того же tuning, не два независимых лимита.
 

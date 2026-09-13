@@ -3,15 +3,17 @@ import { MainAutonomyComposition } from '../../src/main/main-autonomy-compositio
 import { CharacterStateService } from '../../src/application/services/character-state.service';
 import { CharacterInteractionUseCase } from '../../src/application/services/character-interaction.use-case';
 import { ShimejiStimulusMapper } from '../../src/application/services/shimeji-stimulus.mapper';
-import type { Needs } from '../../src/domain/character';
+import type { Needs, CharacterState } from '../../src/domain/character';
 import type { ActivityOutcomeFeedback } from '../../src/application/ports/shimeji-feedback-port';
 import type { ProviderBehaviorOffer } from '../../src/application/ports/behavior-admission-port';
-export function scenario(needs: Partial<Needs> = {}, randomUnit = .2) {
+import type { IPlatformAdapter } from '../../src/application/ports/platform-adapter.interface';
+export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialState?: CharacterState,
+  cursorPosition?: Pick<IPlatformAdapter, 'getCursorScreenPosition'>) {
   let now = 0; let id = 0; let nextTimer = 0; let root = { x: 400, y: 790 }; let target: typeof root | null = null;
   let movable = true; let supportValid = true; let random = randomUnit;
   const timers = new Map<number, { atMs: number; callback: () => void }>();
   const seed = new CharacterStateService({ now: () => 0 }).getState();
-  const character = new CharacterStateService({ now: () => now, initialState: { ...seed,
+  const character = new CharacterStateService({ now: () => now, initialState: initialState ?? { ...seed,
     needs: { ...seed.needs, energy: 70, play: 80, boredom: 80, ...needs },
     relationship: { ...seed.relationship, friendship: 500, loveUnlocked: true } } });
   const input = new CharacterInteractionUseCase(character);
@@ -22,7 +24,7 @@ export function scenario(needs: Partial<Needs> = {}, randomUnit = .2) {
   const move = vi.fn((command: { readonly targetRootPosition: typeof root; readonly speedPxPerSec: number }) => {
     if (!movable) return false; target = command.targetRootPosition; return true;
   });
-  const main = new MainAutonomyComposition({ clock: { now: () => now }, scheduler: {
+  const main = new MainAutonomyComposition({ cursorPosition, clock: { now: () => now }, scheduler: {
     setTimeout: (callback, delay) => { const key = ++nextTimer; timers.set(key, { callback, atMs: now + delay }); return key; },
     clearTimeout: key => { timers.delete(key as number); } },
     prng: { next: () => random }, prngMetadata: { algorithm: 'constant', seed: 1 },

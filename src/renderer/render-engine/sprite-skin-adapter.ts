@@ -101,7 +101,9 @@ export class SpriteSkinAdapter implements ISkinEngine {
     this.currentState = state;
     const episodeKey = `${state.streamId}\u0000${state.visualIntent.episodeId}`;
     try {
-      const clip = this.options.resolver.resolve(toAnimationIntent(state));
+      const clip = this.options.resolver.resolve(toAnimationIntent(state), {
+        cursorGameReaction: state.cursorGameReaction,
+      });
       const loopMode = toPlayerLoopMode(state.visualIntent.loop);
       if (episodeKey !== this.activeEpisodeKey) {
         this.activeEpisodeKey = episodeKey;

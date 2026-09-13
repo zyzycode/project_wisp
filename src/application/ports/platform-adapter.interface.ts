@@ -13,6 +13,8 @@ export interface ScreenBounds {
 export type SupportedPlatform = 'linux' | 'win32' | 'darwin';
 
 export interface IPlatformAdapter {
+  /** Current global DIP position; null if unsupported or unavailable. Read-only, no cursor hooks. */
+  getCursorScreenPosition(): { readonly x: number; readonly y: number } | null;
   getPlatformName(): SupportedPlatform;
   getDisplaySessionType(): string; // 'x11' | 'wayland' | 'native'
   configureOverlayWindow(window: Electron.BrowserWindow): void;

@@ -1,4 +1,5 @@
 import { screen, BrowserWindow } from 'electron';
+import { readCursorScreenPosition } from './cursor-screen-position';
 import type {
   IPlatformAdapter,
   ScreenBounds,
@@ -20,6 +21,10 @@ import type {
  *      initial position without throwing unhandled exceptions.
  */
 export class LinuxPlatformAdapter implements IPlatformAdapter {
+  getCursorScreenPosition() {
+    return this.getDisplaySessionType() === 'wayland' ? null : readCursorScreenPosition();
+  }
+
   getPlatformName(): SupportedPlatform {
     return 'linux';
   }
