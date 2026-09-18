@@ -61,3 +61,13 @@ export function adaptPersonalityAxes(
     return nextAxes;
   }, {} as Record<PersonalityAxis, AxisValue>);
 }
+
+/** Accepted experience only: apply the canonical raw step/weight cap before plasticity. */
+export function adaptBoundedExperienceAxes(axes: Record<PersonalityAxis, AxisValue>, deltas: PersonalityAxisDeltas, weight = 1): Record<PersonalityAxis, AxisValue> {
+  const bounded: PersonalityAxisDeltas = {};
+  for (const axis of PERSONALITY_AXES) {
+    const delta = deltas[axis] ?? 0;
+    bounded[axis] = Number.isFinite(delta) ? clamp(delta, -0.004, 0.004) : 0;
+  }
+  return adaptPersonalityAxes(axes, bounded, Number.isFinite(weight) ? clamp(weight, 0, 1) : 0);
+}

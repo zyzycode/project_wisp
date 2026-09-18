@@ -109,6 +109,7 @@ describe('memory worker transport', () => {
       await new Promise<void>(resolve => setTimeout(() => { mainTicked = true; lock.exec('ROLLBACK'); lock.close(); resolve(); }, 50));
       expect(mainTicked).toBe(true);
       expect(await write).toEqual({ ok: true, value: undefined });
+      expect(await repos.gameReader.getRecent(20, c)).toMatchObject({ ok: true, value: [{ activityRunId: 'game', outcome: 'missed', playCompleted: true }] });
       expect((await repos.clear.clearUserMemory({ generation: 1 })).ok).toBe(true);
       expect(await repos.facts.list(1, c)).toEqual({ ok: false, code: 'stale' });
     } finally { await client.close(1); rmSync(directory, { recursive: true, force: true }); }

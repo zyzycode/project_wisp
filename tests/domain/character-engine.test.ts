@@ -255,7 +255,7 @@ describe('Domain: Character Engine v2', () => {
     });
   });
 
-  it('processes stimuli immutably and unlocks love through friendship progression', () => {
+  it('processes stimuli immutably, gates love with consent, and rejects unverified preference metadata', () => {
     const state = createState({
       relationship: { friendship: 395, love: 0, loveUnlocked: false },
       lastUpdated: 1000,
@@ -276,11 +276,7 @@ describe('Domain: Character Engine v2', () => {
     expect(next.relationship.friendship).toBe(411);
     expect(next.relationship.loveUnlocked).toBe(true);
     expect(next.relationship.love).toBe(4);
-    expect(next.preferences.games).toEqual({
-      value: 80,
-      confidence: 1 / 7,
-      samples: 1,
-    });
+    expect(next.preferences).toEqual({});
     expect(state.relationship).toEqual({ friendship: 395, love: 0, loveUnlocked: false });
     expect(state.preferences).toEqual({});
   });

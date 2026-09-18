@@ -1,3 +1,4 @@
+import { takeAdaptationOpportunity, type AdaptationGate } from './adaptation-gate';
 import type { PreferenceTrack } from './types';
 
 const MAX_ABS_PREFERENCE_VALUE = 100;
@@ -39,4 +40,20 @@ export function trackPreference(
       samples: nextSamples,
     },
   };
+}
+
+/** A verified persisted assertion provides a small sample, never a direct preference assignment. */
+export function learnCursorGamePreference(preferences: Readonly<Record<string, PreferenceTrack>>, disposition: 'like' | 'dislike'): Record<string, PreferenceTrack> {
+  const old = preferences['activity.cursor_game'] ?? { value: 0, confidence: 0, samples: 0 };
+  const target = disposition === 'like' ? 100 : -100;
+  const samples = Math.min(old.samples + 1, 1000);
+  return { ...preferences, 'activity.cursor_game': {
+    value: clamp(old.value + clamp((target - old.value) * 0.05, -2, 2), -100, 100),
+    samples, confidence: samples / (samples + 6),
+  } };
+}
+
+export function learnVerifiedCursorPreference(preferences: Record<string, PreferenceTrack>, disposition: 'like' | 'dislike', gate: AdaptationGate, nowMs: number): { readonly preferences: Record<string, PreferenceTrack>; readonly gate: AdaptationGate } {
+  const opportunity = takeAdaptationOpportunity(gate, nowMs, disposition === 'like' || disposition === 'dislike');
+  return { preferences: opportunity.accepted ? learnCursorGamePreference(preferences, disposition) : preferences, gate: opportunity.gate };
 }

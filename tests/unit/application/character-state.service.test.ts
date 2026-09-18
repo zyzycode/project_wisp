@@ -68,8 +68,8 @@ describe('Application: CharacterStateService', () => {
 
     expect(after).not.toBe(before);
     expect(after.relationship.friendship).toBe(401);
-    expect(after.relationship.loveUnlocked).toBe(true);
-    expect(after.relationship.love).toBe(1);
+    expect(after.relationship.loveUnlocked).toBe(false);
+    expect(after.relationship.love).toBe(0);
     expect(after.needs.attention).toBeLessThan(before.needs.attention);
     expect(after.needs.play).toBeLessThan(before.needs.play);
     expect(after.needs.boredom ?? 0).toBeLessThan(before.needs.boredom ?? 0);

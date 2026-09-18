@@ -1,3 +1,4 @@
+import { projectBackendMemoryRequest, parseBackendMemorySuccess, parseBackendMemoryError } from './backend-memory-validation';
 import type { AIProviderFallbackReason, AIProviderRequest, AIProviderResponse, AIProviderStatus, IAIProvider } from '../../application/ports/ai-provider.interface';
 import { DEFAULT_AI_REQUEST_POLICY, type IAIRequestControl } from '../../application/ports/ai-request-policy';
 import { DIALOGUE_FALLBACK } from '../../application/services/dialogue-provider-result';
@@ -6,6 +7,7 @@ import { parseBackendError, parseBackendSuccess } from './backend-response-valid
 
 interface ExternalAIProviderOptions {
   readonly baseUrl: string;
+  readonly apiVersion?: 1 | 2;
   readonly development: boolean;
   readonly now: () => number;
   readonly requestControl: IAIRequestControl;
@@ -15,11 +17,11 @@ class ProtocolError extends Error {}
 class TransportTimeout extends Error {}
 
 /** Trusted Main configuration only; redirects, cookies and provider secrets are forbidden. */
-function endpoint(baseUrl: string, development: boolean): URL {
+function endpoint(baseUrl: string, development: boolean, apiVersion: 1 | 2): URL {
   const url = new URL(baseUrl);
   const loopback = url.hostname === 'localhost' || url.hostname === '[::1]' || /^127(?:\.\d{1,3}){3}$/u.test(url.hostname);
   if ((url.protocol !== 'https:' && !(development && loopback && url.protocol === 'http:')) || url.username || url.password || url.search || url.hash) throw new TypeError('Invalid backend URL');
-  url.pathname = `${url.pathname.replace(/\/$/u, '')}/v1/chat`;
+  url.pathname = `${url.pathname.replace(/\/$/u, '')}/v${apiVersion}/chat`;
   return url;
 }
 async function readBoundedJson(response: Response, signal: AbortSignal): Promise<unknown> {
@@ -54,7 +56,7 @@ export class ExternalAIProviderClient implements IAIProvider {
   private readonly fetch: typeof fetch;
   private activeRequestId: string | undefined;
   constructor(private readonly options: ExternalAIProviderOptions) {
-    this.url = endpoint(options.baseUrl, options.development);
+    this.url = endpoint(options.baseUrl, options.development, options.apiVersion ?? 1);
     this.fetch = options.fetch ?? globalThis.fetch;
   }
   public async getStatus(): Promise<AIProviderStatus> {
@@ -62,7 +64,7 @@ export class ExternalAIProviderClient implements IAIProvider {
     return { kind: this.options.requestControl.availability(this.options.now()).available ? 'ready' : 'offline' };
   }
   public async generateResponse(request: AIProviderRequest): Promise<AIProviderResponse> {
-    const body = JSON.stringify(projectBackendRequest(request));
+    const body = JSON.stringify(this.options.apiVersion === 2 ? projectBackendMemoryRequest(request) : projectBackendRequest(request));
     if (new TextEncoder().encode(body).byteLength > 32 * 1024) throw new TypeError('Request too large');
     if (this.activeRequestId || !this.options.requestControl.recordSubmission(this.options.now())) throw new Error('Transport unavailable');
     const startedAt = this.options.now();
@@ -85,7 +87,7 @@ export class ExternalAIProviderClient implements IAIProvider {
       if (this.options.now() - startedAt >= DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs) throw new TransportTimeout();
       if (response.status !== 200) {
         let error;
-        try { error = parseBackendError(value, request.requestId, response.status); }
+        try { error = this.options.apiVersion === 2 ? parseBackendMemoryError(value, request.requestId, response.status) : parseBackendError(value, request.requestId, response.status); }
         catch { throw new ProtocolError('Invalid backend error'); }
         if (response.status === 429) this.cooldown(error.error.retryAfterMs ?? 60_000);
         else if ([502, 503, 504].includes(response.status)) this.cooldown(30_000);
@@ -93,10 +95,11 @@ export class ExternalAIProviderClient implements IAIProvider {
         return this.fallback(request.requestId, reason, startedAt);
       }
       let result;
-      try { result = parseBackendSuccess(value, request.requestId); }
+      try { result = this.options.apiVersion === 2 ? parseBackendMemorySuccess(value, request.requestId, request.userMessage.text) : parseBackendSuccess(value, request.requestId); }
       catch { throw new ProtocolError('Invalid backend success'); }
       const decision = result.decision;
-      return { requestId: result.requestId, status: 'ok', reply: { text: result.text, ...(decision?.tone === undefined ? {} : { tone: decision.tone }) },
+      return { requestId: result.requestId, status: 'ok',
+        ...('memoryCandidates' in result ? { memoryCandidates: result.memoryCandidates } : {}), reply: { text: result.text, ...(decision?.tone === undefined ? {} : { tone: decision.tone }) },
         suggestedBehavior: decision?.behavior ?? 'respond', confidence: decision?.confidence ?? 1,
         ...(decision?.mood === undefined || decision.mood === 'playful' ? {} : { suggestedMood: decision.mood }),
         diagnostics: { provider: 'external', latencyMs: Math.max(0, this.options.now() - startedAt) } };

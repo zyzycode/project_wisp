@@ -1,3 +1,5 @@
+import { MemoryKnowledge } from './memory-knowledge';
+import type { ICharacterPreferenceLearning } from '../ports/memory-knowledge.interface';
 import type { MemoryRepositories, MemoryScheduler } from '../ports/memory-runtime';
 import type { MemoryFailureCode, MemoryOperationContext, MemoryResult, UserFact } from '../ports/memory-repository.interface';
 import type { AIProviderContextMessage } from '../ports/ai-provider.interface';
@@ -15,6 +17,7 @@ interface Options {
   readonly createId: () => string;
   readonly toTimestamp: (monotonicMs: number) => string;
   readonly localMock: boolean;
+  readonly preferenceLearning?: ICharacterPreferenceLearning;
   readonly hydrate: (messages: readonly AIProviderContextMessage[]) => void;
   readonly start: () => void;
   readonly pause: () => void;
@@ -23,6 +26,7 @@ interface Options {
 }
 export class MemoryLifecycle {
   readonly history: MemoryHistory;
+  private readonly knowledge: MemoryKnowledge;
   private generation = 0;
   private phase: 'initializing' | 'running' | 'resetting' | 'stopping' = 'initializing';
   private status: MemoryStatusDTO = { mode: 'initializing' };
@@ -33,7 +37,8 @@ export class MemoryLifecycle {
   private startupTimer: unknown;
   private shutdownPromise: Promise<void> | undefined;
   constructor(private readonly options: Options) {
-    this.history = new MemoryHistory({ ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
+    this.knowledge = new MemoryKnowledge({ facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
+    this.history = new MemoryHistory({ onPersisted: (turn, context) => this.knowledge.persisted(turn, context), ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
   }
   currentGeneration(): number { return this.generation; }
   getStatus(): MemoryStatusDTO { return { ...this.status }; }
@@ -121,7 +126,7 @@ export class MemoryLifecycle {
     const result = await this.safe(() => this.options.storage.clear.clearUserMemory({ generation }));
     if (this.phase !== 'resetting' || this.generation !== generation) return { ok: false, code: 'stale' };
     if (result.ok) {
-      this.options.character.resetToDefaults(); this.history.reset(); this.savedSignature = null; this.snapshotWritable = true;
+      this.options.character.resetToDefaults(); this.history.reset(); this.knowledge.reset(); this.savedSignature = null; this.snapshotWritable = true;
       this.status = { mode: 'persistent', characterRestore: 'default' }; this.options.resetCommitted();
     } else if (result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
     this.phase = 'running'; this.options.resume(); this.scheduleCheckpoint();

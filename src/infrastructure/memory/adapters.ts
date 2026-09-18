@@ -1,3 +1,4 @@
+import type { IGameEpisodeReader } from '../../application/ports/memory-knowledge.interface';
 import type { ICharacterStateRepository, IChatHistoryRepository, IClearMemoryStore, IGameEpisodeRepository, IUserFactsRepository, MemoryResult, MemoryOperationContext } from '../../application/ports/memory-repository.interface';
 import type { MemoryWorkerClient } from './worker-client';
 import type { Operation } from './protocol';
@@ -12,6 +13,7 @@ export interface MemoryAdapters {
   readonly history: IChatHistoryRepository;
   readonly facts: IUserFactsRepository;
   readonly episodes: IGameEpisodeRepository;
+  readonly gameReader: IGameEpisodeReader;
   readonly character: ICharacterStateRepository;
   readonly clear: IClearMemoryStore;
 }
@@ -33,6 +35,7 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
       removeByKey: (key, c) => call('removeFact', key, c, nothing),
       list: (limit, c) => call('listFacts', limit, c, value => list(value, v.fact)),
     },
+    gameReader: { getRecent: (limit, c) => call('getRecentEpisodes', limit, c, value => list(value, v.episode)) },
     episodes: { append: (episode, c) => call('appendEpisode', episode, c, nothing) },
     character: {
       load: c => call('loadSnapshot', null, c, value => value === null ? null : v.snapshot(value)),

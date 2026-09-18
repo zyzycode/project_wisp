@@ -10,6 +10,7 @@ export interface MemoryHistoryOptions {
   readonly context: () => MemoryOperationContext | null;
   readonly isCurrent?: (generation: number) => boolean;
   readonly createId: () => string;
+  readonly onPersisted?: (turn: CompletedDialogueMemoryTurn, context: MemoryOperationContext) => Promise<void>;
   readonly toTimestamp: (monotonicMs: number) => string;
   readonly onFailure: (code: MemoryFailureCode) => void;
 }
@@ -42,13 +43,15 @@ export class MemoryHistory {
       user: { id: turn.user.id, conversationSessionId: session.id, role: 'user', content: turn.user.text, createdAt: turn.user.createdAt },
       assistant: { id: turn.assistant.id, conversationSessionId: session.id, role: 'assistant', content: turn.assistant.text, createdAt: turn.assistant.createdAt } }, c));
     if (!this.isCurrent(c.generation)) return;
-    if (result.ok) this.session = session; else this.options.onFailure(result.code);
+    if (result.ok) { this.session = session; await this.options.onPersisted?.(turn, c); } else this.options.onFailure(result.code);
   }
   async game(result: CursorGameResult, generation: number): Promise<void> {
     const c = this.options.context(); if (!c || c.generation !== generation || !result.playCompleted) return;
     const saved = await this.safe(() => this.options.episodes.append({ appRunId: this.appRunId, activityRunId: result.activityRunId, kind: 'cursor_game', outcome: result.outcome, playCompleted: true, executedMs: result.executedMs, endedAt: this.options.toTimestamp(result.atMs) }, c));
     if (this.options.context()?.generation === generation && !saved.ok) this.options.onFailure(saved.code);
   }
+  /** Recall can await preceding acknowledged fact corrections within its own bounded budget. */
+  whenSettled(): Promise<void> { return this.turns; }
   reset(): void { this.session = null; this.appRunId = this.options.createId(); }
   async close(endedAt: string): Promise<void> {
     const c = this.options.context(); if (!c) return;

@@ -8,6 +8,7 @@ export interface CompletedDialogueMemoryTurn {
 }
 export interface DialogueMemoryHooks {
   readonly generation: () => number;
+  readonly recall?: import('./memory-knowledge.interface').ILocalMemoryRecall;
   readonly completed: (turn: CompletedDialogueMemoryTurn) => void;
   /** Present only for the local Mock; network providers retain their six-message policy. */
   readonly contextLimits?: ChatContextLimits;

@@ -1,3 +1,4 @@
+import { LocalMemoryRecall } from '../application/services/memory-recall';
 import { MemoryLifecycle } from '../application/services/memory-lifecycle';
 import { ClearMemoryUseCase } from '../application/services/clear-memory.use-case';
 import { registerMemoryIpc } from './memory-ipc-registration';
@@ -23,8 +24,8 @@ import type {
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
 import { PlatformEnvironmentAdapter } from '../infrastructure/platform/platform-environment.adapter';
 import { PetPositionService } from '../application/services/pet-position.service';
-import { defaultCharacterStateService } from '../application/services/character-state.service';
-import { defaultCharacterInteractionUseCase } from '../application/services/character-interaction.use-case';
+import { CharacterStateService } from '../application/services/character-state.service';
+import { CharacterInteractionUseCase } from '../application/services/character-interaction.use-case';
 import { AppLogger, LogBuffer } from '../infrastructure/logging';
 import { isDebugMode } from '../shared/debug-mode';
 import { performance } from 'node:perf_hooks';
@@ -80,6 +81,8 @@ export const WINDOW_HEIGHT = COMPACT_WINDOW_HEIGHT;
 const ROOT_PIVOT_OFFSET = calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT);
 const AUTONOMY_SEED = 0x5753_5031;
 
+const defaultCharacterStateService = new CharacterStateService({ now: Date.now, monotonicNow: () => performance.now() });
+const defaultCharacterInteractionUseCase = new CharacterInteractionUseCase(defaultCharacterStateService);
 let mainWindow: BrowserWindow | null = null;
 let memoryComposition: ReturnType<typeof createMainMemoryComposition> | null = null;
 let memoryShutdownComplete = false;
@@ -292,8 +295,10 @@ function initializeAutonomyComposition(): void {
   if (memoryRuntime?.isRunning()) autonomyComposition.start();
   if (dialogueRuntime === null) {
     dialogueRuntime = new DialogueRuntime({
-      ...createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, development: !app.isPackaged, now: () => performance.now() }), now: () => performance.now(),
-      memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0, completed: turn => { void memoryRuntime?.history.completed(turn); }, ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
+      ...createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, backendApiVersion: process.env.WISP_BACKEND_API_VERSION, development: !app.isPackaged, now: () => performance.now() }), now: () => performance.now(),
+      memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0,
+        ...(!localMock && process.env.WISP_BACKEND_API_VERSION === '2' && memoryComposition ? { recall: new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) } : {}),
+        completed: turn => { void memoryRuntime?.history.completed(turn); }, ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
       getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
       applyStimulus: stimulus => { defaultCharacterStateService.applyStimulus(stimulus); },
@@ -696,7 +701,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
-    memoryRuntime = new MemoryLifecycle({ storage: memoryComposition, character: defaultCharacterStateService,
+    memoryRuntime = new MemoryLifecycle({ storage: memoryComposition, character: defaultCharacterStateService, preferenceLearning: defaultCharacterStateService,
       scheduler: createMainAutonomyScheduler(), now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,

@@ -1,13 +1,12 @@
 import { DEFAULT_INTIMACY_THRESHOLDS } from './intimacy-rules';
-import { adaptPersonalityAxes, type PersonalityAxisDeltas } from './personality-plasticity';
-import { trackPreference } from './preferences';
+import { adaptBoundedExperienceAxes, type PersonalityAxisDeltas } from './personality-plasticity';
+import { takeAdaptationOpportunity, type AdaptationGate } from './adaptation-gate';
 import { synthesizeEmotionalTone } from './emotional-tone';
 import { metabolizeNeeds } from './metabolism';
 import type {
   CharacterState,
   IntimacyState,
   Needs,
-  PreferenceTrack,
   Relationship,
   StimulusEvent,
   StimulusType,
@@ -170,13 +169,14 @@ function applyNeedShift(needs: Needs, shift: Partial<Needs>): Needs {
 function progressRelationship(
   relationship: Relationship,
   friendshipDelta: number,
-  loveDelta: number
+  loveDelta: number,
+  consentEnabled: boolean
 ): Relationship {
   const friendship = clampRelationship(relationship.friendship + Math.max(0, friendshipDelta));
   const loveUnlocked =
     relationship.loveUnlocked ||
-    friendship >= DEFAULT_INTIMACY_THRESHOLDS.LOVE_UNLOCK_FRIENDSHIP_THRESHOLD;
-  const love = loveUnlocked ? clampRelationship(relationship.love + Math.max(0, loveDelta)) : relationship.love;
+    (consentEnabled && friendship >= DEFAULT_INTIMACY_THRESHOLDS.LOVE_UNLOCK_FRIENDSHIP_THRESHOLD);
+  const love = loveUnlocked && consentEnabled ? clampRelationship(relationship.love + Math.max(0, loveDelta)) : relationship.love;
 
   return {
     friendship,
@@ -192,32 +192,6 @@ function applyIntimacyShift(intimacy: IntimacyState, shift: Partial<IntimacyStat
     userConsentEnabled: shift.userConsentEnabled ?? intimacy.userConsentEnabled,
     boundariesKnown: shift.boundariesKnown ?? intimacy.boundariesKnown,
   };
-}
-
-function preferenceKeyFor(stimulus: CharacterStimulus): string | undefined {
-  return (
-    metadataString(stimulus, 'preferenceKey') ??
-    metadataString(stimulus, 'topicKey') ??
-    metadataString(stimulus, 'topic')
-  );
-}
-
-function preferenceValueFor(stimulus: CharacterStimulus): number {
-  return metadataNumber(stimulus, 'preferenceValue') ?? metadataNumber(stimulus, 'affinity') ?? 0;
-}
-
-function nextPreferencesFor(
-  preferences: Record<string, PreferenceTrack>,
-  stimulus: CharacterStimulus,
-  intensity: number
-): Record<string, PreferenceTrack> {
-  const key = preferenceKeyFor(stimulus);
-
-  if (key === undefined) {
-    return { ...preferences };
-  }
-
-  return trackPreference(preferences, key, preferenceValueFor(stimulus), intensity);
 }
 
 function interactionDeltas(
@@ -341,22 +315,30 @@ export function processStimulus(state: CharacterState, stimulus: CharacterStimul
         ? { comfort: 2 } : {};
     deltas = { ...deltas, needs };
   }
-  const relationship = progressRelationship(state.relationship, deltas.friendship, deltas.love);
+  const relationship = progressRelationship(state.relationship, deltas.friendship, deltas.love, state.intimacy.userConsentEnabled);
   const intimacy = applyIntimacyShift(state.intimacy, deltas.intimacy);
-  const preferences =
-    normalizedType === 'topic_dialogue'
-      ? nextPreferencesFor(state.preferences, stimulus, intensity)
-      : { ...state.preferences };
+  const preferences = { ...state.preferences };
 
   return {
     needs: applyNeedShift(metabolizedNeeds, deltas.needs),
     relationship,
     personality: {
       ...state.personality,
-      axes: adaptPersonalityAxes(state.personality.axes, deltas.personality),
+      axes: { ...state.personality.axes },
     },
     intimacy,
     preferences,
     lastUpdated,
   };
+}
+
+/** Pure experience update. Immediate effects do not depend on the adaptation opportunity. */
+export function processStimulusWithAdaptation(state: CharacterState, stimulus: CharacterStimulus, gate: AdaptationGate, nowMs: number): { readonly state: CharacterState; readonly gate: AdaptationGate } {
+  const type = normalizeStimulusType(stimulus.type);
+  const deltas = interactionDeltas(type, normalizeIntensity(stimulus.intensity)).personality;
+  const actualPlay = type !== 'play' || metadataString(stimulus, 'activityRunId') !== undefined;
+  const eligible = stimulus.type !== 'provider_response' && stimulus.source !== 'provider' && stimulus.source !== 'memory' && actualPlay && Object.values(deltas).some(delta => delta !== 0);
+  const opportunity = takeAdaptationOpportunity(gate, nowMs, eligible);
+  const next = processStimulus(state, stimulus);
+  return { state: opportunity.accepted ? { ...next, personality: { ...next.personality, axes: adaptBoundedExperienceAxes(next.personality.axes, deltas) } } : next, gate: opportunity.gate };
 }

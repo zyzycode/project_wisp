@@ -1,6 +1,9 @@
+import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '../ports/memory-knowledge.interface';
+import { createAdaptationGate, type AdaptationGate } from '../../domain/character/adaptation-gate';
+import { learnVerifiedCursorPreference } from '../../domain/character/preferences';
 import {
   createCharacterSnapshot,
-  processStimulus,
+  processStimulusWithAdaptation,
   shyDreamGirlPreset,
   synthesizeEmotionalTone,
 } from '../../domain/character';
@@ -24,6 +27,7 @@ const DEFAULT_INITIAL_NEEDS: Needs = {
 export interface CharacterStateServiceOptions {
   readonly initialState?: CharacterState;
   readonly now?: () => number;
+  readonly monotonicNow?: () => number;
 }
 
 function clonePersonalityPreset(preset: PersonalityPreset): PersonalityPreset {
@@ -78,21 +82,28 @@ function normalizeDeltaMs(deltaMs: number): number {
   return Number.isFinite(deltaMs) ? Math.min(60_000, Math.max(0, deltaMs)) : 0;
 }
 
-export class CharacterStateService {
+export class CharacterStateService implements ICharacterPreferenceLearning {
   private state: CharacterState;
   private readonly activityEffects = new Set<string>();
   private readonly now: () => number;
+  private readonly monotonicNow: () => number;
+  private axesGate: AdaptationGate;
+  private preferenceGate: AdaptationGate;
+  private readonly observedSources = new Set<string>();
 
   constructor(options: CharacterStateServiceOptions = {}) {
     this.now = options.now ?? Date.now;
+    this.monotonicNow = options.monotonicNow ?? (() => 0);
+    this.axesGate = createAdaptationGate(this.monotonicNow());
+    this.preferenceGate = createAdaptationGate(this.monotonicNow());
     this.state =
       options.initialState !== undefined
         ? cloneCharacterState(options.initialState)
         : createDefaultCharacterState(this.now);
   }
 
-  public replaceRestoredState(state: CharacterState): void { this.state = cloneCharacterState(state); this.activityEffects.clear(); }
-  public resetToDefaults(): void { this.state = createDefaultCharacterState(this.now); this.activityEffects.clear(); }
+  public replaceRestoredState(state: CharacterState): void { this.state = cloneCharacterState(state); this.resetTransientLearning(); }
+  public resetToDefaults(): void { this.state = createDefaultCharacterState(this.now); this.resetTransientLearning(); }
   public createDefaults(): CharacterState { return createDefaultCharacterState(this.now); }
 
   public getState(): CharacterState {
@@ -112,8 +123,22 @@ export class CharacterStateService {
       this.activityEffects.add(key);
       if (this.activityEffects.size > 64) this.activityEffects.delete(this.activityEffects.values().next().value!);
     }
-    this.state = processStimulus(this.state, stimulus);
+    const result = processStimulusWithAdaptation(this.state, stimulus, this.axesGate, this.monotonicNow());
+    this.state = result.state; this.axesGate = result.gate;
     return this.getState();
+  }
+
+  public observe(evidence: VerifiedPreferenceEvidence): void {
+    if (evidence.key !== 'activity.cursor_game' || (evidence.disposition !== 'like' && evidence.disposition !== 'dislike') || !evidence.sourceMessageId.trim() || evidence.sourceMessageId.length > 128 || this.observedSources.has(evidence.sourceMessageId)) return;
+    // Defensive bounded cache; the persisted-turn owner also rejects retired callbacks before this port.
+    this.observedSources.add(evidence.sourceMessageId);
+    if (this.observedSources.size > 100) this.observedSources.delete(this.observedSources.values().next().value!);
+    const learned = learnVerifiedCursorPreference(this.state.preferences, evidence.disposition, this.preferenceGate, this.monotonicNow());
+    this.state = { ...this.state, preferences: learned.preferences }; this.preferenceGate = learned.gate;
+  }
+  private resetTransientLearning(): void {
+    this.activityEffects.clear(); this.observedSources.clear();
+    this.axesGate = createAdaptationGate(this.monotonicNow()); this.preferenceGate = createAdaptationGate(this.monotonicNow());
   }
 
   public tickNeeds(deltaMs: number, tone?: SynthesizedEmotionalTone): CharacterState {

@@ -57,6 +57,7 @@ export class SqliteMemoryStore {
       case 'upsertFact': return this.upsertFact(c.payload);
       case 'removeFact': this.db.prepare('DELETE FROM user_facts WHERE fact_key = ?').run(v.text(c.payload)); return;
       case 'listFacts': return this.db.prepare(`SELECT ${factColumns} FROM user_facts ORDER BY fact_key COLLATE BINARY LIMIT ?`).all(v.integer(c.payload, 1, 100)).map(v.fact);
+      case 'getRecentEpisodes': return this.db.prepare(`SELECT ${episodeColumns} FROM game_episodes ORDER BY rowid DESC LIMIT ?`).all(v.integer(c.payload, 1, 20)).map(row => { const r = v.record(row); return v.episode({ ...r, playCompleted: r.playCompleted === 1 }); });
       case 'appendEpisode': return this.appendEpisode(c.payload);
       case 'loadSnapshot': {
         const row = this.db.prepare("SELECT snapshot_json, updated_at FROM character_state WHERE id = 'singleton'").get();

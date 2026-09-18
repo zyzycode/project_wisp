@@ -1,3 +1,4 @@
+import { emptyMemoryContext } from './memory-recall';
 import { boundMemoryContext } from './memory-context';
 import type { DialogueRuntimeOptions } from '../ports/dialogue-runtime';
 import type { AIProviderContextMessage, AIProviderRequest, AIProviderResponse } from '../ports/ai-provider.interface';
@@ -20,6 +21,7 @@ export class DialogueRuntime {
   private timer: unknown;
   private availabilityTimer: unknown;
   private context: AIProviderContextMessage[] = [];
+  private contextMessageIds: string[] = [];
   private initialContext: readonly AIProviderContextMessage[] | null = null;
   private hasStartedStream = false;
   private hydrationAllowed = true;
@@ -31,7 +33,7 @@ export class DialogueRuntime {
     this.initialContext = boundMemoryContext(messages, this.options.memory.contextLimits);
     if (this.hasStartedStream) { this.context = [...this.initialContext]; this.initialContext = null; }
   }
-  public cancelForMemoryReset(): void { const context = this.context; this.options.transaction(() => { this.reset(); this.context = context; this.options.publish(); }); }
+  public cancelForMemoryReset(): void { const context = this.context; const messageIds = this.contextMessageIds; this.options.transaction(() => { this.reset(); this.context = context; this.contextMessageIds = messageIds; this.options.publish(); }); }
   public clearMemoryContext(): void { this.hydrationAllowed = false; this.initialContext = null; this.options.transaction(() => { this.reset(); this.options.publish(); }); }
   public getPresentation(): DialoguePresentationDTO {
     const availability = this.options.requestControl?.availability(this.options.now());
@@ -92,7 +94,7 @@ export class DialogueRuntime {
     this.generation++; this.cancelTimer();
     this.options.setBehaviorContext?.(null);
     if (this.active) this.options.endThinking(this.active.request.requestId);
-    this.active = null; this.context = []; this.turn = { phase: 'idle' }; this.conversationId = this.options.createId();
+    this.active = null; this.context = []; this.contextMessageIds = []; this.turn = { phase: 'idle' }; this.conversationId = this.options.createId();
   }
   private cancelTimer(): void {
     if (this.timer !== undefined) this.options.scheduler.clearTimeout(this.timer);
@@ -115,18 +117,27 @@ export class DialogueRuntime {
   private isCurrent(turn: Turn): boolean { return !this.disposed && this.active === turn && this.generation === turn.generation && this.streamId !== null; }
   private mayContinue(turn: Turn): boolean {
     if (!this.isCurrent(turn)) return false;
+    if (this.options.memory && this.options.memory.generation() !== turn.memoryGeneration) {
+      this.options.transaction(() => { this.reset(); this.options.publish(); }); return false;
+    }
     if (this.options.now() >= turn.deadline) { this.finish(turn, 'timeout'); return false; }
     return true;
   }
   private async execute(turn: Turn): Promise<void> {
     try {
       if (!this.mayContinue(turn)) return;
+      let request = turn.request;
+      if (this.options.memory?.recall) {
+        const recalled = await this.options.memory.recall.recall({ text: request.userMessage.text, excludedMessageIds: [...this.contextMessageIds] }, { generation: turn.memoryGeneration });
+        if (!this.mayContinue(turn)) return;
+        request = { ...request, memoryContext: recalled.ok ? recalled.value : emptyMemoryContext() };
+      }
       const rawStatus = await this.options.provider.getStatus();
       if (!this.mayContinue(turn)) return;
       const status = parseProviderStatus(rawStatus);
       if (status.kind === 'offline') { this.executing = false; this.finish(turn, 'offline'); return; }
       if (status.kind !== 'ready' && status.kind !== 'degraded') { this.executing = false; this.finish(turn, 'provider_error'); return; }
-      const responsePromise = this.options.provider.generateResponse(turn.request);
+      const responsePromise = this.options.provider.generateResponse(request);
       // The adapter records actual submission before yielding its response promise.
       this.options.transaction(() => { this.refreshAvailability(); this.options.publish(); });
       const rawResponse = await responsePromise;
@@ -176,8 +187,10 @@ export class DialogueRuntime {
         }
       }
       this.options.publish();
+      const assistantId = this.options.createId();
+      this.contextMessageIds = [...this.contextMessageIds, active.request.userMessage.id, assistantId].slice(-this.context.length);
       this.options.memory?.completed({ user: active.request.userMessage,
-        assistant: { id: this.options.createId(), text: replyText, createdAt }, memoryGeneration: active.memoryGeneration });
+        assistant: { id: assistantId, text: replyText, createdAt }, memoryGeneration: active.memoryGeneration });
     });
   }
 }
