@@ -155,6 +155,8 @@ Learned preference пока одна: `activity.cursor_game`. Новый **persi
 
 Preferences/axes сохраняются существующим snapshot v1; transient gates не сохраняются, не создают SQLite migration и не воспроизводят события при restore. Checkpoint crash window остаётся как у другой динамики: неподтверждённое последнее изменение может потеряться, но не догоняется двойным replay. Для v2 контекста learned preference показывается только при confidence≥0.5; текущий ответ и локальные решения сохраняют author identity/consent/priority gates. Более богатое обучение по исходам игр и выбор инициатив — #58/#59, без повторного начисления существующих play effects.
 
+Конкретный local consumer learned preference — [P17-A04 §6](AI_EVENTS_CONTRACT.md#6-learned-preference-влияет-на-локальный-выбор-59): #59 добавляет небольшой bias existing cursor notice chance только для уже допустимого зрелого game candidate. #57 отвечает за formation/persistence/caps; обязательное доказательство изменения выбора, а не только текста, относится к #59.
+
 ## 10. Сводная модель CharacterState v2
 
 [types.ts](../../src/domain/character/types.ts), [character-snapshot.ts](../../src/domain/character/character-snapshot.ts): `needs`, `relationship`, `personality` (preset/axes), `intimacy`, `preferences`, `lastUpdated` (последний пересчёт).

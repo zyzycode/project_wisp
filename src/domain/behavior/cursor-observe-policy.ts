@@ -25,6 +25,9 @@ export interface CursorObserveInput {
   readonly tone: SynthesizedEmotionalTone;
   readonly friendship: number;
   readonly noticeRandomUnit: number;
+  /** P17-A04: true only after current physical/state/dwell/budget eligibility. */
+  readonly gameCandidateEligible?: boolean;
+  readonly learnedGamePreference?: { readonly value: number; readonly confidence: number };
 }
 
 export interface CursorObserveUpdate {

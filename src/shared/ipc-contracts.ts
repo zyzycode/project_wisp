@@ -212,8 +212,18 @@ export interface CursorGamePresentationDTO {
   } | null;
 }
 
+/** Main-owned short autonomous line; it never changes the dialogue turn or activity. */
+export interface AIInitiativeSpeechDTO {
+  readonly id: string;
+  readonly text: string;
+  readonly startedAtMs: number;
+  readonly expiresAtMs: number;
+}
+
 export interface BrainStateDTO {
   readonly cursorGame: CursorGamePresentationDTO | null;
+  /** Optional additive projection; absent/null both mean no autonomous AI speech. */
+  readonly initiativeSpeech?: AIInitiativeSpeechDTO | null;
   readonly autonomy: AutonomyModeDTO;
   readonly dialogue: DialoguePresentationDTO;
   readonly streamId: string;

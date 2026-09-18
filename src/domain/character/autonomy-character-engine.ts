@@ -8,12 +8,14 @@ import {
 } from '../behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../behavior/behavior-intent';
 import { selectLocalActivity, type LocalSelectionContext, type LocalSelectionTrace } from '../behavior/local-activity-policy';
-import type { Needs, Relationship, SynthesizedEmotionalTone } from './types';
+import type { Needs, PreferenceTrack, Relationship, SynthesizedEmotionalTone } from './types';
 
 export type SemanticSleepState = 'awake' | 'sleeping';
 
 export interface CharacterAutonomySnapshot {
   readonly needs: Needs;
+  /** P17-A04 local choice projection; numeric authority remains Character. */
+  readonly learnedCursorGamePreference?: Readonly<Pick<PreferenceTrack, 'value' | 'confidence'>>;
   readonly localTraits?: { readonly openness: number; readonly playfulness: number; readonly independence: number; readonly extraversion: number };
   readonly synthesizedTone: SynthesizedEmotionalTone;
   readonly relationship?: Readonly<Pick<Relationship, 'friendship'>>;

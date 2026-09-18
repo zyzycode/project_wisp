@@ -20,6 +20,8 @@ Application владеет портом, сборкой `AIProviderRequest` и `
 
 P15-A02 объявляет optional `memoryContext`/response `memoryCandidates` в semantic порте для явного memory-capable режима #56. Правила source validation/recall — [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), wire — [Backend v2](BACKEND_MEMORY_CONTRACT.md). Existing Mock/v1 их не требуют; v1 adapter не передаёт память и не принимает новые response fields. Model candidates не входят в Character mapper: запись выполняется отдельно после подтверждённого сохранения текущей user/assistant пары.
 
+P17-A04 объявляет optional `previousInitiative` только для явного режима v3: одна опубликованная AI-фраза в RAM≤60s/current generation, чтобы следующий user send имел контекст. Это не user message/долговременная память; v1/v2 её не передают. Отдельные event provider, бюджеты/прерывание, wire и speech — [AI_EVENTS_CONTRACT](AI_EVENTS_CONTRACT.md). User chat использует прежний semantic IAIProvider; только generateEvent имеет text-only result без Character commands.
+
 ### Канонический CharacterSnapshot — P17-A03 (#27)
 
 `CharacterStateService.getSnapshot()` → Domain [createCharacterSnapshot](../../src/domain/character/character-snapshot.ts) → `AIProviderRequest.characterSnapshot`. Mapper/provider не дублируют projection/tone synthesis.
@@ -181,9 +183,9 @@ Wire-valid `decision.mood = playful` не имеет точного соотве
 |---|---|
 | Принятая typed send(text) пользователя | Ровно один после validation/current IDs, single-flight и локальных ограничений. |
 | Reset, reload, dispose | Ноль; инвалидируют generation и результат. |
-| Cursor sample/dwell, старт/поимка/промах/конец игры | Ноль; локальные decisions и каталог реплик. |
+| Cursor sample/dwell, старт/поимка/промах/конец игры | В v1/v2 ноль; локальные decisions и каталог реплик. Только явно включённый v3 post-game event описан отдельно. |
 | Autonomy pulse, idle, Needs, sleep/wake, pet/drag, Motion/Skin/frame | Ноль. |
-| Собственная социальная инициатива | Локальная; сетевые события требуют отдельного согласования. |
+| Собственная социальная инициатива | Локальная; необязательная речь v3 — [P17-A04](AI_EVENTS_CONTRACT.md), без ожидания сети в Activity. |
 
 Нет polling, автоматического приветствия при запуске, фонового summary или второго LLM-вызова на fallback. Будущие сетевые события не маскируются под синтетическое пользовательское сообщение.
 

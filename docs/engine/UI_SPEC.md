@@ -106,6 +106,8 @@ Application выбирает текст по Activity outcome и locale, вла�
 
 При accepted user send скрыть game speech; пока dialogue thinking и 5000 ms после terminal dialogue commit новую игровую реплику не создавать (историю диалога не стирать). Срок считает Main по injected monotonic time; reset снимает этот speech guard. Затем новая game speech может заменить уже показанную dialogue bubble, не переигрывая старый ответ при expiry. Пропущенные фразы не ставятся в очередь. Reload/snapshot не продлевает expiry и не проигрывает speech повторно; dedupe по streamId + speech.id. Существующие visual intents/Skin остаются независимы от речи. Обязательны fixtures отсутствующей/невалидной projection, смены run, expiry, dialogue priority и once-only отображения.
 
+P17-A04 добавляет optional `BrainStateDTO.initiativeSpeech` для bounded AI-фразы (absent/null — нет речи), независимо от game outcome/Dialogue turn. Lifetime/priority/current generation — [AI Events §4](AI_EVENTS_CONTRACT.md#4-речь-связь-со-следующим-диалогом-и-память). Publisher/validator/Renderer подключаются в #59 атомарно; UI не инициирует event calls и не сообщает факт прочтения/проигрывания. Existing immediate game speech выше инициативы и не задерживается ради сети.
+
 ### 6.2. Время, revision и order
 
 - Main генерирует opaque `streamId` (до 128 символов) для trusted document; reload/replacement создаёт новый stream с revision `1`.

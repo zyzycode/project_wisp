@@ -196,7 +196,7 @@ timeout/reset retires result, но до settlement реального promise bu
 Reset/reload/dispose инвалидируют generation и её offer/run; поздний result не допускается.
 Periodic provider polling и параллельные запросы этим контрактом не вводятся.
 
-Сетевые события и отдельный request/token budget определены в [AI Provider v1](AI_PROVIDER_CONTRACT.md#desktop--backend-v1). InitiativeBudget ограничивает навязчивость локальных действий и не заменяет бюджет backend; cursor episodes и SocialBid сами не вызывают модель.
+Сетевые события и request/token budget определены в [AI Provider](AI_PROVIDER_CONTRACT.md#desktop--backend-v1). InitiativeBudget ограничивает навязчивость локальных действий и не заменяет бюджет backend; в v1/v2 cursor episodes и SocialBid модель не вызывают. Явно включённый [P17-A04 v3](AI_EVENTS_CONTRACT.md) добавляет только bounded event speech после отдельных causal gates, не provider-owned Activity; локальная selection/runner не ждёт ответа.
 
 ## 13. AUTO-A09: локальная жизнь и ненавязчивость
 

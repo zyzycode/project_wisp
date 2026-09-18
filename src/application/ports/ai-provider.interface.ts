@@ -35,6 +35,13 @@ export interface AIProviderContextMessage {
   createdAt: string;
 }
 
+/** Last committed autonomous speech, in RAM only; never a synthetic user message. */
+export interface AIPreviousInitiative {
+  readonly kind: 'cursor_game' | 'social_bid';
+  readonly text: string;
+  readonly createdAt: string;
+}
+
 export interface AIProviderRequest {
   requestId: string;
   userMessage: AIProviderUserMessage;
@@ -43,6 +50,8 @@ export interface AIProviderRequest {
   locale?: string;
   /** Explicit memory-capable provider mode only; never silently added to wire v1. */
   readonly memoryContext?: AIProviderMemoryContext;
+  /** Explicit v3 mode only, captured from the last current-generation published line. */
+  readonly previousInitiative?: AIPreviousInitiative;
 }
 
 export type AIProviderTone =
