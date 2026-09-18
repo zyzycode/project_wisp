@@ -10,6 +10,7 @@ export interface MemoryHistoryOptions {
   readonly context: () => MemoryOperationContext | null;
   readonly isCurrent?: (generation: number) => boolean;
   readonly createId: () => string;
+  readonly gameObserver?: import('../ports/ai-event-provider.interface').IGameEpisodeCommitObserver;
   readonly onPersisted?: (turn: CompletedDialogueMemoryTurn, context: MemoryOperationContext) => Promise<void>;
   readonly toTimestamp: (monotonicMs: number) => string;
   readonly onFailure: (code: MemoryFailureCode) => void;
@@ -47,7 +48,9 @@ export class MemoryHistory {
   }
   async game(result: CursorGameResult, generation: number): Promise<void> {
     const c = this.options.context(); if (!c || c.generation !== generation || !result.playCompleted) return;
-    const saved = await this.safe(() => this.options.episodes.append({ appRunId: this.appRunId, activityRunId: result.activityRunId, kind: 'cursor_game', outcome: result.outcome, playCompleted: true, executedMs: result.executedMs, endedAt: this.options.toTimestamp(result.atMs) }, c));
+    const episode = { appRunId: this.appRunId, activityRunId: result.activityRunId, kind: 'cursor_game' as const, outcome: result.outcome, playCompleted: true as const, executedMs: result.executedMs, endedAt: this.options.toTimestamp(result.atMs) };
+    const saved = await this.safe(() => this.options.episodes.append(episode, c));
+    if (this.options.context()?.generation === generation && saved.ok) this.options.gameObserver?.committed(episode, c);
     if (this.options.context()?.generation === generation && !saved.ok) this.options.onFailure(saved.code);
   }
   /** Recall can await preceding acknowledged fact corrections within its own bounded budget. */

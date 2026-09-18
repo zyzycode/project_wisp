@@ -7,6 +7,10 @@ import type { ProviderBehaviorOffer, BehaviorAdmissionReceipt, BehaviorTurnConte
 /** All effects are injected by Main; provider execution belongs to one app lifecycle. */
 export interface DialogueRuntimeOptions {
   readonly provider: IAIProvider;
+  readonly events?: import('./ai-event-provider.interface').IAIEventInterlock & {
+    takePreviousInitiative(): import('./ai-provider.interface').AIProviderRequest['previousInitiative'];
+    invalidate(): void;
+  };
   readonly memory?: DialogueMemoryHooks;
   readonly requestControl?: IAIRequestControl;
   readonly now: () => number;

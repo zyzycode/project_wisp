@@ -88,6 +88,15 @@ export function calculateCursorNoticeChance(
   return clampUnit(base + stateBoost - fatiguePenalty);
 }
 
+/** Only a bounded, sufficiently learned Character track can bias a game opportunity. */
+export function validatedCursorGamePreference(
+  preference: CursorObserveInput['learnedGamePreference'],
+): CursorObserveInput['learnedGamePreference'] {
+  if (!preference || !Number.isFinite(preference.value) || Math.abs(preference.value) > 100
+      || !Number.isFinite(preference.confidence) || preference.confidence < 0.5 || preference.confidence > 1) return undefined;
+  return { value: preference.value, confidence: preference.confidence };
+}
+
 export function resolveCursorObserve(
   input: CursorObserveInput,
   constraints: CursorObserveConstraints = DEFAULT_CURSOR_OBSERVE_CONSTRAINTS
@@ -102,7 +111,12 @@ export function resolveCursorObserve(
   }
 
   const zone = cursorDistanceZone(signal.distanceToRootWorldPx, constraints);
-  const noticeChance = calculateCursorNoticeChance(zone, input);
+  const baseChance = calculateCursorNoticeChance(zone, input);
+  const preference = input.gameCandidateEligible === true
+    ? validatedCursorGamePreference(input.learnedGamePreference) : undefined;
+  const noticeChance = preference
+    ? clampUnit(baseChance + 0.20 * (preference.value / 100) * preference.confidence)
+    : baseChance;
   return {
     noticed: input.noticeRandomUnit < noticeChance,
     zone,

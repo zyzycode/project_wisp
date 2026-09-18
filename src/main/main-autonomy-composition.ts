@@ -76,6 +76,10 @@ export interface MainAutonomyCompositionOptions {
   readonly prngMetadata: { readonly algorithm: string; readonly seed: number };
   readonly getCharacterSnapshot: () => CharacterAutonomySnapshot;
   readonly onCursorGameResult?: (result: CursorGameResult) => void;
+  readonly onActivityStarted?: (runId: string, activityId: string) => void;
+  readonly onSocialBidStarted?: (runId: string, atMs: number) => void;
+  readonly onAIInvalidated?: () => void;
+  readonly onUserContact?: () => void;
   readonly onActivityOutcome?: (event: ActivityOutcomeFeedback) => void;
   readonly tickNeeds?: (deltaMs: number) => void;
   readonly brainLoopPolicy?: BrainLoopPolicy;
@@ -174,6 +178,7 @@ export class MainAutonomyComposition {
       },
       cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
+      onStarted: (runId, activityId) => options.onActivityStarted?.(runId, activityId),
       onOutcome: event => { options.onActivityOutcome?.(event); this.coordinator.noteActivityOutcome(event); },
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
       onSettled: (runId, result) => this.providerAdmission?.terminated(runId, result),
@@ -220,6 +225,7 @@ export class MainAutonomyComposition {
   }
 
   public stop(): void {
+    this.options.onAIInvalidated?.();
     if (this.disposed) return;
     this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
@@ -229,6 +235,7 @@ export class MainAutonomyComposition {
   }
 
   public dispose(): void {
+    this.options.onAIInvalidated?.();
     if (this.disposed) return;
     this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
@@ -293,12 +300,18 @@ export class MainAutonomyComposition {
   }
   public resetCursorGame(): void { if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true); this.resetCursorInterest(); this.gamePresentation.reset(); }
 
+  public getAIEventState(): { allowed: boolean; activeRunId: string | null; localSpeech: boolean } {
+    return { allowed: this.started && !this.disposed && this.enabled && !this.quiet && !this.menuOpen
+      && !this.deferredUserInteractionResume && this.character.isAutonomyEligible() && !requiresVitalSleep(this.options.getCharacterSnapshot())
+      && this.options.movement.canAcceptVoluntaryMovement() && this.activity.getSource() !== 'user' && this.activity.getSource() !== 'character',
+      activeRunId: this.activity.getRuntime()?.runId ?? null, localSpeech: this.getCursorGamePresentation()?.speech != null };
+  }
   public getAutonomyMode(): { readonly quiet: boolean } { return { quiet: this.quiet }; }
 
   public setQuietMode(enabled: boolean): { readonly quiet: boolean } {
     if (this.quiet === enabled) return this.getAutonomyMode();
     this.quiet = enabled;
-    if (enabled) this.providerAdmission.invalidateIncompatibleQuiet();
+    if (enabled) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidateIncompatibleQuiet(); }
     this.resetCursorInterest();
     if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
       this.cancelActivity('explicit_cancel', true);
@@ -318,7 +331,7 @@ export class MainAutonomyComposition {
 
   public setEnabled(enabled: boolean): void {
     this.resetCursorInterest();
-    if (!enabled) this.providerAdmission.invalidate('disabled');
+    if (!enabled) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
     if (!enabled) this.cancelActivity('explicit_cancel', true);
     this.enabled = enabled;
     this.coordinator.setEnabled(enabled);
@@ -326,7 +339,7 @@ export class MainAutonomyComposition {
 
   public setMenuOpen(menuOpen: boolean): void {
     this.resetCursorInterest();
-    if (menuOpen) this.providerAdmission.invalidate('disabled');
+    if (menuOpen) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
     if (menuOpen) this.cancelActivity('explicit_cancel', true);
     this.menuOpen = menuOpen;
     this.coordinator.setMenuOpen(menuOpen);
@@ -424,12 +437,19 @@ export class MainAutonomyComposition {
     // Keep observing until dwell matures; a gaze Activity here would reset it and consume cooldown.
     if (gameCandidate && proximity.state.withinSwatRange
         && proximity.state.dwellWithinSwatRangeMs < DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs) return false;
+    const matureGameCandidate = gameCandidate !== null
+      && proximity.state.dwellWithinSwatRangeMs >= DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs;
+    const gameCandidateEligible = matureGameCandidate && this.activity.canStart(
+      { kind: 'play', source: 'system', priority: 'normal', reason: 'cursor_observe' },
+      { play: [gameCandidate] });
     const update = resolveCursorObserve({
       nowMs,
       signal: proximity.signal,
       needs: snapshot.needs,
       tone: snapshot.synthesizedTone,
       friendship: snapshot.relationship?.friendship ?? 0,
+      gameCandidateEligible,
+      learnedGamePreference: snapshot.learnedCursorGamePreference,
       noticeRandomUnit: this.options.prng.next(),
     });
     if (!update.noticed || update.zone === undefined) return false;
@@ -451,7 +471,7 @@ export class MainAutonomyComposition {
     });
 
     if (!budgetAvailable) playCandidates = playCandidates.filter(candidate => candidate.tags?.includes('gaze_only'));
-    if (gameCandidate && this.cursorProximityState.dwellWithinSwatRangeMs >= DEFAULT_CURSOR_REACTION_CONSTRAINTS.swatDwellMs) {
+    if (matureGameCandidate) {
       playCandidates = [gameCandidate];
     }
     this.coordinator.suspendForReactiveActivity();
@@ -503,6 +523,7 @@ export class MainAutonomyComposition {
   }
 
   public handleClick(): boolean {
+    this.options.onAIInvalidated?.();
     const wasAwake = this.character.getSemanticSleepState() === 'awake';
     this.suspendForUserInteraction();
     if (!this.options.movement.canAcceptVoluntaryMovement()) { this.resumeAfterUserInteraction(); return true; }
@@ -528,6 +549,7 @@ export class MainAutonomyComposition {
   }
 
   public handleCharacterInteraction(type: BodyInteractionTypeDTO): boolean {
+    if (type === 'pet') this.options.onUserContact?.(); else this.options.onAIInvalidated?.();
     if (type !== 'click') {
       this.cancelActivity('user_interaction', true);
       if (!this.options.movement.canAcceptVoluntaryMovement()) return false;
@@ -555,6 +577,7 @@ export class MainAutonomyComposition {
   }
 
   public beginDrag(): void {
+    this.options.onAIInvalidated?.();
     this.cancelActivity('user_interaction', true, true);
     this.coordinator.noteUserActivity();
     this.coordinator.interruptForcedMotion();
@@ -565,6 +588,7 @@ export class MainAutonomyComposition {
   }
 
   public suspendForUserInteraction(): void {
+    this.options.onAIInvalidated?.();
     this.cancelActivity('user_interaction', true);
     this.coordinator.suspendForUserInteraction();
   }
@@ -684,7 +708,7 @@ export class MainAutonomyComposition {
     if (!isQuietCompatible(intent, this.quiet)) return false;
     if (social && !this.initiativeBudget.available(this.options.clock.now())) return false;
     if (this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined)) {
-      if (social) this.initiativeBudget.start(this.options.clock.now());
+      if (social) { this.initiativeBudget.start(this.options.clock.now()); const run = this.activity.getRuntime(); if (run) this.options.onSocialBidStarted?.(run.runId, this.options.clock.now()); }
       this.localHistory.push({ kind: social ? 'social_bid' : intent.kind, atMs: this.options.clock.now() });
       if (intent.calmPose) this.localHistory.push({ kind: `calm:${intent.calmPose}`, atMs: this.options.clock.now() });
       if (this.localHistory.length > 16) this.localHistory.splice(0, this.localHistory.length - 16);

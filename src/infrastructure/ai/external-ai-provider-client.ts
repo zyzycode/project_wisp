@@ -1,3 +1,5 @@
+import type { AIEventProviderRequest, AIEventProviderResponse, IAIEventProvider, IAIEventRequestControl } from '../../application/ports/ai-event-provider.interface';
+import { projectEventRequest, projectEventAwareChat, parseEventAwareChat, parseEventResponse, parseEventError } from './backend-events-validation';
 import { projectBackendMemoryRequest, parseBackendMemorySuccess, parseBackendMemoryError } from './backend-memory-validation';
 import type { AIProviderFallbackReason, AIProviderRequest, AIProviderResponse, AIProviderStatus, IAIProvider } from '../../application/ports/ai-provider.interface';
 import { DEFAULT_AI_REQUEST_POLICY, type IAIRequestControl } from '../../application/ports/ai-request-policy';
@@ -7,7 +9,8 @@ import { parseBackendError, parseBackendSuccess } from './backend-response-valid
 
 interface ExternalAIProviderOptions {
   readonly baseUrl: string;
-  readonly apiVersion?: 1 | 2;
+  readonly apiVersion?: 1 | 2 | 3;
+  readonly eventRequestControl?: IAIEventRequestControl;
   readonly development: boolean;
   readonly now: () => number;
   readonly requestControl: IAIRequestControl;
@@ -17,7 +20,7 @@ class ProtocolError extends Error {}
 class TransportTimeout extends Error {}
 
 /** Trusted Main configuration only; redirects, cookies and provider secrets are forbidden. */
-function endpoint(baseUrl: string, development: boolean, apiVersion: 1 | 2): URL {
+function endpoint(baseUrl: string, development: boolean, apiVersion: 1 | 2 | 3): URL {
   const url = new URL(baseUrl);
   const loopback = url.hostname === 'localhost' || url.hostname === '[::1]' || /^127(?:\.\d{1,3}){3}$/u.test(url.hostname);
   if ((url.protocol !== 'https:' && !(development && loopback && url.protocol === 'http:')) || url.username || url.password || url.search || url.hash) throw new TypeError('Invalid backend URL');
@@ -51,7 +54,8 @@ async function readBoundedJson(response: Response, signal: AbortSignal): Promise
   } finally { signal.removeEventListener('abort', cancel); reader.releaseLock(); }
 }
 
-export class ExternalAIProviderClient implements IAIProvider {
+export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
+  private eventAbort: { id: string; controller: AbortController } | undefined;
   private readonly url: URL;
   private readonly fetch: typeof fetch;
   private activeRequestId: string | undefined;
@@ -64,7 +68,7 @@ export class ExternalAIProviderClient implements IAIProvider {
     return { kind: this.options.requestControl.availability(this.options.now()).available ? 'ready' : 'offline' };
   }
   public async generateResponse(request: AIProviderRequest): Promise<AIProviderResponse> {
-    const body = JSON.stringify(this.options.apiVersion === 2 ? projectBackendMemoryRequest(request) : projectBackendRequest(request));
+    const body = JSON.stringify(this.options.apiVersion === 3 ? projectEventAwareChat(request) : this.options.apiVersion === 2 ? projectBackendMemoryRequest(request) : projectBackendRequest(request));
     if (new TextEncoder().encode(body).byteLength > 32 * 1024) throw new TypeError('Request too large');
     if (this.activeRequestId || !this.options.requestControl.recordSubmission(this.options.now())) throw new Error('Transport unavailable');
     const startedAt = this.options.now();
@@ -87,7 +91,7 @@ export class ExternalAIProviderClient implements IAIProvider {
       if (this.options.now() - startedAt >= DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs) throw new TransportTimeout();
       if (response.status !== 200) {
         let error;
-        try { error = this.options.apiVersion === 2 ? parseBackendMemoryError(value, request.requestId, response.status) : parseBackendError(value, request.requestId, response.status); }
+        try { error = this.options.apiVersion === 3 ? parseEventError(value, request.requestId, response.status) : this.options.apiVersion === 2 ? parseBackendMemoryError(value, request.requestId, response.status) : parseBackendError(value, request.requestId, response.status); }
         catch { throw new ProtocolError('Invalid backend error'); }
         if (response.status === 429) this.cooldown(error.error.retryAfterMs ?? 60_000);
         else if ([502, 503, 504].includes(response.status)) this.cooldown(30_000);
@@ -95,7 +99,7 @@ export class ExternalAIProviderClient implements IAIProvider {
         return this.fallback(request.requestId, reason, startedAt);
       }
       let result;
-      try { result = this.options.apiVersion === 2 ? parseBackendMemorySuccess(value, request.requestId, request.userMessage.text) : parseBackendSuccess(value, request.requestId); }
+      try { result = this.options.apiVersion === 3 ? parseEventAwareChat(value, request.requestId, request.userMessage.text) : this.options.apiVersion === 2 ? parseBackendMemorySuccess(value, request.requestId, request.userMessage.text) : parseBackendSuccess(value, request.requestId); }
       catch { throw new ProtocolError('Invalid backend success'); }
       const decision = result.decision;
       return { requestId: result.requestId, status: 'ok',
@@ -112,6 +116,34 @@ export class ExternalAIProviderClient implements IAIProvider {
       clearTimeout(timer);
       this.activeRequestId = undefined;
     }
+  }
+  public cancel(requestId: string): void { if (this.eventAbort?.id === requestId) this.eventAbort.controller.abort(); }
+  public async generateEvent(request: AIEventProviderRequest): Promise<AIEventProviderResponse> {
+    if (this.options.apiVersion !== 3) throw new Error('Events unavailable');
+    const body = JSON.stringify(projectEventRequest(request));
+    if (this.activeRequestId || !this.options.eventRequestControl?.recordEventSubmission(this.options.now())) throw new Error('Events unavailable');
+    const controller = new AbortController(), startedAt = this.options.now();
+    this.activeRequestId = request.requestId; this.eventAbort = { id: request.requestId, controller };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => { controller.abort(); reject(new TransportTimeout()); }, 3000); });
+    try {
+      const url = new URL(this.url); url.pathname = url.pathname.replace(/chat$/u, 'events');
+      const operation = async () => {
+        const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
+        return { response, value: await readBoundedJson(response, controller.signal) };
+      };
+      const { response, value } = await Promise.race([operation(), timeout]);
+      if (controller.signal.aborted || this.options.now() - startedAt >= 3000) throw new TransportTimeout();
+      if (response.status !== 200) {
+        const error = parseEventError(value, request.requestId, response.status);
+        this.cooldown(response.status === 429 ? error.error.retryAfterMs ?? 60000 : 30000); throw new Error('Event unavailable');
+      }
+      return parseEventResponse(value, request.requestId);
+    } catch (error) {
+      // Explicit user preemption is not a server failure and must not delay their turn.
+      if (!controller.signal.aborted || this.options.now() - startedAt >= 3000) this.cooldown(30000);
+      controller.abort(); throw error;
+    } finally { clearTimeout(timer); this.eventAbort = undefined; this.activeRequestId = undefined; }
   }
   private cooldown(ms: number): void { this.options.requestControl.deferUntil(this.options.now() + ms); }
   private fallback(requestId: string, fallbackReason: AIProviderFallbackReason, startedAt: number): AIProviderResponse {

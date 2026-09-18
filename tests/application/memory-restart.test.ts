@@ -10,6 +10,9 @@ import { createMemoryAdapters } from '../../src/infrastructure/memory/adapters';
 import { MemoryLifecycle } from '../../src/application/services/memory-lifecycle';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
 import type { AIProviderContextMessage } from '../../src/application/ports/ai-provider.interface';
+import { scenario } from '../main/autonomy-scenario-fixture';
+import { calculateCursorNoticeChance } from '../../src/domain/behavior/cursor-observe-policy';
+import type { CharacterState } from '../../src/domain/character';
 
 function start(filename: string) {
   // Native test TS loader; no packaging/build script or Electron process is required.
@@ -51,5 +54,41 @@ it('persists individual history/facts/state across real worker restarts and keep
     expect(await run.repos.facts.list(10, { generation: 1 })).toEqual({ ok: true, value: [] });
     expect(run.character.getState().relationship.friendship).toBe(0); expect(run.character.getState().preferences).toEqual({}); await run.lifecycle.shutdown();
     run = start(filename); await run.lifecycle.initialize(); expect(run.context()).toEqual([]); expect(run.character.getState().relationship.friendship).toBe(0); expect(run.character.getState().preferences).toEqual({});
+  } finally { await run.lifecycle.shutdown(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it.each(['like', 'dislike'] as const)('keeps %s-driven eligible game selection across a real SQLite restart', async disposition => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'wisp-preference-restart-'));
+  const filename = path.join(directory, 'memory.sqlite3');
+  let run = start(filename);
+  const defaults = new CharacterStateService({ now: () => 0 }).getSnapshot();
+  const draw = calculateCursorNoticeChance('contact', { nowMs: 0, needs: defaults.needs,
+    tone: defaults.synthesizedTone, friendship: defaults.relationship.friendship }) + 0.002;
+  const selectedGame = (state: CharacterState) => {
+    const f = scenario({}, draw, state);
+    try {
+      f.main.handleCursorObservation({ x: 440, y: 790 });
+      for (let i = 0; i < 5; i++) { f.advance(100); f.main.handleCursorObservation({ x: 440, y: 790 }); }
+      return f.main.getActivityTimeline()?.activityId === 'cursor_interest';
+    } finally { f.main.dispose(); }
+  };
+  try {
+    await run.lifecycle.initialize();
+    expect(selectedGame(run.character.getState())).toBe(false);
+    const now = new Date().toISOString();
+    for (let i = 0; i < 6; i++) {
+      run.advance(300000);
+      await run.lifecycle.history.completed({ memoryGeneration: 0,
+        user: { id: `u${i}`, text: disposition === 'like' ? 'Мне нравится игра с курсором' : 'Мне не нравится игра с курсором', createdAt: now },
+        assistant: { id: `a${i}`, text: 'Понятно', createdAt: now } });
+    }
+    const expected = run.character.getState().preferences['activity.cursor_game'];
+    expect(expected).toEqual({ value: disposition === 'like' ? 12 : -12, samples: 6, confidence: 0.5 });
+    expect(selectedGame(run.character.getState())).toBe(disposition === 'like');
+    await run.lifecycle.shutdown();
+    run = start(filename); await run.lifecycle.initialize();
+    expect(run.lifecycle.getStatus()).toEqual({ mode: 'persistent', characterRestore: 'restored' });
+    expect(run.character.getState().preferences['activity.cursor_game']).toEqual(expected);
+    expect(selectedGame(run.character.getState())).toBe(disposition === 'like');
   } finally { await run.lifecycle.shutdown(); rmSync(directory, { recursive: true, force: true }); }
 });

@@ -10,6 +10,7 @@ import type { CharacterAutonomySnapshot } from '../../domain/character';
 import type { BrainVisualEpisode } from '../main-autonomy-composition';
 
 export interface BrainStateSource {
+  readonly initiativeSpeech?: BrainStateDTO['initiativeSpeech'];
   readonly cursorGame: BrainStateDTO['cursorGame'];
   readonly autonomy: BrainStateDTO['autonomy'];
   readonly dialogue: BrainStateDTO['dialogue'];
@@ -84,6 +85,7 @@ function toBrainVisualIntentDTO(episode: BrainVisualEpisode): BrainVisualIntentD
 export function toBrainStateDTO(state: BrainStateSource): BrainStateDTO {
   return {
     dialogue: state.dialogue,
+    ...(state.initiativeSpeech === undefined ? {} : { initiativeSpeech: state.initiativeSpeech }),
     cursorGame: state.cursorGame,
     autonomy: { ...state.autonomy },
     streamId: state.streamId,

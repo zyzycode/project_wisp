@@ -3,13 +3,13 @@ import { MemoryHistory } from '../../src/application/services/memory-history';
 import { boundMemoryContext } from '../../src/application/services/memory-context';
 import type { MemoryOperationContext, MemoryResult, IChatHistoryRepository } from '../../src/application/ports/memory-repository.interface';
 const now = '2026-09-18T00:00:00.000Z';
-function fixture() {
+function fixture(gameObserver?: import('../../src/application/ports/ai-event-provider.interface').IGameEpisodeCommitObserver) {
   let id = 0; let context: MemoryOperationContext | null = { generation: 0 };
   const appendTurn = vi.fn<IChatHistoryRepository['appendTurn']>(async () => ({ ok: true, value: undefined } as const));
   const append = vi.fn(async () => ({ ok: true, value: undefined } as const));
   const getRecent = vi.fn(async () => ({ ok: true, value: [{ id: 'old', role: 'assistant' as const, conversationSessionId: 'old-session', content: 'Помню тебя', createdAt: now }] } as const));
   const failure = vi.fn();
-  const history = new MemoryHistory({ history: { appendTurn, getRecent, closeSession: vi.fn(async () => ({ ok: true, value: undefined } as const)), closeUnfinishedSessions: vi.fn(async () => ({ ok: true, value: undefined } as const)) }, episodes: { append }, context: () => context, createId: () => `id-${++id}`, toTimestamp: ms => new Date(Date.parse(now) + ms).toISOString(), onFailure: failure });
+  const history = new MemoryHistory({ gameObserver, history: { appendTurn, getRecent, closeSession: vi.fn(async () => ({ ok: true, value: undefined } as const)), closeUnfinishedSessions: vi.fn(async () => ({ ok: true, value: undefined } as const)) }, episodes: { append }, context: () => context, createId: () => `id-${++id}`, toTimestamp: ms => new Date(Date.parse(now) + ms).toISOString(), onFailure: failure });
   return { history, appendTurn, append, getRecent, failure, setContext: (c: MemoryOperationContext | null) => { context = c; } };
 }
 const turn = { user: { id: 'user', text: 'Привет', createdAt: now }, assistant: { id: 'assistant', text: 'Привет!', createdAt: now }, memoryGeneration: 0 };
@@ -48,4 +48,16 @@ describe('bounded context', () => {
     const result = boundMemoryContext(input); expect(result).toHaveLength(4); expect(result[0]?.text.startsWith('26:')).toBe(true); expect(result.reduce((sum, m) => sum + m.text.length, 0)).toBe(8000); expect(input[0]?.text.length).toBe(2102);
   });
   it('never truncates between a surrogate pair', () => { expect(boundMemoryContext([{ role: 'wisp', text: 'x'.repeat(1999) + '😀', createdAt: now }])[0]?.text).toBe('x'.repeat(1999)); });
+});
+
+it('notifies the event observer only after a current acknowledged game write', async () => {
+  const committed = vi.fn(), f = fixture({ committed });
+  const game = { activityRunId: 'g', atMs: 0, outcome: 'caught' as const, playCompleted: true, executedMs: 2000 };
+  let ack!: (value: { ok: true; value: undefined }) => void;
+  f.append.mockImplementationOnce(() => new Promise(resolve => { ack = resolve; }));
+  const saved = f.history.game(game, 0); expect(committed).not.toHaveBeenCalled();
+  ack({ ok: true, value: undefined }); await saved; expect(committed).toHaveBeenCalledTimes(1);
+  f.append.mockRejectedValueOnce(new Error('write failed')); await f.history.game({ ...game, activityRunId: 'failure' }, 0); expect(committed).toHaveBeenCalledTimes(1);
+  f.append.mockImplementationOnce(() => new Promise(resolve => { ack = resolve; })); const late = f.history.game({ ...game, activityRunId: 'late' }, 0);
+  f.setContext({ generation: 1 }); ack({ ok: true, value: undefined }); await late; expect(committed).toHaveBeenCalledTimes(1);
 });

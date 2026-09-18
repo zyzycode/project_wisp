@@ -35,6 +35,7 @@ export class DialogueRuntime {
   }
   public cancelForMemoryReset(): void { const context = this.context; const messageIds = this.contextMessageIds; this.options.transaction(() => { this.reset(); this.context = context; this.contextMessageIds = messageIds; this.options.publish(); }); }
   public clearMemoryContext(): void { this.hydrationAllowed = false; this.initialContext = null; this.options.transaction(() => { this.reset(); this.options.publish(); }); }
+  public getIdentity(): string | null { return this.streamId === null || this.disposed ? null : `${this.streamId}:${this.conversationId}:${this.generation}`; }
   public getPresentation(): DialoguePresentationDTO {
     const availability = this.options.requestControl?.availability(this.options.now());
     const submissionMessage = availability && !availability.available
@@ -72,6 +73,7 @@ export class DialogueRuntime {
       });
       return { status: 'rejected', reason: 'unavailable' };
     }
+    const previousInitiative = this.options.events?.takePreviousInitiative();
     const requestId = this.options.createId();
     const createdAt = this.options.timestamp();
     const requestedAtMs = this.options.now();
@@ -79,7 +81,7 @@ export class DialogueRuntime {
     this.executing = true;
     this.options.transaction(() => {
       this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
-      const request: AIProviderRequest = { requestId, userMessage: { id: this.options.createId(), text: command.text, createdAt },
+      const request: AIProviderRequest = { requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };
       const active: Turn = { request, generation: this.generation, deadline, requestedAtMs, memoryGeneration: this.options.memory?.generation() ?? 0 };
       this.active = active; this.turn = { phase: 'thinking', requestId };
@@ -91,6 +93,7 @@ export class DialogueRuntime {
     return { status: 'accepted', conversationId: this.conversationId };
   }
   private reset(): void {
+    this.options.events?.invalidate();
     this.generation++; this.cancelTimer();
     this.options.setBehaviorContext?.(null);
     if (this.active) this.options.endThinking(this.active.request.requestId);
@@ -125,6 +128,8 @@ export class DialogueRuntime {
   }
   private async execute(turn: Turn): Promise<void> {
     try {
+      if (!this.mayContinue(turn)) return;
+      await this.options.events?.interruptForUser();
       if (!this.mayContinue(turn)) return;
       let request = turn.request;
       if (this.options.memory?.recall) {

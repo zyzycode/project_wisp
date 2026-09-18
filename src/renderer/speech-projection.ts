@@ -6,13 +6,14 @@ export class SpeechProjection {
   private stream: string | null = null;
   private dialogue: string | null = null;
   private game: string | null = null;
-  private owner: 'dialogue' | 'game' | null = null;
+  private initiative: string | null = null;
+  private owner: 'dialogue' | 'game' | 'initiative' | null = null;
   public accept(snapshot: BrainStateDTO): ChatMessage | null | undefined {
     const changedStream = this.stream !== snapshot.streamId;
-    if (changedStream) { this.stream = snapshot.streamId; this.dialogue = null; this.game = null; this.owner = null; }
+    if (changedStream) { this.stream = snapshot.streamId; this.dialogue = null; this.game = null; this.initiative = null; this.owner = null; }
     const turn = snapshot.dialogue.turn;
     if (turn.phase === 'thinking') {
-      if (this.owner === 'game') { this.owner = null; return null; }
+      if (this.owner === 'game' || this.owner === 'initiative') { this.owner = null; return null; }
       return changedStream ? null : undefined;
     }
     const dialogueKey = turn.phase === 'completed' || turn.phase === 'error'
@@ -28,7 +29,13 @@ export class SpeechProjection {
       return { id: `${snapshot.streamId}:${speech.id}`, sender: 'pet', text: speech.text,
         timestamp: speech.startedAtMs, durationMs: speech.expiresAtMs - snapshot.sampledAtMs };
     }
-    if ((!speech && this.owner === 'game') || (turn.phase === 'idle' && this.owner === 'dialogue') || changedStream) {
+    const initiative = snapshot.initiativeSpeech;
+    if (!speech && initiative && initiative.expiresAtMs > snapshot.sampledAtMs && this.initiative !== initiative.id) {
+      this.initiative = initiative.id; this.owner = 'initiative';
+      return { id: `${snapshot.streamId}:${initiative.id}`, sender: 'pet', text: initiative.text,
+        timestamp: initiative.startedAtMs, durationMs: initiative.expiresAtMs - snapshot.sampledAtMs };
+    }
+    if ((!initiative && this.owner === 'initiative') || (!speech && this.owner === 'game') || (turn.phase === 'idle' && this.owner === 'dialogue') || changedStream) {
       this.owner = null; return null;
     }
     return undefined;

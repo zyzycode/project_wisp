@@ -1,3 +1,4 @@
+import { parseInitiativeSpeech } from './initiative-speech-validation';
 import { parseAutonomyMode } from './quiet-mode-validation';
 import { parseCursorGame } from './cursor-game-validation';
 import type {
@@ -277,7 +278,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
     'dialogue',
     'autonomy',
     'cursorGame',
-  ]);
+  ], ['initiativeSpeech']);
   const sampledAtMs = finiteNumber(own(record, 'sampledAtMs'), 0);
   const character = asRecord(own(record, 'character'));
   requireExactKeys(character, ['needs', 'synthesizedTone']);
@@ -286,6 +287,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
   return {
     streamId: boundedId(own(record, 'streamId')),
     dialogue: parseDialoguePresentation(own(record, 'dialogue')),
+    ...(Object.hasOwn(record, 'initiativeSpeech') ? { initiativeSpeech: parseInitiativeSpeech(own(record, 'initiativeSpeech'), sampledAtMs) } : {}),
     cursorGame: parseCursorGame(own(record, 'cursorGame'), sampledAtMs),
     autonomy: parseAutonomyMode(own(record, 'autonomy')),
     revision: safeInteger(own(record, 'revision'), 1),

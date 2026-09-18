@@ -51,7 +51,7 @@ export class LocalMemoryRecall implements ILocalMemoryRecall {
         if (!fact.sourceMessageId || fact.confidence !== 1) return [];
         try { return [parseMemoryFact({ key: fact.factKey, value: fact.factValue })]; } catch { return []; }
       }).slice(0, 5);
-      const queryTokens = tokens(query.text), excluded = new Set(query.excludedMessageIds);
+      const queryTokens = tokens(query.useFavoriteTopic ? selectedFacts.find(fact => fact.key === 'user.favorite_topic')?.value ?? query.text : query.text), excluded = new Set(query.excludedMessageIds);
       const pairs: { score: number; position: number; episode: AIProviderMemoryContext['episodes'][number] }[] = [];
       for (let i = 0; i + 1 < history.value.length; i++) {
         const user = history.value[i]!, assistant = history.value[i + 1]!;

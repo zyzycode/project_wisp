@@ -1,3 +1,4 @@
+import { AIEventRuntime } from '../application/services/ai-event-runtime';
 import { LocalMemoryRecall } from '../application/services/memory-recall';
 import { MemoryLifecycle } from '../application/services/memory-lifecycle';
 import { ClearMemoryUseCase } from '../application/services/clear-memory.use-case';
@@ -34,6 +35,7 @@ import {
   clampRootPosition,
   MotionEngine,
   SurfaceKinematics,
+  validatedCursorGamePreference,
   type MotionState,
   type SurfaceKinematicsState,
 } from '../domain/behavior';
@@ -99,6 +101,7 @@ let externalWindowSurfaces: ExternalWindowSurfacesPort | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
 let dialogueRuntime: DialogueRuntime | null = null;
+let aiEventRuntime: AIEventRuntime | null = null;
 let unregisterDialogue: (() => void) | null = null;
 let activeBodyDrag: {
   readonly gestureId: string;
@@ -124,6 +127,7 @@ const brainStatePublisher = new BrainStatePublisher({
     }
     return toBrainStateDTO({
       dialogue: dialogueRuntime.getPresentation(),
+      initiativeSpeech: aiEventRuntime?.getSpeech() ?? null,
       cursorGame: autonomyComposition.getCursorGamePresentation(),
       streamId,
       revision,
@@ -202,6 +206,7 @@ function publishEnvironmentSnapshot(snapshot: EnvironmentSnapshot): void {
 }
 
 function publishBrainState(): void {
+  aiEventRuntime?.tick();
   brainStatePublisher.requestCommit();
 }
 
@@ -256,14 +261,22 @@ function initializeAutonomyComposition(): void {
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => {
-      const axes = defaultCharacterStateService.getState().personality.axes;
-      return { ...defaultCharacterStateService.getSnapshot(), localTraits: {
+      const state = defaultCharacterStateService.getState();
+      const axes = state.personality.axes;
+      return { ...defaultCharacterStateService.getSnapshot(),
+        learnedCursorGamePreference: validatedCursorGamePreference(state.preferences['activity.cursor_game']),
+        localTraits: {
         openness: axes.openness.current, playfulness: axes.playfulness.current,
         independence: axes.independence.current, extraversion: axes.extraversion.current } };
     },
-    onCursorGameResult: result => { void memoryRuntime?.history.game(result, memoryGeneration); },
+    onActivityStarted: () => aiEventRuntime?.activityStarted(),
+    onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
+    onAIInvalidated: () => aiEventRuntime?.invalidate(),
+    onUserContact: () => aiEventRuntime?.userContact(),
+    onCursorGameResult: result => { aiEventRuntime?.gameTerminal(result, memoryGeneration); void memoryRuntime?.history.game(result, memoryGeneration); },
     onActivityOutcome: event => {
       if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
+      aiEventRuntime?.outcome(event);
       const stimulus = shimejiStimulusMapper.map(event, { createdAtIso: new Date().toISOString(),
         landingThresholds: DEFAULT_MOTION_CONSTRAINTS });
       if (stimulus) defaultCharacterStateService.applyStimulus(stimulus);
@@ -294,10 +307,15 @@ function initializeAutonomyComposition(): void {
   });
   if (memoryRuntime?.isRunning()) autonomyComposition.start();
   if (dialogueRuntime === null) {
+    const ai = createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, backendApiVersion: process.env.WISP_BACKEND_API_VERSION, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
+    const recall = !localMock && ['2', '3'].includes(process.env.WISP_BACKEND_API_VERSION ?? '') && memoryComposition
+      ? new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
+    if (ai.eventProvider && ai.eventControl && recall) aiEventRuntime = new AIEventRuntime({ provider: ai.eventProvider, control: ai.eventControl, recall,
+      now: () => performance.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
+      gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0 }) });
     dialogueRuntime = new DialogueRuntime({
-      ...createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, backendApiVersion: process.env.WISP_BACKEND_API_VERSION, development: !app.isPackaged, now: () => performance.now() }), now: () => performance.now(),
-      memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0,
-        ...(!localMock && process.env.WISP_BACKEND_API_VERSION === '2' && memoryComposition ? { recall: new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) } : {}),
+      ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => performance.now(),
+      memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
         completed: turn => { void memoryRuntime?.history.completed(turn); }, ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
       getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
@@ -307,7 +325,7 @@ function initializeAutonomyComposition(): void {
       setBehaviorContext: context => { autonomyComposition?.setBehaviorContext(context); if (context === null) autonomyComposition?.resetCursorGame(); },
       offerIntent: offer => autonomyComposition?.offerDialogueIntent(offer) ?? { status: 'rejected', reason: 'disabled' },
       transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } },
-      publish: () => { if (dialogueRuntime) autonomyComposition?.observeDialoguePresentation(dialogueRuntime.getPresentation()); publishBrainState(); },
+      publish: () => { if (dialogueRuntime) { autonomyComposition?.observeDialoguePresentation(dialogueRuntime.getPresentation()); aiEventRuntime?.observeDialogue(dialogueRuntime.getPresentation()); } publishBrainState(); },
     });
   }
 }
@@ -400,7 +418,7 @@ function startCharacterRuntime(): void {
   stopShimejiMotionLoopHandle = startShimejiMotionLoop({
     orchestrator: shimejiMotionOrchestrator,
     getWindow: () => mainWindow,
-    advanceBrain: () => autonomyComposition?.tick() ?? false,
+    advanceBrain: () => { aiEventRuntime?.tick(); const changed = autonomyComposition?.tick() ?? false; aiEventRuntime?.tick(); return changed; },
     publishPresentation: publishBrainState,
     beginPresentationTransaction: () => brainStatePublisher.beginTransaction(),
     commitPresentationTransaction: () => brainStatePublisher.commitTransaction(),
@@ -701,7 +719,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
-    memoryRuntime = new MemoryLifecycle({ storage: memoryComposition, character: defaultCharacterStateService, preferenceLearning: defaultCharacterStateService,
+    memoryRuntime = new MemoryLifecycle({ gameObserver: { committed: (episode, context) => aiEventRuntime?.committed(episode, context) }, storage: memoryComposition, character: defaultCharacterStateService, preferenceLearning: defaultCharacterStateService,
       scheduler: createMainAutonomyScheduler(), now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
@@ -735,7 +753,7 @@ app.on('before-quit', event => {
     event.preventDefault();
     void (memoryRuntime?.shutdown() ?? memoryComposition.close(0)).then(() => { memoryShutdownComplete = true; app.quit(); });
   }
-  clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.();
+  aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();

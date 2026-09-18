@@ -78,3 +78,9 @@ it('does not issue a late SQL group after the write barrier exhausts the200ms bu
   await vi.advanceTimersByTimeAsync(200); expect(await pending).toEqual({ ok: false, code: 'busy' });
   release(); await Promise.resolve(); await Promise.resolve(); expect(f.list).not.toHaveBeenCalled();
 });
+
+it('uses the current saved favorite topic for a social event without a second storage read', async () => {
+  const f = fixture(pair('u', 'космос'), [{ id: 'fact', factKey: 'user.favorite_topic', factValue: 'космос', confidence: 1, sourceMessageId: 'source', createdAt: date, updatedAt: date }]);
+  expect(await f.recall.recall({ text: '', useFavoriteTopic: true, excludedMessageIds: [] }, { generation: 0 })).toMatchObject({ ok: true, value: { episodes: [{ userText: 'космос' }] } });
+  expect(f.list).toHaveBeenCalledTimes(1); expect(f.getRecent).toHaveBeenCalledTimes(1);
+});

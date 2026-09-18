@@ -68,6 +68,7 @@ export interface BrainActivityRuntimeOptions {
   readonly createRunId: () => string;
   readonly cooldownRules?: readonly CooldownRule[];
   readonly onVisualIntent: (intent: AnimationIntent<AnimationIntentKind>) => void;
+  readonly onStarted?: (runId: string, activityId: string) => void;
   readonly onOutcome?: (event: ActivityOutcomeFeedback) => void;
   readonly onSettled?: (runId: string, result: ActivityResult) => void;
   readonly onTerminated: (result: ActivityResult) => void;
@@ -165,6 +166,7 @@ export class BrainActivityRuntime {
     if (selectedExplorePlan !== null) {
       this.exploreHistory = recordExplorePlan(this.exploreHistory, selectedExplorePlan, nowMs);
     }
+    this.options.onStarted?.(runId, definition.id);
     return true;
   }
 

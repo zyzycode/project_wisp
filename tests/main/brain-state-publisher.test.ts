@@ -7,6 +7,7 @@ import {
 
 interface ProjectionControls {
   dialogue?: BrainStateDTO['dialogue'];
+  initiativeSpeech?: BrainStateDTO['initiativeSpeech'];
   positionX: number;
   phase: BrainStateDTO['motion']['phase'];
   positionAuthority: BrainStateDTO['motion']['positionAuthority'];
@@ -17,6 +18,7 @@ interface ProjectionControls {
 function snapshot(meta: BrainStateSnapshotMeta, controls: ProjectionControls): BrainStateDTO {
   return {
     autonomy: { quiet: false }, cursorGame: null,
+    ...(controls.initiativeSpeech === undefined ? {} : { initiativeSpeech: controls.initiativeSpeech }),
     dialogue: controls.dialogue ?? { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
     ...meta,
     character: {
@@ -88,6 +90,13 @@ function createFixture(
 }
 
 describe('Main: Brain state publisher', () => {
+  it('keeps initiative publication and explicit null expiry as semantic transitions', async () => {
+    const f = createFixture(); f.publisher.replaceStream(); await f.runScheduled();
+    f.controls.initiativeSpeech = { id: 'ai', text: 'Поговорим?', startedAtMs: 100, expiresAtMs: 2100 }; f.publisher.requestCommit();
+    f.controls.positionX++; f.publisher.requestCommit(); f.controls.initiativeSpeech = null; f.publisher.requestCommit(); await f.runScheduled();
+    expect(f.delivered.map(s => s.initiativeSpeech?.id ?? null)).toEqual([null, 'ai', 'ai', null]);
+  });
+
   it('delivers policy notice changes separately from motion while retaining the reply', async () => {
     const f = createFixture(); f.publisher.replaceStream(); await f.runScheduled();
     const turn = { phase: 'completed' as const, requestId: 'r', replyText: 'Ответ', outcome: { kind: 'success' as const } };

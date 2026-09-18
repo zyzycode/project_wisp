@@ -79,6 +79,41 @@ function selectedReaction(
 }
 
 describe('Domain: Observe Cursor policy', () => {
+  it('biases only an eligible game with the existing draw and clamps the resulting chance', () => {
+    const opportunity = input({ gameCandidateEligible: true, noticeRandomUnit: 0.55 });
+    const liked = resolveCursorObserve({ ...opportunity, learnedGamePreference: { value: 100, confidence: 0.5 } });
+    const disliked = resolveCursorObserve({ ...opportunity, learnedGamePreference: { value: -100, confidence: 0.5 } });
+    expect(liked.noticeChance).toBeCloseTo(0.652);
+    expect(disliked.noticeChance).toBeCloseTo(0.452);
+    expect(liked.noticed).toBe(true); expect(disliked.noticed).toBe(false);
+    expect(resolveCursorObserve(input({ signal: signal(20), tone: 'playful', friendship: 900,
+      gameCandidateEligible: true, learnedGamePreference: { value: 100, confidence: 1 } })).noticeChance).toBe(1);
+    expect(resolveCursorObserve(input({ signal: signal(500), gameCandidateEligible: true,
+      learnedGamePreference: { value: -100, confidence: 1 } })).noticeChance).toBe(0);
+  });
+
+  it.each([
+    undefined, { value: 100, confidence: 0.499 }, { value: 101, confidence: 1 },
+    { value: -101, confidence: 1 }, { value: NaN, confidence: 1 },
+    { value: 100, confidence: Infinity }, { value: 100, confidence: 1.1 },
+    { value: 100, confidence: -0.1 },
+  ])('preserves the exact baseline for an absent or invalid track: %j', learnedGamePreference => {
+    const baseline = resolveCursorObserve(input());
+    expect(resolveCursorObserve(input({ gameCandidateEligible: true, learnedGamePreference }))).toEqual(baseline);
+  });
+
+  it('keeps passive reactions unchanged and cannot rescue stale or missing signals', () => {
+    const preference = { value: 100, confidence: 1 };
+    for (const gameCandidateEligible of [undefined, false]) {
+      expect(resolveCursorObserve(input({ gameCandidateEligible, learnedGamePreference: preference })))
+        .toEqual(resolveCursorObserve(input()));
+    }
+    for (const cursorSignal of [undefined, signal(20, -301), signal(20, 1)]) {
+      expect(resolveCursorObserve(input({ signal: cursorSignal, gameCandidateEligible: true,
+        learnedGamePreference: preference }))).toEqual({ noticed: false, noticeChance: 0 });
+    }
+  });
+
   it('notices a nearby cursor more often and rejects missing, stale, or usually-far signals', () => {
     const near = resolveCursorObserve(input({ signal: signal(100), noticeRandomUnit: 0.3 }));
     const far = resolveCursorObserve(input({ signal: signal(1_000), noticeRandomUnit: 0.3 }));

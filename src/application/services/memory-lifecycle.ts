@@ -17,6 +17,7 @@ interface Options {
   readonly createId: () => string;
   readonly toTimestamp: (monotonicMs: number) => string;
   readonly localMock: boolean;
+  readonly gameObserver?: import('../ports/ai-event-provider.interface').IGameEpisodeCommitObserver;
   readonly preferenceLearning?: ICharacterPreferenceLearning;
   readonly hydrate: (messages: readonly AIProviderContextMessage[]) => void;
   readonly start: () => void;
@@ -38,7 +39,7 @@ export class MemoryLifecycle {
   private shutdownPromise: Promise<void> | undefined;
   constructor(private readonly options: Options) {
     this.knowledge = new MemoryKnowledge({ facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
-    this.history = new MemoryHistory({ onPersisted: (turn, context) => this.knowledge.persisted(turn, context), ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
+    this.history = new MemoryHistory({ ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => this.knowledge.persisted(turn, context), ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
   }
   currentGeneration(): number { return this.generation; }
   getStatus(): MemoryStatusDTO { return { ...this.status }; }

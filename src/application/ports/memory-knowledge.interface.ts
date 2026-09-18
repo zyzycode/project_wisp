@@ -41,6 +41,8 @@ export interface AIProviderMemoryContext {
 
 export interface MemoryRecallQuery {
   readonly text: string;
+  /** Internal social-event retrieval uses the current saved topic without another read. */
+  readonly useFavoriteTopic?: boolean;
   readonly excludedMessageIds: readonly string[];
 }
 
