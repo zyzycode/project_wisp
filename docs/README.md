@@ -6,6 +6,8 @@
 |---|---|
 | Инженерные инварианты, роли, verification | [AGENTS.md](../AGENTS.md) |
 | Задачи, зависимости и фактические статусы | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
+| Продуктовые решения и порядок этапов | [Vision и roadmap](PRODUCT_VISION_AND_ROADMAP.md) |
+| Ручной запуск и приёмка MVP на Windows | [Windows checklist](WINDOWS_MVP_CHECKLIST.md), выполняет владелец продукта |
 | Владельцы правил движков и разделы для чтения | [Индекс engine contracts](engine/README.md) |
 | Точные формы портов/IPC | [Application ports](../src/application/ports/), [IPC DTO](../src/shared/ipc-contracts.ts) |
 | Сценарии автономного поведения | [Behavior catalog](behaviors/README.md), только нужный pack; не заменяет contracts |

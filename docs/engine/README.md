@@ -17,9 +17,11 @@
 | Визуальные намерения и клипы | [ANIMATION_ENGINE.md](ANIMATION_ENGINE.md) | Приоритеты; FSM; прерывания; sleep/wake presentation |
 | Manifest, геометрия, слои, Skin | [RENDER_ENGINE.md](RENDER_ENGINE.md) | Skin contract; anchors/pivot; frame timing; fallback |
 | UI/Renderer и Brain → Body | [UI_SPEC.md](UI_SPEC.md) | Ownership; typed IPC; revision/order/cadence; validation; cleanup/privacy |
-| Локальная память | [MEMORY_ENGINE.md](MEMORY_ENGINE.md) | SQLite schema; порты; bounded context; restore/reset |
+| Локальная память | [MEMORY_ENGINE.md](MEMORY_ENGINE.md) | SQLite schema; evidence/facts; bounded recall; restore/reset |
 | AI-диалог | [AI_PROVIDER_CONTRACT.md](AI_PROVIDER_CONTRACT.md) | Request/response; runtime ownership; admission/deadline; fallback/reset; mapper |
-| Desktop ↔ Backend API | [BACKEND_API_CONTRACT.md](BACKEND_API_CONTRACT.md) | Независимый wire v1; диапазоны; HTTP/errors; общие JSON fixtures; открытые quota/idempotency |
+| Desktop ↔ Backend API | [BACKEND_API_CONTRACT.md](BACKEND_API_CONTRACT.md) | Wire v1; HTTP/errors; fixtures; общие quota/idempotency, access и retention |
+| Память в облачном диалоге | [BACKEND_MEMORY_CONTRACT.md](BACKEND_MEMORY_CONTRACT.md) | Wire v2; selected memory; candidates/source validation; общие budgets |
+| Игровые события и AI-инициативы | [AI_EVENTS_CONTRACT.md](AI_EVENTS_CONTRACT.md) | Wire v3; causal admission; user priority; speech/previousInitiative; learned game choice |
 
 <a id="4-матрица-межмодульных-контрактов-кто-от-кого-зависит"></a>
 
