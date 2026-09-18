@@ -11,6 +11,7 @@ import {
   type SkinAnimationFrameScheduler,
 } from '../../src/renderer/render-engine';
 import type { BrainVisualIntentKindDTO } from '../../src/shared/ipc-contracts';
+import { createAnimationPreviewState } from '../../src/renderer/render-engine/animation-preview';
 
 const manifest: NormalizedSpriteManifest = {
   schemaVersion: 1,
@@ -151,6 +152,39 @@ function fixture() {
 }
 
 describe('Renderer: SpriteSkinAdapter', () => {
+  it('previews an exact clip from frame zero independently of Brain age and episode changes', () => {
+    const scheduler = new TestScheduler();
+    const states: RenderPresentationState[] = [];
+    const resolver = new AssetResolver(manifest);
+    const selection = { bodyKey: 'body_run', faceKey: 'face_happy', replayToken: 1, loop: false };
+    const adapter = new SpriteSkinAdapter({
+      resolver: { resolve: () => resolver.resolveDebugSelection(selection.bodyKey, selection.faceKey) },
+      createRenderer: () => ({ render: state => states.push(state), destroy: () => undefined }),
+      scheduler,
+    });
+    adapter.init();
+    const brain = visualState(1, 'sleep_loop', { visualAgeMs: 60_000 });
+    adapter.update(createAnimationPreviewState(brain, selection));
+    expect(states.at(-1)?.layers[0]?.frame?.source).toBe('body_run_0.png');
+    scheduler.run(1000);
+    scheduler.run(1150);
+    expect(states.at(-1)?.layers[0]?.frame?.source).toBe('body_run_1.png');
+    adapter.update(createAnimationPreviewState(visualState(2, 'idle_blink', {
+      episodeId: 'new-brain-episode', visualAgeMs: 10_000,
+    }), selection));
+    expect(states.at(-1)?.layers[0]?.frame?.source).toBe('body_run_1.png');
+    scheduler.run(1600);
+    expect(states.at(-1)?.layers[0]?.frame?.source).toBe('body_run_3.png');
+    adapter.update(createAnimationPreviewState(visualState(3), { ...selection, replayToken: 2, loop: true }));
+    expect(states.at(-1)?.layers[0]?.frame?.source).toBe('body_run_0.png');
+    scheduler.run(2050);
+    expect(states.at(-1)?.layers[0]?.frame?.source).toBe('body_run_0.png');
+    expect(brain.visualAgeMs).toBe(60_000);
+    expect(brain.visualIntent.episodeId).toBe('episode-1');
+    adapter.destroy();
+    expect(scheduler.pendingCount()).toBe(0);
+  });
+
   it('maps semantic gait/activity/expression to existing clips and deterministic fallback', () => {
     const { adapter, states } = fixture();
     adapter.init();

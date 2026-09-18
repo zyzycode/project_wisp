@@ -2,6 +2,32 @@ import { metabolizeNeeds } from '../../src/domain/character/metabolism';
 import { describe, expect, it } from 'vitest';
 import { scenario } from './autonomy-scenario-fixture';
 describe('real Character closed loop', () => {
+  it('cancels autonomous movement while the menu is open and resumes only when enabled', () => {
+    const f = scenario({ play: 30 }, .5);
+    const staleOpportunity = [...f.timers.values()][0]!.callback;
+    f.pulse();
+    expect(f.main.getActivityTimeline()).not.toBeNull();
+    f.main.setMenuOpen(true);
+    const movesAtPause = f.move.mock.calls.length;
+    expect(f.main.getActivityTimeline()).toBeNull();
+    expect(f.timers.size).toBe(0);
+    staleOpportunity();
+    f.advance(60_000);
+    f.main.handleCursorObservation({ x: 410, y: 790 });
+    expect(f.main.getActivityTimeline()).toBeNull();
+    expect(f.move).toHaveBeenCalledTimes(movesAtPause);
+    expect(f.timers.size).toBe(0);
+    f.main.setQuietMode(true);
+    f.main.setMenuOpen(false);
+    expect(f.timers.size).toBe(1);
+    expect(f.main.getAutonomyMode().quiet).toBe(true);
+    f.main.setMenuOpen(true);
+    f.main.setEnabled(false);
+    f.main.setMenuOpen(false);
+    expect(f.timers.size).toBe(0);
+    f.main.dispose();
+  });
+
   it.each([
     ['soft_landing', 800], ['stumble', 800], ['crash_landing', 1600],
   ] as const)('selects an activity after %s recovery without another idle delay', (outcome, recoveryMs) => {

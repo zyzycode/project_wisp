@@ -5,6 +5,7 @@ import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { DebugHUD } from './Debug';
 import { ContextMenu } from './Interaction/ContextMenu';
+import { AnimationPreviewControls } from './Interaction/AnimationPreviewControls';
 import type { useDesktopPetController } from '../hooks/useDesktopPetController';
 
 export interface PetOverlayProps {
@@ -25,7 +26,6 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
       position={model.position}
       isWandering={model.isWandering}
       flipX={model.flipX}
-      currentFace={model.customFace}
       bodyAnimationKeys={model.manifestAnimations.bodyKeys}
       faceAnimationKeys={model.manifestAnimations.faceKeys}
       selectedBodyAnimationKey={model.inspectorBodyKey}
@@ -68,7 +68,17 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         debugHudVisible={model.debugHudVisible}
         isAlwaysOnTop={model.isAlwaysOnTop}
         debugContent={debugHud}
-        currentFace={model.customFace}
+        previewContent={<AnimationPreviewControls
+          bodyKeys={model.manifestAnimations.bodyKeys}
+          faceKeys={model.manifestAnimations.faceKeys}
+          bodyKey={model.inspectorBodyKey}
+          faceKey={model.inspectorFaceKey}
+          loop={model.previewLoop}
+          onSelectBody={model.setInspectorBodyKey}
+          onSelectFace={model.setInspectorFaceKey}
+          onToggleLoop={model.togglePreviewLoop}
+          onReplay={model.replayPreview}
+        />}
         onClose={() => model.setMenuOpen(false)}
         onPet={model.petFromMenu}
         onPlay={model.playFromMenu}
@@ -79,8 +89,6 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         onToggleDebugHud={() => model.setDebugHudVisible((visible) => !visible)}
         onToggleAlwaysOnTop={model.toggleAlwaysOnTop}
         onResetPosition={model.handleResetPosition}
-        onPlayAnimation={model.handlePlayAnimation}
-        onSelectFace={model.handleSelectFace}
         onSelectTheme={model.setCurrentTheme}
         onSelectScale={model.setScale}
         onQuit={model.closeApp}

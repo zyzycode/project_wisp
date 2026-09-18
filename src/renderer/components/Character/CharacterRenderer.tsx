@@ -23,6 +23,8 @@ import { useGaze } from '../../hooks/useGaze';
 import type { GazeDirection } from '../../../domain/behavior/gaze-engine';
 import type { CursorScreenPosition } from '../../body-ui-runtime';
 import { SpriteRenderer, resolveSpriteSource } from './SpriteRenderer';
+import { createAnimationPreviewState, type DebugAnimationSelection } from '../../render-engine/animation-preview';
+export type { DebugAnimationSelection } from '../../render-engine/animation-preview';
 
 export const BASE_CHARACTER_SIZE = PET_PRESENTATION_LAYOUT.characterRect;
 
@@ -62,11 +64,6 @@ let cachedManifestResolver: AssetResolver | null = INITIAL_RESOLVER;
 export interface ManifestAnimationRegistry {
   bodyKeys: readonly string[];
   faceKeys: readonly string[];
-}
-
-export interface DebugAnimationSelection {
-  bodyKey: string;
-  faceKey?: string;
 }
 
 export interface CharacterRendererProps {
@@ -119,12 +116,15 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       : resolver.resolveDebugSelection(debugAnimationSelection.bodyKey, debugAnimationSelection.faceKey),
     [debugAnimationSelection, resolver]
   );
+  const playbackState = useMemo(() => debugAnimationSelection === undefined
+    ? visualState : createAnimationPreviewState(visualState, debugAnimationSelection),
+  [debugAnimationSelection, visualState]);
   const presentationState = useCharacterAnimation(
     resolver,
-    visualState,
+    playbackState,
     debugClip,
-    onAnimationCompleted,
-    onAnimationRejected
+    debugAnimationSelection === undefined ? onAnimationCompleted : undefined,
+    debugAnimationSelection === undefined ? onAnimationRejected : undefined
   );
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
   const activePresentationState = presentationState;

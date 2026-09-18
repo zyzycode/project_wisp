@@ -38,6 +38,10 @@ flowchart LR
 
 Правый клик открывает меню и расширяет окно/включает interactive mode. Outside/backdrop click, `Escape` или terminal action закрывают его и возвращают компактное окно.
 
+Открытое меню приостанавливает автономный выбор и отменяет текущую автономную Activity/voluntary movement через существующее `menu_visibility_changed`. Закрытие снимает только блокировку меню, сохраняя настройки autonomy enabled и quiet. Ввод до первого Brain snapshot сохраняет последнее состояние видимости для отправки после подключения.
+
+Просмотр анимаций использует каталог загруженного manifest и существующий локальный Skin inspector: выбор body/face, повтор с начала и переключатель зацикливания. Его время воспроизведения не зависит от Brain episode; просмотр не меняет semantic FSM/Needs/physics и не отправляет completion в Main. Закрытие меню сбрасывает просмотр; явные interactions/sleep/wake также снимают preview перед отправкой команды. «Подумать» оставляет меню открытым.
+
 Группы действий: interactions (погладить/кормить/играть/думать), `sleep`/`wake`, autonomy movement, theme/expression/scale, reset position/always-on-top/quit. Debug HUD требует явного `debugEnabled`; в production исключён из render, не скрыт CSS.
 
 ## 5. Инварианты безопасности и приватности

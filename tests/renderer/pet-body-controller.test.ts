@@ -45,6 +45,29 @@ function fixture() {
 }
 
 describe('Renderer: Pet Body controller', () => {
+  it('delivers menu pause after the first Brain snapshot if opened during startup', () => {
+    const { bridge, controller } = fixture();
+    controller.postMenuVisibility(true);
+    expect(bridge.postBodyEvent).not.toHaveBeenCalled();
+    controller.acceptBrainState(brainState(1));
+    expect(bridge.postBodyEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'menu_visibility_changed', expanded: true, sequence: 1, basedOnRevision: 1,
+    }));
+    controller.acceptBrainState(brainState(2));
+    expect(bridge.postBodyEvent).toHaveBeenCalledOnce();
+  });
+
+  it('keeps only the latest menu visibility while waiting for Brain', () => {
+    const { bridge, controller } = fixture();
+    controller.postMenuVisibility(true);
+    controller.postMenuVisibility(false);
+    controller.acceptBrainState(brainState(1));
+    expect(bridge.postBodyEvent).toHaveBeenCalledOnce();
+    expect(bridge.postBodyEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'menu_visibility_changed', expanded: false,
+    }));
+  });
+
   it('atomically accepts only ordered Brain snapshots and keeps reflex updates renderer-local', () => {
     const { bridge, controller, diagnostic } = fixture();
 

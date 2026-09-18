@@ -56,6 +56,7 @@ export class PetBodyController {
   private gestureSequence = 0;
   private activeGesture: ActiveBodyGesture | null = null;
   private resetBeforeNextSubscription = false;
+  private pendingMenuVisibility: boolean | null = null;
 
   public constructor(
     private readonly bridge: PetMainBridge,
@@ -96,7 +97,7 @@ export class PetBodyController {
     const rotationDeg = this.activeGesture === null
       ? clamp(velocityX * 0.02, -25, 25)
       : previousTransform.rotationDeg;
-    return this.replaceSnapshot(brain, {
+    const snapshot = this.replaceSnapshot(brain, {
       pupilOffset: { ...previousPupil },
       transform: {
         ...previousTransform,
@@ -104,6 +105,12 @@ export class PetBodyController {
         rotationDeg,
       },
     });
+    if (this.pendingMenuVisibility !== null) {
+      const expanded = this.pendingMenuVisibility;
+      this.pendingMenuVisibility = null;
+      this.postMenuVisibility(expanded);
+    }
+    return snapshot;
   }
 
   public getSnapshot(): PetBodySnapshot | null {
@@ -160,6 +167,10 @@ export class PetBodyController {
   }
 
   public postMenuVisibility(expanded: boolean): boolean {
+    if (this.snapshot === null) {
+      this.pendingMenuVisibility = expanded;
+      return false;
+    }
     return this.emit({ type: 'menu_visibility_changed', expanded });
   }
 

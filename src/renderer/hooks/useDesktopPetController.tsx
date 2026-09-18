@@ -25,9 +25,6 @@ import type {
 import {
   CLICK_REPLIES,
   CLICK_REPLY_FALLBACK,
-  FACE_PREVIEW_DEFAULT_REPLY,
-  FACE_PREVIEW_FALLBACK_PREFIX,
-  FACE_PREVIEW_REPLIES,
   INTERACTION_REPLIES,
 } from '../content/interaction-replies';
 import { THOUGHT_FALLBACK, THOUGHTS } from '../content/thoughts';
@@ -61,7 +58,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
   const [dragInteractionActive, setDragInteractionActive] = useState(false);
   const [localTerminalVisualKind, setLocalTerminalVisualKind] =
     useState<AnimationIntentKind | null>(null);
-  const [customFace, setCustomFace] = useState<AnimationExpressionHint | null>(null);
   const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
     DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
   );
@@ -74,6 +70,8 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
   });
   const [inspectorBodyKey, setInspectorBodyKey] = useState<string | null>(null);
   const [inspectorFaceKey, setInspectorFaceKey] = useState<string | null>(null);
+  const [previewLoop, setPreviewLoop] = useState(true);
+  const [previewReplayToken, setPreviewReplayToken] = useState(0);
   const [showAnchorPoint, setShowAnchorPoint] = useState(false);
   const [debugTelemetry, setDebugTelemetry] = useState(EMPTY_DEBUG_TELEMETRY);
   const [renderFps, setRenderFps] = useState(0);
@@ -146,17 +144,45 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
       );
     }
     return createSystemAnimationIntent(animationStateToIntentKind(animState), 'neutral', {
-      expressionHint: customFace ?? expressionToHint(expression),
+      expressionHint: expressionToHint(expression),
     });
-  }, [animState, customFace, expression, localTerminalVisualKind, visual]);
+  }, [animState, expression, localTerminalVisualKind, visual]);
 
   const debugAnimationSelection = useMemo<DebugAnimationSelection | undefined>(() => {
-    if (inspectorBodyKey === null) return undefined;
+    if (!overlay.menuOpen || inspectorBodyKey === null) return undefined;
     return {
       bodyKey: inspectorBodyKey,
+      replayToken: previewReplayToken,
+      loop: previewLoop,
       ...(inspectorFaceKey === null ? {} : { faceKey: inspectorFaceKey }),
     };
-  }, [inspectorBodyKey, inspectorFaceKey]);
+  }, [inspectorBodyKey, inspectorFaceKey, overlay.menuOpen, previewReplayToken, previewLoop]);
+
+  useEffect(() => {
+    if (!overlay.menuOpen) {
+      setInspectorBodyKey(null);
+      setInspectorFaceKey(null);
+    }
+  }, [overlay.menuOpen]);
+
+  const selectPreviewBody = useCallback((key: string | null) => {
+    overlay.setMenuOpen(true);
+    setInspectorBodyKey(key);
+    if (key === null) setInspectorFaceKey(null);
+    setPreviewReplayToken(value => value + 1);
+  }, [overlay.setMenuOpen]);
+
+  const selectPreviewFace = useCallback((key: string | null) => {
+    overlay.setMenuOpen(true);
+    setInspectorFaceKey(key);
+    if (key !== null) setInspectorBodyKey(current => current ?? 'body_idle');
+    setPreviewReplayToken(value => value + 1);
+  }, [overlay.setMenuOpen]);
+
+  const clearPreview = useCallback(() => {
+    setInspectorBodyKey(null);
+    setInspectorFaceKey(null);
+  }, []);
 
   const handleAnimationCompleted = useCallback((
     _event: unknown,
@@ -284,40 +310,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
       .catch((error: unknown) => console.error('Failed to get environment snapshot:', error));
   }, [bridge, overlay.setMenuOpen]);
 
-  const handleSelectFace = useCallback((face: AnimationExpressionHint | null) => {
-    setCustomFace(face);
-    const text = face
-      ? FACE_PREVIEW_REPLIES[face] ?? `${FACE_PREVIEW_FALLBACK_PREFIX}${face}`
-      : FACE_PREVIEW_DEFAULT_REPLY;
-    dialogue.setCurrentMessage(createChatMessage('thought', text));
-  }, [dialogue.setCurrentMessage]);
-
-  const handlePlayAnimation = useCallback((event: AnimationEvent): void => {
-    if (event === 'START_SLEEP') {
-      sendSleepWake('sleep');
-      dialogue.setCurrentMessage(createChatMessage('thought', INTERACTION_REPLIES.sleep));
-    } else if (event === 'WAKE_UP') {
-      sendSleepWake('wake');
-      dialogue.setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.wake));
-    } else if (event === 'PET' || event === 'REACT_HAPPY') {
-      postInteraction('pet');
-      dispatchAnim('PET', true, true);
-      dialogue.setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.pet));
-    } else if (event === 'THINK') {
-      postInteraction('think');
-      dispatchAnim('THINK', true, true);
-      dialogue.setCurrentMessage(createChatMessage('thought', INTERACTION_REPLIES.think));
-    } else if (event === 'SPOOK' || event === 'REACT_CONFUSED') {
-      postInteraction('click', 1);
-      dispatchAnim('SPOOK', true, true);
-      dialogue.setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.spook));
-    } else if (event === 'LAND' || event === 'SETTLE') {
-      dispatchAnim(event, true, false);
-    } else {
-      dispatchAnim(event, true, true);
-    }
-  }, [dialogue.setCurrentMessage, dispatchAnim, postInteraction, sendSleepWake]);
-
   const handleGazeDirectionChanged = useCallback((direction: 'left' | 'right' | 'up' | 'down') => {
     const offsets = {
       left: { x: -1, y: 0 },
@@ -373,8 +365,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     handlePetDoubleClick,
     handleContextMenu,
     handleResetPosition,
-    handleSelectFace,
-    handlePlayAnimation,
     autoWanderEnabled,
     quietMode,
     toggleQuietMode: () => { void bridge.setQuietMode({ enabled: !quietMode }).catch((error: unknown) => console.error('Quiet mode failed:', error)); },
@@ -385,30 +375,36 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     isAlwaysOnTop,
     debugTelemetry,
     renderFps,
-    customFace,
     inspectorBodyKey,
-    setInspectorBodyKey,
+    setInspectorBodyKey: selectPreviewBody,
     inspectorFaceKey,
-    setInspectorFaceKey,
+    setInspectorFaceKey: selectPreviewFace,
     setShowAnchorPoint,
+    previewLoop,
+    togglePreviewLoop: () => { setPreviewLoop(value => !value); setPreviewReplayToken(value => value + 1); },
+    replayPreview: () => setPreviewReplayToken(value => value + 1),
     clearDebugLogs: () => {
       if (bridge.clearDebugTelemetryLogs !== undefined) void bridge.clearDebugTelemetryLogs();
     },
     sendInteraction: postInteraction,
     sendSleepWake,
     petFromMenu: () => {
+      clearPreview();
       postInteraction('pet');
       dialogue.setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.pet));
     },
     playFromMenu: () => {
+      clearPreview();
       postInteraction('play');
       dialogue.setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.play));
     },
     feedFromMenu: () => {
+      clearPreview();
       postInteraction('feed');
       dialogue.setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.feed));
     },
     toggleSleep: () => {
+      clearPreview();
       if (isSleeping) {
         sendSleepWake('wake');
         dialogue.setCurrentMessage(createChatMessage('pet', INTERACTION_REPLIES.wake));
@@ -436,8 +432,8 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     },
     closeApp: () => void bridge.closeApp(),
     showRandomThought: () => {
+      clearPreview();
       postInteraction('think');
-      overlay.setMenuOpen(false);
       const thought = THOUGHTS[Math.floor(Math.random() * THOUGHTS.length)] ?? THOUGHT_FALLBACK;
       dialogue.setCurrentMessage(createChatMessage('thought', thought));
     },

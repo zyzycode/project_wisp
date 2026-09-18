@@ -3,6 +3,19 @@ import { createRoot } from 'react-dom/client';
 import { existsSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BrainStateDTO, WispApiBridge } from '../../src/shared/ipc-contracts';
+import type { DebugAnimationSelection } from '../../src/renderer/render-engine/animation-preview';
+
+interface ContextMenuProps {
+  readonly onToggleSleep: () => void;
+  readonly onClose: () => void;
+  readonly isOpen: boolean;
+  readonly previewContent?: React.ReactNode;
+}
+interface AnimationPreviewControlsProps {
+  readonly onSelectBody: (key: string | null) => void;
+  readonly onSelectFace: (key: string | null) => void;
+  readonly onToggleLoop: () => void;
+}
 
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(() => true),
@@ -17,6 +30,9 @@ const mocks = vi.hoisted(() => ({
   gazeEnabled: undefined as boolean | undefined,
   animationState: 'idle',
   visualAgeMs: undefined as number | undefined,
+  menu: undefined as ContextMenuProps | undefined,
+  previewControls: undefined as AnimationPreviewControlsProps | undefined,
+  preview: undefined as DebugAnimationSelection | undefined,
 }));
 
 vi.mock('../../src/renderer/components/Character/CharacterRenderer', () => ({
@@ -26,20 +42,26 @@ vi.mock('../../src/renderer/components/Character/CharacterRenderer', () => ({
     readonly onCursorObserved?: (position: { readonly x: number; readonly y: number }) => void;
     readonly gazeEnabled?: boolean;
     readonly visualState?: { readonly visualAgeMs: number };
+    readonly debugAnimationSelection?: DebugAnimationSelection;
   }) => {
     mocks.animationCompleted = props.onAnimationCompleted;
     mocks.animationRejected = props.onAnimationRejected;
     mocks.cursorObserved = props.onCursorObserved;
     mocks.gazeEnabled = props.gazeEnabled;
     mocks.visualAgeMs = props.visualState?.visualAgeMs;
+    mocks.preview = props.debugAnimationSelection;
     return React.createElement('div', { 'data-testid': 'character' });
   },
 }));
 vi.mock('../../src/renderer/components/Interaction/ContextMenu', () => ({
-  ContextMenu: (props: { readonly onToggleSleep: () => void }) => {
+  ContextMenu: (props: ContextMenuProps) => {
+    mocks.menu = props;
     mocks.onToggleSleep = props.onToggleSleep;
-    return null;
+    return props.previewContent;
   },
+}));
+vi.mock('../../src/renderer/components/Interaction/AnimationPreviewControls', () => ({
+  AnimationPreviewControls: (props: AnimationPreviewControlsProps) => { mocks.previewControls = props; return null; },
 }));
 vi.mock('../../src/renderer/components/Chat/SpeechBubble', () => ({ SpeechBubble: () => null }));
 vi.mock('../../src/renderer/components/Chat/ChatInput', () => ({ ChatInput: () => null }));
@@ -264,6 +286,27 @@ describe('Renderer: autonomy ownership', () => {
 
     await act(async () => mocks.brainListener?.(brainState(1, 'episode-idle', 'idle_blink')));
     expect(mocks.gazeEnabled).toBe(true);
+    await act(async () => mocks.previewControls?.onSelectBody('body_sit'));
+    expect(mocks.preview?.bodyKey).toBe('body_sit');
+    expect(mocks.menu?.isOpen).toBe(true);
+    expect(api.postBodyEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'menu_visibility_changed', expanded: true,
+    }));
+    const firstToken = mocks.preview?.replayToken;
+    await act(async () => mocks.previewControls?.onSelectBody('body_sit'));
+    expect(mocks.preview?.replayToken).not.toBe(firstToken);
+    await act(async () => mocks.previewControls?.onSelectFace('face_happy'));
+    expect(mocks.preview?.faceKey).toBe('face_happy');
+    await act(async () => mocks.previewControls?.onToggleLoop());
+    expect(mocks.preview?.loop).toBe(false);
+    await act(async () => mocks.brainListener?.(brainState(2, 'updated-brain', 'walk')));
+    expect(mocks.preview?.bodyKey).toBe('body_sit');
+    await act(async () => mocks.menu?.onClose());
+    expect(mocks.preview).toBeUndefined();
+    expect(api.postBodyEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'menu_visibility_changed', expanded: false,
+    }));
+    vi.mocked(api.postBodyEvent).mockClear();
     await act(async () => mocks.cursorObserved?.({ x: 450, y: 320 }));
     expect(api.postBodyEvent).toHaveBeenCalledWith(expect.objectContaining({
       type: 'cursor_observed',

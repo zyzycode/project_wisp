@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { DebugHUD } from '../../src/renderer/components/Debug/DebugHUD';
 import { ContextMenu } from '../../src/renderer/components/Interaction/ContextMenu';
+import { AnimationPreviewControls } from '../../src/renderer/components/Interaction/AnimationPreviewControls';
 import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 import { createSystemAnimationIntent } from '../../src/domain/animation/animation-intent';
 import type { DebugLogEntryDTO } from '../../src/shared/ipc-contracts';
@@ -162,8 +163,7 @@ describe('Renderer: DebugHUD', () => {
     expect(markup).toContain('telemetry-panel');
   });
 
-  it('renders animation buttons when onPlayAnimation callback is passed', () => {
-    const onPlayAnimation = vi.fn();
+  it('renders manifest preview controls without requiring telemetry mode', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
@@ -179,7 +179,10 @@ describe('Renderer: DebugHUD', () => {
         onThink={vi.fn()}
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
-        onPlayAnimation={onPlayAnimation}
+        previewContent={<AnimationPreviewControls
+          bodyKeys={['body_idle']} faceKeys={[]} bodyKey={null} faceKey={null} loop
+          onSelectBody={vi.fn()} onSelectFace={vi.fn()} onToggleLoop={vi.fn()} onReplay={vi.fn()}
+        />}
         onSelectTheme={vi.fn()}
         onSelectScale={vi.fn()}
         onQuit={vi.fn()}

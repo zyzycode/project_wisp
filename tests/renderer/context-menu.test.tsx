@@ -4,9 +4,9 @@ import {
   calculateContextMenuPosition,
   ContextMenu,
   createInteractionMenuActions,
-  createPoseMenuActions,
   subscribeToOutsideMouseDown,
 } from '../../src/renderer/components/Interaction/ContextMenu';
+import { AnimationPreviewControls } from '../../src/renderer/components/Interaction/AnimationPreviewControls';
 import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 
 describe('Renderer: ContextMenu', () => {
@@ -58,8 +58,12 @@ describe('Renderer: ContextMenu', () => {
         onToggleDebugHud={vi.fn()}
         onToggleAlwaysOnTop={vi.fn()}
         onResetPosition={vi.fn()}
-        onPlayAnimation={vi.fn()}
-        onSelectFace={vi.fn()}
+        previewContent={<AnimationPreviewControls
+          bodyKeys={['body_idle', 'body_walk', 'body_petting', 'body_thinking', 'body_sit', 'body_lie', 'body_stand_up', 'body_run', 'body_surface_touch']}
+          faceKeys={['face_happy', 'face_sad', 'face_angry']}
+          bodyKey="body_sit" faceKey={null} loop
+          onSelectBody={vi.fn()} onSelectFace={vi.fn()} onToggleLoop={vi.fn()} onReplay={vi.fn()}
+        />}
         onSelectTheme={vi.fn()}
         onSelectScale={vi.fn()}
         onQuit={vi.fn()}
@@ -67,14 +71,19 @@ describe('Renderer: ContextMenu', () => {
     );
 
     expect(markup).toContain('Wisp Companion');
+    expect(markup).toContain('Автономность приостановлена');
     expect(markup).toContain('Нежное');
-    expect(markup).toContain('body_petting (Погладить)');
-    expect(markup).toContain('body_celebrate (Поиграть)');
-    expect(markup).toContain('prop_heart (Покормить)');
-    expect(markup).toContain('body_thinking (Подумать)');
-    expect(markup).toContain('body_sleep (Усыпить)');
-    expect(markup).toContain('body_walk (Прогулка: ВКЛ)');
+    expect(markup).toContain('Погладить');
+    expect(markup).toContain('Поиграть');
+    expect(markup).toContain('Покормить');
+    expect(markup).toContain('Подумать');
+    expect(markup).toContain('Усыпить');
+    expect(markup).toContain('После закрытия: автономность ВКЛ');
     expect(markup).toContain('Анимации и позы');
+    expect(markup).toContain('body_surface_touch');
+    expect(markup).toContain('С начала');
+    expect(markup).toContain('Сбросить просмотр');
+    expect(markup).toContain('Повтор: ВКЛ');
     expect(markup).toContain('Выражения лица');
     expect(markup).toContain('face_happy');
     expect(markup).toContain('face_sad');
@@ -159,7 +168,7 @@ describe('Renderer: ContextMenu', () => {
       .toEqual({ x: 12, y: 12 });
   });
 
-  it('binds interaction and pose callbacks to the expected menu actions', () => {
+  it('binds interaction callbacks to the expected menu actions', () => {
     const callbacks = {
       onPet: vi.fn(),
       onPlay: vi.fn(),
@@ -175,11 +184,7 @@ describe('Renderer: ContextMenu', () => {
     expect(callbacks.onFeed).toHaveBeenCalledOnce();
     expect(callbacks.onThink).toHaveBeenCalledOnce();
 
-    const onPlayAnimation = vi.fn();
-    const poseActions = createPoseMenuActions(onPlayAnimation);
-    expect(poseActions.length).toBeGreaterThan(0);
-    poseActions[0]?.onSelect();
-    expect(onPlayAnimation).toHaveBeenCalled();
+
   });
 
   it('unsubscribes mouse event listener correctly on outside clicks', () => {

@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { CharacterTheme } from '../../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../../domain/models/character-visuals';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
-import type { AnimationEvent } from '../../../domain/animation/animation-state-machine';
-import type { AnimationExpressionHint } from '../../../domain/animation/animation-intent';
 
 export type ContextMenuTab = 'main' | 'debug';
 
@@ -27,7 +25,7 @@ export interface ContextMenuProps {
   debugHudVisible?: boolean;
   isAlwaysOnTop?: boolean;
   debugContent?: React.ReactNode;
-  currentFace?: AnimationExpressionHint | null;
+  previewContent?: React.ReactNode;
   onTabChange?: (tab: ContextMenuTab) => void;
   onClose: () => void;
   onPet: () => void;
@@ -39,8 +37,6 @@ export interface ContextMenuProps {
   onToggleDebugHud?: () => void;
   onToggleAlwaysOnTop?: () => void;
   onResetPosition?: () => void;
-  onPlayAnimation?: (anim: AnimationEvent) => void;
-  onSelectFace?: (face: AnimationExpressionHint | null) => void;
   onSelectTheme: (theme: CharacterTheme) => void;
   onSelectScale: (scale: number) => void;
   onQuit: () => void;
@@ -56,45 +52,6 @@ const TONE_LABELS_RU: Record<SynthesizedEmotionalTone, string> = {
   neutral: 'Спокойное',
 };
 
-const ALL_ANIMATION_BUTTONS: { event: AnimationEvent; label: string }[] = [
-  { event: 'SETTLE', label: 'body_idle' },
-  { event: 'START_FLOAT', label: 'body_walk' },
-  { event: 'PET', label: 'body_petting' },
-  { event: 'WAVE', label: 'body_wave' },
-  { event: 'CELEBRATE', label: 'body_celebrate' },
-  { event: 'THINK', label: 'body_thinking' },
-  { event: 'SPOOK', label: 'body_scared' },
-  { event: 'BORED', label: 'body_bored' },
-  { event: 'START_SLEEP', label: 'body_sleep_trans' },
-  { event: 'WAKE_UP', label: 'body_land' },
-  { event: 'SIT', label: 'body_sit' },
-  { event: 'LIE_DOWN', label: 'body_lie' },
-  { event: 'STAND_UP', label: 'body_stand_up' },
-  { event: 'RUN', label: 'body_run' },
-  { event: 'JUMP', label: 'body_jump' },
-  { event: 'FALL', label: 'body_fall' },
-  { event: 'CLIMB_WALL', label: 'body_climb_wall' },
-  { event: 'HANG_CEILING', label: 'body_ceiling_hang' },
-  { event: 'START_DRAG', label: 'body_dragged' },
-  { event: 'LAND', label: 'body_land' },
-];
-
-const FACE_BUTTONS: { face: AnimationExpressionHint | null; label: string }[] = [
-  { face: null, label: 'auto' },
-  { face: 'happy', label: 'face_happy' },
-  { face: 'sad', label: 'face_sad' },
-  { face: 'shocked', label: 'face_shocked' },
-  { face: 'sleepy', label: 'face_sleep' },
-  { face: 'talking', label: 'face_talking' },
-  { face: 'thinking', label: 'face_thinking' },
-  { face: 'angry', label: 'face_angry' },
-  { face: 'pout', label: 'face_pout' },
-  { face: 'winking', label: 'face_winking' },
-  { face: 'curious', label: 'face_curious' },
-  { face: 'dizzy', label: 'face_dizzy' },
-  { face: 'flirty', label: 'face_flirty' },
-];
-
 export interface ContextMenuAction {
   id: string;
   label: string;
@@ -108,21 +65,11 @@ export function createInteractionMenuActions(callbacks: {
   onThink: () => void;
 }): ContextMenuAction[] {
   return [
-    { id: 'pet', label: 'body_petting (Погладить)', onSelect: callbacks.onPet },
-    ...(callbacks.onPlay ? [{ id: 'play', label: 'body_celebrate (Поиграть)', onSelect: callbacks.onPlay }] : []),
-    ...(callbacks.onFeed ? [{ id: 'feed', label: 'prop_heart (Покормить)', onSelect: callbacks.onFeed }] : []),
-    { id: 'think', label: 'body_thinking (Подумать)', onSelect: callbacks.onThink },
+    { id: 'pet', label: 'Погладить', onSelect: callbacks.onPet },
+    ...(callbacks.onPlay ? [{ id: 'play', label: 'Поиграть', onSelect: callbacks.onPlay }] : []),
+    ...(callbacks.onFeed ? [{ id: 'feed', label: 'Покормить', onSelect: callbacks.onFeed }] : []),
+    { id: 'think', label: 'Подумать', onSelect: callbacks.onThink },
   ];
-}
-
-export function createPoseMenuActions(onPlayAnimation: (event: AnimationEvent) => void): ContextMenuAction[] {
-  return ALL_ANIMATION_BUTTONS.filter(({ event }) =>
-    ['SIT', 'LIE_DOWN', 'STAND_UP', 'RUN', 'JUMP', 'FALL', 'CLIMB_WALL', 'HANG_CEILING'].includes(event)
-  ).map(({ event, label }) => ({
-    id: event,
-    label,
-    onSelect: () => onPlayAnimation(event),
-  }));
 }
 
 export function subscribeToOutsideMouseDown(
@@ -173,7 +120,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   debugHudVisible = false,
   isAlwaysOnTop = false,
   debugContent,
-  currentFace = null,
+  previewContent,
   onTabChange,
   onClose,
   onPet,
@@ -185,8 +132,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onToggleDebugHud,
   onToggleAlwaysOnTop,
   onResetPosition,
-  onPlayAnimation,
-  onSelectFace,
   onSelectTheme,
   onSelectScale,
   onQuit,
@@ -255,6 +200,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         </button>
       </div>
 
+      <div className="menu-section" role="status">
+        Автономность приостановлена, пока открыто меню.
+      </div>
+
       {debugHudEnabled ? (
         <div className="menu-tabs" role="tablist" aria-label="Menu sections">
           <button
@@ -284,6 +233,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         </div>
       ) : (
         <div className="menu-scroll-body" role="tabpanel" aria-label="Main controls">
+          {previewContent}
           {/* Actions */}
           <div className="menu-section">
             <div className="menu-section-title">Действия</div>
@@ -297,57 +247,17 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 {quietMode ? 'Тихий режим: ВКЛ' : 'Тихий режим: ВЫКЛ'}
               </button>
               <button type="button" className="menu-action-btn" onClick={onToggleSleep}>
-                {isSleeping ? 'body_land (Разбудить)' : 'body_sleep (Усыпить)'}
+                {isSleeping ? 'Разбудить' : 'Усыпить'}
               </button>
               <button
                 type="button"
                 className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`}
                 onClick={onToggleWander}
               >
-                {autoWanderEnabled ? 'body_walk (Прогулка: ВКЛ)' : 'body_idle (Прогулка: ВЫКЛ)'}
+                {autoWanderEnabled ? 'После закрытия: автономность ВКЛ' : 'После закрытия: автономность ВЫКЛ'}
               </button>
             </div>
           </div>
-
-          {/* Animations & Poses */}
-          {onPlayAnimation ? (
-            <div className="menu-section">
-              <div className="menu-divider" />
-              <div className="menu-section-title">Анимации и позы</div>
-              <div className="menu-anim-4col-grid">
-                {ALL_ANIMATION_BUTTONS.map((item) => (
-                  <button
-                    key={item.event}
-                    type="button"
-                    className="menu-anim-btn"
-                    onClick={() => onPlayAnimation(item.event)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Face Expressions */}
-          {onSelectFace ? (
-            <div className="menu-section">
-              <div className="menu-divider" />
-              <div className="menu-section-title">Выражения лица</div>
-              <div className="menu-anim-4col-grid">
-                {FACE_BUTTONS.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    className={`menu-anim-btn ${currentFace === item.face ? 'active' : ''}`}
-                    onClick={() => onSelectFace(item.face)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
 
           {/* Themes */}
           <div className="menu-section">
