@@ -39,6 +39,40 @@ $env:PYTHONUTF8='1'
 затем `npm run test -- tests/renderer/manifest-loader.test.ts tests/renderer/asset-resolver.test.ts`.
 Экспорт и проверка PNG сами по себе манифест не изменяют.
 
+Нормализация размеров/совмещения **SPRITE-NORMALIZE-2026-09**:
+
+```bash
+.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py
+.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py --apply
+.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py --check
+```
+
+Первая команда готовит сравнения «до/после», GIF и предложение в
+`output/normalization/`; `--apply` устанавливает только изменившиеся проверенные
+PNG и метаданные из рецепта; `--check` проверяет результат без записи.
+Для новых исправлений графики порядок такой: сначала полный пак в
+`generated_images/`, затем проверка исходника, нарезка и проверка рабочих PNG.
+Сохранены промпты [surface_touch](references/surface-touch-faces-v2.prompt.txt)
+и [look_around](references/look-around-faces-v2.prompt.txt).
+Новый исходный пак проверяется по SHA-256 перед экспортом. Старые
+исходные PNG читаются из Git-ревизии, зафиксированной в
+[рецепте](references/normalization-2026-09.json), поэтому требуется доступная
+история Git. Повторный запуск не масштабирует уже обработанные картинки.
+Неизвестные изменения рабочих PNG отклоняются. Обычный `process_sprites.py`
+сохраняет разметку наборов этого рецепта даже с `--force`.
+`body_surface_touch` и `body_look_around` нарезаются из готовых паков
+[body_surface_touch_faces_v2.png](generated_images/body_surface_touch_faces_v2.png)
+и [body_look_around_faces_v2.png](generated_images/body_look_around_faces_v2.png)
+с уже нарисованными лицами; дополнительные face-слои к ним не применяются.
+Аналогично перегенерированы `body_lie`, `body_crouch_examine`, `body_sit`,
+`body_sit_edge` и `body_stand_up`: [исходники, промпты и QA](references/FIVE_POSES_V2_QA.md).
+Все семь наборов зарегистрированы как `baked_in`, без приклеивания face_*.
+Исторический `requested-sprites-export.json` содержит заменённый `body_sit_edge`
+и помечен `supersededBy`; `export_requested.py` отклоняет весь такой пакет до
+записи PNG, чтобы не восстановить старый дефектный набор. Для текущих паков
+использовать `normalize_reviewed.py --apply`.
+[Разбор дефектов и приёмка](references/NORMALIZATION_2026_09_QA.md).
+
 | Операция | Команда |
 |---|---|
 | Пробная нарезка | `python3 asset-pipeline/scripts/process_sprites.py --file asset-pipeline/generated_images/face_gaze.png --dry-run` |

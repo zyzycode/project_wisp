@@ -157,6 +157,40 @@ class PipelineSafetyTests(unittest.TestCase):
         self.assertIn('export_requested.py', result.stdout)
         self.assertEqual(self.snapshot(self.production), self.before)
 
+    def test_superseded_export_recipe_cannot_restore_old_sprites(self):
+        recipe = self.pipeline / 'legacy.json'
+        recipe.write_text(json.dumps({'animations': {
+            'body_idle': {'supersededBy': 'references/normalization-2026-09.json'},
+        }}))
+        result = self.run_tool('export_requested.py', '--recipe', recipe, expected=1)
+        self.assertIn('superseded', result.stderr)
+        self.assertIn('normalize_reviewed.py', result.stderr)
+        self.assertEqual(self.snapshot(self.production), self.before)
+
+    def test_normalization_recipe_prevents_generic_reslicing_even_with_force(self):
+        references = self.pipeline / 'references'
+        references.mkdir()
+        (references / 'normalization-2026-09.json').write_text(json.dumps({
+            'animations': {'face_happy': {}},
+        }))
+        result = self.run_tool('process_sprites.py', '--force')
+        self.assertIn('normalize_reviewed.py', result.stdout)
+        self.assertEqual(self.snapshot(self.production), self.before)
+
+    def test_versioned_reviewed_pack_does_not_create_a_new_animation_key(self):
+        source = self.source.with_name('face_happy_v2.png')
+        self.source.rename(source)
+        references = self.pipeline / 'references'
+        references.mkdir()
+        (references / 'normalization-2026-09.json').write_text(json.dumps({
+            'animations': {'face_happy': {
+                'sheet': source.relative_to(self.root).as_posix(),
+            }},
+        }))
+        result = self.run_tool('process_sprites.py', '--file', source, '--force')
+        self.assertIn('preserved reviewed', result.stdout)
+        self.assertEqual(self.snapshot(self.production), self.before)
+
     def test_legacy_input_can_be_read_without_moving_or_modifying_it(self):
         legacy = self.root / "generated_images"
         legacy.mkdir()

@@ -491,6 +491,7 @@
       ]
     },
     "body_sit_edge": {
+      "supersededBy": "references/normalization-2026-09.json",
       "source": "generated_images/refined/body_sit_edge.png",
       "durationMs": 240,
       "frames": [

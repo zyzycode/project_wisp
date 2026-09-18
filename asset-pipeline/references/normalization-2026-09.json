@@ -1,0 +1,425 @@
+{
+  "task": "SPRITE-NORMALIZE-2026-09",
+  "sourceRevision": "0ec5bb7b34f4dbf90bbc1175b9c395fbc8d716be",
+  "reference": "public/assets/sprites/body/idle/body_idle_00.png",
+  "targetHeadHeight": 148,
+  "animations": {
+    "body_sit": {
+      "sheet": "asset-pipeline/generated_images/body_sit_faces_v2.png",
+      "sheetSha256": "32fad6cb8b7d18b2ba593617110858696d0844240f6987be78b9c7936165a2f8",
+      "sourceFile": "body_sit_faces_v2.png",
+      "faceOverlay": {
+        "mode": "baked_in",
+        "fallback": "none"
+      },
+      "frames": [
+        {
+          "headHeight": 294
+        },
+        {
+          "headHeight": 294
+        },
+        {
+          "headHeight": 294
+        },
+        {
+          "headHeight": 294
+        }
+      ],
+      "previousPngSha256": [
+        "6a50a0f68df881ca62578a4d18554913469176dd629f8944d9d028d39aa2f394",
+        "f6cf24c23d1b2f3d2e2b3b7d3cad3b97d5d4c16dec864091478c4b05d38d177b",
+        "5134e0c26e24885b6867d9cb0fbe44a33f05bb11b482a902be179167b9fdf798",
+        "b07be40960fa6fa7bb87aab075354eef8159873095f8aeb38f99712ad1940f49"
+      ]
+    },
+    "body_lie": {
+      "sheet": "asset-pipeline/generated_images/body_lie_faces_v2.png",
+      "sheetSha256": "14a5212ab77d7ac165d8bcd75c255e087bc629767eff51d215859e3c462201f5",
+      "sourceFile": "body_lie_faces_v2.png",
+      "faceOverlay": {
+        "mode": "baked_in",
+        "fallback": "none"
+      },
+      "frames": [
+        {
+          "headHeight": 264
+        },
+        {
+          "headHeight": 264
+        },
+        {
+          "headHeight": 264
+        },
+        {
+          "headHeight": 264
+        }
+      ],
+      "previousPngSha256": [
+        "334c60b04d4d5e21f86b389f22da34deb1b2e2fc23fb517eb9317b1b707d2eb8",
+        "b40bb294661e7e2e27e38fdd62a034dab0bd50d325a0ddd321e2dbf7ca9d5d0e",
+        "b2c706b13dbd2e9723a53d3d859f42cf2fab21969ca1fb03911eaf190cbebf9b",
+        "7bda3c9445136d9db8199c564e6835fae7ceedb0cebabf25f45f5b6a76db7179"
+      ]
+    },
+    "body_stand_up": {
+      "sheet": "asset-pipeline/generated_images/body_stand_up_faces_v2.png",
+      "sheetSha256": "df353feac92536a0361cf91e56a26d267692d744337528d70036f15f84c44cb0",
+      "sourceFile": "body_stand_up_faces_v2.png",
+      "faceOverlay": {
+        "mode": "baked_in",
+        "fallback": "none"
+      },
+      "frames": [
+        {
+          "headHeight": 260
+        },
+        {
+          "headHeight": 260
+        },
+        {
+          "headHeight": 260
+        },
+        {
+          "headHeight": 260
+        }
+      ],
+      "previousPngSha256": [
+        "38723acc163c223edc77f5191aa0c80831c6b8b36da9c3b75f28195ce74efd9f",
+        "a94c045560a9a6890ab1453462aede27d747a843b9bb90a7b11b2f388dc4ce8e",
+        "19a2f390e941d08abec462b219d97abb759497b58a2f5f93d9b1955c5debaab9",
+        "102697e0997513520b2452cb1c4d88ca194472f5edd3c24a047778e3863f393c"
+      ]
+    },
+    "body_look_around": {
+      "sheet": "asset-pipeline/generated_images/body_look_around_faces_v2.png",
+      "sheetSha256": "eee46941b4778f0c17e77a2026c3d27aadebe53ad611270b6529ba8268bd610b",
+      "sourceFile": "body_look_around_faces_v2.png",
+      "faceOverlay": {
+        "mode": "baked_in",
+        "fallback": "none"
+      },
+      "frames": [
+        {
+          "headHeight": 256
+        },
+        {
+          "headHeight": 256
+        },
+        {
+          "headHeight": 256
+        },
+        {
+          "headHeight": 256
+        }
+      ],
+      "previousPngSha256": [
+        "1d2f761c72c22991078c7c5ca78f9d8245c4f95b5e15aa73cc332d7957aebdbf",
+        "a5c928b1d21990818b0328cade014faffe61609a53c999b2500a7148a1270ad3",
+        "2e96f11bf69bd7dad250ee49703df45f7131bb2adbe27434b43034de3510a585",
+        "25c76ab21e3dc3d8a29fe561b9e31320c46e6ca242e7cae70ba4c9f653d97988"
+      ]
+    },
+    "body_edge_peek": {
+      "frames": [
+        {
+          "face": [
+            266,
+            168
+          ]
+        },
+        {
+          "face": [
+            284,
+            178
+          ]
+        },
+        {
+          "face": [
+            305,
+            205
+          ]
+        },
+        {
+          "face": [
+            284,
+            178
+          ]
+        }
+      ]
+    },
+    "body_crouch_examine": {
+      "sheet": "asset-pipeline/generated_images/body_crouch_examine_faces_v2.png",
+      "sheetSha256": "6356cebf255a8303d6deb6833274952b7b64aacd468e76b9d24ab74b1ebea17b",
+      "sourceFile": "body_crouch_examine_faces_v2.png",
+      "faceOverlay": {
+        "mode": "baked_in",
+        "fallback": "none"
+      },
+      "frames": [
+        {
+          "headHeight": 264
+        },
+        {
+          "headHeight": 264
+        },
+        {
+          "headHeight": 272
+        },
+        {
+          "headHeight": 264
+        }
+      ],
+      "previousPngSha256": [
+        "fb5eb215669ba9ebeeabb68d12091cbb664cad3fe1b82c0c9bbc9c1bb6b9dbb3",
+        "4ec39bb8ac7b6affe228c37a962cff6f71bcee2a334beedea559ecab69c377cf",
+        "be633e42ce856493c3b7f4d34a3cc77bddc05ca06448df0a9e8307b40891e1de",
+        "2cb988135fa4ffcc57e2f1c4ee1c34c23dbad6877b269bebff05209a59efc8cd"
+      ]
+    },
+    "body_surface_touch": {
+      "sheet": "asset-pipeline/generated_images/body_surface_touch_faces_v2.png",
+      "sheetSha256": "e8b810074163f0642792bad645813728bf887eca639c1cb9b6186180d6e4670e",
+      "sourceFile": "body_surface_touch_faces_v2.png",
+      "faceOverlay": {
+        "mode": "baked_in",
+        "fallback": "none"
+      },
+      "frames": [
+        {
+          "headHeight": 286
+        },
+        {
+          "headHeight": 292
+        },
+        {
+          "headHeight": 286
+        },
+        {
+          "headHeight": 287
+        }
+      ],
+      "previousPngSha256": [
+        "65e3dc8298e7aadbdb4a5d7023c938ae70844b4e25dd2cfc67d8094df08db3f6",
+        "446e494e450f6c666c1ce568eaf41f715ba4b000f31c3cd71e72b123b56c53a2",
+        "0d0b4831cc0ccd2be2b91a8a9b8c9adfda1b320d9c192beb6e19ce57f5ac74ff",
+        "a510392cb899f50fd6c7ecdde06d5b1bff318d2185eb4ed7f13284f1c74fe984"
+      ]
+    },
+    "body_crash_splat": {
+      "frames": [
+        {
+          "headHeight": 190
+        },
+        {
+          "headHeight": 170
+        },
+        {
+          "headHeight": 156
+        },
+        {
+          "headHeight": 153
+        },
+        {
+          "headHeight": 170
+        },
+        {
+          "headHeight": 174
+        },
+        {
+          "headHeight": 166
+        },
+        {
+          "headHeight": 154
+        }
+      ]
+    },
+    "body_fall": {
+      "frames": [
+        {
+          "scale": 1.12
+        },
+        {
+          "scale": 1.12
+        },
+        {
+          "scale": 1.12
+        },
+        {
+          "scale": 1.12
+        }
+      ]
+    },
+    "body_jump": {
+      "frames": [
+        {
+          "headHeight": 290
+        },
+        {
+          "headHeight": 300
+        },
+        {
+          "headHeight": 285
+        },
+        {
+          "headHeight": 290
+        }
+      ],
+      "sheet": "asset-pipeline/generated_images/body_jump.png"
+    },
+    "body_celebrate": {
+      "frames": [
+        {
+          "headHeight": 290
+        },
+        {
+          "headHeight": 288
+        },
+        {
+          "headHeight": 290
+        },
+        {
+          "headHeight": 288
+        }
+      ],
+      "sheet": "asset-pipeline/generated_images/body_celebrate.png"
+    },
+    "body_sit_edge": {
+      "sheet": "asset-pipeline/generated_images/body_sit_edge_faces_v2.png",
+      "sheetSha256": "efb7892a21df261cfb702ae764f8d2d56cc438e2ec1e54e44e37734d061c6536",
+      "sourceFile": "body_sit_edge_faces_v2.png",
+      "faceOverlay": {
+        "mode": "baked_in",
+        "fallback": "none"
+      },
+      "frames": [
+        {
+          "headHeight": 282,
+          "sourceIndex": 0,
+          "origin": [
+            250,
+            500
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            250,
+            500
+          ],
+          "anchors": {
+            "root": [
+              250,
+              500
+            ],
+            "hips": [
+              250,
+              500
+            ],
+            "head": [
+              250,
+              2
+            ]
+          }
+        },
+        {
+          "headHeight": 282,
+          "sourceIndex": 1,
+          "origin": [
+            254,
+            500
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            254,
+            500
+          ],
+          "anchors": {
+            "root": [
+              254,
+              500
+            ],
+            "hips": [
+              254,
+              500
+            ],
+            "head": [
+              254,
+              2
+            ]
+          }
+        },
+        {
+          "headHeight": 282,
+          "sourceIndex": 2,
+          "origin": [
+            254,
+            500
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            254,
+            500
+          ],
+          "anchors": {
+            "root": [
+              254,
+              500
+            ],
+            "hips": [
+              254,
+              500
+            ],
+            "head": [
+              254,
+              2
+            ]
+          }
+        },
+        {
+          "headHeight": 282,
+          "sourceIndex": 1,
+          "origin": [
+            254,
+            500
+          ],
+          "destination": [
+            256,
+            330
+          ],
+          "pivot": [
+            254,
+            500
+          ],
+          "anchors": {
+            "root": [
+              254,
+              500
+            ],
+            "hips": [
+              254,
+              500
+            ],
+            "head": [
+              254,
+              2
+            ]
+          }
+        }
+      ],
+      "previousPngSha256": [
+        "0b96834a6bed0d177a54a3af31b20d6f35374251c5d42535f2e8e9f1603cb9cf",
+        "0624c233f432bf7aeeeab87d66ad994728f4f569e2e8785cfcdb53175182d74d",
+        "1843ce9445327e3f78f67fba1d14f088f030bebbd1ba28536672f56febddd768",
+        "0624c233f432bf7aeeeab87d66ad994728f4f569e2e8785cfcdb53175182d74d"
+      ]
+    }
+  }
+}

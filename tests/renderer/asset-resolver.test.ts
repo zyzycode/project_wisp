@@ -296,6 +296,35 @@ describe('Renderer: AssetResolver', () => {
     expect(clip.body.animationKey).toBe('system_default_idle');
   });
 
+  it('does not add a debug face to a body with a baked-in face', () => {
+    const loaded = new ManifestLoader().load(JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8')));
+    const clip = new AssetResolver(loaded).resolveDebugSelection('body_look_around', 'face_happy');
+    expect(clip.body.animationKey).toBe('body_look_around');
+    expect(clip.face).toBeUndefined();
+    expect(clip.key).toBe('body_look_around');
+  });
+
+  it.each([
+    ['lie_down', 'body_lie'], ['crouch_examine', 'body_crouch_examine'],
+    ['sit', 'body_sit'], ['sit_edge', 'body_sit_edge'],
+    ['stand_up', 'body_stand_up'], ['get_up', 'body_stand_up'],
+    ['look_around', 'body_look_around'], ['surface_touch', 'body_surface_touch'],
+  ] as const)('keeps the regenerated %s face inside the body in normal and debug playback', (kind, bodyKey) => {
+    const loaded = new ManifestLoader().load(JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/sprites/manifest.json'), 'utf8')));
+    const resolver = new AssetResolver(loaded);
+    for (const expressionHint of ['happy', 'curious', 'gaze'] as const) {
+      const clip = resolver.resolve(createSystemAnimationIntent(kind, 'neutral', { expressionHint }));
+      expect(clip.body.animationKey).toBe(bodyKey);
+      expect(clip.face).toBeUndefined();
+    }
+    for (const faceKey of ['face_happy', 'face_curious', 'face_gaze']) {
+      const clip = resolver.resolveDebugSelection(bodyKey, faceKey);
+      expect(clip.body.animationKey).toBe(bodyKey);
+      expect(clip.face).toBeUndefined();
+      expect(clip.key).toBe(bodyKey);
+    }
+  });
+
   it('hides the full face track for baked_in body poses', () => {
     const bakedManifest: NormalizedSpriteManifest = {
       schemaVersion: 1,

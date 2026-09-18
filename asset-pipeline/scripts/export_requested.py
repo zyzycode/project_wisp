@@ -35,6 +35,10 @@ def place_frame(image, crown, chin, origin, destination, head_height=140):
 def export(recipe_path):
     root = Path(PIPELINE_DIR)
     recipe = json.loads(Path(recipe_path).read_text(encoding='utf-8'))
+    superseded = [key for key, spec in recipe['animations'].items() if 'supersededBy' in spec]
+    if superseded:
+        raise ValueError(f'Recipe contains superseded sprites: {superseded}; '
+                         'use normalize_reviewed.py --apply for their current packs')
     sources = {}
     prepared = {}
     entries = {}

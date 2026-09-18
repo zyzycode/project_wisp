@@ -11,7 +11,9 @@ def extract_reviewed(image, count=4):
     alpha = data[:, :, 3]
     # Erosion finds interior seeds only; original alpha is restored on export.
     seeds = alpha > 128
-    for radius in range(6):
+    # Some reviewed sheets have a 13 px opaque fringe joining adjacent hair.
+    # Erode seeds further, then restore the untouched source alpha below.
+    for radius in range(12):
         mask = ndimage.binary_erosion(seeds, iterations=radius) if radius else seeds
         labels, _ = ndimage.label(mask)
         sizes = np.bincount(labels.ravel())

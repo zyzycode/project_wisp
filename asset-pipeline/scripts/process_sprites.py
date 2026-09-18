@@ -196,21 +196,33 @@ def run_pipeline(
         print(f"ℹ️ No PNG/WebP sheets in {GENERATED_DIR}; add input or use --file.")
         return
 
-    recipe_path = os.path.join(SCRIPTS_DIR, '..', 'references', 'requested-sprites-export.json')
-    reviewed_keys = set()
-    if os.path.isfile(recipe_path):
-        with open(recipe_path, encoding='utf-8') as recipe_file:
-            reviewed_keys = set(json.load(recipe_file)['animations'])
+    reviewed_keys = {}
+    reviewed_files = {}
+    for recipe_name, command in (
+        ('requested-sprites-export.json', 'export_requested.py --recipe'),
+        ('normalization-2026-09.json', 'normalize_reviewed.py --apply; recipe:'),
+    ):
+        recipe_path = os.path.join(SCRIPTS_DIR, '..', 'references', recipe_name)
+        if os.path.isfile(recipe_path):
+            with open(recipe_path, encoding='utf-8') as recipe_file:
+                for key, spec in json.load(recipe_file)['animations'].items():
+                    reviewed_keys[key] = f'{command} {recipe_path}'
+                    if 'sheet' in spec:
+                        source_path = os.path.realpath(os.path.join(ROOT_DIR, spec['sheet']))
+                        reviewed_files[source_path] = reviewed_keys[key]
 
     processed_count = 0
     for fpath in all_files:
         # Absolute source keys avoid sharing cached results between input folders.
         cache_key = os.path.realpath(fpath)
+        if cache_key in reviewed_files:
+            print(f'{os.path.basename(fpath)}: preserved reviewed source pack; use {reviewed_files[cache_key]}')
+            continue
         current_hash = get_file_hash(fpath)
         routing = {**candidates, **production_manifest}
         prefix = get_target_info(os.path.basename(fpath), routing)[1]
         if prefix in reviewed_keys:
-            print(f'{prefix}: preserved reviewed placement; use export_requested.py --recipe {recipe_path}')
+            print(f'{prefix}: preserved reviewed placement; use {reviewed_keys[prefix]}')
             continue
         previous_frames = candidates.get(prefix, {}).get("frames", [])
         outputs_exist = bool(previous_frames) and all(

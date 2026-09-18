@@ -1,0 +1,12 @@
+Method: built-in image_gen (imagegen skill), full-sheet regeneration from references.
+Reference 1: asset-pipeline/generated_images/body_look_around.png
+Reference 2: public/assets/sprites/body/sit_edge/body_sit_edge_00.png
+Saved source before slicing: asset-pipeline/generated_images/body_look_around_faces_v2.png
+
+Use case: identity-preserve.
+Asset type: complete four-frame game sprite sheet, body_look_around.
+Input image 1 is the pose/layout and character reference: four full-body poses of the same pink-haired chibi girl standing and looking around. Input image 2 is the facial style reference ONLY, not the sitting pose.
+Regenerate the ENTIRE four-pose sheet as a polished coherent animation pack, with complete naturally drawn faces integrated in every head, not blank faces or pasted frontal eyes. Keep the same character, white dress, black ribbons, long pink twin tails, pink fringe and black hair clips, white stockings and black shoes, matching the reference proportions and soft anime line art.
+Four full-body standing poses in ONE horizontal row, in the same order as input 1: frame 0 neutral forward curious gaze; frame 1 head turned slightly toward screen left and eyes looking left; frame 2 head turned slightly toward screen right and eyes looking right; frame 3 a little farther to screen right. Keep torso and planted feet steady, consistent body size, head height, feet baseline, lighting and costume between frames. Change only head orientation and subtle hair movement needed for looking around.
+Faces: small coherent violet-pink eyes like reference 2, soft tiny mouth and nose. Draw each eye on the correct facial plane. Foreshorten the far eye on turns, maintain a consistent eye line in perspective, both irises looking in the same direction, and keep eyes below eyebrows, inside the face contours and BEHIND the bangs. Hair must correctly occlude any covered eye. No cross-eyed, wandering or mismatched eyes, no eyes painted on top of hair, no oversized face decals.
+Transparent RGBA background with real alpha, clean antialiased silhouettes. Wide 3:1 sheet, four separated complete characters with generous transparent gaps; no overlaps, no clipping of hair, fingers, feet. No text, labels, grid, shadows on ground, particles, checkerboard pattern or extra characters.

@@ -143,7 +143,7 @@ export class AssetResolver {
     const body = selectAnimation(this.manifest.animations[bodyKey], 'body')
       ?? selectAnimation(this.manifest.animations.body_idle, 'body')
       ?? systemBody();
-    const faceAnimation = faceKey === undefined
+    const faceAnimation = faceKey === undefined || body.faceOverlay?.mode !== 'overlay'
       ? undefined
       : selectAnimation(this.manifest.animations[faceKey], 'face');
     const rootPivot = DEFAULT_SPRITE_PIVOT;
