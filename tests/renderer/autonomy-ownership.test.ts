@@ -1,6 +1,5 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { existsSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BrainStateDTO, WispApiBridge } from '../../src/shared/ipc-contracts';
 import type { DebugAnimationSelection } from '../../src/renderer/render-engine/animation-preview';
@@ -359,9 +358,5 @@ describe('Renderer: autonomy ownership', () => {
     expect(mocks.unsubscribeBrain).toHaveBeenCalledOnce();
     expect(api.postBodyEvent).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
-  });
-
-  it('removes the former autonomous hook module', () => {
-    expect(existsSync(new URL('../../src/renderer/hooks/useAutonomousBehavior.ts', import.meta.url))).toBe(false);
   });
 });

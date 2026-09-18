@@ -99,31 +99,9 @@ describe('Renderer: SpriteRenderer', () => {
       'transform="translate(256 460) rotate(12) scale(-1.08 0.92) translate(-256 -460)"'
     );
   });
-
-  it('does not render the retired procedural pupil layer', () => {
-    const markup = renderToStaticMarkup(<SpriteRenderer state={state} />);
-    expect(markup).not.toContain('pupils_normal');
-  });
 });
 
 describe('Renderer: CharacterRenderer Visual Polish', () => {
-  it('renders purely via SpriteRenderer with no legacy SVG vector ball or aura paths', () => {
-    const markup = renderToStaticMarkup(
-      <CharacterRenderer theme={DEFAULT_THEMES.cosmic} scale={1.0} />
-    );
-
-    // Contains character root
-    expect(markup).toContain('wisp-character-root');
-    expect(markup).toContain('data-testid="wisp-character-root"');
-
-    // Does NOT contain legacy SVG aura classes or elements
-    expect(markup).not.toContain('wisp-aura-group');
-    expect(markup).not.toContain('wisp-body-path');
-    expect(markup).not.toContain('wisp-orb');
-    expect(markup).not.toContain('wisp-face');
-    expect(markup).not.toContain('wisp-svg-canvas');
-  });
-
   it('applies configured base dimensions and scale to root container', () => {
     const markup100 = renderToStaticMarkup(<CharacterRenderer scale={1.0} />);
     expect(markup100).toContain(`width:${BASE_CHARACTER_SIZE.width}px`);

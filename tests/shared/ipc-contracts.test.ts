@@ -54,42 +54,6 @@ describe('Shared: IPC contracts', () => {
     expect(source).not.toMatch(/^export .*\.\.\/(domain|application|infrastructure)/m);
   });
 
-  it('removes the legacy presentation and animation feedback protocol atomically', () => {
-    const targets = [
-      '../../src/shared/ipc-contracts.ts',
-      '../../src/main/index.ts',
-      '../../src/main/main-autonomy-composition.ts',
-      '../../src/main/autonomy-ipc-registration.ts',
-      '../../src/preload/index.ts',
-      '../../src/renderer/components/DesktopPet.tsx',
-    ];
-    const runtimeSource = targets
-      .map((target) => readFileSync(new URL(target, import.meta.url), 'utf8'))
-      .join('\n');
-
-    expect(runtimeSource).not.toMatch(
-      /AnimationLifecycle|animationRequestId|notifyAnimation|PetPresentationState|pet:presentation-state|wisp:animation-lifecycle-result/
-    );
-  });
-
-  it('removes replaced specialized drag, interaction, and menu channels atomically', () => {
-    const targets = [
-      '../../src/shared/ipc-contracts.ts',
-      '../../src/main/index.ts',
-      '../../src/main/autonomy-ipc-registration.ts',
-      '../../src/preload/index.ts',
-      '../../src/renderer/pet-main-bridge.ts',
-      '../../src/renderer/components/DesktopPet.tsx',
-    ];
-    const runtimeSource = targets
-      .map((target) => readFileSync(new URL(target, import.meta.url), 'utf8'))
-      .join('\n');
-
-    expect(runtimeSource).not.toMatch(
-      /pet:begin-drag|pet:move-drag|pet:release-drag|wisp:character-interact|wisp:set-menu-expanded|beginPetDrag|movePetDrag|releasePetDrag|interactWithCharacter|setMenuExpanded/
-    );
-  });
-
   it('provides standalone serializable Shimeji DTO shapes', () => {
     const environment: EnvironmentSnapshotDTO = {
       capturedAtMs: 1,

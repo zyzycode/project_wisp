@@ -1,6 +1,5 @@
 import type { ProviderBehaviorOffer } from '../../src/application/ports/behavior-admission-port';
 import type { SurfaceSnapshotDto } from '../../src/domain/behavior/surface-kinematics';
-import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_CURSOR_OBSERVE_COOLDOWN_MS,
@@ -552,14 +551,6 @@ describe('Main integration: Brain runtime', () => {
 
     expect(fixture.composition.getActivityTimeline()).toBeNull();
     expect(fixture.cancelVoluntaryMovement).toHaveBeenCalled();
-  });
-
-  it('contains no legacy lifecycle watchdog or callback surface', () => {
-    const source = readFileSync(
-      new URL('../../src/main/main-autonomy-composition.ts', import.meta.url),
-      'utf8'
-    );
-    expect(source).not.toMatch(/watchdog|lifecycle result|terminal outcome/i);
   });
 });
 

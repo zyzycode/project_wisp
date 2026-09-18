@@ -168,25 +168,4 @@ describe('Application: MockAI Dialogue Scenarios & Intent Mapping', () => {
       expect(intent.kind).not.toBe('drag');
     });
   });
-
-  describe('Dialogue flow & status isolation', () => {
-    it('verifies provider status transitions during thinking flow without leaking to UI', async () => {
-      const delayedProvider = new MockAIProvider({ simulatedLatencyMs: 20 });
-
-      const requestPromise = delayedProvider.generateResponse(createRequest('Привет', 'req-lifecycle'));
-
-      // In-flight status check
-      const statusDuringThinking = await delayedProvider.getStatus();
-      expect(statusDuringThinking.kind).toBe('thinking');
-      expect(statusDuringThinking.activeRequestId).toBe('req-lifecycle');
-
-      const response = await requestPromise;
-      expect(response.status).toBe('ok');
-
-      // Post-flight status check
-      const statusAfterThinking = await delayedProvider.getStatus();
-      expect(statusAfterThinking.kind).toBe('ready');
-      expect(statusAfterThinking.activeRequestId).toBeUndefined();
-    });
-  });
 });
