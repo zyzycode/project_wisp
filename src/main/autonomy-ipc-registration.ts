@@ -50,6 +50,8 @@ export interface RegisterAutonomyIpcHandlersOptions {
   readonly register: (channel: string, handler: RegisteredAutonomyIpcHandler) => void;
   readonly getWindow: () => AutonomyIpcWindow | null;
   readonly getController: () => MainAutonomyIpcController | null;
+  readonly admitCharacterInput?: () => boolean;
+  readonly isCharacterRunning?: () => boolean;
   readonly bodyEventIngress: BodyEventIpcIngress;
   readonly handleAcceptedBodyEvent: (event: Exclude<BodyEventDTO, { readonly type: 'menu_visibility_changed' }>) => void;
   readonly getNativePosition: () => PetPositionDTO;
@@ -121,22 +123,26 @@ export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlers
   options.register('wisp:set-quiet-mode', async (event, payload) => {
     const { controller } = requireTrustedContext(options, event);
     const command = parseQuietModeCommand(payload);
+    if (options.admitCharacterInput && !options.admitCharacterInput()) throw new Error('Character unavailable');
     return runInBrainTransaction(options, () => controller.setQuietMode(command.enabled));
   });
   options.register('wisp:set-autonomy-enabled', async (event, payload): Promise<void> => {
     const { controller } = requireTrustedContext(options, event);
-    runInBrainTransaction(options, () => handleSetAutonomyEnabled(controller, payload));
+    handleSetAutonomyEnabled({ setEnabled: enabled => { if (!options.admitCharacterInput || options.admitCharacterInput()) runInBrainTransaction(options, () => controller.setEnabled(enabled)); } }, payload);
   });
 
   options.register('wisp:request-sleep-wake', async (event, payload): Promise<void> => {
     const { controller } = requireTrustedContext(options, event);
-    runInBrainTransaction(options, () => handleRequestSleepWake(controller, payload));
+    handleRequestSleepWake({ requestSleepWake: command => { if (!options.admitCharacterInput || options.admitCharacterInput()) runInBrainTransaction(options, () => controller.requestSleepWake(command)); } }, payload);
   });
 
   options.register('wisp:body-event', async (event, payload): Promise<void> => {
     const { window, controller } = requireTrustedContext(options, event);
     const accepted = options.bodyEventIngress.receive(payload);
     if (accepted === null) return;
+    const passive = accepted.type === 'cursor_observed' || (accepted.type === 'menu_visibility_changed' && !accepted.expanded);
+    if (passive && options.isCharacterRunning && !options.isCharacterRunning()) return;
+    if (!passive && options.admitCharacterInput && !options.admitCharacterInput()) return;
     runInBrainTransaction(options, () => {
       if (accepted.type !== 'menu_visibility_changed') {
         options.handleAcceptedBodyEvent(accepted);

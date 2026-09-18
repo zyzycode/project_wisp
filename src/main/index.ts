@@ -1,3 +1,9 @@
+import { MemoryLifecycle } from '../application/services/memory-lifecycle';
+import { ClearMemoryUseCase } from '../application/services/clear-memory.use-case';
+import { registerMemoryIpc } from './memory-ipc-registration';
+import { parseDialogueCommand } from '../shared/dialogue-ipc-validation';
+import { DEFAULT_CHAT_CONTEXT_LIMITS } from '../application/ports/memory-repository.interface';
+import { createMainMemoryComposition } from './main-memory-composition';
 import { createExternalWindowSurfaces } from '../infrastructure/platform/external-window-surfaces.factory';
 import type { ExternalWindowSurfacesPort } from '../application/ports/external-window-surfaces.port';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
@@ -50,7 +56,7 @@ import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
 import { BodyEventIngress } from './body-event-ingress';
 import { BrainStatePublisher } from './brain-state-publisher';
 import { DialogueRuntime } from '../application/services/dialogue-loop.service';
-import { MockAIProvider } from '../infrastructure/ai/mock-ai-provider';
+import { createMainAIProvider } from './main-ai-provider-composition';
 import { registerDialogueIpc } from './dialogue-ipc-registration';
 import { ShimejiStimulusMapper } from '../application/services/shimeji-stimulus.mapper';
 
@@ -75,6 +81,12 @@ const ROOT_PIVOT_OFFSET = calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT
 const AUTONOMY_SEED = 0x5753_5031;
 
 let mainWindow: BrowserWindow | null = null;
+let memoryComposition: ReturnType<typeof createMainMemoryComposition> | null = null;
+let memoryShutdownComplete = false;
+let memoryRuntime: MemoryLifecycle | null = null;
+let unregisterMemory: (() => void) | null = null;
+const localMock = !process.env.WISP_BACKEND_URL?.trim();
+const clearMemory = new ClearMemoryUseCase(() => memoryRuntime?.reset() ?? Promise.resolve({ ok: false, code: 'unavailable' }));
 const platformAdapter = createPlatformAdapter();
 const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
 let positionService: PetPositionService | null = null;
@@ -102,7 +114,7 @@ const appLogger = new AppLogger({
 });
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { const id = randomUUID(); dialogueRuntime?.replaceStream(id); return id; },
+  createStreamId: () => { const id = randomUUID(); dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); return id; },
   createSnapshot: ({ streamId, revision, sampledAtMs }) => {
     if (shimejiMotionOrchestrator === null || autonomyComposition === null || dialogueRuntime === null) {
       throw new Error('Brain state sources are unavailable');
@@ -205,13 +217,14 @@ function cancelActiveBodyDrag(): void {
 
 function beginBrainStream(): void {
   cancelActiveBodyDrag();
-  autonomyComposition?.tick();
+  if (memoryRuntime?.isRunning()) autonomyComposition?.tick();
   brainStatePublisher.replaceStream();
 }
 
 function clearBrainStream(): void {
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
+  clearMemory.replaceStream(null);
   dialogueRuntime?.detachStream();
 }
 
@@ -232,6 +245,7 @@ function initializeAutonomyComposition(): void {
   const orchestrator = shimejiMotionOrchestrator;
   if (orchestrator === null) return;
   const prng = new SeededPrng(AUTONOMY_SEED);
+  const memoryGeneration = memoryRuntime?.currentGeneration() ?? 0;
   autonomyComposition = new MainAutonomyComposition({
     cursorPosition: platformAdapter,
     clock: { now: () => performance.now() },
@@ -244,7 +258,9 @@ function initializeAutonomyComposition(): void {
         openness: axes.openness.current, playfulness: axes.playfulness.current,
         independence: axes.independence.current, extraversion: axes.extraversion.current } };
     },
+    onCursorGameResult: result => { void memoryRuntime?.history.game(result, memoryGeneration); },
     onActivityOutcome: event => {
+      if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
       const stimulus = shimejiStimulusMapper.map(event, { createdAtIso: new Date().toISOString(),
         landingThresholds: DEFAULT_MOTION_CONSTRAINTS });
       if (stimulus) defaultCharacterStateService.applyStimulus(stimulus);
@@ -273,10 +289,11 @@ function initializeAutonomyComposition(): void {
     createActivityRunId: randomUUID,
     onPresentationChanged: publishBrainState,
   });
-  autonomyComposition.start();
+  if (memoryRuntime?.isRunning()) autonomyComposition.start();
   if (dialogueRuntime === null) {
     dialogueRuntime = new DialogueRuntime({
-      provider: new MockAIProvider({ simulatedLatencyMs: 300 }), now: () => performance.now(),
+      ...createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, development: !app.isPackaged, now: () => performance.now() }), now: () => performance.now(),
+      memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0, completed: turn => { void memoryRuntime?.history.completed(turn); }, ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
       getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
       applyStimulus: stimulus => { defaultCharacterStateService.applyStimulus(stimulus); },
@@ -368,6 +385,13 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
       autonomyComposition?.notifyVoluntaryMovementCompleted(completed);
     },
   });
+  initializeAutonomyComposition();
+  if (memoryRuntime?.isRunning()) startCharacterRuntime();
+}
+
+function startCharacterRuntime(): void {
+  if (!shimejiMotionOrchestrator || stopShimejiMotionLoopHandle) return;
+  autonomyComposition?.start();
   stopShimejiMotionLoopHandle = startShimejiMotionLoop({
     orchestrator: shimejiMotionOrchestrator,
     getWindow: () => mainWindow,
@@ -377,7 +401,12 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
     commitPresentationTransaction: () => brainStatePublisher.commitTransaction(),
     intervalMs: Math.round(DEFAULT_MOTION_CONSTRAINTS.fixedStepSec * 1000),
   });
-  initializeAutonomyComposition();
+  publishBrainState();
+}
+
+function pauseCharacterRuntime(): void {
+  stopShimejiMotionLoopHandle?.(); stopShimejiMotionLoopHandle = null;
+  dialogueRuntime?.cancelForMemoryReset(); autonomyComposition?.dispose();
 }
 
 function getNativePosition(): PetPositionDTO {
@@ -457,8 +486,13 @@ function registerIpcHandlers(): void {
   unregisterDialogue = registerDialogueIpc({
     register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null,
-    receive: payload => dialogueRuntime?.receive(payload) ?? { status: 'rejected', reason: 'unavailable' },
+    receive: payload => {
+      try { parseDialogueCommand(payload); } catch { return { status: 'rejected', reason: 'invalid_input' }; }
+      if (!memoryRuntime?.admitInput()) return { status: 'rejected', reason: 'unavailable' };
+      return dialogueRuntime?.receive(payload) ?? { status: 'rejected', reason: 'unavailable' };
+    },
   });
+  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
@@ -467,6 +501,8 @@ function registerIpcHandlers(): void {
     },
     getWindow: () => mainWindow,
     getController: () => autonomyComposition,
+    admitCharacterInput: () => memoryRuntime?.admitInput() ?? false,
+    isCharacterRunning: () => memoryRuntime?.isRunning() ?? false,
     bodyEventIngress,
     handleAcceptedBodyEvent,
     getNativePosition,
@@ -534,6 +570,7 @@ function registerIpcHandlers(): void {
       } catch {
         return currentPos;
       }
+      if (!memoryRuntime?.admitInput()) return currentPos;
       const accepted = autonomyComposition?.requestManualRootPosition(targetRoot) ?? false;
       return accepted
         ? rootToNativePosition(targetRoot, bounds, ROOT_PIVOT_OFFSET)
@@ -657,9 +694,19 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
+    const clockOffset = Date.now() - performance.now();
+    memoryRuntime = new MemoryLifecycle({ storage: memoryComposition, character: defaultCharacterStateService,
+      scheduler: createMainAutonomyScheduler(), now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
+      toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
+      hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
+      pause: pauseCharacterRuntime, resetCommitted: () => dialogueRuntime?.clearMemoryContext(),
+      resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
+    });
     initializeServices();
     registerIpcHandlers();
     createWindow();
+    void memoryRuntime.initialize();
     unsubscribeEnvironmentChanges = platformEnvironmentAdapter.onEnvironmentChanged(
       publishEnvironmentSnapshot
     );
@@ -678,8 +725,12 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
-  clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.();
+app.on('before-quit', event => {
+  if (!memoryShutdownComplete && memoryComposition !== null) {
+    event.preventDefault();
+    void (memoryRuntime?.shutdown() ?? memoryComposition.close(0)).then(() => { memoryShutdownComplete = true; app.quit(); });
+  }
+  clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();

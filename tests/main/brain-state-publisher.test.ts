@@ -88,6 +88,17 @@ function createFixture(
 }
 
 describe('Main: Brain state publisher', () => {
+  it('delivers policy notice changes separately from motion while retaining the reply', async () => {
+    const f = createFixture(); f.publisher.replaceStream(); await f.runScheduled();
+    const turn = { phase: 'completed' as const, requestId: 'r', replyText: 'Ответ', outcome: { kind: 'success' as const } };
+    f.controls.dialogue = { conversationId: 'conversation-1', canSubmit: false, submissionMessage: 'Подожди немного.', turn };
+    f.publisher.requestCommit(); f.controls.positionX++; f.publisher.requestCommit();
+    f.controls.dialogue = { conversationId: 'conversation-1', canSubmit: true, turn };
+    f.publisher.requestCommit(); await f.runScheduled();
+    expect(f.delivered.slice(1).map(state => state.dialogue.submissionMessage)).toEqual(['Подожди немного.', 'Подожди немного.', undefined]);
+    expect(f.delivered.slice(1).every(state => state.dialogue.turn.phase === 'completed')).toBe(true);
+  });
+
   it('preserves dialogue transitions between motion updates and deduplicates identical terminal snapshots', async () => {
     const f = createFixture(); f.publisher.replaceStream(); await f.runScheduled();
     f.controls.dialogue = { conversationId: 'conversation-1', canSubmit: false, turn: { phase: 'thinking', requestId: 'r' } };

@@ -36,3 +36,11 @@ it('reports rejection and transport failure without retrying', async () => {
   expect(postDialogueCommand).toHaveBeenCalledTimes(1);
 });
 
+it('keeps the newest policy notice without allowing stale snapshots to clear it or send again', async () => {
+  const f = fixture();
+  f.client.accept({ ...snapshot(3), dialogue: { conversationId: 'c', canSubmit: false, submissionMessage: 'Лимит исчерпан.', turn: { phase: 'idle' } } });
+  f.client.accept(snapshot(2));
+  expect(f.client.getState()).toMatchObject({ canSubmit: false, submissionMessage: 'Лимит исчерпан.' });
+  expect(await f.client.send('Again')).toBe(false); expect(f.postDialogueCommand).not.toHaveBeenCalled();
+  f.client.accept(snapshot(4)); expect(f.client.getState().submissionMessage).toBeUndefined();
+});

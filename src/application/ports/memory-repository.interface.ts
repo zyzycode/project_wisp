@@ -1,114 +1,127 @@
-/**
- * Application Port: Memory Storage & Repositories
- * Defines the typed boundary between Project Wisp application layer
- * and local offline persistence (SQLite / in-memory adapters).
- *
- * Rules:
- * - Pure TypeScript interfaces and types only.
- * - No SQLite, better-sqlite3, or Node.js filesystem dependencies.
- * - All timestamps are ISO-8601 UTC strings.
- * - Invariant: memory belongs to Main process, Renderer has zero access to DB handles.
- * - Source of truth: docs/engine/MEMORY_ENGINE.md
+/** Application-owned persistence boundary. Canonical rules: docs/engine/MEMORY_ENGINE.md.
+ * No SQL, filesystem, Electron, worker or provider types cross this boundary.
  */
+import type { CursorGameOutcome } from './cursor-game-contract';
+import type { CharacterMemorySnapshotV1 } from './character-memory-snapshot';
 
-/** Allowed chat roles for MVP public API. */
+export type MemoryFailureCode =
+  | 'unavailable' | 'busy' | 'storage_full' | 'corrupt' | 'unsupported_version'
+  | 'invalid_data' | 'conflict' | 'stale' | 'io_error';
+
+export type MemoryResult<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly code: MemoryFailureCode };
+
+/** Main/Application generation; checked again at execution by Infrastructure. */
+export interface MemoryOperationContext {
+  readonly generation: number;
+}
+
 export type ChatRole = 'user' | 'assistant';
 
-/** Message before identifier assignment and persistence. */
 export interface ChatMessageDraft {
-  conversationSessionId: string;
-  role: ChatRole;
-  content: string;
-  createdAt: string;
+  readonly conversationSessionId: string;
+  readonly role: ChatRole;
+  readonly content: string;
+  readonly createdAt: string;
 }
 
-/** Persisted entity: a message always belongs to a single session. */
 export interface PersistedChatMessage extends ChatMessageDraft {
-  id: string;
+  readonly id: string;
 }
 
-/** Canonical alias matching docs/engine/MEMORY_ENGINE.md */
 export type ChatMessage = PersistedChatMessage;
 
 export interface ConversationSession {
-  id: string;
-  appRunId: string;
-  startedAt: string;
-  endedAt: string | null;
-  summary: string | null;
+  readonly id: string;
+  readonly appRunId: string;
+  readonly startedAt: string;
+  readonly endedAt: string | null;
+}
+
+/** A completed, displayed turn; session creation and both messages commit together. */
+export interface CompletedChatTurn {
+  readonly session: ConversationSession;
+  readonly user: PersistedChatMessage & { readonly role: 'user' };
+  readonly assistant: PersistedChatMessage & { readonly role: 'assistant' };
 }
 
 export interface UserFactDraft {
-  factKey: string;
-  factValue: string;
-  confidence: number;
-  sourceMessageId: string | null;
+  readonly factKey: string;
+  readonly factValue: string;
+  readonly confidence: number;
+  readonly sourceMessageId: string | null;
 }
 
 export interface UserFact extends UserFactDraft {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
+  readonly id: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
-export type MemoryType = 'event' | 'experience' | 'relationship';
-
-export interface MemoryRecord {
-  id: string;
-  type: MemoryType;
-  content: string;
-  importance: number;
-  sourceMessageId: string | null;
-  createdAt: string;
-  lastAccessedAt: string;
-  eventAt: string | null;
-  expiresAt: string | null;
+/** Real terminal result, not a generated narrative. Composite key survives run-id reuse. */
+export interface GameEpisode {
+  readonly appRunId: string;
+  readonly activityRunId: string;
+  readonly kind: 'cursor_game';
+  readonly outcome: CursorGameOutcome;
+  readonly playCompleted: true;
+  readonly executedMs: number;
+  readonly endedAt: string;
 }
 
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
+  | string | number | boolean | null
+  | readonly JsonValue[]
   | { readonly [key: string]: JsonValue };
 
+/** Untrusted versioned envelope; Application migrates and validates before restore. */
 export interface PersistedCharacterStateSnapshot {
-  /** Format snapshot_json; SQLite does not interpret payload. */
-  snapshotVersion: number;
-  state: JsonValue;
-  updatedAt: string;
+  readonly snapshotVersion: number;
+  readonly state: JsonValue;
+  readonly updatedAt: string;
 }
 
 export interface IChatHistoryRepository {
-  append(message: PersistedChatMessage): Promise<void>;
-  getRecent(limit: number): Promise<PersistedChatMessage[]>;
-  createSession(session: ConversationSession): Promise<void>;
-  closeSession(sessionId: string, endedAt: string): Promise<void>;
-  closeUnfinishedSessions(endedAt: string): Promise<void>;
-  setSessionSummary(sessionId: string, summary: string | null): Promise<void>;
-  clear(): Promise<void>;
+  appendTurn(turn: CompletedChatTurn, context: MemoryOperationContext): Promise<MemoryResult<void>>;
+  /** Latest messages by insertion order, returned oldest first; limit is 1..100. */
+  getRecent(limit: number, context: MemoryOperationContext): Promise<MemoryResult<readonly PersistedChatMessage[]>>;
+  closeSession(sessionId: string, endedAt: string, context: MemoryOperationContext): Promise<MemoryResult<void>>;
+  closeUnfinishedSessions(endedAt: string, context: MemoryOperationContext): Promise<MemoryResult<void>>;
 }
 
 export interface IUserFactsRepository {
-  upsert(fact: UserFactDraft): Promise<UserFact>;
-  removeByKey(factKey: string): Promise<void>;
-  list(limit: number): Promise<UserFact[]>;
-  clear(): Promise<void>;
+  /** On update preserve the stored id/createdAt; caller supplies candidate id and timestamps. */
+  upsert(fact: UserFact, context: MemoryOperationContext): Promise<MemoryResult<UserFact>>;
+  removeByKey(factKey: string, context: MemoryOperationContext): Promise<MemoryResult<void>>;
+  /** Stable factKey order; limit is 1..100. */
+  list(limit: number, context: MemoryOperationContext): Promise<MemoryResult<readonly UserFact[]>>;
+}
+
+export interface IGameEpisodeRepository {
+  /** Same composite key + same payload is a no-op; different payload is conflict. */
+  append(episode: GameEpisode, context: MemoryOperationContext): Promise<MemoryResult<void>>;
 }
 
 export interface ICharacterStateRepository {
-  load(): Promise<PersistedCharacterStateSnapshot | null>;
-  save(snapshot: PersistedCharacterStateSnapshot): Promise<void>;
-  clear(): Promise<void>;
+  load(context: MemoryOperationContext): Promise<MemoryResult<PersistedCharacterStateSnapshot | null>>;
+  save(snapshot: CharacterMemorySnapshotV1, context: MemoryOperationContext): Promise<MemoryResult<void>>;
 }
 
-/** Narrow transactional boundary used exclusively by ClearMemoryUseCase. */
+/** Advances the generation barrier even if deletion rolls back; no per-table clear API. */
 export interface IClearMemoryStore {
-  clearUserMemory(): Promise<void>;
+  clearUserMemory(nextContext: MemoryOperationContext): Promise<MemoryResult<void>>;
 }
 
+/** Local Mock context policy; persistent context for a network provider needs #55/#56. */
 export interface ChatContextLimits {
-  readonly maxRecentMessages: number;
-  readonly maxUserFacts: number;
+  readonly maxMessages: number;
+  readonly maxTotalCharacters: number;
+  readonly maxCharactersPerMessage: number;
 }
+
+export const DEFAULT_CHAT_CONTEXT_LIMITS: ChatContextLimits = {
+  maxMessages: 20,
+  maxTotalCharacters: 8_000,
+  maxCharactersPerMessage: 2_000,
+};

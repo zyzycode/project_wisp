@@ -26,3 +26,15 @@ export type AIRequestBlockReason = 'busy' | 'rate_limited' | 'budget_exhausted' 
 export type AIRequestAdmission =
   | { readonly accepted: true; readonly requestId: string }
   | { readonly accepted: false; readonly reason: AIRequestBlockReason };
+
+export type AIRequestAvailability =
+  | { readonly available: true }
+  | { readonly available: false; readonly reason: 'rate_limited' | 'budget_exhausted' | 'unavailable'; readonly retryAtMs?: number };
+
+/** Shared for a Main lifetime; resets and stream replacement never clear it. */
+export interface IAIRequestControl {
+  availability(nowMs: number): AIRequestAvailability;
+  /** Called only immediately before an actual transport submission. */
+  recordSubmission(nowMs: number): boolean;
+  deferUntil(retryAtMs: number): void;
+}

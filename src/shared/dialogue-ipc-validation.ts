@@ -37,9 +37,11 @@ export function parseDialogueReceipt(value: unknown): DialogueCommandReceiptDTO 
   return { status: 'rejected', reason: enumValue(r.reason, ['busy', 'stale', 'invalid_input', 'unavailable']) };
 }
 export function parseDialoguePresentation(value: unknown): DialoguePresentationDTO {
-  const r = exactRecord(value, ['conversationId', 'canSubmit', 'turn']);
+  const r = exactRecord(value, ['conversationId', 'canSubmit', 'turn'], ['submissionMessage']);
   if (typeof r.canSubmit !== 'boolean') throw new TypeError('Invalid canSubmit');
-  const meta = { conversationId: id(r.conversationId), canSubmit: r.canSubmit };
+  if (r.canSubmit && Object.hasOwn(r, 'submissionMessage')) throw new TypeError('Available dialogue cannot have admission notice');
+  const meta = { conversationId: id(r.conversationId), canSubmit: r.canSubmit,
+    ...(Object.hasOwn(r, 'submissionMessage') ? { submissionMessage: plainText(r.submissionMessage, 240, true) } : {}) };
   const t = exactRecord(r.turn, ['phase'], ['requestId', 'replyText', 'outcome', 'message']);
   switch (t.phase) {
     case 'idle': exactRecord(t, ['phase']); return { ...meta, turn: { phase: 'idle' } };

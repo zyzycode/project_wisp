@@ -1,3 +1,4 @@
+import { boundMemoryContext } from './memory-context';
 import type { DialogueRuntimeOptions } from '../ports/dialogue-runtime';
 import type { AIProviderContextMessage, AIProviderRequest, AIProviderResponse } from '../ports/ai-provider.interface';
 import type { DialogueCommandReceiptDTO, DialoguePresentationDTO, DialogueFallbackReasonDTO } from '../../shared/ipc-contracts';
@@ -5,7 +6,7 @@ import { parseDialogueCommand, parseDialoguePresentation } from '../../shared/di
 import { parseProviderResponse, parseProviderStatus, fallbackReason, DIALOGUE_FALLBACK } from './dialogue-provider-result';
 import { mapProviderResponseToBehaviorIntent } from './provider-response-intent-mapper';
 
-interface Turn { readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; }
+interface Turn { readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; readonly memoryGeneration: number; }
 
 /** One instance per Main lifecycle, including while its window is closed. */
 export class DialogueRuntime {
@@ -17,21 +18,39 @@ export class DialogueRuntime {
   private executing = false;
   private active: Turn | null = null;
   private timer: unknown;
+  private availabilityTimer: unknown;
   private context: AIProviderContextMessage[] = [];
+  private initialContext: readonly AIProviderContextMessage[] | null = null;
+  private hasStartedStream = false;
+  private hydrationAllowed = true;
   private turn: DialoguePresentationDTO['turn'] = { phase: 'idle' };
   constructor(private readonly options: DialogueRuntimeOptions) { this.conversationId = options.createId(); }
 
+  public hydrateInitialContext(messages: readonly AIProviderContextMessage[]): void {
+    if (!this.hydrationAllowed || !this.options.memory?.contextLimits || this.disposed) return;
+    this.initialContext = boundMemoryContext(messages, this.options.memory.contextLimits);
+    if (this.hasStartedStream) { this.context = [...this.initialContext]; this.initialContext = null; }
+  }
+  public cancelForMemoryReset(): void { const context = this.context; this.options.transaction(() => { this.reset(); this.context = context; this.options.publish(); }); }
+  public clearMemoryContext(): void { this.hydrationAllowed = false; this.initialContext = null; this.options.transaction(() => { this.reset(); this.options.publish(); }); }
   public getPresentation(): DialoguePresentationDTO {
+    const availability = this.options.requestControl?.availability(this.options.now());
+    const submissionMessage = availability && !availability.available
+      ? availability.reason === 'budget_exhausted'
+        ? 'Лимит сообщений на этот запуск исчерпан. Новый диалог станет доступен после перезапуска приложения.'
+        : 'Подожди немного перед следующим сообщением.'
+      : undefined;
     return parseDialoguePresentation({ conversationId: this.conversationId,
-      canSubmit: !this.disposed && this.streamId !== null && !this.executing, turn: this.turn });
+      canSubmit: !this.disposed && this.streamId !== null && !this.executing && (availability?.available ?? true),
+      ...(submissionMessage === undefined ? {} : { submissionMessage }), turn: this.turn });
   }
   public replaceStream(streamId: string): void {
     if (this.disposed) return;
-    this.options.transaction(() => { this.reset(); this.streamId = streamId; this.sequence = 0; this.options.publish(); });
+    this.options.transaction(() => { if (this.hasStartedStream) this.hydrationAllowed = false; this.reset(); if (!this.hasStartedStream && this.initialContext) this.context = [...this.initialContext]; this.initialContext = null; this.hasStartedStream = true; this.streamId = streamId; this.sequence = 0; this.refreshAvailability(); this.options.publish(); });
   }
   public detachStream(): void {
     if (this.disposed) return;
-    this.options.transaction(() => { this.reset(); this.streamId = null; });
+    this.options.transaction(() => { if (this.hasStartedStream) this.hydrationAllowed = false; this.reset(); this.streamId = null; this.clearAvailabilityTimer(); });
   }
   public dispose(): void { this.detachStream(); this.disposed = true; }
   public receive(payload: unknown): DialogueCommandReceiptDTO {
@@ -39,12 +58,18 @@ export class DialogueRuntime {
     try { command = parseDialogueCommand(payload); } catch { return { status: 'rejected', reason: 'invalid_input' }; }
     if (this.disposed || this.streamId === null) return { status: 'rejected', reason: 'unavailable' };
     if (command.streamId !== this.streamId || command.conversationId !== this.conversationId || command.sequence <= this.sequence) return { status: 'rejected', reason: 'stale' };
-    this.sequence = command.sequence;
+    this.sequence = command.sequence; this.hydrationAllowed = false; this.initialContext = null;
     if (command.type === 'reset') {
       this.options.transaction(() => { this.reset(); this.options.publish(); });
       return { status: 'accepted', conversationId: this.conversationId };
     }
     if (this.executing) return { status: 'rejected', reason: 'busy' };
+    if (!this.canRequest()) {
+      this.options.transaction(() => {
+        this.refreshAvailability(); this.options.publish();
+      });
+      return { status: 'rejected', reason: 'unavailable' };
+    }
     const requestId = this.options.createId();
     const createdAt = this.options.timestamp();
     const requestedAtMs = this.options.now();
@@ -54,7 +79,7 @@ export class DialogueRuntime {
       this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
       const request: AIProviderRequest = { requestId, userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };
-      const active: Turn = { request, generation: this.generation, deadline, requestedAtMs };
+      const active: Turn = { request, generation: this.generation, deadline, requestedAtMs, memoryGeneration: this.options.memory?.generation() ?? 0 };
       this.active = active; this.turn = { phase: 'thinking', requestId };
       this.timer = this.options.scheduler.setTimeout(() => this.finish(active, 'timeout'), Math.max(0, deadline - this.options.now()));
       this.options.setBehaviorContext?.({ requestId, conversationId: this.conversationId, generation: this.generation, requestedAtMs });
@@ -73,6 +98,20 @@ export class DialogueRuntime {
     if (this.timer !== undefined) this.options.scheduler.clearTimeout(this.timer);
     this.timer = undefined;
   }
+  private canRequest(): boolean { return this.options.requestControl?.availability(this.options.now()).available ?? true; }
+  private clearAvailabilityTimer(): void {
+    if (this.availabilityTimer !== undefined) this.options.scheduler.clearTimeout(this.availabilityTimer);
+    this.availabilityTimer = undefined;
+  }
+  private refreshAvailability(): void {
+    this.clearAvailabilityTimer();
+    const availability = this.options.requestControl?.availability(this.options.now());
+    if (this.disposed || this.streamId === null || !availability || availability.available || availability.retryAtMs === undefined) return;
+    this.availabilityTimer = this.options.scheduler.setTimeout(() => {
+      this.availabilityTimer = undefined;
+      if (!this.disposed && this.streamId !== null) this.options.transaction(() => { this.refreshAvailability(); this.options.publish(); });
+    }, Math.max(0, availability.retryAtMs - this.options.now()));
+  }
   private isCurrent(turn: Turn): boolean { return !this.disposed && this.active === turn && this.generation === turn.generation && this.streamId !== null; }
   private mayContinue(turn: Turn): boolean {
     if (!this.isCurrent(turn)) return false;
@@ -87,7 +126,10 @@ export class DialogueRuntime {
       const status = parseProviderStatus(rawStatus);
       if (status.kind === 'offline') { this.executing = false; this.finish(turn, 'offline'); return; }
       if (status.kind !== 'ready' && status.kind !== 'degraded') { this.executing = false; this.finish(turn, 'provider_error'); return; }
-      const rawResponse = await this.options.provider.generateResponse(turn.request);
+      const responsePromise = this.options.provider.generateResponse(turn.request);
+      // The adapter records actual submission before yielding its response promise.
+      this.options.transaction(() => { this.refreshAvailability(); this.options.publish(); });
+      const rawResponse = await responsePromise;
       this.executing = false;
       if (!this.mayContinue(turn)) return;
       let response: AIProviderResponse;
@@ -99,7 +141,7 @@ export class DialogueRuntime {
       if (this.mayContinue(turn)) this.finish(turn, 'provider_error');
     } finally {
       this.executing = false;
-      if (!this.disposed && this.streamId !== null) this.options.transaction(() => this.options.publish());
+      if (!this.disposed && this.streamId !== null) this.options.transaction(() => { this.refreshAvailability(); this.options.publish(); });
     }
   }
   private finish(active: Turn, reason?: DialogueFallbackReasonDTO, response?: AIProviderResponse): void {
@@ -121,7 +163,7 @@ export class DialogueRuntime {
       this.turn = presentation.turn;
       const createdAt = this.options.timestamp();
       const pair: AIProviderContextMessage[] = [{ role: 'user', text: active.request.userMessage.text, createdAt: active.request.userMessage.createdAt }, { role: 'wisp', text: replyText, createdAt }];
-      this.context = [...this.context, ...pair].slice(-6);
+      this.context = this.options.memory?.contextLimits ? boundMemoryContext([...this.context, ...pair], this.options.memory.contextLimits) : [...this.context, ...pair].slice(-6);
       if (reason === undefined && response) {
         const tone = response.reply.tone;
         this.options.applyStimulus({ type: 'provider_response', source: 'provider', text: replyText, requestId, createdAt,
@@ -134,6 +176,8 @@ export class DialogueRuntime {
         }
       }
       this.options.publish();
+      this.options.memory?.completed({ user: active.request.userMessage,
+        assistant: { id: this.options.createId(), text: replyText, createdAt }, memoryGeneration: active.memoryGeneration });
     });
   }
 }

@@ -6,6 +6,7 @@ export interface ChatInputProps {
   onSendMessage: (text: string) => Promise<boolean>;
   canSubmit: boolean;
   errorMessage?: string | null;
+  submissionMessage?: string;
   onClose: () => void;
   placeholder?: string;
 }
@@ -16,6 +17,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onClose,
   canSubmit,
   errorMessage,
+  submissionMessage,
   placeholder = 'Напишите Wisp...',
 }) => {
   const [text, setText] = useState<string>('');
@@ -87,6 +89,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           ✕
         </button>
       </form>
+      {submissionMessage ? <div role="status">{submissionMessage}</div> : null}
       {errorMessage ? <div role="alert">{errorMessage}</div> : null}
       <div className="chat-input-arrow" />
     </div>

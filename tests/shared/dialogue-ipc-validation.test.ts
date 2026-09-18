@@ -18,3 +18,12 @@ it('validates reset, receipt and all presentation variants with no extra keys', 
   }
   expect(() => parseDialoguePresentation({ conversationId: 'c', canSubmit: true, turn: { phase: 'thinking', requestId: 'r' } })).toThrow();
 });
+
+it('copies a trimmed admission notice only while submission is blocked', () => {
+  const value = { conversationId: 'c', canSubmit: false, submissionMessage: ' Подожди\nнемного. ', turn: { phase: 'idle' } };
+  expect(parseDialoguePresentation(value).submissionMessage).toBe('Подожди\nнемного.');
+  expect(() => parseDialoguePresentation({ ...value, canSubmit: true })).toThrow();
+  for (const submissionMessage of ['', ' ', 'x'.repeat(241), '\u0000', null, undefined]) {
+    expect(() => parseDialoguePresentation({ ...value, submissionMessage })).toThrow();
+  }
+});

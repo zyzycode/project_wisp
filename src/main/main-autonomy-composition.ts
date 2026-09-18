@@ -1,3 +1,4 @@
+import type { CursorGameResult } from '../application/ports/cursor-game-contract';
 import { CursorGamePresentation } from '../application/services/cursor-game-presentation';
 import type { IPlatformAdapter } from '../application/ports/platform-adapter.interface';
 import type { GameObservation } from '../domain/behavior/cursor-game';
@@ -74,6 +75,7 @@ export interface MainAutonomyCompositionOptions {
   readonly prng: IPrng;
   readonly prngMetadata: { readonly algorithm: string; readonly seed: number };
   readonly getCharacterSnapshot: () => CharacterAutonomySnapshot;
+  readonly onCursorGameResult?: (result: CursorGameResult) => void;
   readonly onActivityOutcome?: (event: ActivityOutcomeFeedback) => void;
   readonly tickNeeds?: (deltaMs: number) => void;
   readonly brainLoopPolicy?: BrainLoopPolicy;
@@ -149,7 +151,7 @@ export class MainAutonomyComposition {
       clock: options.clock,
       getCursorObservation: () => this.getCursorObservation(),
       onCursorGamePhase: (runId, phase, outcome) => this.gamePresentation.phase(runId, phase, outcome),
-      onCursorGameResult: result => this.gamePresentation.terminal(result.activityRunId, result.outcome),
+      onCursorGameResult: result => { this.gamePresentation.terminal(result.activityRunId, result.outcome); options.onCursorGameResult?.(result); },
       getCharacterSnapshot: options.getCharacterSnapshot,
       getSelectionContext: () => {
         const snapshot = options.getCharacterSnapshot();

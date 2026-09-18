@@ -12,7 +12,11 @@ export class DialogueCommandClient {
   private listeners = new Set<() => void>();
   constructor(private readonly bridge: Bridge) {}
   public subscribe(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
-  public getState(): { canSubmit: boolean; error: string | null } { return { canSubmit: this.pending === null && this.snapshot?.dialogue.canSubmit === true, error: this.error }; }
+  public getState(): { canSubmit: boolean; error: string | null; submissionMessage?: string } {
+    const submissionMessage = this.snapshot?.dialogue.submissionMessage;
+    return { canSubmit: this.pending === null && this.snapshot?.dialogue.canSubmit === true, error: this.error,
+      ...(submissionMessage === undefined ? {} : { submissionMessage }) };
+  }
   public isCurrent(snapshot: BrainStateDTO): boolean { return snapshot.streamId === this.snapshot?.streamId && snapshot.revision === this.snapshot.revision; }
   public accept(snapshot: BrainStateDTO): void {
     if (this.retiredStreams.has(snapshot.streamId)) return;

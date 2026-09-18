@@ -17,7 +17,7 @@ export function usePetDialogue({
 }: UsePetDialogueOptions) {
   const [currentMessage, setCurrentMessage] = useState<ChatMessage | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const { handleSendMessage, canSubmit, error, isThinking } = useDialogueLoop({
+  const { handleSendMessage, canSubmit, error, submissionMessage, isThinking } = useDialogueLoop({
     bridge,
     snapshot,
     setCurrentMessage,
@@ -40,6 +40,6 @@ export function usePetDialogue({
     setChatOpen,
     closeChat,
     dismissMessage,
-    handleSendMessage, canSubmit, error, isThinking,
+    handleSendMessage, canSubmit, error, submissionMessage, isThinking,
   };
 }

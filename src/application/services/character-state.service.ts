@@ -91,6 +91,10 @@ export class CharacterStateService {
         : createDefaultCharacterState(this.now);
   }
 
+  public replaceRestoredState(state: CharacterState): void { this.state = cloneCharacterState(state); this.activityEffects.clear(); }
+  public resetToDefaults(): void { this.state = createDefaultCharacterState(this.now); this.activityEffects.clear(); }
+  public createDefaults(): CharacterState { return createDefaultCharacterState(this.now); }
+
   public getState(): CharacterState {
     return cloneCharacterState(this.state);
   }

@@ -35,6 +35,35 @@ export interface PingResponseDTO {
   timestamp: number;
 }
 
+/** Target #8 contracts; bridge/handler/validation are wired together in implementation. */
+export type MemoryStatusDTO =
+  | { readonly mode: 'initializing' }
+  | {
+      readonly mode: 'persistent';
+      readonly characterRestore: 'restored' | 'default' | 'invalid_snapshot' | 'unsupported_snapshot';
+    }
+  | {
+      readonly mode: 'volatile';
+      readonly reason: 'unavailable' | 'busy' | 'storage_full' | 'corrupt'
+        | 'unsupported_version' | 'io_error';
+    };
+
+export interface ClearMemoryCommandDTO {
+  readonly streamId: string;
+  readonly requestId: string;
+  /** Increasing per Brain stream, independently of dialogue and Body sequences. */
+  readonly sequence: number;
+}
+
+export type ClearMemoryResultDTO =
+  | { readonly requestId: string; readonly status: 'cleared' }
+  | {
+      readonly requestId: string;
+      readonly status: 'failed';
+      readonly reason: 'unavailable' | 'busy' | 'storage_full' | 'corrupt'
+        | 'unsupported_version' | 'io_error' | 'stale';
+    };
+
 export interface IgnoreMouseEventsDTO {
   ignore: boolean;
   forward?: boolean;
@@ -253,8 +282,12 @@ export type DialogueTurnPresentationDTO =
 
 export interface DialoguePresentationDTO {
   readonly conversationId: string;
-  /** False while a provider call is outstanding, including a retired timed-out call. */
+  /** False while outstanding/retired calls or admission policy prevent another send. */
   readonly canSubmit: boolean;
+  /** Optional local admission notice, 1..240 UTF-16 units; only when canSubmit=false.
+   * Separate from the character reply/history; no provider or transport internals.
+   */
+  readonly submissionMessage?: string;
   readonly turn: DialogueTurnPresentationDTO;
 }
 
@@ -351,6 +384,8 @@ export interface DebugTelemetryDTO {
 }
 
 export interface WispApiBridge {
+  clearMemory(command: ClearMemoryCommandDTO): Promise<ClearMemoryResultDTO>;
+  getMemoryStatus(): Promise<MemoryStatusDTO>;
   setQuietMode(command: SetQuietModeDTO): Promise<AutonomyModeDTO>;
   postDialogueCommand(command: DialogueCommandDTO): Promise<DialogueCommandReceiptDTO>;
   readonly debugEnabled: boolean;

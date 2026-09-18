@@ -26,6 +26,18 @@ function exposedApi(): WispApiBridge {
 }
 
 describe('Preload: Shimeji bridge', () => {
+  it('exposes typed memory status/reset with validation in both directions', async () => {
+    const api = exposedApi(); electronMocks.invoke.mockReset();
+    electronMocks.invoke.mockResolvedValueOnce({ mode: 'persistent', characterRestore: 'restored' });
+    expect(await api.getMemoryStatus()).toEqual({ mode: 'persistent', characterRestore: 'restored' });
+    expect(electronMocks.invoke).toHaveBeenCalledExactlyOnceWith('wisp:get-memory-status');
+    electronMocks.invoke.mockResolvedValueOnce({ requestId: 'r', status: 'cleared' });
+    expect(await api.clearMemory({ streamId: 's', requestId: 'r', sequence: 1 })).toEqual({ requestId: 'r', status: 'cleared' });
+    await expect(api.clearMemory({ streamId: 's', requestId: 'r', sequence: 0 })).rejects.toThrow();
+    expect(electronMocks.invoke).toHaveBeenCalledTimes(2);
+    electronMocks.invoke.mockResolvedValueOnce({ mode: 'volatile', reason: 'private path' });
+    await expect(api.getMemoryStatus()).rejects.toThrow(); electronMocks.invoke.mockReset();
+  });
   it('validates both directions of the dialogue command channel', async () => {
     const api = exposedApi(); electronMocks.invoke.mockClear();
     electronMocks.invoke.mockResolvedValueOnce({ status: 'accepted', conversationId: 'c' });

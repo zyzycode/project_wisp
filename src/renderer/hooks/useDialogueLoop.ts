@@ -23,5 +23,5 @@ export function useDialogueLoop({ bridge, snapshot, setCurrentMessage }: UseDial
     if (message !== undefined) setCurrentMessage(message);
   }, [client, snapshot, setCurrentMessage]);
   const handleSendMessage = useCallback((text: string) => client.send(text), [client]);
-  return { handleSendMessage, canSubmit: transport.canSubmit, error: transport.error, isThinking: snapshot?.dialogue.turn.phase === 'thinking' };
+  return { handleSendMessage, canSubmit: transport.canSubmit, error: transport.error, submissionMessage: transport.submissionMessage, isThinking: snapshot?.dialogue.turn.phase === 'thinking' };
 }
