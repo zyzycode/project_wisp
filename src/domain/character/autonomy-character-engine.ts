@@ -72,7 +72,11 @@ export class AutonomyCharacterEngine {
     const vitalSleep = requiresVitalSleep(input.snapshot);
     const sleepCandidate = input.candidates.find((candidate) => candidate.kind === 'sleep');
     if (!vitalSleep && input.selection) {
-      const selection = selectLocalActivity(input.snapshot, input.selection, input.prng.next());
+      // Optional rest must survive the same Character wake gate used by the next Brain tick.
+      const selection = selectLocalActivity(input.snapshot, {
+        ...input.selection,
+        canRest: input.selection.canRest && !permitsAutomaticWake(input.snapshot),
+      }, input.prng.next());
       if (selection.intent.kind === 'sleep') this.sleepState = 'sleeping';
       return { ...this.resolution(selection.intent), selectionTrace: selection.trace };
     }

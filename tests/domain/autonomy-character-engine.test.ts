@@ -15,6 +15,24 @@ const awakeSnapshot = {
 };
 
 describe('Domain: AutonomyCharacterEngine', () => {
+  it.each([
+    { energy: 80, attention: 20, expectedKind: 'idle' },
+    { energy: 70, attention: 90, expectedKind: 'idle' },
+    { energy: 79, attention: 89, expectedKind: 'sleep' },
+  ])('does not choose an optional nap that would immediately wake: %j', ({ energy, attention, expectedKind }) => {
+    const engine = new AutonomyCharacterEngine();
+    const result = engine.resolveAutonomousOpportunity({
+      context: { decisionSequence: 1, opportunityAtMs: 800, tone: 'neutral' },
+      snapshot: { ...awakeSnapshot, needs: { ...awakeSnapshot.needs, energy, attention } },
+      candidates,
+      prng: { next: () => .99 },
+      selection: { nowMs: 800, history: [], canExplore: false, canPlay: false, canRest: true },
+    });
+    expect(result.resolvedIntent?.kind).toBe(expectedKind);
+    expect(result.semanticSleepState).toBe(expectedKind === 'sleep' ? 'sleeping' : 'awake');
+    expect(result.selectionTrace?.find(row => row.kind === 'sleep')?.eligible).toBe(expectedKind === 'sleep');
+  });
+
   it('accepts user sleep only through the Character-owned semantic transition', () => {
     const engine = new AutonomyCharacterEngine();
     expect(engine.resolveDirectIntent(
