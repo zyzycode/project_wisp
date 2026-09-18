@@ -166,6 +166,8 @@ Adapter создаёт явную wire projection без произвольны�
 
 Валидный текст без decision отображается в semantic response с suggestedBehavior=respond, confidence=1 (это transport default, не достоверность текста). Wire decision явно отображается в локальные provider enums; неизвестный/невалидный hint удаляется целиком. Модель не управляет FSM, физикой или сохранёнными числовыми состояниями. После mapping сохраняются ProviderResponseIntentMapper → IBehaviorAdmission → Character, current generation, P0–P5 и once-only commit. play выбирает доступную локальную Activity, а не обещает игру/поимку курсора; sleep/wake/quiet остаются candidates, не меняют настройки и не обходят P2.
 
+Wire-valid `decision.mood = playful` не имеет точного соответствия в `AIProviderSuggestedMood`: adapter опускает только `suggestedMood`, сохраняя text/behavior/confidence и допустимый tone. Не подменять playful на curious и не расширять Domain enum ради транспорта. Это явная частичная projection валидного decision, а не обработка malformed hint; прочие общие mood значения отображаются один к одному.
+
 ### События
 
 | Событие | Вызов модели v1 |
@@ -182,7 +184,7 @@ Adapter создаёт явную wire projection без произвольны�
 
 [AIRequestPolicy](../../src/application/ports/ai-request-policy.ts) — desktop-only policy: один in-flight, 6 отправок за скользящие 60 000 ms Main-monotonic time и 100 за Main session. Это не серверная quota и не гарантированный доступный бюджет backend. Application проверяет их атомарно вместе с admission. Validation/busy/local rejection/Mock бесплатны; фактическая отправка, включая ошибочную, расходует единицу. Reset/reload/quiet не обнуляют счётчики, restart обнуляет только клиентский session guard.
 
-Минутный интервал (now−60000, now]; левая граница истекает. Session cap → unavailable и canSubmit=false до restart с локальным сообщением. Очереди нет, автоматических retries — 0. При новом ручном обращении Main создаёт новый UUID; серверная обработка повторённого ID не предполагается, пока не согласовано предложение backend.
+Минутный интервал (now−60000, now]; левая граница истекает. Session cap → unavailable и canSubmit=false до restart с локальным сообщением. Очереди нет, автоматических retries — 0. При новом ручном обращении Main создаёт новый UUID; bounded server dedup/replay определён в §5 wire-контракта и не вводит клиентские retries.
 
 Desktop transport timeout 12 000 ms от fetch start, runtime deadline 15 000 ms от dialogue admission. Adapter abort-ит fetch и settle на timeout; reset/dispose логически инвалидируют результат, существующий guard держится до settlement. getStatus читает локальную конфигурацию/cooldown без network call. Серверный upstream deadline рекомендуем укладывать в клиентский transport timeout; клиент не полагается на физическую отмену вычисления у провайдера.
 
@@ -196,7 +198,7 @@ HTTP/code mapping определён только [wire-контрактом](BA
 
 Wire DTO и клиентская policy объявлены; HTTP adapter и backend подключаются отдельной реализацией. Существующих DialogueCommandDTO, receipt unavailable и presentation fallback/error достаточно: новый IPC канал и передача transport/quota/auth в Renderer не нужны. canSubmit учитывает локальные guard/cooldown; истечение публикует snapshot через существующий scheduler, без network polling. Draft сохраняется при rejection; server error после admission завершает turn безопасным сообщением.
 
-Desktop реализует policy, exact validators/projection и aborting adapter через Main DI; при отсутствии backend URL остаётся Mock. Backend реализует endpoint/schema, prompt mapping и validation model output; quota и повтор requestId ждут его отдельного предложения по wire-контракту. Его стек и провайдер проходят соответствующий инфраструктурный gate, клиентские лимиты не становятся серверными.
+Desktop реализует policy, exact validators/projection и aborting adapter через Main DI; при отсутствии backend URL остаётся Mock. Backend реализует endpoint/schema, prompt mapping и validation model output; серверные admission/retention и последствия аудита определены в [BE-A01](BE_A01_RESULT.md) и §5–6 wire-контракта. Клиентские лимиты не становятся серверными; закрытая alpha не добавляет auth/quota в wire.
 
 Общие JSON fixtures находятся в wire-контракте. Developer добавляет проверки ranges/enum/projection, text-only и invalid hint, malformed/oversize, ID mismatch, локальных minute/session boundaries, absence auto-retry, timeout/late/reset/dispose, сохранения локального ввода и отсутствия утечки экранных данных. Windows smoke включает HTTPS/offline/timeout и работающие drag/курсор; Linux/macOS — capability fallback. Typecheck затем npm test по developer gate; независимый reviewer проверяет контракт отдельно.
 
