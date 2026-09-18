@@ -72,6 +72,8 @@ Enable отменяет несовместимые active/deferred runs без �
 
 Friendship растёт от регулярного контакта/dialogue/pet/совместного времени. Love unlock требует **`friendship >= 400` и `userConsentEnabled`**, без накрутки spam clicks. No-guilt: только сверхмягкий soft decay за отсутствие, без наказания/укоряющих реплик.
 
+`loveUnlocked` — историческая защёлка: указанный gate относится к переходу false → true. Отзыв consent не обязан стирать прошлую разблокировку или накопленное love; положительный love delta без текущего consent запрещён. Restore `loveUnlocked=true` при `userConsentEnabled=false` допустим и не является новым unlock/consent. Романтическое выражение всегда заново проверяет текущие условия §7; provider/extraction не меняют consent. Несоответствие существующего reducer переходному gate исправляется в #57 с отдельной регрессией; memory restore не вводит ложный cross-field запрет исторического состояния.
+
 ## 4. Personality (Оси личности)
 
 [types.ts](../../src/domain/character/types.ts): семь осей `0.0–1.0`: `openness` (любопытство/фантазия), `extraversion` (социальная инициатива), `agreeableness` (эмпатия/мягкость), `sensitivity` (глубина отклика), `playfulness` (игра/юмор), `boldness` (уверенность), `independence` (комфорт без постоянного внимания).
@@ -138,6 +140,20 @@ stateDiagram-v2
 ## 9. Taste & Preferences (Вкусы и предпочтения)
 
 [preferences.ts](../../src/domain/character/preferences.ts): `value` `-100..100` — отношение к теме, `confidence` `0.0..1.0` — уверенность, `samples` — число тематических dialogues/events. Опыт, эмпатия и привязанность могут мягко сближать интересы с пользователем.
+
+### P15-A02: скорость и доказательства адаптации (#57)
+
+LLM не назначает axes, affinity, relationship deltas или consent. Явный user fact и текущая роль — разные данные: `user.cursor_game=like` описывает пользователя, не немедленную любовь Wisp к игре. Источник learning — [проверенное сохранённое утверждение](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), а источники обычных axes effects — реальные принятые user interaction/завершённая Activity. Model reply, recall, загрузка истории, timeout/fallback и повтор результата не создают дополнительный experience reward.
+
+Для axes вводится отдельный от Needs/отношений **5-minute adaptation gate**. Domain получает явные monotonic now и transient gate state; Main/Character service хранит state между вызовами. На startup/reset первая eligibility — now+300000 ms; после принятого experience — now+300000 ms, без catch-up/очереди. Restart не ускоряет развитие, поскольку заново начинается полное ожидание. Не изменять существующие immediate Needs/physical effects ради этого gate.
+
+В eligible event применяются только уже определённые локальные направления `interactionDeltas`; raw delta каждой оси ограничен ±0.004 до умножения на plasticity, axis weight не выше1. Далее существующие soft resistance0.35 и hardMin/hardMax; base/limits/plasticity неизменны. `provider_response` не даёт axes delta: user send уже является опытом общения. Направления вне списка текущих реальных stimuli не выводятся из текста. Это максимум12 adaptations/час активного времени; фактическое изменение дополнительно ограничено plasticity/soft locks. Никакого offline catch-up.
+
+Learned preference пока одна: `activity.cursor_game`. Новый **persisted** явный like/dislike из текущего user turn может дать один preference sample; failed write, повтор sourceMessageId, старый generation, startup replay и temporary role — ноль. Собственный отдельный learning gate также300000 ms со startup/reset задержкой; допускается не более одного sample на source и окно. Generation/current-turn admission и once-only terminal ownership остаются обязательны, bounded дедуп-кэш не разрешает принимать retired callbacks после eviction.
+
+Формула чистого Domain reducer: target=+100 для like, −100 для dislike; `nextValue = clamp(oldValue + clamp((target−oldValue)*0.05, −2, 2), −100, 100)`. Новый key начинается с value0/samples0; `samples=min(samples+1,1000)`, `confidence=samples/(samples+6)`. Поэтому одна реплика даёт максимум2 пункта и confidence≈0.143, а уверенный интерес (≥0.5) требует минимум6 разнесённых во времени сообщений. Existing generic `trackPreference` не использовать без этой отдельной evidence policy; user command «стань игривой» не sample.
+
+Preferences/axes сохраняются существующим snapshot v1; transient gates не сохраняются, не создают SQLite migration и не воспроизводят события при restore. Checkpoint crash window остаётся как у другой динамики: неподтверждённое последнее изменение может потеряться, но не догоняется двойным replay. Для v2 контекста learned preference показывается только при confidence≥0.5; текущий ответ и локальные решения сохраняют author identity/consent/priority gates. Более богатое обучение по исходам игр и выбор инициатив — #58/#59, без повторного начисления существующих play effects.
 
 ## 10. Сводная модель CharacterState v2
 

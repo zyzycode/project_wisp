@@ -11,6 +11,7 @@
  */
 
 import type { CharacterSnapshot } from '../../domain/character/types';
+import type { AIProviderMemoryContext, MemoryFactCandidate } from './memory-knowledge.interface';
 
 export type AIProviderStatusKind = 'ready' | 'thinking' | 'degraded' | 'offline' | 'error';
 
@@ -40,6 +41,8 @@ export interface AIProviderRequest {
   characterSnapshot: AIProviderCharacterSnapshot;
   recentContext: AIProviderContextMessage[];
   locale?: string;
+  /** Explicit memory-capable provider mode only; never silently added to wire v1. */
+  readonly memoryContext?: AIProviderMemoryContext;
 }
 
 export type AIProviderTone =
@@ -102,6 +105,8 @@ export interface AIProviderResponse {
   suggestedBehavior?: ProviderSuggestedBehaviorKind;
   confidence: number;
   diagnostics?: AIProviderDiagnostics;
+  /** Untrusted proposals; validated/persisted separately after the displayed turn. */
+  readonly memoryCandidates?: readonly MemoryFactCandidate[];
 }
 
 export interface IAIProvider {

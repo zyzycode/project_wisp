@@ -18,6 +18,8 @@ Application владеет портом, сборкой `AIProviderRequest` и `
 
 `AIProviderRequest` сериализуем, без React/DOM/Electron handles/Node/SDK objects. `text` санитизируется на Application/Domain boundary; snapshot создаёт доменная фабрика, provider его не мутирует. `recentContext` ограничивает Application, не полный SQLite dump без отдельного memory contract. Tokens/model names/API keys/endpoints/auth/billing в DTO запрещены.
 
+P15-A02 объявляет optional `memoryContext`/response `memoryCandidates` в semantic порте для явного memory-capable режима #56. Правила source validation/recall — [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), wire — [Backend v2](BACKEND_MEMORY_CONTRACT.md). Existing Mock/v1 их не требуют; v1 adapter не передаёт память и не принимает новые response fields. Model candidates не входят в Character mapper: запись выполняется отдельно после подтверждённого сохранения текущей user/assistant пары.
+
 ### Канонический CharacterSnapshot — P17-A03 (#27)
 
 `CharacterStateService.getSnapshot()` → Domain [createCharacterSnapshot](../../src/domain/character/character-snapshot.ts) → `AIProviderRequest.characterSnapshot`. Mapper/provider не дублируют projection/tone synthesis.
@@ -71,7 +73,7 @@ Main создаёт runtime после Character/Brain, до handler; инъец
 |---|---|
 | `DialogueCommandDTO` | `send(text)` или `reset`, текущие stream/conversation ID и возрастающая sequence. Locale выбирает Main из конфигурации; UI не передаёт snapshot, историю или provider settings. |
 | `DialogueCommandReceiptDTO` | Только accepted/rejected: `busy`, `stale`, `invalid_input`, `unavailable`. Accepted reset возвращает новый conversationId. Receipt не содержит ответа, visual intent или состояния персонажа. |
-| `DialoguePresentationDTO` | Текущая conversationId, canSubmit и последний turn: idle/thinking/completed/error. Текст ошибки уже пригоден для UI, без stack trace. |
+| `DialoguePresentationDTO` | Текущая conversationId, canSubmit, optional submissionMessage и последний turn: idle/thinking/completed/error. Текст ошибки уже пригоден для UI, без stack trace. |
 | `BrainStateDTO.dialogue` | Обязательная projection в полном Brain snapshot; отдельного onDialogueState/getDialogueState нет. |
 
 `BrainStateDTO.dialogue` и `WispApiBridge.postDialogueCommand` обязательны; target wrappers удалены, validators/publisher/preload/Renderer подключены атомарно. Optional dialogue/dual publish запрещены; snapshot без dialogue отклоняется.
@@ -88,6 +90,10 @@ Exact-shape validation/copy из `unknown` — [UI §6](UI_SPEC.md#6-brain--body
 6. Единственный terminal commit обновляет context/provider stimulus/candidate/dialogue в одной Brain transaction. Dialogue change — semantic, не motion-only coalescing; повтор snapshot не дублирует UI reply.
 
 UI блокирует resend до receipt, затем `canSubmit` берёт из snapshot. Reject сохраняет draft, accept может очистить текст, но не завершает thinking. Transport refusal снимает локальную блокировку без auto-retry (команда могла быть принята). Receipt старого stream игнорируется.
+
+`submissionMessage` — отдельное локализованное сообщение Application об admission policy, plain text после trim 1–240 UTF-16 units, без controls кроме newline/tab; присутствует только при `canSubmit=false`. При session cap обязательно: «Лимит сообщений на этот запуск исчерпан. Новый диалог станет доступен после перезапуска приложения.»; при временном rate/cooldown допустимо нейтральное «Подожди немного перед следующим сообщением.». При обычном in-flight/idle-unbound/disposed без policy-блокировки поле отсутствует. Нельзя выдавать серверный текст, endpoint, quota counters или секреты за notice.
+
+После сотой фактической отправки runtime публикует notice вместе с `canSubmit=false`, даже если пользователь не пытается отправить 101-ю команду. Полученный сотый reply и его completed turn сохраняются; notice не заменяет reply/error, не становится SpeechBubble, history item, provider context или Character stimulus. Renderer показывает notice отдельно рядом с вводом. Cooldown expiry убирает notice и публикует snapshot; session cap сохраняется через dialogue reset/reload до Main restart. Validator/publisher/Renderer должны принять optional поле атомарно в #54, без нового IPC канала.
 
 ### Deadline, fallback и физически незавершённые вызовы
 
@@ -112,6 +118,7 @@ Cancellation API нет. Timeout/reset отменяют запрос **логи�
 ### Контекст, reset и lifecycle
 
 - Volatile context — последние **три завершённые пары** user/reply (шесть сообщений); request получает копию, current userMessage отдельно. Пара добавляется атомарно после success/показанного fallback; error/reset/cancel не добавляют половину. User ≤240, reply ≤2000.
+- P15-A01: [Memory §5](MEMORY_ENGINE.md#5-история-подбор-и-ai-context) задаёт будущую persistent hydration только локального Mock в #7; для network provider сохраняется volatile policy этой секции до #55/#56. Лимит хранения не равен лимиту отправляемого context. Полный memory reset отдельный от dialogue reset, его generation barrier — [Memory §6](MEMORY_ENGINE.md#6-полный-reset-и-защита-от-поздних-записей).
 - Reset допустим при thinking: новая conversationId/generation, пустой context, turn=idle, отмена deadline. Needs/relationship и уже применённый user_message не откатываются; execution guard ждёт settlement.
 - Reload/replacement webContents меняет stream и сбрасывает conversation/context как reset. Старые commands/receipts/results не переносятся. React remount только переподписывается, не сбрасывает Main.
 - Window close/shutdown → dispose: invalid generation, cleanup timers/subscriptions, остановка UI publication. Guard принадлежит Main lifecycle и переживает пересоздание окна; новый запрос ждёт settlement. App restart → idle.
@@ -204,7 +211,7 @@ Desktop реализует policy, exact validators/projection и aborting adapt
 
 ## Запрещённые знания provider-а
 
-[Изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture): provider не знает React/DOM/CSS, assets/sprites, Electron/OS handles, SQLite tables.
+[Изоляция](README.md#общие-границы): provider не знает React/DOM/CSS, assets/sprites, Electron/OS handles, SQLite tables.
 
 ## Граница mapper-а
 
