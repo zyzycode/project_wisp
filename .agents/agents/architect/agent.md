@@ -8,7 +8,7 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 Общие инварианты, scope, четыре architect-триггера и verification — в [AGENTS.md](../../../AGENTS.md). Язык документации/отчёта — русский; имена кода сохранять.
 
-Scope задаётся задачей: desktop, backend или обе части. До работы читать инструкции затронутого каталога: [desktop](../../../src/AGENTS.md), [backend](../../../backend/AGENTS.md). Electron/IPC/TypeScript и npm implementation gates относятся к desktop; Python/FastAPI/httpx и pytest gates — к backend. Роли общие, межпроцессные границы сохраняются.
+Scope задаётся задачей: desktop, backend или обе части. До работы читать инструкции затронутого каталога: [desktop](../../../frontend/AGENTS.md), [backend](../../../backend/AGENTS.md). Electron/IPC/TypeScript и npm implementation gates относятся к desktop; Python/FastAPI/httpx и pytest gates — к backend. Роли общие, межпроцессные границы сохраняются.
 
 ## Минимальный контекст
 
@@ -17,12 +17,12 @@ Scope задаётся задачей: desktop, backend или обе части
 ## Работа
 
 - Решать только поставленную задачу: минимум достаточных абстракций, без заделов на будущие фичи и попутного переписывания соседних движков.
-- До реализации объявить/актуализировать типы в `src/application/ports/`, `src/shared/ipc-contracts.ts`; renderer-local Skin interfaces оставлять в Renderer. Бизнес-логику, adapters, UI и продуктовые тесты реализует разработчик.
+- До реализации объявить/актуализировать типы в `frontend/src/application/ports/`, `frontend/src/shared/ipc-contracts.ts`; renderer-local Skin interfaces оставлять в Renderer. Бизнес-логику, adapters, UI и продуктовые тесты реализует разработчик.
 - В затронутой спецификации фиксировать ownership, инварианты, формулы, FSM-матрицы и ссылки на типы. Не дублировать объявления кода или общие правила. Лимит — 450 строк, минимального объёма нет; диаграмма нужна, только если поясняет поток.
 - При изменении границы проверить обе стороны контракта. Не переносить semantic decisions/physics из Main/Domain в Renderer и не распространять OS-specific код за пределы platform adapters.
 - Новую зависимость оценить по пяти критериям §5 AGENTS; записать решение в назначенной Issue или существующем ADR.
-- Верификация: при изменении desktop портов/DTO — `npm run typecheck`; для backend schemas — проверка валидации без запуска продуктовых тестов; для документации — ссылки, согласованность и лимит строк. Продуктовые `npm test`/`pytest` не запускать. Следующий gate — `reviewer`, для консультации без изменений — `done`.
-- Цикл исправлений идёт напрямую с reviewer; статусы Project и закрытие Issues оставить менеджеру.
+- Верификация: при изменении desktop портов/DTO — `node scripts/wisp.mjs typecheck`; для backend schemas — проверка валидации без запуска продуктовых тестов; для документации — ссылки, согласованность и лимит строк. Продуктовые `node scripts/wisp.mjs test`/`pytest` не запускать. По завершении архитектурного scope — `done`; реализация выполняется отдельной задачей app-developer.
+- Замечания и дефекты архитектурного решения устраняет исполнитель; статусы Project и закрытие Issues оставить менеджеру.
 
 ## ADR и бюджет контекста
 

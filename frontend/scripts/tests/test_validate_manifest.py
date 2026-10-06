@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from scripts.validate_manifest import SpriteValidator, ValidationIssue, ValidationReport
@@ -400,7 +401,7 @@ class TestSpriteValidator(unittest.TestCase):
 
         # Run CLI with valid manifest
         cmd_valid = [
-            "python3",
+            sys.executable,
             "scripts/validate_manifest.py",
             "--check",
             "--manifest",
@@ -422,7 +423,7 @@ class TestSpriteValidator(unittest.TestCase):
         self._write_manifest(invalid_manifest)
 
         cmd_invalid = [
-            "python3",
+            sys.executable,
             "scripts/validate_manifest.py",
             "--check",
             "--manifest",

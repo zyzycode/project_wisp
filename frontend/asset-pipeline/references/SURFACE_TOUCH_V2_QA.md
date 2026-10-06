@@ -13,7 +13,7 @@
 - Новый пак **сначала сохранён** в [generated_images/body_surface_touch_faces_v2.png](../generated_images/body_surface_touch_faces_v2.png).
 - [Точный промпт и входные изображения](surface-touch-faces-v2.prompt.txt).
 - Только затем пак разделён на четыре силуэта и экспортирован в
-  [public/assets/sprites/body/surface_touch/](../../public/assets/sprites/body/surface_touch/).
+  [public/assets/sprites/body/surface_touch/](../../public/assets/sprites/body/surface_touch).
 - `sourceFile` в манифесте указывает на новый пак; `faceOverlay` остаётся
   `{ "mode": "baked_in", "fallback": "none" }`.
 

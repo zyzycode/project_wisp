@@ -113,7 +113,7 @@ Application исполняет одну decision transaction одновреме�
 ## 12. AUTO-A09: admission и владение AI-занятием
 
 Целевое дополнение [#45](https://github.com/zyzycode/project_wisp/issues/45); подключение runtime — #50.
-Канонические типы: [`behavior-admission-port.ts`](../../src/application/ports/behavior-admission-port.ts).
+Канонические типы: [`behavior-admission-port.ts`](../../frontend/src/application/ports/behavior-admission-port.ts).
 Это boundary существующего Brain, а не новый scheduler, provider protocol или Domain dependency на Application.
 Domain получает нормализованные значения; provider IDs и generation проверяет Application.
 

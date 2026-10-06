@@ -12,11 +12,11 @@
 - Worker выполняет последовательные короткие транзакции `better-sqlite3@13.0.3`; Main не выполняет синхронный SQL. Typed сообщения worker — приватный Infrastructure transport, SQL/пути не являются командами Application или IPC. Входы и ответы проверяются из `unknown`; fatal worker error завершает все ожидающие операции нейтральной ошибкой.
 - Локальный файл `path.join(app.getPath('userData'), 'memory', 'wisp.sqlite3')` — источник истины **подтверждённых сохранений** одного локального пользователя/экземпляра персонажа. Живой CharacterState принадлежит Domain/Application; БД — его последний checkpoint. Preset/configuration — источник identity/caps. Повторный запуск portable-приложения из другого каталога использует тот же userData, пока профиль не изменён.
 - MVP не привязывает БД к backend login. Смена аккаунта/несколько персонажей и автоматический перенос памяти требуют отдельного identity/privacy gate; запрещено молча присваивать локальную историю новому аккаунту.
-- Сеть, аккаунт и provider не нужны для открытия/записи/restore. Renderer получает только presentation DTO; OS-specific ветвления остаются за `IPlatformAdapter` в `src/infrastructure/platform/`.
+- Сеть, аккаунт и provider не нужны для открытия/записи/restore. Renderer получает только presentation DTO; OS-specific ветвления остаются за `IPlatformAdapter` в `frontend/src/infrastructure/platform/`.
 
 ## 2. Схема SQLite v1
 
-Типы — [memory-repository.interface.ts](../../src/application/ports/memory-repository.interface.ts) и [character-memory-snapshot.ts](../../src/application/ports/character-memory-snapshot.ts). Имена/пути драйвера не входят в public ports. Все таблицы создаются одной первой миграцией; ORM не нужен.
+Типы — [memory-repository.interface.ts](../../frontend/src/application/ports/memory-repository.interface.ts) и [character-memory-snapshot.ts](../../frontend/src/application/ports/character-memory-snapshot.ts). Имена/пути драйвера не входят в public ports. Все таблицы создаются одной первой миграцией; ORM не нужен.
 
 ### `conversation_sessions`
 
@@ -79,7 +79,7 @@ Upsert по key сохраняет исходные id/created_at, заменя�
 | `executed_ms` | `REAL` | not null, CHECK >= 0; finite на границе |
 | `ended_at` | `TEXT` | not null; UTC время terminal |
 
-Источник — [CursorGameResult](../../src/application/ports/cursor-game-contract.ts) из единственного terminal callback Activity. Сохранять только `playCompleted=true`, включая cancelled/lost_target **после** подтверждённой play phase; до неё записи нет. Не превращать cancelled в caught и не выводить исход из UI/реплики/анимации. Application конвертирует явное atMs через согласованную Main clock mapping в UTC; монотонное время не трактовать как epoch.
+Источник — [CursorGameResult](../../frontend/src/application/ports/cursor-game-contract.ts) из единственного terminal callback Activity. Сохранять только `playCompleted=true`, включая cancelled/lost_target **после** подтверждённой play phase; до неё записи нет. Не превращать cancelled в caught и не выводить исход из UI/реплики/анимации. Application конвертирует явное atMs через согласованную Main clock mapping в UTC; монотонное время не трактовать как epoch.
 
 Составной ключ защищает от повторного terminal, перезапуска и повторного использования activityRunId. Идентичный повтор — no-op; отличный payload того же ключа — `conflict`, первая запись сохраняется. `IGameEpisodeRepository.append` — единственный необходимый порт; recall/list появится вместе с его потребителем в #55. Ошибка сохранения не отменяет уже применённый play effect и не повторяет его.
 
@@ -152,7 +152,7 @@ Dialogue reset/reload очищает runtime context по AI contract, **не у
 
 ## 6. Полный reset и защита от поздних записей
 
-Полный memory reset — отдельный `ClearMemoryUseCase`; `DialogueCommandDTO.type=reset` остаётся reset разговора. Целевые [ClearMemoryCommandDTO/ResultDTO](../../src/shared/ipc-contracts.ts) связываются с typed `window.wispAPI.clearMemory` в #8 атомарно с Main handler, Preload и exact-shape validation. Пока это типы, а не объявленный работающий bridge. Статус отдаётся через typed window.wispAPI.getMemoryStatus() без аргументов. Sender проверяется как у dialogue; streamId/requestId non-empty до 128 units, sequence positive safe integer с отдельным счётчиком на Brain stream, неизвестные поля запрещены. Malformed/untrusted input отклоняется до use case; неверный stream или устаревшая sequence возвращает failed/stale. Внутренние invalid_data/conflict проецируются в io_error, без payload ошибки. Нового Settings UI в #8 нет.
+Полный memory reset — отдельный `ClearMemoryUseCase`; `DialogueCommandDTO.type=reset` остаётся reset разговора. Целевые [ClearMemoryCommandDTO/ResultDTO](../../frontend/src/shared/ipc-contracts.ts) связываются с typed `window.wispAPI.clearMemory` в #8 атомарно с Main handler, Preload и exact-shape validation. Пока это типы, а не объявленный работающий bridge. Статус отдаётся через typed window.wispAPI.getMemoryStatus() без аргументов. Sender проверяется как у dialogue; streamId/requestId non-empty до 128 units, sequence positive safe integer с отдельным счётчиком на Brain stream, неизвестные поля запрещены. Malformed/untrusted input отклоняется до use case; неверный stream или устаревшая sequence возвращает failed/stale. Внутренние invalid_data/conflict проецируются в io_error, без payload ошибки. Нового Settings UI в #8 нет.
 
 1. Application закрывает admission persistence-producing turns/games/checkpoints, отменяет активные owners/диалог логически; повышает memory generation. Каждый async callback хранит generation начала и проверяет её **после каждого await и перед side effect**; текущую generation нельзя присваивать старому result задним числом.
 2. `IClearMemoryStore.clearUserMemory(nextContext)` — барьер в той же worker queue. Более ранние writes закончатся до него и будут удалены; последующие со старой generation отклоняются как `stale`. Worker принимает новую generation до транзакции и не откатывает её при SQL rollback. Параллельные reset сериализуются; идентичный повтор streamId/sequence/requestId присоединяется к текущему результату, не удаляет новую память второй раз. Последние 100 receipts хранятся в Main; после eviction high-water sequence всё равно отклоняет старую команду как stale. Повтор использует ту же тройку, новая пользовательская команда — новый requestId и sequence; replacement stream инвалидирует старые команды.
@@ -169,7 +169,7 @@ Reset удаляет логическую локальную память, не 
 
 ## 8. Integration scope и платформенная приёмка
 
-До Ready #6 требуется отдельное разрешение `package.json`/`package-lock.json` для [одобренных exact versions](../adr/ADR-016-local-memory-sqlite.md#dependency-review), `vite.config.ts` для bundled worker entry и externalization driver/Node builtins. Исходник/transport worker — `src/infrastructure/`, output — существующий `dist-electron/`. В electron-builder проверить `files`, упаковку runtime JS/native binary, `asarUnpack` и packaged worker path; менять при необходимости только существующую секцию `package.json`. Новый packager, ORM, rebuild tooling, scripts и расширение targets этим разрешением не предусмотрены.
+До Ready #6 требуется отдельное разрешение `package.json`/`package-lock.json` для [одобренных exact versions](../adr/ADR-016-local-memory-sqlite.md#dependency-review), `vite.config.ts` для bundled worker entry и externalization driver/Node builtins. Исходник/transport worker — `frontend/src/infrastructure/`, output — существующий `dist-electron/`. В electron-builder проверить `files`, упаковку runtime JS/native binary, `asarUnpack` и packaged worker path; менять при необходимости только существующую секцию `package.json`. Новый packager, ORM, rebuild tooling, scripts и расширение targets этим разрешением не предусмотрены.
 
 Windows-first gate: Electron 43.4.1, win32-x64, загрузка addon из worker в dev и предоставленном packaged portable, `sqlite_version() = 3.53.4`. Проверить userData с пробелами/кириллицей, offline startup/restart, миграции/reset; при DB lock на 5 s drag/input/Brain ticks продолжаются, очередь bounded. Зафиксировать actual версии, artifact и размер поставки. Подготовка artifact — отдельный packaging scope; `npm run build` запрещён.
 
@@ -177,7 +177,7 @@ Host Node/Vitest и более новые `@types/node` не доказываю�
 
 ## 9. P15-A02: явные знания и простой recall
 
-Типы — [memory-knowledge.interface.ts](../../src/application/ports/memory-knowledge.interface.ts). Application разделяет source validation, repository writes, recall selection и provider-context projection. Новой SQLite migration нет: `user_facts`, `messages`, `game_episodes` и snapshot v1 достаточны. Additive `IGameEpisodeReader` в #56 читает 1–20 эпизодов, newest-first по приватному SQLite rowid; writer/его семантика #6/#7 сохраняются.
+Типы — [memory-knowledge.interface.ts](../../frontend/src/application/ports/memory-knowledge.interface.ts). Application разделяет source validation, repository writes, recall selection и provider-context projection. Новой SQLite migration нет: `user_facts`, `messages`, `game_episodes` и snapshot v1 достаточны. Additive `IGameEpisodeReader` в #56 читает 1–20 эпизодов, newest-first по приватному SQLite rowid; writer/его семантика #6/#7 сохраняются.
 
 ### Что сохраняется и откуда известно
 

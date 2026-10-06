@@ -30,7 +30,7 @@ Main читает `WISP_BACKEND_URL` как доверенный base URL без
 
 ## Scope notice slice
 
-- Application: `src/application/services/dialogue-loop.service.ts` (только admission presentation/rejection и publication после transport start; параллельные memory hooks сохранены).
-- Validation: `src/shared/dialogue-ipc-validation.ts`; DTO расширен предыдущим architect gate. Publisher production code не менялся: полный dialogue уже входит в semantic signature.
-- Renderer: `src/renderer/dialogue-command-client.ts`, `src/renderer/hooks/useDialogueLoop.ts`, `src/renderer/hooks/usePetDialogue.ts`, `src/renderer/components/PetOverlay.tsx`, `src/renderer/components/Chat/ChatInput.tsx`.
-- Tests: `tests/application/external-dialogue-runtime.test.ts`, `tests/shared/dialogue-ipc-validation.test.ts`, `tests/main/brain-state-publisher.test.ts`, `tests/renderer/dialogue-command-client.test.tsx`, `tests/renderer/dialogue-submission-notice.test.tsx`.
+- Application: `frontend/src/application/services/dialogue-loop.service.ts` (только admission presentation/rejection и publication после transport start; параллельные memory hooks сохранены).
+- Validation: `frontend/src/shared/dialogue-ipc-validation.ts`; DTO расширен предыдущим architect gate. Publisher production code не менялся: полный dialogue уже входит в semantic signature.
+- Renderer: `frontend/src/renderer/dialogue-command-client.ts`, `frontend/src/renderer/hooks/useDialogueLoop.ts`, `frontend/src/renderer/hooks/usePetDialogue.ts`, `frontend/src/renderer/components/PetOverlay.tsx`, `frontend/src/renderer/components/Chat/ChatInput.tsx`.
+- Tests: `frontend/tests/application/external-dialogue-runtime.test.ts`, `frontend/tests/shared/dialogue-ipc-validation.test.ts`, `frontend/tests/main/brain-state-publisher.test.ts`, `frontend/tests/renderer/dialogue-command-client.test.tsx`, `frontend/tests/renderer/dialogue-submission-notice.test.tsx`.

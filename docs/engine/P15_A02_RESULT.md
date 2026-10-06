@@ -11,9 +11,9 @@
 ## Layer boundaries & Contracts
 
 - [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall) — canonical registry, evidence/correction, local write ordering, query/ranking/budgets и reset. §1–8/schema_v1/writer/worker snapshot semantics #6–#8 сохранены.
-- [memory-knowledge.interface.ts](../../src/application/ports/memory-knowledge.interface.ts) — source candidates, bounded semantic context, recall consumer port, отдельный game reader и verified preference evidence. Additive game reader согласован с разработчиком памяти; #56 добавляет read существующей rowid table, без migration.
-- [ai-provider.interface.ts](../../src/application/ports/ai-provider.interface.ts) — optional memoryContext/memoryCandidates. Application собирает/проверяет semantic данные; Infrastructure делает независимую wire projection. Runtime validator должен принять новые semantic поля только с проверкой; mapper не превращает candidates в behavior.
-- [BACKEND_MEMORY_CONTRACT](BACKEND_MEMORY_CONTRACT.md), [wire v2 types](../../src/application/ports/backend-memory-contract.ts) и [три v2 fixtures](../contracts/fixtures/desktop-backend-v2/) — обе стороны расширения. v1 DTO/fixtures не изменены; серверный BE-I01/#53 продолжает свой согласованный v1 scope.
+- [memory-knowledge.interface.ts](../../frontend/src/application/ports/memory-knowledge.interface.ts) — source candidates, bounded semantic context, recall consumer port, отдельный game reader и verified preference evidence. Additive game reader согласован с разработчиком памяти; #56 добавляет read существующей rowid table, без migration.
+- [ai-provider.interface.ts](../../frontend/src/application/ports/ai-provider.interface.ts) — optional memoryContext/memoryCandidates. Application собирает/проверяет semantic данные; Infrastructure делает независимую wire projection. Runtime validator должен принять новые semantic поля только с проверкой; mapper не превращает candidates в behavior.
+- [BACKEND_MEMORY_CONTRACT](BACKEND_MEMORY_CONTRACT.md), [wire v2 types](../../frontend/src/application/ports/backend-memory-contract.ts) и [три v2 fixtures](../contracts/fixtures/desktop-backend-v2) — обе стороны расширения. v1 DTO/fixtures не изменены; серверный BE-I01/#53 продолжает свой согласованный v1 scope.
 - [Character §9](CHARACTER_ENGINE.md#9-taste--preferences-вкусы-и-предпочтения) — проверенные источники, separate5min gates, размер шага/caps, отсутствие модели в numerical authority. [§3](CHARACTER_ENGINE.md#3-relationship-система-отношений) отдельно уточняет историческую loveUnlocked latch и current consent.
 
 ## Implementation consequences
@@ -42,7 +42,7 @@ Prerequisite #56 для verified persisted preference signal; #8 snapshot уже
 
 ### Связанная server implementation — v2 memory context
 
-Отдельная задача в **существующем `wisp_backend`**, зависимая от BE-I01 (server #1 / desktop #53) и этого gate. Scope: `wisp_backend/api/`, `schemas.py` либо отдельный v2 schema module, service/provider internal result, prompts, existing admission ledger namespace, `tests/fixtures/desktop-backend-v2/`, backend docs/README. Существующие Python/FastAPI/httpx/Groq/stdlb sqlite3 и dependency snapshot сохраняются; новой зависимости не требуется.
+Отдельная задача в **существующем `wisp_backend`**, зависимая от BE-I01 (server #1 / desktop #53) и этого gate. Scope: `wisp_backend/api/`, `schemas.py` либо отдельный v2 schema module, service/provider internal result, prompts, existing admission ledger namespace, `frontend/tests/fixtures/desktop-backend-v2/`, backend docs/README. Существующие Python/FastAPI/httpx/Groq/stdlb sqlite3 и dependency snapshot сохраняются; новой зависимости не требуется.
 
 1. Добавить `/v2/chat` рядом с v1 и strict bounded validators, отдельный versioned envelope/error responses. Внутренние prompt/model reply структуры получают memory/candidates без распространения wire DTO в local domain. Request v1 не начинает принимать memory.
 2. Один Groq call формирует reply и optional candidates; memory — untrusted prompt section с precedence/grounding правилами. Удерживать usage даже при malformed candidates/text согласно существующему ledger, не делать второй extraction/retry.

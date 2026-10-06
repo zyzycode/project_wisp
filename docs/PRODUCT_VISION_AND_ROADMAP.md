@@ -204,19 +204,19 @@ Backlog сопоставлен с продуктовыми решениями и
 
 ## 6. Анимации и графика
 
-Для bounded cursor game уже подключены игровые состояния и реакции: `body_cursor_play`, `body_cursor_caught`, `body_cursor_missed`. [Реестр](art/SPRITE_REQUESTS.md) фиксирует закрытые 2026-09-08 запросы caught/missed: по 6 кадров, 600 ms; lost_target использует missed. Не создавать повторные запросы на эти ассеты. Новые состояния или расширение сценария сначала сопоставлять с готовыми клипами.
+Для bounded cursor game уже подключены игровые состояния и реакции: `body_cursor_play`, `body_cursor_caught`, `body_cursor_missed`. Реестр (исторический реестр удалён; требования — в отчёте задачи) фиксирует закрытые 2026-09-08 запросы caught/missed: по 6 кадров, 600 ms; lost_target использует missed. Не создавать повторные запросы на эти ассеты. Новые состояния или расширение сценария сначала сопоставлять с готовыми клипами.
 
-Графику предоставляет внешний художник-человек. Недостающее оформляется в [SPRITE_REQUESTS](art/SPRITE_REQUESTS.md); до готовности допустимы согласованные fallback/алиасы. «Полный набор» относится к проработанным сценариям; перечень всех будущих анимаций ещё не определён. ИИ выбирает доступные действия, а не выдумывает исполнимые клипы.
+Графику предоставляет внешний художник-человек. Недостающее оформляется в SPRITE_REQUESTS (исторический реестр удалён; требования — в отчёте задачи); до готовности допустимы согласованные fallback/алиасы. «Полный набор» относится к проработанным сценариям; перечень всех будущих анимаций ещё не определён. ИИ выбирает доступные действия, а не выдумывает исполнимые клипы.
 
 ## 7. Основания сверки
 
 Следующий список описывает исторический срез локального дерева 2026-09-13; на тот момент статусы GitHub и отдельные серверные репозитории не проверялись. На 2026-09-18 backlog сверён (§5.5), аудит wisp_backend #52 завершён (§4.5), память/ИИ/адаптация/события реализованы с успешными автоматическими проверками (§5.5). Исторический список ниже не является перечнем оставшейся работы. Наличие теста не заменяет ручную Windows-приёмку, которую пользователь выполняет самостоятельно.
 
-- [Пресет](../src/domain/character/personality-presets.ts) и [адаптация](../src/domain/character/personality-plasticity.ts) содержат базовые оси, пластичность и caps.
-- [DialogueRuntime](../src/application/services/dialogue-loop.service.ts) держит последние шесть сообщений в оперативной памяти; [Main](../src/main/index.ts) создаёт MockAIProvider. [Порты памяти](../src/application/ports/memory-repository.interface.ts) не являются реализацией SQLite.
-- [Cursor game](../src/domain/behavior/cursor-game.ts) реализует динамические checkpoints и исходы; [tuning](../src/application/ports/cursor-game-contract.ts) задаёт ограничения эпизода. [Presentation](../src/application/services/cursor-game-presentation.ts) содержит локальные реплики и их согласование с диалогом.
-- Есть [domain-сценарии](../tests/domain/cursor-game.test.ts), [Main integration](../tests/main/cursor-game-integration.test.ts), [startup pipeline](../tests/main/cursor-game-startup-pipeline.test.ts) и [проверки клипов](../tests/renderer/cursor-game-clips.test.ts). История содержит коммиты bounded game, caught/missed ассетов и startup behaviour.
-- [Backend contract](engine/BACKEND_API_CONTRACT.md) уже определяет v1 без auth, с `event.type = user_message`, без memories, экрана и файлов. [AI policy](../src/application/ports/ai-request-policy.ts) описывает клиентские лимиты; её наличие не доказывает реализацию admission или серверного учёта.
+- [Пресет](../frontend/src/domain/character/personality-presets.ts) и [адаптация](../frontend/src/domain/character/personality-plasticity.ts) содержат базовые оси, пластичность и caps.
+- [DialogueRuntime](../frontend/src/application/services/dialogue-loop.service.ts) держит последние шесть сообщений в оперативной памяти; [Main](../frontend/src/main/index.ts) создаёт MockAIProvider. [Порты памяти](../frontend/src/application/ports/memory-repository.interface.ts) не являются реализацией SQLite.
+- [Cursor game](../frontend/src/domain/behavior/cursor-game.ts) реализует динамические checkpoints и исходы; [tuning](../frontend/src/application/ports/cursor-game-contract.ts) задаёт ограничения эпизода. [Presentation](../frontend/src/application/services/cursor-game-presentation.ts) содержит локальные реплики и их согласование с диалогом.
+- Есть [domain-сценарии](../frontend/tests/domain/cursor-game.test.ts), [Main integration](../frontend/tests/main/cursor-game-integration.test.ts), [startup pipeline](../frontend/tests/main/cursor-game-startup-pipeline.test.ts) и [проверки клипов](../frontend/tests/renderer/cursor-game-clips.test.ts). История содержит коммиты bounded game, caught/missed ассетов и startup behaviour.
+- [Backend contract](engine/BACKEND_API_CONTRACT.md) уже определяет v1 без auth, с `event.type = user_message`, без memories, экрана и файлов. [AI policy](../frontend/src/application/ports/ai-request-policy.ts) описывает клиентские лимиты; её наличие не доказывает реализацию admission или серверного учёта.
 
 ## 8. Открытые решения и следующий gate
 

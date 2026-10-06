@@ -23,7 +23,7 @@ Forced facts — safety, не второй behavior arbiter. Они сразу �
 
 ## Форма intent
 
-[behavior-intent.ts](../../src/domain/behavior/behavior-intent.ts): BehaviorIntent/BehaviorIntentKind.
+[behavior-intent.ts](../../frontend/src/domain/behavior/behavior-intent.ts): BehaviorIntent/BehaviorIntentKind.
 
 | Поле | Назначение |
 |---|---|
@@ -82,6 +82,6 @@ Provider hints не обходят cooldown/no-spam/sleep/quiet; unknown hints �
 
 AUTO-A09 сохраняет kinds: calm→idle, Explore→wander, игра/bounded cursor interest/nonverbal SocialBid — Activities внутри play. Quiet — устойчивый user/settings mode, не поза и не выключение Needs clock.
 
-Provider source не P1; допустимый provider выше local по [Autonomy §12](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием). Request/admission/start/terminal/ownership — отдельный [behavior-admission-port.ts](../../src/application/ports/behavior-admission-port.ts), без расширения provider DTO и asset/target fields BehaviorIntent. Reason — диагностика, не transport pose/gait/ownership/family.
+Provider source не P1; допустимый provider выше local по [Autonomy §12](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием). Request/admission/start/terminal/ownership — отдельный [behavior-admission-port.ts](../../frontend/src/application/ports/behavior-admission-port.ts), без расширения provider DTO и asset/target fields BehaviorIntent. Reason — диагностика, не transport pose/gait/ownership/family.
 
 DTO остаётся pure Domain, без UI/assets/frames/FPS/OS descriptors/IPC channels; [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).

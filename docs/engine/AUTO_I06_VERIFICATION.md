@@ -25,5 +25,5 @@ target intentionally cancels to fall; a small move after attachment follows loca
 Repeat with external observation unavailable to confirm screen-only Explore and Rest.
 
 Missing artwork and temporary sit/settle/seated-sleep treatment are recorded in
-[SPRITE_REQUESTS.md](../art/SPRITE_REQUESTS.md). Existing sit, lie, sleep and wake clips remain
+SPRITE_REQUESTS.md (исторический реестр удалён; требования — в отчёте задачи). Existing sit, lie, sleep and wake clips remain
 registered; no nonexistent paths or newly generated PNGs were added to the manifest.

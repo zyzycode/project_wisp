@@ -1,12 +1,12 @@
 # CURSOR-GAME-V1 — 2026-09-08
 
-Готовы и зарегистрированы два набора: [cursor_caught](../../public/assets/sprites/body/cursor_caught/)
-и [cursor_missed](../../public/assets/sprites/body/cursor_missed/). По 6 кадров PNG RGBA 512×512,
+Готовы и зарегистрированы два набора: [cursor_caught](../../public/assets/sprites/body/cursor_caught)
+и [cursor_missed](../../public/assets/sprites/body/cursor_missed). По 6 кадров PNG RGBA 512×512,
 каждый 100 ms, клип 600 ms. Референс внешности и геометрии —
 [body_cursor_play_00.png](../../public/assets/sprites/body/cursor_play/body_cursor_play_00.png).
 
 Генерация выполнена встроенным image_gen; [промпты](cursor-game-prompts.json).
-[Исходники](../generated_images/cursor_game/) сохранены вместе с попытками. RGB-варианты
+[Исходники](../generated_images/cursor_game) сохранены вместе с попытками. RGB-варианты
 с нарисованной сеткой не использованы: приняты листы с настоящим alpha после удаления фона image_gen.
 Нарезка скриптом разделяет по три силуэта в каждом из двух рядов, сохраняет исходное сглаживание.
 Единый масштаб внутри набора рассчитан по медианной высоте стоящего персонажа относительно референса;

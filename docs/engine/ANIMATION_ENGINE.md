@@ -1,6 +1,6 @@
 # Архитектура Animation Engine
 
-`AnimationIntent` — semantic visual request после behavior decision, без sprites/frames/texture sizes/platform APIs. Каталог/типы — [animation-intent.ts](../../src/domain/animation/animation-intent.ts) (`AnimationIntentKind`, `AnimationPriority`); FSM — [animation-state-machine.ts](../../src/domain/animation/animation-state-machine.ts) (`AnimationStateMachine`, `ANIMATION_STATES`). Ownership/timeline/IPC — здесь и в UI_SPEC; legacy lifecycle мигрирует AUTO-I07/AUTO-I08.
+`AnimationIntent` — semantic visual request после behavior decision, без sprites/frames/texture sizes/platform APIs. Каталог/типы — [animation-intent.ts](../../frontend/src/domain/animation/animation-intent.ts) (`AnimationIntentKind`, `AnimationPriority`); FSM — [animation-state-machine.ts](../../frontend/src/domain/animation/animation-state-machine.ts) (`AnimationStateMachine`, `ANIMATION_STATES`). Ownership/timeline/IPC — здесь и в UI_SPEC; legacy lifecycle мигрирует AUTO-I07/AUTO-I08.
 
 <a id="поток-ответственности"></a>
 

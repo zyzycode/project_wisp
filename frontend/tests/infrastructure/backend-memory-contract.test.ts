@@ -9,7 +9,7 @@ import { parseProviderResponse } from '../../src/application/services/dialogue-p
 import { providerRequest } from './backend-ai-fixture';
 import type { BackendMemoryRequest } from '../../src/application/ports/backend-memory-contract';
 import { memoryTextLength } from '../../src/application/services/memory-recall';
-const fixture = (name: string): unknown => JSON.parse(readFileSync(path.join(process.cwd(), 'docs/contracts/fixtures/desktop-backend-v2', name), 'utf8'));
+const fixture = (name: string): unknown => JSON.parse(readFileSync(path.join(process.cwd(), '../docs/contracts/fixtures/desktop-backend-v2', name), 'utf8'));
 const request = fixture('request.valid.json') as BackendMemoryRequest;
 const semantic = () => ({ ...providerRequest(), requestId: request.requestId, userMessage: { id: 'local', text: request.messages.at(-1)!.content, createdAt: '2026-09-18T00:00:00.000Z' }, characterSnapshot: request.character, memoryContext: request.memory });
 afterEach(() => vi.useRealTimers());

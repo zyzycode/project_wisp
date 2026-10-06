@@ -125,7 +125,7 @@ normalization → real Motion/Surface engines → Main autonomy with one landing
 stable attachment. Lower-monitor spanning and entirely offscreen frames remain
 negative cases.
 
-The opt-in `tests/infrastructure/native-window-landing.smoke.test.ts` creates an
+The opt-in `frontend/tests/infrastructure/native-window-landing.smoke.test.ts` creates an
 isolated empty Electron window, runs the unmodified system PowerShell helper
 without policy bypass, consumes live observations through WindowsWindowSurfaces,
 and executes release, falling contact and attachment with the real motion
@@ -135,7 +135,7 @@ pointer gesture on the user's Explorer/Discord windows. UI access to those
 windows was blocked by automatic review, so that manual claim is not made.
 
 Run this separate gate with `WISP_NATIVE_SMOKE=1` and
-`npm test -- tests/infrastructure/native-window-landing.smoke.test.ts`.
+`npm test -- frontend/tests/infrastructure/native-window-landing.smoke.test.ts`.
 Normal unit runs skip it; no windows open during the standard test suite.
 
 Final verification: `npm run typecheck`, `npm test` (545 passed, 2 skipped),

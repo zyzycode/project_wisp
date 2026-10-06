@@ -2,7 +2,7 @@
 
 Высокоуровневый обзор архитектуры настольного AI-компаньона Project Wisp. Документ фиксирует границы ответственности подсистем и поток данных между ними.
 
-Целевая архитектура включает desktop-клиент и backend. Runtime персонажа работает локально; сетевые функции используют сервер через адаптеры в Main. Backend владеет своими API, интеграциями и серверным хранением. Backend находится в `backend/` (Python/FastAPI/httpx/Groq); документация обеих частей — в корневом `docs/`. Runtime, зависимости и deployment остаются отдельными: [ADR-017](docs/adr/ADR-017-monorepo.md), [server setup и текущие gaps](docs/backend/README.md).
+Целевая архитектура включает desktop-клиент и backend. Runtime персонажа работает локально; сетевые функции используют сервер через адаптеры в Main. Backend владеет своими API, интеграциями и серверным хранением. Desktop находится в `frontend/`, backend — в `backend/` (Python/FastAPI/httpx/Groq); документация обеих частей — в корневом `docs/`. Runtime, зависимости и deployment остаются отдельными: [ADR-017](docs/adr/ADR-017-monorepo.md), [server setup и текущие gaps](docs/backend/README.md).
 
 Windows-first: первая приёмка desktop проходит на Windows; OS-specific код остаётся в platform adapters. Linux/macOS используют доступные capabilities и screen-floor fallback. Первый backend API и бюджет определены в [AI Provider contract](docs/engine/AI_PROVIDER_CONTRACT.md#desktop--backend-v1); расширенная локальная игра с курсором — в [Perception](docs/engine/PERCEPTION_ENGINE.md#61-cursor-game-v1-ограниченное-преследование) и [Activity](docs/engine/ACTIVITY_ENGINE.md#17-cursor-game-v1).
 
@@ -59,7 +59,7 @@ flowchart TD
 ### Принципы взаимодействия
 - **Renderer $\to$ Main:** через строгий типизированный мост `window.wispAPI` (`ipcRenderer.invoke` $\to$ `ipcMain.handle`). У Renderer нет прямого доступа к Node.js и системным API.
 - **Main $\to$ Renderer:** доставка изменений состояния и push-событий через `webContents.send` и типизированные подписки в Renderer.
-- **Контракты IPC:** DTO и интерфейсы сообщений централизованы в [`src/shared/ipc-contracts.ts`](src/shared/ipc-contracts.ts).
+- **Контракты IPC:** DTO и интерфейсы сообщений централизованы в [`frontend/src/shared/ipc-contracts.ts`](frontend/src/shared/ipc-contracts.ts).
 
 ### Граница backend
 
@@ -78,23 +78,23 @@ AI-интеграция использует `IAIProvider` как для backend
  (Чистый TS)     (Сценарии/Порты)      (Адаптеры ОС/БД, Electron, React)
 ```
 
-1. **Domain Layer (`src/domain/`)**
+1. **Domain Layer (`frontend/src/domain/`)**
    - Чистый TypeScript без внешних зависимостей.
    - Моделирует персонажа: витальные потребности (энергия, голод), настроение, эмоциональный отклик, намерения поведения (`BehaviorIntent`) и правила переходов состояний.
 
-2. **Application Layer (`src/application/`)**
+2. **Application Layer (`frontend/src/application/`)**
    - Прикладные сценарии: цикл автономного поведения (Autonomy Loop), обработка диалогов, реакция на события окружения.
    - Объявляет интерфейсы (**порты**) для внешних систем (`IAIProvider`, `IPlatformAdapter`, `IStorageAdapter`), не завися от их конкретной реализации.
 
-3. **Infrastructure Layer (`src/infrastructure/`)**
+3. **Infrastructure Layer (`frontend/src/infrastructure/`)**
    - Реализации портов: оконные адаптеры ОС (позиционирование, прозрачность, click-through, трей под Linux X11/Wayland, Windows, macOS).
    - AI-провайдеры (`MockAIProvider`, REST/LLM-клиенты).
    - Персистентность (миграции схемы, долгосрочная память, настройки в SQLite).
 
-4. **Presentation & Runtime (`src/renderer/`, `src/preload/`, `src/main/`)**
-   - `src/renderer/`: React-интерфейс, оверлей персонажа, диалоговые окна и меню.
-   - `src/preload/`: безопасная проброска методов API в браузерное окно через `contextBridge`.
-   - `src/main/`: управление жизненным циклом приложения Electron, окнами `BrowserWindow` и маршрутизацией IPC.
+4. **Presentation & Runtime (`frontend/src/renderer/`, `frontend/src/preload/`, `frontend/src/main/`)**
+   - `frontend/src/renderer/`: React-интерфейс, оверлей персонажа, диалоговые окна и меню.
+   - `frontend/src/preload/`: безопасная проброска методов API в браузерное окно через `contextBridge`.
+   - `frontend/src/main/`: управление жизненным циклом приложения Electron, окнами `BrowserWindow` и маршрутизацией IPC.
 
 ---
 

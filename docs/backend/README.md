@@ -1,6 +1,6 @@
 # Backend Wisp
 
-Python/FastAPI backend находится в [backend/](../../backend/). Desktop остаётся на существующих путях в корне. Общие роли — в `.agents/agents/`, инженерные правила — в [backend/AGENTS.md](../../backend/AGENTS.md). Решение о структуре: [ADR-017](../adr/ADR-017-monorepo.md).
+Python/FastAPI backend находится в [backend/](../../backend). Desktop находится в `frontend/`; корневые launchers запускают обе части. Общие роли — в `.agents/agents/`, инженерные правила — в [backend/AGENTS.md](../../backend/AGENTS.md). Решение о структуре: [ADR-017](../adr/ADR-017-monorepo.md).
 
 ## Фактическая реализация
 
@@ -10,42 +10,11 @@ Python/FastAPI backend находится в [backend/](../../backend/). Desktop
 
 Перенос не является поставкой более поздней backend-ветки, описанной в `BE_P01_RESULT.md`. В этом snapshot отсутствуют v2/v3 memory/events endpoints, server-only ledger/quota/idempotency и полный lifecycle safeguards из поздней части [канонического v1-контракта](../engine/BACKEND_API_CONTRACT.md). Health означает работоспособность HTTP runtime, не готовность Groq. Gaps требуют отдельной задачи; их отсутствие не меняет canonical contract и не разрешает публичный deployment.
 
-## Запуск из PowerShell
+## Запуск из корня
 
-Все команды ниже выполняются из корня `project_wisp`. Python 3.10+; зависимости — [requirements](../../backend/requirements.txt), тестовые — [requirements-dev](../../backend/requirements-dev.txt).
+Подготовка Python окружения, server `.env`, совместный запуск и все команды описаны в [корневом README](../../README.md#подготовка). Backend запускается отдельно через `node scripts/wisp.mjs dev:backend` или вместе с desktop через `node scripts/wisp.mjs dev`.
 
-```powershell
-python -m venv backend/.venv
-./backend/.venv/Scripts/python.exe -m pip install -r backend/requirements-dev.txt
-Copy-Item backend/.env.example backend/.env
-```
-
-В локальном `backend/.env` установить собственный `GROQ_API_KEY`. Не коммитить и не печатать его. Затем:
-
-```powershell
-Push-Location backend
-./.venv/Scripts/python.exe main.py
-Pop-Location
-```
-
-Default — `http://127.0.0.1:8000`, [Swagger](http://127.0.0.1:8000/docs). Если старый сервер ещё занимает 8000, для временной параллельной проверки:
-
-```powershell
-Push-Location backend
-./.venv/Scripts/python.exe -m uvicorn main:app --host 127.0.0.1 --port 8001
-Pop-Location
-```
-
-В другом терминале из корня запустить desktop с тем же портом:
-
-```powershell
-$env:WISP_BACKEND_URL = 'http://127.0.0.1:8000'
-$env:WISP_BACKEND_API_VERSION = '1'
-$env:WISP_AI_EVENTS_ENABLED = 'false'
-npm run dev
-```
-
-Без URL desktop использует mock. HTTP loopback допустим только в development; packaged/remote deployment требует HTTPS. Настройки desktop читаются Main, не Renderer; npm/Vite не загружает server `.env`.
+Default — `http://127.0.0.1:8000`, [Swagger](http://127.0.0.1:8000/docs). `WISP_BACKEND_PORT` выбирает loopback port; совместный launcher передаёт тот же URL desktop с API v1. `WISP_PYTHON` выбирает существующее Python окружение; без override launcher сначала ищет `backend/.venv`, затем `python` из PATH. Ключ остаётся в server `.env`/process env и не передаётся frontend.
 
 ## Proxy и TLS environment
 
@@ -55,13 +24,8 @@ npm run dev
 
 ## Проверки
 
-Из `backend/`:
+Из корня: `node scripts/wisp.mjs check:backend` → `node scripts/wisp.mjs test:backend`; `node scripts/wisp.mjs test` проверяет обе части и launcher lifecycle. Из `backend/` те же проверки можно выполнить напрямую выбранным Python: `python -m pip check` → `python -m pytest -q`.
 
-```powershell
-./.venv/Scripts/python.exe -m pip check
-./.venv/Scripts/python.exe -m pytest -q
-```
+Тесты используют mocked provider или локальный HTTP fixture, без внешних AI-вызовов. Общие v1 JSON fixtures читаются прямо из [docs/contracts/fixtures/desktop-backend-v1/](../contracts/fixtures/desktop-backend-v1). Обязательные gates исполнителя — в [общих правилах](../../AGENTS.md#11-план-верификация-и-отчёт). `npm run build` не применяется.
 
-Тесты используют mocked provider или локальный HTTP fixture, без внешних AI-вызовов. Общие v1 JSON fixtures читаются прямо из [docs/contracts/fixtures/desktop-backend-v1/](../contracts/fixtures/desktop-backend-v1/). Desktop gates и reviewer restrictions — в [общих правилах](../../AGENTS.md#11-план-верификация-и-отчёт). `npm run build` не применяется.
-
-На Linux/macOS использовать `backend/.venv/bin/python` вместо Windows executable. Python paths собираются через `pathlib.Path`; импорт `wisp_backend` разрешается из рабочего каталога `backend/`.
+Python paths собираются через `pathlib.Path`; root launcher устанавливает рабочий каталог `backend/`, чтобы разрешался импорт `wisp_backend`.

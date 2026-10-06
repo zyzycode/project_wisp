@@ -29,7 +29,7 @@ autonomous side/top selection remains AUTO-I06.
 
 ## Artwork
 
-Missing: `body_sit_edge`, supplied by the human artist under `public/assets/sprites/`.
+Missing: `body_sit_edge`, supplied by the human artist under `frontend/public/assets/sprites/`.
 Expected four-frame loop: neutral → left leg → neutral → right leg, stable root and face
 anchor, no painted ledge. Until supplied, `sit_edge` resolves to existing `body_sit`, then
 the established idle/system fallback. This task creates no artwork or manifest entries

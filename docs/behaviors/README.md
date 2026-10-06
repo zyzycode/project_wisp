@@ -8,10 +8,10 @@
 
 | Pack | Пользовательский сценарий | Основные владельцы |
 |---|---|---|
-| [`VITAL.md`](./VITAL.md) | Сон, пробуждение, отдых и потребность в комфорте | Character → Autonomy → Activity → Animation; Motion для forced interruption |
-| [`EXPLORATION.md`](./EXPLORATION.md) | Idle, wander, Explore и Zoomies | Autonomy → Activity → Perception/Motion → Animation |
-| [`INTERACTION.md`](./INTERACTION.md) | Click, pet, drag и игра с курсором | Application input → Character/Perception/Motion → Activity → Animation |
-| [`SOCIAL.md`](./SOCIAL.md) | Attention, SocialBid, dialogue и optional provider/LLM candidate | Character → Application mapper → Autonomy/Activity → Animation |
+| [`VITAL.md`](VITAL.md) | Сон, пробуждение, отдых и потребность в комфорте | Character → Autonomy → Activity → Animation; Motion для forced interruption |
+| [`EXPLORATION.md`](EXPLORATION.md) | Idle, wander, Explore и Zoomies | Autonomy → Activity → Perception/Motion → Animation |
+| [`INTERACTION.md`](INTERACTION.md) | Click, pet, drag и игра с курсором | Application input → Character/Perception/Motion → Activity → Animation |
+| [`SOCIAL.md`](SOCIAL.md) | Attention, SocialBid, dialogue и optional provider/LLM candidate | Character → Application mapper → Autonomy/Activity → Animation |
 
 Это полный каталог текущей задачи: новые файлы для отдельных жестов и мелких действий не создаются.
 

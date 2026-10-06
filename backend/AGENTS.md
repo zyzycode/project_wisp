@@ -18,6 +18,6 @@
 
 Багфикс начинается с падающего регрессионного теста. Provider HTTP в unit-тестах мокать через httpx MockTransport; локальный HTTP fixture допустим для проверки маршрутизации/proxy. Tests не используют реальные ключи и внешнюю сеть. Проверять timeout, недоступность, malformed response и закрытие ресурсов для затронутого lifecycle.
 
-Исполнитель: сначала затронутые тесты, затем `python -m pip check` → `python -m pytest -q` из `backend/`. Допустим `-p no:cacheprovider` при ограничениях кеша. Общие v1 fixtures читать из `../docs/contracts/fixtures/desktop-backend-v1/`, не дублировать их. При изменении desktop также выполнить его gates. Reviewer: аудит diff, `npm run typecheck` из корня и ссылки/согласованность; продуктовые tests не запускать.
+Исполнитель: сначала затронутые тесты, затем `python -m pip check` → `python -m pytest -q` из `backend/`. Допустим `-p no:cacheprovider` при ограничениях кеша. Общие v1 fixtures читать из `../docs/contracts/fixtures/desktop-backend-v1/`, не дублировать их. При изменении desktop также выполнить его gates. Исполнитель также проверяет diff и ссылки/согласованность.
 
 Серверные runtime data/venv/секреты исключены из Git. Новые dependencies проходят §5 корневых правил. Продуктовая документация — в `docs/backend/` или соответствующем общем контракте, без конкурирующих копий API-спецификации.

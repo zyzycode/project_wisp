@@ -29,27 +29,21 @@
 
 ## Batch handoff
 
-На каждую из 2–4 задач: `[Task ID] Title`, scope в 1–2 предложениях, ключевые файлы, нужные разделы contracts и `Контекст: текущий чат | новый чат` с краткой причиной. Затем два промпта без повторения полного текста Issue/AGENTS.
+На каждую из 2–4 задач: `[Task ID] Title`, scope в 1–2 предложениях, ключевые файлы, нужные разделы contracts и `Контекст: текущий чат | новый чат` с краткой причиной. Затем промпт исполнителя без повторения полного текста Issue/AGENTS.
 
 **Исполнитель:**
 
 ```text
-Ты агент <owner-role>. Прочитай .agents/agents/<owner-role>/agent.md, если её ещё нет в контексте. Выполни <Task ID> по актуальной Issue <полный URL>, соблюдая AGENTS.md, scope и связанные architect decisions. Контекст: <целевые файлы и разделы>. Передай результат в reviewer.
-```
-
-**Reviewer:**
-
-```text
-Ты агент reviewer. Прочитай .agents/agents/reviewer/agent.md, если её ещё нет в контексте. Независимо проверь <Task ID> по актуальной Issue <полный URL> и фактическому diff. Выполни gate для типа изменений из AGENTS.md и верни REVIEW RESULT.
+Ты агент <owner-role>. Прочитай .agents/agents/<owner-role>/agent.md, если её ещё нет в контексте. Выполни <Task ID> по актуальной Issue <полный URL>, соблюдая AGENTS.md, scope и связанные architect decisions. Контекст: <целевые файлы и разделы>. Выполни обязательные проверки и представь отчёт о результате.
 ```
 
 ## Закрытие
 
-После завершения/Approved и task-scoped коммита: закрыть Issue, проверить фактический `Done` в Project и оставить короткий receipt. Без проверки не заявлять об изменении статуса.
+После завершения/done и task-scoped коммита: закрыть Issue, проверить фактический `Done` в Project и оставить короткий receipt. Без проверки не заявлять об изменении статуса.
 
 ```markdown
 ## Result — <YYYY-MM-DD>
 - Commit: <hash>
-- Completion signal: <Approved | Approved (with fast-fixes) | готово>
+- Completion signal: <done | готово>
 - Status: Done
 ```

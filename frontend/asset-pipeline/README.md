@@ -88,3 +88,7 @@ CURSOR-GAME-V1: два шестикадровых набора пересоби�
 в `output/cursor_game/`. [Промпты, приёмка и проверки](references/CURSOR_GAME_QA.md).
 
 Корневая `generated_images/` и прежняя `asset-pipeline/input/` объединены в `asset-pipeline/generated_images/`. Исходники из старой корневой папки отслеживались Git; новый каталог не исключён из Git. Промежуточные варианты хранятся в `generated_images/attempts/`: автоматическая обработка не обходит вложенные папки. Любой отдельный лист можно передать через `--file`. `output/` не входит в Git. `references/legacy-sprites-*.json` — неиспользуемые снимки; новые референсы добавлять в Git осознанно.
+
+## Монорепозиторий
+
+Pipeline находится в `frontend/asset-pipeline/` и сохраняет отдельный scope. Существующие команды этого документа выполнять из `frontend/`: относительные `public/`, `src/` и `asset-pipeline/` относятся к desktop. Общие docs находятся в корневом `docs/`, выше frontend. Скрипты определяют frontend root по расположению pipeline; runtime/создание графики не относятся к общим dev/test-командам.

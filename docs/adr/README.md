@@ -4,9 +4,9 @@ ADR фиксируют причины архитектурных решений.
 
 | ADR | Статус | Решение |
 |---|---|---|
-| [`ADR-014`](./ADR-014-native-window-motion.md) | Accepted | Lightweight deterministic motion solver для позиции native window. |
-| [`ADR-015`](./ADR-015-utility-ai-without-xstate.md) | Accepted | Pure TypeScript Utility policy без XState в текущем autonomy boundary. |
-| [`ADR-016`](./ADR-016-local-memory-sqlite.md) | Accepted; review waived for current batch | Локальная память MVP, better-sqlite3 13.0.3, lifecycle/reset и границы #6–#8. |
-| [`ADR-017`](./ADR-017-monorepo.md) | Accepted пользователем | Общий репозиторий, отдельные runtime и scope desktop/backend. |
+| [`ADR-014`](ADR-014-native-window-motion.md) | Accepted | Lightweight deterministic motion solver для позиции native window. |
+| [`ADR-015`](ADR-015-utility-ai-without-xstate.md) | Accepted | Pure TypeScript Utility policy без XState в текущем autonomy boundary. |
+| [`ADR-016`](ADR-016-local-memory-sqlite.md) | Accepted; review waived for current batch | Локальная память MVP, better-sqlite3 13.0.3, lifecycle/reset и границы #6–#8. |
+| [`ADR-017`](ADR-017-monorepo.md) | Accepted пользователем | Общий репозиторий, отдельные runtime и scope desktop/backend. |
 
 Новый ID назначается только после поиска коллизий по репозиторию.

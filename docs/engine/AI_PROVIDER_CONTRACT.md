@@ -12,7 +12,7 @@ Application владеет портом, сборкой `AIProviderRequest` и `
 
 ## Request DTO (Форма запроса)
 
-[ai-provider.interface.ts](../../src/application/ports/ai-provider.interface.ts) использует точный alias `AIProviderCharacterSnapshot = CharacterSnapshot` из [domain types](../../src/domain/character/types.ts); отдельной provider-модели traits нет.
+[ai-provider.interface.ts](../../frontend/src/application/ports/ai-provider.interface.ts) использует точный alias `AIProviderCharacterSnapshot = CharacterSnapshot` из [domain types](../../frontend/src/domain/character/types.ts); отдельной provider-модели traits нет.
 
 ### Правила:
 
@@ -24,7 +24,7 @@ P17-A04 объявляет optional `previousInitiative` только для я�
 
 ### Канонический CharacterSnapshot — P17-A03 (#27)
 
-`CharacterStateService.getSnapshot()` → Domain [createCharacterSnapshot](../../src/domain/character/character-snapshot.ts) → `AIProviderRequest.characterSnapshot`. Mapper/provider не дублируют projection/tone synthesis.
+`CharacterStateService.getSnapshot()` → Domain [createCharacterSnapshot](../../frontend/src/domain/character/character-snapshot.ts) → `AIProviderRequest.characterSnapshot`. Mapper/provider не дублируют projection/tone synthesis.
 
 | Поле снимка | Источник и формат | Инвариант |
 |---|---|---|
@@ -36,7 +36,7 @@ P17-A04 объявляет optional `previousInitiative` только для я�
 | `intimacy` | `flirtiness`, `romanticCharge`, `userConsentEnabled` | Первые два поля в `[0, 100]`, consent — boolean. |
 | `synthesizedTone` | Результат доменного `synthesizeEmotionalTone(state)` | Обязательный `SynthesizedEmotionalTone`: `shy`, `sleepy`, `playful`, `curious`, `neutral`, `affectionate`, `flustered`. |
 
-`playfulness`/`sensitivity`/`boldness` копируют `axes.*.current`; [calculateShyness](../../src/domain/character/derived-traits.ts):
+`playfulness`/`sensitivity`/`boldness` копируют `axes.*.current`; [calculateShyness](../../frontend/src/domain/character/derived-traits.ts):
 
 `0.45 * sensitivity.current + 0.35 * (1 - boldness.current) + 0.20 * (1 - extraversion.current)`.
 
@@ -50,7 +50,7 @@ P17-A04 объявляет optional `previousInitiative` только для я�
 
 ## Dialogue runtime и IPC — P17-A02 (#19)
 
-Runtime перенесён в Main/Application в P17-I01 (#44). DTO: [ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — `DialogueCommandDTO`, `DialogueCommandReceiptDTO`, `DialoguePresentationDTO`, `BrainStateDTO`, `WispApiBridge`.
+Runtime перенесён в Main/Application в P17-I01 (#44). DTO: [ipc-contracts.ts](../../frontend/src/shared/ipc-contracts.ts) — `DialogueCommandDTO`, `DialogueCommandReceiptDTO`, `DialoguePresentationDTO`, `BrainStateDTO`, `WispApiBridge`.
 
 ### Единственный владелец и композиция
 
@@ -65,7 +65,7 @@ Runtime перенесён в Main/Application в P17-I01 (#44). DTO: [ipc-contr
 
 Main создаёт runtime после Character/Brain, до handler; инъецирует provider, **существующий** Character service/arbitration/publisher, monotonic clock, scheduler и ID generator. Clock/scheduler — структурные интерфейсы; Application без Electron/Node/Renderer. Новые dependencies, Renderer singleton и второй Character authority не нужны.
 
-[DialogueRuntime](../../src/application/services/dialogue-loop.service.ts) разделяет await и semantic commit: context/`provider_response`/intent применяются только после generation/deadline проверки. Mapper создаёт candidate для Character gating; прямой `applyBehaviorIntentToAnimation` из dialogue hook удаляется.
+[DialogueRuntime](../../frontend/src/application/services/dialogue-loop.service.ts) разделяет await и semantic commit: context/`provider_response`/intent применяются только после generation/deadline проверки. Mapper создаёт candidate для Character gating; прямой `applyBehaviorIntentToAnimation` из dialogue hook удаляется.
 
 ### Минимальная IPC boundary
 
@@ -167,7 +167,7 @@ Infrastructure adapter, создаваемый Main, для backend API v1 ни�
 
 ## Desktop ↔ backend v1
 
-Внешний протокол вынесен в самостоятельный [BACKEND_API_CONTRACT.md](BACKEND_API_CONTRACT.md): транспорт, диапазоны, HTTP-статусы и общие JSON fixtures. [Wire types](../../src/application/ports/backend-ai-contract.ts) не имеют импортов/алиасов из Domain или IAIProvider. Backend использует их независимо от внутренней модели desktop; adapter явно преобразует canonical CharacterSnapshot и provider DTO. Этот раздел владеет только клиентским lifecycle и policy.
+Внешний протокол вынесен в самостоятельный [BACKEND_API_CONTRACT.md](BACKEND_API_CONTRACT.md): транспорт, диапазоны, HTTP-статусы и общие JSON fixtures. [Wire types](../../frontend/src/application/ports/backend-ai-contract.ts) не имеют импортов/алиасов из Domain или IAIProvider. Backend использует их независимо от внутренней модели desktop; adapter явно преобразует canonical CharacterSnapshot и provider DTO. Этот раздел владеет только клиентским lifecycle и policy.
 
 ### Projection и допустимые решения
 
@@ -191,7 +191,7 @@ Wire-valid `decision.mood = playful` не имеет точного соотве
 
 ### Клиентские ограничения и deadline
 
-[AIRequestPolicy](../../src/application/ports/ai-request-policy.ts) — desktop-only policy: один in-flight, 6 отправок за скользящие 60 000 ms Main-monotonic time и 100 за Main session. Это не серверная quota и не гарантированный доступный бюджет backend. Application проверяет их атомарно вместе с admission. Validation/busy/local rejection/Mock бесплатны; фактическая отправка, включая ошибочную, расходует единицу. Reset/reload/quiet не обнуляют счётчики, restart обнуляет только клиентский session guard.
+[AIRequestPolicy](../../frontend/src/application/ports/ai-request-policy.ts) — desktop-only policy: один in-flight, 6 отправок за скользящие 60 000 ms Main-monotonic time и 100 за Main session. Это не серверная quota и не гарантированный доступный бюджет backend. Application проверяет их атомарно вместе с admission. Validation/busy/local rejection/Mock бесплатны; фактическая отправка, включая ошибочную, расходует единицу. Reset/reload/quiet не обнуляют счётчики, restart обнуляет только клиентский session guard.
 
 Минутный интервал (now−60000, now]; левая граница истекает. Session cap → unavailable и canSubmit=false до restart с локальным сообщением. Очереди нет, автоматических retries — 0. При новом ручном обращении Main создаёт новый UUID; bounded server dedup/replay определён в §5 wire-контракта и не вводит клиентские retries.
 

@@ -13,7 +13,7 @@ Cancelled/failed run, admission без start, gaze, курсорные samples/r
 
 Результат событийного provider — **только text**. Нет decision, memoryCandidates, числовых deltas, tools или нового provider-owned Activity. Физический исход остаётся desktop fact; сервер получает его, а не предлагает заменить. Character/Activity/память не меняются от публикации AI-фразы, `provider_response` stimulus не создаётся. Нельзя выдавать caught за доказанное удовольствие/социальное участие пользователя.
 
-Application владеет event lifecycle/current IDs/generation и admission; Domain — gates, локальная вероятность выбора и невмешательство в P0–P2; Infrastructure/Main — транспорт/abort/DI. Типы: [semantic events](../../src/application/ports/ai-event-provider.interface.ts), [wire v3](../../src/application/ports/backend-events-contract.ts), [IPC speech](../../src/shared/ipc-contracts.ts). Нового IPC command или callback от Renderer для модели нет.
+Application владеет event lifecycle/current IDs/generation и admission; Domain — gates, локальная вероятность выбора и невмешательство в P0–P2; Infrastructure/Main — транспорт/abort/DI. Типы: [semantic events](../../frontend/src/application/ports/ai-event-provider.interface.ts), [wire v3](../../frontend/src/application/ports/backend-events-contract.ts), [IPC speech](../../frontend/src/shared/ipc-contracts.ts). Нового IPC command или callback от Renderer для модели нет.
 
 ## 2. Общие бюджеты и приоритет пользователя
 
@@ -83,6 +83,6 @@ Access/ZDR, RAM terminal response cache≤10min, ledger IDs≤24h и aggregates�
 
 ## 7. Fixtures и проверка
 
-Общие [v3 fixtures](../contracts/fixtures/desktop-backend-v3/): оба event requests, event success/error и follow-up chat request/success. Success/error — альтернативы HTTP200/503. V1/v2 fixtures неизменны.
+Общие [v3 fixtures](../contracts/fixtures/desktop-backend-v3): оба event requests, event success/error и follow-up chat request/success. Success/error — альтернативы HTTP200/503. V1/v2 fixtures неизменны.
 
 Desktop: duplicate commit/no-op, uncertain/failed game write, cancelled game, current SocialBid terminal, exact deadline, quiet/ignore/pet reset, shared counters/reserve20, user preemption/abort settlement без overlap, speech priority/expiry, previousInitiative60s/currentgeneration, reset/dispose после каждого await, отсутствие дополнительного reward/extraction/write/automatic calls, restored preference bias. Backend: route/version/schema/bounds/previousInitiative, event text-only, fixtures, shared endpoint quota/ID conflict, deadline/cancel/usage-on-error, no payload logs. Typecheck→npm test для developer; pip check+pytest для backend. Windows smoke пользователь выполняет вручную; архитектор runtime tests/build не запускает.

@@ -4,7 +4,7 @@
 
 **CHANGES / Decision:** принят [ADR-016](../adr/ADR-016-local-memory-sqlite.md#decision), dependency verdict — [датированный review](../adr/ADR-016-local-memory-sqlite.md#dependency-review). Уточнены канонический Memory contract и типы до реализации.
 
-**BOUNDARIES / Layer boundaries & Contracts:** [Memory §1](MEMORY_ENGINE.md#1-границы-владение-и-источник-истины), [ports](../../src/application/ports/memory-repository.interface.ts), [snapshot v1](../../src/application/ports/character-memory-snapshot.ts), [IPC DTO](../../src/shared/ipc-contracts.ts). Runtime, установка и root tooling не реализованы; сетевой wire contract и Domain semantics не менялись.
+**BOUNDARIES / Layer boundaries & Contracts:** [Memory §1](MEMORY_ENGINE.md#1-границы-владение-и-источник-истины), [ports](../../frontend/src/application/ports/memory-repository.interface.ts), [snapshot v1](../../frontend/src/application/ports/character-memory-snapshot.ts), [IPC DTO](../../frontend/src/shared/ipc-contracts.ts). Runtime, установка и root tooling не реализованы; сетевой wire contract и Domain semantics не менялись.
 
 ## Implementation consequences
 

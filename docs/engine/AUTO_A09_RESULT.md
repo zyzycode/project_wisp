@@ -14,17 +14,17 @@ Feedback зависит от фактической semantic execution; quiet �
 
 ## CHANGES / Layer boundaries & Contracts
 
-- [Autonomy](./AUTONOMY_ENGINE.md): source priority, admission, deadlines, no-resume,
+- [Autonomy](AUTONOMY_ENGINE.md): source priority, admission, deadlines, no-resume,
   локальные семейства, opportunity coalescing, общий initiative budget и versioned tuning.
-- [Activity](./ACTIVITY_ENGINE.md): request/start/outcome, semantic dedup, Explore/игра,
+- [Activity](ACTIVITY_ENGINE.md): request/start/outcome, semantic dedup, Explore/игра,
   drag/landing и terminal transaction.
-- [Character](./CHARACTER_ENGINE.md): quiet, outcome deltas и bounded recovery без смены thresholds.
-- [Behavior intents](./BEHAVIOR_INTENTS.md), [Perception](./PERCEPTION_ENGINE.md),
-  [UI](./UI_SPEC.md): только согласование kinds, bounded approach и quiet bridge.
-- [Admission port](../../src/application/ports/behavior-admission-port.ts): provider offer/receipt,
+- [Character](CHARACTER_ENGINE.md): quiet, outcome deltas и bounded recovery без смены thresholds.
+- [Behavior intents](BEHAVIOR_INTENTS.md), [Perception](PERCEPTION_ENGINE.md),
+  [UI](UI_SPEC.md): только согласование kinds, bounded approach и quiet bridge.
+- [Admission port](../../frontend/src/application/ports/behavior-admission-port.ts): provider offer/receipt,
   ownership, lifecycle events, admission boundary, tuning и budget snapshot.
-- [Feedback port](../../src/application/ports/shimeji-feedback-port.ts): target outcome и mapper input.
-- [Shared DTO](../../src/shared/ipc-contracts.ts): target quiet command, bridge и полный snapshot.
+- [Feedback port](../../frontend/src/application/ports/shimeji-feedback-port.ts): target outcome и mapper input.
+- [Shared DTO](../../frontend/src/shared/ipc-contracts.ts): target quiet command, bridge и полный snapshot.
 
 BOUNDARIES: только типы и спецификации. Нет runtime, новых dependencies, provider SDK,
 UI implementation, persistence, изменений Motion/Renderer owners или внешних scopes.

@@ -1,0 +1,86 @@
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+function frontendEnvironment(env) {
+  const serverOnly = new Set(['GROQ_API_KEY', 'TOKEN_API', 'ASSISTANTS_JSON', 'WISP_UPSTREAM_TRUST_ENV']);
+  return Object.fromEntries(Object.entries(env).filter(([name]) => !serverOnly.has(name.toUpperCase())));
+}
+
+export function backendCommand(mode, env = process.env) {
+  const cwd = path.join(root, 'backend');
+  const python = env.WISP_PYTHON || [
+    path.join(cwd, '.venv', 'Scripts', 'python.exe'),
+    path.join(cwd, '.venv', 'bin', 'python'),
+  ].find(existsSync) || 'python';
+  const port = env.WISP_BACKEND_PORT || '8000';
+  if (!/^\d+$/u.test(port) || Number(port) < 1 || Number(port) > 65535) {
+    throw new Error('WISP_BACKEND_PORT must be a port between 1 and 65535');
+  }
+  const commands = {
+    dev: ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', port],
+    test: ['-m', 'pytest', '-q', '-p', 'no:cacheprovider'],
+    check: ['-m', 'pip', 'check'],
+  };
+  if (!Object.hasOwn(commands, mode)) throw new Error(`Unknown backend command: ${mode}`);
+  return { name: 'backend', command: python, args: commands[mode], cwd, env };
+}
+
+export function devCommands(env = process.env) {
+  const backend = backendCommand('dev', env);
+  const cwd = path.join(root, 'frontend');
+  const require = createRequire(path.join(cwd, 'package.json'));
+  const vite = path.join(path.dirname(require.resolve('vite/package.json')), 'bin', 'vite.js');
+  const frontendEnv = frontendEnvironment(env);
+  return [backend, {
+    name: 'frontend', command: process.execPath, args: [vite], cwd,
+    env: { ...frontendEnv, WISP_BACKEND_URL: `http://127.0.0.1:${env.WISP_BACKEND_PORT || '8000'}`,
+      WISP_BACKEND_API_VERSION: '1', WISP_AI_EVENTS_ENABLED: 'false' },
+  }];
+}
+
+export function frontendCommand(script, args = [], env = process.env) {
+  const candidates = [env.npm_execpath];
+  for (const directory of (env.PATH || env.Path || '').split(path.delimiter)) {
+    if (!directory) continue;
+    candidates.push(path.join(directory, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+      path.join(directory, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'));
+    const npm = path.join(directory, 'npm');
+    if (existsSync(npm)) {
+      const resolved = realpathSync(npm);
+      if (path.basename(resolved) === 'npm-cli.js') candidates.push(resolved);
+    }
+  }
+  const npmCli = candidates.find(candidate => candidate && existsSync(candidate));
+  if (!npmCli) throw new Error('npm CLI not found. Add the Node.js/npm installation to PATH.');
+  const python = backendCommand('test', env).command;
+  const frontendEnv = { ...frontendEnvironment(env), WISP_PYTHON: python };
+  if (path.isAbsolute(python)) {
+    frontendEnv.PATH = `${path.dirname(python)}${path.delimiter}${env.PATH || env.Path || ''}`;
+    delete frontendEnv.Path;
+  }
+  return { name: 'frontend', command: process.execPath,
+    args: [npmCli, 'run', script, ...(args.length ? ['--', ...args] : [])],
+    cwd: path.join(root, 'frontend'), env: frontendEnv };
+}
+
+export function wispCommands(mode, args = [], env = process.env) {
+  const tooling = () => ({ name: 'tooling', command: process.execPath,
+    args: ['--test', ...readdirSync(path.join(root, 'scripts', 'tests'))
+      .filter(name => name.endsWith('.test.mjs')).map(name => path.join(root, 'scripts', 'tests', name))],
+    cwd: root, env });
+  if (mode === 'dev') return devCommands(env);
+  if (mode === 'dev:backend') return [backendCommand('dev', env)];
+  if (mode === 'test:backend') return [backendCommand('test', env)];
+  if (mode === 'check:backend') return [backendCommand('check', env)];
+  if (mode === 'test:tooling') return [tooling()];
+  if (mode === 'test') return [tooling(), frontendCommand('test', [], env),
+    frontendCommand('test:python', [], env), backendCommand('check', env), backendCommand('test', env)];
+  const frontendScripts = { 'dev:frontend': 'dev', 'test:frontend': 'test', 'test:python': 'test:python',
+    typecheck: 'typecheck', 'sprites:validate': 'sprites:validate' };
+  if (Object.hasOwn(frontendScripts, mode)) return [frontendCommand(frontendScripts[mode], args, env)];
+  throw new Error(`Unknown Wisp command: ${mode}`);
+}

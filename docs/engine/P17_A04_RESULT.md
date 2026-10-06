@@ -11,10 +11,10 @@
 ## Layer boundaries & Contracts
 
 - [AI_EVENTS_CONTRACT](AI_EVENTS_CONTRACT.md) — единственный canonical источник event eligibility, game commit/source dedupe, shared budgets/handoff, quiet/ignore/current lifecycle, UI/previousInitiative, v3 wire/data и learned preference consumption.
-- [ai-event-provider.interface.ts](../../src/application/ports/ai-event-provider.interface.ts): semantic event provider/cancel, shared request-control extension, user interlock и additive game-commit observer. Observer согласован с разработчиком #7/#8: `append` no-op также возвращает success, поэтому once-only event dedupe обязателен по composite source key.
-- [ai-provider.interface.ts](../../src/application/ports/ai-provider.interface.ts): optional previousInitiative только для v3. #56 v2 payload/response не изменяются. Memory shape берётся из принятого v2; UTF-16 budget уточнён как рекурсивная сумма string values, включая key/enum values, без JSON property names.
-- [backend-events-contract.ts](../../src/application/ports/backend-events-contract.ts), [v3 fixtures](../contracts/fixtures/desktop-backend-v3/) — явные обе стороны events/chat. Backend v2 задача #2 может завершаться независимо, без чтения/реализации v3.
-- [IPC DTO](../../src/shared/ipc-contracts.ts): additive optional initiativeSpeech, без нового канала/команды. [UI §6.1.1](UI_SPEC.md#611-cursor-game-v1-presentation) сохраняет приоритет текущего dialogue/local game.
+- [ai-event-provider.interface.ts](../../frontend/src/application/ports/ai-event-provider.interface.ts): semantic event provider/cancel, shared request-control extension, user interlock и additive game-commit observer. Observer согласован с разработчиком #7/#8: `append` no-op также возвращает success, поэтому once-only event dedupe обязателен по composite source key.
+- [ai-provider.interface.ts](../../frontend/src/application/ports/ai-provider.interface.ts): optional previousInitiative только для v3. #56 v2 payload/response не изменяются. Memory shape берётся из принятого v2; UTF-16 budget уточнён как рекурсивная сумма string values, включая key/enum values, без JSON property names.
+- [backend-events-contract.ts](../../frontend/src/application/ports/backend-events-contract.ts), [v3 fixtures](../contracts/fixtures/desktop-backend-v3) — явные обе стороны events/chat. Backend v2 задача #2 может завершаться независимо, без чтения/реализации v3.
+- [IPC DTO](../../frontend/src/shared/ipc-contracts.ts): additive optional initiativeSpeech, без нового канала/команды. [UI §6.1.1](UI_SPEC.md#611-cursor-game-v1-presentation) сохраняет приоритет текущего dialogue/local game.
 - Только формы расширены в Domain `CharacterAutonomySnapshot` и `CursorObserveInput`; runtime choice policy не реализована. Existing CharacterState/preferences/snapshot schema сохраняются; Domain не импортирует Application/SQLite/provider.
 
 ## Implementation consequences

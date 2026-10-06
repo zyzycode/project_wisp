@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -8,7 +8,7 @@ describe('Tooling: Sprite & Manifest Asset Integrity', () => {
     const scriptPath = resolve(process.cwd(), 'scripts/validate_manifest.py');
     expect(existsSync(scriptPath)).toBe(true);
 
-    const output = execSync('python3 scripts/validate_manifest.py --check --json', {
+    const output = execFileSync(process.env.WISP_PYTHON ?? 'python', [scriptPath, '--check', '--json'], {
       cwd: process.cwd(),
       encoding: 'utf8',
     });

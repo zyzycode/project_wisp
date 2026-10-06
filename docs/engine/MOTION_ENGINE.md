@@ -1,6 +1,6 @@
 # Контракт Motion Engine
 
-Физические факты drag/throw/fall/collision/crawl и position authority, без выбора автономного поведения. Lightweight native-window solver обоснован в [ADR-014](../adr/ADR-014-native-window-motion.md). Типы: [motion-engine.ts](../../src/domain/behavior/motion-engine.ts), [surface-kinematics.ts](../../src/domain/behavior/surface-kinematics.ts).
+Физические факты drag/throw/fall/collision/crawl и position authority, без выбора автономного поведения. Lightweight native-window solver обоснован в [ADR-014](../adr/ADR-014-native-window-motion.md). Типы: [motion-engine.ts](../../frontend/src/domain/behavior/motion-engine.ts), [surface-kinematics.ts](../../frontend/src/domain/behavior/surface-kinematics.ts).
 
 ## 1. Владение и поток
 
@@ -12,7 +12,7 @@ Domain считает physics/surface kinematics, не timers/OS/behavior. Main/
 
 - **Единицы**: координаты — `WorldPx` (логический пиксель экрана / DIP, origin сверху слева, $x$ вправо, $y$ вниз); скорость — `WorldPx/s`; ускорение — `WorldPx/s²`; время/таймстемпы — monotonic ms.
 - **Опорная точка (`rootPosition`)**: базовый контактный pivot персонажа (подошвы/центр опоры). Смещения рендерера и спрайтов вычисляются относительно него и не влияют на физический pivot.
-- Типы данных (`Vector2Dto`, `ScreenBoundsDto`, `CollisionInsets`, `MotionState`, `MotionEvent`) импортируются напрямую из [`src/domain/behavior/motion-engine.ts`](../../src/domain/behavior/motion-engine.ts).
+- Типы данных (`Vector2Dto`, `ScreenBoundsDto`, `CollisionInsets`, `MotionState`, `MotionEvent`) импортируются напрямую из [`frontend/src/domain/behavior/motion-engine.ts`](../../frontend/src/domain/behavior/motion-engine.ts).
 
 ## 3. Физические состояния
 
@@ -36,7 +36,7 @@ stateDiagram-v2
    - `support_lost`: потеря твердой поверхности (полка/окно исчезли или персонаж выполз за пределы);
    - `voluntary_jump`: санкционированный прыжок системы автономности.
 3. **`land` (фаза стабилизации и приземления)**: Контакт с нижней поверхностью (`screen_floor` / границы экрана). Включает отскоки (`bounce`) и тангенциальное трение до выполнения критериев затухания (`settle`). Завершается исходом `soft_landing`, `stumble` или `crash_landing`.
-4. **`crawl` (`climbing_wall`, `hanging_ceiling`)**: Кинематика движения по поверхностям ([`surface-kinematics.ts`](../../src/domain/behavior/surface-kinematics.ts)):
+4. **`crawl` (`climbing_wall`, `hanging_ceiling`)**: Кинематика движения по поверхностям ([`surface-kinematics.ts`](../../frontend/src/domain/behavior/surface-kinematics.ts)):
    - Движение по вертикальной стене (`climbing_wall`) со скоростью $v_{\text{vertical}}$;
    - Ползание по верхней кромке стороннего окна (`hanging_ceiling`) со скоростью $v_{\text{crawl}}$. При выходе за границу поверхности генерируется `support_lost` и персонаж переходит в `fall`.
 
@@ -108,7 +108,7 @@ AND abs(y - maxY) <= ε
 
 ## 7. Кинематика поверхностей (Surfaces и crawl)
 
-Управление движением по поверхностям изолировано в [`surface-kinematics.ts`](../../src/domain/behavior/surface-kinematics.ts). Модуль принимает нормализованный снимок окружения (`EnvironmentSnapshot`), не выполняя прямого обращения к OS API.
+Управление движением по поверхностям изолировано в [`surface-kinematics.ts`](../../frontend/src/domain/behavior/surface-kinematics.ts). Модуль принимает нормализованный снимок окружения (`EnvironmentSnapshot`), не выполняя прямого обращения к OS API.
 
 - **Стена (`climbing_wall`)**: $x = x_{\text{wall}}, \quad y(t+\Delta t) = y(t) + v_{\text{vertical}} \cdot \Delta t$.
 - **Потолок/кромка окна (`hanging_ceiling` / crawl)**: $y = y_{\text{support}}, \quad x(t+\Delta t) = x(t) + v_{\text{crawl}} \cdot \Delta t$.
@@ -164,13 +164,13 @@ Forced Motion или voluntary Behavior/Surface → PetPositionService → `comm
 
 1. Renderer отправляет typed pointer events, не двигает окно и не получает Electron window.
 2. Drag/throw release/support loss (P1/P0) монопольно передают position Motion и немедленно отменяют Activity; voluntary commands не применяются до grounded + stable settle.
-3. Contact root идёт через [PetPositionPort](../../src/application/ports/pet-position-port.ts). [ElectronPetPositionAdapter](../../src/infrastructure/adapters/electron-pet-position-adapter.ts) делает root→native:
+3. Contact root идёт через [PetPositionPort](../../frontend/src/application/ports/pet-position-port.ts). [ElectronPetPositionAdapter](../../frontend/src/infrastructure/adapters/electron-pet-position-adapter.ts) делает root→native:
 $$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_x, \dots)), \quad y_{\text{native}} = \text{round}(\text{clamp}(y_{\text{root}} - \text{offset}_y, \dots))$$
 4. `BrowserWindow.setPosition` — только при изменении integer coordinates, без параллельных владельцев позиции.
 
 ### #43: wander в пределах текущей опоры
 
-[WanderTargetPlanner](../../src/application/ports/wander-target-planner.ts) — вызов pure Domain function, не требование класса/DI/new IPC. Application передаёт реальные screenBounds/currentSurface/root/insets/config/PRNG, не синтезирует screen bounds из window_top и не считает walking range. Domain использует собственные structural types, без Application imports.
+[WanderTargetPlanner](../../frontend/src/application/ports/wander-target-planner.ts) — вызов pure Domain function, не требование класса/DI/new IPC. Application передаёт реальные screenBounds/currentSurface/root/insets/config/PRNG, не синтезирует screen bounds из window_top и не считает walking range. Domain использует собственные structural types, без Application imports.
 
 - `planWanderTarget` рядом с `calculateNextWanderTarget`; direction/distance/duration policy и два PRNG values на random wander сохраняются.
 - Window top: `minX = max(screen.x + insets.left, surface.bounds.x)`, `maxX = min(screen.x + screen.width - insets.right, surface.bounds.x + surface.bounds.width)`, `targetY = surface.supportY ?? surface.bounds.y`. Insets применены к screen один раз; support ограничивает contact root, не sprite rectangle.
@@ -178,17 +178,17 @@ $$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_
 - Нет valid window_top → прежний screen-floor planner; eligibility/support-loss — Motion/Surface.
 - Явный `targetRootPosition` directed route минует random planner/PRNG; проверяется Motion/traversal.
 
-Регрессии `tests/domain/wander-target-planner.test.ts`: window top/часть вне screen/negative monitor origin/empty/invalid support/floor+PRNG parity. Application: отсутствие команды при empty и PRNG для explicit target. Искусственные bounds удалены из AutonomyCoordinator. [Visual native-offset geometry](RENDER_ENGINE.md) Domain не потребляет.
+Регрессии `frontend/tests/domain/wander-target-planner.test.ts`: window top/часть вне screen/negative monitor origin/empty/invalid support/floor+PRNG parity. Application: отсутствие команды при empty и PRNG для explicit target. Искусственные bounds удалены из AutonomyCoordinator. [Visual native-offset geometry](RENDER_ENGINE.md) Domain не потребляет.
 
 ## 9. Оркестрация (ShimejiMotionOrchestrator)
 
-[shimeji-motion-orchestrator.ts](../../src/application/services/shimeji-motion-orchestrator.ts) владеет Main clock, accumulator и drag session. На tick накапливает delta (cap `maxFrameDeltaSec = 0.25`), исполняет fixedStepSec и передаёт результат position port. Brain получает authoritative motion; максимум один цельный snapshot на внешний tick commit.
+[shimeji-motion-orchestrator.ts](../../frontend/src/application/services/shimeji-motion-orchestrator.ts) владеет Main clock, accumulator и drag session. На tick накапливает delta (cap `maxFrameDeltaSec = 0.25`), исполняет fixedStepSec и передаёт результат position port. Brain получает authoritative motion; максимум один цельный snapshot на внешний tick commit.
 
 <a id="10-typed-ipc"></a>
 
 ## 10. Граница IPC (Typed IPC Boundary)
 
-[ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — leaf без OS descriptors/renderer classes/Electron refs. `BodyEventDTO`: `drag_started` / `drag_moved` / `drag_ended` несут общий порядок, gestureId/pointer ID/screen coordinates; Main принимает gesture после valid start, отбрасывает stale/foreign. Specialized drag methods до AUTO-I09 — transitional input, не второй presentation protocol.
+[ipc-contracts.ts](../../frontend/src/shared/ipc-contracts.ts) — leaf без OS descriptors/renderer classes/Electron refs. `BodyEventDTO`: `drag_started` / `drag_moved` / `drag_ended` несут общий порядок, gestureId/pointer ID/screen coordinates; Main принимает gesture после valid start, отбрасывает stale/foreign. Specialized drag methods до AUTO-I09 — transitional input, не второй presentation protocol.
 
 BrainStateDTO.motion содержит dragged/airborne/grounded, root/velocity, forced/voluntary authority. Exact shape/order/cadence — [UI §6](UI_SPEC.md#6-brain--body-ipc).
 

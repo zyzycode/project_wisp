@@ -12,18 +12,18 @@ Renderer не парсит provider DTO, не считает Needs/Activity/auth
 
 ### #43: общая геометрия окна и визуального root
 
-[PetPresentationLayoutDTO](../../src/shared/ipc-contracts.ts) — статическая конфигурация; один экземпляр и pure projection в [pet-presentation-layout.ts](../../src/shared/pet-presentation-layout.ts) принадлежат Render и напрямую потребляются Main/Renderer. Shared-модуль без Renderer/DOM/React/Electron/Domain imports; новый IPC/runtime layout service/DOM measurement для Main не нужны.
+[PetPresentationLayoutDTO](../../frontend/src/shared/ipc-contracts.ts) — статическая конфигурация; один экземпляр и pure projection в [pet-presentation-layout.ts](../../frontend/src/shared/pet-presentation-layout.ts) принадлежат Render и напрямую потребляются Main/Renderer. Shared-модуль без Renderer/DOM/React/Electron/Domain imports; новый IPC/runtime layout service/DOM measurement для Main не нужны.
 
 - Compact 280×320, expanded 1140×620; character rect (20, 18, 240, 240), viewport 512×512, root (256, 460). CSS/CharacterRenderer/default viewport-pivot/Main используют общий экземпляр, без копий чисел.
 - `calculateWindowRootPivotOffset(layout)`: `s = min(width / viewport.width, height / viewport.height)`; `letterbox = (characterSize - viewportSize * s) / 2`; `offset = characterRect.origin + letterbox + spriteRootPivot * s`. Сейчас offset=(140, 233.625) DIP, SVG `xMidYMid meet`.
 - Position adapter получает готовый `pivotOffset`: root↔native, rounding/clamp/commit; scale/letterbox не считает. Main компонует размеры/DI без собственных CSS/Render constants. Меню сохраняет origin/root offset; DPR к DIP не применяется, physical-pixel conversion — platform adapters.
 - Skin совмещает frame pivot с canonical root. Flip/squash/смена клипа не меняют native offset/position authority. Исходный `canvasSize` передаётся отдельно от fixed viewport; нестандартный frame не меняет масштаб всего canvas.
 
-Проверки: `tests/shared/pet-presentation-layout.test.ts` — asymmetric letterbox, compact/expanded parity; Renderer — canonical root при frame change и нестандартные canvas/pivots.
+Проверки: `frontend/tests/shared/pet-presentation-layout.test.ts` — asymmetric letterbox, compact/expanded parity; Renderer — canonical root при frame change и нестандартные canvas/pivots.
 
 ### Renderer-local Skin contract
 
-[skin-engine.ts](../../src/renderer/render-engine/skin-engine.ts): `ISkinEngine`, `BodyVisualState`, reflex types — только Renderer, не Application port/shared IPC.
+[skin-engine.ts](../../frontend/src/renderer/render-engine/skin-engine.ts): `ISkinEngine`, `BodyVisualState`, reflex types — только Renderer, не Application port/shared IPC.
 
 | `BodyVisualState` поле | Назначение | Инвариант |
 |---|---|---|
@@ -47,7 +47,7 @@ Spine/Live2D, placeholders, dependencies/adapter IDs вне AUTO-A08/AUTO-I10; �
 
 ## 1. Manifest & Asset Metadata
 
-Реестр: `public/assets/sprites/manifest.json`.
+Реестр: `frontend/public/assets/sprites/manifest.json`.
 
 ### 1.1. Идентификаторы и категории
 
@@ -64,7 +64,7 @@ Spine/Live2D, placeholders, dependencies/adapter IDs вне AUTO-A08/AUTO-I10; �
 
 ### 1.2. Спецификация манифеста и типы
 
-[types.ts](../../src/renderer/render-engine/types.ts): слои body/face/emotion/prop; animation fields `frames`, `fps`, `loop`, `pivot`, `faceOverlay`, `frameMeta`. `emotionalTone` использует [Character SynthesizedEmotionalTone](CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения).
+[types.ts](../../frontend/src/renderer/render-engine/types.ts): слои body/face/emotion/prop; animation fields `frames`, `fps`, `loop`, `pivot`, `faceOverlay`, `frameMeta`. `emotionalTone` использует [Character SynthesizedEmotionalTone](CHARACTER_ENGINE.md#8-эмоциональный-тон-синтез-настроения).
 
 Validation: непустые frames, optional `framesCount = frames.length`; fps/durationMs >0; sourceRect/canvasSize width/height >0; pivot.x/y в source-canvas pixels. Пути относительные либо `/assets/...`, traversal `..` запрещён. Flat manifest допускает отсутствие schemaVersion и нормализуется в `animations`; body требует faceOverlay.
 
@@ -94,7 +94,7 @@ Frames — PNG paths либо atlas `SpriteFrameDef.sourceRect`, отсчиты�
 
 Для overlay: только face/* keys; объявленный `anchor` в `defaultAnchors`/`frameMeta`; fallback входит в allowedFaceKeys либо `none`. Baked-in/none никогда не получают allowedFaceKeys/anchor, fallback только none. Без якоря overlay запрещён; expression не заменяет полный face track.
 
-Текущие назначения/allowedFaceKeys — в [manifest.json](../../public/assets/sprites/manifest.json): overlay у body_idle/stand_up/sit/lie, baked-in у motion/reaction body_walk/run/dragged/fall/land/sleep. Каталог конкретных face keys читается из манифеста, не копируется сюда.
+Текущие назначения/allowedFaceKeys — в [manifest.json](../../frontend/public/assets/sprites/manifest.json): overlay у body_idle/stand_up/sit/lie, baked-in у motion/reaction body_walk/run/dragged/fall/land/sleep. Каталог конкретных face keys читается из манифеста, не копируется сюда.
 
 ### 1.6. Система координат (Face Anchor & Pivot)
 

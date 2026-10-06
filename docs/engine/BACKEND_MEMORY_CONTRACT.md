@@ -1,6 +1,6 @@
 # Desktop ↔ Backend v2: ограниченная локальная память
 
-Явное совместимое расширение рядом с v1, решение [P15-A02 #55](P15_A02_RESULT.md). Формы — [backend-memory-contract.ts](../../src/application/ports/backend-memory-contract.ts); imports только из автономных v1 wire types. Серверная реализация — отдельная задача в `wisp_backend`, клиентская — #56. Наличие этого документа не означает доступность `/v2/chat` на сервере.
+Явное совместимое расширение рядом с v1, решение [P15-A02 #55](P15_A02_RESULT.md). Формы — [backend-memory-contract.ts](../../frontend/src/application/ports/backend-memory-contract.ts); imports только из автономных v1 wire types. Серверная реализация — отдельная задача в `wisp_backend`, клиентская — #56. Наличие этого документа не означает доступность `/v2/chat` на сервере.
 
 ## 1. Версия и границы
 
@@ -45,6 +45,6 @@ Full local memory reset очищает источники и инвалидир�
 
 ## 5. Общие fixtures и acceptance
 
-Обе стороны используют **одни и те же** JSON-файлы из [desktop-backend-v2](../contracts/fixtures/desktop-backend-v2/): [request.valid](../contracts/fixtures/desktop-backend-v2/request.valid.json), [response.success](../contracts/fixtures/desktop-backend-v2/response.success.json), [response.error](../contracts/fixtures/desktop-backend-v2/response.error.json). Success/error — альтернативные HTTP200/503 outcomes. V1 fixtures остаются неизменными и продолжают проходить.
+Обе стороны используют **одни и те же** JSON-файлы из [desktop-backend-v2](../contracts/fixtures/desktop-backend-v2): [request.valid](../contracts/fixtures/desktop-backend-v2/request.valid.json), [response.success](../contracts/fixtures/desktop-backend-v2/response.success.json), [response.error](../contracts/fixtures/desktop-backend-v2/response.error.json). Success/error — альтернативные HTTP200/503 outcomes. V1 fixtures остаются неизменными и продолжают проходить.
 
 Проверить обе версии одновременно, mixed endpoint/requestId conflicts, byte/text caps, unknown fields, invalid hints/candidates/source quote, grounded correction, отсутствие model numeric writes, timeout/outage/disconnect, once-only usage и поздние callbacks после reset/dispose. Клиентские semantic tests дополнительно доказывают restart recall facts/game, отсутствие повторного extraction старой истории и сохранение completed reply при ошибке fact write.

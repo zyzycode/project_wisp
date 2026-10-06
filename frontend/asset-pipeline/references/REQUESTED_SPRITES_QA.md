@@ -1,7 +1,7 @@
 # Приёмка запросов AUTO-I04/I05/I06 и #48 — 2026-09-07
 
 Арт-доработка завершена: семь наборов по четыре кадра, 28 PNG RGBA 512×512 в
-[рабочих папках](../../public/assets/sprites/body/). Референс — [etalon.png](../etalon.png).
+[рабочих папках](../../public/assets/sprites/body). Референс — [etalon.png](../etalon.png).
 Все семь наборов зарегистрированы в runtime-манифесте 2026-09-07 по поручению пользователя. Экспорт PNG сам по себе манифест не изменяет; регистрация выполнена отдельно с сохранением покадровых метаданных.
 
 ## Выполненные исправления
@@ -35,8 +35,8 @@
 
 - [Тёмный контактный лист](../output/refinement/contact-dark.png), [светлый](../output/refinement/contact-light.png).
 - [Проверка PNG и хеши](../output/refinement/verification.json), [измерения](../output/refinement/measurements.json).
-- [Семь GIF](../output/previews/), [предложение метаданных](../output/manifest-proposal.json).
-- [Архив исходников](../generated_images/), [улучшенные листы](../generated_images/refined/); неудачные варианты сохранены в `attempts/`.
+- [Семь GIF](../output/previews), [предложение метаданных](../output/manifest-proposal.json).
+- [Архив исходников](../generated_images), [улучшенные листы](../generated_images/refined); неудачные варианты сохранены в `attempts/`.
 
 ## Передача в приложение
 

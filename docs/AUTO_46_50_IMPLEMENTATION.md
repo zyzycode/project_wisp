@@ -28,7 +28,7 @@ GitHub Issues не закрывались: следующий этап — не�
 
 ## Детерминированные сценарии и tuning
 
-[Сквозные тесты](../tests/main/autonomy-closed-loop.test.ts) используют настоящий CharacterStateService,
+[Сквозные тесты](../frontend/tests/main/autonomy-closed-loop.test.ts) используют настоящий CharacterStateService,
 явное время, управляемый RNG и Main composition. Проверены запрос → admission → исполнение игры,
 отмена до/после sprint, дедупликация по run/effect, полная цепочка Explore, quiet/attention wake,
 игнорирование SocialBid без штрафа, курсорный dwell/единственный подход/stale cancellation,
@@ -37,14 +37,14 @@ AI ownership, optional nap versus full user sleep и AI timeout.
 Сценарий из 200 возможностей выбора получает calm, Explore и Zoomies, изменяет Needs,
 сохраняет отношения при одиночных занятиях и ограничивает trace 64 записями.
 Это проверка замыкания поведения, а не оценка субъективной естественности.
-[Тесты admission](../tests/application/provider-behavior-admission.test.ts) проверяют deferred start,
+[Тесты admission](../frontend/tests/application/provider-behavior-admission.test.ts) проверяют deferred start,
 точную границу timeout, reset, устаревшие/некорректные offers и отсутствие повторного запуска.
-[Dialogue tests](../tests/application/dialogue-runtime.test.ts) проверяют settlement metadata,
+[Dialogue tests](../frontend/tests/application/dialogue-runtime.test.ts) проверяют settlement metadata,
 text-only responses, single-flight, offline, timeout, reset/reload и поздние результаты.
 
 Начальный tuning: `AUTO-I12-v1`; calm 8000 ms; run = 2 × walk, crawl = 0.5 × walk.
 Utility factors и положительный repetition floor находятся в
-[local-activity-policy.ts](../src/domain/behavior/local-activity-policy.ts).
+[local-activity-policy.ts](../frontend/src/domain/behavior/local-activity-policy.ts).
 В пределах контракта AUTO-A09 сохранены Needs deltas и sleep/wake thresholds;
 catch-up не более 60000 ms за transaction, initiative budget 2/120000 ms с интервалом 30000 ms,
 курсор 6000 ms / 160 DIP, SocialBid wait 4000 ms, AI TTL/defer/run 30000/3000/20000 ms.
@@ -54,8 +54,8 @@ catch-up не более 60000 ms за transaction, initiative budget 2/120000 m
 Domain остаётся без Electron/Node/React, Application без платформенных API;
 quiet проходит точную Main-валидацию, Renderer передаёт команды через `wispAPI`.
 Провайдер не управляет движением или визуальными кадрами и не создаёт второй scheduler.
-Новых npm-зависимостей нет. `asset-pipeline/` и `discord_orcestrations/` не изменены.
+Новых npm-зависимостей нет. `frontend/asset-pipeline/` и `discord_orcestrations/` не изменены.
 SPRITES: `cursor_play` — временно `wave` с happy expression;
-[запрос художнику](art/SPRITE_REQUESTS.md). Графика не генерировалась.
+запрос художнику (исторический реестр удалён; требования — в отчёте задачи). Графика не генерировалась.
 
 RECOMMENDED NEXT GATE: reviewer.

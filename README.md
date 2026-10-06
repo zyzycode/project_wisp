@@ -1,50 +1,73 @@
 # Project Wisp
 
-Desktop AI-компаньон на Electron + React + TypeScript: персонаж живёт в прозрачном окне, реагирует на действия пользователя и выражает состояние через анимации. Первая целевая платформа — Windows; Linux (Ubuntu, Wayland/X11) и macOS сохраняются с capability fallback.
+Desktop AI-компаньон на Electron + React + TypeScript и Python/FastAPI backend. Desktop runtime и локальная память работают offline-first; внешние AI-вызовы идут через Main и сервер. Windows — первая платформа приёмки, Linux/macOS сохраняются с capability fallback.
 
-Репозиторий содержит desktop-клиент и Python/FastAPI backend в `backend/`, с отдельными runtime и зависимостями. Runtime персонажа и локальные данные сохраняют offline-first поведение; сетевые функции могут требовать подключения. Клиент обращается к backend через адаптеры в Main, AI — через `IAIProvider`. Renderer изолирован от сети, Node.js и persistence. Потоки и границы описаны в [архитектуре проекта](ARCHITECTURE.md).
+## Структура
 
-## Структура репозитория
+- `frontend/` — desktop-код, тесты, ассеты, независимый `asset-pipeline/`, npm dependencies, Vite/Electron/TypeScript configs и desktop tooling.
+- `backend/` — серверный Python-код, pytest, requirements и локальный server `.env`.
+- `docs/` — общая документация; `docs/backend/` — серверная. API contracts и fixtures — в `docs/engine/` и `docs/contracts/fixtures/`.
+- `.agents/agents/` — общие роли. `AGENTS.md` — общие правила, `frontend/AGENTS.md` и `backend/AGENTS.md` — scoped правила.
+- `scripts/` — только корневые launchers и их тесты. Корневой Node CLI `scripts/wisp.mjs` запускает команды без новых зависимостей; package.json и lockfile находятся только в `frontend/`. npm dependencies и их lockfile — в `frontend/`, Python-окружение — в `backend/.venv/`.
 
-- `src/`, `public/`, `tests/` — desktop и его тесты/ассеты.
-- `backend/` — серверный Python-код, pytest и requirements.
-- `docs/` — общая документация; `docs/backend/` — запуск и серверные особенности.
-- `docs/engine/`, `docs/contracts/fixtures/` — canonical API contracts и общие fixtures.
-- `AGENTS.md` — общие правила; `src/AGENTS.md`, `tests/AGENTS.md`, `public/AGENTS.md`, `backend/AGENTS.md` — правила соответствующих областей; `.agents/agents/` — общие роли.
+## Подготовка
 
-## Разработка desktop
+Проверенный runtime: Node.js 24, npm 10+, Python 3.10+. Тесты памяти требуют `node:module.registerHooks`; Node 22.13 недостаточен. Все команды ниже выполняются из корня репозитория.
 
-Проверенное окружение: Node.js 24, npm 10+. Тесты памяти требуют `node:module.registerHooks`; Node 22.13 для них недостаточен. Команда `python3` должна разрешаться в установленный Python для существующего теста валидации manifest. Доступные команды определены в [package.json](package.json).
-
-```bash
-npm install
-npm run dev
+```powershell
+npm --prefix frontend install
+python -m venv backend/.venv
+./backend/.venv/Scripts/python.exe -m pip install -r backend/requirements-dev.txt
+Copy-Item backend/.env.example backend/.env
 ```
 
-Проверки выбираются по роли и изменению из [AGENTS.md](AGENTS.md#11-план-верификация-и-отчёт):
+В локальном `backend/.env` задать `GROQ_API_KEY`. Секреты не коммитить. На Linux/macOS вместо Windows Python executable использовать `backend/.venv/bin/python`.
 
-- Desktop реализация: `npm run typecheck`, затем `npm test`.
-- Независимое review любой задачи: `npm run typecheck` и аудит diff; для документации также ссылки.
-- Docs-only исполнение: ссылки и diff; правило reviewer указано выше.
+## Команды из корня
 
-Backend setup, проверка и подключение desktop описаны в [docs/backend/README.md](docs/backend/README.md). Текущий сервер поддерживает API v1; для живого диалога перед `npm run dev`:
+| Команда | Действие |
+|---|---|
+| `node scripts/wisp.mjs dev` | Запустить backend и desktop вместе; Ctrl+C останавливает оба |
+| `node scripts/wisp.mjs dev:frontend` | Только desktop; без `WISP_BACKEND_URL` используется mock |
+| `node scripts/wisp.mjs dev:backend` | Только backend на loopback |
+| `node scripts/wisp.mjs typecheck` | Desktop TypeScript check |
+| `node scripts/wisp.mjs test` | Launcher tests → desktop tests → Python manifest tests → backend pip check → backend pytest |
+| `node scripts/wisp.mjs test:frontend` | Только desktop tests; последующие аргументы передаются Vitest |
+| `node scripts/wisp.mjs test:backend` | Только серверные tests, без внешнего AI |
+| `node scripts/wisp.mjs check:backend` | Проверка установленных Python dependencies |
+| `node scripts/wisp.mjs test:tooling` | Проверка lifecycle и конфигурации корневых launchers |
+| `node scripts/wisp.mjs test:python` | Python unit-tests desktop manifest tooling |
+| `node scripts/wisp.mjs sprites:validate` | Read-only проверка готовых ассетов и manifest |
+
+Совместный запуск задаёт desktop адрес собственного backend, API v1 и отключает v3 events: текущий импортированный сервер поддерживает только v1. Default — `http://127.0.0.1:8000`; если порт занят старым сервером:
+
+```powershell
+$env:WISP_BACKEND_PORT = '8001'
+node scripts/wisp.mjs dev
+```
+
+Launcher выбирает Python из `backend/.venv`, если он есть, иначе `python` из PATH. Для существующего внешнего окружения можно задать `$env:WISP_PYTHON = 'C:/path/to/python.exe'`. Этот же executable используется в desktop manifest test. Для отдельных desktop Python-скриптов команда `python` должна быть доступна в PATH.
+
+Если backend не запускается или один компонент завершает работу, совместный launcher останавливает второй и возвращает код завершившегося компонента. Для изменения Python-кода перезапустить совместный запуск; server `.env` не загружается frontend. [Proxy/TLS configuration и фактические server gaps](docs/backend/README.md).
+
+При раздельном запуске frontend с реальным сервером:
 
 ```powershell
 $env:WISP_BACKEND_URL = 'http://127.0.0.1:8000'
 $env:WISP_BACKEND_API_VERSION = '1'
 $env:WISP_AI_EVENTS_ENABLED = 'false'
+node scripts/wisp.mjs dev:frontend
 ```
 
-Без `WISP_BACKEND_URL` используется mock. Server `.env` находится в `backend/` и не загружается desktop. Backend checks: `python -m pip check`, затем `python -m pytest -q` из `backend/` с его Python окружением. Импортированный сервер ещё не реализует поздние quota/memory/events capabilities; [известные gaps](docs/backend/README.md#фактическая-реализация) не считаются принятыми.
+HTTP loopback допустим в development; packaged/remote backend требует HTTPS. Build-команды находятся в `frontend/package.json`, но `npm run build` запрещён инженерными правилами и не используется для verification.
 
-Build-верификация пока не применяется; `npm run build` запрещён правилами проекта.
+## Документация
 
-## Документация и задачи
+- [AGENTS.md](AGENTS.md) — общие границы, роли и gates.
+- [docs/README.md](docs/README.md) — navigator минимального контекста.
+- [Архитектура](ARCHITECTURE.md), [ADR-017](docs/adr/ADR-017-monorepo.md) — структура и границы процессов.
+- [Backend](docs/backend/README.md) — server setup и текущие gaps.
+- [Engine contracts](docs/engine/README.md) — canonical правила.
+- [GitHub Issues](https://github.com/zyzycode/project_wisp/issues) и [Project](https://github.com/users/zyzycode/projects/1) — задачи и статусы.
 
-- [AGENTS.md](AGENTS.md) — обязательные архитектурные ограничения, роли и verification.
-- [docs/README.md](docs/README.md) — выбор минимального контекста по задаче.
-- [Engine contracts](docs/engine/README.md) — владельцы правил движков и ссылки на спецификации.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — обзор для человека, необязательный агентный контекст.
-- [GitHub Issues](https://github.com/zyzycode/project_wisp/issues) и [Project](https://github.com/users/zyzycode/projects/1) — текущие фазы, приоритеты, зависимости и статусы. Локальную копию roadmap не ведём.
-
-Готовые спрайты художник-человек размещает в `public/assets/sprites/`; их формат задаёт [Render contract](docs/engine/RENDER_ENGINE.md). Приложение использует fallback для отсутствующих ассетов и [реестр запросов](docs/art/SPRITE_REQUESTS.md). `asset-pipeline/` и `discord_orcestrations/` — отдельные внешние скоупы.
+Графику предоставляет внешний художник-человек. Готовые спрайты — `frontend/public/assets/sprites/`; при отсутствии ассета — fallback и требования в отчёте задачи. `frontend/asset-pipeline/` сохраняет независимые инструкции и не запускается общим dev/test; `discord_orcestrations/` остаётся отдельным внешним scope.

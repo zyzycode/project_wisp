@@ -18,7 +18,7 @@ Environment — observation, gaze — presentation, proximity — signal; ни �
 
 ## 3. Gaze DTO и контракт взгляда
 
-Типы и конфигурация Gaze Engine определены в [src/domain/behavior/gaze-engine.ts](../../src/domain/behavior/gaze-engine.ts).
+Типы и конфигурация Gaze Engine определены в [src/domain/behavior/gaze-engine.ts](../../frontend/src/domain/behavior/gaze-engine.ts).
 
 - **Допустимые диапазоны смещения зрачка**: $dx, dy \in [-1.0, 1.0]$.
 - **Deadzone и clamped circle**: в deadzone desired offset равен $(0, 0)$; вне deadzone результирующий вектор смещения зрачка ограничивается кругом единичного радиуса ($r = \sqrt{(dx/maxOffsetX)^2 + (dy/maxOffsetY)^2} \le 1.0$).
@@ -61,7 +61,7 @@ Gaze не emits Activity/AnimationIntent. При baked-in face Body может �
 
 ## 5. Cursor proximity DTO (Близость курсора)
 
-Типы и контракт сигналов близости курсора определены в [src/domain/behavior/gaze-engine.ts](../../src/domain/behavior/gaze-engine.ts).
+Типы и контракт сигналов близости курсора определены в [src/domain/behavior/gaze-engine.ts](../../frontend/src/domain/behavior/gaze-engine.ts).
 
 ### Зоны близости курсора
 
@@ -110,15 +110,15 @@ Dwell сбрасывается при exit/stale/missing/incompatible state. Per
 
 Look-at остаётся gaze. Swat/avoid — local P3 Activity decisions и не стартуют внутри Perception.
 Ограниченный cursor interest подчинён
-[общему admission/budget](./AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость).
+[общему admission/budget](AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость).
 
 ### 6.1. Cursor game v1: ограниченное преследование
 
 Расширение существующего `cursor_interest` (#48): stationary Observe Cursor сохраняет gaze/gesture; игра внутри `play` требует freshness/dwell, Character gates, cooldown и общий initiative budget. Fatigue может оставить только gaze; P2/AI ownership запрещают новую local Activity. Внешний AI API для samples не вызывается. Никаких global hooks для захвата мыши, перемещения/блокировки системного курсора или кликов за пользователя.
 
-Допуск игры использует существующий fatigue gate Observe Cursor (`energy >35`, tone не sleepy), без отдельного требования friendship≥100 или play≥50. Friendship/Needs влияют на вероятность заметить курсор; начальное состояние нового персонажа не исключает игру. Локальный calm с idle/look-around допускает P3 reaction; user/provider-owned Activity защищена. Пока свежий достижимый курсор накапливает swat dwell, не запускать конкурирующий Observe Cursor и не расходовать его cooldown. После dwell и notice выбирать игру без второго случайного veto. Проверка: [startup scenarios](../../tests/main/cursor-game-startup.test.ts) с реальными defaults и 10-Hz samples.
+Допуск игры использует существующий fatigue gate Observe Cursor (`energy >35`, tone не sleepy), без отдельного требования friendship≥100 или play≥50. Friendship/Needs влияют на вероятность заметить курсор; начальное состояние нового персонажа не исключает игру. Локальный calm с idle/look-around допускает P3 reaction; user/provider-owned Activity защищена. Пока свежий достижимый курсор накапливает swat dwell, не запускать конкурирующий Observe Cursor и не расходовать его cooldown. После dwell и notice выбирать игру без второго случайного veto. Проверка: [startup scenarios](../../frontend/tests/main/cursor-game-startup.test.ts) с реальными defaults и 10-Hz samples.
 
-В cursor-game-v1 разрешён ограниченный retarget **только между завершёнными grounded locomotion legs**: не чаще одного раза в 500 ms, максимум четыре цели вместе с первой, новая цель отличается от прошлой минимум на 20 DIP. Samples обновляют наблюдение, а не заменяют активную Motion command. Один run/deadline 6000 ms и общий пройденный путь ≤160 DIP, без сброса при retarget. Значения — [CursorGameTuning](../../src/application/ports/cursor-game-contract.ts); прежние одноимённые пределы InitiativeTuning берутся из того же tuning, не два независимых лимита.
+В cursor-game-v1 разрешён ограниченный retarget **только между завершёнными grounded locomotion legs**: не чаще одного раза в 500 ms, максимум четыре цели вместе с первой, новая цель отличается от прошлой минимум на 20 DIP. Samples обновляют наблюдение, а не заменяют активную Motion command. Один run/deadline 6000 ms и общий пройденный путь ≤160 DIP, без сброса при retarget. Значения — [CursorGameTuning](../../frontend/src/application/ports/cursor-game-contract.ts); прежние одноимённые пределы InitiativeTuning берутся из того же tuning, не два независимых лимита.
 
 Travel budget считает сумму абсолютных voluntary перемещений вдоль опоры, включая смену направления; перенос самой опорой не расходует его. Между legs до retarget interval допустим bounded stationary wait, если остаётся время на следующий leg и хвост фаз; иначе missed. Sample не продлевает wait/deadline. Пороги и общий лимит проверяются до каждой Motion command, а не после выхода за границу.
 
@@ -130,13 +130,13 @@ Windows — первая платформа приёмки. Источник г�
 
 ## 7. Normalized environment signals
 
-Типы: [surface-kinematics.ts](../../src/domain/behavior/surface-kinematics.ts). Immutable snapshot выбирает usable work area и нормализует OS limitations; missing cursor/surface = unavailable observation. Test/production форма одинакова, без handles/PID/z-order/platform-source names/DOM/callbacks. Native metadata не выходят из Infrastructure.
+Типы: [surface-kinematics.ts](../../frontend/src/domain/behavior/surface-kinematics.ts). Immutable snapshot выбирает usable work area и нормализует OS limitations; missing cursor/surface = unavailable observation. Test/production форма одинакова, без handles/PID/z-order/platform-source names/DOM/callbacks. Native metadata не выходят из Infrastructure.
 
 Perception сообщает `isValidSupport`, Motion решает support_lost/physics; environment не создаёт intent.
 
 ## 8. Environment IPC boundary
 
-[ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — standalone serializable DTO без Domain imports; Main mapper: `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`. AUTO-A07 добавляет target `side`; developer подключает mapper/stream вместе с реализацией. Здесь зафиксирован screen-only runtime на момент gate, не подтверждение готовности внешних опор.
+[ipc-contracts.ts](../../frontend/src/shared/ipc-contracts.ts) — standalone serializable DTO без Domain imports; Main mapper: `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`. AUTO-A07 добавляет target `side`; developer подключает mapper/stream вместе с реализацией. Здесь зафиксирован screen-only runtime на момент gate, не подтверждение готовности внешних опор.
 
 ## 9. Изоляция и проверяемые свойства
 
@@ -144,11 +144,11 @@ Pure updates по explicit inputs/constraints; freshness по monotonic `nowMs`,
 
 ## 10. Внешние окна — целевой контракт AUTO-A07
 
-Target implementation contract, не утверждение runtime readiness. [ExternalWindowSurfacesPort](../../src/application/ports/external-window-surfaces.port.ts) отделён от Electron-aware `IPlatformAdapter`. Infrastructure отдаёт полный набор, Application выбирает currentSurface для Motion; Renderer опору не выбирает.
+Target implementation contract, не утверждение runtime readiness. [ExternalWindowSurfacesPort](../../frontend/src/application/ports/external-window-surfaces.port.ts) отделён от Electron-aware `IPlatformAdapter`. Infrastructure отдаёт полный набор, Application выбирает currentSurface для Motion; Renderer опору не выбирает.
 
 ### Модель и capability
 
-[ExternalWindowSurface](../../src/domain/behavior/surface-kinematics.ts) — discriminated union:
+[ExternalWindowSurface](../../frontend/src/domain/behavior/surface-kinematics.ts) — discriminated union:
 
 | Поле | Инвариант |
 |---|---|
@@ -202,7 +202,7 @@ Infrastructure ровно один раз применяет `screen.screenToDip
 
 **Approved: системный Windows PowerShell 5.1 + собственный C# P/Invoke helper, без новой npm-зависимости.** Это архитектурное разрешение Windows-first observer с fallback, не измерение готовой производительности.
 
-Один child process на lifecycle, не на poll. `Add-Type` только для read-only User32/Dwmapi + lifecycle hook; `child_process.spawn` из Main, bridge/paths/OS branches только в `src/infrastructure/platform/`.
+Один child process на lifecycle, не на poll. `Add-Type` только для read-only User32/Dwmapi + lifecycle hook; `child_process.spawn` из Main, bridge/paths/OS branches только в `frontend/src/infrastructure/platform/`.
 
 Executable из system directory через `path.join`; shell=false, fixed bundled script, `-NoProfile -NonInteractive`, hidden window. Без dynamic titles/IPC code, elevation, ExecutionPolicy bypass, downloads/сторонних modules. Add-Type denied/missing executable/unsupported environment → unavailable без обхода policy; shutdown завершает helper.
 

@@ -9,7 +9,7 @@ import { DialogueRuntime } from '../../src/application/services/dialogue-loop.se
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
 import { providerRequest } from './backend-ai-fixture';
 import type { BackendEventRequest, BackendEventAwareChatRequest } from '../../src/application/ports/backend-events-contract';
-const fixture = (name: string): unknown => JSON.parse(readFileSync(path.join(process.cwd(), 'docs/contracts/fixtures/desktop-backend-v3', name), 'utf8'));
+const fixture = (name: string): unknown => JSON.parse(readFileSync(path.join(process.cwd(), '../docs/contracts/fixtures/desktop-backend-v3', name), 'utf8'));
 const game = fixture('request.game.json') as BackendEventRequest, social = fixture('request.social.json') as BackendEventRequest, chat = fixture('request.chat.json') as BackendEventAwareChatRequest;
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(300000); });

@@ -4,13 +4,13 @@
 
 ## Decision
 
-Хранить desktop и Python/FastAPI backend в `project_wisp`, сохранив существующие desktop-пути и добавив `backend/`. Обе части имеют отдельные runtime, зависимости, запуск и deployment. Общие Markdown-документы находятся в корневом `docs/`, серверные инструкции — в `docs/backend/`; canonical wire contracts и fixtures сохраняют существующие пути.
+Хранить desktop и Python/FastAPI backend в `project_wisp`, разместив desktop в `frontend/`, сервер в `backend/`. Обе части имеют отдельные runtime, зависимости, запуск и deployment. Общие Markdown-документы находятся в корневом `docs/`, серверные инструкции — в `docs/backend/`; canonical wire contracts и fixtures сохраняют существующие пути.
 
-Корневой `AGENTS.md` задаёт общие границы. Desktop-инварианты находятся в `src/AGENTS.md` с явными ссылками из `tests/AGENTS.md`/`public/AGENTS.md`; серверные — в `backend/AGENTS.md`. Роли остаются общими в `.agents/agents/`, с проверками по затронутому scope.
+Корневой `AGENTS.md` задаёт общие границы. Desktop-инварианты находятся в `frontend/AGENTS.md` с явными ссылками из `frontend/tests/AGENTS.md`/`frontend/public/AGENTS.md`; серверные — в `backend/AGENTS.md`. Роли остаются общими в `.agents/agents/`, с проверками по затронутому scope.
 
 ## Alternatives
 
-Отдельные репозитории усложняют совместные изменения API/fixtures. Перенос desktop в новый каталог добавляет ненужный churn путей, tooling и документации; npm workspaces не требуются для Python backend.
+Отдельные репозитории усложняют совместные изменения API/fixtures. Desktop в корне затрудняет визуальное разделение компонентов; пользователь выбрал симметричные `frontend/` и `backend/`. Корневой Node CLI запускает npm из `frontend/` без hoisting; зависимости и lockfile — в `frontend/`, Python venv — в `backend/.venv/`.
 
 ## Consequences
 
@@ -20,6 +20,8 @@ API не меняется: текущий сервер поддерживает 
 
 ## Implementation consequences
 
-Для MONOREPO-01 обязательны этот ADR, [общие инструкции](../../AGENTS.md), инструкции затронутых каталогов и [серверный navigator](../backend/README.md). Перенести tracked код/тесты/tooling в `backend/`, добавить ссылки и исключения runtime файлов, проверить общие v1 fixtures. Затем desktop typecheck → tests, backend pip check → pytest и разрешённый live smoke. Source backend не изменять; существующие пользовательские изменения сохранять.
+Для MONOREPO-01 обязательны этот ADR, [общие инструкции](../../AGENTS.md), инструкции затронутых каталогов и [серверный navigator](../backend/README.md). Перенести desktop код/тесты/ассеты/tooling в `frontend/`, backend — в `backend/`; общую документацию оставить в корне. Корневой Node CLI и launchers обеспечивают совместный запуск, остановку обоих компонентов и отдельные проверки без новых dependencies. Обновить ссылки и проверить общие v1 fixtures. Затем desktop typecheck → tests, backend pip check → pytest и разрешённый live smoke. Source backend не изменять; существующие пользовательские изменения сохранять.
 
-Следующий gate: независимый reviewer. Миграция не принимает серверные gaps и не меняет сетевые/процессные границы.
+Проверки выполняет исполнитель; по завершении scope — done. Миграция не принимает серверные gaps и не меняет сетевые/процессные границы.
+
+`frontend/asset-pipeline/` относится к frontend, но сохраняет независимые инструкции. При переносе его пути к `public/` и определение root остаются frontend-relative; ссылки на общие docs обновляются. Скрипты художника не запускаются этой задачей. Общий `.gitignore` исключает frontend node_modules, backend venv/secrets/cache и локальные output/input pipeline.

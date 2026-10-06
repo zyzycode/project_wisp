@@ -56,7 +56,7 @@ Snapshot factors read-only; завершённую P4 Utility не пересч�
 
 ## 7. Lifecycle одного run
 
-Типы: [activity-runner.ts](../../src/domain/behavior/activity-runner.ts). Одновременно максимум один run; каждый старт имеет новый уникальный `runId`. Terminal `completed`/`failed`/`cancelled` детерминирован и необратим; interruption — cancelled с причиной.
+Типы: [activity-runner.ts](../../frontend/src/domain/behavior/activity-runner.ts). Одновременно максимум один run; каждый старт имеет новый уникальный `runId`. Terminal `completed`/`failed`/`cancelled` детерминирован и необратим; interruption — cancelled с причиной.
 
 Runner принимает `nowMs`, не создаёт timers; выпускает максимум один step request за update transition, сохраняет `stepStartedAtMs`/Brain deadline для bounded step. Causal guard/locomotion event сопоставляется только с current run; stale/foreign игнорируются без мутации. Cleanup scope возвращается только для завершившегося run.
 
@@ -90,7 +90,7 @@ Bounded history: до 8 Activity entries и 16 action entries; вытеснен�
 
 ## 13. Feedback boundary
 
-`ShimejiFeedbackEvent → Application mapper → StimulusDto` не более одного раза. Union/context/port: [shimeji-feedback-port.ts](../../src/application/ports/shimeji-feedback-port.ts); deltas/StimulusDto — [Character](CHARACTER_ENGINE.md).
+`ShimejiFeedbackEvent → Application mapper → StimulusDto` не более одного раза. Union/context/port: [shimeji-feedback-port.ts](../../frontend/src/application/ports/shimeji-feedback-port.ts); deltas/StimulusDto — [Character](CHARACTER_ENGINE.md).
 
 | Variant `ShimejiFeedbackEvent` | Поля payload | Назначение и инвариант |
 |---|---|---|
@@ -114,7 +114,7 @@ Character clamp-ит шкалы/синтезирует tone. Новый selectio
 
 ## 14. Изоляция
 
-Brain/Runner — чистые `src/domain/behavior/`, [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture). Renderer не выбирает/не исполняет Activity; Application оркестрирует normalized time/events/completion.
+Brain/Runner — чистые `frontend/src/domain/behavior/`, [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture). Renderer не выбирает/не исполняет Activity; Application оркестрирует normalized time/events/completion.
 
 ## 15. Проверяемые свойства
 
@@ -124,7 +124,7 @@ Brain/Runner — чистые `src/domain/behavior/`, [общая изоляци
 
 `rest-spot-planner.ts`/`explore-planner.ts` разделяют bounded target/route/action history. External candidates только из fresh Application snapshot. До scoring — reachable same-support walk/traverse или проверенная directed arc; screen approach/grab/climb/rebound сохраняется в Explore. Нельзя пересекать параболой внутренность наблюдаемого окна; изменение target geometry в полёте отменяет arc → обычные fall/land.
 
-Rest Spot только внутри resolved `sleep`: reachable window top предпочтительнее тихой кромки/угла пола, затем safe floor. На окне `sit_edge → settle`; опора уже 240 DIP или край допускают только сидячую подготовку/сон, широкий центр/пол — `lie_down`/`sleep_loop`. Clips задают fallback, не Brain duration; [арт-долг](../art/SPRITE_REQUESTS.md).
+Rest Spot только внутри resolved `sleep`: reachable window top предпочтительнее тихой кромки/угла пола, затем safe floor. На окне `sit_edge → settle`; опора уже 240 DIP или край допускают только сидячую подготовку/сон, широкий центр/пол — `lie_down`/`sleep_loop`. Clips задают fallback, не Brain duration; арт-долг (исторический реестр удалён; требования — в отчёте задачи).
 
 Nap: prepare 1200 ms → settle 1500 ms → sleep 12000 ms → wake 1500 ms → awake и единственный opportunity scheduler. `vital_sleep`/user sleep без nap deadline: после prepare sleep до energy ≥80, прямого действия или потери опоры. Click/drag, menu pause, disable/shutdown отменяют Rest Spot. Небольшое смещение принятой опоры сохраняет local distance (Motion §7.1).
 
@@ -132,7 +132,7 @@ Sleep phase/stable sleep использует существующий `sleepy` 
 
 ## 16. AUTO-A09: единый outcome и ownership
 
-Target [ActivityOutcomeFeedback](../../src/application/ports/shimeji-feedback-port.ts)/[OwnedActivityRun](../../src/application/ports/behavior-admission-port.ts) подключаются #46/#50 вокруг существующего Runner; Domain не импортирует Application. Effective rank хранится рядом с run в Brain по причине/источнику запуска: одинаковый kind не уравнивает user/local/provider. [Admission/deadlines](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
+Target [ActivityOutcomeFeedback](../../frontend/src/application/ports/shimeji-feedback-port.ts)/[OwnedActivityRun](../../frontend/src/application/ports/behavior-admission-port.ts) подключаются #46/#50 вокруг существующего Runner; Domain не импортирует Application. Effective rank хранится рядом с run в Brain по причине/источнику запуска: одинаковый kind не уравнивает user/local/provider. [Admission/deadlines](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
 
 Request/admission/started/terminal — разные факты. User `play` проходит Character gate **до** игрового эффекта. Rejected/no compatible Activity не создаёт play stimulus/history/full cooldown; accepted/deferred не означает execution, start budget/history фиксируются только при started.
 
@@ -161,7 +161,7 @@ Terminal transaction: run/locomotion cleanup → once-only feedback → history/
 
 ## 17. Cursor game v1
 
-Целевое расширение `cursor_interest` в существующем Domain/behavior, без нового public BehaviorIntentKind. Нормализованный результат и tuning — [cursor-game-contract.ts](../../src/application/ports/cursor-game-contract.ts); Domain получает значения явными входами, не импортирует Application. Perception владеет [freshness и достижимостью](PERCEPTION_ENGINE.md#61-cursor-game-v1-ограниченное-преследование), Motion — фактическим перемещением, Activity — фазами/исходом, Application — локальным текстом, feedback и публикацией. Backend не участвует в control loop.
+Целевое расширение `cursor_interest` в существующем Domain/behavior, без нового public BehaviorIntentKind. Нормализованный результат и tuning — [cursor-game-contract.ts](../../frontend/src/application/ports/cursor-game-contract.ts); Domain получает значения явными входами, не импортирует Application. Perception владеет [freshness и достижимостью](PERCEPTION_ENGINE.md#61-cursor-game-v1-ограниченное-преследование), Motion — фактическим перемещением, Activity — фазами/исходом, Application — локальным текстом, feedback и публикацией. Backend не участвует в control loop.
 
 | Фаза | Завершение и переход |
 |---|---|

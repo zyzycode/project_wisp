@@ -16,7 +16,7 @@
 463×673, 482×671 и 484×676. Одинаковый масштаб 148/256 по высоте головы,
 центр X=256 и нижняя граница Y=460 сохраняют согласованный размер персонажа.
 Результат — четыре RGBA PNG 512×512 в
-[public/assets/sprites/body/look_around](../../public/assets/sprites/body/look_around/).
+[public/assets/sprites/body/look_around](../../public/assets/sprites/body/look_around).
 В манифесте обновлён только `body_look_around.sourceFile`; режим `baked_in`,
 порядок, URL, длительности и остальные 47 записей сохранены.
 

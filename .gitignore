@@ -84,7 +84,7 @@ coverage/
 .agents/**/.cache/
 .agents/**/tmp/
 
-# Python asset preparation tools
+# Python backend and asset preparation environments/caches
 __pycache__/
 *.py[cod]
 .venv/
@@ -105,14 +105,21 @@ new_generated/
 **/delete_me/
 .quarantine/
 **/manifest.json.tmp
-public/**/*.py
+frontend/public/**/*.py
 
 # Local asset-pipeline inputs, generated candidates, previews and cache
-/asset-pipeline/input/
-/asset-pipeline/output/
+/frontend/asset-pipeline/input/
+/frontend/asset-pipeline/output/
 
 # Discord bot & server orchestration (autonomous scope)
 discord_orcestrations/
 
 # Python pytest temporary cache directories
 pytest-cache-files-*/
+
+# Component-local environments and dependencies
+/frontend/node_modules/
+/backend/.venv/
+/backend/.env
+/backend/.env.*
+!/backend/.env.example

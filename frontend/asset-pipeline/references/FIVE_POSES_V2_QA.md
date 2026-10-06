@@ -7,11 +7,11 @@
 
 | Набор | Пак до нарезки | Точный промпт | Готовые PNG |
 |---|---|---|---|
-| `body_lie` | [исходник](../generated_images/body_lie_faces_v2.png) | [промпт](lie-faces-v2.prompt.txt) | [lie](../../public/assets/sprites/body/lie/) |
-| `body_crouch_examine` | [исходник](../generated_images/body_crouch_examine_faces_v2.png) | [промпт](crouch_examine-faces-v2.prompt.txt) | [crouch_examine](../../public/assets/sprites/body/crouch_examine/) |
-| `body_sit` | [исходник](../generated_images/body_sit_faces_v2.png) | [промпт](sit-faces-v2.prompt.txt) | [sit](../../public/assets/sprites/body/sit/) |
-| `body_sit_edge` | [исходник](../generated_images/body_sit_edge_faces_v2.png) | [промпт](sit_edge-faces-v2.prompt.txt) | [sit_edge](../../public/assets/sprites/body/sit_edge/) |
-| `body_stand_up` | [исходник](../generated_images/body_stand_up_faces_v2.png) | [промпт](stand_up-faces-v2.prompt.txt) | [stand_up](../../public/assets/sprites/body/stand_up/) |
+| `body_lie` | [исходник](../generated_images/body_lie_faces_v2.png) | [промпт](lie-faces-v2.prompt.txt) | [lie](../../public/assets/sprites/body/lie) |
+| `body_crouch_examine` | [исходник](../generated_images/body_crouch_examine_faces_v2.png) | [промпт](crouch_examine-faces-v2.prompt.txt) | [crouch_examine](../../public/assets/sprites/body/crouch_examine) |
+| `body_sit` | [исходник](../generated_images/body_sit_faces_v2.png) | [промпт](sit-faces-v2.prompt.txt) | [sit](../../public/assets/sprites/body/sit) |
+| `body_sit_edge` | [исходник](../generated_images/body_sit_edge_faces_v2.png) | [промпт](sit_edge-faces-v2.prompt.txt) | [sit_edge](../../public/assets/sprites/body/sit_edge) |
+| `body_stand_up` | [исходник](../generated_images/body_stand_up_faces_v2.png) | [промпт](stand_up-faces-v2.prompt.txt) | [stand_up](../../public/assets/sprites/body/stand_up) |
 
 Референсы поз — прежние листы соответствующих наборов; лицо/стиль —
 `body_look_around_faces_v2.png`. Для финального `sit_edge` использован только
