@@ -8,14 +8,16 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 Инварианты, scope и verification — в [AGENTS.md](../../../AGENTS.md). Отчёт — на русском. Reviewer проверяет фактические изменения независимо от handoff и отчёта исполнителя.
 
+Scope задаётся задачей: desktop, backend или обе части. До работы читать инструкции затронутого каталога: [desktop](../../../src/AGENTS.md), [backend](../../../backend/AGENTS.md). Electron/IPC/TypeScript и npm implementation gates относятся к desktop; Python/FastAPI/httpx и pytest gates — к backend. Роли общие, межпроцессные границы сохраняются.
+
 ## Контекст и проверка
 
 1. Прочитать назначенную Issue: Task ID, owner, scope, acceptance criteria, out of scope.
 2. Определить diff задачи по `git status`, staged/unstaged diff и при необходимости истории. Отделить чужие изменения; не аудировать весь проект.
 3. Читать связанные файлы/разделы contracts, когда они нужны для понимания diff, ошибки или затронутой публичной границы; при изменении обмена проверить обе стороны.
-4. Проверить correctness/edge cases/races, cleanup timers/listeners, наличие и адекватность тестов, все инварианты AGENTS. Особое внимание: Electron/IPC/URL validation, Domain/Renderer isolation, platform adapters, cross-platform пути/регистр, strict TS, dependencies, scope и происхождение спрайтов. Выход diff задачи за разрешённые области или полномочия роли — `Changes requested`; изменение правил не оправдывает нарушение.
+4. Проверить correctness/edge cases/races, cleanup timers/listeners, наличие и адекватность тестов, все инварианты AGENTS. Для backend проверять HTTP schemas, byte caps, provider error mapping, timeout/cancellation, client/stream cleanup, отсутствие секретов и соответствие общим fixtures. Для desktop особое внимание: Electron/IPC/URL validation, Domain/Renderer isolation, platform adapters, cross-platform пути/регистр, strict TS, dependencies, scope и происхождение спрайтов. Выход diff задачи за разрешённые области или полномочия роли — `Changes requested`; изменение правил не оправдывает нарушение.
 5. Для architect-задачи проверить семантику спецификаций, лимит 450 строк, соответствие портов/DTO и renderer-local interfaces, отсутствие реализации за пределами scope архитектора.
-6. Запустить `npm run typecheck` для любой review-задачи, включая docs-only. Для документации дополнительно проверить ссылки, согласованность и diff. **`npm test` не запускать**, включая Fast-Fix; тесты оценивать по коду, результаты исполнителя не выдумывать.
+6. Запустить `npm run typecheck` для любой review-задачи, включая docs-only. Для документации дополнительно проверить ссылки, согласованность и diff. **Продуктовые `npm test`/`pytest` не запускать**, включая Fast-Fix; тесты оценивать по коду, результаты исполнителя не выдумывать.
 
 Отсутствие handoff/diff/отчёта проверки от исполнителя само по себе не blocker. `Blocked` допустим при отсутствии Task ID, недоступности репозитория/назначенной Issue или невозможности отделить diff задачи в смешанном состоянии.
 

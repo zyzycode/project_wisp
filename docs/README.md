@@ -4,7 +4,9 @@
 
 | Нужная информация | Источник |
 |---|---|
-| Инженерные инварианты, роли, verification | [AGENTS.md](../AGENTS.md) |
+| Общие инварианты, роли, verification | [AGENTS.md](../AGENTS.md) |
+| Desktop-инварианты | [src/AGENTS.md](../src/AGENTS.md), также применяются к desktop tooling |
+| Backend runtime, setup и фактические API gaps | [Backend navigator](backend/README.md), [backend/AGENTS.md](../backend/AGENTS.md) |
 | Задачи, зависимости и фактические статусы | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
 | Продуктовые решения и порядок этапов | [Vision и roadmap](PRODUCT_VISION_AND_ROADMAP.md) |
 | Ручной запуск и приёмка MVP на Windows | [Windows checklist](WINDOWS_MVP_CHECKLIST.md), выполняет владелец продукта |

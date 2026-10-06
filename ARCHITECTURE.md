@@ -2,7 +2,7 @@
 
 Высокоуровневый обзор архитектуры настольного AI-компаньона Project Wisp. Документ фиксирует границы ответственности подсистем и поток данных между ними.
 
-Целевая архитектура включает desktop-клиент и backend. Runtime персонажа работает локально; сетевые функции используют сервер через адаптеры в Main. Backend владеет своими API, интеграциями и серверным хранением. Конкретные серверные функции, стек и размещение определяются в задачах интеграции.
+Целевая архитектура включает desktop-клиент и backend. Runtime персонажа работает локально; сетевые функции используют сервер через адаптеры в Main. Backend владеет своими API, интеграциями и серверным хранением. Backend находится в `backend/` (Python/FastAPI/httpx/Groq); документация обеих частей — в корневом `docs/`. Runtime, зависимости и deployment остаются отдельными: [ADR-017](docs/adr/ADR-017-monorepo.md), [server setup и текущие gaps](docs/backend/README.md).
 
 Windows-first: первая приёмка desktop проходит на Windows; OS-specific код остаётся в platform adapters. Linux/macOS используют доступные capabilities и screen-floor fallback. Первый backend API и бюджет определены в [AI Provider contract](docs/engine/AI_PROVIDER_CONTRACT.md#desktop--backend-v1); расширенная локальная игра с курсором — в [Perception](docs/engine/PERCEPTION_ENGINE.md#61-cursor-game-v1-ограниченное-преследование) и [Activity](docs/engine/ACTIVITY_ENGINE.md#17-cursor-game-v1).
 

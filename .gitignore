@@ -113,3 +113,6 @@ public/**/*.py
 
 # Discord bot & server orchestration (autonomous scope)
 discord_orcestrations/
+
+# Python pytest temporary cache directories
+pytest-cache-files-*/

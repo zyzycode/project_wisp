@@ -8,12 +8,14 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 Общие инварианты, четыре architect-триггера, scope, спрайты и verification — в [AGENTS.md](../../../AGENTS.md). Не перечитывать его, если уже есть в контексте.
 
+Scope задаётся задачей: desktop, backend или обе части. До работы читать инструкции затронутого каталога: [desktop](../../../src/AGENTS.md), [backend](../../../backend/AGENTS.md). Electron/IPC/TypeScript и npm implementation gates относятся к desktop; Python/FastAPI/httpx и pytest gates — к backend. Роли общие, межпроцессные границы сохраняются.
+
 ## Работа
 
 1. Прочитать назначенную Issue: scope, acceptance criteria, out of scope. Проверить `ARCHITECT RESULT` связанных gates; их `Implementation consequences` обязательны, постоянные правила брать из указанных canonical contracts.
 2. Найти целевые файлы через `rg`; прочитать владение/границы и нужные разделы затронутой спецификации, типы и соответствующие тесты. Закончить сбор контекста, когда понятны scope, инварианты и приёмка.
 3. Назвать файлы и минимальный vertical slice. На Fast-Track самостоятельно объявлять/эволюционно расширять порты и DTO в существующих границах; contracts-first сохраняется.
-4. Реализовать slice: Domain/Application, Main/Preload, Renderer, adapters, persistence/provider, desktop integration — в пределах Issue. Новая подсистема/технология требует architect gate.
+4. Реализовать slice: Domain/Application, Main/Preload, Renderer, adapters, persistence/provider, desktop/backend integration — в пределах Issue. Новая подсистема/технология требует architect gate.
 5. Выполнить verification по §11 AGENTS и передать результат прямо `reviewer`. При `Changes requested` исправить замечания и вернуть в review; менеджер подключается после `Approved`/`done`.
 
 ## Условия остановки
@@ -24,4 +26,4 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 ## Отчёт
 
-7–12 строк по общему формату: `TASK → CHANGES → BOUNDARIES → SPRITES → VERIFICATION → RECOMMENDED NEXT GATE`. Указать фактический scope, 2–4 ключевых изменения, сохранённые границы и недостающие sprite keys из реестра либо `none`. Verification — одна строка со статусом `npm run typecheck` и `npm test`, без логов. Следующий gate — `reviewer`, при конфликте — `architect`.
+7–12 строк по общему формату: `TASK → CHANGES → BOUNDARIES → SPRITES → VERIFICATION → RECOMMENDED NEXT GATE`. Указать фактический scope, 2–4 ключевых изменения, сохранённые границы и недостающие sprite keys из реестра либо `none`. Verification — статусы обязательных gates затронутого scope: desktop typecheck → tests; backend pip check → pytest, без логов. Следующий gate — `reviewer`, при конфликте — `architect`.

@@ -8,9 +8,11 @@ tools: [view_file, replace_file_content, grep_search, run_command]
 
 Общие инварианты, роли, четыре architect-триггера и verification — в [AGENTS.md](../../../AGENTS.md). Результат менеджера: один проверяемый scope, одна owner-role, явные зависимости и критерии готовности.
 
+Scope задаётся задачей: desktop, backend или обе части. До работы читать инструкции затронутого каталога: [desktop](../../../src/AGENTS.md), [backend](../../../backend/AGENTS.md). Electron/IPC/TypeScript и npm implementation gates относятся к desktop; Python/FastAPI/httpx и pytest gates — к backend. Роли общие, межпроцессные границы сохраняются.
+
 ## Полномочия
 
-- Менять инструкции (`AGENTS.md`, `.agents/**/*.md`) и навигационные docs; читать код/contracts только для scope, приёмки и маршрутизации.
+- Менять общие и scoped инструкции (`AGENTS.md`, вложенные `AGENTS.md`, `.agents/**/*.md`) и навигационные docs; читать код/contracts только для scope, приёмки и маршрутизации.
 - Создавать/менять Issues, зависимости, owner-role и Project Status только по запросу пользователя или назначенной management-задаче. Анализ/отчёт не разрешает внешние изменения.
 - Не менять product code, тесты, package/config files, manifest/ассеты; не принимать решения за архитектора и не реализовывать за разработчика. Графику предоставляет художник-человек, агентам такие задачи не ставить.
 - При недоступности GitHub/Project назвать точное ограничение и продолжить доступную часть; не заявлять о выполненных внешних действиях без проверки.
