@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
 from wisp_backend.api import chat, health
+from wisp_backend.touch import router as touch_router
 from wisp_backend.api.boundary import ChatBoundary, error_response
 from wisp_backend.config import Settings
 from wisp_backend.errors import ServiceError
@@ -20,6 +21,18 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config = settings if settings is not None else Settings.from_env()
         async with create_client(config, transport) as client:
+            if config.provider == "chatgpt":
+                from wisp_backend.chatgpt_session import ChatGPTSession
+                from wisp_backend.chatgpt_store import SessionStore
+                from wisp_backend.providers.chatgpt import ChatGPTProvider
+                store = SessionStore()
+                with store.lease():
+                    session = ChatGPTSession(store, client)
+                    app.state.chat_service = ChatService(
+                        {"chatgpt": ChatGPTProvider(client, session)}, config.assistants, config.request_timeout,
+                    )
+                    yield
+                return
             app.state.chat_service = ChatService(
                 {"groq": GroqProvider(client)}, config.assistants, config.request_timeout,
             )
@@ -38,12 +51,14 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
 
     app.include_router(health.router)
     app.include_router(chat.router)
+    app.include_router(touch_router)
     # FastAPI's default 422 envelope is not part of this wire contract.
     default_openapi = app.openapi
 
     def openapi():
         spec = default_openapi()
         spec["paths"]["/v1/chat"]["post"]["responses"].pop("422", None)
+        spec["paths"]["/v1/touch"]["post"]["responses"].pop("422", None)
         return spec
     app.openapi = openapi
     return app

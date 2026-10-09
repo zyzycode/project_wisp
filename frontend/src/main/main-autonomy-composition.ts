@@ -53,6 +53,7 @@ import type {
 
 export interface BrainVisualEpisode {
   readonly id: string;
+  readonly sequence: number;
   readonly startedAtMs: number;
   readonly intent: AnimationIntent<BrainVisualIntentKindDTO>;
 }
@@ -97,7 +98,7 @@ export class MainAutonomyComposition {
   private readonly coordinator: AutonomyCoordinator;
   private readonly activity: BrainActivityRuntime;
   private readonly providerAdmission: ProviderBehaviorAdmission;
-  private readonly usedVisualEpisodeIds = new Set<string>();
+  private visualEpisodeSequence = 0;
   private visualEpisode: BrainVisualEpisode;
   private readonly localHistory: { kind: string; atMs: number }[] = [];
   private activityRunSequence = 0;
@@ -114,6 +115,7 @@ export class MainAutonomyComposition {
   private cursorEpisode: { endsAtMs: number; supportId: string | undefined } | null = null;
   private readonly gamePresentation: CursorGamePresentation;
   private latestCursor: GameObservation['cursor'] = null;
+  private latestGlobalCursor: GameObservation['cursor'] = null;
   private nextCursorPollAtMs = 0;
   private globalCursorActive = false;
   private cursorMustExit = false;
@@ -279,9 +281,27 @@ export class MainAutonomyComposition {
     this.providerAdmission.tick();
     const cursorChanged = this.pollCursor(nowMs);
     const activityChanged = this.activity.tick(nowMs);
+    const reactionChanged = this.finishDirectReaction(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
     if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
-    return needsChanged || activityChanged || showFall || speechChanged || cursorChanged;
+    return needsChanged || activityChanged || reactionChanged || showFall || speechChanged || cursorChanged;
+  }
+
+  private finishDirectReaction(nowMs: number): boolean {
+    if (this.activity.getRuntime() !== null) return false;
+    const kind = this.visualEpisode.intent.kind;
+    const durationMs = kind === 'happy_reaction' || kind === 'confused_reaction' || kind === 'spook'
+      ? 3000 : kind === 'wake_up' ? 1500 : kind === 'land' ? LANDING_RECOVERY_MS.normal
+      : kind === 'crash_landing' ? LANDING_RECOVERY_MS.crash : null;
+    if (durationMs === null || nowMs < this.visualEpisode.startedAtMs + durationMs) return false;
+    this.setVisualKind(kind === 'land' || kind === 'crash_landing' ? 'settle' : 'idle_blink', true);
+    return true;
+  }
+
+  public getGlobalCursorSample(): GameObservation['cursor'] {
+    return this.latestGlobalCursor === null ? null : {
+      ...this.latestGlobalCursor, globalPosition: { ...this.latestGlobalCursor.globalPosition },
+    };
   }
 
   private getCursorObservation(): GameObservation {
@@ -300,10 +320,13 @@ export class MainAutonomyComposition {
   }
   public resetCursorGame(): void { if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true); this.resetCursorInterest(); this.gamePresentation.reset(); }
 
-  public getAIEventState(): { allowed: boolean; activeRunId: string | null; localSpeech: boolean } {
+  public getAIEventState(): { allowed: boolean; touchAllowed: boolean; activeRunId: string | null; localSpeech: boolean } {
     return { allowed: this.started && !this.disposed && this.enabled && !this.quiet && !this.menuOpen
       && !this.deferredUserInteractionResume && this.character.isAutonomyEligible() && !requiresVitalSleep(this.options.getCharacterSnapshot())
       && this.options.movement.canAcceptVoluntaryMovement() && this.activity.getSource() !== 'user' && this.activity.getSource() !== 'character',
+      touchAllowed: this.started && !this.disposed && !this.quiet && !this.menuOpen && this.character.isAutonomyEligible()
+        && !requiresVitalSleep(this.options.getCharacterSnapshot()) && this.options.movement.canAcceptVoluntaryMovement()
+        && this.activity.getSource() !== 'user' && this.activity.getSource() !== 'character',
       activeRunId: this.activity.getRuntime()?.runId ?? null, localSpeech: this.getCursorGamePresentation()?.speech != null };
   }
   public getAutonomyMode(): { readonly quiet: boolean } { return { quiet: this.quiet }; }
@@ -382,9 +405,11 @@ export class MainAutonomyComposition {
   }
 
   private pollCursor(nowMs: number): boolean {
-    if (!this.options.cursorPosition || nowMs < this.nextCursorPollAtMs || !this.enabled || this.menuOpen) return false;
+    if (!this.options.cursorPosition || nowMs < this.nextCursorPollAtMs) return false;
     this.nextCursorPollAtMs = nowMs + 100;
     const position = this.options.cursorPosition.getCursorScreenPosition();
+    const hadSample = this.latestGlobalCursor !== null;
+    this.latestGlobalCursor = position === null ? null : { globalPosition: { ...position }, capturedAtMs: nowMs };
     if (position === null) {
       if (this.globalCursorActive) {
         this.latestCursor = null;
@@ -393,10 +418,13 @@ export class MainAutonomyComposition {
         this.cursorProximityState = { withinSwatRange: false, dwellWithinSwatRangeMs: 0, updatedAtMs: nowMs };
       }
       this.globalCursorActive = false;
-      return false;
+      if (hadSample) this.options.onPresentationChanged();
+      return hadSample;
     }
     this.globalCursorActive = true;
-    return this.observeCursor(position);
+    this.observeCursor(position);
+    this.options.onPresentationChanged();
+    return true;
   }
 
   private observeCursor(screenPosition: Vector2Dto): boolean {
@@ -786,15 +814,20 @@ export class MainAutonomyComposition {
   private createVisualEpisode(
     source: BrainVisualIntentKindDTO | AnimationIntent<BrainVisualIntentKindDTO>
   ): BrainVisualEpisode {
-    const id = this.options.createVisualEpisodeId();
-    requireVisualEpisodeId(id, this.usedVisualEpisodeIds);
+    const rawId = this.options.createVisualEpisodeId();
+    if (rawId.trim().length === 0 || rawId.trim() !== rawId) throw new Error('Visual episode ID must be trimmed and non-empty');
+    if (this.visualEpisodeSequence >= Number.MAX_SAFE_INTEGER) throw new Error('Visual episode sequence exhausted');
+    const sequence = ++this.visualEpisodeSequence;
+    const id = `${sequence}:${rawId.slice(0, 100).trimEnd()}`;
     const intent = typeof source === 'string'
       ? createSystemAnimationIntent(source, this.options.getCharacterSnapshot().synthesizedTone)
       : source;
-    return { id, startedAtMs: this.options.clock.now(), intent: { ...intent } };
+    return { id, sequence, startedAtMs: this.options.clock.now(), intent: { ...intent } };
   }
 
   private resetBrainLoop(): void {
+    this.latestGlobalCursor = null;
+    this.nextCursorPollAtMs = 0;
     this.lastBrainTickAtMs = null;
     this.needsCatchUpMs = 0;
     this.deferredUserInteractionResume = false;
@@ -817,12 +850,4 @@ function validateBrainLoopPolicy(policy: BrainLoopPolicy): void {
       !Number.isSafeInteger(policy.maxNeedsCatchUpSteps) || policy.maxNeedsCatchUpSteps <= 0) {
     throw new RangeError('Invalid Brain loop policy');
   }
-}
-
-function requireVisualEpisodeId(id: string, used: Set<string>): void {
-  if (id.trim().length === 0 || id.trim() !== id || id.length > 128) {
-    throw new Error('Visual episode ID must be a trimmed non-empty bounded string');
-  }
-  if (used.has(id)) throw new Error('Visual episode ID must be unique within the Brain runtime');
-  used.add(id);
 }

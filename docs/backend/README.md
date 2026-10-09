@@ -6,7 +6,7 @@ Python/FastAPI backend находится в [backend/](../../backend). Desktop 
 
 Импортирован tracked snapshot отдельного `wisp_backend` на commit `275cc8161e5f725681fdacc725708acaf74784b6`. Исходный репозиторий и его Git-история не удалены; история не объединялась с desktop. Не импортированы `.env`, `.venv`, `.git`, IDE, кеши и runtime data.
 
-Текущий сервер предоставляет `GET /health` и `POST /v1/chat`: JSON без streaming, серверные model/prompt, strict input/output validation и безопасные errors. Groq key остаётся на сервере; история не сохраняется сервером. Desktop должен запускаться с API v1.
+Текущий сервер предоставляет `GET /health`, `POST /v1/chat` и `POST /v1/touch`: JSON без streaming, серверные model/prompt, strict input/output validation и безопасные errors. Groq key остаётся на сервере; история не сохраняется сервером. Desktop должен запускаться с API v1. Касание возвращает короткую AI-реплику по [контракту касаний](../engine/AI_EVENTS_CONTRACT.md#8-явное-касание-v1).
 
 Перенос не является поставкой более поздней backend-ветки, описанной в `BE_P01_RESULT.md`. В этом snapshot отсутствуют v2/v3 memory/events endpoints, server-only ledger/quota/idempotency и полный lifecycle safeguards из поздней части [канонического v1-контракта](../engine/BACKEND_API_CONTRACT.md). Health означает работоспособность HTTP runtime, не готовность Groq. Gaps требуют отдельной задачи; их отсутствие не меняет canonical contract и не разрешает публичный deployment.
 

@@ -47,6 +47,7 @@ describe('Main: Shimeji IPC mappers', () => {
         motion,
         visualEpisode: {
           id: 'episode-3',
+          sequence: 3,
           startedAtMs: 40,
           intent: {
             kind: 'fall', category: 'movement', priority: 'normal', interrupt: 'no',
@@ -73,7 +74,7 @@ describe('Main: Shimeji IPC mappers', () => {
         velocityPxPerSec: { x: 70, y: -80 }, positionAuthority: 'forced',
       },
       visualIntent: {
-        episodeId: 'episode-3', episodeStartedAtMs: 40, kind: 'fall',
+        episodeId: 'episode-3', episodeSequence: 3, episodeStartedAtMs: 40, kind: 'fall',
         category: 'movement', priority: 'normal', interrupt: 'no',
         loop: 'until_replaced', emotionalTone: 'neutral',
       },

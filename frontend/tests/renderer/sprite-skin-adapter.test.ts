@@ -12,6 +12,7 @@ import {
 } from '../../src/renderer/render-engine';
 import type { BrainVisualIntentKindDTO } from '../../src/shared/ipc-contracts';
 import { createAnimationPreviewState } from '../../src/renderer/render-engine/animation-preview';
+import { applyLocalTerminalState } from '../../src/renderer/render-engine/local-terminal-state';
 
 const manifest: NormalizedSpriteManifest = {
   schemaVersion: 1,
@@ -19,6 +20,7 @@ const manifest: NormalizedSpriteManifest = {
     body_idle: animation('body_idle', 'body/idle', 'body', true),
     body_walk: animation('body_walk', 'body/walk', 'body', false),
     body_run: animation('body_run', 'body/run', 'body', false),
+    body_climb_wall: animation('body_climb_wall', 'body/climb', 'body', false),
     body_fall: animation('body_fall', 'body/fall', 'body', false),
     body_sleep: animation('body_sleep', 'body/sleep', 'body', false),
     body_petting: animation('body_petting', 'body/petting', 'body', false),
@@ -83,6 +85,7 @@ function visualState(
     revision,
     visualIntent: {
       episodeId: options.episodeId ?? 'episode-1',
+      episodeSequence: Number((options.episodeId ?? 'episode-1').split('-').at(-1)) || revision,
       episodeStartedAtMs: 0,
       kind,
       category: kind === 'idle_blink' ? 'idle' : kind.startsWith('sleep') ? 'sleep' : 'movement',
@@ -152,6 +155,73 @@ function fixture() {
 }
 
 describe('Renderer: SpriteSkinAdapter', () => {
+  it.each([['walk', 'body_walk_3.png'], ['run', 'body_idle_3.png']] as const)(
+    'settles stopped %s on an existing planted pose', (kind, source) => {
+      const { adapter, states } = fixture(); adapter.init();
+      adapter.update({ ...visualState(1, kind), motionVelocityPxPerSec: { x: 0, y: 0 } });
+      expect(states.at(-1)?.layers[0]?.frame?.source).toBe(source);
+      adapter.destroy();
+    });
+  it.each([['walk', true], ['run', false]] as const)(
+    'normalizes native %s facing for rightward motion', (kind, flipX) => {
+      const { adapter, states } = fixture(); adapter.init();
+      adapter.update(visualState(1, kind, { flipX: true }));
+      expect(states.at(-1)?.transform.flipX).toBe(flipX);
+      adapter.update(visualState(2, kind, { flipX: false }));
+      expect(states.at(-1)?.transform.flipX).toBe(!flipX);
+      adapter.destroy();
+    });
+  it('keeps debug preview cadence independent of a stopped Brain locomotion state', () => {
+    const { adapter, scheduler, states } = fixture();
+    adapter.init();
+    adapter.update(createAnimationPreviewState({ ...visualState(1), motionVelocityPxPerSec: { x: 0, y: 0 } },
+      { bodyKey: 'body_walk', loop: true }));
+    scheduler.run(0); scheduler.run(100);
+    expect(states.at(-1)?.playback?.frameIndex).toBe(1);
+    adapter.destroy();
+  });
+  it.each([['walk', 90], ['run', 180], ['climb_wall', 220]] as const)(
+    'scales %s cadence with actual velocity and preserves progress while stopped', (kind, referenceSpeed) => {
+      const { adapter, scheduler, states } = fixture();
+      const moving = (revision: number, speed: number): BodyVisualState => ({
+        ...visualState(revision, kind), motionVelocityPxPerSec: kind === 'climb_wall'
+          ? { x: 0, y: -speed } : { x: speed, y: 0 },
+      });
+      adapter.init(); adapter.update(moving(1, referenceSpeed / 2));
+      scheduler.run(0); scheduler.run(100);
+      expect(states.at(-1)?.playback?.frameIndex).toBe(0);
+      scheduler.run(200); expect(states.at(-1)?.playback?.frameIndex).toBe(1);
+      adapter.update(moving(2, 0)); scheduler.run(1200);
+      expect(states.at(-1)?.playback?.frameIndex).toBe(kind === 'climb_wall' ? 1 : 0);
+      adapter.update(moving(3, referenceSpeed)); scheduler.run(1300);
+      expect(states.at(-1)?.playback?.frameIndex).toBe(2);
+      adapter.destroy();
+    });
+  it('uses the idle face for a neutral pupil offset instead of downward gaze', () => {
+    const { adapter, states } = fixture();
+    adapter.init();
+    adapter.update(visualState(1, 'idle_blink', { pupilOffset: { x: 0, y: 1 } }));
+    expect(states.at(-1)?.layers[1]).toMatchObject({
+      animationKey: 'face_gaze', frame: { source: 'face_gaze_3.png' },
+    });
+    adapter.update(visualState(2, 'idle_blink', { pupilOffset: { x: 0, y: 0 } }));
+    expect(states.at(-1)?.layers[1]).toMatchObject({ animationKey: 'face_happy' });
+    adapter.destroy();
+  });
+  it('restarts a completed missing-art fallback as a live local idle loop', () => {
+    const f = fixture();
+    f.adapter.init();
+    const body = visualState(1, 'wave');
+    const finite = { ...body, visualIntent: { ...body.visualIntent, loop: 'none' as const } };
+    f.adapter.update(applyLocalTerminalState(finite, null));
+    f.scheduler.run(0);
+    f.scheduler.run(400);
+    expect(f.states.at(-1)?.layers[0]?.frame?.source).toBe('body_idle_3.png');
+    f.adapter.update(applyLocalTerminalState(finite, 'idle_blink'));
+    f.scheduler.run(500);
+    expect(f.states.at(-1)?.layers[0]?.frame?.source).toBe('body_idle_1.png');
+    f.adapter.destroy();
+  });
   it('previews an exact clip from frame zero independently of Brain age and episode changes', () => {
     const scheduler = new TestScheduler();
     const states: RenderPresentationState[] = [];

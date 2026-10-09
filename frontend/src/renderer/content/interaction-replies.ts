@@ -1,15 +1,5 @@
-export const CLICK_REPLIES = [
-  'Мурр! ✨',
-  'Ты лучший! 💖',
-  'Хи-хи, щекотно!',
-  'Что делаем? 🚀',
-] as const;
-
-export const CLICK_REPLY_FALLBACK = 'Мурр!';
-
 export const INTERACTION_REPLIES = {
   welcome: 'Привет! Я Wisp ✨',
-  wakeFromClick: 'Я проснулся! ☀️',
   wake: 'Доброе утро! ☀️',
   sleep: 'Zzz... 🌙',
   pet: 'Люблю, когда гладят! 💖',

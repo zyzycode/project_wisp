@@ -78,7 +78,7 @@ describe('Preload: Shimeji bridge', () => {
         velocityPxPerSec: { x: 0, y: 0 }, positionAuthority: 'voluntary',
       },
       visualIntent: {
-        episodeId: 'episode-1', episodeStartedAtMs: 5, kind: 'idle_blink',
+        episodeId: 'episode-1', episodeSequence: 1, episodeStartedAtMs: 5, kind: 'idle_blink',
         category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced',
         emotionalTone: 'neutral',
       },

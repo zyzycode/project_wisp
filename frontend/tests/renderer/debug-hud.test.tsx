@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { DebugHUD } from '../../src/renderer/components/Debug/DebugHUD';
+import { RuntimeDiagnostics } from '../../src/renderer/components/Debug/RuntimeDiagnostics';
 import { ContextMenu } from '../../src/renderer/components/Interaction/ContextMenu';
 import { AnimationPreviewControls } from '../../src/renderer/components/Interaction/AnimationPreviewControls';
 import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
@@ -15,6 +16,18 @@ const sampleNeeds = { energy: 75, attention: 82, play: 60, comfort: 90 };
 const sampleRelationship = { friendship: 55, love: 10, loveUnlocked: false };
 
 describe('Renderer: DebugHUD', () => {
+  it('distinguishes completed frame hold and asset failure without diagnosing Brain silence as a stop', () => {
+    const markup = renderToStaticMarkup(<RuntimeDiagnostics
+      presentation={{ viewport: { width: 512, height: 512 }, rootPivot: { x: 256, y: 460 },
+        transform: { flipX: false, scale: 1 }, layers: [],
+        playback: { clipKey: 'body_land', frameIndex: 3, frameCount: 4, completed: true } }}
+      assetLoadError="/assets/sprites/missing.png" />);
+    expect(markup).toContain('body_land');
+    expect(markup).toContain('4/4');
+    expect(markup).toContain('completed: terminal frame hold');
+    expect(markup).toContain('/assets/sprites/missing.png');
+    expect(markup).toContain('дедупликация снимков не означает остановку Brain');
+  });
   it('renders all sections and vital indicators when enabled', () => {
     const logs: DebugLogEntryDTO[] = [
       { id: '1', level: 'info', category: 'fsm', message: 'FSM transitioned to idle', timestamp: 1000 },

@@ -33,6 +33,7 @@ function brainState(): BrainStateDTO {
     },
     visualIntent: {
       episodeId: 'episode-1',
+      episodeSequence: 1,
       episodeStartedAtMs: 10,
       kind: 'idle_blink',
       category: 'idle',
@@ -47,6 +48,11 @@ function brainState(): BrainStateDTO {
 }
 
 describe('Shared: IPC contracts', () => {
+  it.each([undefined, 0, -1, .5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects invalid visual episode sequence %s', episodeSequence => {
+      const brain = brainState();
+      expect(() => parseBrainStateDTO({ ...brain, visualIntent: { ...brain.visualIntent, episodeSequence } })).toThrow(TypeError);
+    });
   it('remains a dependency leaf without imports from application layers', () => {
     const source = readFileSync(new URL('../../src/shared/ipc-contracts.ts', import.meta.url), 'utf8');
 

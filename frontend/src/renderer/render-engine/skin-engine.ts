@@ -17,6 +17,7 @@ export interface BodyVisualState extends SpriteResolutionContext {
   readonly revision: number;
   readonly visualIntent: Readonly<BrainVisualIntentDTO>;
   readonly visualAgeMs: number;
+  readonly motionVelocityPxPerSec?: { readonly x: number; readonly y: number };
   readonly reflex: Readonly<BodyVisualReflexState>;
 }
 

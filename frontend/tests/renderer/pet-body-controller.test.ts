@@ -23,6 +23,7 @@ function brainState(revision: number, episodeId = 'episode-1'): BrainStateDTO {
     },
     visualIntent: {
       episodeId,
+      episodeSequence: Number(episodeId.split('-').at(-1)),
       episodeStartedAtMs: 10,
       kind: 'walk',
       category: 'movement',
@@ -45,6 +46,27 @@ function fixture() {
 }
 
 describe('Renderer: Pet Body controller', () => {
+  it('projects authoritative velocity and finite phase budget without changing Brain', () => {
+    const { controller } = fixture();
+    const brain: BrainStateDTO = { ...brainState(1), activity: { runId: 'run', activityId: 'explore',
+      phaseId: 'inspect', stage: 'looping', startedAtMs: 0, phaseStartedAtMs: 10, phaseEndsAtMs: 2210 },
+      visualIntent: { ...brainState(1).visualIntent, kind: 'look_around', loop: 'none' } };
+    const snapshot = controller.acceptBrainState(brain);
+    expect(snapshot?.visual.motionVelocityPxPerSec).toEqual({ x: 10, y: 0 });
+    expect(snapshot?.visual.phaseDurationMs).toBe(2200);
+    controller.setPupilOffset({ x: 1, y: 0 });
+    expect(controller.getSnapshot()?.visual.phaseDurationMs).toBe(2200);
+    expect(controller.getSnapshot()?.brain).toEqual(brain);
+  });
+  it('preserves global sample age across local reflex updates and rejects invalid wire samples', () => {
+    const { controller } = fixture();
+    const brain = { ...brainState(1), globalCursor: { globalPosition: { x: -120, y: 300 }, capturedAtMs: 11 } };
+    expect(controller.acceptBrainState(brain)?.globalCursor).toEqual({ globalPosition: { x: -120, y: 300 }, capturedAtMs: 40 });
+    controller.setPupilOffset({ x: 1, y: 0 });
+    expect(controller.getSnapshot()?.globalCursor?.capturedAtMs).toBe(40);
+    expect(controller.acceptBrainState({ ...brain, revision: 2, globalCursor: { ...brain.globalCursor, capturedAtMs: 999 } })).toBeNull();
+    expect(controller.acceptBrainState({ ...brain, revision: 2, globalCursor: null })?.globalCursor).toBeNull();
+  });
   it('delivers menu pause after the first Brain snapshot if opened during startup', () => {
     const { bridge, controller } = fixture();
     controller.postMenuVisibility(true);

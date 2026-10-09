@@ -23,8 +23,6 @@ import type {
   ManifestAnimationRegistry,
 } from '../components/Character/CharacterRenderer';
 import {
-  CLICK_REPLIES,
-  CLICK_REPLY_FALLBACK,
   INTERACTION_REPLIES,
 } from '../content/interaction-replies';
 import { THOUGHT_FALLBACK, THOUGHTS } from '../content/thoughts';
@@ -35,6 +33,7 @@ import { usePetDialogue } from './usePetDialogue';
 import { usePetDragController } from './usePetDragController';
 import { useWindowOverlay } from './useWindowOverlay';
 import { isCursorObservationCompatible } from '../body-ui-runtime';
+import { applyLocalTerminalState } from '../render-engine/local-terminal-state';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
 
@@ -265,11 +264,7 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
   const handlePetClick = useCallback(() => {
     if (drag.consumeClickSuppression()) return;
     postInteraction('click');
-    const text = animState === 'sleep'
-      ? INTERACTION_REPLIES.wakeFromClick
-      : CLICK_REPLIES[Math.floor(Math.random() * CLICK_REPLIES.length)] ?? CLICK_REPLY_FALLBACK;
-    dialogue.setCurrentMessage(createChatMessage('pet', text));
-  }, [animState, dialogue.setCurrentMessage, drag, postInteraction]);
+  }, [drag, postInteraction]);
 
   const handlePetDoubleClick = useCallback(() => {
     if (drag.consumeClickSuppression()) return;
@@ -310,12 +305,13 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
       .catch((error: unknown) => console.error('Failed to get environment snapshot:', error));
   }, [bridge, overlay.setMenuOpen]);
 
-  const handleGazeDirectionChanged = useCallback((direction: 'left' | 'right' | 'up' | 'down') => {
+  const handleGazeDirectionChanged = useCallback((direction: 'left' | 'right' | 'up' | 'down' | 'neutral') => {
     const offsets = {
       left: { x: -1, y: 0 },
       right: { x: 1, y: 0 },
       up: { x: 0, y: -1 },
       down: { x: 0, y: 1 },
+      neutral: { x: 0, y: 0 },
     } as const;
     bodyController.setPupilOffset(offsets[direction]);
   }, [bodyController]);
@@ -331,6 +327,7 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
   });
 
   return {
+    bodySnapshot,
     position,
     isDragging,
     isWandering,
@@ -344,7 +341,8 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     setCurrentTheme,
     scale,
     setScale,
-    visualState: visual ?? undefined,
+    visualState: visual === null ? undefined : applyLocalTerminalState(visual,
+      visual.visualIntent.episodeId === activeVisualEpisodeRef.current ? localTerminalVisualKind : null),
     flipX: visual?.reflex.transform.flipX ?? false,
     scaleX: visual?.reflex.transform.scaleX ?? 1,
     scaleY: visual?.reflex.transform.scaleY ?? 1,
@@ -360,6 +358,7 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     handleGazeDirectionChanged,
     handleCursorObserved: postCursorObservation,
     cursorObservationEnabled,
+    gazeEnabled: !isSleeping && !isDragging,
     drag,
     handlePetClick,
     handlePetDoubleClick,

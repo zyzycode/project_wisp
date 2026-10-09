@@ -6,6 +6,7 @@ import {
 } from '../../src/main/brain-state-publisher';
 
 interface ProjectionControls {
+  globalCursor?: BrainStateDTO['globalCursor'];
   dialogue?: BrainStateDTO['dialogue'];
   initiativeSpeech?: BrainStateDTO['initiativeSpeech'];
   positionX: number;
@@ -18,6 +19,7 @@ interface ProjectionControls {
 function snapshot(meta: BrainStateSnapshotMeta, controls: ProjectionControls): BrainStateDTO {
   return {
     autonomy: { quiet: false }, cursorGame: null,
+    ...(controls.globalCursor === undefined ? {} : { globalCursor: controls.globalCursor }),
     ...(controls.initiativeSpeech === undefined ? {} : { initiativeSpeech: controls.initiativeSpeech }),
     dialogue: controls.dialogue ?? { conversationId: 'conversation-1', canSubmit: true, turn: { phase: 'idle' } },
     ...meta,
@@ -40,6 +42,7 @@ function snapshot(meta: BrainStateSnapshotMeta, controls: ProjectionControls): B
     },
     visualIntent: {
       episodeId: controls.episodeId,
+      episodeSequence: controls.episodeId === 'new-episode' ? 2 : Number(controls.episodeId.split('-').at(-1)),
       episodeStartedAtMs: 0,
       kind: 'idle_blink',
       category: 'idle',
@@ -90,6 +93,17 @@ function createFixture(
 }
 
 describe('Main: Brain state publisher', () => {
+  it('publishes stationary global refresh and coalesces pending cursor samples without losing semantic episodes', async () => {
+    const f = createFixture(); f.publisher.replaceStream(); await f.runScheduled();
+    const sample = (capturedAtMs: number) => ({ globalPosition: { x: -20, y: 80 }, capturedAtMs });
+    f.controls.globalCursor = sample(100); f.publisher.requestCommit(); await f.runScheduled();
+    f.controls.globalCursor = sample(101); f.publisher.requestCommit();
+    f.controls.globalCursor = sample(102); f.publisher.requestCommit();
+    f.controls.episodeId = 'new-episode'; f.publisher.requestCommit();
+    f.controls.globalCursor = null; f.publisher.requestCommit(); await f.runScheduled();
+    expect(f.delivered.map(s => s.globalCursor?.capturedAtMs ?? null)).toEqual([null, 100, 102, 102, null]);
+    expect(f.delivered.at(-1)?.visualIntent.episodeId).toBe('new-episode');
+  });
   it('keeps initiative publication and explicit null expiry as semantic transitions', async () => {
     const f = createFixture(); f.publisher.replaceStream(); await f.runScheduled();
     f.controls.initiativeSpeech = { id: 'ai', text: 'Поговорим?', startedAtMs: 100, expiresAtMs: 2100 }; f.publisher.requestCommit();

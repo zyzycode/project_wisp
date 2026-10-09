@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../src/shared/pet-presentation-layout';
 
 it('projects the canonical root into native DIP', () => {
-  expect(calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT)).toEqual({ x: 140, y: 233.625 });
+  expect(calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT)).toEqual({ x: 140, y: 455.625 });
 });
 it('keeps the same root when the menu expands', () => {
   expect(calculateWindowRootPivotOffset({ ...PET_PRESENTATION_LAYOUT, compactWindowSize: PET_PRESENTATION_LAYOUT.expandedWindowSize }))

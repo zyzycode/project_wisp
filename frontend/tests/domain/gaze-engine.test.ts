@@ -10,7 +10,7 @@ import {
 function gazeState(overrides: Partial<GazeState> = {}): GazeState {
   return {
     mode: 'neutral',
-    direction: 'down',
+    direction: 'neutral',
     updatedAtMs: 0,
     ...overrides,
   };
@@ -33,7 +33,7 @@ const geometry = {
 };
 
 describe('Domain: GazeEngine', () => {
-  it('uses the down frame as neutral inside the dead zone', () => {
+  it('uses the neutral face inside the dead zone', () => {
     const result = new GazeEngine().update(gazeState(), {
       nowMs: 20,
       deltaSec: 0.02,
@@ -42,7 +42,7 @@ describe('Domain: GazeEngine', () => {
     });
 
     expect(result.mode).toBe('neutral');
-    expect(result.direction).toBe('down');
+    expect(result.direction).toBe('neutral');
   });
 
   it('uses scale and flipX to choose the local horizontal direction', () => {
@@ -56,7 +56,7 @@ describe('Domain: GazeEngine', () => {
     expect(result.direction).toBe('left');
   });
 
-  it('uses vertical frames and returns to down for distant or stale cursors', () => {
+  it('keeps neutral for distant or stale cursors with no previous offset', () => {
     const engine = new GazeEngine();
     const previous = gazeState({
       mode: 'tracking',
@@ -71,7 +71,7 @@ describe('Domain: GazeEngine', () => {
     });
 
     expect(distant.mode).toBe('neutral');
-    expect(distant.direction).toBe('down');
+    expect(distant.direction).toBe('neutral');
 
     const stale = engine.update(distant, {
       nowMs: 401,
@@ -83,7 +83,7 @@ describe('Domain: GazeEngine', () => {
       geometry,
     });
     expect(stale.mode).toBe('neutral');
-    expect(stale.direction).toBe('down');
+    expect(stale.direction).toBe('neutral');
   });
 
   it('tracks a fresh ambient cursor but ignores one outside the attention radius', () => {
@@ -109,7 +109,8 @@ describe('Domain: GazeEngine', () => {
     });
 
     expect(initial.direction).toBe('right');
-    expect(far.direction).toBe('down');
+    expect(far.mode).toBe('returning_to_neutral');
+    expect(engine.update(far, { nowMs: 1500, deltaSec: 1, target: { type: 'neutral' }, geometry }).direction).toBe('neutral');
   });
 
   it.each([

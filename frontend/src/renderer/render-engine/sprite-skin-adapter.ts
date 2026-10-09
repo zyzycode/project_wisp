@@ -2,6 +2,7 @@ import type { AnimationIntent } from '../../domain/animation/animation-intent';
 import type { BrainVisualIntentDTO } from '../../shared/ipc-contracts';
 import { AnimationPlayer } from './animation-player';
 import { AssetResolver } from './asset-resolver';
+import { locomotionPlaybackRate, spriteFacingFlipX, withStoppedLocomotionPose } from './locomotion-cadence';
 import type { BodyVisualReflexState, BodyVisualState, ISkinEngine } from './skin-engine';
 import type {
   AnimationCompletedEvent,
@@ -101,13 +102,18 @@ export class SpriteSkinAdapter implements ISkinEngine {
     this.currentState = state;
     const episodeKey = `${state.streamId}\u0000${state.visualIntent.episodeId}`;
     try {
-      const clip = this.options.resolver.resolve(toAnimationIntent(state), {
+      const intent = toAnimationIntent(state);
+      const resolved = this.options.resolver.resolve(intent, {
         cursorGameReaction: state.cursorGameReaction,
+        phaseDurationMs: state.phaseDurationMs,
       });
+      const clip = withStoppedLocomotionPose(resolved, state, () => this.options.resolver.resolve({
+        ...intent, kind: 'idle_blink', category: 'idle', loop: 'until_replaced',
+      }));
       const loopMode = toPlayerLoopMode(state.visualIntent.loop);
       if (episodeKey !== this.activeEpisodeKey) {
         this.activeEpisodeKey = episodeKey;
-        this.player?.play(clip, loopMode, state.visualAgeMs);
+        this.player?.play(clip, loopMode, state.visualAgeMs * locomotionPlaybackRate(state));
       } else {
         this.player?.updateClip(clip, loopMode);
       }
@@ -158,7 +164,9 @@ export class SpriteSkinAdapter implements ISkinEngine {
 
   private tick(now: number): void {
     if (this.destroyed || this.player === null) return;
-    if (this.previousFrameNow !== undefined) this.player.tick(now - this.previousFrameNow);
+    if (this.previousFrameNow !== undefined) {
+      this.player.tick((now - this.previousFrameNow) * locomotionPlaybackRate(this.currentState));
+    }
     this.previousFrameNow = now;
     this.frameId = this.scheduler.request((nextNow) => this.tick(nextNow));
   }
@@ -180,7 +188,9 @@ function toAnimationIntent(
     emotionalTone: visualIntent.emotionalTone,
     ...(preservesSemanticExpression
       ? { expressionHint: visualIntent.expressionHint }
-      : {
+      : state.reflex.pupilOffset.x === 0 && state.reflex.pupilOffset.y === 0
+        ? { expressionHint: 'idle' as const }
+        : {
           expressionHint: 'gaze' as const,
           gazeDirection: gazeDirectionFor(state.reflex.pupilOffset),
         }),
@@ -212,7 +222,7 @@ function applyBodyReflex(
     ...state,
     transform: {
       ...state.transform,
-      flipX: reflex.transform.flipX,
+      flipX: spriteFacingFlipX(state.layers.find(layer => layer.category === 'body')?.animationKey, reflex.transform.flipX),
       scaleX: reflex.transform.scaleX,
       scaleY: reflex.transform.scaleY,
       rotationDeg: reflex.transform.rotationDeg,
@@ -226,6 +236,10 @@ function isSamePresentationFrame(
 ): boolean {
   if (previous === undefined) return false;
   if (
+    previous.playback?.clipKey !== next.playback?.clipKey ||
+    previous.playback?.frameIndex !== next.playback?.frameIndex ||
+    previous.playback?.completed !== next.playback?.completed ||
+    previous.playback?.frameCount !== next.playback?.frameCount ||
     !samePoint(previous.viewport, next.viewport) ||
     !samePoint(previous.rootPivot, next.rootPivot) ||
     previous.transform.flipX !== next.transform.flipX ||
@@ -234,6 +248,7 @@ function isSamePresentationFrame(
     (previous.transform.scaleY ?? 1) !== (next.transform.scaleY ?? 1) ||
     (previous.transform.rotationDeg ?? 0) !== (next.transform.rotationDeg ?? 0) ||
     previous.layers.length !== next.layers.length ||
+    (previous.gazeFallback === undefined ? next.gazeFallback !== undefined : !sameLayer(previous.gazeFallback, next.gazeFallback)) ||
     !sameBlush(previous, next)
   ) return false;
   return previous.layers.every((layer, index) => sameLayer(layer, next.layers[index]));

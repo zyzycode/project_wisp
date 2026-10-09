@@ -1,5 +1,6 @@
 import type { AnimationIntent, AnyAnimationIntentKind } from '../../domain/animation/animation-intent';
 import { PET_PRESENTATION_LAYOUT } from '../../shared/pet-presentation-layout';
+import { withClipPacing } from './clip-pacing';
 import {
   DEFAULT_FACE_PIVOT,
   DEFAULT_SPRITE_PIVOT,
@@ -104,22 +105,29 @@ const PROP_CONFIG: Readonly<Record<Exclude<NonNullable<AnimationIntent['propHint
 
 export interface AssetResolverOptions {
   readonly enableFaceOverlays?: boolean;
+  /** Opt-in for separately reviewed layered gaze artwork; production retains the original face. */
+  readonly enableContinuousGaze?: boolean;
 }
 
 /** Resolves semantic intents to presentation-ready, framework-neutral animation clips. */
 export class AssetResolver {
   private readonly enableFaceOverlays: boolean;
+  private readonly enableContinuousGaze: boolean;
 
   constructor(
     private readonly manifest: NormalizedSpriteManifest,
     options: AssetResolverOptions = {}
   ) {
     this.enableFaceOverlays = options.enableFaceOverlays ?? true;
+    this.enableContinuousGaze = options.enableContinuousGaze ?? false;
   }
 
   resolve(intent: AnyAnimationIntent, context: SpriteResolutionContext = {}): ResolvedAnimationClip {
-    const body = this.resolveBody(intent, context);
-    const face = this.resolveFace(intent, body);
+    const body = withClipPacing(this.resolveBody(intent, context),
+      intent.loop === 'until_replaced' ? undefined : context.phaseDurationMs);
+    const fallbackFace = this.resolveFace(intent, body);
+    const gaze = this.resolveGazeRig(intent, body);
+    const face = gaze?.face ?? fallbackFace;
     const expression = this.resolveExpression(intent);
     const prop = this.resolveProp(intent);
     const rootPivot = DEFAULT_SPRITE_PIVOT;
@@ -132,6 +140,7 @@ export class AssetResolver {
       transform: { flipX: false, scale: 1 },
       body: toBodyTrack(body),
       ...(face === undefined ? {} : { face }),
+      ...(gaze === undefined ? {} : { pupils: gaze.pupils, gazeFallback: fallbackFace }),
       ...(expression === undefined ? {} : { expression }),
       ...(hasBlush ? { proceduralBlush: createBlush(rootPivot) } : {}),
       ...(prop === undefined ? {} : { props: [prop] }),
@@ -226,6 +235,21 @@ export class AssetResolver {
       ...(isDiscreteGaze ? {
         fixedFrameIndex: gazeFrameIndex(intent.gazeDirection),
       } : {}),
+    };
+  }
+
+  private resolveGazeRig(intent: AnyAnimationIntent, body: NormalizedSpriteAnimationDef) {
+    const hint = intent.expressionHint;
+    if (!this.enableContinuousGaze || !this.enableFaceOverlays || (hint !== undefined && hint !== 'idle' && hint !== 'gaze') ||
+      body.faceOverlay?.mode !== 'overlay' || !body.faceOverlay.allowedFaceKeys?.includes('face_gaze') ||
+      body.faceOverlay.anchor === undefined) return undefined;
+    const base = selectAnimation(this.manifest.animations.face_gaze_base, 'face');
+    const pupils = selectAnimation(this.manifest.animations.pupils_gaze, 'face');
+    if (base === undefined || pupils === undefined) return undefined;
+    const anchorName = body.faceOverlay.anchor;
+    return {
+      face: { ...toOverlayTrack(base, 'face', 'face', 20, 'hold', 'normal'), anchorName, fixedFrameIndex: 0 },
+      pupils: { ...toOverlayTrack(pupils, 'face', 'pupils', 21, 'hold', 'normal'), anchorName, fixedFrameIndex: 0 },
     };
   }
 

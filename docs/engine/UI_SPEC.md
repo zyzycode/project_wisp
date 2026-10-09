@@ -74,10 +74,11 @@ flowchart LR
 | `activity` | Текущая Activity timeline | `null` означает отсутствие active Activity. |
 | `motion` | Authoritative motion projection | Полный `BrainMotionStateDTO`, не Renderer physics state. |
 | `visualIntent` | Идентичность и семантика visual episode | Полный immutable `BrainVisualIntentDTO`; не содержит asset keys. |
+| `globalCursor?` | Глобальное наблюдение для локального gaze | Absent/null — источник недоступен; finite DIP и Main timestamp ≤ `sampledAtMs`; возраст сохраняется Body, не продлевается RAF. |
 
 | `BrainVisualIntentDTO` поле | Назначение | Инвариант |
 |---|---|---|
-| `episodeId`, `episodeStartedAtMs` | Идентичность и старт visual episode | ID уникален внутри stream; время использует Main-monotonic шкалу. |
+| `episodeId`, `episodeSequence`, `episodeStartedAtMs` | Идентичность, порядок и старт visual episode | Sequence — positive safe integer, возрастает на каждый новый episode; ID уникален внутри stream; время — Main-monotonic. |
 | `kind`, `category` | Семантика и класс визуального намерения | Значения ограничены literal unions из canonical `.ts` файла. |
 | `priority`, `interrupt`, `loop` | Visual arbitration policy | Body разрешает policy в renderer-local projection; Skin только отображает результат и не возвращает outcome в Brain. |
 | `emotionalTone` | Тон Character Engine | Принадлежит `BrainEmotionalToneDTO`. |
@@ -94,7 +95,7 @@ flowchart LR
 
 `phaseEndsAtMs: null` допускает только Brain-owned causal event/interruption, не Skin completion. `visualIntent.kind` — семантика [Animation](ANIMATION_ENGINE.md), не manifest/clip key.
 
-Brain создаёт непереиспользуемый внутри stream `episodeId` и фиксирует `episodeStartedAtMs` на каждом намеренном старте/replay: Activity visual phase, повторной direct/click reaction, landing, forced transition — даже при прежних visual fields и `activity: null`. Все поля одного `(streamId, episodeId)` immutable; Motion/Needs-only revision сохраняет episode. Только новая пара перезапускает base Skin playback. Brain завершает episode публикацией следующего episode/state, без visual outcome.
+Brain увеличивает `episodeSequence` и фиксирует `episodeStartedAtMs` на каждом намеренном старте/replay: Activity visual phase, повторной direct/click reaction, landing, forced transition — даже при прежних visual fields и `activity: null`. `episodeId = sequence + ':' + rawFactoryId.slice(0,100).trimEnd()` уникален по построению; Main хранит только счётчик, без списка прошлых IDs. Переполнение safe integer запрещает создание нового episode. Все поля одного `(streamId, episodeId, episodeSequence)` immutable; Motion/Needs-only revision сохраняет episode. Новая пара stream/episode ID перезапускает base Skin playback. Brain завершает episode публикацией следующего episode/state, без visual outcome.
 
 Body создаёт один `gestureId` на gesture (trimmed non-empty, до 128 символов). Main активирует его после valid `drag_started`; ID служит корреляции ввода, не даёт position authority и не заменяет `sequence`.
 
@@ -116,15 +117,15 @@ P17-A04 добавляет optional `BrainStateDTO.initiativeSpeech` для boun
 - `observedAtMs` — Renderer-monotonic `performance.now()`, только для порядка/диагностики внутри Body stream. Main ставит собственный receive time до mapping, не вычитает часы Renderer.
 - До первого принятого snapshot Body не emits. Event несёт active stream, последнюю принятую `basedOnRevision`, следующий положительный safe-integer `sequence`; gaps допустимы, повторы/уменьшение stale.
 
-Body принимает первый полный snapshot текущей subscription, далее только matching stream с `revision > lastAcceptedRevision`, атомарно и без partial patches. Изменённые поля уже принятого episode отклоняют **весь** snapshot: сохранить valid state и bounded protocol diagnostic. Новый stream допустим лишь через новый subscribe lifecycle со сбросом revision/sequence/resources.
+Body принимает первый полный snapshot текущей subscription, далее только matching stream с `revision > lastAcceptedRevision`, атомарно и без partial patches. `episodeSequence < current` отклоняется; равная sequence требует полностью прежнего immutable payload, большая — нового ID. Нарушение отклоняет **весь** snapshot, сохраняя valid state и bounded protocol diagnostic. Gate хранит только current sequence/ID/payload, O(1) по числу эпизодов, без исторической Map. Новый stream допустим лишь через новый subscribe lifecycle со сбросом revision/sequence/resources; первый sequence может быть больше 1 после Renderer reload.
 
 `BodyVisualState.visualAgeMs = sampledAtMs - visualIntent.episodeStartedAtMs` — same-clock baseline нового episode. Далее Skin продвигает кадры по Renderer-monotonic delta; прежний episode не рестартует. Body/Skin не сравнивают Main time с `performance.now()`, не коррелируют по наличию Activity и не переключают semantic phase по `phaseEndsAtMs`.
 
 ### 6.3. Cadence и coalescing
 
-- Brain публикует после committed semantic/Activity/Motion change и сразу при subscribe. Unchanged heartbeat запрещён; semantic/Activity/position-authority transitions разных transactions не теряются.
+- Brain публикует после committed semantic/Activity/Motion change, нового глобального cursor sample и сразу при subscribe. Unchanged heartbeat запрещён; повторный реальный cursor poll до 10 Hz меняет timestamp наблюдения. Semantic/Activity/position-authority transitions разных transactions не теряются.
 - Одна Application transaction → одна snapshot; physics substeps одного внешнего Motion tick также дают максимум одну snapshot.
-- При backpressure только pending motion-only snapshots coalesce latest-wins; semantic/Activity/authority transitions сохраняют порядок. Revision gaps не скрывают semantic phase.
+- При backpressure pending snapshots с изменением только motion/global cursor coalesce latest-wins; semantic/Activity/authority transitions сохраняют порядок. Revision gaps не скрывают semantic phase.
 - `cursor_observed`: один Body refresh loop, независимо от RAF, `CURSOR_OBSERVATION_INTERVAL_MS = 100` (до 10 событий/с). Первый valid local sample после subscribe сразу; далее каждый 100-ms tick — latest position, даже неизменная, с новыми `observedAtMs`/`sequence`. Pointer moves заменяют pending position; delayed tick не делает catch-up burst.
 - Остановить cursor refresh и очистить pending при `pointerleave`/`pointercancel`, hidden document/window teardown, drag, unsubscribe/unmount, stream replacement. Brain TTL делает sample stale без unavailable event. Это единственный допустимый unchanged Body refresh.
 - `drag_moved` coalesce latest-wins максимум раз за Renderer frame. `drag_started`, `drag_ended`, `interaction`, `menu_visibility_changed` немедленны и не coalesce; sequence присваивается при фактической отправке.

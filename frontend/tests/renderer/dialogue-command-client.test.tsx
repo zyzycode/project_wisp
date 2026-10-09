@@ -4,7 +4,7 @@ import type { BrainStateDTO, DialogueCommandReceiptDTO } from '../../src/shared/
 function snapshot(revision: number, streamId = 'stream'): BrainStateDTO {
   return { streamId, revision, sampledAtMs: 0, character: { needs: { energy: 50, comfort: 50, play: 50, attention: 50, boredom: 50 }, synthesizedTone: 'neutral' },
     activity: null, motion: { phase: 'grounded', rootScreenPosition: { x: 100, y: 100 }, velocityPxPerSec: { x: 0, y: 0 }, positionAuthority: 'voluntary' },
-    visualIntent: { episodeId: 'e', episodeStartedAtMs: 0, kind: 'idle_blink', category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced', emotionalTone: 'neutral' },
+    visualIntent: { episodeId: 'e', episodeSequence: 1, episodeStartedAtMs: 0, kind: 'idle_blink', category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced', emotionalTone: 'neutral' },
     dialogue: { conversationId: 'c', canSubmit: true, turn: { phase: 'idle' } } };
 }
 function fixture() {

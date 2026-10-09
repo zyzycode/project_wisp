@@ -5,6 +5,7 @@ import type { AIRequestAvailability, IAIRequestControl } from './ai-request-poli
 import type { GameEpisode, MemoryOperationContext } from './memory-repository.interface';
 
 export type AICompanionEvent =
+  | { readonly type: 'user_touch'; readonly variant: 'stroke' | 'touch' | 'ruffle' | 'poke'; readonly occurredAt: string }
   | {
       readonly type: 'cursor_game_completed';
       readonly outcome: 'caught' | 'missed' | 'lost_target';

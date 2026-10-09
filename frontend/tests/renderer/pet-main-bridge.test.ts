@@ -22,13 +22,33 @@ function brainState(revision = 1, episodeId = 'episode-1'): BrainStateDTO {
       velocityPxPerSec: { x: 0, y: 0 }, positionAuthority: 'voluntary',
     },
     visualIntent: {
-      episodeId, episodeStartedAtMs: 10, kind: 'idle_blink', category: 'idle',
+      episodeId, episodeSequence: Number(episodeId.split('-').at(-1)), episodeStartedAtMs: 10, kind: 'idle_blink', category: 'idle',
       priority: 'low', interrupt: 'yes', loop: 'until_replaced', emotionalTone: 'neutral',
     },
   };
 }
 
 describe('Renderer: Pet Main bridge', () => {
+  it('rejects old sequences, mutation and current-ID replay, then resets only with the subscription', () => {
+    const gate = new BrainStateRevisionGate(() => {});
+    expect(gate.accept(brainState(1, 'episode-40'))).not.toBeNull();
+    expect(gate.accept(brainState(2, 'episode-39'))).toBeNull();
+    const replay = brainState(3, 'episode-40');
+    expect(gate.accept({ ...replay, visualIntent: { ...replay.visualIntent, episodeSequence: 41 } })).toBeNull();
+    expect(gate.accept(brainState(4, 'episode-41'))).not.toBeNull();
+    expect(gate.accept({ ...brainState(5, 'episode-41'), streamId: 'foreign' })).toBeNull();
+    gate.reset();
+    expect(gate.accept({ ...brainState(1), streamId: 'foreign' })).not.toBeNull();
+  });
+  it('retains constant episode bookkeeping across 25000 visual episodes', () => {
+    const gate = new BrainStateRevisionGate(() => {});
+    for (let index = 1; index <= 25000; index++) {
+      expect(gate.accept(brainState(index, `episode-${index}`))).not.toBeNull();
+    }
+    const retained = Object.values(gate).filter(value => value instanceof Map || value instanceof Set)
+      .reduce((sum, value) => sum + value.size, 0);
+    expect(retained).toBeLessThanOrEqual(1);
+  });
   it('forwards the typed Body stream and unsubscribes the Brain listener', async () => {
     const unsubscribe = vi.fn();
     const bridge: PetMainBridge = {

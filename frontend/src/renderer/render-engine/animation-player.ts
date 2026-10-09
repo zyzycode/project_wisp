@@ -127,14 +127,20 @@ export class AnimationPlayer implements IAnimationPlayer {
     const bodyFrame = getBodyFrame(clip.body, this.elapsedMs, loopMode, this.completed);
     const layers: VisibleRenderLayerDef[] = [createLayer(clip.body, bodyFrame.frame)];
     appendOverlayLayer(layers, clip.face, this.elapsedMs, clip.body, bodyFrame);
+    appendOverlayLayer(layers, clip.pupils, this.elapsedMs, clip.body, bodyFrame);
+    const gazeFallback: VisibleRenderLayerDef[] = [];
+    appendOverlayLayer(gazeFallback, clip.gazeFallback, this.elapsedMs, clip.body, bodyFrame);
     appendOverlayLayer(layers, clip.expression, this.elapsedMs);
     for (const prop of clip.props ?? []) appendOverlayLayer(layers, prop, this.elapsedMs);
 
     this.presentationState = {
+      playback: { clipKey: clip.key, frameIndex: bodyFrame.index,
+        frameCount: clip.body.frames.length, completed: this.completed },
       viewport: clip.viewport,
       rootPivot: clip.rootPivot,
       transform: clip.transform,
       layers,
+      ...(gazeFallback[0] === undefined ? {} : { gazeFallback: gazeFallback[0] }),
       ...(clip.proceduralBlush === undefined ? {} : { proceduralBlush: clip.proceduralBlush }),
     };
     this.renderer.render(this.presentationState);

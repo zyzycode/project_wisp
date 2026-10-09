@@ -14,8 +14,8 @@ Renderer не парсит provider DTO, не считает Needs/Activity/auth
 
 [PetPresentationLayoutDTO](../../frontend/src/shared/ipc-contracts.ts) — статическая конфигурация; один экземпляр и pure projection в [pet-presentation-layout.ts](../../frontend/src/shared/pet-presentation-layout.ts) принадлежат Render и напрямую потребляются Main/Renderer. Shared-модуль без Renderer/DOM/React/Electron/Domain imports; новый IPC/runtime layout service/DOM measurement для Main не нужны.
 
-- Compact 280×320, expanded 1140×620; character rect (20, 18, 240, 240), viewport 512×512, root (256, 460). CSS/CharacterRenderer/default viewport-pivot/Main используют общий экземпляр, без копий чисел.
-- `calculateWindowRootPivotOffset(layout)`: `s = min(width / viewport.width, height / viewport.height)`; `letterbox = (characterSize - viewportSize * s) / 2`; `offset = characterRect.origin + letterbox + spriteRootPivot * s`. Сейчас offset=(140, 233.625) DIP, SVG `xMidYMid meet`.
+- Compact 280×542, expanded 1140×620; character rect (20, 240, 240, 240), viewport 512×512, root (256, 460). Верхняя область отведена под ответ и неподвижный ввод с зазором 2 DIP между ними; длинный текст прокручивается, оба блока остаются выше character rect. CSS/CharacterRenderer/default viewport-pivot/Main используют общий экземпляр, без копий чисел.
+- `calculateWindowRootPivotOffset(layout)`: `s = min(width / viewport.width, height / viewport.height)`; `letterbox = (characterSize - viewportSize * s) / 2`; `offset = characterRect.origin + letterbox + spriteRootPivot * s`. Сейчас offset=(140, 455.625) DIP, SVG `xMidYMid meet`.
 - Position adapter получает готовый `pivotOffset`: root↔native, rounding/clamp/commit; scale/letterbox не считает. Main компонует размеры/DI без собственных CSS/Render constants. Меню сохраняет origin/root offset; DPR к DIP не применяется, physical-pixel conversion — platform adapters.
 - Skin совмещает frame pivot с canonical root. Flip/squash/смена клипа не меняют native offset/position authority. Исходный `canvasSize` передаётся отдельно от fixed viewport; нестандартный frame не меняет масштаб всего canvas.
 
@@ -42,6 +42,21 @@ Renderer не парсит provider DTO, не считает Needs/Activity/auth
 | `destroy()` | Остановить RAF/player callbacks и освободить resources | После возврата новые updates запрещены. |
 
 `SpriteSkinAdapter` — единственный adapter scope, оборачивает текущие resolver/player/renderer/manifest без format migration. Base clip стартует/replay только при новой паре `(streamId, visualIntent.episodeId)` с baseline `visualAgeMs`; Brain revision/reflex старого episode не сбрасывают playback. Completion локален, не входит в `BodyEventDTO` и не создаёт Brain outcome.
+
+Нейтральный gaze может использовать зарегистрированную пару `face_gaze_base` +
+`pupils_gaze` только при явном `enableContinuousGaze` и overlay-совместимости с
+`face_gaze`. По умолчанию флаг выключен: runtime использует прежнее лицо и
+дискретные кадры `face_gaze`, независимо от наличия новой пары в manifest. Player привязывает
+оба слоя к одному текущему body anchor; отдельный pupil handle получает дробный
+Body offset и меняет только SVG translate (±2/±1 source px), без per-frame React
+publication. Семантическая эмоция имеет приоритет. Неполная пара или ошибка
+загрузки любого её PNG атомарно возвращает прежний face fallback; пустая основа
+без радужек и радужки без основы отдельно не отображаются.
+
+`sprite-projection.ts` задаёт общий порядок pivot → rotation → scale/reflection
+для SVG, anchor marker и inverse gaze projection с letterboxing. Нативное
+направление body art нормализуется Skin до вычисления gaze geometry. Геометрия
+использует фактический frame pivot/anchor, не только размеры контейнера.
 
 Spine/Live2D, placeholders, dependencies/adapter IDs вне AUTO-A08/AUTO-I10; требуют отдельных Dependency/Implementation Gate и готовых rig assets.
 

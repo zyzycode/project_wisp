@@ -242,7 +242,7 @@ export function selectActivityForResolvedIntent(
     : intent.kind === 'sleep'
       ? [REST_ACTIVITY]
       : intent.kind === 'idle'
-        ? [{ id: 'calm', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'calm', steps: [{ id: 'calm', actionId: `calm:${intent.calmPose ?? 'idle_blink'}`, stage: 'looping', type: 'animation', intent: { kind: intent.calmPose ?? 'idle_blink' }, completion: { type: 'elapsed', durationMs: 8000 } }] } satisfies ActivityDefinition]
+        ? [{ id: 'calm', priority: 'P4_autonomous', baseWeight: 1, entryStepId: 'calm', steps: [{ id: 'calm', actionId: `calm:${intent.calmPose ?? 'idle_blink'}`, stage: 'looping', type: 'animation', intent: { kind: intent.calmPose ?? 'idle_blink' }, completion: { type: 'elapsed', durationMs: 6500 + Math.floor(randomUnit * 3500) } }] } satisfies ActivityDefinition]
       : intent.kind === 'play'
         ? catalog.play ?? [ZOOMIES_ACTIVITY]
         : [];

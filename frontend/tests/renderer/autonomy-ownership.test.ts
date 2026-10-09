@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   cursorObserved: undefined as ((position: { readonly x: number; readonly y: number }) => void) | undefined,
   gazeEnabled: undefined as boolean | undefined,
   animationState: 'idle',
+  click: undefined as (() => void) | undefined,
+  speechText: null as string | null,
   visualAgeMs: undefined as number | undefined,
   menu: undefined as ContextMenuProps | undefined,
   previewControls: undefined as AnimationPreviewControlsProps | undefined,
@@ -36,6 +38,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../src/renderer/components/Character/CharacterRenderer', () => ({
   CharacterRenderer: (props: {
+    readonly onClick?: () => void;
     readonly onAnimationCompleted?: (_event: unknown, episodeId: string | undefined) => void;
     readonly onAnimationRejected?: (episodeId: string | undefined) => void;
     readonly onCursorObserved?: (position: { readonly x: number; readonly y: number }) => void;
@@ -43,6 +46,7 @@ vi.mock('../../src/renderer/components/Character/CharacterRenderer', () => ({
     readonly visualState?: { readonly visualAgeMs: number };
     readonly debugAnimationSelection?: DebugAnimationSelection;
   }) => {
+    mocks.click = props.onClick;
     mocks.animationCompleted = props.onAnimationCompleted;
     mocks.animationRejected = props.onAnimationRejected;
     mocks.cursorObserved = props.onCursorObserved;
@@ -62,7 +66,7 @@ vi.mock('../../src/renderer/components/Interaction/ContextMenu', () => ({
 vi.mock('../../src/renderer/components/Interaction/AnimationPreviewControls', () => ({
   AnimationPreviewControls: (props: AnimationPreviewControlsProps) => { mocks.previewControls = props; return null; },
 }));
-vi.mock('../../src/renderer/components/Chat/SpeechBubble', () => ({ SpeechBubble: () => null }));
+vi.mock('../../src/renderer/components/Chat/SpeechBubble', () => ({ SpeechBubble: (props: { message: { text: string } | null }) => { mocks.speechText = props.message?.text ?? null; return null; } }));
 vi.mock('../../src/renderer/components/Chat/ChatInput', () => ({ ChatInput: () => null }));
 vi.mock('../../src/renderer/components/Debug', () => ({ DebugHUD: () => null }));
 vi.mock('../../src/renderer/hooks/useAnimationStateMachine', () => ({
@@ -101,7 +105,9 @@ class MiniNode {
   public readonly childNodes: MiniNode[] = [];
   public parentNode: MiniNode | null = null;
   public ownerDocument: MiniDocument;
-  public readonly style: Record<string, string> = {};
+  public readonly style: Record<string, string | ((name: string, value: string) => void)> = {
+    setProperty: (name, value) => { this.style[name] = value; },
+  };
   public textContent = '';
   public nodeValue: string | null = null;
   public namespaceURI = 'http://www.w3.org/1999/xhtml';
@@ -194,6 +200,7 @@ function brainState(
     },
     visualIntent: {
       episodeId,
+      episodeSequence: Number(episodeId.split('-').at(-1)) || revision,
       episodeStartedAtMs: revision * 10,
       kind,
       category: kind === 'sleep_start' ? 'sleep' : kind === 'fall' ? 'movement' : 'transition',
@@ -284,6 +291,9 @@ describe('Renderer: autonomy ownership', () => {
     await act(async () => root.render(React.createElement(DesktopPet)));
 
     await act(async () => mocks.brainListener?.(brainState(1, 'episode-idle', 'idle_blink')));
+    await act(async () => mocks.click?.());
+    expect(api.postBodyEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'interaction', interaction: 'click' }));
+    expect(mocks.speechText).toBeNull();
     expect(mocks.gazeEnabled).toBe(true);
     await act(async () => mocks.previewControls?.onSelectBody('body_sit'));
     expect(mocks.preview?.bodyKey).toBe('body_sit');

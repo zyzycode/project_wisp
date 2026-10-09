@@ -8,7 +8,7 @@ function snapshot(): BrainStateDTO {
   return { streamId: 's', revision: 1, sampledAtMs: 100, initiativeSpeech: speech, cursorGame: null, autonomy: { quiet: false }, dialogue: { conversationId: 'c', canSubmit: true, turn: { phase: 'idle' } },
     character: { needs: { energy: 50, attention: 50, play: 50, comfort: 50, boredom: 50 }, synthesizedTone: 'neutral' }, activity: null,
     motion: { phase: 'grounded', rootScreenPosition: { x: 0, y: 0 }, velocityPxPerSec: { x: 0, y: 0 }, positionAuthority: 'voluntary' },
-    visualIntent: { episodeId: 'e', episodeStartedAtMs: 0, kind: 'idle_blink', category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced', emotionalTone: 'neutral' } };
+    visualIntent: { episodeId: 'e', episodeSequence: 1, episodeStartedAtMs: 0, kind: 'idle_blink', category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced', emotionalTone: 'neutral' } };
 }
 it('validates the additive optional/null/object projection with bounded text/time/identity', () => {
   const s = snapshot(); expect(parseBrainStateDTO(s).initiativeSpeech).toEqual(speech);

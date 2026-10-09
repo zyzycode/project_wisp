@@ -50,7 +50,8 @@ function createFixture(
   random: IPrng = sequence(0, 0.2, 0.9, 0.5, 0),
   needs: Partial<Needs> = {},
   cancelMovementResults: readonly boolean[] = [],
-  externalSurface?: SurfaceSnapshotDto
+  externalSurface?: SurfaceSnapshotDto,
+  createVisualEpisodeId?: () => string
 ) {
   const scheduler = new Scheduler();
   const requestVoluntaryMovement = vi.fn(() => true);
@@ -99,7 +100,7 @@ function createFixture(
       cancelVoluntaryMovement,
     },
     requestManualRootPosition: () => true,
-    createVisualEpisodeId: () => `episode-${++episodeSequence}`,
+    createVisualEpisodeId: createVisualEpisodeId ?? (() => `episode-${++episodeSequence}`),
     createActivityRunId: () => `run-${++activitySequence}`,
     onPresentationChanged,
     behaviorConfig: {
@@ -123,6 +124,17 @@ function createFixture(
 }
 
 describe('Main integration: Brain runtime', () => {
+  it('creates unique bounded identities even when the raw factory repeats long names', () => {
+    const f = createFixture(undefined, {}, [], undefined, () => `${'x'.repeat(99)} ${'y'.repeat(400)}`);
+    const first = f.composition.getVisualEpisode();
+    f.composition.handleClick();
+    const second = f.composition.getVisualEpisode();
+    expect(first.sequence).toBe(1);
+    expect(second.sequence).toBe(2);
+    expect(second.id).not.toBe(first.id);
+    expect(second.id.length).toBeLessThanOrEqual(128);
+    expect(second.id.trim()).toBe(second.id);
+  });
   it('releases only dialogue-owned thinking and offers a reply through Character gates', () => {
     const f = createFixture(); f.composition.start();
     f.composition.setBehaviorContext({ requestId: 'request', conversationId: 'c', generation: 0, requestedAtMs: f.scheduler.nowMs }); f.composition.beginDialogueThinking('request');
@@ -303,7 +315,7 @@ describe('Main integration: Brain runtime', () => {
   it('starts Explore from the Character-resolved wander and exposes its causal timeline', () => {
     const fixture = createFixture();
     const initial = fixture.composition.getVisualEpisode();
-    expect(initial).toMatchObject({ id: 'episode-1', startedAtMs: 0 });
+    expect(initial).toMatchObject({ id: '1:episode-1', sequence: 1, startedAtMs: 0 });
     expect(initial.intent.kind).toBe('idle_blink');
 
     fixture.composition.start();
@@ -317,16 +329,16 @@ describe('Main integration: Brain runtime', () => {
       speedPxPerSec: 100,
     });
     expect(fixture.composition.getVisualEpisode().intent.kind).toBe('walk');
-    expect(fixture.composition.getVisualEpisode().id).toBe('episode-2');
+    expect(fixture.composition.getVisualEpisode().id).toBe('2:episode-2');
     expect(fixture.composition.getActivityTimeline()).toEqual({
-      runId: 'run-1', activityId: 'explore', phaseId: 'walk', stage: 'entering',
+      runId: '1:run-1', activityId: 'explore', phaseId: 'walk', stage: 'entering',
       startedAtMs: 10, phaseStartedAtMs: 10, phaseEndsAtMs: 7_010,
     });
     expect(fixture.onPresentationChanged).toHaveBeenCalledOnce();
 
     fixture.composition.notifyVoluntaryMovementCompleted();
     expect(fixture.composition.getActivityTimeline()).toMatchObject({
-      runId: 'run-1', phaseId: 'inspect', stage: 'looping',
+      runId: '1:run-1', phaseId: 'inspect', stage: 'looping',
       phaseStartedAtMs: 10, phaseEndsAtMs: 2_210,
     });
     expect(fixture.composition.getVisualEpisode().intent.kind).toBe(plan?.inspection);

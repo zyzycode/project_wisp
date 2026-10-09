@@ -19,7 +19,7 @@ class ChatBoundary:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope["path"] != "/v1/chat" or scope["method"] != "POST":
+        if scope["type"] != "http" or scope["path"] not in ("/v1/chat", "/v1/touch") or scope["method"] != "POST":
             return await self.app(scope, receive, send)
         headers = dict(scope["headers"])
         content_type = headers.get(b"content-type", b"").decode("latin-1").lower()

@@ -121,6 +121,7 @@ export interface NormalizedSpriteManifest {
 export type RenderLayerId =
   | 'base_body'
   | 'face'
+  | 'pupils'
   | 'expression'
   | 'procedural_blush'
   | 'prop_pillow'
@@ -172,6 +173,12 @@ export interface ProceduralBlushDef {
 }
 
 export interface RenderPresentationState {
+  readonly playback?: {
+    readonly clipKey: string;
+    readonly frameIndex: number;
+    readonly frameCount: number;
+    readonly completed: boolean;
+  };
   readonly viewport: { readonly width: number; readonly height: number };
   readonly rootPivot: SpritePoint;
   readonly transform: {
@@ -182,6 +189,7 @@ export interface RenderPresentationState {
     readonly rotationDeg?: number;
   };
   readonly layers: readonly RenderLayerDef[];
+  readonly gazeFallback?: VisibleRenderLayerDef;
   readonly proceduralBlush?: ProceduralBlushDef;
 }
 
@@ -206,6 +214,8 @@ export interface ResolvedTrackBase {
 /** Semantic context for choosing artwork inside Renderer; no asset keys in Brain. */
 export interface SpriteResolutionContext {
   readonly cursorGameReaction?: 'caught' | 'missed' | 'lost_target';
+  /** Total authoritative phase budget; never a frame-driven Brain deadline. */
+  readonly phaseDurationMs?: number;
 }
 
 export interface ResolvedBodyTrack extends ResolvedTrackBase {
@@ -232,6 +242,8 @@ export interface ResolvedAnimationClip {
   readonly transform: { readonly flipX: boolean; readonly scale: number };
   readonly body: ResolvedBodyTrack;
   readonly face?: ResolvedOverlayTrack & { readonly category: 'face' };
+  readonly pupils?: ResolvedOverlayTrack & { readonly category: 'face' };
+  readonly gazeFallback?: ResolvedOverlayTrack & { readonly category: 'face' };
   readonly expression?: ResolvedOverlayTrack & { readonly category: 'expression' };
   readonly props?: readonly (ResolvedOverlayTrack & { readonly category: 'props' })[];
   readonly proceduralBlush?: ProceduralBlushDef;

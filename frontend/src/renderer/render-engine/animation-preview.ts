@@ -15,6 +15,8 @@ export function createAnimationPreviewState(
   return {
     ...state,
     visualAgeMs: 0,
+    motionVelocityPxPerSec: undefined,
+    phaseDurationMs: undefined,
     visualIntent: {
       ...state.visualIntent,
       episodeId: `preview:${selection.bodyKey}:${selection.faceKey ?? ''}:${selection.replayToken ?? 0}`,

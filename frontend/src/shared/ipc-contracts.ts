@@ -164,6 +164,7 @@ export interface BrainMotionStateDTO {
 export interface BrainVisualIntentDTO {
   readonly episodeId: string;
   readonly episodeStartedAtMs: number;
+  readonly episodeSequence: number;
   readonly kind: BrainVisualIntentKindDTO;
   readonly category:
     | 'idle'
@@ -221,6 +222,8 @@ export interface AIInitiativeSpeechDTO {
 }
 
 export interface BrainStateDTO {
+  /** Main monotonic sample; null means global source unavailable. Never a Body command. */
+  readonly globalCursor?: { readonly globalPosition: { readonly x: number; readonly y: number }; readonly capturedAtMs: number } | null;
   readonly cursorGame: CursorGamePresentationDTO | null;
   /** Optional additive projection; absent/null both mean no autonomous AI speech. */
   readonly initiativeSpeech?: AIInitiativeSpeechDTO | null;

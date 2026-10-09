@@ -32,6 +32,11 @@ function context(
 }
 
 describe('Domain: Explore planner', () => {
+  it('holds a completed resting entrance until its semantic phase ends', () => {
+    const plan = createExplorePlanCandidates(context({ needs: { energy: 20, attention: 20, play: 20, comfort: 80 } }))
+      .find(candidate => candidate.pose === 'lie')!;
+    expect(createExploreActivityDefinition(plan).steps.find(step => step.id === 'pose')).toMatchObject({ intent: { loop: 'none' } });
+  });
   it('filters unreachable points and keeps sufficiently distant targets on valid support', () => {
     const plans = createExplorePlanCandidates(context());
 

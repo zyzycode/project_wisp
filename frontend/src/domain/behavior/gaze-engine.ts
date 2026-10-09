@@ -17,6 +17,8 @@ export interface GazeGeometry {
   readonly gazeOriginSourcePx: Vector2Dto;
   readonly scale: number;
   readonly flipX: boolean;
+  /** Inverse rendered linear transform; reflection is already included. */
+  readonly sourceFromWorld?: { readonly xx: number; readonly xy: number; readonly yx: number; readonly yy: number };
 }
 
 export interface GazeInput {
@@ -28,18 +30,22 @@ export interface GazeInput {
 
 /** Frame order in the `face_gaze` manifest animation. */
 export type GazeDirection = 'left' | 'right' | 'up' | 'down';
+export type GazePresentationDirection = GazeDirection | 'neutral';
 
 export interface GazeConstraints {
   readonly attentionRadiusWorldPx: number;
   readonly deadZoneSourcePx: number;
   readonly maxCursorAgeMs: number;
+  readonly smoothingTimeSec?: number;
+  readonly directionHysteresis?: number;
 }
 
 export interface GazeState {
   readonly mode: 'tracking' | 'returning_to_neutral' | 'neutral';
   readonly target?: GazeTarget;
-  /** Discrete direction consumed by face_gaze_00..03; down is neutral. */
-  readonly direction: GazeDirection;
+  /** Neutral uses the existing idle face, never the downward gaze frame. */
+  readonly direction: GazePresentationDirection;
+  readonly offset?: Vector2Dto;
   readonly updatedAtMs: MonotonicMs;
 }
 
@@ -94,6 +100,8 @@ export const DEFAULT_GAZE_CONSTRAINTS: GazeConstraints = {
   attentionRadiusWorldPx: 360,
   deadZoneSourcePx: 12,
   maxCursorAgeMs: 300,
+  smoothingTimeSec: 0.12,
+  directionHysteresis: 0.15,
 };
 
 export const DEFAULT_CURSOR_REACTION_CONSTRAINTS: CursorReactionConstraints = {
@@ -122,6 +130,8 @@ function validateGazeConstraints(constraints: GazeConstraints): void {
   requirePositive(constraints.attentionRadiusWorldPx, 'attentionRadiusWorldPx');
   requireNonNegative(constraints.deadZoneSourcePx, 'deadZoneSourcePx');
   requireNonNegative(constraints.maxCursorAgeMs, 'maxCursorAgeMs');
+  requirePositive(constraints.smoothingTimeSec ?? 0.12, 'smoothingTimeSec');
+  requireNonNegative(constraints.directionHysteresis ?? 0.15, 'directionHysteresis');
 }
 
 function validateCursorConstraints(constraints: CursorReactionConstraints): void {
@@ -136,13 +146,13 @@ function isFresh(sample: CursorSample, nowMs: MonotonicMs, maxAgeMs: number): bo
   return ageMs >= 0 && ageMs <= maxAgeMs;
 }
 
-function desiredDirection(input: GazeInput, constraints: GazeConstraints): GazeDirection {
-  if (input.target.type === 'neutral') return 'down';
+function desiredOffset(input: GazeInput, constraints: GazeConstraints): Vector2Dto {
+  if (input.target.type === 'neutral') return { x: 0, y: 0 };
   if (
     input.target.type === 'cursor' &&
     !isFresh(input.target.sample, input.nowMs, constraints.maxCursorAgeMs)
   ) {
-    return 'down';
+    return { x: 0, y: 0 };
   }
 
   const targetPosition =
@@ -151,9 +161,12 @@ function desiredDirection(input: GazeInput, constraints: GazeConstraints): GazeD
       : input.target.globalPosition;
   const dxWorld = targetPosition.x - input.geometry.rootGlobalPosition.x;
   const dyWorld = targetPosition.y - input.geometry.rootGlobalPosition.y;
-  const dxSource = dxWorld / input.geometry.scale;
-  const dySource = dyWorld / input.geometry.scale;
-  const dxLocal = (input.geometry.flipX ? -dxSource : dxSource) - input.geometry.gazeOriginSourcePx.x;
+  const inverse = input.geometry.sourceFromWorld;
+  const dxSource = inverse === undefined ? (input.geometry.flipX ? -dxWorld : dxWorld) / input.geometry.scale
+    : inverse.xx * dxWorld + inverse.xy * dyWorld;
+  const dySource = inverse === undefined ? dyWorld / input.geometry.scale
+    : inverse.yx * dxWorld + inverse.yy * dyWorld;
+  const dxLocal = dxSource - input.geometry.gazeOriginSourcePx.x;
   const dyLocal = dySource - input.geometry.gazeOriginSourcePx.y;
   const distance = Math.hypot(dxLocal, dyLocal);
   const attentionRadiusSourcePx = input.geometry.scale === 0
@@ -164,10 +177,20 @@ function desiredDirection(input: GazeInput, constraints: GazeConstraints): GazeD
     distance > attentionRadiusSourcePx ||
     distance <= constraints.deadZoneSourcePx
   ) {
-    return 'down';
+    return { x: 0, y: 0 };
   }
-  if (Math.abs(dxLocal) >= Math.abs(dyLocal)) return dxLocal < 0 ? 'left' : 'right';
-  return dyLocal < 0 ? 'up' : 'down';
+  const strength = (distance - constraints.deadZoneSourcePx) / (attentionRadiusSourcePx - constraints.deadZoneSourcePx);
+  return { x: dxLocal / distance * strength, y: dyLocal / distance * strength };
+}
+
+function selectDirection(offset: Vector2Dto, previous: GazePresentationDirection, hysteresis: number): GazePresentationDirection {
+  const x = Math.abs(offset.x), y = Math.abs(offset.y);
+  if (Math.hypot(x, y) < 0.01) return 'neutral';
+  const horizontal = offset.x < 0 ? 'left' : 'right';
+  const vertical = offset.y < 0 ? 'up' : 'down';
+  if (previous === horizontal && y <= x * (1 + hysteresis)) return previous;
+  if (previous === vertical && x <= y * (1 + hysteresis)) return previous;
+  return x >= y ? horizontal : vertical;
 }
 
 export class GazeEngine implements IGazeEngine {
@@ -186,12 +209,19 @@ export class GazeEngine implements IGazeEngine {
       throw new RangeError('nowMs must not precede the previous gaze update');
     }
 
-    const direction = desiredDirection(input, constraints);
-    const mode = direction === 'down' ? 'neutral' : 'tracking';
+    const desired = desiredOffset(input, constraints);
+    const previousOffset = previous.offset ?? { x: 0, y: 0 };
+    const alpha = 1 - Math.exp(-input.deltaSec / (constraints.smoothingTimeSec ?? 0.12));
+    const smoothed = { x: previousOffset.x + alpha * (desired.x - previousOffset.x),
+      y: previousOffset.y + alpha * (desired.y - previousOffset.y) };
+    const direction = selectDirection(smoothed, previous.direction, constraints.directionHysteresis ?? 0.15);
+    const mode = desired.x !== 0 || desired.y !== 0 ? 'tracking'
+      : direction === 'neutral' ? 'neutral' : 'returning_to_neutral';
     return {
       mode,
       ...(mode === 'tracking' ? { target: input.target } : {}),
       direction,
+      offset: direction === 'neutral' ? { x: 0, y: 0 } : smoothed,
       updatedAtMs: input.nowMs,
     };
   }

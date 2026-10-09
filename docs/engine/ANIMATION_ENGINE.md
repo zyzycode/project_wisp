@@ -69,7 +69,13 @@ Cursor observation остаётся доступным во время обеи�
 
 Brain не ждёт Skin: bounded ActivityRunner phase имеет Main-monotonic phaseStartedAtMs/phaseEndsAtMs и transition при `nowMs >= phaseEndsAtMs`; locomotion/guard/forced motion/input завершают или прерывают через authoritative Brain events.
 
-Base playback ключ — `(streamId, visualIntent.episodeId)`, не Activity presence/revision. Каждый новый episode/replay задаёт Main `episodeStartedAtMs`, включая повторные click/land/direct reactions при `activity: null`. Прежний episode immutable и не рестартует от revision.
+Direct finite reactions без Activity тоже ограничены Main deadline: click/feed/pet
+и confused/spook — 3000 ms, wake — 1500 ms, land/crash — существующий landing
+recovery. Deadline считается от текущего episode и работает при выключенном
+wander; replay обновляет начало, новое forced/Activity состояние отменяет старое
+окончание. Skin completion не участвует в этом решении.
+
+Base playback ключ — `(streamId, visualIntent.episodeId)`, не Activity presence/revision. Каждый новый episode/replay задаёт Main `episodeStartedAtMs` и возрастающий `episodeSequence`, включая повторные click/land/direct reactions при `activity: null`. Прежний episode immutable и не рестартует от revision. Main создаёт уникальный ID из sequence и ограниченного factory suffix; Body проверяет sequence и текущий payload с O(1) памятью, без истории всех эпизодов ([UI §6](UI_SPEC.md#6-brain--body-ipc)).
 
 Body вычисляет `BodyVisualState.visualAgeMs = sampledAtMs - episodeStartedAtMs`; Skin использует same-clock baseline, затем Renderer-monotonic delta для frames, без сравнения часов.
 
@@ -81,6 +87,66 @@ Body вычисляет `BodyVisualState.visualAgeMs = sampledAtMs - episodeStar
 | Renderer завис, перезагрузился или уничтожен | Новый Body получает полный актуальный snapshot и начинает визуализацию с него. | Brain продолжает работать без animation watchdog. |
 
 Completion callback только внутри SpriteSkinAdapter для local frame/fallback. Он не BodyEventDTO, не проходит Preload, не создаёт Activity completion/stimulus/opportunity.
+
+Local neutral fallback действительно передаётся Skin с отдельным локальным
+playback key и монотонной local revision, даже если fallback разрешается в тот же
+body asset. Исходный Brain episode/DTO не изменяется и не публикуется обратно.
+
+### Cadence текущих клипов
+
+Legacy body art из четырёх кадров с default 5 FPS получает presentation-only
+[профиль задержек](../../frontend/src/renderer/render-engine/clip-pacing.ts).
+Явные отличающиеся durations, специализированные clips и debug exact-key inspection
+сохраняют timing манифеста. Artwork, порядок кадров и anchors не меняются.
+Значения ниже — длительность Skin cycle, не deadline Brain.
+
+Для конечной Activity-фазы Body проецирует `phaseDurationMs` из её начала и
+deadline. Legacy profile при необходимости пропорционально сокращается до 90%
+этого бюджета: вступление доходит до последней позы, оставшееся время — terminal
+hold. Loop clips, специализированный timing художника и Brain deadline не
+меняются. Например, inspect 2200 получает cycle 1980 ms; floor rest prepare 1200
+получает lie_down 1080 ms, затем отдельный sleep_start в settle вместо повторного
+проигрывания lie_down. Позы prepare/settle явно конечны; sleep повторяется.
+
+| Body clip | Cycle / задержки кадров, ms | Brain phase и повторения | Terminal pose |
+|---|---|---|---|
+| `body_idle`, `body_bored` | 2400 / 650, 550, 550, 650 | calm seeded 6500–9999; settle/yawn 3000; повтор только при `until_replaced` | Последний кадр для finite |
+| `body_thinking` | 2400 / 500, 600, 700, 600 | expression 3000; повтор по intent | Последний кадр для finite |
+| `body_look_around` | 2400 / 500, 650, 750, 500 | calm seeded 6500–9999 либо короткий notice/inspection; finite budget ограничивает cycle | Последний кадр для finite |
+| `body_crouch_examine`, `body_edge_peek`, `body_surface_touch` | 2400 / 300, 500, 900, 700 | deadline inspection; без добавочных повторов | Последний кадр |
+| `body_sleep_trans`, `body_lie`, `body_sit` | 2400 / 400, 650, 750, 600 | rest transition обычно 3000; без добавочных повторов | Последний кадр |
+| `body_sleep` | 3000 / 750 × 4 | sleep loop до замены; rest 3000 или nap 12000 | Нет при loop |
+| `body_petting`, `body_wave`, `body_celebrate`, `body_scared` | 1200 / 120, 180, 500, 400 | конечная реакция/социальная фаза; без добавочных повторов | Последний кадр либо разрешённый local fallback |
+| `body_walk`, `body_run`, `body_climb_wall`, `body_ceiling_hang`, `body_dragged`, `body_fall` | 800 / 200 × 4 | повтор до motion transition; gait/скорость принадлежат Brain | Нет при loop |
+| `body_land`, `body_stand_up`, `body_jump` | 800 / 200 × 4 | finite; Brain deadline/event независим | Последний кадр |
+| `body_crash_splat` | 1600 / 200 × 8 | forced recovery | Последний кадр |
+| `body_grab_edge`, `body_jump_travel`, `body_pull_up_edge` | 640, 640, 800 | traversal deadline/event, без добавочных повторов | Последний кадр |
+| `body_sit_edge`, `body_sit_edge_sleep`, `body_sit_edge_settle` | 960, 2000, 1200 | rest choreography; повтор по intent | Последний кадр для finite |
+| `body_cursor_play`, `body_cursor_caught`, `body_cursor_missed` | 720, 600, 600 | play до замены; reaction 600 однократно | Последний кадр reaction |
+
+`none` и текущий `bounded` Skin проигрывают один cycle; `until_replaced` повторяет
+его до нового intent. Terminal hold сам по себе не означает остановку Brain.
+Короткие notice/land phases не удлиняются ради нового профиля.
+
+Текущий `body_idle` — дыхание с отдельным лицевым слоем, без нарисованного
+моргания. Его спокойный cycle не служит таймером blink. Отдельный нейтральный
+blink требует готового художником face clip; нельзя подменять его `face_winking`
+или переключением направлений `face_gaze`.
+
+Body проецирует существующую authoritative velocity в локальный Skin state.
+Loop locomotion продвигает playback clock пропорционально модулю скорости:
+reference walk/hang — 90 px/s, run — 180, crawl — 45, climb — 220; rate ограничен
+3×. Нулевая скорость удерживает walk на последнем готовом кадре с опорой ног,
+run — на готовой idle-позе; climb/crawl удерживают текущую позу опоры.
+Скрытая фаза шага сохраняется, при возобновлении движение не рестартует.
+Native facing art нормализуется Skin: `body_walk` нарисован влево, `body_run`
+вправо; Body хранит направление движения независимо от этого различия.
+Изменение скорости не рестартует
+episode и не пересчитывает уже пройденную фазу. После подключения Renderer
+начальный playback age оценивается по текущей скорости: история скорости не
+передаётся. Finite transitions, fall/drag и debug preview идут по обычному clock.
+Визуальная оценка ритма на Windows остаётся отдельной проверкой; эта связь
+cadence со скоростью не доказывает отсутствие скольжения в живом движении.
 
 ## 6. Superseded contract
 

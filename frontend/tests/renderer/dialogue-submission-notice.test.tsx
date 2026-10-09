@@ -16,7 +16,7 @@ it('never converts policy notice changes into character speech or replays the co
     streamId: 's', revision: 1, sampledAtMs: 0, cursorGame: null, autonomy: { quiet: false },
     character: { needs: { energy: 50, attention: 50, play: 50, comfort: 50, boredom: 50 }, synthesizedTone: 'neutral' },
     activity: null, motion: { phase: 'grounded', rootScreenPosition: { x: 0, y: 0 }, velocityPxPerSec: { x: 0, y: 0 }, positionAuthority: 'voluntary' },
-    visualIntent: { episodeId: 'e', episodeStartedAtMs: 0, kind: 'idle_blink', category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced', emotionalTone: 'neutral' },
+    visualIntent: { episodeId: 'e', episodeSequence: 1, episodeStartedAtMs: 0, kind: 'idle_blink', category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced', emotionalTone: 'neutral' },
     dialogue: { conversationId: 'c', canSubmit: false, submissionMessage: 'Лимит исчерпан.',
       turn: { phase: 'completed', requestId: 'r', replyText: 'Ответ персонажа', outcome: { kind: 'success' } } },
   };

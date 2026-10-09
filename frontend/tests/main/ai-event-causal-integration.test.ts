@@ -7,6 +7,17 @@ import { emptyMemoryContext } from '../../src/application/services/memory-recall
 import type { IAIEventProvider } from '../../src/application/ports/ai-event-provider.interface';
 import type { MemoryResult } from '../../src/application/ports/memory-repository.interface';
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
+it.each([true, false])('sends touch after the real click reaction with autonomy enabled=%s', async enabled => {
+  const f = fixture(); f.main.setEnabled(enabled);
+  f.input.execute({ type: 'click' }); f.main.handleCharacterInteraction('click'); f.events.touch();
+  await flush();
+  expect(f.generateEvent).toHaveBeenCalledTimes(1);
+  expect(f.generateEvent.mock.calls[0]?.[0].event.type).toBe('user_touch');
+  expect(f.events.getSpeech()).not.toBeNull();
+  expect(f.append).not.toHaveBeenCalled();
+  f.main.beginDrag(); expect(f.events.getSpeech()).toBeNull();
+  f.main.dispose(); f.events.dispose();
+});
 function fixture(social = false) {
   let events: AIEventRuntime | undefined, history: MemoryHistory | undefined, id = 0;
   const f = scenario(social ? { attention: 85, play: 30, boredom: 20 } : {}, social ? .99 : 0, undefined, undefined, {

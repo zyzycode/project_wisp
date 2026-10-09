@@ -1,9 +1,19 @@
-import type { RenderLayerDef, VisibleRenderLayerDef } from './types';
+import type { RenderLayerDef, RenderPresentationState, VisibleRenderLayerDef } from './types';
 
 /** Renderer-owned handling of physical asset failures; semantic resolution remains untouched. */
 export class TechnicalFallbackController {
   private readonly failedSources = new Set<string>();
   private previousBodyLayer: VisibleRenderLayerDef | undefined;
+
+  isFailed(source: string): boolean { return this.failedSources.has(source); }
+
+  resolvePresentation(state: RenderPresentationState): readonly RenderLayerDef[] {
+    const rigFailed = state.layers.some(layer => layer.visible &&
+      (layer.animationKey === 'face_gaze_base' || layer.id === 'pupils') && this.isFailed(layer.frame.source));
+    const layers = rigFailed ? state.layers.filter(layer => layer.id !== 'face' && layer.id !== 'pupils')
+      .concat(state.gazeFallback === undefined ? [] : [state.gazeFallback]) : state.layers;
+    return layers.map(layer => this.resolve(layer)).filter((layer): layer is RenderLayerDef => layer !== undefined);
+  }
 
   resolve(layer: RenderLayerDef): RenderLayerDef | undefined {
     if (!layer.visible || !this.failedSources.has(layer.frame.source)) return layer;

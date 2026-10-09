@@ -1,6 +1,6 @@
 # ADR-016: Локальная память MVP и SQLite-драйвер
 
-Status: architect accepted; independent review temporarily waived by user for the current execution batch, 2026-09-18. Task: [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21). [ARCHITECT RESULT и Implementation consequences](../engine/P15_A01_RESULT.md).
+Status: architect accepted; independent review временно отменён пользователем для запуска 2026-09-18. Task: [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21). [ARCHITECT RESULT и Implementation consequences](../engine/P15_A01_RESULT.md). Версии и security findings ниже — снимок этого review.
 
 ## Decision
 
@@ -30,4 +30,4 @@ Status: architect accepted; independent review temporarily waived by user for th
 
 Добавляются native binary и packaging responsibility. Dependency approval не разрешает package/lock/config edits; отдельный scope и Windows/capability gates — [Memory §8](../engine/MEMORY_ENGINE.md#8-integration-scope-и-платформенная-приёмка). Runtime downgrade/download/rebuild на машине пользователя не допускаются.
 
-[Schema/retention](../engine/MEMORY_ENGINE.md#2-схема-sqlite-v1), [lifecycle/errors](../engine/MEMORY_ENGINE.md#4-lifecycle-restore-и-деградация), [reset](../engine/MEMORY_ENGINE.md#6-полный-reset-и-защита-от-поздних-записей) определены в контракте. Исполнимые формы: [ports](../../frontend/src/application/ports/memory-repository.interface.ts), [snapshot](../../frontend/src/application/ports/character-memory-snapshot.ts), [IPC DTO](../../frontend/src/shared/ipc-contracts.ts).
+Schema/retention, lifecycle/errors, reset и ссылки на типы — в [Memory contract](../engine/MEMORY_ENGINE.md).

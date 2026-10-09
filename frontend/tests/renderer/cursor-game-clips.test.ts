@@ -15,7 +15,7 @@ function brain(outcome: 'caught' | 'missed' | 'lost_target'): BrainStateDTO {
     activity: { runId: 'game', activityId: 'cursor_interest', phaseId: 'reaction', stage: 'exiting',
       startedAtMs: 0, phaseStartedAtMs: 1600, phaseEndsAtMs: 2200 },
     motion: { phase: 'grounded', rootScreenPosition: { x: 400, y: 790 }, velocityPxPerSec: { x: 0, y: 0 }, positionAuthority: 'voluntary' },
-    visualIntent: { episodeId: 'reaction', episodeStartedAtMs: 1600,
+    visualIntent: { episodeId: 'reaction', episodeSequence: 1, episodeStartedAtMs: 1600,
       kind: outcome === 'caught' ? 'happy_reaction' : 'confused_reaction', category: 'reaction', priority: 'normal',
       interrupt: 'yes', loop: 'bounded', emotionalTone: 'neutral' } };
 }

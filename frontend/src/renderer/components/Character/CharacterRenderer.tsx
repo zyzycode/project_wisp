@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PET_PRESENTATION_LAYOUT } from '../../../shared/pet-presentation-layout';
-import bundledManifest from '../../../../public/assets/sprites/manifest.json';
 import { createSystemAnimationIntent } from '../../../domain/animation/animation-intent';
 import type {
   CharacterExpression,
@@ -20,10 +19,13 @@ import {
 } from '../../render-engine';
 import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { useGaze } from '../../hooks/useGaze';
-import type { GazeDirection } from '../../../domain/behavior/gaze-engine';
+import type { CursorSample, GazePresentationDirection } from '../../../domain/behavior/gaze-engine';
 import type { CursorScreenPosition } from '../../body-ui-runtime';
 import { SpriteRenderer, resolveSpriteSource } from './SpriteRenderer';
 import { createAnimationPreviewState, type DebugAnimationSelection } from '../../render-engine/animation-preview';
+import { createSpriteProjection } from '../../render-engine/sprite-projection';
+import type { PupilPoseHandle } from '../../render-engine/pupil-pose';
+import { useGazeGeometry } from '../../hooks/useGazeGeometry';
 export type { DebugAnimationSelection } from '../../render-engine/animation-preview';
 
 export const BASE_CHARACTER_SIZE = PET_PRESENTATION_LAYOUT.characterRect;
@@ -34,6 +36,7 @@ const FALLBACK_VISUAL_STATE: BodyVisualState = {
   revision: 1,
   visualIntent: {
     episodeId: 'renderer-fallback-idle',
+    episodeSequence: 1,
     episodeStartedAtMs: 0,
     kind: FALLBACK_INTENT.kind,
     category: FALLBACK_INTENT.category,
@@ -55,7 +58,7 @@ const FALLBACK_VISUAL_STATE: BodyVisualState = {
 
 const manifestLoader = new ManifestLoader();
 const INITIAL_RESOLVER = new AssetResolver(
-  manifestLoader.load(bundledManifest),
+  manifestLoader.load({}),
   { enableFaceOverlays: true }
 );
 
@@ -75,13 +78,17 @@ export interface CharacterRendererProps {
   debugAnimationSelection?: DebugAnimationSelection;
   showAnchorPoint?: boolean;
   onManifestAnimationsLoaded?: (registry: ManifestAnimationRegistry) => void;
+  onPresentationChanged?: (state: RenderPresentationState | undefined) => void;
+  onAssetLoadError?: (source: string) => void;
   onAnimationCompleted?: (
     event: AnimationCompletedEvent,
     completedVisualEpisodeId: string | undefined
   ) => void;
   onAnimationRejected?: (rejectedVisualEpisodeId: string | undefined) => void;
-  onGazeDirectionChanged?: (direction: GazeDirection) => void;
+  onGazeDirectionChanged?: (direction: GazePresentationDirection) => void;
   gazeEnabled?: boolean;
+  globalCursor?: CursorSample | null;
+  cursorObservationEnabled?: boolean;
   onCursorObserved?: (position: CursorScreenPosition) => void;
   onClick?: () => void;
   onDoubleClick?: () => void;
@@ -98,10 +105,14 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   debugAnimationSelection,
   showAnchorPoint = false,
   onManifestAnimationsLoaded,
+  onPresentationChanged,
+  onAssetLoadError,
   onAnimationCompleted,
   onAnimationRejected,
   onGazeDirectionChanged,
   gazeEnabled = true,
+  globalCursor,
+  cursorObservationEnabled = true,
   onCursorObserved,
   onClick,
   onDoubleClick,
@@ -109,6 +120,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   onContextMenu,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
+  const pupilPoseRef = useRef<PupilPoseHandle>(null);
   const [resolver, setResolver] = useState<AssetResolver>(() => cachedManifestResolver ?? INITIAL_RESOLVER);
   const debugClip = useMemo(
     () => debugAnimationSelection === undefined
@@ -128,44 +140,25 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   );
   const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
   const activePresentationState = presentationState;
+  useEffect(() => { onPresentationChanged?.(presentationState); }, [onPresentationChanged, presentationState]);
 
   const faceAnchor = useMemo(() => {
     return getFaceAnchorPoint(activePresentationState);
   }, [activePresentationState]);
 
-  const getGazeGeometry = useCallback(() => {
-    const root = rootRef.current;
-    const state = activePresentationState;
-    if (root === null || state === undefined || faceAnchor === undefined) return undefined;
-    const bounds = root.getBoundingClientRect();
-    const scaleX = bounds.width / state.viewport.width;
-    const scaleY = bounds.height / state.viewport.height;
-    if (scaleX <= 0 || scaleY <= 0) return undefined;
-    const rootX = state.transform.flipX
-      ? bounds.left + (state.viewport.width - state.rootPivot.x) * scaleX
-      : bounds.left + state.rootPivot.x * scaleX;
-    return {
-      rootGlobalPosition: {
-        x: window.screenX + rootX,
-        y: window.screenY + bounds.top + state.rootPivot.y * scaleY,
-      },
-      gazeOriginSourcePx: {
-        x: faceAnchor.x - state.rootPivot.x,
-        y: faceAnchor.y - state.rootPivot.y,
-      },
-      scale: (scaleX + scaleY) / 2,
-      flipX: state.transform.flipX,
-    };
-  }, [activePresentationState, faceAnchor]);
+  const getGazeGeometry = useGazeGeometry(rootRef, activePresentationState, faceAnchor, renderedSize);
 
-  const handleGazeDirection = useCallback((direction: GazeDirection) => {
+  const handleGazeDirection = useCallback((direction: GazePresentationDirection) => {
     onGazeDirectionChanged?.(direction);
   }, [onGazeDirectionChanged]);
 
   useGaze({
     enabled: gazeEnabled && debugClip === undefined && faceAnchor !== undefined,
+    globalCursor,
+    observationEnabled: cursorObservationEnabled,
     getGeometry: getGazeGeometry,
     onGazeDirection: handleGazeDirection,
+    onGazeOffset: offset => pupilPoseRef.current?.setPupilOffset(offset),
     onCursorObserved,
     observationLifecycleKey: visualState.streamId,
   });
@@ -231,7 +224,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
       onPointerDown={onPointerDown}
       onContextMenu={onContextMenu}
     >
-      <SpriteRenderer state={activePresentationState} />
+      <SpriteRenderer state={activePresentationState} onAssetLoadError={onAssetLoadError} gazeHandle={pupilPoseRef} />
       {showAnchorPoint && faceAnchor && activePresentationState ? (
         <AnchorVisualizer
           anchor={faceAnchor}
@@ -239,6 +232,10 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
           rootPivot={activePresentationState.rootPivot}
           renderedSize={renderedSize}
           flipX={activePresentationState.transform.flipX}
+          scale={activePresentationState.transform.scale}
+          scaleX={activePresentationState.transform.scaleX}
+          scaleY={activePresentationState.transform.scaleY}
+          rotationDeg={activePresentationState.transform.rotationDeg}
         />
       ) : null}
     </div>
@@ -251,11 +248,18 @@ export interface AnchorProjectionInput {
   rootPivot: SpritePoint;
   renderedSize: { width: number; height: number };
   flipX: boolean;
+  scale?: number;
+  scaleX?: number;
+  scaleY?: number;
+  rotationDeg?: number;
 }
 
 export function getFaceAnchorPoint(state: RenderPresentationState | undefined): SpritePoint | undefined {
   const bodyLayer = state?.layers.find((layer) => layer.id === 'base_body');
-  return bodyLayer?.visible ? bodyLayer.frame.anchors?.face : undefined;
+  const anchor = bodyLayer?.visible ? bodyLayer.frame.anchors?.face : undefined;
+  if (state === undefined || bodyLayer === undefined || anchor === undefined) return undefined;
+  return { x: state.rootPivot.x + bodyLayer.offset.x + anchor.x - bodyLayer.pivot.x,
+    y: state.rootPivot.y + bodyLayer.offset.y + anchor.y - bodyLayer.pivot.y };
 }
 
 export function projectAnchorPoint({
@@ -264,20 +268,13 @@ export function projectAnchorPoint({
   rootPivot,
   renderedSize,
   flipX,
+  scale = 1,
+  scaleX,
+  scaleY,
+  rotationDeg,
 }: AnchorProjectionInput): SpritePoint {
-  const meetScale = Math.min(
-    renderedSize.width / viewport.width,
-    renderedSize.height / viewport.height
-  );
-  const letterboxX = (renderedSize.width - viewport.width * meetScale) / 2;
-  const letterboxY = (renderedSize.height - viewport.height * meetScale) / 2;
-  const sourceX = flipX
-    ? rootPivot.x - (anchor.x - rootPivot.x)
-    : anchor.x;
-  return {
-    x: letterboxX + sourceX * meetScale,
-    y: letterboxY + anchor.y * meetScale,
-  };
+  return createSpriteProjection({ viewport, rootPivot, renderedSize,
+    transform: { flipX, scale, scaleX, scaleY, rotationDeg } })?.project(anchor) ?? rootPivot;
 }
 
 export const AnchorVisualizer: React.FC<AnchorProjectionInput> = (props) => {

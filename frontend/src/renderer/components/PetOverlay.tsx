@@ -1,5 +1,7 @@
-import React from 'react';
-import { PET_PRESENTATION_LAYOUT } from '../../shared/pet-presentation-layout';
+import React, { useState } from 'react';
+import type { RenderPresentationState } from '../render-engine';
+import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../shared/pet-presentation-layout';
+import { calculateRenderedDimensions } from '../../domain/models/character-visuals';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
@@ -14,8 +16,18 @@ export interface PetOverlayProps {
 
 /** Pure React surface for the state and callbacks composed by DesktopPet. */
 export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
+  const [presentation, setPresentation] = useState<RenderPresentationState>();
+  const [assetLoadError, setAssetLoadError] = useState<string>();
+  const labelAnchor = calculateWindowRootPivotOffset({
+    ...PET_PRESENTATION_LAYOUT,
+    characterRect: {
+      ...PET_PRESENTATION_LAYOUT.characterRect,
+      ...calculateRenderedDimensions(PET_PRESENTATION_LAYOUT.characterRect, model.scale),
+    },
+  });
   const debugHud = (
     <DebugHUD
+      runtimeDiagnostics={{ brain: model.bodySnapshot?.brain, presentation, assetLoadError }}
       needs={model.debugTelemetry.character.needs}
       relationship={model.debugTelemetry.character.relationship}
       tone={model.debugTelemetry.character.synthesizedTone}
@@ -45,17 +57,21 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
     <div
       className={`pet-container ${model.isDragging ? 'is-dragging' : ''} ${model.isWandering ? 'is-wandering' : ''} ${model.menuOpen ? 'menu-is-open' : ''}`}
       style={{ paddingLeft: PET_PRESENTATION_LAYOUT.characterRect.x,
-        paddingTop: PET_PRESENTATION_LAYOUT.characterRect.y }}
+        paddingTop: PET_PRESENTATION_LAYOUT.characterRect.y,
+        '--character-top': `${PET_PRESENTATION_LAYOUT.characterRect.y}px`,
+      } as React.CSSProperties}
     >
-      <SpeechBubble message={model.dialogue.currentMessage} onDismiss={model.dialogue.dismissMessage} />
-      <ChatInput
-        canSubmit={model.dialogue.canSubmit}
-        errorMessage={model.dialogue.error}
-        submissionMessage={model.dialogue.submissionMessage}
-        isOpen={model.dialogue.chatOpen}
-        onSendMessage={model.dialogue.handleSendMessage}
-        onClose={model.dialogue.closeChat}
-      />
+      <div className={`chat-overlay ${model.dialogue.chatOpen ? 'has-input' : ''}`}>
+        <SpeechBubble message={model.dialogue.currentMessage} onDismiss={model.dialogue.dismissMessage} />
+        <ChatInput
+          canSubmit={model.dialogue.canSubmit}
+          errorMessage={model.dialogue.error}
+          submissionMessage={model.dialogue.submissionMessage}
+          isOpen={model.dialogue.chatOpen}
+          onSendMessage={model.dialogue.handleSendMessage}
+          onClose={model.dialogue.closeChat}
+        />
+      </div>
       <ContextMenu
         isOpen={model.menuOpen}
         tone={model.debugTelemetry.character.synthesizedTone}
@@ -103,10 +119,14 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         debugAnimationSelection={model.debugAnimationSelection}
         showAnchorPoint={model.showAnchorPoint}
         onManifestAnimationsLoaded={model.setManifestAnimations}
+        onPresentationChanged={model.debugHudEnabled && (model.debugHudVisible || model.menuOpen) ? setPresentation : undefined}
+        onAssetLoadError={model.debugHudEnabled ? setAssetLoadError : undefined}
         onAnimationCompleted={model.handleAnimationCompleted}
         onAnimationRejected={model.handleAnimationRejected}
         onGazeDirectionChanged={model.handleGazeDirectionChanged}
-        gazeEnabled={model.cursorObservationEnabled}
+        gazeEnabled={model.gazeEnabled}
+        globalCursor={model.bodySnapshot?.globalCursor}
+        cursorObservationEnabled={model.cursorObservationEnabled}
         onCursorObserved={model.handleCursorObserved}
         onPointerDown={model.drag.onPointerDown}
         onClick={model.handlePetClick}
@@ -114,7 +134,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         onContextMenu={model.handleContextMenu}
       />
       {model.debugHudEnabled && model.debugHudVisible && !model.menuOpen ? debugHud : null}
-      <div className="pet-label" data-wisp-interactive="true" onClick={model.toggleChat}>
+      <div className="pet-label" data-wisp-interactive="true" onClick={model.toggleChat}
+        style={{ left: labelAnchor.x, top: labelAnchor.y + 2 }}>
         💬 Wisp • {model.isWandering ? 'wandering' : model.animState}{' '}
         {model.debugTelemetry.character.synthesizedTone === 'affectionate' ? '💖' : ''}
       </div>

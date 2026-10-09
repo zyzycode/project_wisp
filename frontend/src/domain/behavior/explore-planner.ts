@@ -42,6 +42,18 @@ export interface ExploreHistory {
   readonly entries: readonly ExploreHistoryEntry[];
 }
 
+/** Failed movement attempts are retry memory, never successful visit history. */
+export interface FailedExploreTarget { readonly targetId: string; readonly retryAtMs: number }
+export function recordFailedExploreTarget(
+  previous: readonly FailedExploreTarget[], targetId: string, nowMs: number
+): readonly FailedExploreTarget[] {
+  return [...previous.filter(entry => entry.retryAtMs > nowMs && entry.targetId !== targetId),
+    { targetId, retryAtMs: nowMs + 30_000 }].slice(-12);
+}
+export function canRetryExploreTarget(previous: readonly FailedExploreTarget[], targetId: string, nowMs: number): boolean {
+  return !previous.some(entry => entry.targetId === targetId && entry.retryAtMs > nowMs);
+}
+
 export interface ExplorePlannerConfig {
   readonly minTargetDistancePx: number;
   readonly maxTargetDistancePx: number;
@@ -318,7 +330,7 @@ export function createExploreActivityDefinition(plan: ExplorePlan, route: readon
   if (plan.pose !== 'none' && inspectNext === 'pose') {
     steps.push({
       id: 'pose', actionId: `pose:${plan.pose}`, stage: 'looping', type: 'animation',
-      intent: { kind: poseIntent }, completion: { type: 'elapsed', durationMs: 3_000 },
+      intent: { kind: poseIntent, loop: 'none' }, completion: { type: 'elapsed', durationMs: 3_000 },
       next: 'leave_pose',
     });
   }

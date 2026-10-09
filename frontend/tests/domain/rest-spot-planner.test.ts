@@ -12,6 +12,23 @@ function context(): ExplorePlanningContext {
     tone: 'neutral', nowMs: 1000, history: { entries: [] }, externalSurfaces: [top] };
 }
 describe('AUTO-I06 rest and route planning', () => {
+  it('lets a fresh ordinary spot beat recently repeated edges', () => {
+    const c = { ...context(), externalSurfaces: [], needs: { energy: 10, attention: 20, play: 0, comfort: 20, boredom: 0 } };
+    const edges = createExplorePlanCandidates(c, { minTargetDistancePx: 20, maxTargetDistancePx: 500,
+      edgeInsetPx: 48, historySize: 12, historyHalfLifeMs: 300000 }).filter(p => p.pointKind === 'edge' || p.pointKind === 'corner');
+    const history = { entries: edges.map(p => ({ targetId: p.targetId, routeKey: p.routeKey,
+      choreographyKey: 'rest:nap', selectedAtMs: c.nowMs })) };
+    expect(['edge', 'corner']).not.toContain(selectRestSpot({ ...c, history }, true)!.target.pointKind);
+  });
+  it('does not replay the lying-down entrance during the floor settling phase', () => {
+    const plan = selectRestSpot({ ...context(), externalSurfaces: [] }, true)!;
+    expect(createRestSpotActivity(plan).steps.find(s => s.id === 'settle')).toMatchObject({ intent: { kind: 'sleep_start' } });
+  });
+  it('holds finite preparation and wake poses instead of looping their transitions', () => {
+    const plan = selectRestSpot({ ...context(), externalSurfaces: [] }, true)!;
+    const phases = createRestSpotActivity(plan).steps.filter(step => step.type === 'animation');
+    expect(phases.map(step => step.intent.loop)).toEqual(['none', 'none', 'until_replaced', 'none']);
+  });
   it('selects a reachable rest spot and gives nap an explicit wake phase', () => {
     const plan = selectRestSpot(context(), true)!;
     expect(plan.route[0]?.type).toBe('locomotion');
@@ -27,10 +44,10 @@ describe('AUTO-I06 rest and route planning', () => {
     expect(animations('window_top')).toEqual(expect.arrayContaining(['sit_edge', 'sit_edge_settle', 'sit_edge_sleep']));
     expect(animations('screen_floor')).toEqual(expect.arrayContaining(['lie_down', 'sleep_loop']));
   });
-  it('falls back to a quiet floor edge when external observations are unavailable', () => {
+  it('falls back to a reachable floor spot when external observations are unavailable', () => {
     const plan = selectRestSpot({ ...context(), externalSurfaces: [] }, true)!;
     expect(plan.target.surfaceKind).toBe('screen_floor');
-    expect(['edge', 'corner']).toContain(plan.target.pointKind);
+    expect(createExternalRoute(plan.target, { ...context(), externalSurfaces: [] })).not.toBeNull();
   });
   it('rejects routes entering an observed window and applies history to the same targets', () => {
     const c = context();

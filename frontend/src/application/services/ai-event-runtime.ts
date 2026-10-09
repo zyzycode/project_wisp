@@ -9,13 +9,15 @@ import type { AIInitiativeSpeechDTO, DialoguePresentationDTO } from '../../share
 import { exactRecord, plainText } from '../../shared/dialogue-ipc-validation';
 import { emptyMemoryContext } from './memory-recall';
 
-interface Gate { readonly allowed: boolean; readonly identity: string | null; readonly memoryGeneration: number; readonly activeRunId: string | null; readonly localSpeech: boolean }
-interface Source { readonly runId: string; readonly kind: 'cursor_game' | 'social_bid'; readonly event: AICompanionEvent; readonly terminalAt: number; readonly identity: string; readonly memoryGeneration: number; readonly epoch: number }
+interface Gate { readonly allowed: boolean; readonly touchAllowed?: boolean; readonly identity: string | null; readonly memoryGeneration: number; readonly activeRunId: string | null; readonly localSpeech: boolean }
+interface Source { readonly runId: string; readonly kind: 'cursor_game' | 'social_bid' | 'user_touch'; readonly event: AICompanionEvent; readonly terminalAt: number; readonly identity: string; readonly memoryGeneration: number; readonly epoch: number }
 interface Options {
-  readonly provider: IAIEventProvider; readonly control: IAIEventRequestControl; readonly recall: ILocalMemoryRecall;
+  readonly provider: IAIEventProvider; readonly control: IAIEventRequestControl; readonly recall?: ILocalMemoryRecall;
   readonly now: () => number; readonly timestamp: () => string; readonly createId: () => string; readonly scheduler: MemoryScheduler;
   readonly gate: () => Gate; readonly character: () => AIProviderRequest['characterSnapshot']; readonly publish: () => void;
   readonly locale?: 'ru' | 'en';
+  readonly random?: () => number;
+  readonly autonomousEnabled?: boolean;
 }
 /** Causal optional speech only. No Activity/Character/history mutation or event queue. */
 export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObserver {
@@ -47,7 +49,20 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     }
     if (this.thinking && (this.source || this.speech)) this.invalidate();
   }
-  activityStarted(): void { this.invalidate(false); }
+  activityStarted(): void { if (this.source?.kind !== 'user_touch') this.invalidate(false); }
+  isTouchPending(): boolean { return this.source?.kind === 'user_touch' && this.pending !== null; }
+  touch(): void {
+    if (this.pending) return;
+    this.userContact();
+    const gate = this.options.gate();
+    if (!gate.identity || !this.baseAllowed(true)) return;
+    const variants = ['stroke', 'touch', 'ruffle', 'poke'] as const;
+    const variant = variants[Math.floor((this.options.random?.() ?? 0) * variants.length)] ?? 'touch';
+    const source: Source = { runId: this.options.createId(), kind: 'user_touch', terminalAt: this.options.now(), epoch: this.epoch,
+      identity: gate.identity, memoryGeneration: gate.memoryGeneration,
+      event: { type: 'user_touch', variant, occurredAt: this.options.timestamp() } };
+    this.source = source; this.begin(source);
+  }
   tick(): void { if ((this.source || this.game || this.speech) && !this.baseAllowed()) this.invalidate(); }
   userContact(): void { this.ignored = 0; this.suppressedUntil = 0; this.socialLineRun = null; this.invalidate(); }
   takePreviousInitiative(): AIProviderRequest['previousInitiative'] {
@@ -64,6 +79,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
   }
   dispose(): void { this.disposed = true; this.invalidate(); }
   gameTerminal(result: CursorGameResult, generation: number): void {
+    if (this.options.autonomousEnabled === false) return;
     if (this.pending || this.source) return;
     const gate = this.options.gate();
     if (this.disposed || !gate.identity || gate.memoryGeneration !== generation || !result.playCompleted || result.outcome === 'cancelled' || result.executedMs > 60000) return;
@@ -94,6 +110,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     this.causalTimer = this.options.scheduler.setTimeout(() => { if (this.options.now() < source.terminalAt + 2500) this.begin(source); else this.source = null; }, Math.max(0, source.terminalAt + 2000 - this.options.now()));
   }
   socialStarted(runId: string, atMs: number): void {
+    if (this.options.autonomousEnabled === false) return;
     const key = `social:${runId}`; if (this.seen.has(key)) return; this.seen.add(key);
     const gate = this.options.gate();
     if (this.pending || this.source || !gate.identity || !this.baseAllowed() || gate.activeRunId !== runId) return;
@@ -101,19 +118,24 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
       event: { type: 'social_bid_started', occurredAt: this.options.timestamp() } };
     this.source = source; this.begin(source);
   }
-  private baseAllowed(): boolean {
-    return !this.disposed && this.options.gate().allowed && !this.thinking && this.options.now() >= this.dialogueGuard && this.options.now() >= this.suppressedUntil;
+  private baseAllowed(touch = this.source?.kind === 'user_touch'): boolean {
+    const gate = this.options.gate();
+    return !this.disposed && (touch ? gate.touchAllowed ?? gate.allowed : gate.allowed) && !this.thinking && (touch || this.options.now() >= this.dialogueGuard) && this.options.now() >= this.suppressedUntil;
   }
   private current(source: Source): boolean {
     const gate = this.options.gate();
     return this.source === source && source.epoch === this.epoch && this.baseAllowed() && gate.identity === source.identity && gate.memoryGeneration === source.memoryGeneration
-      && (source.kind === 'social_bid' ? gate.activeRunId === source.runId : gate.activeRunId === null);
+      && (source.kind === 'user_touch' || (source.kind === 'social_bid' ? gate.activeRunId === source.runId : gate.activeRunId === null));
+  }
+  private available(source: Source): boolean {
+    return (source.kind === 'user_touch' ? this.options.control.availability(this.options.now()) : this.options.control.eventAvailability(this.options.now())).available;
   }
   private begin(source: Source): void {
-    if (this.pending || !this.current(source) || !this.options.control.eventAvailability(this.options.now()).available) { if (this.source === source) this.source = null; return; }
-    const deadline = this.options.now() + 3500;
-    this.deadlineTimer = this.options.scheduler.setTimeout(() => { if (this.source === source) this.invalidate(); }, 3500);
-    const execution = this.execute(source, deadline);
+    if (this.pending || !this.current(source) || !this.available(source)) { if (this.source === source) this.source = null; return; }
+    const duration = source.kind === 'user_touch' ? 15000 : 3500;
+    const deadline = this.options.now() + duration;
+    this.deadlineTimer = this.options.scheduler.setTimeout(() => { if (this.source === source) this.invalidate(); }, duration);
+    const execution = Promise.resolve().then(() => this.execute(source, deadline));
     this.pending = execution;
     void execution.finally(() => { if (this.pending === execution) this.pending = null; });
   }
@@ -121,9 +143,10 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     try {
       const locale = this.options.locale ?? 'ru';
       const query = source.kind === 'cursor_game' ? locale === 'ru' ? 'игра курсор' : 'cursor game' : '';
-      const recalled = await this.options.recall.recall({ text: query, useFavoriteTopic: source.kind === 'social_bid', excludedMessageIds: [] }, { generation: source.memoryGeneration });
-      if (!this.current(source) || this.options.now() >= deadline || !this.options.control.eventAvailability(this.options.now()).available) return;
-      const memory = recalled.ok ? recalled.value : emptyMemoryContext();
+      if (!this.current(source)) return;
+      const recalled = source.kind === 'user_touch' ? undefined : await this.options.recall?.recall({ text: query, useFavoriteTopic: source.kind === 'social_bid', excludedMessageIds: [] }, { generation: source.memoryGeneration });
+      if (!this.current(source) || this.options.now() >= deadline || !this.available(source)) return;
+      const memory = recalled?.ok ? recalled.value : emptyMemoryContext();
       const requestId = this.options.createId(); this.requestId = requestId;
       const request: AIEventProviderRequest = { requestId, event: source.event, characterSnapshot: this.options.character(), memoryContext: memory, locale };
       const raw = await this.options.provider.generateEvent(request);
@@ -134,7 +157,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
       const expiresAtMs = Math.min(now + 2000, source.kind === 'cursor_game' ? source.terminalAt + 8000 : Infinity);
       if (expiresAtMs <= now) return;
       this.speech = { id: requestId, text, startedAtMs: now, expiresAtMs };
-      this.previous = { value: { kind: source.kind, text, createdAt: this.options.timestamp() }, expires: now + 60000, identity: source.identity, generation: source.memoryGeneration };
+      this.previous = source.kind === 'user_touch' ? null : { value: { kind: source.kind, text, createdAt: this.options.timestamp() }, expires: now + 60000, identity: source.identity, generation: source.memoryGeneration };
       if (source.kind === 'social_bid') this.socialLineRun = source.runId;
       this.options.publish();
       this.speechTimer = this.options.scheduler.setTimeout(() => { if (this.speech?.id === requestId) { this.speech = null; if (this.source === source) this.source = null; this.options.publish(); } }, expiresAtMs - now);

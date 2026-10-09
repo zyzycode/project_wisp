@@ -36,6 +36,14 @@ const environment: EnvironmentSnapshot = {
 function context(overrides: Partial<ActivitySelectionContext> = {}): ActivitySelectionContext { return { character: character(), synthesizedTone: 'playful', environment, repetition: { activities: [], actions: [] }, cooldowns: EMPTY_COOLDOWNS, ...overrides }; }
 
 describe('Domain: Activity Runner', () => {
+  it('varies calm pauses deterministically within a bounded range', () => {
+    const intent = { kind: 'idle', source: 'timer', priority: 'normal' } as const;
+    const durations = [0, .25, .5, .999].map(random => {
+      const step = selectActivityForResolvedIntent(intent, context(), 0, random)!.steps[0]!;
+      return step.type === 'animation' ? step.completion.durationMs : 0;
+    });
+    expect(durations).toEqual([6500, 7375, 8250, 9996]);
+  });
   it('provides the specified Explore and Rest chains', () => {
     expect(EXPLORE_ACTIVITY.steps.map((step) => step.actionId)).toEqual(['walk:default', 'look_around']);
     expect(REST_ACTIVITY.steps.map((step) => step.actionId)).toEqual(['yawn', 'lie_down', 'sleep_start', 'sleep_loop']);

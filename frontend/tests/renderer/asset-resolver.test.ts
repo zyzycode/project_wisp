@@ -65,6 +65,19 @@ function animation(
 }
 
 describe('Renderer: AssetResolver', () => {
+  it('uses a matched continuous pupil pair only for a compatible neutral face', () => {
+    const rig = { ...manifest, animations: { ...manifest.animations,
+      face_gaze_base: animation('face_gaze_base', 'face/gaze', 'face'),
+      pupils_gaze: animation('pupils_gaze', 'face/pupils', 'face') } };
+    const resolver = new AssetResolver(rig, { enableContinuousGaze: true });
+    const result = resolver.resolve(createSystemAnimationIntent('idle_blink'));
+    expect(result.face?.animationKey).toBe('face_gaze_base');
+    expect(result.pupils?.animationKey).toBe('pupils_gaze');
+    expect(resolver.resolve(createSystemAnimationIntent('happy_reaction', 'playful', { expressionHint: 'happy' })).pupils).toBeUndefined();
+    const incomplete = new AssetResolver({ ...rig, animations: { ...manifest.animations,
+      face_gaze_base: rig.animations.face_gaze_base } }, { enableContinuousGaze: true });
+    expect(incomplete.resolve(createSystemAnimationIntent('idle_blink')).pupils).toBeUndefined();
+  });
   it('aligns changing frame and clip pivots to the fixed canonical root', () => {
     const body = { ...animation('body_idle', 'body/idle', 'body'), pivot: { x: 200, y: 400 },
       frames: [{ source: 'first.png', durationMs: 100, pivot: { x: 200, y: 400 } },

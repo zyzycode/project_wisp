@@ -236,7 +236,7 @@ function parseVisualIntent(value: unknown, sampledAtMs: number): BrainVisualInte
   const record = asRecord(value);
   requireExactKeys(
     record,
-    ['episodeId', 'episodeStartedAtMs', 'kind', 'category', 'priority', 'interrupt', 'loop', 'emotionalTone'],
+    ['episodeId', 'episodeStartedAtMs', 'episodeSequence', 'kind', 'category', 'priority', 'interrupt', 'loop', 'emotionalTone'],
     ['expressionHint', 'gazeDirection', 'propHint']
   );
   const episodeStartedAtMs = finiteNumber(own(record, 'episodeStartedAtMs'), 0);
@@ -253,6 +253,7 @@ function parseVisualIntent(value: unknown, sampledAtMs: number): BrainVisualInte
   return {
     episodeId: boundedId(own(record, 'episodeId')),
     episodeStartedAtMs,
+    episodeSequence: safeInteger(own(record, 'episodeSequence'), 1),
     kind: literal(own(record, 'kind'), VISUAL_KINDS),
     category: literal(own(record, 'category'), VISUAL_CATEGORIES),
     priority: literal(own(record, 'priority'), ['low', 'normal', 'high', 'critical'] as const),
@@ -263,6 +264,14 @@ function parseVisualIntent(value: unknown, sampledAtMs: number): BrainVisualInte
     ...(gazeDirection === undefined ? {} : { gazeDirection }),
     ...(propHint === undefined ? {} : { propHint }),
   };
+}
+
+function parseGlobalCursor(value: unknown, sampledAtMs: number): BrainStateDTO['globalCursor'] {
+  if (value === null) return null;
+  const record = asRecord(value);
+  requireExactKeys(record, ['globalPosition', 'capturedAtMs']);
+  return { globalPosition: position(own(record, 'globalPosition')),
+    capturedAtMs: finiteNumber(own(record, 'capturedAtMs'), 0, sampledAtMs) };
 }
 
 export function parseBrainStateDTO(value: unknown): BrainStateDTO {
@@ -278,7 +287,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
     'dialogue',
     'autonomy',
     'cursorGame',
-  ], ['initiativeSpeech']);
+  ], ['initiativeSpeech', 'globalCursor']);
   const sampledAtMs = finiteNumber(own(record, 'sampledAtMs'), 0);
   const character = asRecord(own(record, 'character'));
   requireExactKeys(character, ['needs', 'synthesizedTone']);
@@ -286,6 +295,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
   requireExactKeys(needs, ['energy', 'attention', 'play', 'comfort', 'boredom']);
   return {
     streamId: boundedId(own(record, 'streamId')),
+    ...(Object.hasOwn(record, 'globalCursor') ? { globalCursor: parseGlobalCursor(own(record, 'globalCursor'), sampledAtMs) } : {}),
     dialogue: parseDialoguePresentation(own(record, 'dialogue')),
     ...(Object.hasOwn(record, 'initiativeSpeech') ? { initiativeSpeech: parseInitiativeSpeech(own(record, 'initiativeSpeech'), sampledAtMs) } : {}),
     cursorGame: parseCursorGame(own(record, 'cursorGame'), sampledAtMs),

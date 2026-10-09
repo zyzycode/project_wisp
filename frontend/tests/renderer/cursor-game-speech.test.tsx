@@ -9,7 +9,7 @@ function snapshot(): BrainStateDTO {
     cursorGame: { runId: 'run', outcome: null, speech: { id: 'attempt', text: 'Wait!', startedAtMs: 0, expiresAtMs: 2000 } },
     character: { needs: { energy: 80, attention: 50, play: 80, comfort: 70, boredom: 50 }, synthesizedTone: 'neutral' },
     activity: null, motion: { phase: 'grounded', rootScreenPosition: { x: 400, y: 790 }, velocityPxPerSec: { x: 0, y: 0 }, positionAuthority: 'voluntary' },
-    visualIntent: { episodeId: 'visual', episodeStartedAtMs: 0, kind: 'cursor_play', category: 'reaction', priority: 'normal',
+    visualIntent: { episodeId: 'visual', episodeSequence: 1, episodeStartedAtMs: 0, kind: 'cursor_play', category: 'reaction', priority: 'normal',
       interrupt: 'yes', loop: 'bounded', emotionalTone: 'neutral' } };
 }
 it('dedupes speech and uses the remaining lifetime instead of replaying on revisions', () => {

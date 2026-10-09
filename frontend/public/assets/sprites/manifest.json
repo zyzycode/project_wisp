@@ -2055,5 +2055,43 @@
         }
       }
     ]
+  },
+  "face_gaze_base": {
+    "category": "faces/gaze_base",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/gaze_base/face_gaze_base_00.png",
+      "/assets/sprites/faces/gaze_base/face_gaze_base_01.png",
+      "/assets/sprites/faces/gaze_base/face_gaze_base_02.png",
+      "/assets/sprites/faces/gaze_base/face_gaze_base_03.png"
+    ],
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "pivot": {
+      "x": 256,
+      "y": 180
+    },
+    "fps": 5
+  },
+  "pupils_gaze": {
+    "category": "faces/pupils_gaze",
+    "framesCount": 4,
+    "frames": [
+      "/assets/sprites/faces/pupils_gaze/pupils_gaze_00.png",
+      "/assets/sprites/faces/pupils_gaze/pupils_gaze_01.png",
+      "/assets/sprites/faces/pupils_gaze/pupils_gaze_02.png",
+      "/assets/sprites/faces/pupils_gaze/pupils_gaze_03.png"
+    ],
+    "canvasSize": {
+      "width": 512,
+      "height": 512
+    },
+    "pivot": {
+      "x": 256,
+      "y": 180
+    },
+    "fps": 5
   }
 }

@@ -16,7 +16,7 @@ export interface LocalSelectionTrace {
   readonly factors: { readonly need: number; readonly personality: number; readonly repetition: number };
   readonly score: number;
 }
-export const LOCAL_TUNING_VERSION = 'AUTO-I12-v1';
+export const LOCAL_TUNING_VERSION = 'AUTO-I12-v2';
 /** Pure weighted Utility after hard eligibility; history never bans the sole option. */
 export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context: LocalSelectionContext, random: number): {
   readonly intent: BehaviorIntent; readonly trace: readonly LocalSelectionTrace[];
@@ -42,8 +42,16 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
   let winner = trace[0]!;
   for (const row of trace) { remaining -= row.score; if (row.score > 0 && remaining <= 0) { winner = row; break; } }
   const kind = definitions.find(d => d.kind === winner.kind)!.kind;
-  const lastPose = context.history.filter(entry => entry.kind.startsWith('calm:')).at(-1)?.kind;
+  // Reuse the uniformly distributed position within the selected family bucket.
+  const poseRandom = winner.score > 0 ? (remaining + winner.score) / winner.score : 0;
+  const poseWeights = (['idle_blink', 'look_around'] as const).map(pose => {
+    const repeats = context.history.filter(entry => entry.kind === `calm:${pose}`).reduce((sum, entry) =>
+      sum + Math.pow(.5, Math.max(0, context.nowMs - entry.atMs) / 90000), 0);
+    return { pose, weight: (pose === 'idle_blink' ? 1.4 : 1) / (1 + repeats) };
+  });
+  const calmPose = poseRandom * (poseWeights[0]!.weight + poseWeights[1]!.weight) < poseWeights[0]!.weight
+    ? 'idle_blink' : 'look_around';
   return { intent: { kind: kind === 'social_bid' ? 'play' : kind, source: 'timer', priority: 'normal',
     reason: 'local_utility', ...(kind === 'social_bid' ? { activityFamily: 'social_bid' } : {}),
-    ...(kind === 'idle' ? { calmPose: lastPose === 'calm:look_around' ? 'idle_blink' : 'look_around' } : {}) }, trace };
+    ...(kind === 'idle' ? { calmPose } : {}) }, trace };
 }

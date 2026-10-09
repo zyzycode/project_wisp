@@ -129,6 +129,7 @@ const brainStatePublisher = new BrainStatePublisher({
       dialogue: dialogueRuntime.getPresentation(),
       initiativeSpeech: aiEventRuntime?.getSpeech() ?? null,
       cursorGame: autonomyComposition.getCursorGamePresentation(),
+      globalCursor: autonomyComposition.getGlobalCursorSample(),
       streamId,
       revision,
       sampledAtMs,
@@ -310,7 +311,7 @@ function initializeAutonomyComposition(): void {
     const ai = createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, backendApiVersion: process.env.WISP_BACKEND_API_VERSION, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
     const recall = !localMock && ['2', '3'].includes(process.env.WISP_BACKEND_API_VERSION ?? '') && memoryComposition
       ? new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
-    if (ai.eventProvider && ai.eventControl && recall) aiEventRuntime = new AIEventRuntime({ provider: ai.eventProvider, control: ai.eventControl, recall,
+    if (ai.touchProvider && ai.touchControl) aiEventRuntime = new AIEventRuntime({ provider: ai.touchProvider, control: ai.touchControl, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
       now: () => performance.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
       gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0 }) });
     dialogueRuntime = new DialogueRuntime({
@@ -492,6 +493,7 @@ function handleAcceptedBodyEvent(
   if (event.type !== 'interaction') return;
 
   const interactionType = event.interaction;
+  if (interactionType === 'click' && aiEventRuntime?.isTouchPending()) return;
   if (interactionType !== 'click') autonomyComposition?.suspendForUserInteraction();
   if (interactionType !== 'think') {
     defaultCharacterInteractionUseCase.execute({
@@ -500,6 +502,7 @@ function handleAcceptedBodyEvent(
     });
   }
   autonomyComposition?.handleCharacterInteraction(interactionType);
+  if (interactionType === 'click') aiEventRuntime?.touch();
   publishDebugTelemetry();
   publishBrainState();
   if (interactionType !== 'click') autonomyComposition?.resumeAfterUserInteraction();

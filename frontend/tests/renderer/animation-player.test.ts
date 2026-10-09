@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AnimationStateMachine } from '../../src/domain/animation';
 import { AnimationPlayer, type ICharacterRenderer, type RenderPresentationState, type ResolvedAnimationClip } from '../../src/renderer/render-engine';
+import { PresentationRevisionPublisher } from '../../src/renderer/render-engine/sprite-skin-adapter';
 
 function createClip(overrides: Partial<ResolvedAnimationClip> = {}): ResolvedAnimationClip {
   return {
@@ -38,6 +39,20 @@ function layerSource(stateLayers: RenderPresentationState['layers'] | undefined,
 }
 
 describe('Renderer: AnimationPlayer', () => {
+  it('publishes terminal hold diagnostics even when the visible final frame is unchanged', () => {
+    const { renderer, states } = createRenderer();
+    const publisher = new PresentationRevisionPublisher(renderer);
+    const player = new AnimationPlayer(publisher);
+    player.play(createClip(), { type: 'none' });
+    player.tick(375);
+    expect(states.at(-1)?.playback).toEqual({ clipKey: 'body_walk', frameIndex: 3, frameCount: 4, completed: false });
+    const before = states.length;
+    player.tick(125);
+    expect(states).toHaveLength(before + 1);
+    expect(states.at(-1)?.playback?.completed).toBe(true);
+    player.tick(5000);
+    expect(states).toHaveLength(before + 1);
+  });
   it('emits the initial walk frame and advances all four frames deterministically', () => {
     const { renderer, states } = createRenderer();
     const player = new AnimationPlayer(renderer);

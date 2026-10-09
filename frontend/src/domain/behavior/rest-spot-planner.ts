@@ -25,9 +25,11 @@ export function selectRestSpot(context: ExplorePlanningContext, nap: boolean): R
   }
   const ranked = scoreExplorePlans(candidates.map(plan => ({ ...plan, choreographyKey: `rest:${nap ? 'nap' : 'sleep'}` })), context).map(({ plan, weight }) => {
     const route = createExternalRoute(plan, context);
-    const tier = plan.pointKind === 'edge' || plan.pointKind === 'corner' ? 2 : 1;
-    return { plan, weight, tier, route };
-  }).filter(item => item.route !== null).sort((a, b) => b.tier - a.tier || b.weight - a.weight || a.plan.targetId.localeCompare(b.plan.targetId));
+    const edgePreference = plan.pointKind === 'edge' || plan.pointKind === 'corner' ? 1.35 : 1;
+    const windowPreference = plan.surfaceKind === 'window_top' ? 1.2 : 1;
+    return { plan, weight: weight * edgePreference * windowPreference, route };
+  }).filter(item => item.route !== null && (context.isReachable?.(item.plan) ?? true))
+    .sort((a, b) => b.weight - a.weight || a.plan.targetId.localeCompare(b.plan.targetId));
   const best = ranked[0];
   if (best === undefined) return null;
   return { target: best.plan, nap, route: best.route! };
@@ -36,15 +38,15 @@ export function selectRestSpot(context: ExplorePlanningContext, nap: boolean): R
 export function createRestSpotActivity(plan: RestSpotPlan): ActivityDefinition {
   const atEdge = plan.target.surfaceKind === 'window_top'
     && (plan.target.pointKind === 'edge' || plan.target.pointKind === 'corner');
-  const phase = (id: string, kind: 'lie_down' | 'sleep_loop' | 'wake_up' | 'sit_edge' | 'sit_edge_settle' | 'sit_edge_sleep', durationMs: number, next?: string): ActivityStep => ({
-    id, actionId: `rest:${id}`, type: 'animation', stage: id === 'wake' ? 'exiting' : 'looping',
-    intent: { kind, ...(id === 'sleep' ? { expressionHint: 'sleepy' as const, loop: 'until_replaced' as const } : {}) },
+  const phase = (id: string, kind: 'lie_down' | 'sleep_start' | 'sleep_loop' | 'wake_up' | 'sit_edge' | 'sit_edge_settle' | 'sit_edge_sleep', durationMs: number, next?: string): ActivityStep => ({
+    id, actionId: `rest:${id}`, type: 'animation', stage: id === 'wake' ? 'exiting' : id === 'prepare' ? 'entering' : 'looping',
+    intent: { kind, ...(id === 'sleep' ? { expressionHint: 'sleepy' as const, loop: 'until_replaced' as const } : { loop: 'none' as const }) },
     completion: { type: 'elapsed', durationMs }, ...(next === undefined ? {} : { next }),
   });
   const steps: ActivityStep[] = [
     ...plan.route.map(s => s.next === 'inspect' ? { ...s, next: 'prepare' } : s),
     phase('prepare', atEdge ? 'sit_edge' : 'lie_down', 1200, 'settle'),
-    phase('settle', atEdge ? 'sit_edge_settle' : 'lie_down', 1500, 'sleep'),
+    phase('settle', atEdge ? 'sit_edge_settle' : 'sleep_start', 1500, 'sleep'),
     phase('sleep', atEdge ? 'sit_edge_sleep' : 'sleep_loop', plan.nap ? 12_000 : 3000, plan.nap ? 'wake' : undefined),
   ];
   if (plan.nap) steps.push(phase('wake', 'wake_up', 1500));

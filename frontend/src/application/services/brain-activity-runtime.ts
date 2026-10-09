@@ -28,6 +28,9 @@ import type { BehaviorIntent } from '../../domain/behavior/behavior-intent';
 import {
   createExploreActivityDefinition,
   recordExplorePlan,
+  recordFailedExploreTarget,
+  canRetryExploreTarget,
+  type FailedExploreTarget,
   selectExplorePlan,
   type ExploreHistory,
   type ExplorePlan,
@@ -77,12 +80,13 @@ export interface BrainActivityRuntimeOptions {
 /** Application owner for exactly one ActivityRunner run and its external requests. */
 export class BrainActivityRuntime {
   private readonly runner = new ActivityRunner();
-  private readonly usedRunIds = new Set<string>();
+  private runSequence = 0;
   private definition: ActivityDefinition | null = null;
   private runtime: ActivityRuntimeState | null = null;
   private repetition: RepetitionHistory = { activities: [], actions: [] };
   private cooldowns: CooldownState = EMPTY_COOLDOWNS;
   private exploreHistory: ExploreHistory = { entries: [] };
+  private failedTargets: readonly FailedExploreTarget[] = [];
   private participation: ActivityOutcomeFeedback['participation'] = 'solitary';
   private playCompleted = false;
   private source: 'local' | 'user' | 'character' | 'provider' = 'local';
@@ -112,7 +116,7 @@ export class BrainActivityRuntime {
       intent,
       selectionContext,
       nowMs,
-      preview || catalog === undefined ? 0 : this.options.nextRandom(),
+      preview || (catalog === undefined && intent.kind !== 'idle') ? 0 : this.options.nextRandom(),
       catalog
     );
     if (selectedDefinition === null) return null;
@@ -122,6 +126,7 @@ export class BrainActivityRuntime {
       collisionInsets: this.options.getCollisionInsets(), needs: selectionContext.character.needs,
       tone: selectionContext.synthesizedTone, history: this.exploreHistory, nowMs,
       externalSurfaces: this.options.getExternalSurfaces?.() ?? [],
+      isReachable: (plan: ExplorePlan) => canRetryExploreTarget(this.failedTargets, plan.targetId, nowMs),
     };
     if (selectedDefinition.id === 'rest') {
       const rest = selectRestSpot(context, intent.reason !== 'vital_sleep' && intent.source !== 'user');
@@ -130,6 +135,7 @@ export class BrainActivityRuntime {
     }
     const selectedExplorePlan = selectedDefinition.id === 'explore'
       ? selectExplorePlan({ ...context, isReachable: plan => {
+          if (!context.isReachable(plan)) return false;
           if (plan.targetSurface === undefined && context.environment.currentSurface?.kind !== 'window_top') return true;
           return this.options.traversalEnabled === true && createExternalRoute(plan, context) !== null;
         } }, preview ? 0 : this.options.nextRandom()) : null;
@@ -150,8 +156,10 @@ export class BrainActivityRuntime {
     this.participation = intent.source === 'user' ? 'user_engaged' : 'solitary';
     this.playCompleted = false;
     this.source = intent.reason === 'vital_sleep' ? 'character' : intent.source === 'user' ? 'user' : intent.source === 'provider' ? 'provider' : 'local';
-    const runId = this.options.createRunId();
-    requireRunId(runId, this.usedRunIds);
+    const rawId = this.options.createRunId();
+    if (rawId.trim().length === 0 || rawId.trim() !== rawId) throw new Error('Activity run ID must be trimmed and non-empty');
+    if (this.runSequence >= Number.MAX_SAFE_INTEGER) throw new Error('Activity run sequence exhausted');
+    const runId = `${++this.runSequence}:${rawId.slice(0, 100).trimEnd()}`;
     const update = this.runner.start(definition, runId, nowMs);
     if (update.runtime === undefined) return false;
     this.definition = definition;
@@ -204,6 +212,7 @@ export class BrainActivityRuntime {
     const runtime = this.runtime;
     if (definition === null || runtime === null) return false;
     const update = this.runner.cancel(runtime, reason, this.options.clock.now());
+    this.rememberFailedRoute(definition, runtime, update.result!);
     this.definition = null;
     this.runtime = null;
     this.explorePlan = null;
@@ -250,6 +259,7 @@ export class BrainActivityRuntime {
     }
     if (update.result !== undefined) {
       const runtime = this.runtime;
+      if (runtime !== null) this.rememberFailedRoute(definition, runtime, update.result);
       this.definition = null;
       this.runtime = null;
       this.explorePlan = null;
@@ -300,6 +310,13 @@ export class BrainActivityRuntime {
       this.options.onVisualIntent(this.animationIntentFor(step.intent));
     }
     return true;
+  }
+
+  private rememberFailedRoute(definition: ActivityDefinition, runtime: ActivityRuntimeState, result: ActivityResult): void {
+    if (this.explorePlan === null || result.status !== 'cancelled'
+        || (result.reason !== 'environment_invalidated' && result.reason !== 'step_timeout')
+        || definition.steps.find(step => step.id === runtime.currentStepId)?.type !== 'locomotion') return;
+    this.failedTargets = recordFailedExploreTarget(this.failedTargets, this.explorePlan.targetId, result.cancelledAtMs);
   }
 
   private recordTerminal(
@@ -375,12 +392,4 @@ export class BrainActivityRuntime {
       }
     );
   }
-}
-
-function requireRunId(id: string, used: Set<string>): void {
-  if (id.trim().length === 0 || id.trim() !== id || id.length > 128) {
-    throw new Error('Activity run ID must be a trimmed non-empty bounded string');
-  }
-  if (used.has(id)) throw new Error('Activity run ID must be unique within the Brain runtime');
-  used.add(id);
 }

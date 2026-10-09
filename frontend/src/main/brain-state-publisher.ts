@@ -212,6 +212,7 @@ export class BrainStatePublisher {
 
 function createProjectionSignature(state: BrainStateDTO): string {
   return JSON.stringify({
+    globalCursor: state.globalCursor,
     initiativeSpeech: state.initiativeSpeech,
     cursorGame: state.cursorGame,
     dialogue: state.dialogue,

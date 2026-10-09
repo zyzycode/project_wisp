@@ -6,6 +6,7 @@ import { DEFAULT_AI_REQUEST_POLICY, type IAIRequestControl } from '../../applica
 import { DIALOGUE_FALLBACK } from '../../application/services/dialogue-provider-result';
 import { projectBackendRequest } from './backend-request-projection';
 import { parseBackendError, parseBackendSuccess } from './backend-response-validation';
+import { projectTouchRequest, parseTouchResponse } from './backend-touch-validation';
 
 interface ExternalAIProviderOptions {
   readonly baseUrl: string;
@@ -119,29 +120,31 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
   }
   public cancel(requestId: string): void { if (this.eventAbort?.id === requestId) this.eventAbort.controller.abort(); }
   public async generateEvent(request: AIEventProviderRequest): Promise<AIEventProviderResponse> {
-    if (this.options.apiVersion !== 3) throw new Error('Events unavailable');
-    const body = JSON.stringify(projectEventRequest(request));
-    if (this.activeRequestId || !this.options.eventRequestControl?.recordEventSubmission(this.options.now())) throw new Error('Events unavailable');
+    const touch = request.event.type === 'user_touch';
+    if (!touch && this.options.apiVersion !== 3) throw new Error('Events unavailable');
+    const body = JSON.stringify(touch ? projectTouchRequest(request) : projectEventRequest(request));
+    if (this.activeRequestId || !(touch ? this.options.requestControl.recordSubmission(this.options.now()) : this.options.eventRequestControl?.recordEventSubmission(this.options.now()))) throw new Error('Events unavailable');
     const controller = new AbortController(), startedAt = this.options.now();
     this.activeRequestId = request.requestId; this.eventAbort = { id: request.requestId, controller };
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => { controller.abort(); reject(new TransportTimeout()); }, 3000); });
+    const timeoutMs = touch ? DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs : 3000;
+    const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => { controller.abort(); reject(new TransportTimeout()); }, timeoutMs); });
     try {
-      const url = new URL(this.url); url.pathname = url.pathname.replace(/chat$/u, 'events');
+      const url = new URL(this.url); url.pathname = touch ? url.pathname.replace(/v[123]\/chat$/u, 'v1/touch') : url.pathname.replace(/chat$/u, 'events');
       const operation = async () => {
         const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         return { response, value: await readBoundedJson(response, controller.signal) };
       };
       const { response, value } = await Promise.race([operation(), timeout]);
-      if (controller.signal.aborted || this.options.now() - startedAt >= 3000) throw new TransportTimeout();
+      if (controller.signal.aborted || this.options.now() - startedAt >= timeoutMs) throw new TransportTimeout();
       if (response.status !== 200) {
-        const error = parseEventError(value, request.requestId, response.status);
+        const error = touch ? parseBackendError(value, request.requestId, response.status) : parseEventError(value, request.requestId, response.status);
         this.cooldown(response.status === 429 ? error.error.retryAfterMs ?? 60000 : 30000); throw new Error('Event unavailable');
       }
-      return parseEventResponse(value, request.requestId);
+      return touch ? parseTouchResponse(value, request.requestId) : parseEventResponse(value, request.requestId);
     } catch (error) {
       // Explicit user preemption is not a server failure and must not delay their turn.
-      if (!controller.signal.aborted || this.options.now() - startedAt >= 3000) this.cooldown(30000);
+      if (!controller.signal.aborted || this.options.now() - startedAt >= timeoutMs) this.cooldown(30000);
       controller.abort(); throw error;
     } finally { clearTimeout(timer); this.eventAbort = undefined; this.activeRequestId = undefined; }
   }

@@ -2,9 +2,9 @@
 
 Canonical contract для [#58](https://github.com/zyzycode/project_wisp/issues/58); реализация — #59 и отдельная server v3 задача. [ARCHITECT RESULT](P17_A04_RESULT.md). Локальные механики [cursor-game](ACTIVITY_ENGINE.md#17-cursor-game-v1) и [SocialBid](AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость) не ждут сеть и сохраняют владельцев/пределы. Эта функция добавляет короткую речь и ограниченное использование уже выученного предпочтения, без новых сенсоров/игр/графики.
 
-## 1. Минимальный scope и владение
+## 1. Минимальный scope автономных событий и владение
 
-| Допустимое событие | Источник и цель |
+| Допустимое автономное событие | Источник и цель |
 |---|---|
 | `cursor_game_completed` | Реальный completed terminal текущего run, playCompleted=true, outcome caught/missed/lost_target; тот же GameEpisode уже подтверждён SQLite. Одна необязательная короткая реплика об этом исходе/общей истории |
 | `social_bid_started` | Уже начавшийся локальный SocialBid после его обычного Character gate и расходования existing InitiativeBudget. Одна необязательная контекстная фраза в дополнение к жесту |
@@ -22,6 +22,8 @@ Application владеет event lifecycle/current IDs/generation и admission; 
 `IAIEventRequestControl.recordEventSubmission` атомарно проверяет и расходует common+event counters прямо перед transport; rejected/local Mock/неотправленный event бесплатны. Ошибка/таймаут/stale результата расход уже не возвращает. Server budgets остаются общими deployment limits [backend §5](BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы), не отдельной квотой events. Публичных counters/настроек провайдера в Renderer нет.
 
 Только явно настроенный `apiVersion=3` и `eventsEnabled=true` активирует сеть событий; default eventsEnabled=false сохраняет режим v1/v2. Нет event polling, автоматических retries, запроса на каждый local fallback, запроса на «проверить бюджет» или failover к другой модели. Один pending event timer/request/speech owner, без очереди будущих инициатив; новый competing event пропускается.
+
+Эти условия относятся к автономным game/social событиям. Явное касание пользователя имеет отдельный v1 путь и admission из §8.
 
 Прямой user chat важнее event: admission пользовательского turn сохраняет действующий receipt/15s deadline, отменяет pending event/его speech и abort-ит event transport. До generateResponse runtime ожидает `IAIEventInterlock.interruptForUser()` — settlement **старого HTTP promise**, без второго параллельного fetch. Это один уже принятый user turn, не очередь инициатив. Event adapter обязан settle после abort и во всех случаях не позже собственного3s timeout; поздний результат уже invalid. Если user turn к settlement retired/reset/expired, generateResponse не вызывается. Input/drag/Brain ticks ожидание не блокирует. `canSubmit` не становится false только из-за автономного event; обычные rate/session/cooldown правила сохраняются.
 
@@ -86,3 +88,13 @@ Access/ZDR, RAM terminal response cache≤10min, ledger IDs≤24h и aggregates�
 Общие [v3 fixtures](../contracts/fixtures/desktop-backend-v3): оба event requests, event success/error и follow-up chat request/success. Success/error — альтернативы HTTP200/503. V1/v2 fixtures неизменны.
 
 Desktop: duplicate commit/no-op, uncertain/failed game write, cancelled game, current SocialBid terminal, exact deadline, quiet/ignore/pet reset, shared counters/reserve20, user preemption/abort settlement без overlap, speech priority/expiry, previousInitiative60s/currentgeneration, reset/dispose после каждого await, отсутствие дополнительного reward/extraction/write/automatic calls, restored preference bias. Backend: route/version/schema/bounds/previousInitiative, event text-only, fixtures, shared endpoint quota/ID conflict, deadline/cancel/usage-on-error, no payload logs. Typecheck→npm test для developer; pip check+pytest для backend. Windows smoke пользователь выполняет вручную; архитектор runtime tests/build не запускает.
+
+## 8. Явное касание v1
+
+Обычный клик сохраняет локальный `user_click` и визуальную реакцию, затем допускает один `user_touch`. Main случайно выбирает `stroke` / `touch` / `ruffle` / `poke`; сервер описывает их как «нежно погладил», «легонько коснулся», «ласково потрепал», «осторожно ткнул». Это описание игрового действия, не сообщение пользователя и не сенсорный факт о реальном прикосновении.
+
+`POST /v1/touch`: [wire type](../../frontend/src/application/ports/backend-touch-contract.ts), [общая fixture](../contracts/fixtures/desktop-backend-v1/request.touch.json), [server schema/prompt](../../backend/wisp_backend/touch.py). Передаются только requestId, закрытый event, locale, character и фиксированные version/stream; без истории, памяти, координат и локальных ID. Ответ — version/requestId/text до 240 UTF-16 units, без decision. Сервер не сохраняет событие; обычные upstream retention условия те же, что у v1/chat. Новая auth/storage подсистема не вводится; ограничения импортированного сервера остаются в [backend README](../backend/README.md).
+
+Касание доступно при настроенном backend независимо от флага автономных AI-событий и автопрогулок. Общие 6/min и 100/session сохраняются; задержка startup5min, 2/hour и reserve20 автономных событий не применяются. Один shared transport, без retries/очереди: повторные клики во время touch request пропускаются. Занятый прежним запросом слот не создаёт отложенное касание. Quiet/menu/sleep/critical needs/forced motion и thinking блокируют отправку; текстовый чат отменяет касание и ждёт settlement перед своим запросом.
+
+Runtime deadline15s, transport12s, сервер использует существующий chat deadline. Ошибка/недоступность/невалидный/поздний ответ — без заготовки и error bubble. Reset/dispose/перетаскивание инвалидируют результат. Обычная автономная смена занятия не отменяет касание, если общие gates сохраняются. Ответ публикуется через existing initiativeSpeech на 2s, без повторного Character reward, recall, записи в память или previousInitiative. Режим без backend не генерирует mock-фразы на клик. Перетаскивания и серии кликов не создают новых типов запросов.

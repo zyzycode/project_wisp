@@ -144,6 +144,15 @@ describe('Renderer: CharacterRenderer Visual Polish', () => {
     expect(projectAnchorPoint({ ...common, flipX: true })).toEqual({ x: 225, y: 112.5 });
   });
 
+  it('projects rotation and unequal scale about the same pivot as the sprite', () => {
+    const projected = projectAnchorPoint({ anchor: { x: 120, y: 50 },
+      viewport: { width: 400, height: 200 }, rootPivot: { x: 100, y: 100 },
+      renderedSize: { width: 300, height: 300 }, flipX: true,
+      scale: 1, scaleX: 2, scaleY: 0.5, rotationDeg: 90 });
+    expect(projected.x).toBeCloseTo(93.75);
+    expect(projected.y).toBeCloseTo(120);
+  });
+
   it('reads the face anchor from the currently rendered body frame', () => {
     const bodyLayer = state.layers[0];
     if (bodyLayer === undefined || !bodyLayer.visible) throw new Error('Body layer fixture is required.');

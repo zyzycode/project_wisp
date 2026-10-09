@@ -14,10 +14,12 @@ import {
   type PetMainBridge,
 } from './pet-main-bridge';
 import type { CursorScreenPosition } from './body-ui-runtime';
+import type { CursorSample } from '../domain/behavior/gaze-engine';
 
 export interface PetBodySnapshot {
   readonly brain: BrainStateDTO;
   readonly visual: BodyVisualState;
+  readonly globalCursor: CursorSample | null;
 }
 
 export type PetBodySnapshotListener = (snapshot: PetBodySnapshot) => void;
@@ -57,6 +59,7 @@ export class PetBodyController {
   private activeGesture: ActiveBodyGesture | null = null;
   private resetBeforeNextSubscription = false;
   private pendingMenuVisibility: boolean | null = null;
+  private globalCursor: CursorSample | null = null;
 
   public constructor(
     private readonly bridge: PetMainBridge,
@@ -90,6 +93,11 @@ export class PetBodyController {
   public acceptBrainState(payload: unknown): PetBodySnapshot | null {
     const brain = this.revisionGate.accept(payload);
     if (brain === null) return null;
+    const sample = brain.globalCursor;
+    this.globalCursor = sample == null ? null : {
+      globalPosition: sample.globalPosition,
+      capturedAtMs: this.now() - (brain.sampledAtMs - sample.capturedAtMs),
+    };
     const previousTransform = this.snapshot?.visual.reflex.transform ?? NEUTRAL_REFLEX.transform;
     const previousPupil = this.snapshot?.visual.reflex.pupilOffset ?? NEUTRAL_REFLEX.pupilOffset;
     const velocityX = brain.motion.velocityPxPerSec.x;
@@ -249,11 +257,16 @@ export class PetBodyController {
       ? game.outcome : undefined;
     const snapshot: PetBodySnapshot = {
       brain,
+      globalCursor: this.globalCursor,
       visual: {
         streamId: brain.streamId,
         revision: ++this.visualRevision,
         visualIntent: brain.visualIntent,
         visualAgeMs: brain.sampledAtMs - brain.visualIntent.episodeStartedAtMs,
+        motionVelocityPxPerSec: brain.motion.velocityPxPerSec,
+        ...(brain.activity?.phaseEndsAtMs == null ? {} : {
+          phaseDurationMs: brain.activity.phaseEndsAtMs - brain.activity.phaseStartedAtMs,
+        }),
         ...(cursorGameReaction === undefined ? {} : { cursorGameReaction }),
         reflex,
       },
@@ -266,6 +279,7 @@ export class PetBodyController {
   private resetSubscriptionLifecycle(): void {
     this.revisionGate.reset();
     this.snapshot = null;
+    this.globalCursor = null;
     this.bodySequence = 0;
     this.visualRevision = 0;
     this.gestureSequence = 0;

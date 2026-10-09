@@ -1,35 +1,32 @@
-import React, { useRef, useState } from 'react';
+import React, { useImperativeHandle, useRef, useState } from 'react';
 import { ProceduralBlush } from './ProceduralBlush';
 import { PropsOverlay } from './PropsOverlay';
 import type { RenderLayerDef, RenderPresentationState, VisibleRenderLayerDef } from '../../render-engine/types';
 import { TechnicalFallbackController } from '../../render-engine/technical-fallback-controller';
+import { spriteTransform } from '../../render-engine/sprite-projection';
+import { PupilPose, type PupilPoseHandle } from '../../render-engine/pupil-pose';
 
 export interface SpriteRendererProps {
   state?: RenderPresentationState;
+  onAssetLoadError?: (source: string) => void;
+  gazeHandle?: React.Ref<PupilPoseHandle>;
 }
 
 /** Displays already-resolved layers only; it never chooses clips or assets. */
-export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
+export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state, onAssetLoadError, gazeHandle }) => {
   const controllerRef = useRef(new TechnicalFallbackController());
+  const pupilPose = useRef(new PupilPose()).current;
+  useImperativeHandle(gazeHandle, () => pupilPose, [pupilPose]);
   const [, setTechnicalRevision] = useState(0);
   if (state === undefined) return null;
   const controller = controllerRef.current;
-  const visibleLayers = state.layers
-    .map((layer) => controller.resolve(layer))
+  const visibleLayers = controller.resolvePresentation(state)
     .filter((layer): layer is VisibleRenderLayerDef => layer !== undefined && isVisibleLayer(layer))
     .sort((left, right) => left.zIndex - right.zIndex);
   const primaryLayers = visibleLayers.filter((layer) => layer.category !== 'props');
   const propLayers = visibleLayers.filter((layer) => layer.category === 'props');
   const { viewport, rootPivot, transform } = state;
-  const scaleX = transform.scale * (transform.scaleX ?? 1);
-  const scaleY = transform.scale * (transform.scaleY ?? 1);
-  const rotation = transform.rotationDeg ?? 0;
-  const transformValue = [
-    `translate(${rootPivot.x} ${rootPivot.y})`,
-    ...(rotation === 0 ? [] : [`rotate(${rotation})`]),
-    `scale(${transform.flipX ? -scaleX : scaleX} ${scaleY})`,
-    `translate(${-rootPivot.x} ${-rootPivot.y})`,
-  ].join(' ');
+  const transformValue = spriteTransform(rootPivot, transform);
 
   return (
     <svg
@@ -47,8 +44,10 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
             key={layer.id}
             layer={layer}
             state={state}
+            imageRef={layer.id === 'pupils' ? pupilPose.attach : undefined}
             onLoad={() => controller.recordLoaded(layer)}
             onError={(failedSource) => {
+              onAssetLoadError?.(failedSource);
               if (controller.recordFailed(layer, failedSource)) setTechnicalRevision((revision) => revision + 1);
             }}
           />
@@ -60,6 +59,7 @@ export const SpriteRenderer: React.FC<SpriteRendererProps> = ({ state }) => {
           rootPivot={rootPivot}
           onLayerLoad={(layer) => controller.recordLoaded(layer)}
           onLayerError={(layer, failedSource) => {
+            onAssetLoadError?.(failedSource);
             if (controller.recordFailed(layer, failedSource)) setTechnicalRevision((revision) => revision + 1);
           }}
         />
@@ -73,16 +73,19 @@ function SpriteLayer({
   state,
   onLoad,
   onError,
+  imageRef,
 }: {
   readonly layer: VisibleRenderLayerDef;
   readonly state: RenderPresentationState;
   readonly onLoad: () => void;
   readonly onError: (failedSource: string) => void;
+  readonly imageRef?: React.Ref<SVGImageElement>;
 }): React.ReactElement {
   const x = state.rootPivot.x + layer.offset.x - layer.pivot.x;
   const y = state.rootPivot.y + layer.offset.y - layer.pivot.y;
   return (
     <image
+      ref={imageRef}
       data-layer-id={layer.id}
       data-frame-source={layer.frame.source}
       href={resolveSpriteSource(layer.frame.source)}

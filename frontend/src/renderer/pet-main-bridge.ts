@@ -37,7 +37,8 @@ export class BrainStateRevisionGate {
   private streamId: string | null = null;
   private revision = 0;
   private currentEpisodeId: string | null = null;
-  private readonly visualPayloads = new Map<string, string>();
+  private episodeSequence = 0;
+  private visualPayload: string | null = null;
   private diagnosticCount = 0;
 
   public constructor(private readonly reportDiagnostic: (message: string) => void = console.warn) {}
@@ -46,7 +47,8 @@ export class BrainStateRevisionGate {
     this.streamId = null;
     this.revision = 0;
     this.currentEpisodeId = null;
-    this.visualPayloads.clear();
+    this.episodeSequence = 0;
+    this.visualPayload = null;
     this.diagnosticCount = 0;
   }
 
@@ -66,15 +68,17 @@ export class BrainStateRevisionGate {
 
     const episodeId = state.visualIntent.episodeId;
     const signature = JSON.stringify(state.visualIntent);
-    const knownSignature = this.visualPayloads.get(episodeId);
+    const sequence = state.visualIntent.episodeSequence;
     if (
-      (knownSignature !== undefined && knownSignature !== signature) ||
-      (knownSignature !== undefined && episodeId !== this.currentEpisodeId)
+      sequence < this.episodeSequence ||
+      (sequence === this.episodeSequence && signature !== this.visualPayload) ||
+      (sequence > this.episodeSequence && episodeId === this.currentEpisodeId)
     ) {
       this.diagnostic('Rejected reused or mutated Brain visual episode');
       return null;
     }
-    if (knownSignature === undefined) this.visualPayloads.set(episodeId, signature);
+    this.visualPayload = signature;
+    this.episodeSequence = sequence;
     this.currentEpisodeId = episodeId;
     this.revision = state.revision;
     return state;

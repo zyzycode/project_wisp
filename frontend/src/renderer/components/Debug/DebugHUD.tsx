@@ -6,8 +6,10 @@ import type { Needs, Relationship, SynthesizedEmotionalTone } from '../../../dom
 import { LogViewer } from './LogViewer';
 import { NeedsIndicator } from './NeedsIndicator';
 import { AnimationInspector } from './AnimationInspector';
+import { RuntimeDiagnostics, type RuntimeDiagnosticsProps } from './RuntimeDiagnostics';
 
 export interface DebugHUDProps {
+  runtimeDiagnostics?: RuntimeDiagnosticsProps;
   needs: Needs;
   relationship: Relationship;
   tone: SynthesizedEmotionalTone;
@@ -66,6 +68,7 @@ function relationshipLevel(friendship: number): string {
 }
 
 export const DebugHUD: React.FC<DebugHUDProps> = ({
+  runtimeDiagnostics,
   needs,
   relationship,
   tone,
@@ -97,6 +100,7 @@ export const DebugHUD: React.FC<DebugHUDProps> = ({
       </header>
 
       <NeedsIndicator needs={needs} />
+      {runtimeDiagnostics ? <RuntimeDiagnostics {...runtimeDiagnostics} /> : null}
 
       <section className="debug-hud-relationship">
         <div className="debug-hud-section-title">❤️ Relationship</div>

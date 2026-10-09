@@ -14,6 +14,22 @@ Main также читает глобальную позицию через `IPl
 
 OS/platform + BodyEventDTO cursor → boundary normalization → EnvironmentSnapshot → proximity → Brain eligibility / Motion support. Body cursor + presentation geometry → gaze → PupilOffset.
 
+Main передаёт последний глобальный sample в optional `BrainStateDTO.globalCursor`
+через существующий typed state stream. Absent/null означает недоступный источник;
+координаты finite DIP, `capturedAtMs` конечен и лежит в `[0, sampledAtMs]`.
+Опрос до 10 Hz не зависит от включения wander или открытого меню: эти gates
+ограничивают поведение, а не доступность взгляда. Наблюдения живут только в памяти,
+не сохраняются и не передаются серверу; reset/dispose очищает sample.
+
+Body один раз при приёме snapshot переводит возраст `sampledAtMs - capturedAtMs`
+в локальную monotonic шкалу. RAF и local reflex revisions не обновляют timestamp.
+Глобальный sample приоритетен; `pointerleave` очищает только локальный fallback.
+При остановке state stream глобальный sample истекает по TTL; Body не возвращает
+ему свежесть из старых координат. При отсутствии глобального источника доступный
+локальный cursor подтверждается bounded presence refresh. Gaze разрешён во время
+обычного движения и при выключенном wander; sleep/drag выключают его отдельно от
+eligibility игры. Явное выражение лица реакции сохраняет приоритет.
+
 Environment — observation, gaze — presentation, proximity — signal; ни один не BehaviorIntent/AnimationIntent и не команда.
 
 ## 3. Gaze DTO и контракт взгляда
@@ -22,7 +38,7 @@ Environment — observation, gaze — presentation, proximity — signal; ни �
 
 - **Допустимые диапазоны смещения зрачка**: $dx, dy \in [-1.0, 1.0]$.
 - **Deadzone и clamped circle**: в deadzone desired offset равен $(0, 0)$; вне deadzone результирующий вектор смещения зрачка ограничивается кругом единичного радиуса ($r = \sqrt{(dx/maxOffsetX)^2 + (dy/maxOffsetY)^2} \le 1.0$).
-- **Валидация**: `scale`, max offsets и smoothing time $> 0$; остальные значения неотрицательны; `attentionRadiusWorldPx > deadZoneSourcePx × scale`.
+- **Валидация**: `scale` и smoothing time $> 0$; остальные значения неотрицательны; `attentionRadiusWorldPx > deadZoneSourcePx × scale`. Нормализованные max offsets фиксированы равными 1.
 
 ## 4. Gaze normalization
 
@@ -57,7 +73,25 @@ offset(t+dt) = offset(t) + alpha × (desired - offset(t))
 
 `flipX` применяется ровно один раз. Missing, stale (`nowMs - capturedAtMs > maxCursorAgeMs`) или out-of-radius cursor задаёт desired `(0,0)` и smooth return to neutral.
 
+При полном SVG transform Body передаёт `sourceFromWorld` — обратную линейную
+матрицу общей [проекции](../../frontend/src/renderer/render-engine/sprite-projection.ts).
+Она уже включает отражение, rotation, scaleX/scaleY и `xMidYMid meet`; повторный
+flip запрещён. Render, gaze и anchor marker используют одинаковые pivot и
+letterboxing. Anchor текущего body frame сначала переносится в viewport с учётом
+frame pivot/offset. DOM bounds кешируются до resize/scroll/изменения размера;
+движение окна учитывается через актуальный screen origin без layout read на RAF.
+
 Gaze не emits Activity/AnimationIntent. При baked-in face Body может не показывать pupil layer, не подавляя отдельный bounded-refresh `cursor_observed` для Brain proximity.
+
+Для совместимого overlay-body Skin использует пару `face_gaze_base` и
+`pupils_gaze`. Сглаженный (120 ms) дробный offset доходит до отдельного слоя
+радужек: предел ±2 source px по X и ±1 по Y подтверждён
+[визуальной проверкой](../../frontend/asset-pipeline/references/GAZE_RIG_2026_10_QA.md).
+Body передаёт offset непосредственно renderer-local pupil handle; меняется только
+SVG transform слоя, без React state/IPC на каждом RAF. При отсутствии/ошибке пары
+используется прежний `face_gaze`; discrete направление имеет гистерезис 15%.
+При длине offset <0.01 выбирается neutral (центр пары либо обычный face fallback),
+а не взгляд вниз. Emotional override и baked-in лица не получают второй слой глаз.
 
 ## 5. Cursor proximity DTO (Близость курсора)
 

@@ -4,24 +4,14 @@
 
 ## Decision
 
-Хранить desktop и Python/FastAPI backend в `project_wisp`, разместив desktop в `frontend/`, сервер в `backend/`. Обе части имеют отдельные runtime, зависимости, запуск и deployment. Общие Markdown-документы находятся в корневом `docs/`, серверные инструкции — в `docs/backend/`; canonical wire contracts и fixtures сохраняют существующие пути.
+Desktop находится в `frontend/`, Python/FastAPI backend — в `backend/`; runtime, зависимости, запуск и deployment раздельны. Общая документация — `docs/`, серверная — `docs/backend/`; canonical wire contracts и fixtures сохраняют пути. Правила: [общие](../../AGENTS.md), [desktop](../../frontend/AGENTS.md), [backend](../../backend/AGENTS.md); роли общие в `.agents/agents/`.
 
-Корневой `AGENTS.md` задаёт общие границы. Desktop-инварианты находятся в `frontend/AGENTS.md` с явными ссылками из `frontend/tests/AGENTS.md`/`frontend/public/AGENTS.md`; серверные — в `backend/AGENTS.md`. Роли остаются общими в `.agents/agents/`, с проверками по затронутому scope.
+## Rationale
 
-## Alternatives
-
-Отдельные репозитории усложняют совместные изменения API/fixtures. Desktop в корне затрудняет визуальное разделение компонентов; пользователь выбрал симметричные `frontend/` и `backend/`. Корневой Node CLI запускает npm из `frontend/` без hoisting; зависимости и lockfile — в `frontend/`, Python venv — в `backend/.venv/`.
+Отдельные репозитории усложняют совместные изменения API/fixtures. Desktop в корне хуже отделяет компоненты; пользователь выбрал симметричные каталоги. Корневой Node CLI маршрутизирует запуск и проверки без hoisting: npm package/lockfile — в `frontend/`, Python venv — в `backend/.venv/`.
 
 ## Consequences
 
-Импортируется tracked snapshot локального `wisp_backend` на `275cc8161e5f725681fdacc725708acaf74784b6`; исходный репозиторий и его история сохраняются отдельно. Это перенос исходников, не объединение Git-историй. `.env`, `.venv`, кеши, IDE и runtime data не импортируются.
+Перенесён tracked snapshot `wisp_backend` на `275cc8161e5f725681fdacc725708acaf74784b6`; исходный репозиторий и его история сохранены отдельно, Git-истории не объединялись. Secrets, venv, кеши, IDE и runtime data не импортировались.
 
-API не меняется: текущий сервер поддерживает v1, расширения и server-only safeguards ещё не реализованы в импортированном snapshot. Их gaps перечислены в [backend navigator](../backend/README.md); canonical contracts не ослабляются. Исправление inherited proxy покрывается регрессионным тестом; использование proxy/TLS environment становится явной серверной конфигурацией.
-
-## Implementation consequences
-
-Для MONOREPO-01 обязательны этот ADR, [общие инструкции](../../AGENTS.md), инструкции затронутых каталогов и [серверный navigator](../backend/README.md). Перенести desktop код/тесты/ассеты/tooling в `frontend/`, backend — в `backend/`; общую документацию оставить в корне. Корневой Node CLI и launchers обеспечивают совместный запуск, остановку обоих компонентов и отдельные проверки без новых dependencies. Обновить ссылки и проверить общие v1 fixtures. Затем desktop typecheck → tests, backend pip check → pytest и разрешённый live smoke. Source backend не изменять; существующие пользовательские изменения сохранять.
-
-Проверки выполняет исполнитель; по завершении scope — done. Миграция не принимает серверные gaps и не меняет сетевые/процессные границы.
-
-`frontend/asset-pipeline/` относится к frontend, но сохраняет независимые инструкции. При переносе его пути к `public/` и определение root остаются frontend-relative; ссылки на общие docs обновляются. Скрипты художника не запускаются этой задачей. Общий `.gitignore` исключает frontend node_modules, backend venv/secrets/cache и локальные output/input pipeline.
+Перенос не меняет API и сетевые/процессные границы, не означает реализацию или принятие серверных gaps: [фактические возможности backend](../backend/README.md#фактическая-реализация). Proxy/TLS environment — явная серверная конфигурация. `frontend/asset-pipeline/` сохраняет независимый scope и frontend-relative пути; перенос не разрешает запуск его скриптов продуктовым ролям.

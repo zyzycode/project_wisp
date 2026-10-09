@@ -56,7 +56,7 @@ Snapshot factors read-only; завершённую P4 Utility не пересч�
 
 ## 7. Lifecycle одного run
 
-Типы: [activity-runner.ts](../../frontend/src/domain/behavior/activity-runner.ts). Одновременно максимум один run; каждый старт имеет новый уникальный `runId`. Terminal `completed`/`failed`/`cancelled` детерминирован и необратим; interruption — cancelled с причиной.
+Типы: [activity-runner.ts](../../frontend/src/domain/behavior/activity-runner.ts). Одновременно максимум один run; каждый старт имеет новый уникальный `runId`. Application создаёт opaque ID из возрастающего safe-integer счётчика и ограниченного injected factory suffix (100 символов, trailing whitespace после среза удаляется). Уникальность — по построению, без растущего Set всех run IDs; переполнение счётчика отклоняется. Поздние events по-прежнему сверяются с текущими run/step. Terminal `completed`/`failed`/`cancelled` детерминирован и необратим; interruption — cancelled с причиной.
 
 Runner принимает `nowMs`, не создаёт timers; выпускает максимум один step request за update transition, сохраняет `stepStartedAtMs`/Brain deadline для bounded step. Causal guard/locomotion event сопоставляется только с current run; stale/foreign игнорируются без мутации. Cleanup scope возвращается только для завершившегося run.
 
@@ -87,6 +87,8 @@ Cancel прекращает emissions и возвращает точный clean
 ## 12. Repetition
 
 Bounded history: до 8 Activity entries и 16 action entries; вытеснение старых, exponential time decay. Положительный configured floor сохраняет шанс единственной eligible Activity; это soft weight, не hard gate. Записи добавляет только подтверждённый start/execution lifecycle event, не preview/eligibility/repeated scoring.
+
+Calm выбирает существующие `idle_blink`/`look_around` взвешенно, без обязательного чередования: базовые веса 1.4/1, делённые на `1 + decayed recent pose count` (half-life 90 s). Используется нормализованная RNG-позиция внутри выбранной idle-корзины, без изменения вероятностей семейств. Длительность calm — `6500 + floor(random * 3500)` ms, один seeded draw при start; preview не расходует RNG. Это Main deadline, не ожидание завершения спрайта.
 
 ## 13. Feedback boundary
 
@@ -124,7 +126,9 @@ Brain/Runner — чистые `frontend/src/domain/behavior/`, [общая из�
 
 `rest-spot-planner.ts`/`explore-planner.ts` разделяют bounded target/route/action history. External candidates только из fresh Application snapshot. До scoring — reachable same-support walk/traverse или проверенная directed arc; screen approach/grab/climb/rebound сохраняется в Explore. Нельзя пересекать параболой внутренность наблюдаемого окна; изменение target geometry в полёте отменяет arc → обычные fall/land.
 
-Rest Spot только внутри resolved `sleep`: reachable window top предпочтительнее тихой кромки/угла пола, затем safe floor. На окне `sit_edge → settle`; опора уже 240 DIP или край допускают только сидячую подготовку/сон, широкий центр/пол — `lie_down`/`sleep_loop`. Clips задают fallback, не Brain duration; арт-долг (исторический реестр удалён; требования — в отчёте задачи).
+Отдельная session-only retry memory хранит максимум 12 неудачных target IDs на 30 s. Movement rejection, `environment_invalidated` и `step_timeout` во время locomotion временно исключают цель Explore/Rest; user/forced/shutdown cancel и завершение inspection не добавляют запись. Preview/scoring не продлевают срок; на границе expiry цель снова доступна. Это не успешная visit/action history, не cooldown и не persistence. Prepare/settle/wake Rest и pose Explore используют конечный клип с удержанием terminal pose до semantic deadline; повтор перехода не заменяет удержание.
+
+Rest Spot только внутри resolved `sleep`: reachable candidates оцениваются общим score с мягкими множителями edge/corner ×1.35 и window top ×1.2. Категория не получает безусловного приоритета над repetition/history; tie-break — target ID. Safe stationary rest остаётся кандидатом. На окне `sit_edge → settle`; опора уже 240 DIP или край допускают только сидячую подготовку/сон, широкий центр/пол — `lie_down → sleep_start → sleep_loop`. Clips задают fallback, не Brain duration; арт-долг (исторический реестр удалён; требования — в отчёте задачи).
 
 Nap: prepare 1200 ms → settle 1500 ms → sleep 12000 ms → wake 1500 ms → awake и единственный opportunity scheduler. `vital_sleep`/user sleep без nap deadline: после prepare sleep до energy ≥80, прямого действия или потери опоры. Click/drag, menu pause, disable/shutdown отменяют Rest Spot. Небольшое смещение принятой опоры сохраняет local distance (Motion §7.1).
 
