@@ -21,18 +21,6 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config = settings if settings is not None else Settings.from_env()
         async with create_client(config, transport) as client:
-            if config.provider == "chatgpt":
-                from wisp_backend.chatgpt_session import ChatGPTSession
-                from wisp_backend.chatgpt_store import SessionStore
-                from wisp_backend.providers.chatgpt import ChatGPTProvider
-                store = SessionStore()
-                with store.lease():
-                    session = ChatGPTSession(store, client)
-                    app.state.chat_service = ChatService(
-                        {"chatgpt": ChatGPTProvider(client, session)}, config.assistants, config.request_timeout,
-                    )
-                    yield
-                return
             app.state.chat_service = ChatService(
                 {"groq": GroqProvider(client)}, config.assistants, config.request_timeout,
             )

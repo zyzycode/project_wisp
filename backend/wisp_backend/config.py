@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import Literal
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
@@ -23,8 +22,7 @@ class AssistantSettings(BaseModel):
 class Settings(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    api_key: SecretStr | None = None
-    provider: Literal["groq", "chatgpt"] = "groq"
+    api_key: SecretStr
     assistants: dict[str, AssistantSettings] = Field(
         default_factory=lambda: {"default": AssistantSettings()}, min_length=1,
     )
@@ -36,9 +34,7 @@ class Settings(BaseModel):
 
     @field_validator("api_key")
     @classmethod
-    def validate_key(cls, value: SecretStr | None) -> SecretStr | None:
-        if value is None:
-            return None
+    def validate_key(cls, value: SecretStr) -> SecretStr:
         key = value.get_secret_value().strip()
         if not key:
             raise ValueError("API key must not be blank")
@@ -47,20 +43,13 @@ class Settings(BaseModel):
     @classmethod
     def from_env(cls, env_file: Path = ENV_FILE) -> "Settings":
         values = {**dotenv_values(env_file), **os.environ}
-        provider = values.get("WISP_AI_PROVIDER", "groq").strip().lower()
-        if provider not in {"groq", "chatgpt"}:
-            raise RuntimeError("WISP_AI_PROVIDER must be groq or chatgpt")
         key = values.get("GROQ_API_KEY") or values.get("token_api")
-        if provider == "groq" and (not key or not key.strip()):
+        if not key or not key.strip():
             raise RuntimeError("Set GROQ_API_KEY or token_api in the project .env")
         assistants = values.get("ASSISTANTS_JSON")
         trust_env = values.get("WISP_UPSTREAM_TRUST_ENV", "false").strip().lower()
         if trust_env not in {"true", "false"}:
             raise RuntimeError("WISP_UPSTREAM_TRUST_ENV must be true or false")
-        if provider == "chatgpt":
-            return cls(provider="chatgpt", assistants={"default": AssistantSettings(
-                provider="chatgpt", model=values.get("WISP_CHATGPT_MODEL") or "saved",
-            )}, base_url="https://api.openai.com/v1/", upstream_trust_env=trust_env == "true")
         if assistants:
             import json
             return cls(api_key=SecretStr(key), assistants=json.loads(assistants),
