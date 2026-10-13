@@ -13,7 +13,7 @@ from wisp_backend.config import Settings
 
 
 @pytest.mark.parametrize("trust_env,status", [(False, 200), (True, 503)])
-def test_inherited_proxy_is_explicit(monkeypatch, body, trust_env, status):
+def test_inherited_proxy_is_explicit(monkeypatch, body, trust_env, status, tmp_path):
     class ProviderHandler(BaseHTTPRequestHandler):
         def do_POST(self):
             self.rfile.read(int(self.headers["Content-Length"]))
@@ -42,6 +42,7 @@ def test_inherited_proxy_is_explicit(monkeypatch, body, trust_env, status):
             thread.start()
             try:
                 settings = Settings(api_key=SecretStr("test-key"),
+                                    ledger_path=tmp_path / "ledger.sqlite",
                                     upstream_trust_env=trust_env,
                                     base_url=f"http://127.0.0.1:{server.server_port}/openai/v1/")
                 with TestClient(create_app(settings=settings)) as client:

@@ -6,9 +6,6 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from wisp_backend.api.dependencies import get_chat_service
-from wisp_backend.config import AssistantSettings
-from wisp_backend.service import ChatService
 from wisp_backend.touch import TOUCH_DESCRIPTIONS
 
 
@@ -80,15 +77,16 @@ def test_touch_boundary_rejects_oversized_body(client_factory):
 def test_touch_deadline_cancels_provider(app_factory, body):
     cancelled = []
     class SlowProvider:
-        async def complete(self, messages, settings):
+        async def complete(self, messages, settings, timeout, reply_context):
             try:
                 await asyncio.sleep(10)
             finally:
                 cancelled.append(True)
     app = app_factory(lambda _: pytest.fail("No HTTP call expected"))
-    service = ChatService({"groq": SlowProvider()}, {"default": AssistantSettings()}, deadline=.01)
-    app.dependency_overrides[get_chat_service] = lambda: service
     with TestClient(app) as client:
+        service = app.state.chat_service
+        service.providers["groq"] = SlowProvider()
+        service.deadline = .01
         response = client.post("/v1/touch", json=touch_body(body))
         assert response.status_code == 504
         assert cancelled == [True]

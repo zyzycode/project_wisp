@@ -10,12 +10,15 @@ def test_public_schema(client_factory, body):
         assert "/v1/assistants" not in spec["paths"]
         operation = spec["paths"]["/v1/chat"]["post"]
         assert set(operation["responses"]) == {"200", "400", "409", "413", "429", "502", "503", "504"}
+        touch = spec["paths"]["/v1/touch"]["post"]
+        assert set(touch["responses"]) == set(operation["responses"])
         schemas = spec["components"]["schemas"]
         assert set(schemas["ChatRequest"]["required"]) == {"version", "requestId", "event", "messages", "stream", "locale", "character"}
         assert schemas["ChatRequest"]["additionalProperties"] is False
         assert schemas["ChatRequest"]["examples"][0] == body
         assert "default" not in schemas["Needs"]["properties"]["boredom"]
         assert set(schemas["ChatResponse"]["properties"]) == {"version", "requestId", "text", "decision"}
+        assert set(schemas["TouchResponse"]["properties"]) == {"version", "requestId", "text"}
         assert "playful" in schemas["Decision"]["properties"]["mood"]["enum"]
         for private in ["groq", "gpt-oss", "quota", "text/event-stream"]:
             assert private not in json.dumps(spec).lower()

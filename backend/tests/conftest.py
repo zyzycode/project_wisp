@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -16,9 +17,10 @@ def body():
 
 
 @pytest.fixture
-def app_factory():
-    def factory(handler):
-        return create_app(httpx.MockTransport(handler), settings=Settings(api_key=SecretStr("test-key")))
+def app_factory(tmp_path):
+    def factory(handler, **options):
+        options.setdefault("ledger_path", tmp_path / f"{uuid4()}.sqlite")
+        return create_app(httpx.MockTransport(handler), settings=Settings(api_key=SecretStr("test-key"), **options))
     return factory
 
 
@@ -30,6 +32,7 @@ def client_factory(app_factory):
 @pytest.fixture
 def completion():
     def factory(reply=None, **extra):
+        extra.setdefault("usage", {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7})
         return {"choices": [{"message": {"content": json.dumps(reply if reply is not None else {"text": "Привет!"})},
                               "finish_reason": "stop"}], **extra}
     return factory
