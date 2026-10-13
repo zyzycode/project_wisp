@@ -10,20 +10,65 @@
 
 | Переменная | Назначение |
 |---|---|
+| `WISP_AI_PROVIDER` | `groq` (default) или `gemini`; один активный provider, изменение после restart. |
+| `WISP_AI_MODEL` | Optional проверенная модель; default определяется provider. |
+| `GROQ_API_KEY` / `GEMINI_API_KEY` | Ключ только выбранного provider; `token_api` — legacy fallback только Groq. Хранить в `backend/.env`. |
+| `WISP_AI_BASE_URL` | Optional URL совместимого API; blank — официальный endpoint выбранного provider. Только HTTPS либо loopback HTTP; userinfo/query/fragment запрещены. |
+| `WISP_AI_MAX_OUTPUT_TOKENS` | Integer1–4096, default4096; events дополнительно ограничены1024. |
+| `WISP_AI_TEMPERATURE` | Число0–2; blank — default провайдера. |
+| `WISP_AI_THINKING_LEVEL` | Только Gemini: minimal/low/medium/high; minimal запрещён для Flash3.8. Blank — minimal для Flash-Lite, low для Flash. |
+| `WISP_AI_REQUEST_TIMEOUT` | Общий серверный deadline в секундах: >0 и ≤10, default10; events сохраняют верхнюю границу2.5s. |
+| `WISP_AI_CONNECT_TIMEOUT` / `WISP_AI_POOL_TIMEOUT` | >0 и ≤3 секунды, defaults3/3; дополнительно ограничиваются остатком deadline. |
 | `WISP_LEDGER_PATH` | Явный путь к серверному ledger; по умолчанию `Path.home() / '.local' / 'state' / 'wisp-backend' / 'ledger.sqlite'`. |
-| `WISP_LIMITS_JSON` | Объект с optional `rate_limit`, `concurrent_limit`, `daily_requests`, `daily_tokens`. Defaults: 12, 2, 100, 1000000. |
+| `WISP_LIMITS_JSON` | Объект с optional `rate_limit`, `concurrent_limit`, `daily_requests`, `daily_tokens`. Defaults: 12, 2, 100; tokens1000000 для Groq / 2000000 для Gemini. |
 | `WISP_UPSTREAM_TRUST_ENV` | Только явное `true` включает proxy/TLS environment; default `false`. TLS verification включена, redirects запрещены. |
 
 Пример limits: `{"rate_limit":12,"concurrent_limit":2,"daily_requests":100,"daily_tokens":1000000}`.
-Значения — положительные integers; token cap не ниже 131072. Поддерживается
-рассмотренный профиль Groq `openai/gpt-oss-20b`, output cap ≤4096.
+Значения — положительные integers; token cap не ниже reservation выбранной модели.
+Поддерживаются Groq `openai/gpt-oss-20b` и Gemini `gemini-3.5-flash-lite`
+(default) / `gemini-3.8-flash`; output cap ≤4096.
+Gemini по умолчанию использует thinking level `minimal` для Flash-Lite и `low` для Flash;
+output cap включает reasoning, поэтому усечённый ответ отклоняется с учётом usage.
 Произвольная модель не принимается без нового review reservation profile.
 Секреты настраиваются существующим серверным способом и не коммитятся.
+Полный шаблон — [backend/.env.example](../.env.example); рабочий файл `backend/.env`
+исключён из Git. Process environment имеет приоритет над одноимённым значением файла.
+Пустые optional значения оставляют legacy ASSISTANTS_JSON/defaults; пустой provider
+и отсутствующий ключ выбранного провайдера — ошибки. Env generation fields должны
+совпадать с явно заданными полями ASSISTANTS_JSON. Недопустимые значения отклоняются
+при startup, до сетевых запросов. Переменные provider не передаются launcher в desktop.
+
+Для Google AI Studio задайте в `backend/.env`:
+
+```dotenv
+WISP_AI_PROVIDER=gemini
+GEMINI_API_KEY=your-google-ai-studio-key
+```
+
+Перезапустите backend (`node scripts/wisp.mjs dev:backend` из корня).
+Чтобы вернуться, установите `WISP_AI_PROVIDER=groq` и действующий `GROQ_API_KEY`.
+Без `WISP_AI_MODEL` используется default выбранного provider. Если модель задана,
+удалите override или выберите совместимую модель. `ASSISTANTS_JSON` сохраняется
+для дополнительных server settings, но его явные provider/model должны совпадать
+с переменными выбора; конфликт и неизвестная модель останавливают startup.
+Наличие другого ключа не вызывает fallback. Ключи не вводятся в desktop UI.
+
+Для нового поставщика разработчик добавляет профиль в
+[profiles.py](../wisp_backend/providers/profiles.py), реализацию существующего
+порта и регистрацию в [factory.py](../wisp_backend/providers/factory.py), затем
+проверяет reservation, данные и provider tests. Custom `WISP_AI_BASE_URL` задаёт
+оператор: endpoint должен поддерживать протокол выбранного адаптера и получает
+его ключ/контекст. При смене поставщика очистите URL override или задайте новый;
+применяются те же условия передачи данных, что к официальному endpoint.
 
 Каталог ledger должен быть доступен только оператору/сервисной учётной записи.
 Он не связан с desktop SQLite и не входит в обычные alpha backups.
 Ошибка открытия БД прерывает startup; ошибка дальнейшего I/O закрывает admission.
 Restart сохраняет расходы; оставшиеся in-flight записи становятся uncertain charge.
+При первой загрузке старый ledger получает reservation131072 для существующих записей.
+Новые записи сохраняют собственный резерв; переключение provider не сбрасывает
+budget/halt/requestId. После использования Gemini не запускайте старую версию
+backend с фиксированным Groq accounting на этом ledger.
 Удержанная reservation означает верхнюю оценку, а не подтверждённую оплату.
 Reported usage сверх reservation сохраняется точно и блокирует новые обращения.
 Оператор проверяет профиль и причину расхождения перед восстановлением admission;
@@ -46,7 +91,8 @@ SQLite использует secure_delete и DELETE journal. Диагности�
 payload/provider errors; оператор ограничивает безопасные logs семью сутками.
 
 До внешней alpha оператор отдельно проверяет private ingress, HTTPS, отзываемый
-сетевой доступ, Groq ZDR, регион и retention по canonical контракту.
+сетевой доступ и data policy выбранного provider по canonical контракту:
+Groq ZDR либо отдельные условия Gemini (paid service, регион, retention55дней).
 До этой проверки используются только синтетические данные. Эти настройки не
 подтверждаются mocked tests и не заменяются успешной поставкой кода.
 

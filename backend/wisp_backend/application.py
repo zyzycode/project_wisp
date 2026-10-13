@@ -16,7 +16,7 @@ from wisp_backend.api.boundary import ChatBoundary, error_response
 from wisp_backend.config import Settings
 from wisp_backend.errors import ServiceError
 from wisp_backend.ledger import SQLiteLedger
-from wisp_backend.providers.groq import GroqProvider
+from wisp_backend.providers.factory import create_provider
 from wisp_backend.service import ChatService
 from wisp_backend.upstream import create_client
 
@@ -25,7 +25,7 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config = settings if settings is not None else Settings.from_env()
-        ledger = await SQLiteLedger.open(config.ledger_path, config.ledger)
+        ledger = await SQLiteLedger.open(config.ledger_path, config.ledger, reservation=config.profile.reservation)
         async def cleanup() -> None:
             while True:
                 await asyncio.sleep(60)
@@ -37,7 +37,8 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
         maintenance = asyncio.create_task(cleanup())
         try:
             async with create_client(config, transport) as client:
-                service = ChatService({"groq": GroqProvider(client)}, config.assistants, ledger, config.request_timeout)
+                service = ChatService({config.provider: create_provider(config.provider, client)},
+                                      config.assistants, ledger, config.request_timeout)
                 app.state.chat_service = service
                 try:
                     yield

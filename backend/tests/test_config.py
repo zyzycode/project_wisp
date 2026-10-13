@@ -15,6 +15,12 @@ def env_values(monkeypatch):
     monkeypatch.delenv("WISP_UPSTREAM_TRUST_ENV", raising=False)
     monkeypatch.delenv("WISP_LEDGER_PATH", raising=False)
     monkeypatch.delenv("WISP_LIMITS_JSON", raising=False)
+    monkeypatch.delenv("WISP_AI_PROVIDER", raising=False)
+    monkeypatch.delenv("WISP_AI_MODEL", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    for name in ("BASE_URL", "MAX_OUTPUT_TOKENS", "TEMPERATURE", "THINKING_LEVEL",
+                 "REQUEST_TIMEOUT", "CONNECT_TIMEOUT", "POOL_TIMEOUT"):
+        monkeypatch.delenv(f"WISP_AI_{name}", raising=False)
     values = {}
     monkeypatch.setattr("wisp_backend.config.dotenv_values", lambda _: values)
     return values
@@ -97,3 +103,55 @@ def test_operator_limits_and_ledger_path(env_values):
     for invalid in ({'rate_limit':True}, {'daily_tokens':131071}, {'concurrent_limit':0}, {'extra':1}):
         with pytest.raises(ValidationError):
             Settings(api_key=SecretStr('test'), ledger=invalid)
+
+
+def test_gemini_environment_selects_own_key_and_defaults(env_values):
+    env_values.update(WISP_AI_PROVIDER="gemini", GEMINI_API_KEY="google-key",
+                      GROQ_API_KEY="groq-key", token_api="legacy-key")
+    settings = Settings.from_env()
+    assert settings.provider == "gemini"
+    assert settings.api_key.get_secret_value() == "google-key"
+    assert settings.assistants["default"].model == "gemini-3.5-flash-lite"
+    assert settings.base_url == "https://generativelanguage.googleapis.com/v1beta/"
+    assert settings.ledger.daily_tokens == 2_000_000
+    assert settings.profile.reservation == 1_114_112
+    assert "google-key" not in repr(settings)
+
+
+def test_gemini_never_uses_groq_or_legacy_key(env_values):
+    env_values.update(WISP_AI_PROVIDER="gemini", GROQ_API_KEY="groq-key", token_api="legacy-key")
+    with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
+        Settings.from_env()
+
+
+def test_explicit_gemini_model_and_partial_limits(env_values):
+    env_values.update(WISP_AI_PROVIDER="gemini", WISP_AI_MODEL="gemini-3.8-flash",
+                      GEMINI_API_KEY="test", WISP_LIMITS_JSON='{"daily_requests":5}')
+    settings = Settings.from_env()
+    assert settings.assistants["default"].model == "gemini-3.8-flash"
+    assert settings.ledger.daily_tokens == 2_000_000
+    assert settings.ledger.daily_requests == 5
+
+
+@pytest.mark.parametrize("extra", [
+    {"WISP_AI_PROVIDER": "unknown"}, {"WISP_AI_MODEL": "unknown"},
+    {"WISP_AI_PROVIDER": ""}, {"WISP_LIMITS_JSON": '{"daily_tokens":1000000}'},
+    {"ASSISTANTS_JSON": '{"default":{"provider":"groq"}}'},
+    {"ASSISTANTS_JSON": '{"default":{"model":"gemini-3.8-flash"}}', "WISP_AI_MODEL": "gemini-3.5-flash-lite"},
+    {"ASSISTANTS_JSON": '[]'}, {"ASSISTANTS_JSON": '{"default":null}'},
+])
+def test_invalid_or_conflicting_selection_fails_closed(env_values, extra):
+    env_values.update(WISP_AI_PROVIDER="gemini", GEMINI_API_KEY="test")
+    env_values.update(extra)
+    with pytest.raises(ValueError):
+        Settings.from_env()
+
+
+def test_legacy_assistants_can_select_gemini(env_values):
+    env_values.update(GEMINI_API_KEY="test", ASSISTANTS_JSON='{"default":{"provider":"gemini"}}')
+    assert Settings.from_env().provider == "gemini"
+
+
+def test_mixed_provider_profiles_rejected():
+    with pytest.raises(ValidationError):
+        Settings(api_key=SecretStr("test"), assistants={"default": {"provider": "gemini"}, "other": {"provider": "groq"}})

@@ -20,16 +20,20 @@ CACHE_TTL = 600
 
 
 class SQLiteLedger:
-    def __init__(self, path: Path, policy: LedgerSettings, clock: Callable[[], float]) -> None:
+    def __init__(self, path: Path, policy: LedgerSettings, clock: Callable[[], float],
+                 reservation: int = RESERVATION) -> None:
         self.path, self.policy, self.clock = path, policy, clock
+        self.reservation = reservation
         self.lock = threading.Lock()
         self.cache: OrderedDict[str, tuple[float, Outcome, threading.Event | None]] = OrderedDict()
         self.failed = False
 
     @classmethod
     async def open(cls, path: Path, policy: LedgerSettings,
-                   clock: Callable[[], float] = time.time) -> "SQLiteLedger":
-        ledger = cls(path, policy, clock)
+                   clock: Callable[[], float] = time.time, *, reservation: int = RESERVATION) -> "SQLiteLedger":
+        if type(reservation) is not int or reservation <= 0 or reservation > policy.daily_tokens:
+            raise ValueError("Invalid model reservation")
+        ledger = cls(path, policy, clock, reservation)
         try:
             await ledger._run(ledger._initialize)
         except ServiceError:
@@ -70,6 +74,9 @@ class SQLiteLedger:
                 bucket INTEGER NOT NULL, state TEXT NOT NULL, corrected INTEGER NOT NULL DEFAULT 0);
         ''')
         with self.db:
+            columns = {row['name'] for row in self.db.execute("PRAGMA table_info(entries)")}
+            if 'reservation' not in columns:
+                self.db.execute("ALTER TABLE entries ADD COLUMN reservation INTEGER NOT NULL DEFAULT 131072")
             for row in self.db.execute("SELECT id FROM entries WHERE state='flight'").fetchall():
                 self._settle(row['id'], None, None)
             self._cleanup(self._now())
@@ -118,11 +125,11 @@ class SQLiteLedger:
             self.db.execute("INSERT OR IGNORE INTO days(bucket) VALUES (?)", (bucket,))
             day = self.db.execute("SELECT * FROM days WHERE bucket=?", (bucket,)).fetchone()
             if (day['requests'] >= self.policy.daily_requests or
-                    day['reserved'] + int(day['confirmed']) + day['uncertain'] + RESERVATION > self.policy.daily_tokens):
+                    day['reserved'] + int(day['confirmed']) + day['uncertain'] + self.reservation > self.policy.daily_tokens):
                 raise ServiceError("budget_exhausted", max(1, math.ceil(((bucket + 1) * ID_TTL - now) * 1000)))
-            self.db.execute("INSERT INTO entries(id,digest,admitted,bucket,state) VALUES (?,?,?,?,'flight')",
-                            (request_id, digest, now, bucket))
-            self.db.execute("UPDATE days SET requests=requests+1,reserved=reserved+? WHERE bucket=?", (RESERVATION, bucket))
+            self.db.execute("INSERT INTO entries(id,digest,admitted,bucket,state,reservation) VALUES (?,?,?,?,'flight',?)",
+                            (request_id, digest, now, bucket, self.reservation))
+            self.db.execute("UPDATE days SET requests=requests+1,reserved=reserved+? WHERE bucket=?", (self.reservation, bucket))
         return Admission()
 
     async def settle(self, request_id: str, usage: Usage | None, outcome: Outcome | None,
@@ -148,10 +155,11 @@ class SQLiteLedger:
             return False
         if row['state'] == 'uncertain' and usage is None:
             return False
-        if usage and usage.total > RESERVATION:
+        reservation = row['reservation']
+        if usage and usage.total > reservation:
             self.db.execute("UPDATE meta SET value=1 WHERE key='halt'")
-        reserved_delta = -RESERVATION if row['state'] == 'flight' else 0
-        uncertain_delta = (0 if usage else RESERVATION) - (RESERVATION if row['state'] == 'uncertain' else 0)
+        reserved_delta = -reservation if row['state'] == 'flight' else 0
+        uncertain_delta = (0 if usage else reservation) - (reservation if row['state'] == 'uncertain' else 0)
         day = self.db.execute("SELECT * FROM days WHERE bucket=?", (row['bucket'],)).fetchone()
         # An untrusted provider may report a huge integer. Preserve its exact value
         # without overflowing SQLite's signed 64-bit binding, and latch admission.

@@ -39,7 +39,7 @@ System prompt запрещает объявлять факт durable-запис�
 
 ## 4. Данные и удаление
 
-Передаются пять разрешённых текущих scalar facts, максимум два выбранных эпизода и один learned preference; это дополнение к составу v1, выбранное только в режиме v2. Локальная SQLite — source of truth; backend использует memory только для текущего inference, не ведёт копию профиля/истории и не пишет memory в logs/APM. Server RAM response cache до10min может содержать реплику/кандидаты; requests очищаются после terminal. Ledger хранит digest/usage без содержимого по прежним TTL. Groq получает ровно selected context; для внешних тестеров обязательна подтверждённая ZDR-настройка из v1 §6.
+Передаются пять разрешённых текущих scalar facts, максимум два выбранных эпизода и один learned preference; это дополнение к составу v1, выбранное только в режиме v2. Локальная SQLite — source of truth; backend использует memory только для текущего inference, не ведёт копию профиля/истории и не пишет memory в logs/APM. Server RAM response cache до10min может содержать реплику/кандидаты; requests очищаются после terminal. Ledger хранит digest/usage без содержимого по прежним TTL. Выбранный provider получает ровно selected context; условия внешних тестеров определяются для каждого provider в v1 §6.
 
 Full local memory reset очищает источники и инвалидирует callbacks/recall/extraction; запрос уже у провайдера физически не отзывается гарантированно. Reset не удаляет server RAM cache немедленно и не обещает удаление provider metadata. Отдельного server deletion API нет. Диалоговый reset очищает volatile dialogue, но не подтверждённые facts/эпизоды. Исправленное значение используется в следующем запросе, старый transcript не передаётся как competing structured fact.
 
@@ -82,7 +82,7 @@ V4 response — прежний v3 chat response с version4: text и optional de
 
 ### Данные, удаление и acceptance
 
-Разрешённое дополнение передачи — максимум два выбранных active user-confirmed items в существующем лимите episodes. Локальная SQLite остаётся единственным durable owner. Backend не хранит профиль/историю и не логирует context/quotes/prompts; request очищается после terminal. RAM response cache≤10min, ledger IDs≤24h/aggregates≤30d, metadata logs≤7d и внешняя ZDR/private access проверка — [v1 §6](BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление). Уже отправленный контекст обрабатывается провайдером по этому режиму, отдельной серверной копии item нет.
+Разрешённое дополнение передачи — максимум два выбранных active user-confirmed items в существующем лимите episodes. Локальная SQLite остаётся единственным durable owner. Backend не хранит профиль/историю и не логирует context/quotes/prompts; request очищается после terminal. RAM response cache≤10min, ledger IDs≤24h/aggregates≤30d, metadata logs≤7d и внешняя provider-data/private access проверка — [v1 §6](BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление). Уже отправленный контекст обрабатывается провайдером по этому режиму, отдельной серверной копии item нет.
 
 Correction/withdraw/delete инвалидирует local in-flight owners и исключает payload/source pairs из следующих projections; уже отправленное физически не отзывается гарантированно. Удаление карточки сохраняет transcript локально с suppression (§10.2), полный reset очищает оба; никакой из них не обещает немедленного удаления server RAM/provider metadata. Нового server-delete endpoint и обещания «забыто везде» нет.
 

@@ -10,6 +10,7 @@ from wisp_backend.api.boundary import ChatBoundary
 from wisp_backend.contracts import ProviderResult, RESERVATION, Usage
 from wisp_backend.schemas import ChatRequest, ModelReply
 from wisp_backend.touch_schemas import TouchRequest, TouchModelReply
+from wisp_backend.providers.profiles import PROFILES
 from tests.test_touch import touch_body
 
 
@@ -32,7 +33,8 @@ def test_slow_body_never_admitted(monkeypatch):
 
 @pytest.mark.parametrize('shutdown', [False, True])
 @pytest.mark.parametrize('path', ['/v1/chat', '/v1/touch'])
-def test_disconnect_or_shutdown_cancels_provider_and_releases_slot(app_factory, body, shutdown, path):
+@pytest.mark.parametrize('provider', ['groq', 'gemini'])
+def test_disconnect_or_shutdown_cancels_provider_and_releases_slot(app_factory, body, shutdown, path, provider):
     body = touch_body(body) if path == '/v1/touch' else body
     async def run():
         entered = asyncio.Event()
@@ -43,7 +45,7 @@ def test_disconnect_or_shutdown_cancels_provider_and_releases_slot(app_factory, 
                 await asyncio.Future()
             finally:
                 cancelled.set()
-        app = app_factory(upstream)
+        app = app_factory(upstream, assistants={'default': {'provider': provider}})
         sent = []
         async with app.router.lifespan_context(app):
             service = app.state.chat_service
@@ -69,13 +71,14 @@ def test_disconnect_or_shutdown_cancels_provider_and_releases_slot(app_factory, 
             await asyncio.wait_for(task, 1)
             await asyncio.wait_for(cancelled.wait(), 1)
             with sqlite3.connect(service.ledger.path) as db:
-                assert db.execute('SELECT reserved,uncertain FROM days').fetchone() == (0, RESERVATION)
+                assert db.execute('SELECT reserved,uncertain FROM days').fetchone() == (0, PROFILES[provider].reservation)
                 assert db.execute("SELECT count(*) FROM entries WHERE state='flight'").fetchone()[0] == 0
             assert not sent
     asyncio.run(run())
 
 
-def test_late_result_refines_usage_but_never_overwrites_timeout(app_factory, body):
+@pytest.mark.parametrize('provider', ['groq', 'gemini'])
+def test_late_result_refines_usage_but_never_overwrites_timeout(app_factory, body, provider):
     async def run():
         release = asyncio.Event()
         class LateProvider:
@@ -85,10 +88,10 @@ def test_late_result_refines_usage_but_never_overwrites_timeout(app_factory, bod
                 except asyncio.CancelledError:
                     await release.wait()
                     return ProviderResult(ModelReply(text='late'), Usage(2,3,5))
-        app = app_factory(lambda _: pytest.fail('real upstream'))
+        app = app_factory(lambda _: pytest.fail('real upstream'), assistants={'default': {'provider': provider}})
         async with app.router.lifespan_context(app):
             service = app.state.chat_service
-            service.providers['groq'] = LateProvider()
+            service.providers[provider] = LateProvider()
             service.deadline = .01
             request = ChatRequest.model_validate(body)
             digest = hashlib.sha256(json.dumps(body).encode()).hexdigest()
