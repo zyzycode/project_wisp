@@ -4,9 +4,9 @@ Desktop AI-компаньон на Electron + React + TypeScript и Python/FastA
 
 ## Структура
 
-- `frontend/` — desktop-код, тесты, ассеты, независимый `asset-pipeline/`, npm dependencies, Vite/Electron/TypeScript configs и desktop tooling.
-- `backend/` — серверный Python-код, pytest, requirements и локальный server `.env`.
-- `docs/` — общая документация; `docs/backend/` — серверная. API contracts и fixtures — в `docs/engine/` и `docs/contracts/fixtures/`.
+- `frontend/` — desktop-код, тесты, ассеты, документация в `frontend/docs/`, независимый `asset-pipeline/`, npm dependencies, Vite/Electron/TypeScript configs и desktop tooling.
+- `backend/` — серверный Python-код, документация в `backend/docs/`, pytest, requirements и локальный server `.env`.
+- `docs/` — общие продуктовые и межкомпонентные материалы. Wire-контракты — в `docs/contracts/`, общие fixtures — в `docs/contracts/fixtures/`.
 - `.agents/agents/` — общие роли. `AGENTS.md` — общие правила, `frontend/AGENTS.md` и `backend/AGENTS.md` — scoped правила.
 - `scripts/` — только корневые launchers и их тесты. Корневой Node CLI `scripts/wisp.mjs` запускает команды без новых зависимостей; package.json и lockfile находятся только в `frontend/`. npm dependencies и их lockfile — в `frontend/`, Python-окружение — в `backend/.venv/`.
 
@@ -48,7 +48,7 @@ node scripts/wisp.mjs dev
 
 Launcher выбирает Python из `backend/.venv`, если он есть, иначе `python` из PATH. Для существующего внешнего окружения можно задать `$env:WISP_PYTHON = 'C:/path/to/python.exe'`. Этот же executable используется в desktop manifest test. Для отдельных desktop Python-скриптов команда `python` должна быть доступна в PATH.
 
-Если backend не запускается или один компонент завершает работу, совместный launcher останавливает второй и возвращает код завершившегося компонента. Для изменения Python-кода перезапустить совместный запуск; server `.env` не загружается frontend. [Proxy/TLS configuration и фактические server gaps](docs/backend/README.md).
+Если backend не запускается или один компонент завершает работу, совместный launcher останавливает второй и возвращает код завершившегося компонента. Для изменения Python-кода перезапустить совместный запуск; server `.env` не загружается frontend. [Proxy/TLS configuration и фактические server gaps](backend/docs/README.md).
 
 При раздельном запуске frontend с реальным сервером:
 
@@ -66,8 +66,9 @@ HTTP loopback допустим в development; packaged/remote backend треб�
 - [AGENTS.md](AGENTS.md) — общие границы, роли и gates.
 - [docs/README.md](docs/README.md) — navigator минимального контекста.
 - [Архитектура](ARCHITECTURE.md), [ADR-017](docs/adr/ADR-017-monorepo.md) — структура и границы процессов.
-- [Backend](docs/backend/README.md) — server setup и текущие gaps.
-- [Engine contracts](docs/engine/README.md) — canonical правила.
+- [Frontend](frontend/docs/README.md) — движки, сценарии и Windows-приёмка.
+- [Backend](backend/docs/README.md) — server setup и текущие gaps.
+- [Общие API-контракты](docs/contracts/README.md) — wire v1/v2/v3 и fixtures.
 - [GitHub Issues](https://github.com/zyzycode/project_wisp/issues) и [Project](https://github.com/users/zyzycode/projects/1) — задачи и статусы.
 
 Графику предоставляет внешний художник-человек. Готовые спрайты — `frontend/public/assets/sprites/`; при отсутствии ассета — fallback и требования в отчёте задачи. `frontend/asset-pipeline/` сохраняет независимые инструкции и не запускается общим dev/test; `discord_orcestrations/` остаётся отдельным внешним scope.

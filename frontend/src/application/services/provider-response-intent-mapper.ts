@@ -7,8 +7,8 @@ import type {
 
 /**
  * Maps raw AIProviderResponse DTO to internal domain BehaviorIntent.
- * Implements architectural boundaries specified in docs/engine/AI_PROVIDER_CONTRACT.md
- * and docs/engine/BEHAVIOR_INTENTS.md.
+ * Implements architectural boundaries specified in frontend/docs/engine/AI_PROVIDER_CONTRACT.md
+ * and frontend/docs/engine/BEHAVIOR_INTENTS.md.
  */
 export function mapProviderResponseToBehaviorIntent(
   response: AIProviderResponse

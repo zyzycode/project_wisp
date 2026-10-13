@@ -25,7 +25,7 @@ Scope задаётся задачей: desktop, backend или обе части
 |---|---|
 | Scope, acceptance criteria, зависимости, owner | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues) |
 | Фактические Status/Priority, фазы и очередь | [Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1); фильтровать по phase/owner/status |
-| Технические правила | Нужный canonical contract из [индекса](../../../docs/engine/README.md); изменение его семантики проходит architect |
+| Технические правила | Нужный canonical contract из [индекса](../../../frontend/docs/engine/README.md); изменение его семантики проходит architect |
 | Создание Issue / batch handoff / закрытие | [Шаблоны](../../../docs/workflow/ISSUE_HANDOFF.md) — читать только перед соответствующей операцией |
 
 ## Readiness и маршрутизация

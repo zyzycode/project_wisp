@@ -1,27 +1,24 @@
-# База знаний Project Wisp
+# Общая документация Project Wisp
 
-Старт: [AGENTS.md](../AGENTS.md) → назначенная роль → текущая Issue/запрос → нужные разделы одного контракта. Уже переданные инструкции не перечитывать. При изменении обмена проверить обе стороны границы, а не ограничиваться одним файлом.
+Документы каждого приложения находятся рядом с ним: [frontend/docs](../frontend/docs/README.md) и [backend/docs](../backend/docs/README.md). В корневом `docs/` остаются продуктовые решения, общие API-контракты/fixtures и материалы, затрагивающие обе стороны.
+
+Старт: [AGENTS.md](../AGENTS.md) → назначенная роль, если есть → текущая Issue/запрос → нужные разделы контракта. Уже переданные инструкции не перечитывать. При изменении обмена проверять обе стороны границы.
 
 | Нужная информация | Источник |
 |---|---|
-| Общие инварианты, роли, verification | [AGENTS.md](../AGENTS.md) |
-| Desktop-инварианты | [src/AGENTS.md](../frontend/AGENTS.md), также применяются к desktop tooling |
-| Backend runtime, setup и фактические API gaps | [Backend navigator](backend/README.md), [backend/AGENTS.md](../backend/AGENTS.md) |
+| Общие инварианты, роли и verification | [AGENTS.md](../AGENTS.md) |
+| Desktop: движки, сценарии, Windows, локальные ADR и архив | [Frontend docs](../frontend/docs/README.md), [desktop-правила](../frontend/AGENTS.md) |
+| Backend: runtime, setup, API gaps и поставки | [Backend docs](../backend/docs/README.md), [backend-правила](../backend/AGENTS.md) |
+| Desktop ↔ backend: wire v1/v2/v3 и fixtures | [Общие контракты](contracts/README.md) |
+| Продуктовые решения и следующие этапы | [Vision и roadmap](PRODUCT_VISION_AND_ROADMAP.md) |
+| Причины архитектурных решений | [Реестр ADR](adr/README.md), только связанная запись |
 | Задачи, зависимости и фактические статусы | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
-| Продуктовые решения и порядок этапов | [Vision и roadmap](PRODUCT_VISION_AND_ROADMAP.md) |
-| Ручной запуск и приёмка MVP на Windows | [Windows checklist](WINDOWS_MVP_CHECKLIST.md), выполняет владелец продукта |
-| Владельцы правил движков и разделы для чтения | [Индекс engine contracts](engine/README.md) |
-| Точные формы портов/IPC | [Application ports](../frontend/src/application/ports), [IPC DTO](../frontend/src/shared/ipc-contracts.ts) |
-| Сценарии автономного поведения | [Behavior catalog](behaviors/README.md), только нужный pack; не заменяет contracts |
-| Почему принято архитектурное решение | [ADR](adr/README.md), только связанная запись |
-| Недостающие спрайты и fallback | Отчёт соответствующей задачи; правила — [frontend/AGENTS.md](../frontend/AGENTS.md#ассеты-и-проверки) |
 | Создание Issue, выдача/закрытие спринта | [Шаблоны менеджера](workflow/ISSUE_HANDOFF.md), только для этой операции |
 | Обзор для человека | [ARCHITECTURE.md](../ARCHITECTURE.md), необязателен для агентной задачи |
+| Исторические межкомпонентные решения | [Общий архив](archive/README.md) |
 
-Для поиска внутри выбранного файла: `rg -n '^#{1,3} |<имя типа или правила>' <путь>`, затем прочитать владение и нужные разделы. Весь каталог движков, все роли и историю отчётов заранее не загружать.
+Каноническая спецификация задаёт семантику, код — форму типов; расхождение требует architect gate для затронутой части. Навигаторы, сценарии и отчёты не переопределяют contracts. Связанные с Issue `ARCHITECT RESULT`/`Implementation consequences` обязательны, в том числе после переноса в архив. Исторические статусы и разовые разрешения не действуют на новые задачи.
 
-Каноническая спецификация задаёт семантику, код — форму типов; расхождение требует architect gate для затронутой части. Навигаторы, behavior packs и отчёты не переопределяют contracts. Связанные с Issue `ARCHITECT RESULT`/`Implementation consequences` обязательны, даже если лежат в отдельном отчёте.
+Для поиска: `rg -n '^#{1,3} |<имя типа или правила>' <путь>`, затем читать владение и нужный раздел. Весь каталог движков, все роли и историю отчётов заранее не загружать.
 
-Аудиты `AUTONOMY_AUDIT_*`, `AUTO_46_50_IMPLEMENTATION.md` и engine `*_VERIFICATION.md` читать только при расследовании соответствующей задачи/регрессии; они не показывают актуальный статус всего продукта.
-
-`frontend/asset-pipeline/` и `discord_orcestrations/` — внешние скоупы, не маршрут чтения для продуктовых ролей. Графику предоставляет художник-человек; интеграция готовых файлов из `frontend/public/assets/sprites/` принадлежит приложению.
+`frontend/asset-pipeline/` и `discord_orcestrations/` — внешние скоупы. Графику предоставляет художник-человек; правила готовых ассетов и отчётности — в [frontend/AGENTS.md](../frontend/AGENTS.md#ассеты-и-проверки).

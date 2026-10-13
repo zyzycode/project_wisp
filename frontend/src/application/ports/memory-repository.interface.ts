@@ -1,4 +1,4 @@
-/** Application-owned persistence boundary. Canonical rules: docs/engine/MEMORY_ENGINE.md.
+/** Application-owned persistence boundary. Canonical rules: frontend/docs/engine/MEMORY_ENGINE.md.
  * No SQL, filesystem, Electron, worker or provider types cross this boundary.
  */
 import type { CursorGameOutcome } from './cursor-game-contract';

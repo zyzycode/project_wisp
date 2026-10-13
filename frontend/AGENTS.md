@@ -4,7 +4,7 @@
 
 ## 1. Автономность и платформа
 
-- Desktop-клиент с локальным автономным runtime: Electron + React + TypeScript, собственный FSM персонажа в `frontend/src/domain/character/`, отображение через Renderer/PixiJS.
+- Desktop-клиент с локальным автономным runtime: Electron + React + TypeScript, собственный FSM персонажа в `frontend/src/domain/character/`, отображение через React/SVG Renderer.
 - Backend — часть целевой архитектуры; серверы, серверные БД и при обоснованной необходимости микросервисы допустимы. Offline-first относится к локальному runtime персонажа и локальным данным (SQLite/config files); сетевые функции могут требовать подключения. Недоступность backend не останавливает локальные FSM, Motion и ввод.
 - Первая целевая платформа и приоритет приёмки — Windows (Windows-first). Linux (Ubuntu, Wayland/X11) и macOS сохраняются как целевые платформы с capability fallback. Файловые пути собирать через `path.join`; соблюдать точный регистр файлов и импортов.
 - ОС-специфика и `process.platform` — исключительно в `frontend/src/infrastructure/platform/` за `IPlatformAdapter`.
@@ -21,7 +21,7 @@
 
 - **Contracts-first:** объявить/обновить порты в `frontend/src/application/ports/` и DTO в `frontend/src/shared/ipc-contracts.ts` **до** реализации сервисов/адаптеров.
 - `IAIProvider` возвращает семантический DTO, не знает React/DOM, стили и кадры. Render владеет visual props/слоями/геометрией, Animation — клипами/приоритетами/прерываниями.
-- Правила движка — в его канонической [спецификации](../docs/engine/README.md), формы типов — в коде. При конфликте не выбирать удобную версию: остановить затронутую часть и запросить `architect`.
+- Desktop-документация находится в `frontend/docs/`; правила движка — в его канонической [спецификации](docs/engine/README.md), формы типов — в коде. Общие wire-контракты — в [docs/contracts/](../docs/contracts/README.md). При конфликте не выбирать удобную версию: остановить затронутую часть и запросить `architect`.
 
 ## 3. Безопасность Electron и IPC
 

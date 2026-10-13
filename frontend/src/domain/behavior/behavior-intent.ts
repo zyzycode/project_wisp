@@ -1,7 +1,7 @@
 /**
  * Domain Model: Behavior Intent
  * Canonical definitions for character behavior intentions as specified in
- * docs/engine/BEHAVIOR_INTENTS.md.
+ * frontend/docs/engine/BEHAVIOR_INTENTS.md.
  * Pure domain definitions without UI/DOM/React/CSS or provider SDK details.
  */
 
