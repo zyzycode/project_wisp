@@ -51,7 +51,7 @@ Domain не читает clock. Pulse не привязан к physics/animation
 
 ## 5. Допустимые и запрещённые inputs
 
-Только normalized Character Needs/tone/personality/relationship/intimacy, готовые quiet/sleep gates, Activity rank/cooldown/repetition, [Perception geometry/signals](PERCEPTION_ENGINE.md), candidate `source`/`priority`/`requestId` и catalog identity.
+Только normalized Character Needs/tone/personality/relationship/intimacy, validated preference projection по [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений), готовые quiet/sleep gates, Activity rank/cooldown/repetition, [Perception geometry/signals](PERCEPTION_ENGINE.md), candidate `source`/`priority`/`requestId` и catalog identity.
 
 [Запрещены](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture): raw provider/memory text, DOM/React/Electron handles, assets/clips/frames, Date.now/Math.random, renderer/physics tickrate, mutable CharacterState.
 
@@ -71,32 +71,23 @@ eligible(c) = catalog(c)
 
 ## 7. Scoring и arbitration
 
-```text
-U(c) = clamp(
-  base(c)
-  × need(c)
-  × tone(c)
-  × personality(c)
-  × environment(c)
-  × repetition(c),
-  0,
-  1
-)
-```
+Каноническая локальная политика — weighted Utility [AUTO-I12](https://github.com/zyzycode/project_wisp/issues/47), реализованная как `AUTO-I12-v2` в [local-activity-policy.ts](../../src/domain/behavior/local-activity-policy.ts). [CHAR-A01 decision](../CHAR_A01_RESULT.md#decision) разрешает прежнее расхождение этой секции с работающим weighted selector; max/clamp-to-one arbitration больше не требуется.
 
-Versioned factors потребляют Character semantics и Activity history, не переопределяют их. Positive factor меняет utility, не hard gates/P0–P3.
+Для eligible семейства baseline `w0 = need × personality × repetition`; для ineligible `w0=0`. Факторы — конечные неотрицательные versioned функции Needs, Character traits/relationship и затухающей истории. Environment/quiet/cooldown служат gates. Вес не probability и не обрезается до 1: нормализация выполняется суммой весов. Единственный выбор — по накопленным весам в стабильном порядке calm, Explore, Rest, play, SocialBid, используя один явный RNG draw `[0,1)`. На точной правой границе выигрывает предыдущее положительное ведро; zero-weight rows не выигрывают. Relative position внутри calm bucket переиспользуется для semantic pose без дополнительного draw.
 
-Из eligible P4 выбрать max bounded U в stable catalog order, tie → первый. Пустой set → safe `idle` через обычный Character gate. Результат — максимум один resolved intent. P0–P3 не участвуют в score; P5 не P4 fallback, запускается лишь после общего safety order.
+Целевой CHAR-A01 добавляет только multiplier по [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений) к Explore/SocialBid; остальные baseline weights и gates сохраняются. Новая tuning version отличает это расширение от `AUTO-I12-v2`. Ни LLM, ни Renderer не задают numerical weights.
+
+При нулевой сумме/пустом наборе — safe `idle` через обычный Character gate. Результат — максимум один resolved intent. P0–P3 не участвуют в score; P5 не P4 fallback, запускается лишь после общего safety order. Legacy candidate resolver не становится вторым одновременно работающим P4 selector.
 
 ## 8. Детерминизм
 
-Одинаковые snapshot/ordered candidates/history/tuning/decisionSequence → одинаковые eligibility/scores/winner. Policy immutable, не планирует переоценку. Будущая вариативность только explicit seeded PRNG с seed в fixture/trace; wall-clock seed/provider randomness запрещены.
+Одинаковые snapshot/ordered candidates/history/tuning/decisionSequence **и явный RNG draw/seed** → одинаковые eligibility/weights/winner. Policy immutable, не планирует переоценку. Вариативность local selector уже использует injected PRNG; fixture/trace фиксирует draw либо seed и sequence. Wall-clock seed/provider randomness запрещены; добавление preference не расходует ещё один draw.
 
 Application исполняет одну decision transaction одновременно; новые inputs идут в следующий sequence. Resolved intent публикуется после полной transaction, без промежуточных candidates для Brain selection.
 
 ## 9. Diagnostic trace
 
-Внутренний trace каждой P4 transaction: reason/time/sequence; ordered identities/sources; eligibility/reasons; normalized factors/scores; tie/winner/fallback; tuning version/optional explicit seed.
+Внутренний trace каждой P4 transaction: reason/time/sequence; ordered identities/sources; eligibility/reasons; factors/weights; bucket boundary/winner/fallback; tuning version и явный draw либо seed/sequence. Target preference multiplier trace — [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений).
 
 Без raw provider/memory text, OS/window identifiers, mutable refs. Public IPC/persistence/provider exposure требует отдельного Architect review/privacy boundary.
 
@@ -108,7 +99,7 @@ Application исполняет одну decision transaction одновреме�
 
 ## 11. Проверяемые свойства
 
-Повторяемость scores/ties/fallback; один resolved/sequence; P0–P3 вне Utility; peer P4 не прерывается pulse; нет копий sleep/quiet thresholds; offline/present provider candidates проходят общую boundary; trace не меняет outcome/контракты; render/animation/physics ticks не создают скрытую cadence.
+Повторяемость weights/bucket boundaries/fallback при одинаковом RNG; один resolved/sequence; P0–P3 вне Utility; peer P4 не прерывается pulse; нет копий sleep/quiet thresholds; offline/present provider candidates проходят общую boundary; trace не меняет outcome/контракты; render/animation/physics ticks не создают скрытую cadence.
 
 ## 12. AUTO-A09: admission и владение AI-занятием
 
