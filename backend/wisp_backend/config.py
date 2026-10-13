@@ -1,17 +1,12 @@
-"""Configuration loaded at startup, without mutating the process environment."""
+"""Validated runtime settings, independent of environment loading."""
 
-import os
-import json
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlsplit, urlunsplit
 
-from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 from wisp_backend.providers.profiles import PROFILES, ProviderProfile, get_profile
-
-ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
 class AssistantSettings(BaseModel):
@@ -48,6 +43,8 @@ class LedgerSettings(BaseModel):
 
 
 class Settings(BaseModel):
+    """Validated values and cross-field invariants shared by all startup paths."""
+
     model_config = ConfigDict(frozen=True)
 
     api_key: SecretStr
@@ -136,59 +133,3 @@ class Settings(BaseModel):
         if not key:
             raise ValueError("API key must not be blank")
         return SecretStr(key)
-
-    @classmethod
-    def from_env(cls, env_file: Path = ENV_FILE) -> "Settings":
-        values = {**dotenv_values(env_file), **os.environ}
-        assistants = values.get("ASSISTANTS_JSON")
-        profiles = json.loads(assistants) if assistants else {"default": {}}
-        if not isinstance(profiles, dict) or not isinstance(profiles.get("default"), dict):
-            raise ValueError("ASSISTANTS_JSON requires a default profile object")
-        default = dict(profiles["default"])
-        for variable, field in (("WISP_AI_PROVIDER", "provider"), ("WISP_AI_MODEL", "model"),
-                                ("WISP_AI_MAX_OUTPUT_TOKENS", "max_output_tokens"),
-                                ("WISP_AI_TEMPERATURE", "temperature"),
-                                ("WISP_AI_THINKING_LEVEL", "thinking_level")):
-            if variable in values:
-                raw = (values[variable] or "").strip()
-                if not raw and field != "provider":
-                    continue
-                selected: str | int | float = raw
-                try:
-                    if field == "max_output_tokens":
-                        selected = int(raw)
-                    elif field == "temperature":
-                        selected = float(raw)
-                except ValueError:
-                    raise ValueError(f"Invalid numeric setting: {variable}") from None
-                if field in default and default[field] != selected:
-                    raise ValueError(f"{variable} conflicts with ASSISTANTS_JSON")
-                default.setdefault(field, selected)
-        profile = get_profile(default.get("provider", "groq"))
-        key = values.get(profile.key_env)
-        if default.get("provider", "groq") == "groq":
-            key = key or values.get("token_api")
-        if not key or not key.strip():
-            raise RuntimeError(f"Set {profile.key_env} in backend .env")
-        trust_env = values.get("WISP_UPSTREAM_TRUST_ENV", "false").strip().lower()
-        if trust_env not in {"true", "false"}:
-            raise RuntimeError("WISP_UPSTREAM_TRUST_ENV must be true or false")
-        options: dict[str, Any] = {"api_key": SecretStr(key), "upstream_trust_env": trust_env == "true",
-                                   "assistants": {**profiles, "default": default}}
-        base_url = (values.get("WISP_AI_BASE_URL") or "").strip()
-        if base_url:
-            options["base_url"] = base_url
-        for variable, field in (("WISP_AI_REQUEST_TIMEOUT", "request_timeout"),
-                                ("WISP_AI_CONNECT_TIMEOUT", "connect_timeout"),
-                                ("WISP_AI_POOL_TIMEOUT", "pool_timeout")):
-            raw = (values.get(variable) or "").strip()
-            if raw:
-                try:
-                    options[field] = float(raw)
-                except ValueError:
-                    raise ValueError(f"Invalid numeric setting: {variable}") from None
-        if values.get("WISP_LEDGER_PATH"):
-            options["ledger_path"] = Path(values["WISP_LEDGER_PATH"])
-        if values.get("WISP_LIMITS_JSON"):
-            options["ledger"] = json.loads(values["WISP_LIMITS_JSON"])
-        return cls(**options)

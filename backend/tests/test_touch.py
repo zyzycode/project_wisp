@@ -6,7 +6,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from wisp_backend.touch import TOUCH_DESCRIPTIONS
+from wisp_backend.touch_prompts import TOUCH_DESCRIPTIONS
 
 
 def test_shared_touch_fixture(client_factory, completion):

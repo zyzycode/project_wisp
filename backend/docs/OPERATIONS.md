@@ -6,7 +6,24 @@
 Это один процесс и один ASGI worker с локальным SQLite ledger. Несколько workers
 или общая БД для нескольких экземпляров этой конфигурацией не поддерживаются.
 
+SQL-доступ реализован через SQLAlchemy Core; драйвер SQLite остаётся стандартным
+`sqlite3`. Один Engine/Connection принадлежит ledger и используется последовательно
+в worker thread. Транзакции открываются явно; Connection закрывается и Engine
+освобождается при shutdown или ошибке startup. Существующие файлы ledger продолжают
+использоваться без пересоздания таблиц и сброса квот. Архитектурное решение и
+проверка зависимости — [SQLAlchemy architect result](SQLALCHEMY_ARCHITECT_RESULT.md).
+
+После обновления установить backend requirements выбранным Python:
+`python -m pip install --only-binary=:all: -r requirements.txt` из `backend/`.
+SQLAlchemy и его платформенная зависимость greenlet закреплены на проверенных
+версиях; используются готовые wheels, установка компилятора не требуется.
+
 ## Конфигурация
+
+Загрузка источников выполняется через `load_settings()` в
+[settings_loader.py](../wisp_backend/settings_loader.py) один раз при startup.
+[config.py](../wisp_backend/config.py) содержит модели настроек и их валидацию;
+явно переданный в `create_app(settings=...)` объект обходит загрузку окружения.
 
 | Переменная | Назначение |
 |---|---|

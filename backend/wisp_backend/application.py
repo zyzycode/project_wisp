@@ -18,13 +18,14 @@ from wisp_backend.errors import ServiceError
 from wisp_backend.ledger import SQLiteLedger
 from wisp_backend.providers.factory import create_provider
 from wisp_backend.service import ChatService
+from wisp_backend.settings_loader import load_settings
 from wisp_backend.upstream import create_client
 
 
 def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        config = settings if settings is not None else Settings.from_env()
+        config = settings if settings is not None else load_settings()
         ledger = await SQLiteLedger.open(config.ledger_path, config.ledger, reservation=config.profile.reservation)
         async def cleanup() -> None:
             while True:

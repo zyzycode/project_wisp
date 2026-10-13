@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr, ValidationError
 
 from wisp_backend.config import Settings
+from wisp_backend.settings_loader import load_settings
 from tests.test_config import env_values  # shared isolated environment fixture
 from tests.test_gemini import completion
 
@@ -18,7 +19,7 @@ def test_full_environment_reaches_gemini_transport(env_values, monkeypatch, app_
                       WISP_AI_TEMPERATURE="0.6", WISP_AI_THINKING_LEVEL="low",
                       WISP_AI_REQUEST_TIMEOUT="8", WISP_AI_CONNECT_TIMEOUT="2", WISP_AI_POOL_TIMEOUT="1")
     monkeypatch.setenv("WISP_AI_TEMPERATURE", "0.7")
-    settings = Settings.from_env()
+    settings = load_settings()
     def handler(request):
         assert str(request.url) == "https://gateway.example.test/gemini/models/gemini-3.8-flash:generateContent"
         generation = json.loads(request.content)["generationConfig"]
@@ -40,7 +41,7 @@ def test_blank_optional_settings_keep_defaults(env_values):
     for name in ("MODEL", "BASE_URL", "MAX_OUTPUT_TOKENS", "TEMPERATURE", "THINKING_LEVEL",
                  "REQUEST_TIMEOUT", "CONNECT_TIMEOUT", "POOL_TIMEOUT"):
         env_values[f"WISP_AI_{name}"] = " "
-    settings = Settings.from_env()
+    settings = load_settings()
     assert settings.base_url == "https://api.groq.com/openai/v1/"
     assert settings.request_timeout == 10
     assert settings.assistants["default"].max_output_tokens == 4096
@@ -59,7 +60,7 @@ def test_invalid_env_values_fail_at_startup(env_values, name, value):
     env_values.update(WISP_AI_PROVIDER="gemini", GEMINI_API_KEY="test")
     env_values[f"WISP_AI_{name}"] = value
     with pytest.raises(ValueError):
-        Settings.from_env()
+        load_settings()
 
 
 @pytest.mark.parametrize("url", [
@@ -70,7 +71,7 @@ def test_invalid_env_values_fail_at_startup(env_values, name, value):
 def test_unsafe_base_url_rejected(env_values, url):
     env_values.update(GROQ_API_KEY="test", WISP_AI_BASE_URL=url)
     with pytest.raises(ValidationError):
-        Settings.from_env()
+        load_settings()
 
 
 @pytest.mark.parametrize("url", ["http://localhost:123/v1", "http://127.0.0.1:123/v1", "http://[::1]:123/v1"])
@@ -87,7 +88,7 @@ def test_conflicting_legacy_profile_rejected(env_values, profile):
                       WISP_AI_TEMPERATURE="0.5", WISP_AI_THINKING_LEVEL="low",
                       ASSISTANTS_JSON=json.dumps({"default": profile}))
     with pytest.raises(ValueError):
-        Settings.from_env()
+        load_settings()
 
 
 @pytest.mark.parametrize("provider,model", [("groq", "openai/gpt-oss-20b"), ("gemini", "gemini-3.8-flash")])
@@ -95,4 +96,4 @@ def test_incompatible_thinking_level_rejected(env_values, provider, model):
     env_values.update(GROQ_API_KEY="test", GEMINI_API_KEY="test", WISP_AI_PROVIDER=provider,
                       WISP_AI_MODEL=model, WISP_AI_THINKING_LEVEL="minimal")
     with pytest.raises(ValueError):
-        Settings.from_env()
+        load_settings()

@@ -1,11 +1,14 @@
 import asyncio
+from pathlib import Path
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from wisp_backend.api.dependencies import get_chat_service
-from wisp_backend.config import AssistantSettings
+from wisp_backend.application import create_app
+from wisp_backend.config import AssistantSettings, Settings
 from wisp_backend.schemas import ModelReply
 from wisp_backend.contracts import ProviderResult
 from wisp_backend.service import ChatService
@@ -32,12 +35,30 @@ class TrackedStream(httpx.AsyncByteStream):
 def test_client_shutdown(app_factory, monkeypatch):
     def load_env():
         pytest.fail("Explicit settings must bypass environment")
-    monkeypatch.setattr("wisp_backend.application.Settings.from_env", load_env)
+    monkeypatch.setattr("wisp_backend.application.load_settings", load_env)
     app = app_factory(lambda _: httpx.Response(200))
     with TestClient(app):
         client = app.state.chat_service.providers["groq"].client
         assert not client.is_closed
     assert client.is_closed
+
+
+def test_startup_loads_settings_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = 0
+    settings = Settings(api_key=SecretStr("test-key"), ledger_path=tmp_path / "startup.sqlite")
+
+    def load_env() -> Settings:
+        nonlocal calls
+        calls += 1
+        return settings
+
+    monkeypatch.setattr("wisp_backend.application.load_settings", load_env)
+    app = create_app(httpx.MockTransport(lambda _: pytest.fail("Health must not call a provider")))
+    with TestClient(app) as client:
+        assert client.get("/health").status_code == 200
+        assert client.get("/health").status_code == 200
+        assert calls == 1
+        assert app.state.chat_service.ledger.path == settings.ledger_path
 
 
 @pytest.mark.parametrize("chunks,error,status", [

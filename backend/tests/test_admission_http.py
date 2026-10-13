@@ -84,7 +84,10 @@ def test_storage_failure_blocks_http_before_provider(app_factory, body):
         app = app_factory(lambda _: pytest.fail('failed ledger reached upstream'))
         async with app.router.lifespan_context(app):
             ledger = app.state.chat_service.ledger
-            await ledger._run(lambda: ledger.db.execute('PRAGMA query_only=ON'))
+            def make_read_only() -> None:
+                with ledger.db.begin():
+                    ledger.db.exec_driver_sql('PRAGMA query_only=ON')
+            await ledger._run(make_read_only)
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
                 for path, payload in [('/v1/chat', body), ('/v1/touch', touch_body(body))]:
                     response = await client.post(path, json=payload)

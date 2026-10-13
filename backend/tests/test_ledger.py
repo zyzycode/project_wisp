@@ -151,7 +151,10 @@ def test_disk_failure_fails_closed_and_preserves_reservation(tmp_path):
     async def run():
         ledger = await SQLiteLedger.open(tmp_path / 'ledger.sqlite', LedgerSettings())
         await ledger.admit('one', 'digest')
-        await ledger._run(lambda: ledger.db.execute('PRAGMA query_only=ON'))
+        def make_read_only() -> None:
+            with ledger.db.begin():
+                ledger.db.exec_driver_sql('PRAGMA query_only=ON')
+        await ledger._run(make_read_only)
         with pytest.raises(ServiceError, match='upstream_unavailable'):
             await ledger.settle('one', Usage(1, 1, 2), Outcome(200, b'{}'))
         with pytest.raises(ServiceError, match='upstream_unavailable'):

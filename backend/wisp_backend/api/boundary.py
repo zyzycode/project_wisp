@@ -8,10 +8,9 @@ from typing import Literal
 
 from wisp_backend.json_codec import decode_json
 from wisp_backend.schemas import ErrorCode, read_request_id
-from wisp_backend.service import failure
+from wisp_backend.responses import failure
 
 MAX_REQUEST_BYTES = 32 * 1024
-MAX_RESPONSE_BYTES = 16 * 1024
 BODY_TIMEOUT = 2
 EVENT_BODY_TIMEOUT = .5
 ENDPOINT_VERSIONS = {"/v1/chat": 1, "/v1/touch": 1, "/v2/chat": 2, "/v3/chat": 3, "/v3/events": 3}

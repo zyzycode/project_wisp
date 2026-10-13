@@ -1,40 +1,57 @@
 """Admission, bounded provider lifetime and independent terminal settlement."""
 import asyncio
-from threading import Event
 from collections.abc import Mapping
+from dataclasses import dataclass, field
+from threading import Event
 from typing import Any, TypeVar
 
-from pydantic import ValidationError
-from starlette.responses import JSONResponse
-
+from wisp_backend.completion_policy import CompletionRequest, prepare_completion
 from wisp_backend.config import AssistantSettings
-from wisp_backend.contracts import Admission, Ledger, Outcome, ProviderResult, ReplyContext
-from wisp_backend.errors import ERROR_STATUS, ServiceError
-from wisp_backend.prompts import build_messages
+from wisp_backend.contracts import Admission, Ledger, Outcome, ProviderResult
+from wisp_backend.errors import ServiceError
+from wisp_backend.events_schemas import EventRequest
 from wisp_backend.providers.base import Provider
-from wisp_backend.schemas import ChatRequest, ChatResponse, ErrorCode, ErrorDetail, ErrorResponse, ModelReply, trim_text
-from wisp_backend.touch_schemas import TouchRequest, TouchResponse, TouchModelReply
-from wisp_backend.memory_schemas import MemoryRequest, MemoryResponse, MemoryModelReply, MemoryErrorResponse
-from wisp_backend.events_schemas import (
-    EventRequest, EventResponse, EventModelReply, EventErrorResponse, EventAwareChatRequest, EventAwareChatResponse,
-)
-
+from wisp_backend.responses import failure, success
+from wisp_backend.schemas import ErrorCode
 
 TaskResult = TypeVar("TaskResult")
 EVENT_DEADLINE = 2.5
 
-def failure(code: ErrorCode, request_id: str | None, retry_after_ms: int | None = None, version: int = 1) -> Outcome:
-    error = ErrorDetail(code=code, **({"retryAfterMs": retry_after_ms} if retry_after_ms is not None else {}))
-    response_type = EventErrorResponse if version == 3 else MemoryErrorResponse if version == 2 else ErrorResponse
-    body = response_type(version=version, requestId=request_id, error=error).model_dump(exclude_none=True)
-    body['requestId'] = request_id
-    return Outcome(ERROR_STATUS[code], JSONResponse(body).body)
+
+@dataclass
+class _RequestState:
+    """Per-call ownership shared by admission, generation and terminal cleanup.
+
+    A completed admission owns a reservation until settlement. The publication
+    flag also reaches the SQLite thread, preventing a late commit from caching
+    a response after the caller has timed out or disconnected.
+    """
+    request_id: str
+    version: int
+    deadline: float
+    publication_cancelled: Event = field(default_factory=Event)
+    admitted: bool = False
+    cancelled: bool = False
+    admission_task: asyncio.Task[Admission] | None = None
+    provider_task: asyncio.Task[ProviderResult] | None = None
+    result: ProviderResult | None = None
+    outcome: Outcome | None = None
+
+    def remaining(self) -> float:
+        return self.deadline - asyncio.get_running_loop().time()
+
+    def fail(self, code: ErrorCode, retry_after_ms: int | None = None) -> None:
+        self.outcome = failure(code, self.request_id, retry_after_ms, self.version)
 
 
 class ChatService:
+    """Own active requests and background accounting for all completion routes."""
+
     def __init__(self, providers: Mapping[str, Provider], assistants: Mapping[str, AssistantSettings],
                  ledger: Ledger, deadline: float = 10) -> None:
-        self.providers, self.assistants, self.ledger = dict(providers), dict(assistants), ledger
+        self.providers = dict(providers)
+        self.assistants = dict(assistants)
+        self.ledger = ledger
         self.deadline = deadline
         self.closing = False
         self.requests: set[asyncio.Task[Any]] = set()
@@ -45,26 +62,139 @@ class ChatService:
             if settings.provider not in self.providers:
                 raise ValueError("Assistant references an unregistered provider")
 
-    def _track(self, task: asyncio.Task[TaskResult]) -> asyncio.Task[TaskResult]:
+    async def complete(self, body: CompletionRequest, digest: str, started: float,
+                       legacy_digest: str | None = None) -> Outcome:
+        """Admit once, generate and settle under the original HTTP deadline.
+
+        ``started`` is monotonic time captured before reading the request body.
+        Replays never dispatch or settle again. Cancellation propagates only
+        after arranging independent settlement; it cannot cancel a SQLite write.
+        Late provider results may correct usage, but never publish a new reply.
+        """
+        current = asyncio.current_task()
+        assert current is not None
+        self.requests.add(current)
+        current.add_done_callback(self.requests.discard)
+        duration = min(self.deadline, EVENT_DEADLINE) if isinstance(body, EventRequest) else self.deadline
+        state = _RequestState(body.requestId, body.version, started + duration)
+        try:
+            if self.closing:
+                raise ServiceError("upstream_unavailable")
+            if state.remaining() <= 0:
+                raise ServiceError("upstream_timeout")
+            replay = await self._admit(state, digest, legacy_digest)
+            if replay is not None:
+                return replay
+            await self._generate(state, body)
+        except asyncio.CancelledError:
+            state.cancelled = True
+            state.publication_cancelled.set()
+            # Cancellation can race a committed admission on the SQLite worker.
+            if state.admission_task and not state.admitted:
+                self._track_background(asyncio.create_task(
+                    self._settle_abandoned_admission(state.admission_task, state.request_id)))
+        except ServiceError as error:
+            state.fail(error.code, error.retry_after_ms)
+        finally:
+            try:
+                await self._settle(state)
+            finally:
+                self.requests.discard(current)
+        if state.cancelled:
+            raise asyncio.CancelledError
+        assert state.outcome is not None
+        return state.outcome
+
+    async def _admit(self, state: _RequestState, digest: str, legacy_digest: str | None) -> Outcome | None:
+        state.admission_task = asyncio.create_task(self.ledger.admit(state.request_id, digest, legacy_digest))
+        done, _ = await asyncio.wait({state.admission_task}, timeout=state.remaining())
+        if not done:
+            self._track_background(asyncio.create_task(
+                self._settle_abandoned_admission(state.admission_task, state.request_id)))
+            state.admission_task = None  # Background cleanup now owns this admission.
+            raise ServiceError("upstream_timeout")
+        admission = state.admission_task.result()
+        if admission.replay is not None:
+            if state.remaining() <= 0:
+                raise ServiceError("upstream_timeout")
+            return admission.replay
+        state.admitted = True
+        return None
+
+    async def _generate(self, state: _RequestState, body: CompletionRequest) -> None:
+        remaining = state.remaining()
+        if remaining <= 0:
+            raise ServiceError("upstream_timeout")
+        settings = self.assistants["default"]
+        provider = self.providers[settings.provider]
+        messages, context = prepare_completion(body)
+        call = (provider.complete(messages, settings, remaining) if context is None else
+                provider.complete(messages, settings, remaining, context))
+        state.provider_task = asyncio.create_task(call)
+        done, _ = await asyncio.wait({state.provider_task}, timeout=max(0, state.remaining()))
+        if not done or state.remaining() <= 0:
+            raise ServiceError("upstream_timeout")
+        # Retain usage even when semantic validation or wire serialization fails.
+        state.result = state.provider_task.result()
+        state.outcome = success(body, state.result)
+
+    async def _settle(self, state: _RequestState) -> None:
+        """Cancel upstream, then commit accounting independently of delivery.
+
+        Waiting is bounded for an HTTP response. After disconnect, shield the
+        durable write; a further cancellation still leaves the tracked task alive.
+        Apply late usage correction only after the first settlement completes.
+        """
+        if state.provider_task and not state.provider_task.done():
+            state.provider_task.cancel()
+        if not state.admitted:
+            return
+        usage = state.result.usage if isinstance(state.result, ProviderResult) else None
+        settlement = self._track_background(asyncio.create_task(self.ledger.settle(
+            state.request_id, usage, state.outcome, state.deadline, state.publication_cancelled)))
+        try:
+            if state.cancelled:
+                await asyncio.shield(settlement)
+            else:
+                done, _ = await asyncio.wait({settlement}, timeout=max(0, state.remaining()))
+                if not done or state.remaining() <= 0:
+                    state.publication_cancelled.set()
+                    state.fail("upstream_timeout")
+                else:
+                    settlement.result()
+        except ServiceError:
+            state.fail("upstream_unavailable")
+        except asyncio.CancelledError:
+            state.publication_cancelled.set()
+            raise
+        finally:
+            if state.provider_task and state.result is None:
+                self._track_background(asyncio.create_task(
+                    self._settle_late_usage(state.provider_task, state.request_id, settlement)))
+
+    def _track_background(self, task: asyncio.Task[TaskResult]) -> asyncio.Task[TaskResult]:
         self.background.add(task)
+
         def finished(done: asyncio.Task[TaskResult]) -> None:
             self.background.discard(done)
             if not done.cancelled():
-                done.exception()  # never log provider payload/exception details
+                done.exception()  # Never log provider payload/exception details.
+
         task.add_done_callback(finished)
         return task
 
-    async def _late(self, task: asyncio.Task[ProviderResult], request_id: str,
-                    settlement: asyncio.Task[None]) -> None:
+    async def _settle_late_usage(self, task: asyncio.Task[ProviderResult], request_id: str,
+                               settlement: asyncio.Task[None]) -> None:
         try:
             await asyncio.shield(settlement)
             result = await task
             if isinstance(result, ProviderResult) and result.usage:
                 await self.ledger.settle(request_id, result.usage, None)
         except (asyncio.CancelledError, ServiceError):
-            pass  # uncertain reservation is already durable
+            pass  # The uncertain reservation is already durable.
 
-    async def _abandoned_admission(self, task: asyncio.Task[Admission], request_id: str) -> None:
+    async def _settle_abandoned_admission(self, task: asyncio.Task[Admission], request_id: str) -> None:
+        """Charge a late admission as uncertain without dispatching the provider."""
         try:
             admission = await task
             if admission.replay is None:
@@ -72,129 +202,16 @@ class ChatService:
         except ServiceError:
             pass
 
-    async def complete(self, body: ChatRequest | TouchRequest | MemoryRequest | EventRequest, digest: str, started: float,
-                       legacy_digest: str | None = None) -> Outcome:
-        current = asyncio.current_task()
-        assert current is not None
-        self.requests.add(current)
-        current.add_done_callback(self.requests.discard)
-        publication_cancelled = Event()
-        admitted = False
-        provider_task = None
-        result = None
-        outcome = None
-        admission_task = None
-        cancelled = False
-        end = started + (min(self.deadline, EVENT_DEADLINE) if isinstance(body, EventRequest) else self.deadline)
-        try:
-            if self.closing:
-                raise ServiceError("upstream_unavailable")
-            if asyncio.get_running_loop().time() >= end:
-                raise ServiceError("upstream_timeout")
-            admission_task = asyncio.create_task(self.ledger.admit(body.requestId, digest, legacy_digest))
-            done, _ = await asyncio.wait({admission_task}, timeout=end - asyncio.get_running_loop().time())
-            if not done:
-                self._track(asyncio.create_task(self._abandoned_admission(admission_task, body.requestId)))
-                admission_task = None
-                raise ServiceError("upstream_timeout")
-            admission = admission_task.result()
-            if admission.replay:
-                if asyncio.get_running_loop().time() >= end:
-                    raise ServiceError("upstream_timeout")
-                return admission.replay
-            admitted = True
-            remaining = end - asyncio.get_running_loop().time()
-            if remaining <= 0:
-                raise ServiceError("upstream_timeout")
-            settings = self.assistants['default']
-            provider = self.providers[settings.provider]
-            if isinstance(body, TouchRequest):
-                from wisp_backend.touch import build_touch_messages
-                call = provider.complete(build_touch_messages(body), settings, remaining, ReplyContext(mode="touch"))
-            elif isinstance(body, EventRequest):
-                call = provider.complete(build_messages(body), settings, remaining, ReplyContext(3, None, "event"))
-            elif isinstance(body, MemoryRequest):
-                call = provider.complete(build_messages(body), settings, remaining,
-                                         ReplyContext(body.version, trim_text(body.messages[-1].content)))
-            else:
-                call = provider.complete(build_messages(body), settings, remaining)
-            provider_task = asyncio.create_task(call)
-            done, _ = await asyncio.wait({provider_task}, timeout=max(0, end - asyncio.get_running_loop().time()))
-            if not done or asyncio.get_running_loop().time() >= end:
-                raise ServiceError("upstream_timeout")
-            result = provider_task.result()
-            if not isinstance(result, ProviderResult):
-                raise ServiceError("invalid_model_response")
-            if result.error:
-                raise ServiceError(result.error)
-            try:
-                if isinstance(body, TouchRequest) and not isinstance(result.reply, TouchModelReply):
-                    raise ServiceError("invalid_model_response")
-                if isinstance(body, EventRequest) and not isinstance(result.reply, EventModelReply):
-                    raise ServiceError("invalid_model_response")
-                model_type = (EventModelReply if isinstance(body, EventRequest) else
-                              TouchModelReply if isinstance(body, TouchRequest) else
-                              MemoryModelReply if isinstance(body, MemoryRequest) else ModelReply)
-                response_type = (EventResponse if isinstance(body, EventRequest) else
-                                 EventAwareChatResponse if isinstance(body, EventAwareChatRequest) else
-                                 TouchResponse if isinstance(body, TouchRequest) else
-                                 MemoryResponse if isinstance(body, MemoryRequest) else ChatResponse)
-                context = {"evidence_quote": None if isinstance(body, (TouchRequest, EventRequest)) else trim_text(body.messages[-1].content)}
-                reply = model_type.model_validate(result.reply.model_dump(exclude_none=True), context=context)
-                response = response_type.model_validate(
-                    {'version': body.version, 'requestId': body.requestId, **reply.model_dump(exclude_none=True)}, context=context)
-                outcome = Outcome(200, JSONResponse(response.model_dump(exclude_none=True)).body)
-                if len(outcome.body) > 16 * 1024:
-                    raise ServiceError("payload_too_large")
-            except (ValidationError, AttributeError, TypeError):
-                raise ServiceError("invalid_model_response") from None
-        except asyncio.CancelledError:
-            cancelled = True
-            publication_cancelled.set()
-            # Cancellation may race a committed admission on the SQLite worker.
-            if admission_task and not admitted:
-                self._track(asyncio.create_task(self._abandoned_admission(admission_task, body.requestId)))
-        except ServiceError as error:
-            outcome = failure(error.code, body.requestId, error.retry_after_ms, version=body.version)
-        finally:
-            if provider_task and not provider_task.done():
-                provider_task.cancel()
-            if admitted:
-                usage = result.usage if isinstance(result, ProviderResult) else None
-                settlement = self._track(asyncio.create_task(self.ledger.settle(body.requestId, usage, outcome, end, publication_cancelled)))
-                try:
-                    if cancelled:
-                        await asyncio.shield(settlement)
-                    else:
-                        done, _ = await asyncio.wait({settlement}, timeout=max(0, end - asyncio.get_running_loop().time()))
-                        if not done or asyncio.get_running_loop().time() >= end:
-                            publication_cancelled.set()
-                            outcome = failure("upstream_timeout", body.requestId, version=body.version)
-                        else:
-                            settlement.result()
-                except ServiceError:
-                    outcome = failure("upstream_unavailable", body.requestId, version=body.version)
-                except asyncio.CancelledError:
-                    publication_cancelled.set()
-                    raise
-                finally:
-                    if provider_task and result is None:
-                        self._track(asyncio.create_task(self._late(provider_task, body.requestId, settlement)))
-            self.requests.discard(current)
-        if cancelled:
-            raise asyncio.CancelledError
-        assert outcome is not None
-        return outcome
-
     async def close(self) -> None:
+        """Stop admission, cancel active requests and drain tracked accounting."""
         self.closing = True
         tasks = list(self.requests)
         for task in tasks:
             task.cancel()
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
-        # Cooperative provider HTTP tasks close streams on cancellation. A provider
-        # ignoring cancellation never blocks shutdown or rewrites a terminal reply.
+        # Cooperative HTTP providers close streams on cancellation. Late usage
+        # correction gets a short grace period before remaining tasks are cancelled.
         remaining = list(self.background)
         if remaining:
             _, pending = await asyncio.wait(remaining, timeout=0.5)

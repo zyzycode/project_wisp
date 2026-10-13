@@ -1,16 +1,21 @@
-"""One-worker durable admission; all SQLite operations run on a worker thread."""
+"""One-worker durable admission using SQLAlchemy Core outside the event loop."""
 import asyncio
 import math
-import sqlite3
 import threading
 import time
 from collections import OrderedDict
 from pathlib import Path
 from typing import Callable, ParamSpec, TypeVar
 
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import SQLAlchemyError
+
 from wisp_backend.config import LedgerSettings
 from wisp_backend.contracts import Admission, Outcome, RESERVATION, Usage
 from wisp_backend.errors import ServiceError
+from wisp_backend.ledger_storage import create_ledger_engine, days, entries, initialize_schema, meta
 
 OperationArgs = ParamSpec("OperationArgs")
 OperationResult = TypeVar("OperationResult")
@@ -27,6 +32,8 @@ class SQLiteLedger:
         self.lock = threading.Lock()
         self.cache: OrderedDict[str, tuple[float, Outcome, threading.Event | None]] = OrderedDict()
         self.failed = False
+        self.engine: Engine | None = None
+        self.db: Connection
 
     @classmethod
     async def open(cls, path: Path, policy: LedgerSettings,
@@ -49,46 +56,29 @@ class SQLiteLedger:
                     raise ServiceError("upstream_unavailable")
                 try:
                     return operation(*args, **kwargs)
-                except (sqlite3.Error, OSError):
+                except (SQLAlchemyError, OSError):
                     self.failed = True
                     raise ServiceError("upstream_unavailable") from None
         return await asyncio.to_thread(guarded)
 
     def _initialize(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self.db = sqlite3.connect(self.path, timeout=0.25, check_same_thread=False)
-        self.db.row_factory = sqlite3.Row
-        self.db.execute("PRAGMA secure_delete=ON")
-        self.db.execute("PRAGMA journal_mode=DELETE")
-        self.db.execute("PRAGMA synchronous=FULL")
-        self.db.executescript('''
-            CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value REAL NOT NULL);
-            INSERT OR IGNORE INTO meta VALUES ('clock',0), ('halt',0);
-            CREATE TABLE IF NOT EXISTS days (
-                bucket INTEGER PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0,
-                reserved INTEGER NOT NULL DEFAULT 0, confirmed NOT NULL DEFAULT 0,
-                uncertain INTEGER NOT NULL DEFAULT 0, prompt NOT NULL DEFAULT 0,
-                completion NOT NULL DEFAULT 0);
-            CREATE TABLE IF NOT EXISTS entries (
-                id TEXT PRIMARY KEY, digest TEXT NOT NULL, admitted REAL NOT NULL,
-                bucket INTEGER NOT NULL, state TEXT NOT NULL, corrected INTEGER NOT NULL DEFAULT 0);
-        ''')
-        with self.db:
-            columns = {row['name'] for row in self.db.execute("PRAGMA table_info(entries)")}
-            if 'reservation' not in columns:
-                self.db.execute("ALTER TABLE entries ADD COLUMN reservation INTEGER NOT NULL DEFAULT 131072")
-            for row in self.db.execute("SELECT id FROM entries WHERE state='flight'").fetchall():
-                self._settle(row['id'], None, None)
+        self.engine = create_ledger_engine(self.path)
+        self.db = self.engine.connect()
+        with self.db.begin():
+            initialize_schema(self.db)
+            for request_id in self.db.scalars(select(entries.c.id).where(entries.c.state == "flight")).all():
+                self._settle(request_id, None, None)
             self._cleanup(self._now())
 
     def _now(self) -> float:
-        now = max(self.clock(), self.db.execute("SELECT value FROM meta WHERE key='clock'").fetchone()[0])
-        self.db.execute("UPDATE meta SET value=? WHERE key='clock'", (now,))
+        now = max(self.clock(), self.db.execute(select(meta.c.value).where(meta.c.key == "clock")).scalar_one())
+        self.db.execute(update(meta).where(meta.c.key == "clock").values(value=now))
         return now
 
     def _cleanup(self, now: float) -> None:
-        self.db.execute("DELETE FROM entries WHERE admitted<=? AND state!='flight'", (now - ID_TTL,))
-        self.db.execute("DELETE FROM days WHERE bucket<=?", (int(now // ID_TTL) - 30,))
+        self.db.execute(delete(entries).where(entries.c.admitted <= now - ID_TTL, entries.c.state != "flight"))
+        self.db.execute(delete(days).where(days.c.bucket <= int(now // ID_TTL) - 30))
         for key, (created, _, _) in list(self.cache.items()):
             if created + CACHE_TTL <= now:
                 del self.cache[key]
@@ -98,10 +88,10 @@ class SQLiteLedger:
 
     def _admit(self, request_id: str, digest: str, legacy_digest: str | None) -> Admission:
         # A single process lock plus SQLite transaction covers every admission decision.
-        with self.db:
+        with self.db.begin():
             now = self._now()
             self._cleanup(now)
-            row = self.db.execute("SELECT * FROM entries WHERE id=?", (request_id,)).fetchone()
+            row = self.db.execute(select(entries).where(entries.c.id == request_id)).mappings().first()
             if row:
                 if row['digest'] != digest and (legacy_digest is None or row['digest'] != legacy_digest):
                     raise ServiceError("request_conflict")
@@ -113,23 +103,25 @@ class SQLiteLedger:
                         return Admission(outcome)
                     del self.cache[request_id]
                 raise ServiceError("request_conflict")
-            if self.db.execute("SELECT value FROM meta WHERE key='halt'").fetchone()[0]:
+            if self.db.execute(select(meta.c.value).where(meta.c.key == "halt")).scalar_one():
                 raise ServiceError("upstream_unavailable")
-            active = self.db.execute("SELECT count(*) FROM entries WHERE state='flight'").fetchone()[0]
-            recent = self.db.execute("SELECT admitted FROM entries WHERE admitted>? ORDER BY admitted", (now - 60,)).fetchall()
+            active = self.db.execute(select(func.count()).select_from(entries).where(entries.c.state == "flight")).scalar_one()
+            recent = self.db.scalars(select(entries.c.admitted).where(entries.c.admitted > now - 60)
+                                    .order_by(entries.c.admitted)).all()
             if active >= self.policy.concurrent_limit:
                 raise ServiceError("rate_limited", 1000)
             if len(recent) >= self.policy.rate_limit:
-                raise ServiceError("rate_limited", max(1, math.ceil((recent[0][0] + 60 - now) * 1000)))
+                raise ServiceError("rate_limited", max(1, math.ceil((recent[0] + 60 - now) * 1000)))
             bucket = int(now // ID_TTL)
-            self.db.execute("INSERT OR IGNORE INTO days(bucket) VALUES (?)", (bucket,))
-            day = self.db.execute("SELECT * FROM days WHERE bucket=?", (bucket,)).fetchone()
+            self.db.execute(insert(days).values(bucket=bucket).on_conflict_do_nothing())
+            day = self.db.execute(select(days).where(days.c.bucket == bucket)).mappings().one()
             if (day['requests'] >= self.policy.daily_requests or
                     day['reserved'] + int(day['confirmed']) + day['uncertain'] + self.reservation > self.policy.daily_tokens):
                 raise ServiceError("budget_exhausted", max(1, math.ceil(((bucket + 1) * ID_TTL - now) * 1000)))
-            self.db.execute("INSERT INTO entries(id,digest,admitted,bucket,state,reservation) VALUES (?,?,?,?,'flight',?)",
-                            (request_id, digest, now, bucket, self.reservation))
-            self.db.execute("UPDATE days SET requests=requests+1,reserved=reserved+? WHERE bucket=?", (self.reservation, bucket))
+            self.db.execute(insert(entries).values(id=request_id, digest=digest, admitted=now,
+                                                  bucket=bucket, state="flight", reservation=self.reservation))
+            self.db.execute(update(days).where(days.c.bucket == bucket).values(
+                requests=days.c.requests + 1, reserved=days.c.reserved + self.reservation))
         return Admission()
 
     async def settle(self, request_id: str, usage: Usage | None, outcome: Outcome | None,
@@ -138,7 +130,7 @@ class SQLiteLedger:
 
     def _terminal(self, request_id: str, usage: Usage | None, outcome: Outcome | None,
                   deadline: float | None, cancelled: threading.Event | None) -> None:
-        with self.db:
+        with self.db.begin():
             cacheable = self._settle(request_id, usage, outcome)
             now = self._now()
         # Cache only after successful durable commit and before the caller's
@@ -150,29 +142,27 @@ class SQLiteLedger:
                 self.cache.popitem(last=False)
 
     def _settle(self, request_id: str, usage: Usage | None, outcome: Outcome | None) -> bool:
-        row = self.db.execute("SELECT * FROM entries WHERE id=?", (request_id,)).fetchone()
+        row = self.db.execute(select(entries).where(entries.c.id == request_id)).mappings().first()
         if not row or row['state'] == 'confirmed' or row['corrected']:
             return False
         if row['state'] == 'uncertain' and usage is None:
             return False
         reservation = row['reservation']
         if usage and usage.total > reservation:
-            self.db.execute("UPDATE meta SET value=1 WHERE key='halt'")
+            self.db.execute(update(meta).where(meta.c.key == "halt").values(value=1))
         reserved_delta = -reservation if row['state'] == 'flight' else 0
         uncertain_delta = (0 if usage else reservation) - (reservation if row['state'] == 'uncertain' else 0)
-        day = self.db.execute("SELECT * FROM days WHERE bucket=?", (row['bucket'],)).fetchone()
-        # An untrusted provider may report a huge integer. Preserve its exact value
-        # without overflowing SQLite's signed 64-bit binding, and latch admission.
-        def bind(value: int) -> int | str:
-            return value if value <= 2**63 - 1 else str(value)
-        self.db.execute('''UPDATE days SET reserved=reserved+?, confirmed=?,
-            uncertain=uncertain+?,prompt=?,completion=? WHERE bucket=?''',
-            (reserved_delta, bind(int(day['confirmed']) + (usage.total if usage else 0)), uncertain_delta,
-             bind(int(day['prompt']) + (usage.prompt if usage else 0)),
-             bind(int(day['completion']) + (usage.completion if usage else 0)), row['bucket']))
+        day = self.db.execute(select(days).where(days.c.bucket == row['bucket'])).mappings().one()
+        # ExactTokenCount binds huge integers as decimal strings without numeric affinity.
+        self.db.execute(update(days).where(days.c.bucket == row['bucket']).values(
+            reserved=days.c.reserved + reserved_delta,
+            confirmed=day['confirmed'] + (usage.total if usage else 0),
+            uncertain=days.c.uncertain + uncertain_delta,
+            prompt=day['prompt'] + (usage.prompt if usage else 0),
+            completion=day['completion'] + (usage.completion if usage else 0)))
         state = 'confirmed' if usage else 'uncertain'
-        self.db.execute("UPDATE entries SET state=?,corrected=? WHERE id=?",
-                        (state, int(row['state'] == 'uncertain'), request_id))
+        self.db.execute(update(entries).where(entries.c.id == request_id).values(
+            state=state, corrected=int(row['state'] == 'uncertain')))
         # A late correction updates only accounting, never resurrects a response.
         return row['state'] == 'flight' and usage is not None and outcome is not None and len(outcome.body) <= 16 * 1024
 
@@ -180,15 +170,20 @@ class SQLiteLedger:
         await self._run(self._maintenance)
 
     def _maintenance(self) -> None:
-        with self.db:
+        with self.db.begin():
             self._cleanup(self._now())
         # DELETE journal + secure_delete wipes reclaimed content; no persistent WAL.
-        self.db.execute("PRAGMA incremental_vacuum")
+        with self.db.begin():
+            self.db.exec_driver_sql("PRAGMA incremental_vacuum")
 
     async def close(self) -> None:
         def close() -> None:
             with self.lock:
                 self.cache.clear()
-                if hasattr(self, 'db'):
-                    self.db.close()
+                try:
+                    if hasattr(self, 'db'):
+                        self.db.close()
+                finally:
+                    if self.engine is not None:
+                        self.engine.dispose()
         await asyncio.to_thread(close)
