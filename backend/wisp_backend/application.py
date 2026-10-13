@@ -10,7 +10,7 @@ from starlette.responses import Response
 from typing import Any
 from fastapi.exceptions import RequestValidationError
 
-from wisp_backend.api import chat, health, memory
+from wisp_backend.api import chat, health, memory, events
 from wisp_backend.touch import router as touch_router
 from wisp_backend.api.boundary import ChatBoundary, error_response
 from wisp_backend.config import Settings
@@ -65,12 +65,13 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
     app.include_router(chat.router)
     app.include_router(touch_router)
     app.include_router(memory.router)
+    app.include_router(events.router)
     # FastAPI's default 422 envelope is not part of this wire contract.
     default_openapi = app.openapi
 
     def openapi() -> dict[str, Any]:
         spec = default_openapi()
-        for path in ("/v1/chat", "/v1/touch", "/v2/chat"):
+        for path in ("/v1/chat", "/v1/touch", "/v2/chat", "/v3/chat", "/v3/events"):
             spec["paths"][path]["post"]["responses"].pop("422", None)
         return spec
     app.openapi = openapi

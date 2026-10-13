@@ -13,7 +13,8 @@ from wisp_backend.service import failure
 MAX_REQUEST_BYTES = 32 * 1024
 MAX_RESPONSE_BYTES = 16 * 1024
 BODY_TIMEOUT = 2
-ENDPOINT_VERSIONS = {"/v1/chat": 1, "/v1/touch": 1, "/v2/chat": 2}
+EVENT_BODY_TIMEOUT = .5
+ENDPOINT_VERSIONS = {"/v1/chat": 1, "/v1/touch": 1, "/v2/chat": 2, "/v3/chat": 3, "/v3/events": 3}
 
 
 def error_response(code: ErrorCode, request_id: str | None = None, retry_after_ms: int | None = None,
@@ -50,7 +51,7 @@ class ChatBoundary:
                 if not message.get("more_body", False):
                     return None
         try:
-            body_deadline = started + BODY_TIMEOUT
+            body_deadline = started + (EVENT_BODY_TIMEOUT if scope["path"] == "/v3/events" else BODY_TIMEOUT)
             error = await asyncio.wait_for(read(), max(0, body_deadline - asyncio.get_running_loop().time()))
             if asyncio.get_running_loop().time() >= body_deadline:
                 error = "invalid_request"

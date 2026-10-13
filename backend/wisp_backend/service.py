@@ -15,13 +15,17 @@ from wisp_backend.providers.base import Provider
 from wisp_backend.schemas import ChatRequest, ChatResponse, ErrorCode, ErrorDetail, ErrorResponse, ModelReply, trim_text
 from wisp_backend.touch_schemas import TouchRequest, TouchResponse, TouchModelReply
 from wisp_backend.memory_schemas import MemoryRequest, MemoryResponse, MemoryModelReply, MemoryErrorResponse
+from wisp_backend.events_schemas import (
+    EventRequest, EventResponse, EventModelReply, EventErrorResponse, EventAwareChatRequest, EventAwareChatResponse,
+)
 
 
 TaskResult = TypeVar("TaskResult")
+EVENT_DEADLINE = 2.5
 
 def failure(code: ErrorCode, request_id: str | None, retry_after_ms: int | None = None, version: int = 1) -> Outcome:
     error = ErrorDetail(code=code, **({"retryAfterMs": retry_after_ms} if retry_after_ms is not None else {}))
-    response_type = MemoryErrorResponse if version == 2 else ErrorResponse
+    response_type = EventErrorResponse if version == 3 else MemoryErrorResponse if version == 2 else ErrorResponse
     body = response_type(version=version, requestId=request_id, error=error).model_dump(exclude_none=True)
     body['requestId'] = request_id
     return Outcome(ERROR_STATUS[code], JSONResponse(body).body)
@@ -68,7 +72,7 @@ class ChatService:
         except ServiceError:
             pass
 
-    async def complete(self, body: ChatRequest | TouchRequest | MemoryRequest, digest: str, started: float,
+    async def complete(self, body: ChatRequest | TouchRequest | MemoryRequest | EventRequest, digest: str, started: float,
                        legacy_digest: str | None = None) -> Outcome:
         current = asyncio.current_task()
         assert current is not None
@@ -81,7 +85,7 @@ class ChatService:
         outcome = None
         admission_task = None
         cancelled = False
-        end = started + self.deadline
+        end = started + (min(self.deadline, EVENT_DEADLINE) if isinstance(body, EventRequest) else self.deadline)
         try:
             if self.closing:
                 raise ServiceError("upstream_unavailable")
@@ -107,6 +111,8 @@ class ChatService:
             if isinstance(body, TouchRequest):
                 from wisp_backend.touch import build_touch_messages
                 call = provider.complete(build_touch_messages(body), settings, remaining, ReplyContext(mode="touch"))
+            elif isinstance(body, EventRequest):
+                call = provider.complete(build_messages(body), settings, remaining, ReplyContext(3, None, "event"))
             elif isinstance(body, MemoryRequest):
                 call = provider.complete(build_messages(body), settings, remaining,
                                          ReplyContext(body.version, trim_text(body.messages[-1].content)))
@@ -124,11 +130,16 @@ class ChatService:
             try:
                 if isinstance(body, TouchRequest) and not isinstance(result.reply, TouchModelReply):
                     raise ServiceError("invalid_model_response")
-                model_type = (TouchModelReply if isinstance(body, TouchRequest) else
+                if isinstance(body, EventRequest) and not isinstance(result.reply, EventModelReply):
+                    raise ServiceError("invalid_model_response")
+                model_type = (EventModelReply if isinstance(body, EventRequest) else
+                              TouchModelReply if isinstance(body, TouchRequest) else
                               MemoryModelReply if isinstance(body, MemoryRequest) else ModelReply)
-                response_type = (TouchResponse if isinstance(body, TouchRequest) else
+                response_type = (EventResponse if isinstance(body, EventRequest) else
+                                 EventAwareChatResponse if isinstance(body, EventAwareChatRequest) else
+                                 TouchResponse if isinstance(body, TouchRequest) else
                                  MemoryResponse if isinstance(body, MemoryRequest) else ChatResponse)
-                context = {"evidence_quote": None if isinstance(body, TouchRequest) else trim_text(body.messages[-1].content)}
+                context = {"evidence_quote": None if isinstance(body, (TouchRequest, EventRequest)) else trim_text(body.messages[-1].content)}
                 reply = model_type.model_validate(result.reply.model_dump(exclude_none=True), context=context)
                 response = response_type.model_validate(
                     {'version': body.version, 'requestId': body.requestId, **reply.model_dump(exclude_none=True)}, context=context)

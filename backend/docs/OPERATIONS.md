@@ -1,6 +1,7 @@
 # Backend alpha: служебный учёт и запуск
 
-Реализованные safeguards для `/v1/chat`, `/v1/touch` и `/v2/chat` следуют
+Реализованные safeguards для `/v1/chat`, `/v1/touch`, `/v2/chat`,
+`/v3/chat` и `/v3/events` следуют
 [Backend API §5–6](../../docs/contracts/BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы).
 Это один процесс и один ASGI worker с локальным SQLite ledger. Несколько workers
 или общая БД для нескольких экземпляров этой конфигурацией не поддерживаются.
@@ -30,11 +31,12 @@ Reported usage сверх reservation сохраняется точно и бл�
 
 ## Повторы, сроки и данные
 
-Все три routes используют общие rate/concurrency/day budgets и namespace requestId.
+Все пять routes используют общие rate/concurrency/day budgets и namespace requestId.
 Replay возможен только из bounded RAM cache. Restart/eviction/expiry ответа
 оставляет conflict до TTL ID; новый вызов с тем же ID автоматически не выполняется.
 Совместимость прежнего body-only digest ограничена точным `/v1/chat`.
-Body ограничен 2s, вся операция — 10s с учётом admission и settlement.
+У chat/touch body ограничен 2s, вся операция — 10s с учётом admission и settlement;
+у `/v3/events` — соответственно 0.5s и 2.5s.
 Disconnect/shutdown отменяют upstream; поздний ответ не заменяет terminal outcome.
 
 Ledger хранит ID/digest/состояние/время и расход, без body, character или ответов.
@@ -59,3 +61,18 @@ Desktop явно выбирает v2; default v1 не переключается
 Backend не хранит пользовательский профиль/эпизоды и не пишет их в logs/ledger.
 Разрешённая передача и удаление определены в
 [Memory §4](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#4-данные-и-удаление).
+
+## События и follow-up v3
+
+`/v3/events` принимает только `cursor_game_completed` с фактическим исходом
+desktop или `social_bid_started` уже начавшегося жеста. Ответ — text-only
+≤240 UTF-16 units, output cap1024; лишние model fields запрещены и при ошибке
+usage всё равно учитывается. Сервер не запускает игру/жест и не продлевает их.
+
+`/v3/chat` сохраняет v2 memory semantics с optional `previousInitiative`:
+это ранее опубликованная AI-фраза, не user message и не источник нового факта.
+Один текущий пользовательский запрос остаётся единственным источником evidenceQuote.
+Поля, deadlines и данные определены в
+[Events §5](../../docs/contracts/AI_EVENTS_CONTRACT.md#5-явный-wire-v3-и-данные).
+Local quiet/reset/dispose и causal generation guards остаются desktop.
+Текущие default launcher settings и отключённые по умолчанию events не изменены.

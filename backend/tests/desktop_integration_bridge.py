@@ -28,7 +28,7 @@ def read_request(line: bytes) -> tuple[str, str, bytes]:
     if not isinstance(value, dict) or set(value) != {"method", "path", "body"}:
         raise ValueError("Invalid bridge frame")
     method, path, body = value["method"], value["path"], value["body"]
-    if method != "POST" or path not in {"/v1/chat", "/v2/chat"} or not isinstance(body, str):
+    if method != "POST" or path not in {"/v1/chat", "/v2/chat", "/v3/events", "/v3/chat"} or not isinstance(body, str):
         raise ValueError("Invalid bridge request")
     encoded = body.encode("utf-8")
     if len(encoded) > 32 * 1024:
@@ -41,6 +41,7 @@ def main() -> None:
     settings = Settings(api_key=SecretStr("synthetic-integration-key"), ledger_path=Path(sys.argv[1]))
     messages: list[dict[str, str]] = []
     upstream_calls = 0
+    route = ""
 
     def upstream(request: httpx.Request) -> httpx.Response:
         nonlocal upstream_calls
@@ -54,8 +55,9 @@ def main() -> None:
         ):
             raise ValueError("Invalid provider messages")
         messages.extend(cast(list[dict[str, str]], raw_messages))
+        text = {"/v3/events": "Мне нравится игра с курсором", "/v3/chat": "Давай ещё поиграем."}.get(route, "Помню нашу игру, Мария.")
         return httpx.Response(200, json={
-            "choices": [{"message": {"content": json.dumps({"text": "Помню нашу игру, Мария."})},
+            "choices": [{"message": {"content": json.dumps({"text": text})},
                          "finish_reason": "stop"}],
             "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7},
         })
@@ -69,6 +71,7 @@ def main() -> None:
             if len(line) > INPUT_LIMIT or not line.endswith(b"\n"):
                 raise ValueError("Bridge input limit")
             method, path, body = read_request(line)
+            route = path
             messages.clear()
             response = client.request(method, path, content=body, headers={"Content-Type": "application/json"})
             emit({"status": response.status_code, "contentType": response.headers.get("content-type", ""),
