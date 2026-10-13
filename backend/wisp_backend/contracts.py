@@ -5,6 +5,7 @@ from threading import Event
 
 from wisp_backend.schemas import ModelReply, ErrorCode
 from wisp_backend.touch_schemas import TouchModelReply
+from wisp_backend.memory_schemas import MemoryModelReply
 
 RESERVATION = 131_072
 
@@ -28,13 +29,14 @@ class Usage:
 
 @dataclass(frozen=True)
 class ReplyContext:
-    version: Literal[1] = 1
+    version: Literal[1, 2] = 1
+    evidence_quote: str | None = None
     mode: Literal["chat", "touch"] = "chat"
 
 
 @dataclass(frozen=True)
 class ProviderResult:
-    reply: ModelReply | TouchModelReply | None = None
+    reply: ModelReply | TouchModelReply | MemoryModelReply | None = None
     usage: Usage | None = None
     error: ErrorCode | None = None
 

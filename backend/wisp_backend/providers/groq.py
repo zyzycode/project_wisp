@@ -7,6 +7,7 @@ from wisp_backend.contracts import ProviderResult, Usage, ReplyContext
 from wisp_backend.json_codec import decode_json
 from wisp_backend.schemas import ModelReply
 from wisp_backend.touch_schemas import TouchModelReply
+from wisp_backend.memory_schemas import MemoryModelReply
 
 MAX_UPSTREAM_BYTES = 256 * 1024
 
@@ -45,8 +46,11 @@ class GroqProvider:
                     proposed = choice["message"]["content"]
                     if not isinstance(proposed, str):
                         return ProviderResult(usage=usage, error="invalid_model_response")
-                    model_type = TouchModelReply if reply_context.mode == "touch" else ModelReply
-                    return ProviderResult(model_type.model_validate(decode_json(proposed)), usage)
+                    model_type = (TouchModelReply if reply_context.mode == "touch" else
+                                  MemoryModelReply if reply_context.version == 2 else ModelReply)
+                    reply = model_type.model_validate(decode_json(proposed),
+                                                     context={"evidence_quote": reply_context.evidence_quote})
+                    return ProviderResult(reply, usage)
                 except (ValueError, KeyError, IndexError, TypeError, ValidationError, RecursionError):
                     return ProviderResult(usage=usage, error="invalid_model_response")
         except httpx.TimeoutException:

@@ -12,15 +12,17 @@ from wisp_backend.contracts import Admission, Ledger, Outcome, ProviderResult, R
 from wisp_backend.errors import ERROR_STATUS, ServiceError
 from wisp_backend.prompts import build_messages
 from wisp_backend.providers.base import Provider
-from wisp_backend.schemas import ChatRequest, ChatResponse, ErrorCode, ErrorDetail, ErrorResponse, ModelReply
+from wisp_backend.schemas import ChatRequest, ChatResponse, ErrorCode, ErrorDetail, ErrorResponse, ModelReply, trim_text
 from wisp_backend.touch_schemas import TouchRequest, TouchResponse, TouchModelReply
+from wisp_backend.memory_schemas import MemoryRequest, MemoryResponse, MemoryModelReply, MemoryErrorResponse
 
 
 TaskResult = TypeVar("TaskResult")
 
 def failure(code: ErrorCode, request_id: str | None, retry_after_ms: int | None = None, version: int = 1) -> Outcome:
     error = ErrorDetail(code=code, **({"retryAfterMs": retry_after_ms} if retry_after_ms is not None else {}))
-    body = ErrorResponse(version=version, requestId=request_id, error=error).model_dump(exclude_none=True)
+    response_type = MemoryErrorResponse if version == 2 else ErrorResponse
+    body = response_type(version=version, requestId=request_id, error=error).model_dump(exclude_none=True)
     body['requestId'] = request_id
     return Outcome(ERROR_STATUS[code], JSONResponse(body).body)
 
@@ -66,7 +68,7 @@ class ChatService:
         except ServiceError:
             pass
 
-    async def complete(self, body: ChatRequest | TouchRequest, digest: str, started: float,
+    async def complete(self, body: ChatRequest | TouchRequest | MemoryRequest, digest: str, started: float,
                        legacy_digest: str | None = None) -> Outcome:
         current = asyncio.current_task()
         assert current is not None
@@ -105,6 +107,9 @@ class ChatService:
             if isinstance(body, TouchRequest):
                 from wisp_backend.touch import build_touch_messages
                 call = provider.complete(build_touch_messages(body), settings, remaining, ReplyContext(mode="touch"))
+            elif isinstance(body, MemoryRequest):
+                call = provider.complete(build_messages(body), settings, remaining,
+                                         ReplyContext(body.version, trim_text(body.messages[-1].content)))
             else:
                 call = provider.complete(build_messages(body), settings, remaining)
             provider_task = asyncio.create_task(call)
@@ -119,11 +124,14 @@ class ChatService:
             try:
                 if isinstance(body, TouchRequest) and not isinstance(result.reply, TouchModelReply):
                     raise ServiceError("invalid_model_response")
-                model_type = TouchModelReply if isinstance(body, TouchRequest) else ModelReply
-                response_type = TouchResponse if isinstance(body, TouchRequest) else ChatResponse
-                reply = model_type.model_validate(result.reply.model_dump(exclude_none=True))
+                model_type = (TouchModelReply if isinstance(body, TouchRequest) else
+                              MemoryModelReply if isinstance(body, MemoryRequest) else ModelReply)
+                response_type = (TouchResponse if isinstance(body, TouchRequest) else
+                                 MemoryResponse if isinstance(body, MemoryRequest) else ChatResponse)
+                context = {"evidence_quote": None if isinstance(body, TouchRequest) else trim_text(body.messages[-1].content)}
+                reply = model_type.model_validate(result.reply.model_dump(exclude_none=True), context=context)
                 response = response_type.model_validate(
-                    {'version': body.version, 'requestId': body.requestId, **reply.model_dump(exclude_none=True)})
+                    {'version': body.version, 'requestId': body.requestId, **reply.model_dump(exclude_none=True)}, context=context)
                 outcome = Outcome(200, JSONResponse(response.model_dump(exclude_none=True)).body)
                 if len(outcome.body) > 16 * 1024:
                     raise ServiceError("payload_too_large")

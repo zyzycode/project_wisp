@@ -39,7 +39,7 @@ Copy-Item backend/.env.example backend/.env
 | `node scripts/wisp.mjs test:python` | Python unit-tests desktop manifest tooling |
 | `node scripts/wisp.mjs sprites:validate` | Read-only проверка готовых ассетов и manifest |
 
-Совместный запуск задаёт desktop адрес собственного backend, API v1 и отключает v3 events: текущий импортированный сервер поддерживает только v1. Default — `http://127.0.0.1:8000`; если порт занят старым сервером:
+Совместный запуск задаёт desktop адрес собственного backend, API v1 и отключает v3 events. Это сохранённый default launcher; поддерживаемые сервером версии описаны в [backend docs](backend/docs/README.md#фактическая-реализация). Default — `http://127.0.0.1:8000`; если порт занят старым сервером:
 
 ```powershell
 $env:WISP_BACKEND_PORT = '8001'

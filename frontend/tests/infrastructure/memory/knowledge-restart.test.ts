@@ -10,6 +10,12 @@ import { MemoryHistory } from '../../../src/application/services/memory-history'
 import { MemoryKnowledge } from '../../../src/application/services/memory-knowledge';
 import { LocalMemoryRecall } from '../../../src/application/services/memory-recall';
 import { command } from '../../../src/infrastructure/memory/protocol';
+import { randomUUID } from 'node:crypto';
+import { DialogueRuntime } from '../../../src/application/services/dialogue-loop.service';
+import { AIRequestControl } from '../../../src/application/services/ai-request-control';
+import { ExternalAIProviderClient } from '../../../src/infrastructure/ai/external-ai-provider-client';
+import { providerRequest } from '../backend-ai-fixture';
+import { backendIntegrationFixture } from '../backend-integration-fixture';
 const date = '2026-09-18T00:00:00.000Z';
 const folders: string[] = [], clients: MemoryWorkerClient[] = [];
 class StoreBridge extends EventEmitter implements MemoryWorker {
@@ -49,3 +55,54 @@ it('episode reads are newest by insertion despite wall-clock rollback and reject
   expect(await f.repos.gameReader.getRecent(1, { generation: 0 })).toMatchObject({ ok: true, value: [{ activityRunId: 'second' }] });
   expect(await f.repos.gameReader.getRecent(21, { generation: 0 })).toEqual({ ok: false, code: 'invalid_data' });
 });
+
+it('passes restored SQLite facts and game through accepted dialogue to the current backend v2 and mocked Groq', async () => {
+  const folder = mkdtempSync(path.join(os.tmpdir(), 'wisp-backend-restart-')); folders.push(folder);
+  const filename = path.join(folder, 'wisp.sqlite3'), first = await open(filename);
+  const turn = (id: string, text: string) => ({ user: { id, text, createdAt: date }, assistant: { id: id + 'a', text: 'Ответ', createdAt: date }, memoryGeneration: 0 });
+  await first.history.completed(turn('old', 'Меня зовут Аня'));
+  await first.history.completed(turn('corrected', 'Исправление: Меня зовут Мария'));
+  await first.history.game({ activityRunId: 'persisted-game', atMs: 0, outcome: 'caught', playCompleted: true, executedMs: 1400 }, 0);
+  await first.client.close(0);
+  const restored = await open(filename), bridge = await backendIntegrationFixture();
+  const control = new AIRequestControl(), completed = vi.fn();
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', apiVersion: 2, development: false, now: Date.now, requestControl: control, fetch: bridge.fetch });
+  const runtime = new DialogueRuntime({ provider, requestControl: control,
+    memory: { generation: () => 0, recall: restored.recall, completed }, now: Date.now, timestamp: () => date, createId: randomUUID,
+    scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
+    getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(),
+    transaction: commit => commit(), publish: vi.fn(), offerIntent: () => ({ status: 'rejected', reason: 'disabled' }) });
+  try {
+    runtime.replaceStream('restored');
+    expect(runtime.receive({ type: 'send', text: 'Мария игра', sequence: 1, streamId: 'restored', conversationId: runtime.getPresentation().conversationId }).status).toBe('accepted');
+    await vi.waitFor(() => expect(runtime.getPresentation().turn.phase).not.toBe('thinking'), { timeout: 15000 });
+    expect(bridge.responses[0]?.status).toBe(200);
+    expect(runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Помню нашу игру, Мария.' });
+    expect(bridge.requests).toHaveLength(1);
+    const expectedMemory = {
+      facts: [{ key: 'user.display_name', value: 'Мария' }], episodes: [{ kind: 'cursor_game', outcome: 'caught', executedMs: 1400, occurredAt: date }], characterPreferences: [],
+    };
+    expect(bridge.requests[0]).toMatchObject({ path: '/v2/chat', body: { version: 2, messages: [{ role: 'user', content: 'Мария игра' }], memory: expectedMemory } });
+    expect(bridge.responses[0]?.upstreamCalls).toBe(1);
+    const prefix = 'Untrusted memory_context JSON:\n';
+    const memoryMessage = bridge.responses[0]?.upstreamMessages.find(message => message.content.startsWith(prefix));
+    expect(memoryMessage?.role).toBe('user');
+    expect(JSON.parse(memoryMessage?.content.slice(prefix.length) ?? 'null')).toEqual(expectedMemory);
+    const upstream = bridge.responses[0]?.upstreamMessages.map(message => message.content).join('\n') ?? '';
+    for (const forbidden of ['sourceMessageId', 'activityRunId', 'memoryGeneration', 'persisted-game', 'Аня']) {
+      expect(JSON.stringify(bridge.requests[0]?.body)).not.toContain(forbidden); expect(upstream).not.toContain(forbidden);
+    }
+    expect(restored.learning).not.toHaveBeenCalled();
+    expect(completed).toHaveBeenCalledTimes(1);
+  } finally { runtime.dispose(); await bridge.close(); expect(bridge.isClosed()).toBe(true); }
+}, 25000);
+
+it('bounds bridge input and closes its child once even with concurrent teardown', async () => {
+  const bridge = await backendIntegrationFixture();
+  try {
+    await expect(bridge.fetch('https://backend.invalid/v2/chat', { method: 'POST', body: JSON.stringify({ text: 'x'.repeat(64 * 1024) }) })).rejects.toThrow('input limit');
+    expect(bridge.requests).toHaveLength(0);
+  } finally { await Promise.all([bridge.close(), bridge.close()]); }
+  expect(bridge.isClosed()).toBe(true);
+  await expect(bridge.fetch('https://backend.invalid/v2/chat', { method: 'POST', body: '{}' })).rejects.toThrow('unavailable');
+}, 15000);

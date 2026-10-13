@@ -86,7 +86,9 @@ def test_touch_deadline_cancels_provider(app_factory, body):
     with TestClient(app) as client:
         service = app.state.chat_service
         service.providers["groq"] = SlowProvider()
-        service.deadline = .01
+        # Leave room for durable admission; the provider itself remains blocked.
+        service.deadline = .1
         response = client.post("/v1/touch", json=touch_body(body))
         assert response.status_code == 504
-        assert cancelled == [True]
+    # Lifespan shutdown drains independently scheduled cancellation/settlement.
+    assert cancelled == [True]

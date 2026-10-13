@@ -1,6 +1,6 @@
 # Backend alpha: служебный учёт и запуск
 
-Реализованные safeguards для `/v1/chat` и `/v1/touch` следуют
+Реализованные safeguards для `/v1/chat`, `/v1/touch` и `/v2/chat` следуют
 [Backend API §5–6](../../docs/contracts/BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы).
 Это один процесс и один ASGI worker с локальным SQLite ledger. Несколько workers
 или общая БД для нескольких экземпляров этой конфигурацией не поддерживаются.
@@ -30,7 +30,7 @@ Reported usage сверх reservation сохраняется точно и бл�
 
 ## Повторы, сроки и данные
 
-Оба v1 routes используют общие rate/concurrency/day budgets и namespace requestId.
+Все три routes используют общие rate/concurrency/day budgets и namespace requestId.
 Replay возможен только из bounded RAM cache. Restart/eviction/expiry ответа
 оставляет conflict до TTL ID; новый вызов с тем же ID автоматически не выполняется.
 Совместимость прежнего body-only digest ограничена точным `/v1/chat`.
@@ -47,3 +47,15 @@ payload/provider errors; оператор ограничивает безопа�
 сетевой доступ, Groq ZDR, регион и retention по canonical контракту.
 До этой проверки используются только синтетические данные. Эти настройки не
 подтверждаются mocked tests и не заменяются успешной поставкой кода.
+
+## Явная память v2
+
+`POST /v2/chat` принимает selected memory по
+[Memory §1–5](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#1-версия-и-границы).
+Desktop явно выбирает v2; default v1 не переключается. Пустая memory projection
+разрешена, пропущенный объект — ошибка. Один provider call возвращает текст
+и optional candidates с evidenceQuote из текущей user-реплики. Локальный recognizer
+независимо решает, что сохранить; ответ модели не подтверждает durable write.
+Backend не хранит пользовательский профиль/эпизоды и не пишет их в logs/ledger.
+Разрешённая передача и удаление определены в
+[Memory §4](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#4-данные-и-удаление).

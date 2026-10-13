@@ -1,4 +1,4 @@
-"""Compose the v1 API and lifecycle-owned provider clients."""
+"""Compose the versioned API and lifecycle-owned provider clients."""
 import asyncio
 
 from collections.abc import AsyncIterator
@@ -10,7 +10,7 @@ from starlette.responses import Response
 from typing import Any
 from fastapi.exceptions import RequestValidationError
 
-from wisp_backend.api import chat, health
+from wisp_backend.api import chat, health, memory
 from wisp_backend.touch import router as touch_router
 from wisp_backend.api.boundary import ChatBoundary, error_response
 from wisp_backend.config import Settings
@@ -53,21 +53,24 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
 
     @app.exception_handler(ServiceError)
     async def service_error(request: Request, error: ServiceError) -> Response:
-        return error_response(error.code, getattr(request.state, "request_id", None), error.retry_after_ms)
+        return error_response(error.code, getattr(request.state, "request_id", None), error.retry_after_ms,
+                              getattr(request.state, "wire_version", 1))
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, error: RequestValidationError) -> Response:
-        return error_response("invalid_request", getattr(request.state, "request_id", None))
+        return error_response("invalid_request", getattr(request.state, "request_id", None),
+                              version=getattr(request.state, "wire_version", 1))
 
     app.include_router(health.router)
     app.include_router(chat.router)
     app.include_router(touch_router)
+    app.include_router(memory.router)
     # FastAPI's default 422 envelope is not part of this wire contract.
     default_openapi = app.openapi
 
     def openapi() -> dict[str, Any]:
         spec = default_openapi()
-        for path in ("/v1/chat", "/v1/touch"):
+        for path in ("/v1/chat", "/v1/touch", "/v2/chat"):
             spec["paths"][path]["post"]["responses"].pop("422", None)
         return spec
     app.openapi = openapi
