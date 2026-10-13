@@ -12,6 +12,8 @@ Python/FastAPI backend находится в [backend/](..). Desktop наход�
 
 Перенос не является поставкой более поздней backend-ветки из [исторического BE-P01](archive/BE_P01_RESULT.md). В этом snapshot отсутствуют v2/v3 memory/events endpoints, server-only ledger/quota/idempotency и полный lifecycle safeguards из поздней части [канонического v1-контракта](../../docs/contracts/BACKEND_API_CONTRACT.md). Health означает работоспособность HTTP runtime, не готовность Groq. Gaps требуют отдельной задачи; их отсутствие не меняет canonical contract и не разрешает публичный deployment.
 
+План восстановления и обязательные Implementation consequences: [BE-A02 #61](BE_A02_RESULT.md). Перенос выполняется последовательно [#62](https://github.com/zyzycode/project_wisp/issues/62) → [#63](https://github.com/zyzycode/project_wisp/issues/63) → [#64](https://github.com/zyzycode/project_wisp/issues/64); архитектурный результат не означает готовую серверную поставку или deployment.
+
 ## Запуск из корня
 
 Подготовка Python окружения, server `.env`, совместный запуск и все команды описаны в [корневом README](../../README.md#подготовка). Backend запускается отдельно через `node scripts/wisp.mjs dev:backend` или вместе с desktop через `node scripts/wisp.mjs dev`.

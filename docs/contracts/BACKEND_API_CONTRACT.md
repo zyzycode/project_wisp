@@ -72,7 +72,9 @@ Success и error — альтернативы, не два ответа одно
 
 ## 5. Закрытая alpha: серверный admission, учёт и повторы
 
-Решение [BE-A01 #52](../archive/BE_A01_RESULT.md); реализация — отдельный backend #53. Wire v1, его типы и три fixtures не меняются; quota/auth metadata не добавляются. Ниже — целевое поведение, не утверждение о готовности сервера. Клиентские ограничения остаются независимыми.
+Решение [BE-A01 #52](../archive/BE_A01_RESULT.md); восстановление в монорепозитории — [BE-A02 #61](../../backend/docs/BE_A02_RESULT.md). Wire v1, его типы и fixtures не меняются; quota/auth metadata не добавляются. Ниже — целевое поведение, не утверждение о готовности сервера. Клиентские ограничения остаются независимыми.
+
+Один admission, ledger, RAM replay cache и набор deployment budgets обслуживают `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`. Touch не получает отдельную бесплатную квоту; health не вызывает provider и не расходует budget. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
 
 ### Доступ и топология
 
@@ -94,7 +96,7 @@ Ledger сохраняет дневные totals и допускает завер
 
 ### Повтор requestId
 
-Сравнение — SHA-256 точных принятых UTF-8 body bytes; перестановка ключей/пробелов считается другим body. Сначала полная wire validation, затем duplicate check. Один ID хранится 24 h от admission независимо от окончания UTC-суток:
+Digest включает method + path и SHA-256 точных принятых UTF-8 body bytes; перестановка ключей/пробелов считается другим body. Сначала полная wire validation, затем duplicate check. Один ID хранится в общем namespace всех endpoints 24 h от admission независимо от окончания UTC-суток. Тот же ID на другом endpoint всегда даёт `request_conflict`. Исторический body-only digest допустим для совместимости только на `/v1/chat`; его нельзя использовать для replay на touch/v2/v3, старые записи сохраняют TTL:
 
 | Состояние ID | Тот же body | Другой body |
 |---|---|---|
@@ -107,7 +109,7 @@ Terminal cache — до 10 min, максимум 100 ответов (по 16 KiB
 
 ### Deadline и cancellation
 
-Общий серверный deadline — 10 s от входа в `/v1/chat`, включая body/admission/upstream; body должен завершиться за 2 s, иначе 400 `invalid_request`, upstream не вызывается. Upstream получает остаток общего deadline; connect/pool timeout не выше 3 s и остатка. Нет очереди ожидания capacity. Исчерпание общего deadline после приёма body → 504 `upstream_timeout`; byte caps проверяются при чтении, не после полной загрузки.
+Общий серверный deadline — 10 s от входа в chat endpoint любой версии или `/v1/touch`, включая body/admission/upstream; body должен завершиться за 2 s, иначе 400 `invalid_request`, upstream не вызывается. Для `/v3/events` действуют более короткие [2.5 s / 0.5 s](AI_EVENTS_CONTRACT.md#5-явный-wire-v3-и-данные). Upstream получает остаток общего deadline; connect/pool timeout не выше 3 s и остатка. Нет очереди ожидания capacity. Исчерпание общего deadline после приёма body → 504 `upstream_timeout`; byte caps проверяются при чтении, не после полной загрузки.
 
 Disconnect/shutdown отменяет upstream task и закрывает HTTP response stream, освобождает concurrency в `finally`; terminal ledger settlement выполняется независимо от доставки ответа клиенту. Физическая остановка вычисления/списания у Groq не гарантируется. Late success не заменяет уже terminal timeout/cancel и не запускает второй вызов; достоверный usage может уточнить uncertain charge не более одного раза. Desktop сохраняет собственные 12 s transport/15 s runtime deadlines и generation guards.
 
@@ -116,7 +118,7 @@ Disconnect/shutdown отменяет upstream task и закрывает HTTP re
 | Данные | Source of truth / размещение | Retention и удаление |
 |---|---|---|
 | Личность, отношения, индивидуальная история | Desktop SQLite | По локальной memory policy; server storage отсутствует |
-| Ограниченные messages и character projection v1 | Текущий запрос; RAM backend и Groq | Backend освобождает после terminal; не пишет в SQLite, логи, traces/APM или exception dump |
+| Ограниченные messages и character projection v1; touch event без истории | Текущий запрос; RAM backend и Groq | Backend освобождает после terminal; не пишет в SQLite, логи, traces/APM или exception dump |
 | Terminal response cache | RAM backend, производная копия | ≤10 min или restart/eviction; не резервируется на диск |
 | ID/digest/status/timestamps/request count/token usage | Backend SQLite, оператор deployment | ID-записи ≤24 h; дневные aggregates без IDs ≤30 суток; cleanup при startup и не реже минуты, expired записи не используются уже с TTL boundary |
 | Диагностика без body/character/credentials/IP | Backend logs, оператор | Status/code, длительность, агрегированные counters ≤7 суток; logging payload и provider error body запрещён |
