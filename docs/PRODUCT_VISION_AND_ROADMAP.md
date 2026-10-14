@@ -68,7 +68,7 @@ Desktop и backend находятся в одном репозитории, но
 
 В desktop есть SQLite persistence, явные знания, bounded recall, адаптация и клиентские режимы API v1/v2/v3. Это наличие реализации, не подтверждение ручной приёмки. Семантика и ограничения — в [Memory](../frontend/docs/engine/MEMORY_ENGINE.md), [Character](../frontend/docs/engine/CHARACTER_ENGINE.md), [AI Provider](../frontend/docs/engine/AI_PROVIDER_CONTRACT.md) и [AI Events](contracts/AI_EVENTS_CONTRACT.md).
 
-**Встроенный backend поддерживает только v1 chat/touch.** В нём отсутствуют v2/v3 и часть согласованных серверных safeguards: [актуальные gaps](../backend/docs/README.md#фактическая-реализация). Более поздняя отдельная серверная поставка описана в [историческом BE-P01](../backend/docs/archive/BE_P01_RESULT.md); она не импортирована целиком и не доказывает готовность текущего сервера или deployment.
+**Встроенный backend поддерживает только v1 chat/touch.** В нём отсутствуют v2/v3 и часть согласованных серверных safeguards: [актуальные gaps](../backend/docs/README.md#фактическая-реализация). Текущая структура описана в [архитектуре backend](../backend/docs/ARCHITECTURE.md); документация не подтверждает готовность deployment.
 
 Продуктовый запуск ориентирован на Windows. Существующие Linux/macOS adapters и capability fallback сохраняются по [инженерным правилам](../frontend/AGENTS.md); расширение приёмки на эти платформы не входит в ближайший продуктовый этап.
 

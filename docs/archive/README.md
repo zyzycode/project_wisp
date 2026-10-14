@@ -10,4 +10,4 @@
 | [P17-A04](P17_A04_RESULT.md) | Desktop-инициативы и серверный wire v3 |
 | [BE-A01](BE_A01_RESULT.md) | Аудит исходного backend и требования desktop adapter |
 
-Материалы отдельных приложений: [desktop-архив](../../frontend/docs/archive/README.md), [серверная поставка BE-P01](../../backend/docs/archive/BE_P01_RESULT.md). Готовность текущего встроенного сервера проверяется по [backend docs](../../backend/docs/README.md), а не по исторической внешней поставке.
+Материалы отдельных приложений: [desktop-архив](../../frontend/docs/archive/README.md), [архитектура backend](../../backend/docs/ARCHITECTURE.md). Готовность текущего встроенного сервера проверяется по [backend docs](../../backend/docs/README.md), а не по исторической внешней поставке.
