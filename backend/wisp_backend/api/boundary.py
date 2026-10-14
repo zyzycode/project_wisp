@@ -1,36 +1,30 @@
 """Bounded input and downstream disconnect cancellation, before FastAPI parsing."""
+
 import asyncio
 import hashlib
-
-from starlette.responses import Response
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from typing import Literal
 
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from wisp_backend.api.endpoints import ENDPOINTS
+from wisp_backend.api.responses import error_response
+from wisp_backend.api.schemas.common import read_request_id
 from wisp_backend.json_codec import decode_json
-from wisp_backend.schemas import ErrorCode, read_request_id
-from wisp_backend.responses import failure
+
 
 MAX_REQUEST_BYTES = 32 * 1024
-BODY_TIMEOUT = 2
-EVENT_BODY_TIMEOUT = .5
-ENDPOINT_VERSIONS = {"/v1/chat": 1, "/v1/touch": 1, "/v2/chat": 2, "/v3/chat": 3, "/v3/events": 3}
 
 
-def error_response(code: ErrorCode, request_id: str | None = None, retry_after_ms: int | None = None,
-                   version: int = 1) -> Response:
-    outcome = failure(code, request_id, retry_after_ms, version)
-    return Response(outcome.body, status_code=outcome.status, media_type="application/json")
-
-
-class ChatBoundary:
+class CompletionBoundary:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or scope["path"] not in ENDPOINT_VERSIONS or scope["method"] != "POST":
+        if scope["type"] != "http" or scope["path"] not in ENDPOINTS or scope["method"] != "POST":
             return await self.app(scope, receive, send)
         started = asyncio.get_running_loop().time()
-        version = ENDPOINT_VERSIONS[scope["path"]]
+        endpoint = ENDPOINTS[scope["path"]]
+        version = endpoint.version
         scope.setdefault("state", {})["wire_version"] = version
         headers = dict(scope["headers"])
         content_type = headers.get(b"content-type", b"").decode("latin-1").lower()
@@ -50,7 +44,7 @@ class ChatBoundary:
                 if not message.get("more_body", False):
                     return None
         try:
-            body_deadline = started + (EVENT_BODY_TIMEOUT if scope["path"] == "/v3/events" else BODY_TIMEOUT)
+            body_deadline = started + endpoint.body_timeout
             error = await asyncio.wait_for(read(), max(0, body_deadline - asyncio.get_running_loop().time()))
             if asyncio.get_running_loop().time() >= body_deadline:
                 error = "invalid_request"
@@ -67,7 +61,7 @@ class ChatBoundary:
         request_id = read_request_id(data)
         namespace = scope['method'] + ' ' + scope['path']
         digest = namespace + ':' + hashlib.sha256(namespace.encode() + b'\0' + chunks).hexdigest()
-        legacy_digest = hashlib.sha256(chunks).hexdigest() if scope['path'] == '/v1/chat' else None
+        legacy_digest = hashlib.sha256(chunks).hexdigest() if endpoint.legacy_digest else None
         scope.setdefault('state', {}).update(request_id=request_id, started=started,
                                             digest=digest, legacy_digest=legacy_digest)
         if isinstance(data, dict) and "version" in data and type(data["version"]) is int and data["version"] != version:

@@ -1,15 +1,17 @@
 """Bounded JSONL test transport into the current app, with only Groq HTTP mocked."""
+
 import json
 from pathlib import Path
 import sys
 from typing import cast
 
-import httpx
 from fastapi.testclient import TestClient
+import httpx
 from pydantic import SecretStr
 
 from wisp_backend.application import create_app
-from wisp_backend.config import Settings
+from wisp_backend.config.settings import Settings
+
 
 INPUT_LIMIT = 64 * 1024
 OUTPUT_LIMIT = 128 * 1024

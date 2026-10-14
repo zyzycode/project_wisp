@@ -2,13 +2,13 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-import httpx
-import pytest
 from fastapi.testclient import TestClient
+import httpx
 from pydantic import SecretStr
+import pytest
 
 from wisp_backend.application import create_app
-from wisp_backend.config import Settings
+from wisp_backend.config.settings import Settings
 
 
 @pytest.fixture
@@ -36,3 +36,22 @@ def completion():
         return {"choices": [{"message": {"content": json.dumps(reply if reply is not None else {"text": "Привет!"})},
                               "finish_reason": "stop"}], **extra}
     return factory
+
+
+@pytest.fixture
+def env_values(monkeypatch):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    monkeypatch.delenv("token_api", raising=False)
+    monkeypatch.delenv("ASSISTANTS_JSON", raising=False)
+    monkeypatch.delenv("WISP_UPSTREAM_TRUST_ENV", raising=False)
+    monkeypatch.delenv("WISP_LEDGER_PATH", raising=False)
+    monkeypatch.delenv("WISP_LIMITS_JSON", raising=False)
+    monkeypatch.delenv("WISP_AI_PROVIDER", raising=False)
+    monkeypatch.delenv("WISP_AI_MODEL", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    for name in ("BASE_URL", "MAX_OUTPUT_TOKENS", "TEMPERATURE", "THINKING_LEVEL",
+                 "REQUEST_TIMEOUT", "CONNECT_TIMEOUT", "POOL_TIMEOUT"):
+        monkeypatch.delenv(f"WISP_AI_{name}", raising=False)
+    values = {}
+    monkeypatch.setattr("wisp_backend.config.loader.dotenv_values", lambda _: values)
+    return values

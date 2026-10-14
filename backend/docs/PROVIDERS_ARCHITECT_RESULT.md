@@ -6,7 +6,11 @@
 
 **Alternatives:** OpenAI compatibility уменьшает различия payload, но добавляет промежуточное преобразование Gemini usage. Автоматический fallback между поставщиками отклонён: он меняет получателя данных и может повторно расходовать токены. Универсальный plugin framework не нужен для двух адаптеров.
 
-**Layer boundaries & Contracts:** сервер владеет выбором модели, credentials, HTTP lifecycle и accounting. Канонические правила — [Backend API §5–6](../../docs/contracts/BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы); внутренние типы — [Provider](../wisp_backend/providers/base.py), [Usage/ProviderResult](../wisp_backend/contracts.py). Wire v1/v2/v3 и desktop не изменяются. Новых зависимостей и нового storage нет; существующий ledger получает reservation каждой записи с совместимой миграцией.
+**Layer boundaries & Contracts:** сервер владеет выбором модели, credentials, HTTP lifecycle и accounting. Канонические правила — [Backend API §5–6](../../docs/contracts/BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы); внутренние типы — [Provider](../wisp_backend/completion/ports.py), [Usage](../wisp_backend/accounting/contracts.py), [ProviderResult](../wisp_backend/completion/contracts.py). Wire v1/v2/v3 и desktop не изменяются. Новых зависимостей и нового storage нет; существующий ledger получает reservation каждой записи с совместимой миграцией.
+
+После рефакторинга от 2026-10-14 адаптер возвращает сырой текст и usage; семантическая
+валидация принадлежит completion policy и API encoder. Актуальные границы и пути —
+в [архитектуре backend](ARCHITECTURE.md); ниже сохранён scope исходной поставки.
 
 **Implementation consequences:**
 

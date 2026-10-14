@@ -1,8 +1,9 @@
 """Native Gemini generateContent; credentials and wire translation stay server-side."""
+
 from typing import Any
 
-from wisp_backend.config import AssistantSettings
-from wisp_backend.contracts import Usage
+from wisp_backend.accounting.contracts import Usage
+from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.providers.http_provider import HTTPProvider
 
 
@@ -42,7 +43,7 @@ class GeminiProvider(HTTPProvider):
         if any(type(part) is not int or part < 0 for part in parts):
             return None
         prompt, candidates, thoughts, total = parts
-        return Usage.parse({"prompt_tokens": prompt, "completion_tokens": candidates + thoughts, "total_tokens": total})
+        return Usage.validated(prompt, candidates + thoughts, total)
 
     def text(self, data: dict[str, Any]) -> str:
         candidates = data["candidates"]

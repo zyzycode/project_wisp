@@ -4,6 +4,11 @@ Python/FastAPI backend находится в [backend/](..). Desktop наход�
 
 Серверная документация находится в `backend/docs/`. Единые [wire-контракты v1/v2/v3 и fixtures](../../docs/contracts/README.md) остаются общими для обоих приложений.
 
+Текущая [структура и направление зависимостей](ARCHITECTURE.md): HTTP API,
+completion execution и политики сценариев, provider adapters, accounting и config.
+Рефакторинг сохраняет внешние API, конфигурацию и SQLite ledger; прежние architect
+results описывают историю решений, их старые имена модулей не являются текущей картой кода.
+
 ## Фактическая реализация
 
 Импортирован tracked snapshot отдельного `wisp_backend` на commit `275cc8161e5f725681fdacc725708acaf74784b6`. Исходный репозиторий и его Git-история не удалены; история не объединялась с desktop. Не импортированы `.env`, `.venv`, `.git`, IDE, кеши и runtime data.
@@ -12,7 +17,7 @@ Python/FastAPI backend находится в [backend/](..). Desktop наход�
 
 В [#62](https://github.com/zyzycode/project_wisp/issues/62) восстановлены общий server-only SQLite ledger, квоты, защита от повторной отправки и lifecycle safeguards для chat/touch по [каноническому v1-контракту](../../docs/contracts/BACKEND_API_CONTRACT.md); [#63](https://github.com/zyzycode/project_wisp/issues/63) и [#64](https://github.com/zyzycode/project_wisp/issues/64) подключают v2/v3 к тем же budgets и namespace. Конфигурация, сроки хранения, разные deadlines chat/events и ограничения одного ASGI worker описаны в [operator-документации](OPERATIONS.md). Health означает работоспособность HTTP runtime, не готовность выбранного provider; успешные mocked tests не разрешают публичный deployment.
 
-Основание восстановления и обязательные Implementation consequences: [BE-A02 #61](BE_A02_RESULT.md). Историческая поставка [BE-P01](archive/BE_P01_RESULT.md) адаптирована последовательными slices #62 → #63 → #64 с сохранением текущих touch/proxy/TLS правил. Live provider, ручная Windows-приёмка и внешняя alpha требуют отдельных проверок.
+Текущие границы реализации описаны в [архитектуре backend](ARCHITECTURE.md), эксплуатационные требования — в [OPERATIONS](OPERATIONS.md). Историческая поставка [BE-P01](archive/BE_P01_RESULT.md) адаптирована последовательными slices #62 → #63 → #64 с сохранением текущих touch/proxy/TLS правил. Live provider, ручная Windows-приёмка и внешняя alpha требуют отдельных проверок.
 
 ## Запуск из корня
 

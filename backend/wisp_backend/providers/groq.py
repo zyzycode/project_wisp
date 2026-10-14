@@ -1,8 +1,9 @@
 """Groq chat completions adapter for the internal provider port."""
+
 from typing import Any
 
-from wisp_backend.config import AssistantSettings
-from wisp_backend.contracts import Usage
+from wisp_backend.accounting.contracts import Usage
+from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.providers.http_provider import HTTPProvider
 
 
@@ -18,7 +19,10 @@ class GroqProvider(HTTPProvider):
         return "chat/completions", payload
 
     def usage(self, data: dict[str, Any]) -> Usage | None:
-        return Usage.parse(data.get("usage"))
+        usage = data.get("usage")
+        if not isinstance(usage, dict):
+            return None
+        return Usage.validated(usage.get("prompt_tokens"), usage.get("completion_tokens"), usage.get("total_tokens"))
 
     def text(self, data: dict[str, Any]) -> str:
         choice = data["choices"][0]

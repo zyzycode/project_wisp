@@ -6,9 +6,11 @@
 Это один процесс и один ASGI worker с локальным SQLite ledger. Несколько workers
 или общая БД для нескольких экземпляров этой конфигурацией не поддерживаются.
 
-SQL-доступ реализован через SQLAlchemy Core; драйвер SQLite остаётся стандартным
+SQL-доступ реализован через SQLAlchemy ORM; модели таблиц находятся в
+[accounting/models.py](../wisp_backend/accounting/models.py), драйвер SQLite остаётся стандартным
 `sqlite3`. Один Engine/Connection принадлежит ledger и используется последовательно
-в worker thread. Транзакции открываются явно; Connection закрывается и Engine
+в worker thread. Каждая операция создаёт собственную `Session` и явную транзакцию;
+Session закрывается после commit или rollback. Connection закрывается и Engine
 освобождается при shutdown или ошибке startup. Существующие файлы ledger продолжают
 использоваться без пересоздания таблиц и сброса квот. Архитектурное решение и
 проверка зависимости — [SQLAlchemy architect result](SQLALCHEMY_ARCHITECT_RESULT.md).
@@ -21,8 +23,8 @@ SQLAlchemy и его платформенная зависимость greenlet 
 ## Конфигурация
 
 Загрузка источников выполняется через `load_settings()` в
-[settings_loader.py](../wisp_backend/settings_loader.py) один раз при startup.
-[config.py](../wisp_backend/config.py) содержит модели настроек и их валидацию;
+[config/loader.py](../wisp_backend/config/loader.py) один раз при startup.
+[config/settings.py](../wisp_backend/config/settings.py) содержит модели настроек и их валидацию;
 явно переданный в `create_app(settings=...)` объект обходит загрузку окружения.
 
 | Переменная | Назначение |
@@ -71,7 +73,7 @@ GEMINI_API_KEY=your-google-ai-studio-key
 Наличие другого ключа не вызывает fallback. Ключи не вводятся в desktop UI.
 
 Для нового поставщика разработчик добавляет профиль в
-[profiles.py](../wisp_backend/providers/profiles.py), реализацию существующего
+[profiles.py](../wisp_backend/config/profiles.py), реализацию существующего
 порта и регистрацию в [factory.py](../wisp_backend/providers/factory.py), затем
 проверяет reservation, данные и provider tests. Custom `WISP_AI_BASE_URL` задаёт
 оператор: endpoint должен поддерживать протокол выбранного адаптера и получает
