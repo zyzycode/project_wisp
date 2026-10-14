@@ -4,10 +4,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 
-from wisp_backend.completion.prompts.chat import build_chat_messages
+from wisp_backend.completion.context import ContextBlock
+from wisp_backend.completion.prompts.chat import build_chat_blocks
 from wisp_backend.completion.prompts.context import PromptContext
-from wisp_backend.completion.prompts.events import build_event_messages
-from wisp_backend.completion.prompts.touch import build_touch_messages
+from wisp_backend.completion.prompts.events import build_event_blocks
+from wisp_backend.completion.prompts.touch import build_touch_blocks
 from wisp_backend.completion.replies import (
     CompletionReply, EventModelReply, MemoryModelReply, ModelReply, TouchModelReply,
 )
@@ -24,7 +25,7 @@ class Scenario(Enum):
 
 @dataclass(frozen=True)
 class CompletionPolicy:
-    build_messages: Callable[[PromptContext], list[dict[str, str]]]
+    build_blocks: Callable[[PromptContext], tuple[ContextBlock, ...]]
     reply_type: type[CompletionReply]
     timeout: float = 10
     max_output_tokens: int | None = None
@@ -34,9 +35,9 @@ class CompletionPolicy:
 
 
 POLICIES = {
-    Scenario.CHAT: CompletionPolicy(build_chat_messages, ModelReply),
-    Scenario.MEMORY_CHAT: CompletionPolicy(build_chat_messages, MemoryModelReply),
-    Scenario.EVENT_CHAT: CompletionPolicy(build_chat_messages, MemoryModelReply),
-    Scenario.TOUCH: CompletionPolicy(build_touch_messages, TouchModelReply),
-    Scenario.EVENT: CompletionPolicy(build_event_messages, EventModelReply, timeout=2.5, max_output_tokens=1024),
+    Scenario.CHAT: CompletionPolicy(build_chat_blocks, ModelReply),
+    Scenario.MEMORY_CHAT: CompletionPolicy(build_chat_blocks, MemoryModelReply),
+    Scenario.EVENT_CHAT: CompletionPolicy(build_chat_blocks, MemoryModelReply),
+    Scenario.TOUCH: CompletionPolicy(build_touch_blocks, TouchModelReply),
+    Scenario.EVENT: CompletionPolicy(build_event_blocks, EventModelReply, timeout=2.5, max_output_tokens=1024),
 }

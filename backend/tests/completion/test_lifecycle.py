@@ -59,7 +59,7 @@ def test_response_closed_and_read_bounded(client_factory, body, chunks, error, s
 def test_provider_swap_and_total_deadline(app_factory, body):
     class OtherProvider:
         async def complete(self, request, timeout):
-            assert request.messages
+            assert request.blocks
             return ProviderResult(json.dumps({'text': "Other"}))
 
     app = app_factory(lambda _: pytest.fail("Wrong provider"))

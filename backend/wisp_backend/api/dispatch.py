@@ -34,7 +34,7 @@ def prepare_job(body: CompletionRequest) -> CompletionJob:
     quote = trim_text(body.messages[-1].content) if isinstance(body, ChatRequest) else None
     return CompletionJob(
         request_id=body.requestId,
-        inference=InferenceRequest(policy.build_messages(context), policy.max_output_tokens),
+        inference=InferenceRequest(policy.build_blocks(context), policy.max_output_tokens),
         timeout=policy.timeout,
         encoder=WireReplyEncoder(body.requestId, body.version, policy, endpoint.response_type, quote),
     )

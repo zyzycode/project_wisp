@@ -1,7 +1,8 @@
 # Backend Wisp
 
 Backend формирует AI-ответы и ведёт служебный учёт запросов.
-[Архитектура и ORM-модели](ARCHITECTURE.md) · [API-контракты и fixtures](../../docs/contracts/README.md).
+[Архитектура и ORM-модели](ARCHITECTURE.md) · [Context/Prompt Engine](CONTEXT_PROMPT_ENGINE.md) ·
+[API-контракты и fixtures](../../docs/contracts/README.md).
 
 ## Фактическая реализация
 

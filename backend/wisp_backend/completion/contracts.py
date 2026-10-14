@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from wisp_backend.accounting.contracts import Usage
+from wisp_backend.completion.context import ContextBlock
 from wisp_backend.errors import ErrorCode
 from wisp_backend.outcomes import Outcome
 
 
 @dataclass(frozen=True)
 class InferenceRequest:
-    messages: list[dict[str, str]]
+    blocks: tuple[ContextBlock, ...]
     max_output_tokens: int | None = None
 
 

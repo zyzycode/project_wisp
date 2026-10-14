@@ -7,6 +7,7 @@ import pytest
 from tests.doubles import MemoryLedger, StubProvider
 from wisp_backend.accounting.contracts import Usage
 from wisp_backend.completion.contracts import CompletionJob, InferenceRequest, ProviderResult
+from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.completion.service import CompletionService
 from wisp_backend.errors import ErrorCode, ServiceError
 from wisp_backend.outcomes import Outcome
@@ -23,7 +24,8 @@ class TextEncoder:
 
 
 def job() -> CompletionJob:
-    return CompletionJob("id", InferenceRequest([{"role": "user", "content": "synthetic"}]), 10, TextEncoder())
+    block = ContextBlock("current", "dialogue", True, 1000, 0, (ContextMessage("user", "synthetic"),))
+    return CompletionJob("id", InferenceRequest((block,)), 10, TextEncoder())
 
 
 def test_replay_skips_inference_and_settlement() -> None:

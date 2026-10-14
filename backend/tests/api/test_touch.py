@@ -23,9 +23,9 @@ def test_touch_prompt_and_text_only_response(client_factory, body, completion, v
     def upstream(request):
         calls.append(request)
         messages = json.loads(request.content)["messages"]
-        assert len(messages) == 2
+        assert len(messages) == 4
         assert "at most 240" in messages[0]["content"]
-        assert TOUCH_DESCRIPTIONS[variant] in messages[1]["content"]
+        assert TOUCH_DESCRIPTIONS[variant] in messages[-1]["content"]
         assert body["messages"][-1]["content"] not in messages[1]["content"]
         return httpx.Response(200, json=completion({"text": "Хи-хи, щекотно!"}))
     with client_factory(upstream) as client:
