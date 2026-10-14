@@ -1,8 +1,8 @@
-import type { AIEventProviderRequest, AIEventProviderResponse, IAIEventProvider, IAIEventRequestControl } from '../../application/ports/ai-event-provider.interface';
+import type { AIEventProviderRequest, AIEventProviderResponse, IAIEventProvider } from '../../application/ports/ai-event-provider.interface';
 import { projectEventRequest, projectEventAwareChat, parseEventAwareChat, parseEventResponse, parseEventError } from './backend-events-validation';
 import { projectBackendMemoryRequest, parseBackendMemorySuccess, parseBackendMemoryError } from './backend-memory-validation';
 import type { AIProviderFallbackReason, AIProviderRequest, AIProviderResponse, AIProviderStatus, IAIProvider } from '../../application/ports/ai-provider.interface';
-import { DEFAULT_AI_REQUEST_POLICY, type IAIRequestControl } from '../../application/ports/ai-request-policy';
+import { DEFAULT_AI_REQUEST_POLICY } from '../../application/ports/ai-request-policy';
 import { DIALOGUE_FALLBACK } from '../../application/services/dialogue-provider-result';
 import { projectBackendRequest } from './backend-request-projection';
 import { parseBackendError, parseBackendSuccess } from './backend-response-validation';
@@ -11,10 +11,8 @@ import { projectTouchRequest, parseTouchResponse } from './backend-touch-validat
 interface ExternalAIProviderOptions {
   readonly baseUrl: string;
   readonly apiVersion?: 1 | 2 | 3;
-  readonly eventRequestControl?: IAIEventRequestControl;
   readonly development: boolean;
   readonly now: () => number;
-  readonly requestControl: IAIRequestControl;
   readonly fetch?: typeof fetch;
 }
 class ProtocolError extends Error {}
@@ -66,16 +64,15 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
   }
   public async getStatus(): Promise<AIProviderStatus> {
     if (this.activeRequestId) return { kind: 'thinking', activeRequestId: this.activeRequestId };
-    return { kind: this.options.requestControl.availability(this.options.now()).available ? 'ready' : 'offline' };
+    return { kind: 'ready' };
   }
   public async generateResponse(request: AIProviderRequest): Promise<AIProviderResponse> {
     const body = JSON.stringify(this.options.apiVersion === 3 ? projectEventAwareChat(request) : this.options.apiVersion === 2 ? projectBackendMemoryRequest(request) : projectBackendRequest(request));
     if (new TextEncoder().encode(body).byteLength > 32 * 1024) throw new TypeError('Request too large');
-    if (this.activeRequestId || !this.options.requestControl.recordSubmission(this.options.now())) throw new Error('Transport unavailable');
+    if (this.activeRequestId) throw new Error('Transport unavailable');
     const startedAt = this.options.now();
     const controller = new AbortController();
     this.activeRequestId = request.requestId;
-    let responseStatus: number | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => { reject(new TransportTimeout()); controller.abort(); }, DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs);
@@ -84,18 +81,14 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
       const operation = async () => {
         const response = await this.fetch(this.url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
-        responseStatus = response.status;
         const value = await readBoundedJson(response, controller.signal);
         return { response, value };
       };
       const { response, value } = await Promise.race([operation(), timeout]);
       if (this.options.now() - startedAt >= DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs) throw new TransportTimeout();
       if (response.status !== 200) {
-        let error;
-        try { error = this.options.apiVersion === 3 ? parseEventError(value, request.requestId, response.status) : this.options.apiVersion === 2 ? parseBackendMemoryError(value, request.requestId, response.status) : parseBackendError(value, request.requestId, response.status); }
+        try { this.options.apiVersion === 3 ? parseEventError(value, request.requestId, response.status) : this.options.apiVersion === 2 ? parseBackendMemoryError(value, request.requestId, response.status) : parseBackendError(value, request.requestId, response.status); }
         catch { throw new ProtocolError('Invalid backend error'); }
-        if (response.status === 429) this.cooldown(error.error.retryAfterMs ?? 60_000);
-        else if ([502, 503, 504].includes(response.status)) this.cooldown(30_000);
         const reason = response.status === 504 ? 'timeout' : [429, 503].includes(response.status) ? 'provider_unavailable' : 'unexpected_error';
         return this.fallback(request.requestId, reason, startedAt);
       }
@@ -109,7 +102,6 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
         ...(decision?.mood === undefined || decision.mood === 'playful' ? {} : { suggestedMood: decision.mood }),
         diagnostics: { provider: 'external', latencyMs: Math.max(0, this.options.now() - startedAt) } };
     } catch (error) {
-      this.cooldown(responseStatus === 429 ? 60_000 : 30_000);
       controller.abort();
       if (error instanceof ProtocolError) throw error;
       return this.fallback(request.requestId, error instanceof TransportTimeout ? 'timeout' : 'provider_unavailable', startedAt);
@@ -123,7 +115,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
     const touch = request.event.type === 'user_touch';
     if (!touch && this.options.apiVersion !== 3) throw new Error('Events unavailable');
     const body = JSON.stringify(touch ? projectTouchRequest(request) : projectEventRequest(request));
-    if (this.activeRequestId || !(touch ? this.options.requestControl.recordSubmission(this.options.now()) : this.options.eventRequestControl?.recordEventSubmission(this.options.now()))) throw new Error('Events unavailable');
+    if (this.activeRequestId) throw new Error('Events unavailable');
     const controller = new AbortController(), startedAt = this.options.now();
     this.activeRequestId = request.requestId; this.eventAbort = { id: request.requestId, controller };
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -138,17 +130,14 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
       const { response, value } = await Promise.race([operation(), timeout]);
       if (controller.signal.aborted || this.options.now() - startedAt >= timeoutMs) throw new TransportTimeout();
       if (response.status !== 200) {
-        const error = touch ? parseBackendError(value, request.requestId, response.status) : parseEventError(value, request.requestId, response.status);
-        this.cooldown(response.status === 429 ? error.error.retryAfterMs ?? 60000 : 30000); throw new Error('Event unavailable');
+        touch ? parseBackendError(value, request.requestId, response.status) : parseEventError(value, request.requestId, response.status);
+        throw new Error('Event unavailable');
       }
       return touch ? parseTouchResponse(value, request.requestId) : parseEventResponse(value, request.requestId);
     } catch (error) {
-      // Explicit user preemption is not a server failure and must not delay their turn.
-      if (!controller.signal.aborted || this.options.now() - startedAt >= timeoutMs) this.cooldown(30000);
       controller.abort(); throw error;
     } finally { clearTimeout(timer); this.eventAbort = undefined; this.activeRequestId = undefined; }
   }
-  private cooldown(ms: number): void { this.options.requestControl.deferUntil(this.options.now() + ms); }
   private fallback(requestId: string, fallbackReason: AIProviderFallbackReason, startedAt: number): AIProviderResponse {
     return { requestId, status: 'fallback', reply: { text: DIALOGUE_FALLBACK }, confidence: 0,
       diagnostics: { provider: 'external', latencyMs: Math.max(0, this.options.now() - startedAt), fallbackReason } };

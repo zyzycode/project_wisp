@@ -20,7 +20,7 @@ Application владеет портом, сборкой `AIProviderRequest` и `
 
 P15-A02 объявляет optional `memoryContext`/response `memoryCandidates` в semantic порте для явного memory-capable режима #56. Правила source validation/recall — [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), wire — [Backend v2](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). Existing Mock/v1 их не требуют; v1 adapter не передаёт память и не принимает новые response fields. Model candidates не входят в Character mapper: запись выполняется отдельно после подтверждённого сохранения текущей user/assistant пары.
 
-P17-A04 объявляет optional `previousInitiative` только для явного режима v3: одна опубликованная AI-фраза в RAM≤60s/current generation, чтобы следующий user send имел контекст. Это не user message/долговременная память; v1/v2 её не передают. Отдельные event provider, бюджеты/прерывание, wire и speech — [AI_EVENTS_CONTRACT](../../../docs/contracts/AI_EVENTS_CONTRACT.md). User chat использует прежний semantic IAIProvider; только generateEvent имеет text-only result без Character commands.
+P17-A04 объявляет optional `previousInitiative` только для явного режима v3: одна опубликованная AI-фраза в RAM≤60s/current generation, чтобы следующий user send имел контекст. Это не user message/долговременная память; v1/v2 её не передают. Отдельные event provider, жизненный цикл/прерывание, wire и speech — [AI_EVENTS_CONTRACT](../../../docs/contracts/AI_EVENTS_CONTRACT.md). User chat использует прежний semantic IAIProvider; только generateEvent имеет text-only result без Character commands.
 
 ### Канонический CharacterSnapshot — P17-A03 (#27)
 
@@ -93,7 +93,7 @@ Exact-shape validation/copy из `unknown` — [UI §6](UI_SPEC.md#6-brain--body
 
 UI блокирует resend до receipt, затем `canSubmit` берёт из snapshot. Reject сохраняет draft, accept может очистить текст, но не завершает thinking. Transport refusal снимает локальную блокировку без auto-retry (команда могла быть принята). Receipt старого stream игнорируется.
 
-`submissionMessage` — отдельное локализованное сообщение Application об admission policy, plain text после trim 1–240 UTF-16 units, без controls кроме newline/tab; присутствует только при `canSubmit=false`. При session cap обязательно: «Лимит сообщений на этот запуск исчерпан. Новый диалог станет доступен после перезапуска приложения.»; при временном rate/cooldown допустимо нейтральное «Подожди немного перед следующим сообщением.». При обычном in-flight/idle-unbound/disposed без policy-блокировки поле отсутствует. Нельзя выдавать серверный текст, endpoint, quota counters или секреты за notice.
+`submissionMessage` — необязательное локализованное сообщение Application, plain text после trim 1–240 UTF-16 units, без controls кроме newline/tab; допустимо только при `canSubmit=false`. Runtime не публикует notices о квотах: локальных лимитов запросов нет. При in-flight/idle-unbound/disposed поле отсутствует.
 
 После сотой фактической отправки runtime публикует notice вместе с `canSubmit=false`, даже если пользователь не пытается отправить 101-ю команду. Полученный сотый reply и его completed turn сохраняются; notice не заменяет reply/error, не становится SpeechBubble, history item, provider context или Character stimulus. Renderer показывает notice отдельно рядом с вводом. Cooldown expiry убирает notice и публикует snapshot; session cap сохраняется через dialogue reset/reload до Main restart. Validator/publisher/Renderer должны принять optional поле атомарно в #54, без нового IPC канала.
 
@@ -191,25 +191,25 @@ Wire-valid `decision.mood = playful` не имеет точного соотве
 
 ### Клиентские ограничения и deadline
 
-[AIRequestPolicy](../../src/application/ports/ai-request-policy.ts) — desktop-only policy: один in-flight, 6 отправок за скользящие 60 000 ms Main-monotonic time и 100 за Main session. Это не серверная quota и не гарантированный доступный бюджет backend. Application проверяет их атомарно вместе с admission. Validation/busy/local rejection/Mock бесплатны; фактическая отправка, включая ошибочную, расходует единицу. Reset/reload/quiet не обнуляют счётчики, restart обнуляет только клиентский session guard.
+[AIRequestPolicy](../../src/application/ports/ai-request-policy.ts) задаёт только deadline и отсутствие автоматических retries. Клиент не ограничивает число запросов за минуту, час или session и не вводит паузы после ошибок. Один in-flight сохраняет порядок ответов.
 
-Минутный интервал (now−60000, now]; левая граница истекает. Session cap → unavailable и canSubmit=false до restart с локальным сообщением. Очереди нет, автоматических retries — 0. При новом ручном обращении Main создаёт новый UUID; bounded server dedup/replay определён в §5 wire-контракта и не вводит клиентские retries.
+Очереди и автоматических retries нет. При новом ручном обращении Main создаёт новый UUID; bounded server dedup/replay определён в §5 wire-контракта.
 
-Desktop transport timeout 12 000 ms от fetch start, runtime deadline 15 000 ms от dialogue admission. Adapter abort-ит fetch и settle на timeout; reset/dispose логически инвалидируют результат, существующий guard держится до settlement. getStatus читает локальную конфигурацию/cooldown без network call. Серверный upstream deadline рекомендуем укладывать в клиентский transport timeout; клиент не полагается на физическую отмену вычисления у провайдера.
+Desktop transport timeout 12 000 ms от fetch start, runtime deadline 15 000 ms от dialogue admission. Adapter abort-ит fetch и settle на timeout; reset/dispose логически инвалидируют результат, существующий guard держится до settlement. getStatus читает локальное состояние транспорта без network call. Серверный upstream deadline рекомендуем укладывать в клиентский transport timeout; клиент не полагается на физическую отмену вычисления у провайдера.
 
 ### Обработка HTTP на desktop
 
 HTTP/code mapping определён только [wire-контрактом](../../../docs/contracts/BACKEND_API_CONTRACT.md#3-http-и-ошибки). Timeout → AIProviderFallbackReason.timeout; сеть/429/503 → provider_unavailable; остальные ошибки → unexpected_error. Невалидный wire envelope, JSON, requestId или HTTP/code mismatch отклоняет promise и даёт runtime provider_error fallback. Невалидный semantic response другого provider остаётся runtime invalid_response. Безопасный текст берётся из локального каталога.
 
-429 блокирует новые sends по optional retryAfterMs; при отсутствии/невалидном значении desktop использует локальный cooldown 60 000 ms. Это не предположение о периоде серверной квоты. Для network/TLS/502/503/504/неожиданного HTTP или malformed response cooldown 30 000 ms; для 400/409/413 auto-retry также отсутствует. Истечение cooldown только разрешает ручной send, не посылает новый запрос.
+После 429, сетевой ошибки, timeout или некорректного ответа следующий ручной запрос доступен сразу после settlement. `retryAfterMs` не вводит локальную блокировку; автоматических повторов нет. Квоты внешнего провайдера остаются на стороне провайдера.
 
 ### Implementation consequences и проверка
 
-Wire DTO и клиентская policy определяют подключение HTTP adapter через Main; поддерживаемые сервером версии и gaps перечислены в [серверном навигаторе](../../../backend/docs/README.md). Существующих DialogueCommandDTO, receipt unavailable и presentation fallback/error достаточно: новый IPC канал и передача transport/quota/auth в Renderer не нужны. canSubmit учитывает локальные guard/cooldown; истечение публикует snapshot через существующий scheduler, без network polling. Draft сохраняется при rejection; server error после admission завершает turn безопасным сообщением.
+Wire DTO и клиентская policy определяют подключение HTTP adapter через Main; поддерживаемые сервером версии и gaps перечислены в [серверном навигаторе](../../../backend/docs/README.md). Существующих DialogueCommandDTO, receipt unavailable и presentation fallback/error достаточно: новый IPC канал и передача transport/quota/auth в Renderer не нужны. canSubmit учитывает привязку runtime и выполняющийся turn, без квот, таймеров разблокировки и network polling. Draft сохраняется при rejection; server error после admission завершает turn безопасным сообщением.
 
-Desktop реализует policy, exact validators/projection и aborting adapter через Main DI; при отсутствии backend URL остаётся Mock. Backend реализует endpoint/schema, prompt mapping и validation model output; серверные admission/retention и последствия аудита определены в [BE-A01](../../../docs/archive/BE_A01_RESULT.md) и §5–6 wire-контракта. Клиентские лимиты не становятся серверными; закрытая alpha не добавляет auth/quota в wire.
+Desktop реализует policy, exact validators/projection и aborting adapter через Main DI; при отсутствии backend URL остаётся Mock. Backend реализует endpoint/schema, prompt mapping и validation model output; серверные admission/retention и последствия аудита определены в [BE-A01](../../../docs/archive/BE_A01_RESULT.md) и §5–6 wire-контракта. Локальных квот desktop и backend нет; закрытая alpha не добавляет auth в wire.
 
-Общие JSON fixtures находятся в wire-контракте. Developer добавляет проверки ranges/enum/projection, text-only и invalid hint, malformed/oversize, ID mismatch, локальных minute/session boundaries, absence auto-retry, timeout/late/reset/dispose, сохранения локального ввода и отсутствия утечки экранных данных. Windows smoke включает HTTPS/offline/timeout и работающие drag/курсор; Linux/macOS — capability fallback. Typecheck затем npm test по developer gate; независимый reviewer проверяет контракт отдельно.
+Общие JSON fixtures находятся в wire-контракте. Developer добавляет проверки ranges/enum/projection, text-only и invalid hint, malformed/oversize, ID mismatch, отсутствия minute/session квот и пауз после ошибок, absence auto-retry, timeout/late/reset/dispose, сохранения локального ввода и отсутствия утечки экранных данных. Windows smoke включает HTTPS/offline/timeout и работающие drag/курсор; Linux/macOS — capability fallback. Typecheck затем npm test по developer gate; независимый reviewer проверяет контракт отдельно.
 
 ## Запрещённые знания provider-а
 

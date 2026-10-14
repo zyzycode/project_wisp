@@ -12,7 +12,6 @@ from sqlalchemy.engine import Connection, Engine
 from wisp_backend.accounting.contracts import RESERVATION, Usage
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
 import wisp_backend.accounting.sqlite_ledger as ledger_module
-from wisp_backend.config.settings import LedgerSettings
 from wisp_backend.errors import ServiceError
 from wisp_backend.outcomes import Outcome
 
@@ -41,12 +40,12 @@ def test_existing_typeless_counters_survive_open_correction_and_restart(tmp_path
                    (NOW, bucket, RESERVATION))
 
     async def run() -> None:
-        for _ in range(2):
-            ledger = await SQLiteLedger.open(path, LedgerSettings(), lambda: NOW)
+        for index in range(2):
+            ledger = await SQLiteLedger.open(path, lambda: NOW)
             try:
                 await ledger.settle("old", Usage(5, 2, 7), None)
-                with pytest.raises(ServiceError, match="upstream_unavailable"):
-                    await ledger.admit("new", "new-digest")
+                await ledger.admit(f"new-{index}", "new-digest")
+                await ledger.settle(f"new-{index}", Usage(0, 0, 0), None)
                 with pytest.raises(ServiceError, match="request_conflict"):
                     await ledger.admit("old", "digest")
             finally:
@@ -55,8 +54,8 @@ def test_existing_typeless_counters_survive_open_correction_and_restart(tmp_path
     asyncio.run(run())
     with closing(sqlite3.connect(path)) as db, db:
         row = db.execute("SELECT requests,reserved,confirmed,uncertain,prompt,completion FROM days").fetchone()
-        assert tuple(map(int, row)) == (1, 0, huge + 7, 0, huge + 5, 2)
-        assert db.execute("SELECT state,corrected,reservation FROM entries").fetchone() == (
+        assert tuple(map(int, row)) == (3, 0, huge + 7, 0, huge + 5, 2)
+        assert db.execute("SELECT state,corrected,reservation FROM entries WHERE id='old'").fetchone() == (
             "confirmed", 1, RESERVATION)
         assert db.execute("SELECT value FROM meta WHERE key='halt'").fetchone()[0] == 1
 
@@ -64,7 +63,7 @@ def test_existing_typeless_counters_survive_open_correction_and_restart(tmp_path
 def test_connection_safeguards_and_fresh_counter_types(tmp_path: Path) -> None:
     async def run() -> None:
         path = tmp_path / "settings.sqlite"
-        ledger = await SQLiteLedger.open(path, LedgerSettings())
+        ledger = await SQLiteLedger.open(path)
 
         def read_pragmas() -> tuple[object, ...]:
             with ledger.db.begin():
@@ -107,7 +106,7 @@ def test_failed_startup_rolls_back_schema_and_closes_engine(tmp_path: Path, monk
 
     async def run() -> None:
         with pytest.raises(ServiceError, match="^upstream_unavailable$"):
-            await SQLiteLedger.open(path, LedgerSettings())
+            await SQLiteLedger.open(path)
 
     asyncio.run(run())
     assert len(connections) == len(disposed) == 1
@@ -117,10 +116,10 @@ def test_failed_startup_rolls_back_schema_and_closes_engine(tmp_path: Path, monk
     path.unlink()
 
 
-def test_failed_settlement_rolls_back_halt_and_does_not_publish_cache(tmp_path: Path) -> None:
+def test_failed_settlement_rolls_back_usage_and_does_not_publish_cache(tmp_path: Path) -> None:
     async def run() -> None:
         path = tmp_path / "rollback.sqlite"
-        ledger = await SQLiteLedger.open(path, LedgerSettings())
+        ledger = await SQLiteLedger.open(path)
         try:
             await ledger.admit("one", "digest")
             with closing(sqlite3.connect(path)) as db, db:
@@ -130,13 +129,12 @@ def test_failed_settlement_rolls_back_halt_and_does_not_publish_cache(tmp_path: 
                 await ledger.settle("one", Usage(RESERVATION, 1, RESERVATION + 1), Outcome(200, b'{}'))
             assert "one" not in ledger.cache
             with closing(sqlite3.connect(path)) as db, db:
-                assert db.execute("SELECT value FROM meta WHERE key='halt'").fetchone()[0] == 0
                 assert db.execute("SELECT reserved,confirmed,uncertain FROM days").fetchone() == (RESERVATION, 0, 0)
                 assert db.execute("SELECT state FROM entries").fetchone()[0] == "flight"
                 db.execute("DROP TRIGGER fail_settlement")
         finally:
             await ledger.close()
-        recovered = await SQLiteLedger.open(path, LedgerSettings())
+        recovered = await SQLiteLedger.open(path)
         await recovered.close()
         with closing(sqlite3.connect(path)) as db, db:
             assert db.execute("SELECT reserved,uncertain FROM days").fetchone() == (0, RESERVATION)
@@ -159,7 +157,7 @@ def test_connection_failure_disposes_engine(tmp_path: Path, monkeypatch: pytest.
 
     async def run() -> None:
         with pytest.raises(ServiceError, match="^upstream_unavailable$"):
-            await SQLiteLedger.open(path, LedgerSettings())
+            await SQLiteLedger.open(path)
 
     asyncio.run(run())
     assert len(disposed) == 1
@@ -168,7 +166,7 @@ def test_connection_failure_disposes_engine(tmp_path: Path, monkeypatch: pytest.
 def test_close_releases_database_file(tmp_path: Path) -> None:
     async def run() -> None:
         path = tmp_path / "closed.sqlite"
-        ledger = await SQLiteLedger.open(path, LedgerSettings())
+        ledger = await SQLiteLedger.open(path)
         await ledger.close()
         await ledger.close()
         path.unlink()

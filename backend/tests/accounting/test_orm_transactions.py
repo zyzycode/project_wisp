@@ -14,14 +14,13 @@ from wisp_backend.accounting.contracts import RESERVATION, Usage
 from wisp_backend.accounting.models import DailyUsage, LedgerEntry
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
 from wisp_backend.accounting.storage import ledger_session
-from wisp_backend.config.settings import LedgerSettings
 from wisp_backend.errors import ServiceError
 from wisp_backend.outcomes import Outcome
 
 
 def test_sessions_detach_models_and_rollback_dirty_state(tmp_path: Path) -> None:
     async def run() -> None:
-        ledger = await SQLiteLedger.open(tmp_path / "sessions.sqlite", LedgerSettings())
+        ledger = await SQLiteLedger.open(tmp_path / "sessions.sqlite")
         try:
             await ledger.admit("one", "digest")
 
@@ -62,7 +61,7 @@ def test_commit_failure_never_publishes_replay(tmp_path: Path) -> None:
         raise SQLAlchemyError("synthetic commit failure")
 
     async def run() -> None:
-        ledger = await SQLiteLedger.open(path, LedgerSettings())
+        ledger = await SQLiteLedger.open(path)
         try:
             await ledger.admit("one", "digest")
             event.listen(ledger.engine, "commit", fail_commit)
@@ -76,7 +75,7 @@ def test_commit_failure_never_publishes_replay(tmp_path: Path) -> None:
         with closing(sqlite3.connect(path)) as db:
             assert db.execute("SELECT state FROM entries").fetchone() == ("flight",)
             assert db.execute("SELECT reserved,confirmed FROM days").fetchone() == (RESERVATION, 0)
-        recovered = await SQLiteLedger.open(path, LedgerSettings())
+        recovered = await SQLiteLedger.open(path)
         await recovered.close()
         with closing(sqlite3.connect(path)) as db:
             assert db.execute("SELECT reserved,uncertain FROM days").fetchone() == (0, RESERVATION)
@@ -101,18 +100,18 @@ def test_recovery_failure_rolls_back_previously_flushed_entries(
         return settle(self, session, request_id, usage, outcome)
 
     async def run() -> None:
-        ledger = await SQLiteLedger.open(path, LedgerSettings())
+        ledger = await SQLiteLedger.open(path)
         await ledger.admit("one", "one")
         await ledger.admit("two", "two")
         await ledger.close()
         with monkeypatch.context() as patch:
             patch.setattr(SQLiteLedger, "_settle", fail_second)
             with pytest.raises(ServiceError, match="^upstream_unavailable$"):
-                await SQLiteLedger.open(path, LedgerSettings())
+                await SQLiteLedger.open(path)
         with closing(sqlite3.connect(path)) as db:
             assert db.execute("SELECT state FROM entries").fetchall() == [("flight",), ("flight",)]
             assert db.execute("SELECT reserved,uncertain FROM days").fetchone() == (2 * RESERVATION, 0)
-        recovered = await SQLiteLedger.open(path, LedgerSettings())
+        recovered = await SQLiteLedger.open(path)
         await recovered.close()
         with closing(sqlite3.connect(path)) as db:
             assert db.execute("SELECT reserved,uncertain FROM days").fetchone() == (0, 2 * RESERVATION)

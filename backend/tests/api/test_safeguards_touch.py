@@ -23,14 +23,13 @@ def test_duplicate_and_cross_route_do_not_dispatch_twice(client_factory, body, c
         assert len(calls) == 1
 
 
-def test_touch_consumes_shared_rate_budget(client_factory, body, completion):
+def test_touch_does_not_exhaust_chat_rate_budget(client_factory, body, completion):
     with client_factory(lambda _: httpx.Response(200, json=completion())) as client:
         for _ in range(12):
             request = touch_body(body) | {'requestId': str(uuid4())}
             assert client.post('/v1/touch', json=request).status_code == 200
         response = client.post('/v1/chat', json=body)
-        assert response.status_code == 429
-        assert response.json()['error']['code'] == 'rate_limited'
+        assert response.status_code == 200
 
 
 @pytest.mark.parametrize('extra', [{'decision': None}, {'decision': {'behavior': 'invalid'}}, {'memoryCandidates': []}])
@@ -85,10 +84,9 @@ def test_disconnect_cancels_application(path):
 
 
 @pytest.mark.parametrize('first_touch', [False, True])
-@pytest.mark.parametrize('policy', [{'daily_requests': 1}, {'daily_tokens': 131072}])
-def test_touch_and_chat_share_daily_budget(app_factory, body, completion, first_touch, policy):
+def test_touch_and_chat_allow_new_ids(app_factory, body, completion, first_touch):
     from fastapi.testclient import TestClient
-    app = app_factory(lambda _: httpx.Response(200, json=completion()), ledger=policy)
+    app = app_factory(lambda _: httpx.Response(200, json=completion()))
     first_path, second_path = ('/v1/touch', '/v1/chat') if first_touch else ('/v1/chat', '/v1/touch')
     first_body = touch_body(body) if first_touch else body
     second_body = body if first_touch else touch_body(body)
@@ -96,8 +94,7 @@ def test_touch_and_chat_share_daily_budget(app_factory, body, completion, first_
         assert client.post(first_path, json=first_body).status_code == 200
         assert client.post(second_path, json=second_body).status_code == 409
         response = client.post(second_path, json=second_body | {'requestId': str(uuid4())})
-        assert response.status_code == 429
-        assert response.json()['error']['code'] == 'budget_exhausted'
+        assert response.status_code == 200
 
 
 @pytest.mark.parametrize('path', ['/v1/chat', '/v1/touch'])

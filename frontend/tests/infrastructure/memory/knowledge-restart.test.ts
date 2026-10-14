@@ -12,7 +12,6 @@ import { LocalMemoryRecall } from '../../../src/application/services/memory-reca
 import { command } from '../../../src/infrastructure/memory/protocol';
 import { randomUUID } from 'node:crypto';
 import { DialogueRuntime } from '../../../src/application/services/dialogue-loop.service';
-import { AIRequestControl } from '../../../src/application/services/ai-request-control';
 import { ExternalAIProviderClient } from '../../../src/infrastructure/ai/external-ai-provider-client';
 import { providerRequest } from '../backend-ai-fixture';
 import { backendIntegrationFixture } from '../backend-integration-fixture';
@@ -65,9 +64,9 @@ it('passes restored SQLite facts and game through accepted dialogue to the curre
   await first.history.game({ activityRunId: 'persisted-game', atMs: 0, outcome: 'caught', playCompleted: true, executedMs: 1400 }, 0);
   await first.client.close(0);
   const restored = await open(filename), bridge = await backendIntegrationFixture();
-  const control = new AIRequestControl(), completed = vi.fn();
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', apiVersion: 2, development: false, now: Date.now, requestControl: control, fetch: bridge.fetch });
-  const runtime = new DialogueRuntime({ provider, requestControl: control,
+  const completed = vi.fn();
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', apiVersion: 2, development: false, now: Date.now, fetch: bridge.fetch });
+  const runtime = new DialogueRuntime({ provider,
     memory: { generation: () => 0, recall: restored.recall, completed }, now: Date.now, timestamp: () => date, createId: randomUUID,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(),

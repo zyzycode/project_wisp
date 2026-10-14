@@ -50,8 +50,8 @@ Request body ≤32 KiB, response body ≤16 KiB после декодирова�
 | 413 | `payload_too_large` | Размер payload превышает допустимый. |
 | 409 | `request_conflict` | Изменён body либо результат уже нельзя повторить; см. §5. |
 | 409 | `request_in_progress` | Этот ID с тем же body сейчас обрабатывается; см. §5. |
-| 429 | `rate_limited` | Превышен серверный rate/concurrency limit; см. §5. |
-| 429 | `budget_exhausted` | Для нового обращения недостаточно глобального дневного бюджета; см. §5. |
+| 429 | `rate_limited` | Сохранён для совместимости wire; текущий backend не применяет локальные квоты. |
+| 429 | `budget_exhausted` | Сохранён для совместимости wire; текущий backend не применяет дневные бюджеты. |
 | 503 | `upstream_unavailable` | LLM/provider недоступен. |
 | 504 | `upstream_timeout` | Deadline серверного вызова истёк. |
 | 502 | `invalid_model_response` | Нельзя получить валидный текст из ответа модели. |
@@ -74,36 +74,49 @@ Success и error — альтернативы, не два ответа одно
 
 Решение [BE-A01 #52](../archive/BE_A01_RESULT.md); текущая структура реализации — [архитектура backend](../../backend/docs/ARCHITECTURE.md). Wire v1, его типы и fixtures не меняются; quota/auth metadata не добавляются. Ниже — целевое поведение, не утверждение о готовности сервера. Клиентские ограничения остаются независимыми.
 
-Один admission, ledger, RAM replay cache и набор deployment budgets обслуживают `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`. Touch не получает отдельную бесплатную квоту; health не вызывает provider и не расходует budget. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
+Один admission, ledger и RAM replay cache обслуживают `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`. Все обращения учитываются совместно; health не вызывает provider и не создаёт запись расхода. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
 
 ### Доступ и топология
 
 Один экземпляр сервера, один ASGI worker, один локальный durable SQLite ledger через Python `sqlite3`. Внешняя SQL-служба/Redis/новый Python-пакет не нужны. Admission атомарен, работа с ledger не блокирует event loop; I/O failure закрывает новые обращения с 503, без вызова LLM. Многопроцессный/горизонтальный запуск вне этой схемы.
 
-Без application auth разрешены только разработка через loopback и закрытый тест через управляемый оператором приватный туннель/VPN с индивидуально отзываемым сетевым доступом; удалённый endpoint всё равно HTTPS. Публичный ingress закрыт. Это ограничение сети, не личность пользователя в API: бюджеты общие для deployment, IP/requestId/installation ID не используются как аккаунт. Публичная регистрация и персональные квоты потребуют отдельного auth-контракта. Перед допуском тестеров оператор проверяет сетевой запрет и настройки хранения у провайдера (§6).
+Без application auth разрешены только разработка через loopback и закрытый тест через управляемый оператором приватный туннель/VPN с индивидуально отзываемым сетевым доступом; удалённый endpoint всё равно HTTPS. Публичный ingress закрыт. Это ограничение сети, не личность пользователя в API: IP/requestId/installation ID не используются как аккаунт. Публичная регистрация и персональные квоты потребуют отдельного auth-контракта. Перед допуском тестеров оператор проверяет сетевой запрет и настройки хранения у провайдера (§6).
 
-### Бюджеты и reservation
+### Учёт расхода
 
-Начальные operator-configurable пределы закрытой alpha: **12 новых admitted обращений / скользящие 60 s**, **2 одновременно**, **100 / UTC-сутки**, **1 000 000 tokens / UTC-сутки**. Это консервативные эксплуатационные defaults, не тариф или обещание пользователю. Верхние границы включительны; для rate окно `(now−60s, now]`. Нет очереди и автоматических server retries. Локальный reset/restart desktop счётчики сервера не меняет.
+Backend не ограничивает частоту, число одновременных запросов, дневное число запросов
+или дневной расход токенов. `WISP_LIMITS_JSON` не используется. Ограничения выбранного
+провайдера действуют независимо; отказ провайдера, в том числе HTTP 429, преобразуется
+в безопасный `503 upstream_unavailable`. Автоматических повторов нет.
 
-До upstream атомарно проверяются duplicate, rate/concurrency и дневной остаток; затем сохраняются ID, digest, UTC bucket, admission timestamp и reservation. Invalid/rejected/duplicate обращения не расходуют новый budget. Admitted попытка расходует один request даже при ошибке; rate/concurrency rejection → 429 `rate_limited`, дневной cap или недостаток reservation → 429 `budget_exhausted`. `retryAfterMs` вычисляется до освобождения rate-окна/начала следующих UTC-суток; для занятого concurrency slot — 1000 ms. Подсказка не гарантирует admission.
+До upstream атомарно проверяется requestId и сохраняются digest, UTC bucket,
+admission timestamp и reservation для учёта. Некорректные запросы и повторы не создают
+новый расход. Новая принятая попытка учитывается даже при ошибке.
 
-Профиль выбирается сервером при startup; Groq остаётся default. [Архитектура backend](../../backend/docs/ARCHITECTURE.md). `WISP_AI_PROVIDER` выбирает `groq`/`gemini`, `WISP_AI_MODEL` — проверенную модель выбранного провайдера. Один процесс использует один provider, без автоматического fallback/retry; ключи разделены, неизвестные/конфликтующие профили отклоняются. Изменение требует restart; desktop wire не меняется.
+Профиль выбирается при startup через `WISP_AI_PROVIDER` и `WISP_AI_MODEL`; Groq — default.
+Один процесс использует один provider без автоматического fallback. Ключи разделены;
+неизвестные и конфликтующие профили отклоняются. Параметры — в
+[.env.example](../../backend/.env.example); process environment имеет приоритет над файлом.
+Custom base URL допускает только HTTPS либо HTTP loopback без userinfo/query/fragment;
+выбранный endpoint получает ключ и контекст, поэтому применяются условия §6.
+Пределы размера ввода/ответа, deadlines, TLS verification и validation сохраняются.
 
-Эксплуатационные параметры загружаются из `backend/.env` с приоритетом process environment; параметры — [.env.example](../../backend/.env.example). Оператор может задать base URL совместимого API: только HTTPS или HTTP loopback, без userinfo/query/fragment. Выбранный endpoint получает ключ и контекст; обязательны условия §6. URL не поступает из desktop/model. Env может уменьшить deadlines/caps, но не отключить их, TLS verification, validation, reservation или no-retry/no-redirect правила. Thinking level проверяется на совместимость с моделью; ключи остаются раздельными по provider.
+Reservation — оценка неизвестного расхода, а не условие допуска или лимит вызова:
+131072 для Groq и 1114112 для Gemini. Она хранится в каждой записи; восстановление
+после сбоя и позднее уточнение используют исходное значение при смене провайдера.
+Таблицы и накопленный учёт сохраняются. Старый флаг `halt` не блокирует admission.
 
-| Provider / model | Reservation на вызов | Default daily tokens |
-|---|---|---|
-| Groq `openai/gpt-oss-20b` | 131072: полный context limit input+output | 1000000 |
-| Gemini `gemini-3.5-flash-lite` (default), `gemini-3.8-flash` | 1114112: input limit1048576 + output limit65536 | 2000000 |
+Валидный usage содержит неотрицательные целые prompt/completion/total с проверкой суммы.
+Он заменяет reservation фактическим расходом, даже если превышает оценку; новые
+обращения не блокируются. Gemini включает thoughtsTokenCount в completion вместе
+с candidatesTokenCount; отсутствующие thoughts считаются нулём. Некорректный текст
+модели не отменяет известный расход. При timeout, disconnect, crash или неизвестном
+usage сохраняется uncertain-оценка; она не означает подтверждённую оплату провайдеру.
 
-Это намеренно завышенные безопасные границы без tokenizer-пакета; output cap остаётся4096 (events1024), text cap определяется endpoint. Допуск: `charged + reserved + profile.reservation ≤ dailyTokenCap`. Явный daily cap ниже reservation не принимается при startup. Новый профиль требует подтверждённой верхней границы общего расхода; произвольная модель не обходит ledger. Источники, проверенные 2026-10-13: [Groq](https://console.groq.com/docs/model/openai/gpt-oss-20b), [Gemini Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite), [Gemini Flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash).
-
-Reservation хранится в каждой ledger entry; settlement, crash recovery и late correction используют её исходное значение независимо от текущего provider. Старые записи без этого поля мигрируют с131072. Переключение сохраняет totals, halt и общий namespace requestId.
-
-Provider adapter передаёт service внутренний результат генерации и usage отдельно от wire. На валидном `prompt_tokens`, `completion_tokens`, `total_tokens` (неотрицательные integers, total равен сумме и не выше reservation) reservation заменяется фактическим total; prompt/completion сохраняются раздельно, включая оплачиваемые reasoning tokens в completion. Gemini преобразует `usageMetadata`: promptTokenCount → prompt, candidatesTokenCount + thoughtsTokenCount → completion, totalTokenCount → total; отсутствующие thoughts равны0, остальные обязательны, сумма проверяется. Невалидный model text не отменяет известный расход. При timeout, disconnect, crash, отсутствии/невалидном usage удерживается полная reservation как консервативный charge; это не подтверждённое число реально оплаченных токенов. Раздельно хранить confirmed и uncertain расход. Usage сверх согласованной границы закрывает дальнейший admission до проверки конфигурации оператором; перерасход не скрывается.
-
-Ledger сохраняет дневные totals и допускает завершение только один раз. Пересечение полуночи завершает charge в bucket исходного admission. Restart не обнуляет budget: незавершённые записи превращаются в uncertain terminal с полным charge, физическое завершение у провайдера не предполагается. Ошибка записи terminal state также не разрешает повторный upstream. UTC используется для daily buckets, monotonic time — для deadline; backward clock не создаёт новый/пустой budget bucket.
+Завершение учитывается один раз в UTC bucket исходного admission; late usage может
+уточнить uncertain один раз. Restart не обнуляет счётчики и переводит незавершённые
+записи в uncertain. Ошибка записи не разрешает повторный upstream. Backward clock
+не переносит новый учёт в более ранний bucket; deadlines используют монотонное время.
 
 ### Повтор requestId
 
@@ -120,9 +133,9 @@ Terminal cache — до 10 min, максимум 100 ответов (по 16 KiB
 
 ### Deadline и cancellation
 
-Общий серверный deadline — 10 s от входа в chat endpoint любой версии или `/v1/touch`, включая body/admission/upstream; body должен завершиться за 2 s, иначе 400 `invalid_request`, upstream не вызывается. Для `/v3/events` действуют более короткие [2.5 s / 0.5 s](AI_EVENTS_CONTRACT.md#5-явный-wire-v3-и-данные). Upstream получает остаток общего deadline; connect/pool timeout не выше 3 s и остатка. Нет очереди ожидания capacity. Исчерпание общего deadline после приёма body → 504 `upstream_timeout`; byte caps проверяются при чтении, не после полной загрузки.
+Общий серверный deadline — 10 s от входа в chat endpoint любой версии или `/v1/touch`, включая body/admission/upstream; body должен завершиться за 2 s, иначе 400 `invalid_request`, upstream не вызывается. Для `/v3/events` действуют более короткие [2.5 s / 0.5 s](AI_EVENTS_CONTRACT.md#5-явный-wire-v3-и-данные). Upstream получает остаток общего deadline; connect/pool timeout не выше 3 s и остатка. Исчерпание общего deadline после приёма body → 504 `upstream_timeout`; byte caps проверяются при чтении, не после полной загрузки.
 
-Disconnect/shutdown отменяет upstream task и закрывает HTTP response stream, освобождает concurrency в `finally`; terminal ledger settlement выполняется независимо от доставки ответа клиенту. Физическая остановка вычисления/списания у provider не гарантируется. Late success не заменяет уже terminal timeout/cancel и не запускает второй вызов; достоверный usage может уточнить uncertain charge не более одного раза. Desktop сохраняет собственные 12 s transport/15 s runtime deadlines и generation guards.
+Disconnect/shutdown отменяет upstream task и закрывает HTTP response stream, terminal ledger settlement выполняется независимо от доставки ответа клиенту. Физическая остановка вычисления/списания у provider не гарантируется. Late success не заменяет уже terminal timeout/cancel и не запускает второй вызов; достоверный usage может уточнить uncertain charge не более одного раза. Desktop сохраняет собственные 12 s transport/15 s runtime deadlines и generation guards.
 
 ## 6. Данные, сроки хранения и удаление
 

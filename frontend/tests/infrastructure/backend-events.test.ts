@@ -3,7 +3,6 @@ import path from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { projectEventRequest, projectEventAwareChat, parseEventResponse, parseEventAwareChat, parseEventError } from '../../src/infrastructure/ai/backend-events-validation';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
-import { AIRequestControl } from '../../src/application/services/ai-request-control';
 import { AIEventRuntime } from '../../src/application/services/ai-event-runtime';
 import { DialogueRuntime } from '../../src/application/services/dialogue-loop.service';
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
@@ -42,12 +41,12 @@ it('hands the single HTTP slot to an accepted user only after aborted event fetc
     active--; const body: { requestId: string } = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ version: 3, requestId: body.requestId, text: 'Ответ' }), { headers: { 'Content-Type': 'application/json' } });
   });
-  const control = new AIRequestControl(), provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', apiVersion: 3, development: false, now: Date.now, requestControl: control, eventRequestControl: control, fetch: fetcher });
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', apiVersion: 3, development: false, now: Date.now, fetch: fetcher });
   let id = 0; const createId = () => `00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}`;
-  const events = new AIEventRuntime({ provider, control, recall: { recall: async () => ({ ok: true, value: emptyMemoryContext() }) }, now: Date.now, timestamp: () => new Date().toISOString(), createId,
+  const events = new AIEventRuntime({ provider, recall: { recall: async () => ({ ok: true, value: emptyMemoryContext() }) }, now: Date.now, timestamp: () => new Date().toISOString(), createId,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, character: () => providerRequest().characterSnapshot,
     gate: () => ({ allowed: true, activeRunId: 'social', localSpeech: false, memoryGeneration: 0, identity: 'current' }), publish: vi.fn() });
-  const runtime = new DialogueRuntime({ provider, requestControl: control, events, now: Date.now, timestamp: () => new Date().toISOString(), createId,
+  const runtime = new DialogueRuntime({ provider, events, now: Date.now, timestamp: () => new Date().toISOString(), createId,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => providerRequest().characterSnapshot,
     applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: commit => commit(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('s'); events.socialStarted('social', Date.now()); await flush();
@@ -57,15 +56,13 @@ it('hands the single HTTP slot to an accepted user only after aborted event fetc
   await vi.advanceTimersByTimeAsync(499); expect(paths).toHaveLength(1);
   await vi.advanceTimersByTimeAsync(1); expect(paths).toEqual(['/v3/events', '/v3/chat']); expect(maximum).toBe(1);
   expect(runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Ответ' }); expect(events.getSpeech()).toBeNull();
-  for (let i = 0; i < 4; i++) expect(control.recordSubmission(Date.now())).toBe(true);
-  expect(control.recordSubmission(Date.now())).toBe(false); // The aborted event remains charged.
   runtime.dispose(); events.dispose();
 });
 it('event transport aborts at3000ms without retries and rejects a later successful response', async () => {
   let resolve!: (response: Response) => void; let aborted = false;
-  const control = new AIRequestControl();
+
   const fetcher = vi.fn<typeof fetch>(async (_url, init) => { init?.signal?.addEventListener('abort', () => { aborted = true; }); return new Promise(yes => { resolve = yes; }); });
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', apiVersion: 3, development: false, now: Date.now, requestControl: control, eventRequestControl: control, fetch: fetcher });
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', apiVersion: 3, development: false, now: Date.now, fetch: fetcher });
   const pending = provider.generateEvent({ requestId: game.requestId, event: game.event, characterSnapshot: game.character, memoryContext: game.memory, locale: 'ru' });
   const rejected = expect(pending).rejects.toThrow(); await vi.advanceTimersByTimeAsync(3000); await rejected; expect(aborted).toBe(true);
   resolve(new Response(JSON.stringify(fixture('response.event.success.json')), { headers: { 'Content-Type': 'application/json' } })); await flush(); expect(fetcher).toHaveBeenCalledTimes(1);

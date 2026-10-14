@@ -31,7 +31,7 @@ def test_usage_accounted_even_for_invalid_model_output(app_factory, body, comple
             assert db.execute('SELECT requests,confirmed,uncertain FROM days').fetchone() == (1, 7 if confirmed else 0, 0 if confirmed else RESERVATION)
 
 
-def test_duplicates_and_concurrent_limit_on_real_http_route(app_factory, body, completion):
+def test_duplicates_and_concurrent_requests_on_real_http_route(app_factory, body, completion):
     async def run():
         calls = 0
         entered = asyncio.Event()
@@ -55,14 +55,14 @@ def test_duplicates_and_concurrent_limit_on_real_http_route(app_factory, body, c
                 second = asyncio.create_task(client.post('/v1/touch', json={**touch_body(body), 'requestId':str(uuid4())}))
                 while calls < 2:
                     await asyncio.sleep(0)
-                denied = await client.post('/v1/chat', json={**body, 'requestId':str(uuid4())})
-                assert denied.status_code == 429
-                assert denied.json()['error'] == {'code':'rate_limited', 'retryAfterMs':1000}
+                third = asyncio.create_task(client.post('/v1/chat', json={**body, 'requestId':str(uuid4())}))
+                while calls < 3:
+                    await asyncio.sleep(0)
                 release.set()
-                assert (await first).status_code == (await second).status_code == 200
+                assert (await first).status_code == (await second).status_code == (await third).status_code == 200
                 replay = await client.post('/v1/chat', json=body)
                 assert replay.status_code == 200
-                assert calls == 2
+                assert calls == 3
     asyncio.run(run())
 
 

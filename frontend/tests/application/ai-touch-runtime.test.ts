@@ -1,24 +1,22 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AIEventRuntime } from '../../src/application/services/ai-event-runtime';
-import { AIRequestControl } from '../../src/application/services/ai-request-control';
 import type { IAIEventProvider } from '../../src/application/ports/ai-event-provider.interface';
 import { providerRequest } from '../infrastructure/backend-ai-fixture';
 
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
 function fixture(random = 0) {
   let id = 0, generation = 0, allowed = true;
-  const control = new AIRequestControl();
+
   const generateEvent = vi.fn<IAIEventProvider['generateEvent']>(async request => {
-    if (!control.recordSubmission(Date.now())) throw new Error('budget');
     return { requestId: request.requestId, replyText: 'Щекотно!' };
   });
   const cancel = vi.fn(), publish = vi.fn(), recall = vi.fn();
-  const runtime = new AIEventRuntime({ provider: { generateEvent, cancel }, control, recall: { recall }, random: () => random,
+  const runtime = new AIEventRuntime({ provider: { generateEvent, cancel }, recall: { recall }, random: () => random,
     autonomousEnabled: false, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `r${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     character: () => providerRequest().characterSnapshot, publish,
     gate: () => ({ allowed, identity: 's:c:0', memoryGeneration: generation, activeRunId: null, localSpeech: false }) });
-  return { runtime, generateEvent, cancel, publish, recall, control, resetMemory: () => { generation++; }, block: () => { allowed = false; runtime.tick(); } };
+  return { runtime, generateEvent, cancel, publish, recall, resetMemory: () => { generation++; }, block: () => { allowed = false; runtime.tick(); } };
 }
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(0); });
 afterEach(() => vi.useRealTimers());
@@ -54,10 +52,9 @@ it.each(['reset', 'dispose', 'memory', 'drag', 'dialogue', 'timeout'] as const)(
   resolve({ requestId: 'r2', replyText: 'Поздно' }); await flush();
   expect(f.runtime.getSpeech()).toBeNull(); f.runtime.dispose();
 });
-it('keeps failures silent and shares the six-per-minute chat quota', async () => {
+it('keeps failures silent and permits subsequent touches beyond former quotas', async () => {
   const f = fixture(); f.generateEvent.mockRejectedValueOnce(new Error('offline'));
   f.runtime.touch(); await flush(); expect(f.runtime.getSpeech()).toBeNull();
-  for (let i = 0; i < 6; i++) { f.runtime.touch(); await flush(); }
-  f.runtime.touch(); await flush(); expect(f.generateEvent).toHaveBeenCalledTimes(7);
-  expect(f.control.availability(0).available).toBe(false); f.runtime.dispose();
+  for (let i = 0; i < 105; i++) { f.runtime.touch(); await flush(); }
+  expect(f.generateEvent).toHaveBeenCalledTimes(106); f.runtime.dispose();
 });

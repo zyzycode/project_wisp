@@ -4,7 +4,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { parseBackendMemory, parseBackendMemoryError, parseBackendMemorySuccess, projectBackendMemoryRequest } from '../../src/infrastructure/ai/backend-memory-validation';
 import { parseBackendSuccess } from '../../src/infrastructure/ai/backend-response-validation';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
-import { AIRequestControl } from '../../src/application/services/ai-request-control';
 import { parseProviderResponse } from '../../src/application/services/dialogue-provider-result';
 import { providerRequest } from './backend-ai-fixture';
 import type { BackendMemoryRequest } from '../../src/application/ports/backend-memory-contract';
@@ -47,7 +46,7 @@ it('drops malformed/duplicate/source-mismatched proposals while retaining valid 
 });
 it('performs exactly one explicitly selected v2 call and returns independently validated semantic candidates', async () => {
   const fetcher = vi.fn<typeof fetch>(async () => new Response(JSON.stringify(fixture('response.success.json')), { headers: { 'Content-Type': 'application/json' } }));
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, apiVersion: 2, requestControl: new AIRequestControl(), now: () => 0, fetch: fetcher });
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, apiVersion: 2, now: () => 0, fetch: fetcher });
   const result = await provider.generateResponse(semantic());
   expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/v2/chat');
   expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(request);
@@ -55,7 +54,7 @@ it('performs exactly one explicitly selected v2 call and returns independently v
 });
 it('does not probe/downgrade/retry an unavailable v2 endpoint', async () => {
   const fetcher = vi.fn<typeof fetch>(async () => new Response('not found', { status: 404 }));
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, apiVersion: 2, requestControl: new AIRequestControl(), now: () => 0, fetch: fetcher });
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, apiVersion: 2, now: () => 0, fetch: fetcher });
   await expect(provider.generateResponse(semantic())).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/v2/chat');
 });

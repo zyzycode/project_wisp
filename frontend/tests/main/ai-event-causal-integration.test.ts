@@ -1,7 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { scenario } from './autonomy-scenario-fixture';
 import { AIEventRuntime } from '../../src/application/services/ai-event-runtime';
-import { AIRequestControl } from '../../src/application/services/ai-request-control';
 import { MemoryHistory } from '../../src/application/services/memory-history';
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
 import type { IAIEventProvider } from '../../src/application/ports/ai-event-provider.interface';
@@ -41,7 +40,7 @@ function fixture(social = false) {
   });
   const timers = new Map<number, { at: number; callback: () => void }>();
   const generateEvent = vi.fn<IAIEventProvider['generateEvent']>(async request => ({ requestId: request.requestId, replyText: 'Вспомним нашу игру?' }));
-  events = new AIEventRuntime({ provider: { generateEvent, cancel: vi.fn() }, control: new AIRequestControl(undefined, -300000),
+  events = new AIEventRuntime({ provider: { generateEvent, cancel: vi.fn() },
     recall: { recall: async () => ({ ok: true, value: emptyMemoryContext() }) }, now: f.now, timestamp: () => new Date(f.now()).toISOString(), createId: () => `request-${++id}`,
     scheduler: { setTimeout: (callback, delay) => { const key = ++id; timers.set(key, { at: f.now() + delay, callback }); return key; }, clearTimeout: key => { timers.delete(key as number); } },
     character: () => f.character.getSnapshot(), gate: () => ({ ...f.main.getAIEventState(), memoryGeneration: 0, identity: 'stream:c:0' }), publish: vi.fn() });
@@ -102,20 +101,20 @@ async function backendGameFixture(holdEvent = false) {
     expect(await client.ready).toEqual({ ok: true, value: undefined });
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const scheduler = { setTimeout, clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>) };
-    const control = new AIRequestControl(undefined, -300000);
+
     const fetcher: typeof fetch = async (input, init) => {
       const response = await bridge.fetch(input, init);
       if (new URL(String(input)).pathname === '/v3/events') { arrived(); if (holdEvent) await held; }
       return response;
     };
-    const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', apiVersion: 3, development: false, now: f.now, requestControl: control, eventRequestControl: control, fetch: fetcher });
+    const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', apiVersion: 3, development: false, now: f.now, fetch: fetcher });
     const eventCalls = vi.spyOn(provider, 'generateEvent'), chatCalls = vi.spyOn(provider, 'generateResponse');
     const knowledge = new MemoryKnowledge({ facts: repos.facts, isCurrent: generation => generation === 0, createId: randomUUID, onFailure: failure, preferenceLearning: f.character });
     const recall = new LocalMemoryRecall({ ...repos, scheduler, isCurrent: generation => generation === 0, beforeRead: () => history!.whenSettled(), preference: () => f.character.getState().preferences['activity.cursor_game'], onFailure: failure });
-    events = new AIEventRuntime({ provider, control, recall, now: f.now, timestamp: () => toTimestamp(f.now()), createId: randomUUID, scheduler,
+    events = new AIEventRuntime({ provider, recall, now: f.now, timestamp: () => toTimestamp(f.now()), createId: randomUUID, scheduler,
       character: () => f.character.getSnapshot(), gate: () => ({ ...f.main.getAIEventState(), memoryGeneration: 0, identity: dialogue?.getIdentity() ?? null }), publish: publication });
     history = new MemoryHistory({ ...repos, context: () => ({ generation: 0 }), createId: randomUUID, toTimestamp, onFailure: failure, gameObserver: events, onPersisted: (turn, context) => knowledge.persisted(turn, context) });
-    dialogue = new DialogueRuntime({ provider, requestControl: control, events,
+    dialogue = new DialogueRuntime({ provider, events,
       memory: { generation: () => 0, recall, completed: turn => { void history!.completed(turn); } }, now: f.now, timestamp: () => toTimestamp(f.now()), createId: randomUUID, scheduler,
       getCharacterSnapshot: () => f.character.getSnapshot(), applyStimulus: stimulus => f.character.applyStimulus(stimulus), beginThinking: () => {}, endThinking: () => {},
       transaction: commit => commit(), offerIntent: offer => f.main.offerDialogueIntent(offer),

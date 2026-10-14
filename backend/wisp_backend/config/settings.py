@@ -34,15 +34,6 @@ class AssistantSettings(BaseModel):
         return self.thinking_level or ("minimal" if self.model == "gemini-3.5-flash-lite" else "low")
 
 
-class LedgerSettings(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    rate_limit: int = Field(default=12, gt=0, strict=True)
-    concurrent_limit: int = Field(default=2, gt=0, strict=True)
-    daily_requests: int = Field(default=100, gt=0, strict=True)
-    daily_tokens: int = Field(default=1_000_000, ge=131_072, strict=True)
-
-
 class Settings(BaseModel):
     """Validated values and cross-field invariants shared by all startup paths."""
 
@@ -58,7 +49,6 @@ class Settings(BaseModel):
     pool_timeout: float = Field(default=3, gt=0, le=3)
     upstream_trust_env: bool = False
     ledger_path: Path = Path.home() / ".local" / "state" / "wisp-backend" / "ledger.sqlite"
-    ledger: LedgerSettings = Field(default_factory=LedgerSettings)
 
     @model_validator(mode="before")
     @classmethod
@@ -76,9 +66,6 @@ class Settings(BaseModel):
             provider = default.get("provider", "groq") if isinstance(default, dict) else "groq"
         profile = get_profile(provider)
         value.setdefault("base_url", profile.base_url)
-        ledger = value.get("ledger", {})
-        if isinstance(ledger, dict):
-            value["ledger"] = {"daily_tokens": profile.daily_tokens, **ledger}
         return value
 
     @property
@@ -101,8 +88,6 @@ class Settings(BaseModel):
                     raise ValueError("thinking_level is supported only for Gemini")
                 if profile.model == "gemini-3.8-flash" and profile.thinking_level == "minimal":
                     raise ValueError("Selected model does not support minimal thinking")
-        if self.ledger.daily_tokens < self.profile.reservation:
-            raise ValueError("daily_tokens must cover the selected model reservation")
         return self
 
     @field_validator("base_url")

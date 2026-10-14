@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AIEventRuntime } from '../../src/application/services/ai-event-runtime';
-import { AIRequestControl } from '../../src/application/services/ai-request-control';
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
 import { providerRequest } from '../infrastructure/backend-ai-fixture';
 import type { IAIEventProvider } from '../../src/application/ports/ai-event-provider.interface';
@@ -8,13 +7,13 @@ import type { ILocalMemoryRecall } from '../../src/application/ports/memory-know
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
 function fixture() {
   let activeRunId: string | null = null, allowed = true, identity: string | null = 'stream:c:0', generation = 0, localSpeech = false;
-  const control = new AIRequestControl(); let id = 0;
+  let id = 0;
   const generateEvent = vi.fn<IAIEventProvider['generateEvent']>(async request => {
-    if (!control.recordEventSubmission(Date.now())) throw new Error('budget'); return { requestId: request.requestId, replyText: 'Помнишь нашу игру?' };
+    return { requestId: request.requestId, replyText: 'Помнишь нашу игру?' };
   });
   const cancel = vi.fn(), publish = vi.fn();
   const recall = vi.fn<ILocalMemoryRecall['recall']>(async () => ({ ok: true, value: emptyMemoryContext() }));
-  const runtime = new AIEventRuntime({ provider: { generateEvent, cancel }, control, recall: { recall }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `r${++id}`,
+  const runtime = new AIEventRuntime({ provider: { generateEvent, cancel }, recall: { recall }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `r${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, character: () => providerRequest().characterSnapshot,
     gate: () => ({ allowed, activeRunId, identity, memoryGeneration: generation, localSpeech }), publish });
   function game(runId = 'game', status: 'completed' | 'cancelled' | 'failed' = 'completed', ack = true) {
@@ -25,7 +24,7 @@ function fixture() {
   }
   const social = (runId: string) => { runtime.activityStarted(); activeRunId = runId; runtime.socialStarted(runId, Date.now()); };
   const socialEnd = (runId: string, outcome: 'completed' | 'cancelled' | 'failed' = 'completed') => { activeRunId = null; runtime.outcome({ type: 'activity_outcome', eventId: runId, activityRunId: runId, atMs: Date.now(), family: 'social_bid', outcome, participation: 'solitary', executedMs: 4000, playCompleted: false }); };
-  return { runtime, control, generateEvent, recall, publish, cancel, game, social, socialEnd, block: () => { allowed = false; runtime.tick(); }, generation: () => { generation++; }, localSpeech: () => { localSpeech = true; }, reset: () => { identity = 'next:c:1'; runtime.invalidate(); } };
+  return { runtime, generateEvent, recall, publish, cancel, game, social, socialEnd, block: () => { allowed = false; runtime.tick(); }, generation: () => { generation++; }, localSpeech: () => { localSpeech = true; }, reset: () => { identity = 'next:c:1'; runtime.invalidate(); } };
 }
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(300000); });
 afterEach(() => vi.useRealTimers());
@@ -63,35 +62,24 @@ it('invalidates a recall before sending and expires previousInitiative at60s', a
   f.recall.mockImplementationOnce(async () => { await wait; return { ok: true, value: emptyMemoryContext() }; }); f.social('s'); f.block(); release(); await flush(); expect(f.generateEvent).not.toHaveBeenCalled();
   const g = fixture(); g.social('s'); await flush(); await vi.advanceTimersByTimeAsync(60000); expect(g.runtime.takePreviousInitiative()).toBeUndefined();
 });
-it('suppresses only AI events after two published completed unengaged bids; cancelled is not ignore and contact resets suppression', async () => {
-  const f = fixture(); f.social('cancel'); await flush(); f.socialEnd('cancel', 'cancelled');
-  await vi.advanceTimersByTimeAsync(3600000); f.social('one'); await flush(); f.socialEnd('one');
-  await vi.advanceTimersByTimeAsync(300000); f.social('two'); await flush(); f.socialEnd('two'); expect(f.generateEvent).toHaveBeenCalledTimes(3);
-  // Move past the shared hourly budget but stay within suppression to distinguish the guards.
-  f.runtime.userContact(); await vi.advanceTimersByTimeAsync(3600000); f.social('again'); await flush(); expect(f.generateEvent).toHaveBeenCalledTimes(4);
-});
-it('keeps common and event budgets with startup delay, reserve20, minute/hour/session boundaries', () => {
-  const c = new AIRequestControl(); expect(c.recordEventSubmission(299999)).toBe(false); expect(c.recordEventSubmission(300000)).toBe(true);
-  expect(c.recordEventSubmission(599999)).toBe(false); expect(c.recordEventSubmission(600000)).toBe(true); expect(c.eventAvailability(900000).available).toBe(false);
-  expect(c.recordEventSubmission(3900000)).toBe(true);
-  const reserved = new AIRequestControl(); for (let i = 0; i < 80; i++) expect(reserved.recordSubmission(i * 60000)).toBe(true);
-  expect(reserved.eventAvailability(6000000).available).toBe(false); expect(reserved.recordSubmission(6000000)).toBe(true);
+it('allows an event immediately after a dialogue completes', async () => {
+  const f = fixture();
+  f.runtime.observeDialogue({ conversationId: 'c', canSubmit: true, turn: { phase: 'error', requestId: 'chat', message: 'Unavailable' } });
+  f.social('after-chat'); await flush(); expect(f.generateEvent).toHaveBeenCalledTimes(1);
 });
 
-it('enforces ignore suppression after the first hourly slot expires, and accepted contact restores eligibility', async () => {
-  const f = fixture(); f.social('one'); await flush(); f.socialEnd('one');
-  await vi.advanceTimersByTimeAsync(3300000); f.social('two'); await flush(); f.socialEnd('two');
-  await vi.advanceTimersByTimeAsync(300000); expect(f.control.eventAvailability(Date.now()).available).toBe(true);
-  f.social('suppressed'); await flush(); expect(f.generateEvent).toHaveBeenCalledTimes(2);
-  f.runtime.userContact(); f.social('contact'); await flush(); expect(f.generateEvent).toHaveBeenCalledTimes(3);
-});
 it('does not publish at the3500ms runtime deadline, even if the provider resolves successfully then', async () => {
   const f = fixture(); let resolve!: (value: { requestId: string; replyText: string }) => void;
   f.generateEvent.mockImplementationOnce(() => new Promise(yes => { resolve = yes; })); f.social('s'); await flush();
   await vi.advanceTimersByTimeAsync(3500); resolve({ requestId: 'r1', replyText: 'Поздно' }); await flush(); expect(f.runtime.getSpeech()).toBeNull(); expect(f.cancel).toHaveBeenCalledWith('r1');
 });
-it('caps actual event sends at10 per Main session while leaving direct chat quota available', () => {
-  const c = new AIRequestControl();
-  for (let i = 0; i < 10; i++) expect(c.recordEventSubmission(300000 + i * 3600000)).toBe(true);
-  expect(c.recordEventSubmission(36300000)).toBe(false); expect(c.recordSubmission(36300000)).toBe(true);
+
+
+it('allows events immediately at startup and beyond former minute/hour/session quotas', async () => {
+  vi.setSystemTime(0);
+  const f = fixture();
+  for (let i = 0; i < 105; i++) {
+    f.social(`social-${i}`); await flush(); f.socialEnd(`social-${i}`);
+  }
+  expect(f.generateEvent).toHaveBeenCalledTimes(105);
 });

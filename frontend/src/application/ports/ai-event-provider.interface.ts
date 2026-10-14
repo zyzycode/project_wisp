@@ -1,7 +1,6 @@
 /** P17-A04 semantic events; no transport, SQL, animation or physical commands. */
 import type { AIProviderCharacterSnapshot } from './ai-provider.interface';
 import type { AIProviderMemoryContext } from './memory-knowledge.interface';
-import type { AIRequestAvailability, IAIRequestControl } from './ai-request-policy';
 import type { GameEpisode, MemoryOperationContext } from './memory-repository.interface';
 
 export type AICompanionEvent =
@@ -36,13 +35,6 @@ export interface IAIEventProvider {
 /** The dialogue runtime awaits transport settlement before starting its own HTTP call. */
 export interface IAIEventInterlock {
   interruptForUser(): Promise<void>;
-}
-
-/** The same instance also serves dialogue: shared 6/min and 100/session counters. */
-export interface IAIEventRequestControl extends IAIRequestControl {
-  eventAvailability(nowMs: number): AIRequestAvailability;
-  /** Atomically charges common counters and the stricter event sub-budget. */
-  recordEventSubmission(nowMs: number): boolean;
 }
 
 /** Additional observer after durable commit; no-op writes can repeat, observer dedupes. */

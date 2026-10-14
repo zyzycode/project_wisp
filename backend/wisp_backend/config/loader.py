@@ -45,9 +45,6 @@ def load_settings(env_file: Path = ENV_FILE) -> Settings:
     ledger_path = values.get("WISP_LEDGER_PATH")
     if ledger_path:
         options["ledger_path"] = Path(ledger_path)
-    limits = values.get("WISP_LIMITS_JSON")
-    if limits:
-        options["ledger"] = json.loads(limits)
     return Settings(**options)
 
 

@@ -6,13 +6,13 @@ import threading
 import time
 from typing import Callable, ParamSpec, TypeVar
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from wisp_backend.accounting.contracts import Admission, RESERVATION, Usage
-from wisp_backend.accounting.policy import ID_TTL, LedgerLimits, check_budget, check_rate, plan_settlement
+from wisp_backend.accounting.policy import ID_TTL, plan_settlement
 from wisp_backend.accounting.replay import ReplayCache
 from wisp_backend.accounting.models import DailyUsage, LedgerEntry, LedgerMeta
 from wisp_backend.accounting.storage import create_ledger_engine, initialize_schema, ledger_session
@@ -25,9 +25,9 @@ OperationResult = TypeVar("OperationResult")
 
 
 class SQLiteLedger:
-    def __init__(self, path: Path, policy: LedgerLimits, clock: Callable[[], float],
+    def __init__(self, path: Path, clock: Callable[[], float],
                  reservation: int = RESERVATION) -> None:
-        self.path, self.policy, self.clock = path, policy, clock
+        self.path, self.clock = path, clock
         self.reservation = reservation
         self.lock = threading.Lock()
         self.cache = ReplayCache()
@@ -36,11 +36,11 @@ class SQLiteLedger:
         self.db: Connection
 
     @classmethod
-    async def open(cls, path: Path, policy: LedgerLimits,
+    async def open(cls, path: Path,
                    clock: Callable[[], float] = time.time, *, reservation: int = RESERVATION) -> "SQLiteLedger":
-        if type(reservation) is not int or reservation <= 0 or reservation > policy.daily_tokens:
+        if type(reservation) is not int or reservation <= 0:
             raise ValueError("Invalid model reservation")
-        ledger = cls(path, policy, clock, reservation)
+        ledger = cls(path, clock, reservation)
         try:
             await ledger._run(ledger._initialize)
         except ServiceError:
@@ -67,9 +67,8 @@ class SQLiteLedger:
         self.db = self.engine.connect()
         with ledger_session(self.db) as session:
             initialize_schema(session.connection())
-            for key in ("clock", "halt"):
-                if session.get(LedgerMeta, key) is None:
-                    session.add(LedgerMeta(key=key, value=0))
+            if session.get(LedgerMeta, "clock") is None:
+                session.add(LedgerMeta(key="clock", value=0))
             session.flush()
             pending = session.scalars(select(LedgerEntry).where(LedgerEntry.state == "flight")).all()
             for entry in pending:
@@ -106,22 +105,12 @@ class SQLiteLedger:
                     if outcome is not None:
                         return Admission(outcome)
                 raise ServiceError("request_conflict")
-            halt = session.scalars(select(LedgerMeta).where(LedgerMeta.key == "halt")).one()
-            if halt.value:
-                raise ServiceError("upstream_unavailable")
-            active = session.scalars(select(func.count()).select_from(LedgerEntry)
-                                     .where(LedgerEntry.state == "flight")).one()
-            recent = session.scalars(select(LedgerEntry.admitted).where(LedgerEntry.admitted > now - 60)
-                                     .order_by(LedgerEntry.admitted)).all()
-            check_rate(self.policy, active, recent, now)
             bucket = int(now // ID_TTL)
             day = session.get(DailyUsage, bucket)
             if day is None:
                 day = DailyUsage(bucket=bucket)
                 session.add(day)
-                session.flush()  # Populate defaults before evaluating budgets.
-            check_budget(self.policy, day.requests, day.reserved + day.confirmed + day.uncertain,
-                         self.reservation, now)
+                session.flush()  # Populate counter defaults before incrementing.
             session.add(LedgerEntry(id=request_id, digest=digest, admitted=now,
                                     bucket=bucket, state="flight", reservation=self.reservation))
             day.requests += 1
@@ -149,9 +138,6 @@ class SQLiteLedger:
         change = plan_settlement(entry.state, bool(entry.corrected), entry.reservation, usage)
         if change is None:
             return False
-        if change.halt:
-            halt = session.scalars(select(LedgerMeta).where(LedgerMeta.key == "halt")).one()
-            halt.value = 1
         day = session.scalars(select(DailyUsage).where(DailyUsage.bucket == entry.bucket)).one()
         # Python arithmetic preserves exact counters beyond signed64; the mapped
         # ExactTokenCount stores those values without SQLite numeric affinity.

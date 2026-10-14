@@ -38,7 +38,7 @@ async def stop_maintenance(task: asyncio.Task[None]) -> None:
 @asynccontextmanager
 async def open_runtime(settings: Settings, transport: httpx.AsyncBaseTransport | None = None) -> AsyncIterator[CompletionService]:
     async with AsyncExitStack() as resources:
-        ledger = await SQLiteLedger.open(settings.ledger_path, settings.ledger, reservation=settings.profile.reservation)
+        ledger = await SQLiteLedger.open(settings.ledger_path, reservation=settings.profile.reservation)
         resources.push_async_callback(ledger.close)
         resources.push_async_callback(stop_maintenance, asyncio.create_task(maintain_ledger(ledger)))
         client = await resources.enter_async_context(create_client(settings, transport))

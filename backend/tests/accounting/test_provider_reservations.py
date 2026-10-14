@@ -9,7 +9,6 @@ from tests.helpers import Clock
 from wisp_backend.accounting.contracts import RESERVATION, Usage
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
 from wisp_backend.config.profiles import PROFILES
-from wisp_backend.config.settings import LedgerSettings
 from wisp_backend.errors import ServiceError
 
 
@@ -20,11 +19,10 @@ GEMINI = PROFILES["gemini"].reservation
 def test_crash_switch_and_late_correction_use_original_reservation(tmp_path, first, second):
     async def run():
         path = tmp_path / "ledger.sqlite"
-        policy = LedgerSettings(daily_tokens=4_000_000)
-        ledger = await SQLiteLedger.open(path, policy, reservation=first)
+        ledger = await SQLiteLedger.open(path, reservation=first)
         await ledger.admit("old", "digest")
         await ledger.close()
-        ledger = await SQLiteLedger.open(path, policy, reservation=second)
+        ledger = await SQLiteLedger.open(path, reservation=second)
         with sqlite3.connect(path) as db:
             assert db.execute("SELECT reserved,uncertain FROM days").fetchone() == (0, first)
         with pytest.raises(ServiceError, match="request_conflict"):
@@ -55,8 +53,7 @@ def test_migration_of_old_schema_before_crash_recovery(tmp_path):
             bucket = int(clock.now // 86400)
             db.execute("INSERT INTO entries(id,digest,admitted,bucket,state) VALUES ('old','digest',?,?,'flight')", (clock.now, bucket))
             db.execute("INSERT INTO days(bucket,requests,reserved) VALUES (?,1,?)", (bucket, RESERVATION))
-        policy = LedgerSettings(daily_tokens=2_000_000)
-        ledger = await SQLiteLedger.open(path, policy, clock, reservation=GEMINI)
+        ledger = await SQLiteLedger.open(path, clock, reservation=GEMINI)
         await ledger.admit("new", "digest2")
         await ledger.close()
         with sqlite3.connect(path) as db:
@@ -65,18 +62,15 @@ def test_migration_of_old_schema_before_crash_recovery(tmp_path):
     asyncio.run(run())
 
 
-def test_gemini_budget_boundary_and_usage_overflow_latch(tmp_path):
+def test_gemini_large_usage_and_restart_do_not_block_admission(tmp_path):
     async def run():
         path = tmp_path / "ledger.sqlite"
-        policy = LedgerSettings(daily_tokens=GEMINI)
-        ledger = await SQLiteLedger.open(path, policy, reservation=GEMINI)
+        ledger = await SQLiteLedger.open(path, reservation=GEMINI)
         await ledger.admit("one", "digest")
-        with pytest.raises(ServiceError, match="budget_exhausted"):
-            await ledger.admit("two", "other")
+        await ledger.admit("two", "other")
         await ledger.settle("one", Usage(GEMINI, 1, GEMINI + 1), None)
         await ledger.close()
-        ledger = await SQLiteLedger.open(path, LedgerSettings(daily_tokens=4_000_000))
-        with pytest.raises(ServiceError, match="upstream_unavailable"):
-            await ledger.admit("three", "other")
+        ledger = await SQLiteLedger.open(path)
+        await ledger.admit("three", "other")
         await ledger.close()
     asyncio.run(run())

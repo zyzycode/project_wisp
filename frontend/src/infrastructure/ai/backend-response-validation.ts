@@ -30,7 +30,7 @@ export function parseBackendError(value: unknown, requestId: string, status: num
   const code = enumValue(e.code, ['invalid_request', 'unsupported_version', 'payload_too_large', 'request_conflict', 'request_in_progress', 'rate_limited', 'budget_exhausted', 'upstream_unavailable', 'upstream_timeout', 'invalid_model_response']);
   if (ERROR_STATUS[code] !== status) throw new TypeError('Backend HTTP/code mismatch');
   const retry = e.retryAfterMs;
-  // A malformed optional retry hint uses the mandated local cooldown for 429.
+  // Ignore malformed optional retry hints; they do not control local admission.
   const validRetry = typeof retry === 'number' && Number.isInteger(retry) && retry >= 1 && retry <= 86_400_000;
   if (retry !== undefined && !validRetry && status !== 429) throw new TypeError('Invalid retry hint');
   return { version: 1, requestId, error: { code, ...(validRetry ? { retryAfterMs: retry } : {}) } };

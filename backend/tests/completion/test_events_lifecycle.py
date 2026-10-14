@@ -13,7 +13,6 @@ from wisp_backend.accounting.contracts import RESERVATION, Usage
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.schemas.events import EventRequest
 from wisp_backend.completion.contracts import ProviderResult
-from wisp_backend.config.settings import LedgerSettings
 
 
 FIXTURES = CONTRACT_FIXTURES / 'desktop-backend-v3'
@@ -23,8 +22,7 @@ def fixture(name):
     return json.loads((FIXTURES/name).read_bytes())
 
 
-@pytest.mark.parametrize('policy', [{'daily_requests': 1}, {'daily_tokens': RESERVATION}])
-def test_all_endpoints_share_budget_and_id_namespace(app_factory, body, completion, policy):
+def test_all_endpoints_share_accounting_and_id_namespace(app_factory, body, completion):
     async def run():
         calls = []
         def upstream(request):
@@ -39,7 +37,6 @@ def test_all_endpoints_share_budget_and_id_namespace(app_factory, body, completi
             ('/v3/chat', {**fixture('request.chat.json'), 'requestId': request_id})]
         async with app.router.lifespan_context(app):
             ledger = app.state.completion_service.ledger
-            ledger.policy = LedgerSettings(**policy)
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
                 first = await client.post('/v3/events', json=game)
                 assert first.status_code == 200
@@ -48,16 +45,15 @@ def test_all_endpoints_share_budget_and_id_namespace(app_factory, body, completi
                     assert conflict.status_code == 409
                     assert conflict.json()['error']['code'] == 'request_conflict'
                     assert conflict.json()['version'] == candidate['version']
-                    denied = await client.post(route, json={**candidate, 'requestId': str(uuid4())})
-                    assert denied.status_code == 429
-                    assert denied.json()['error']['code'] == 'budget_exhausted'
+                    next_response = await client.post(route, json={**candidate, 'requestId': str(uuid4())})
+                    assert next_response.status_code == 200
                 replay = await client.post('/v3/events', json=game)
                 assert replay.content == first.content
                 changed = await client.post('/v3/events', json={**fixture('request.social.json'), 'requestId': request_id})
                 assert changed.status_code == 409
             with sqlite3.connect(ledger.path) as db:
-                assert db.execute('SELECT requests,confirmed FROM days').fetchone() == (1, 3)
-        assert len(calls) == 1
+                assert db.execute('SELECT requests,confirmed FROM days').fetchone() == (5, 15)
+        assert len(calls) == 5
     asyncio.run(run())
 
 
@@ -192,8 +188,7 @@ def test_cached_commit_cannot_replay_success_after_event_deadline(app_factory, c
     asyncio.run(run())
 
 
-@pytest.mark.parametrize('policy', [{'concurrent_limit': 1}, {'rate_limit': 1}])
-def test_v3_inflight_blocks_all_routes_without_dispatch(app_factory, body, completion, policy):
+def test_v3_inflight_blocks_duplicate_ids_but_not_other_requests(app_factory, body, completion):
     async def run():
         entered, release = asyncio.Event(), asyncio.Event()
         calls = []
@@ -202,7 +197,7 @@ def test_v3_inflight_blocks_all_routes_without_dispatch(app_factory, body, compl
             entered.set()
             await release.wait()
             return httpx.Response(200, json=completion())
-        app = app_factory(upstream, ledger=policy)
+        app = app_factory(upstream)
         game = fixture('request.game.json')
         candidates = [('/v1/chat', body), ('/v1/touch', touch_body(body)),
             ('/v2/chat', {**body, 'version': 2, 'memory': game['memory']}),
@@ -211,6 +206,7 @@ def test_v3_inflight_blocks_all_routes_without_dispatch(app_factory, body, compl
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
                 first = asyncio.create_task(client.post('/v3/events', json=game))
                 await entered.wait()
+                pending = []
                 try:
                     duplicate = await client.post('/v3/events', json=game)
                     assert duplicate.json()['error']['code'] == 'request_in_progress'
@@ -219,12 +215,12 @@ def test_v3_inflight_blocks_all_routes_without_dispatch(app_factory, body, compl
                         expected = 'request_in_progress' if path == '/v3/events' else 'request_conflict'
                         assert conflict.status_code == 409
                         assert conflict.json()['error']['code'] == expected
-                        denied = await client.post(path, json={**request, 'requestId': str(uuid4())})
-                        assert denied.status_code == 429
-                        assert denied.json()['version'] == request['version']
-                        assert denied.json()['error']['code'] == 'rate_limited'
+                        pending.append(asyncio.create_task(client.post(path, json={**request, 'requestId': str(uuid4())})))
+                    while len(calls) < 6:
+                        await asyncio.sleep(0)
                 finally:
                     release.set()
                     assert (await first).status_code == 200
-        assert len(calls) == 1
+                    assert all(r.status_code == 200 for r in await asyncio.gather(*pending))
+        assert len(calls) == 6
     asyncio.run(run())

@@ -77,15 +77,14 @@ def test_unreviewed_profile_or_limits_rejected(profile):
         Settings(api_key=SecretStr('test'), assistants={'default':profile})
 
 
-def test_operator_limits_and_ledger_path(env_values):
+@pytest.mark.parametrize('old_limits', ['{"daily_requests":1,"daily_tokens":1}', '{'])
+def test_operator_ledger_path_and_obsolete_limits_are_ignored(env_values, old_limits):
     env_values.update(GROQ_API_KEY='test', WISP_LEDGER_PATH='/tmp/operator.sqlite',
-        WISP_LIMITS_JSON='{"rate_limit":4,"concurrent_limit":1,"daily_requests":8,"daily_tokens":131072}')
+                      WISP_LIMITS_JSON=old_limits)
     config = load_settings()
     assert config.ledger_path == Path('/tmp/operator.sqlite')
-    assert config.ledger.rate_limit == 4
-    for invalid in ({'rate_limit':True}, {'daily_tokens':131071}, {'concurrent_limit':0}, {'extra':1}):
-        with pytest.raises(ValidationError):
-            Settings(api_key=SecretStr('test'), ledger=invalid)
+    assert 'ledger' not in Settings.model_fields
+
 
 
 def test_gemini_environment_selects_own_key_and_defaults(env_values):
@@ -96,7 +95,6 @@ def test_gemini_environment_selects_own_key_and_defaults(env_values):
     assert settings.api_key.get_secret_value() == "google-key"
     assert settings.assistants["default"].model == "gemini-3.5-flash-lite"
     assert settings.base_url == "https://generativelanguage.googleapis.com/v1beta/"
-    assert settings.ledger.daily_tokens == 2_000_000
     assert settings.profile.reservation == 1_114_112
     assert "google-key" not in repr(settings)
 
@@ -107,18 +105,16 @@ def test_gemini_never_uses_groq_or_legacy_key(env_values):
         load_settings()
 
 
-def test_explicit_gemini_model_and_partial_limits(env_values):
+def test_explicit_gemini_model_ignores_obsolete_limits(env_values):
     env_values.update(WISP_AI_PROVIDER="gemini", WISP_AI_MODEL="gemini-3.8-flash",
                       GEMINI_API_KEY="test", WISP_LIMITS_JSON='{"daily_requests":5}')
     settings = load_settings()
     assert settings.assistants["default"].model == "gemini-3.8-flash"
-    assert settings.ledger.daily_tokens == 2_000_000
-    assert settings.ledger.daily_requests == 5
 
 
 @pytest.mark.parametrize("extra", [
     {"WISP_AI_PROVIDER": "unknown"}, {"WISP_AI_MODEL": "unknown"},
-    {"WISP_AI_PROVIDER": ""}, {"WISP_LIMITS_JSON": '{"daily_tokens":1000000}'},
+    {"WISP_AI_PROVIDER": ""},
     {"ASSISTANTS_JSON": '{"default":{"provider":"groq"}}'},
     {"ASSISTANTS_JSON": '{"default":{"model":"gemini-3.8-flash"}}', "WISP_AI_MODEL": "gemini-3.5-flash-lite"},
     {"ASSISTANTS_JSON": '[]'}, {"ASSISTANTS_JSON": '{"default":null}'},
@@ -165,7 +161,7 @@ def test_matching_numeric_overrides_are_not_conflicts(env_values: dict[str, str]
     assert settings.assistants["default"].temperature == .5
 
 
-@pytest.mark.parametrize("variable", ["ASSISTANTS_JSON", "WISP_LIMITS_JSON"])
+@pytest.mark.parametrize("variable", ["ASSISTANTS_JSON"])
 def test_malformed_json_still_fails_loading(env_values: dict[str, str], variable: str) -> None:
     env_values.update(GROQ_API_KEY="test")
     env_values[variable] = "{"
