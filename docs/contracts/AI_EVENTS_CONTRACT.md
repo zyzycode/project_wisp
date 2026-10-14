@@ -100,3 +100,15 @@ Touch проходит тот же admission/ledger/deadline/cancellation, чт�
 Касание доступно при настроенном backend независимо от флага автономных AI-событий и автопрогулок. Касания не имеют локальных квот или задержек между запросами. Один shared transport, без retries/очереди: повторные клики во время touch request пропускаются. Занятый прежним запросом слот не создаёт отложенное касание. Quiet/menu/sleep/critical needs/forced motion и thinking блокируют отправку; текстовый чат отменяет касание и ждёт settlement перед своим запросом.
 
 Runtime deadline15s, transport12s, сервер использует существующий chat deadline. Ошибка/недоступность/невалидный/поздний ответ — без заготовки и error bubble. Reset/dispose/перетаскивание инвалидируют результат. Обычная автономная смена занятия не отменяет касание, если общие gates сохраняются. Ответ публикуется через existing initiativeSpeech на 2s, без повторного Character reward, recall, записи в память или previousInitiative. Режим без backend не генерирует mock-фразы на клик. Перетаскивания и серии кликов не создают новых типов запросов.
+
+## 9. Observation boundary
+
+[OBS-A01](../../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a01-активное-приложение-и-заголовок)
+разрешает будущий локальный observer; это не новый event API. Desktop не отправляет
+appKey/категорию/title/usage/pixels/OCR и не подмешивает их в messages, memory,
+character, previousInitiative или существующие event types. Пользовательская реплика
+о приложении остаётся обычным user input, а не автоматической observation projection.
+Backend v1–v3 сохраняет закрытые schemas, отклоняет неизвестные поля/types и не
+передаёт observation provider. Нового endpoint/server storage нет. Offline screen
+experiment тоже не использует backend; удалённый вариант требует отдельного
+двустороннего wire/data-policy gate из [Perception §12](../../frontend/docs/engine/PERCEPTION_ENGINE.md#12-obs-a01-отдельный-эксперимент-содержимого-экрана).

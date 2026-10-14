@@ -12,6 +12,7 @@
 | Desktop ↔ backend: wire v1/v2/v3 и fixtures | [Общие контракты](contracts/README.md) |
 | Продуктовые решения и следующие этапы | [Vision и roadmap](PRODUCT_VISION_AND_ROADMAP.md) |
 | Следующее расширение памяти событий и общих шуток | [MEM-A03: решение и Implementation consequences](MEM_A03_RESULT.md); реализация — отдельный этап |
+| Локальное наблюдение приложений и отдельный эксперимент экрана | [OBS-A01: решение и Implementation consequences](OBS_A01_RESULT.md); реализация — отдельный этап |
 | Причины архитектурных решений | [Реестр ADR](adr/README.md), только связанная запись |
 | Задачи, зависимости и фактические статусы | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
 | Создание Issue, выдача/закрытие спринта | [Шаблоны менеджера](workflow/ISSUE_HANDOFF.md), только для этой операции |

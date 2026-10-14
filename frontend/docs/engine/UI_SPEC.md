@@ -109,6 +109,8 @@ Application выбирает текст по Activity outcome и locale, вла�
 
 P17-A04 добавляет optional `BrainStateDTO.initiativeSpeech` для bounded AI-фразы (absent/null — нет речи), независимо от game outcome/Dialogue turn. Lifetime/priority/current generation — [AI Events §4](../../../docs/contracts/AI_EVENTS_CONTRACT.md#4-речь-связь-со-следующим-диалогом-и-память). Publisher/validator/Renderer подключаются в #59 атомарно; UI не инициирует event calls и не сообщает факт прочтения/проигрывания. Existing immediate game speech выше инициативы и не задерживается ради сети.
 
+OBS-A01 планирует отдельную optional `BrainStateDTO.observationSpeech`; absent/null — нет речи. Это целевой контракт, types/runtime подключаются отдельной OBS-I01. Consent/settings/preview, lifecycle и lowest-priority reaction — [Perception §11](PERCEPTION_ENGINE.md#11-obs-a01-активное-приложение-и-заголовок). UI не запускает observation из отображения и не превращает её в AI event/previousInitiative.
+
 ### 6.2. Время, revision и order
 
 - Main генерирует opaque `streamId` (до 128 символов) для trusted document; reload/replacement создаёт новый stream с revision `1`.
