@@ -121,6 +121,11 @@ const appLogger = new AppLogger({
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
   createStreamId: () => { const id = randomUUID(); dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); return id; },
+  prepareSnapshot: () => {
+    aiEventRuntime?.tick();
+    autonomyComposition?.tick();
+    aiEventRuntime?.tick();
+  },
   createSnapshot: ({ streamId, revision, sampledAtMs }) => {
     if (shimejiMotionOrchestrator === null || autonomyComposition === null || dialogueRuntime === null) {
       throw new Error('Brain state sources are unavailable');
@@ -257,7 +262,7 @@ function initializeAutonomyComposition(): void {
   const memoryGeneration = memoryRuntime?.currentGeneration() ?? 0;
   autonomyComposition = new MainAutonomyComposition({
     cursorPosition: platformAdapter,
-    clock: { now: () => performance.now() },
+    clock: { now: () => brainStatePublisher.now() },
     scheduler: createMainAutonomyScheduler(),
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
@@ -312,10 +317,10 @@ function initializeAutonomyComposition(): void {
     const recall = !localMock && ['2', '3'].includes(process.env.WISP_BACKEND_API_VERSION ?? '') && memoryComposition
       ? new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
     if (ai.touchProvider && ai.touchControl) aiEventRuntime = new AIEventRuntime({ provider: ai.touchProvider, control: ai.touchControl, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
-      now: () => performance.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
+      now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
       gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0 }) });
     dialogueRuntime = new DialogueRuntime({
-      ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => performance.now(),
+      ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
       memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
         completed: turn => { void memoryRuntime?.history.completed(turn); }, ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
@@ -385,7 +390,7 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
       getWindow: () => mainWindow,
       pivotOffset: ROOT_PIVOT_OFFSET,
     }),
-    now: () => performance.now(),
+    now: () => brainStatePublisher.now(),
     eventDispatcher: {
       dispatchMotionEvent: (event) => {
         autonomyComposition?.handleMotionEvent(event);

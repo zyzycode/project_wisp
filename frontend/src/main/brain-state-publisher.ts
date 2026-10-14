@@ -16,6 +16,8 @@ export interface BrainStateSnapshotMeta {
 export interface BrainStatePublisherOptions {
   readonly now: () => number;
   readonly createStreamId: () => string;
+  /** Advance deadline-driven sources before reading a snapshot, using now(). */
+  readonly prepareSnapshot?: (sampledAtMs: number) => void;
   readonly createSnapshot: (meta: BrainStateSnapshotMeta) => unknown;
   readonly deliver: (state: BrainStateDTO) => void | Promise<void>;
   readonly revisionSink: BrainStateRevisionSink;
@@ -51,9 +53,15 @@ export class BrainStatePublisher {
   private readonly pending: PendingSnapshot[] = [];
   private inFlight: InFlightSnapshot | null = null;
   private flushScheduled = false;
+  private snapshotTime: number | null = null;
 
   constructor(private readonly options: BrainStatePublisherOptions) {
     this.scheduleFlush = options.scheduleFlush ?? queueMicrotask;
+  }
+
+  /** Main sources share one monotonic time while a committed snapshot is prepared. */
+  public now(): number {
+    return this.snapshotTime ?? this.options.now();
   }
 
   public replaceStream(): string {
@@ -104,7 +112,8 @@ export class BrainStatePublisher {
   }
 
   public requestCommit(): void {
-    if (this.streamId === null) return;
+    // Changes made while preparing the snapshot are included in that same capture.
+    if (this.streamId === null || this.snapshotTime !== null) return;
     if (this.transactionDepth > 0) {
       this.transactionDirty = true;
       return;
@@ -119,11 +128,15 @@ export class BrainStatePublisher {
     if (!Number.isSafeInteger(revision)) {
       throw new RangeError('Brain revision exceeds the safe integer range');
     }
-    const state = parseBrainStateDTO(this.options.createSnapshot({
-      streamId,
-      revision,
-      sampledAtMs: this.options.now(),
-    }));
+    const sampledAtMs = this.options.now();
+    let state: BrainStateDTO;
+    this.snapshotTime = sampledAtMs;
+    try {
+      this.options.prepareSnapshot?.(sampledAtMs);
+      state = parseBrainStateDTO(this.options.createSnapshot({ streamId, revision, sampledAtMs }));
+    } finally {
+      this.snapshotTime = null;
+    }
     if (state.streamId !== streamId || state.revision !== revision) {
       throw new TypeError('Brain snapshot metadata does not match the active stream');
     }
