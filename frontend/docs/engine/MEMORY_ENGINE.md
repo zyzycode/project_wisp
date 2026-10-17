@@ -374,3 +374,34 @@ generatorVersion должны совпасть. Missing/changed/suppressed/timeo
 и confirmed knowledge не изменяются. UI не обещает забыть источник навсегда.
 Удаление полного memory/cache не удаляет уже переданные backend/provider копии;
 retention — общий contract. Ошибки/отсутствие cache никогда не блокируют FSM/input/chat.
+
+## 13. INTERACTION-A01: краткий след касания (#87)
+
+Целевой #89: Main/Application хранит **один** [PreviousTouchReaction](../../src/application/ports/interaction-appraisal.ts)
+в RAM, до 10 минут по monotonic clock от публикации. Только действительно опубликованный
+touch text и фактический action=touch, UTC occurredAt, AI proposal (untrusted), принятое
+решение/reason и pre-base energy≤30=tired / otherwise rested, comfort≥80=overloaded /
+otherwise calm. Это объясняет ближайшее «почему?», не доказывает чувства/намерения
+пользователя. Reply/cause не превращаются в user fact, message, summary source или
+verified preference. При локальном fallback appraisal=neutral/low/uncertain;
+effect=rejected/reason=unavailable либо state_changed, suppressed/cooldown при rate gate.
+
+Trace заменяется следующим опубликованным touch. Его копия попадает только в явный
+v7 chat как previousTouch; не consume-on-read, последующие вопросы до TTL допускаются.
+Никакого поиска старых touch из chat text. Исходный пользовательский вопрос и текущий
+snapshot приоритетнее старого trace; prompt честно отделяет состояние тогда от сейчас.
+Touch без публикации не создаёт trace и не затирает прежний, кроме invalidation.
+
+Restart, dialogue reset/reload, full-memory reset (включая начало generation barrier),
+dispose и любая memory deletion/correction invalidation очищают trace и pending copies.
+TTL проверяется при каждой сборке/публикации, не только таймером. После удаления ни
+pending late response, ни cache не возвращают след в контекст. Нет новых SQLite
+таблиц/миграций, durable interaction journal или server conversation storage.
+Изменённый CharacterState сохраняется обычным checkpoint §4; без долговременного trace
+после restart приложение не обещает помнить причину. Это сознательный scope первого
+сценария: устойчивое объяснение между запусками требует отдельной задачи/gate.
+
+Обычные chat pairs сохраняются по прежним правилам. AI appraisal не идёт в extraction,
+recall, подтверждение фактов, axes learning или summary. Backend получает только bounded
+projection согласно [Events §10](../../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v7),
+не local interactionId/generation/monotonic clocks, не история прикосновений.

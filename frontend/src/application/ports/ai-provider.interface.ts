@@ -12,6 +12,7 @@
 
 import type { CharacterSnapshot } from '../../domain/character/types';
 import type { AIProviderMemoryContext, MemoryFactCandidate } from './memory-knowledge.interface';
+import type { CharacterCardReference, InteractionAppraisal, PreviousTouchReaction } from './interaction-appraisal';
 
 export type AIProviderStatusKind = 'ready' | 'thinking' | 'degraded' | 'offline' | 'error';
 
@@ -43,6 +44,8 @@ export interface AIPreviousInitiative {
 }
 
 export interface AIProviderRequest {
+  /** Explicit v7 mode only; older adapters never serialize these fields. */
+  readonly interaction?: { readonly card: CharacterCardReference; readonly effectPolicy: 'eligible' | 'suppressed'; readonly previousTouch?: PreviousTouchReaction };
   readonly summary?: { readonly text: string };
   requestId: string;
   userMessage: AIProviderUserMessage;
@@ -108,6 +111,7 @@ export interface AIProviderReply {
 export type AIProviderResponseStatus = 'ok' | 'fallback';
 
 export interface AIProviderResponse {
+  readonly appraisal?: InteractionAppraisal;
   requestId: string;
   status: AIProviderResponseStatus;
   reply: AIProviderReply;

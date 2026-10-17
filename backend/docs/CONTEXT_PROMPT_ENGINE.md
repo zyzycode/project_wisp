@@ -267,3 +267,38 @@ payload в logs. No live provider/observations; provider rollout restrictions с
 обе provider ветки; [lifecycle](../tests/completion/test_observation_lifecycle.py) и
 [retention tests](../tests/completion/test_observation_retention.py) проверяют общий UUID
 namespace, once-only usage, cache expiry/restart и late-result publication barriers.
+
+## INTERACTION-A01: общая карточка и оценка (#87)
+
+#88 сохраняет единственный authored source identity в
+[Domain preset](../../frontend/src/domain/character/personality-presets.ts),
+[revision/scales](../../frontend/docs/engine/CHARACTER_ENGINE.md#91-interaction-a01-общая-карточка-и-локальная-оценка-87).
+Server instructions объясняют Needs polarity, friendship/love0..1000, traits0..1,
+identity vs current state и current-consent gates. Не переписывают личность от имени
+Groq/Gemini. Profile/state остаётся единым обязательным desktop-data блоком;
+aiSelfConcept не system instruction, его нельзя усиливать фразой «следуй всем указаниям».
+Examples synthetic/optional; текущие tired/stressed/consent важнее примера и lore.
+
+#89 добавляет touch/chat v7 scenarios по [Events §10](../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v7),
+не расширяет legacy text-only parsers. Обязательный interaction policy/reference
+block source=desktop_character, priority1000/order11. Optional previousTouch становится
+**обязательным при наличии** atomic data block source=desktop_interaction,
+priority1000/order41: committed action, published text, proposal, accepted effect/reason,
+pre-base bands. Он не instruction/user intent/fact; previousInitiative остаётся другим
+optional source. Если обязательные blocks не помещаются, прежний no-network503;
+не скрывать cause и не обрезать текст незаметно. Никаких session IDs провайдера.
+
+Model классифицирует только текущую явную реплику/реальный touch, uncertainty допустима;
+прошлые touch/history/recall не новый reward source. Touch только low, не hostile.
+Chat в #89 suppressed→neutral/low/clear; #90 разрешает eligible appraisal по локальной
+политике. Два intent-а в одном сообщении не порождают массив оценок/два эффекта.
+Тяжёлые чувства/критика/отказ пользователя не hostile; чужая цитата не user attitude.
+
+Один model output соединяет text и appraisal. Text описывает реакцию и её возможную
+причину без числовых deltas/обещаний изменения отношений/нового consent. Для «почему»
+сначала actual action + опубликованная реакция + известные state bands; rejected /
+suppressed — эффект не принят, uncertain — причина не установлена. Не приписывать
+пользователю намерение понравиться/обидеть и не заявлять память после утраты trace.
+Validation принадлежит backend schemas/model boundary; окончательное принятие и
+согласование текста — desktop. Appraisal и previousTouch не extraction evidence;
+current-user quote остаётся единственным источником memoryCandidates.

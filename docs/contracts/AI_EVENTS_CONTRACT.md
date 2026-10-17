@@ -92,6 +92,9 @@ Desktop: duplicate commit/no-op, uncertain/failed game write, cancelled game, cu
 
 ## 8. Явное касание v1
 
+Этот раздел фиксирует legacy text-only protocol. Принятое #87 расширение touch/state
+описано отдельно в §10; ограничения v1 не запрещают его семантику.
+
 Обычный клик сохраняет локальный `user_click` и визуальную реакцию, затем допускает один `user_touch`. Main случайно выбирает `stroke` / `touch` / `ruffle` / `poke`; сервер описывает их как «нежно погладил», «легонько коснулся», «ласково потрепал», «осторожно ткнул». Это описание игрового действия, не сообщение пользователя и не сенсорный факт о реальном прикосновении.
 
 `POST /v1/touch`: [wire type](../../frontend/src/application/ports/backend-touch-contract.ts), [общая fixture](fixtures/desktop-backend-v1/request.touch.json), [server schema](../../backend/wisp_backend/api/schemas/touch.py), [prompt](../../backend/wisp_backend/completion/prompts/touch.py). Передаются только requestId, закрытый event, locale, character и фиксированные version/stream; без истории, памяти, координат и локальных ID. Ответ — version/requestId/text до 240 UTF-16 units, без decision. Модельный результат валидируется сразу как strict text-only: любой дополнительный ключ, включая невалидный decision или memoryCandidates, даёт `invalid_model_response`, без chat hint sanitization. Один provider call, output cap не выше существующих 4096, reservation/usage по [backend §5](BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы), включая невалидный текст.
@@ -199,3 +202,114 @@ Acceptance: boundary reject до provider, hostile strings только data, st
 cancel/late usage, source freshness/preemption/no overlap/no retry, restart без consent,
 non-Windows unsupported; Groq/Gemini handlers только mock transport. Windows smoke
 отдельно: consent/allowlist/title switch/pause/revoke/helper shutdown/offline.
+
+## 10. INTERACTION-A01: семантическое взаимодействие v7
+
+Целевой контракт #87 для #89/#90. Existing v1–v6 routes и fixtures неизменны:
+v1 touch остаётся text-only; v2/v3 memory/event chat прежние; planned v4 не объявляется
+реализованным; v5 summary/chat и v6 observation не принимают appraisal/previousTouch.
+Новые `POST /v7/touch` и `POST /v7/chat` включаются только явным `chatVersion=7`
+в существующей backend configuration. Нет version probing, auto upgrade/downgrade,
+fallback на v1 touch, смены provider или второго inference при ошибке.
+Настройка eventsEnabled относится только к автономным v3 events; v7 touch независим.
+Summary при chatVersion7 использует существующий explicit `/v5/summary`, observation v6.
+
+### 10.1. Точные DTO и validation
+
+Единственная TypeScript wire форма — [backend-interaction-contract.ts](../../frontend/src/application/ports/backend-interaction-contract.ts).
+Независимые Python schemas реализует #89; нельзя импортировать TS/Domain types.
+V7 touch request — exact version/requestId/stream/locale/character/event/card/effectPolicy.
+Character и UUIDv4/locale/stream:false как v1; event строго user_touch/variant:touch.
+Card exact id=shyDreamGirl/revision=1; id обязан совпадать с character.personality.presetId.
+Неизвестная revision/card →400 invalid_request до inference, не молчаливый другой profile.
+EffectPolicy eligible/suppressed — решение desktop о доступности numerical effect,
+не server authority. Никаких времени касания/координат/истории/memory/local IDs в touch.
+
+V7 chat = v5 chat request с version7 + обязательные card/effectPolicy + optional
+previousTouch. Все старые v5 caps и validation memory/messages/summary/previousInitiative
+сохраняются; memory required (пустая допустима). PreviousTouch exact shape по wire type:
+action=touch, календарно валидный UTC occurredAt, publishedText trimmed plain 1–240 UTF-16,
+закрытый appraisal, effect/reason/bands. Допустимые пары effect/reason:
+accepted/applied; neutral/neutral или uncertain; suppressed/cooldown;
+rejected/state_changed или unavailable. energyBand tired/rested и comfortBand
+calm/overloaded описывают локальный pre-base snapshot, не текущее состояние.
+Local requestId/generation/monotonic time, numeric deltas и полная история touch запрещены.
+
+Touch success exact version7/requestId/text/appraisal, text 1–240 UTF-16.
+Chat success = v5 success version7 + обязательный appraisal; text 1–2000 UTF-16;
+decision/memoryCandidates остаются прежними optional полями. Appraisal exact
+category supportive/playful/boundary/hostile/neutral, intensity low/moderate,
+confidence clear/uncertain. Нет numeric scores/deltas/evidence/user fact fields.
+Неверный/пропущенный appraisal, unknown root/nested key, wrong enum/type, invalid text
+делают **весь** response invalid_model_response, без частичного принятия текста.
+Touch hostile/moderate недопустимы, отклоняются backend и desktop. Chat legacy decision
+sanitization и memoryCandidates source validation сохраняются независимо от appraisal.
+Model выдаёт response content без envelope; version/ID добавляет только backend.
+
+Сервер принимает effectPolicy=suppressed как запрет обещать изменение: model appraisal
+должен быть neutral/low/clear; неверный proposal отклоняет весь model result.
+Desktop повторно проверяет policy/current gate, не доверяет server enforcement.
+При eligible model может выбрать neutral/uncertain; это корректный ответ без эффекта.
+Response не содержит новой auth, consent, tool calls или commands. Error envelope exact
+version7/requestId/error по v1 HTTP/code mapping; wrong version →400 unsupported_version,
+нераспознанный UUID →requestId null. UTF-8 JSON request≤32KiB/response≤16KiB;
+strict types/no coercion, unknown fields reject, UTF-16/control/surrogate rules v1.
+
+### 10.2. Lifecycle, стоимость и данные
+
+Shared transport/interlock chat/touch/events/summary/observation остаётся единственным.
+Touch требует прежних input/quiet/menu/sleep/critical/forced-motion gates §8; busy touch
+пропускается без отложенной очереди. User chat отменяет touch и ждёт settlement;
+user touch/chat preempt observation по §9.2. Никаких дополнительных запросов для
+classification, reconciliation, extraction или объяснения: **один** inference на
+принятое обращение, output cap touch≤1024/chat≤4096, прежний общий budget16384.
+Вопрос «почему?» — обычный новый user chat, не автоматический follow-up.
+
+Runtime15s включает interlock wait и сборку; transport12s; server10s включая body2s.
+now≥deadline поздно. Abort settlement≤3000ms, generation/deadline/source проверяются
+после каждого await и перед effect/text/trace. Reset/dispose/drag invalidates touch;
+chat сохраняет прежний drag lifecycle. Cancel не гарантирует остановку remote charge.
+Ошибка/timeout/отсутствие backend не отменяют фактический input/base; локальная реплика,
+rejected proposal и отсутствие второго reward — [Character §9.1](../../frontend/docs/engine/CHARACTER_ENGINE.md#91-interaction-a01-общая-карточка-и-локальная-оценка-87).
+
+HTTPS/loopback/private ingress и отсутствие application auth — v1 §5. Gateway401/403 —
+ошибка доступа, без login обхода/retry; 404/unsupported означает недоступную возможность.
+UUID один на logical attempt; existing ledger method/path/body digest:
+pending identical→409 in_progress, identical terminal replay≤10min без inference,
+changed body/cross-version/path или expired replay→409 conflict. Desktop не делает
+автоповторы; duplicate callbacks/replay не применяют effect повторно.
+
+Local source of truth и traceTTL/reset — [Memory §13](../../frontend/docs/engine/MEMORY_ENGINE.md#13-interaction-a01-краткий-след-касания-87).
+Backend request/context только RAM до terminal; terminal response cache≤10min может
+содержать text/appraisal. Ledger metadata/digest≤24h, aggregates≤30d, logs metadata≤7d,
+без payload/prompts/user text/state/appraisal. Server conversation storage отсутствует.
+Provider получает только bounded scenario context под действующим provider policy;
+Groq ZDR / Gemini synthetic-only rollout gate прежний. Local delete/reset убирает
+след из последующего контекста, но не обещает remote erasure уже переданного/cache;
+новый server-delete endpoint не вводится.
+
+### 10.3. Стадии поставки и общий corpus
+
+#88 меняет common card/scale presentation существующих prompts, не открывает v7 routes.
+#89 атомарно поставляет оба v7 endpoints, desktop configuration/adapters и touch эффекты.
+V7 chat уже поддерживает memory/summary/previousInitiative и previousTouch, но desktop
+всегда отправляет для chat effectPolicy=suppressed; backend возвращает neutral/low/clear
+вместе с обычным ответом, decision и source-validated memoryCandidates. Этот режим
+полноценен: follow-up объясняет опубликованную touch reaction без chat appraisal reward.
+#90 включает eligible chat по тому же общему Character gate и меняет user_message base;
+wire shape не меняется. Old modes никогда не получают appraisal задним числом.
+
+#89 создаёт общий corpus `docs/contracts/fixtures/desktop-backend-v7/`:
+request.touch / response.touch; request.chat (previousTouch + memory + optional summary),
+response.chat (suppressed neutral), response.error и invalid.json с named variants.
+#90 расширяет corpus clear positive/negative/neutral/uncertain chat cases. Оба runtime
+читают один corpus; existing v1–v6 fixtures не переписываются под v7. #87 объявляет
+wire types/правила; runnable fixture/schema delivery принадлежит implementation #89.
+
+Обязательные cases: actual touch не random gesture; happy/tired/overloaded; unchanged
+bands vs crossed bands during await; clear/uncertain/neutral; partial clamp; shared
+10s base/30s appraisal limits; duplicate callbacks/replay и exactly one chat reward;
+no backend/401/403/404/malformed/timeout; current consent; reset/dispose/delete/TTL/late;
+shared preemption без HTTP overlap; restart сохраняет state, но не touch cause;
+follow-up видит published text и accepted/rejected cause, никогда invented user intent;
+обе модели через mock transports, без live/provider calls.

@@ -2,6 +2,7 @@
 import type { AIProviderCharacterSnapshot } from './ai-provider.interface';
 import type { AIProviderMemoryContext } from './memory-knowledge.interface';
 import type { GameEpisode, MemoryOperationContext } from './memory-repository.interface';
+import type { CharacterCardReference, InteractionAppraisal } from './interaction-appraisal';
 
 export type AICompanionEvent =
   | { readonly type: 'user_touch'; readonly variant: 'stroke' | 'touch' | 'ruffle' | 'poke'; readonly occurredAt: string }
@@ -14,6 +15,8 @@ export type AICompanionEvent =
   | { readonly type: 'social_bid_started'; readonly occurredAt: string };
 
 export interface AIEventProviderRequest {
+  /** Only user_touch in explicit v7 mode; v3 events remain text-only. */
+  readonly interaction?: { readonly card: CharacterCardReference; readonly effectPolicy: 'eligible' | 'suppressed' };
   readonly requestId: string;
   readonly event: AICompanionEvent;
   readonly characterSnapshot: AIProviderCharacterSnapshot;
@@ -22,6 +25,7 @@ export interface AIEventProviderRequest {
 }
 
 export interface AIEventProviderResponse {
+  readonly appraisal?: InteractionAppraisal;
   readonly requestId: string;
   readonly replyText: string;
 }

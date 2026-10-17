@@ -70,7 +70,7 @@ Enable отменяет несовместимые active/deferred runs без �
 
 ### Правила прогрессии:
 
-Friendship растёт от регулярного контакта/dialogue/pet/совместного времени. Love unlock требует **`friendship >= 400` и `userConsentEnabled`**, без накрутки spam clicks. No-guilt: только сверхмягкий soft decay за отсутствие, без наказания/укоряющих реплик.
+Friendship растёт от регулярного контакта/dialogue/pet/совместного времени. Love unlock требует **`friendship >= 400` и `userConsentEnabled`**, без накрутки spam clicks. No-guilt: отсутствие пользователя не уменьшает friendship/love и не вызывает укоряющих реплик; offline decay запрещён.
 
 `loveUnlocked` — историческая защёлка: указанный gate относится к переходу false → true. Отзыв consent не обязан стирать прошлую разблокировку или накопленное love; положительный love delta без текущего consent запрещён. Restore `loveUnlocked=true` при `userConsentEnabled=false` допустим и не является новым unlock/consent. Романтическое выражение всегда заново проверяет текущие условия §7; provider/extraction не меняют consent. Несоответствие существующего reducer переходному gate исправляется в #57 с отдельной регрессией; memory restore не вводит ложный cross-field запрет исторического состояния.
 
@@ -211,6 +211,93 @@ Source дедуплицируется **до** проверки gate: пропу
 | quiet, critical sleep, menu, exhausted budget, disabled Explore; current consent=false; game terminal повторён | Запрещённый family не воскресает даже при +100/confidence=1; P2 и существующий cursor consumer сохраняются. Нет нового consent/relationship/game effect; обычный once-only outcome неизменен. |
 
 Сценарии — критерии будущих tests, не заявление, что этот gate исполнил runtime проверки.
+
+## 9.1. INTERACTION-A01: общая карточка и локальная оценка (#87)
+
+Целевой контракт #88–#90, а не описание уже поставленного runtime. Единственный авторский
+source общей карточки — [personality-presets.ts](../../src/domain/character/personality-presets.ts):
+`shyDreamGirl`, revision `1`. Все пользователи получают одинаковые aiSelfConcept, base,
+soft/hard limits и plasticity. Правка авторской identity требует повышения revision;
+provider switch, checkpoint, разговор и learning revision не меняют. Старые динамические
+checkpoints восстанавливаются поверх установленной карточки по Memory §4; редактора нет.
+[CharacterCardReference](../../src/application/ports/interaction-appraisal.ts) — ссылка,
+не вторая карточка. aiSelfConcept целиком ≤500 UTF-16, overflow отклоняется до сети,
+не молча обрезается. Backend получает reference только в v7, projection прежнего
+CharacterSnapshot и общие инструкции шкал; отдельного provider-specific характера нет.
+
+Раздельны: immutable identity; быстрые Needs/tone (§2/8); отношения (§3/7);
+медленные axes/preferences (§5/9). Energy растёт к бодрости, остальные Needs — дефициты;
+friendship/love не проценты; traits — 0..1. Ответы разных моделей и людей не обязаны
+совпадать, но не могут менять эту семантику или выдавать consent из текста.
+
+### Факт, proposal и порядок
+
+Один обычный клик означает только `touch`. Случайные stroke/ruffle/poke не описывают
+фактический ввод и в v7 запрещены. Double/right click и drag не становятся новым touch
+request; выбор иных жестов вне scope. Domain получает факт ввода сразу, до AI.
+В #89 click/double_click/right_click заменяют прежний click reward базой: attention −2, energy −0.2;
+остальные deltas нулевые. В #90 admission user_message заменяет старый chat reward
+базой attention −4; остальные deltas нулевые. Эти базы работают и offline, но
+ограничены общим 10s monotonic gate touch/chat: первая допустима сразу, повтор внутри
+окна имеет нулевые числовые deltas. Ввод, wake, речь и запросы gate не блокирует.
+Прочие explicit pet/play/feed stimuli сохраняют свои правила и не переименовываются в touch.
+
+AI возвращает [InteractionAppraisal](../../src/application/ports/interaction-appraisal.ts),
+не числа: category supportive/playful/boundary/hostile/neutral, intensity low/moderate,
+confidence clear/uncertain. Supportive — забота/поддержка; playful — доброжелательная игра;
+boundary — нежелательный контакт/просьба о дистанции; hostile — направленная явная
+враждебность текущего сообщения, не отрицательная эмоция пользователя, несогласие,
+цитата или просьба уйти. Uncertain означает отсутствие достаточного evidence.
+Touch не может быть hostile. Intensity moderate разрешена только для ясного chat
+смысла; обычный touch всегда low. Модель учитывает post-base snapshot и факт действия;
+Domain проверяет category/intensity/confidence, current gates и применяет таблицу.
+
+| Принятая оценка | Needs delta | Relationship delta |
+|---|---|---|
+| supportive, clear | comfort −1×k | friendship +2×k |
+| playful, clear | play −2×k | friendship +1×k |
+| boundary, clear | comfort +1×k | 0 |
+| hostile, clear, только chat | comfort +2×k | friendship −1×k |
+| neutral либо uncertain | 0 | 0 |
+
+`k=1` для low, `k=2` для moderate. Clamp Needs 0..100, friendship 0..1000;
+love/flirtiness/romanticCharge/consent/axes/preferences модельной оценкой не меняются.
+Friendship decrease допустим только этой таблицей для explicit hostile chat; исторический
+loveUnlocked не стирается. Unlock/романтическое выражение по §3/7 проверяются заново.
+Дополнительно один общий **30s** gate semantic effect touch/chat: первая eligibility
+startup/reset = now+30000, далее следующий nonzero accepted effect не раньше last+30000.
+Это ограничивает скорость развития, не число запросов; suppressed/neutral/uncertain
+не продлевают gate. Restart не позволяет обойти gate первым мгновенным reward.
+
+Один logical interactionId + current generation: base и appraisal имеют разные once-only
+receipts, оба не повторяются от callbacks/replay/recall. Main назначает возрастающий
+local interaction sequence; Character service держит два generation-scoped high-water
+marks (base/appraisal), а не бесконечный ID set. Старый/повторный sequence отклоняется;
+callbacks обязаны сохранить исходную generation. Restart не replay-ит interactions.
+Provider_response сохраняет
+behavior candidate, но **нулевые** Needs/relationship/intimacy/axes effects во всех modes;
+в #89 исправляется нынешняя нормализация provider_response в chat_message. #90 не
+начисляет old chat deltas поверх новой базы. Медленная adaptation остаётся отдельным
+5-minute gate §9: максимум один реальный user stimulus; proposal/reply не второй sample.
+
+### Свежесть и согласование реплики
+
+Application запоминает post-base context signature: card reference, synthesizedTone,
+energy bands ≤20 / (20,30) / ≥30, comfort ≤60 / (60,80) / ≥80, friendship <400 /
+[400,500) / ≥500, loveUnlocked, current consent и четыре точных traits. На commit
+сравнивает с текущим signature. Обычный drift внутри bands допустим: delta применяется
+к **текущему** state, snapshot не восстанавливается. Смена band/consent/traits/tone,
+reset/generation/dispose/deadline инвалидирует proposal; stale snapshot не rebased LLM.
+Local input/physics никогда не ждут AI. Eligibility повторно проверяется при commit.
+
+Effect и разрешённый текст публикуются одной Main semantic transaction. Prompt запрещает
+числовые обещания и утверждения об уже изменённых отношениях/consent. Neutral/uncertain
+ответ допускается без effect. Если nonzero proposal rejected/suppressed либо signature
+изменился, исходный AI-текст не публикуется: touch получает локальную factual реплику
+«Я заметила касание.» / “I noticed your touch.”; chat — существующий нейтральный
+fallback без claim о принятой оценке. При touch offline/timeout/malformed — та же
+локальная реплика один раз, если source/generation/input gates всё ещё актуальны;
+после reset/dispose/drag silence. Повторного inference для исправления текста нет.
 
 ## 10. Сводная модель CharacterState v2
 

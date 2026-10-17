@@ -20,7 +20,7 @@ Application владеет портом, сборкой `AIProviderRequest` и `
 
 P15-A02 объявляет optional `memoryContext`/response `memoryCandidates` в semantic порте для явного memory-capable режима #56. Правила source validation/recall — [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), wire — [Backend v2](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). Existing Mock/v1 их не требуют; v1 adapter не передаёт память и не принимает новые response fields. Model candidates не входят в Character mapper: запись выполняется отдельно после подтверждённого сохранения текущей user/assistant пары.
 
-P17-A04 объявляет optional `previousInitiative` только для явного режима v3: одна опубликованная AI-фраза в RAM≤60s/current generation, чтобы следующий user send имел контекст. Это не user message/долговременная память; v1/v2 её не передают. Отдельные event provider, жизненный цикл/прерывание, wire и speech — [AI_EVENTS_CONTRACT](../../../docs/contracts/AI_EVENTS_CONTRACT.md). User chat использует прежний semantic IAIProvider; только generateEvent имеет text-only result без Character commands.
+P17-A04 объявляет optional `previousInitiative` только для явного режима v3: одна опубликованная AI-фраза в RAM≤60s/current generation, чтобы следующий user send имел контекст. Это не user message/долговременная память; v1/v2 её не передают. Отдельные event provider, жизненный цикл/прерывание, wire и speech — [AI_EVENTS_CONTRACT](../../../docs/contracts/AI_EVENTS_CONTRACT.md). User chat использует прежний semantic IAIProvider; v3 generateEvent имеет text-only result без Character commands; touch v7 отдельно расширен в INTERACTION-A01.
 
 ### Канонический CharacterSnapshot — P17-A03 (#27)
 
@@ -111,7 +111,7 @@ Deadline **15 000 ms от admission**, включая `getStatus()`/`generateRes
 | Deadline истёк | completed/fallback с reason=timeout; thinking немедленно завершён, поздний результат игнорируется. |
 | Не удалось сформировать безопасный fallback | error с локальным сообщением; thinking завершён, provider behavior и context не коммитятся. |
 
-Fallback — локальный deterministic catalog, без второго provider call. Валидная provider fallback-реплика отображается, но behavior/mood hints не применяются. Только success создаёт `provider_response`/candidate через Character. Transport error — локальная UI-ошибка без Character reaction.
+Fallback — локальный deterministic catalog, без второго provider call. Валидная provider fallback-реплика отображается, но behavior/mood hints не применяются. Только success создаёт `provider_response`/candidate через Character; по INTERACTION-A01 этот stimulus имеет нулевой числовой reward, включая legacy modes (#89). Transport error — локальная UI-ошибка без Character reaction.
 
 Terminal/reset/dispose освобождают только thinking Activity своего requestId, не чужую Activity/forced Motion. Текущие gates определяют reply/idle; `thinking_loop` не ждёт Skin completion.
 
@@ -227,3 +227,29 @@ Desktop реализует policy, exact validators/projection и aborting adapt
 ## ARCHITECT RESULT — P17-A02 (#19)
 
 Принято: один Main/Application runtime, bounded volatile context, single-flight и единый Brain stream. Объявлены target command/receipt/presentation/bridge; обязательные injection/lifecycle/order/deadline/fallback/reset/cutover — в разделе «Dialogue runtime и IPC». На момент architect gate runtime ещё не мигрирован (последующее P17-I01 описано выше). В рамках P17-A02 зависимости, сетевые интеграции, persistence, backend и settings не менялись; sprites: none. Typecheck/ссылки/лимит/diff прошли, tests — при реализации. Gate: reviewer контрактов → app-developer.
+
+## INTERACTION-A01: interpretation и commit (#87)
+
+Целевые #89/#90 используют optional semantic `interaction` request/`appraisal` response
+в [IAIProvider](../../src/application/ports/ai-provider.interface.ts) и
+[IAIEventProvider](../../src/application/ports/ai-event-provider.interface.ts).
+Это расширение существующих consumers, не новый AI engine. Runtime принимает appraisal
+только от явного v7 adapter; Mock/direct/v1–v6 не получают implicit capability.
+Отсутствующая оценка означает нулевой semantic effect, не искусственно positive.
+Базовые effects реального ввода независимы от capability. Event responses cursor_game /
+social_bid остаются text-only; дополнительные appraisal keys вне touch v7 отклоняются.
+
+Порядок: admission/once-only user base → post-base snapshot/signature → не более одного
+inference → strict adapter validation → current generation/deadline/signature/gates →
+Character effect + согласованный text + RAM trace (для touch) → обычный checkpoint.
+Условия, таблица и partial-clamp принадлежат [Character §9.1](CHARACTER_ENGINE.md#91-interaction-a01-общая-карточка-и-локальная-оценка-87).
+Прошлый touch и published reaction — отдельная bounded projection
+[Memory §13](MEMORY_ENGINE.md#13-interaction-a01-краткий-след-касания-87), никогда
+синтетический user turn. Future user question не повторяет appraisal старого touch.
+
+V7 chat сохраняет v5 memory/summary/previousInitiative capabilities без нового summary
+endpoint; v5 summary operation остаётся отдельной explicit командой. Network errors,
+shared interlock/abort settlement, 15s runtime/12s transport deadlines прежние.
+В #89 v7 chat уже переносит previousTouch, но semantic chat effectPolicy=suppressed
+до реализации #90. Это явная стадия поставки, не разрешение удвоить старый reward.
+Нет изменения public IPC: Renderer показывает только существующие dialogue/speech.
