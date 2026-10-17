@@ -1,3 +1,4 @@
+import { FileSummaryCache } from '../infrastructure/memory/summary-cache';
 import path from 'node:path';
 import { MemoryWorkerClient } from '../infrastructure/memory/worker-client';
 import { createMemoryAdapters } from '../infrastructure/memory/adapters';
@@ -9,7 +10,7 @@ export function createMainMemoryComposition(userDataPath: string, mainDirectory:
     filename: path.join(userDataPath, 'memory', 'wisp.sqlite3'),
     now,
   });
-  return { ...createMemoryAdapters(client), ready: client.ready,
+  return { summaryCache: new FileSummaryCache(path.join(userDataPath, 'memory', 'summary-cache.json')), ...createMemoryAdapters(client), ready: client.ready,
     abandonStartup: () => client.abandonStartup(),
     abort: () => client.abort(),
     close: (generation: number) => client.close(generation) };

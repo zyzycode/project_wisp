@@ -1,3 +1,5 @@
+import type { ISummarySourceReader } from '../../application/ports/summary';
+import { summarySnapshot } from './summary-source-reader';
 import { itemReceipt, itemPage } from './item-validation';
 import type { IMemoryItemsRepository } from '../../application/ports/memory-items.interface';
 import type { IGameEpisodeReader } from '../../application/ports/memory-knowledge.interface';
@@ -12,6 +14,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly summarySources: ISummarySourceReader;
   readonly items: IMemoryItemsRepository;
   readonly history: IChatHistoryRepository;
   readonly facts: IUserFactsRepository;
@@ -27,6 +30,7 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    summarySources: { recent: c => call('summaryRecent', null, c, summarySnapshot), exact: (sources, c) => call('summaryExact', sources, c, summarySnapshot) },
     items: {
       confirm: (command, c) => call('mutateMemoryItem', command, c, itemReceipt),
       update: (command, c) => call('mutateMemoryItem', command, c, itemReceipt),

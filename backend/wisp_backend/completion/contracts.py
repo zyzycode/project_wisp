@@ -13,6 +13,7 @@ from wisp_backend.outcomes import Outcome
 class InferenceRequest:
     blocks: tuple[ContextBlock, ...]
     max_output_tokens: int | None = None
+    context_window: int | None = None
 
 
 @dataclass(frozen=True)

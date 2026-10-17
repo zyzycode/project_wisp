@@ -1,0 +1,21 @@
+import { expect, it, vi } from 'vitest';
+import { registerSummaryIpc } from '../../src/main/summary-ipc-registration';
+import type { ISummaryRuntime } from '../../src/application/ports/summary';
+it('binds summary commands to trusted current stream, validates output and removes handlers', async () => {
+  const sender = {}, handlers = new Map<string, (event: { sender: object }, ...args: unknown[]) => Promise<unknown>>();
+  const preview = { previewId: 'p', expiresAt: 120000, pairs: Array.from({ length: 4 }, () => ({ userText: 'u', assistantText: 'a' })) };
+  const runtime: ISummaryRuntime = { preview: vi.fn(async () => ({ ok: true as const, value: preview })), confirm: vi.fn(async () => ({ ok: true as const, value: 'summary' })), deleteSummary: vi.fn(async () => ({ ok: true as const, value: undefined })), capture: vi.fn(), isCurrent: vi.fn(), interrupt: vi.fn(), invalidate: vi.fn(), reset: vi.fn(), dispose: vi.fn() };
+  let enabled = true;
+  const dispose = registerSummaryIpc({ register: (name, handler) => { handlers.set(name, handler); }, remove: name => { handlers.delete(name); }, getSender: () => sender, getStream: () => 's', getRuntime: () => enabled ? runtime : null });
+  const call = (operation: string, ...args: unknown[]) => handlers.get(`wisp:summary-${operation}`)!({ sender }, ...args);
+  await expect(handlers.get('wisp:summary-preview')!({ sender: {} }, { streamId: 's' })).rejects.toThrow();
+  await expect(call('preview', { streamId: 's' }, {})).rejects.toThrow();
+  await expect(call('preview', { streamId: 'old' })).resolves.toEqual({ ok: false, code: 'stale' });
+  expect(runtime.preview).not.toHaveBeenCalled();
+  await expect(call('preview', { streamId: 's' })).resolves.toEqual({ ok: true, value: preview });
+  await expect(call('confirm', { streamId: 's', commandId: 'c', previewId: 'p' })).resolves.toEqual({ ok: true, value: 'summary' });
+  expect(runtime.confirm).toHaveBeenCalledExactlyOnceWith('c', 'p');
+  await expect(call('delete', { streamId: 's' })).resolves.toEqual({ ok: true, value: null });
+  enabled = false; await expect(call('preview', { streamId: 's' })).resolves.toEqual({ ok: false, code: 'unavailable' });
+  dispose(); expect(handlers.size).toBe(0);
+});

@@ -39,3 +39,17 @@ Before network delivery, the operator must download and verify the offered
 archive through the same public/VPN access path users have. If deployment omits
 required source files, startup fails rather than offering incomplete source.
 See docs/CONTEXT_PROMPT_ENGINE.md for deployment and attribution details.
+
+Summary adaptation (2026-10-17, CTX-I03 / #79):
+SillyTavern public/scripts/extensions/memory/index.js at pinned commit
+06bde939fb1e9c4c8d8641d810f0a916b5bce127, AGPL-3.0-only:
+- getRawSummaryPrompt lines761–825: chronological source accumulation adapted
+  in wisp_backend/completion/prompts/summary.py. Atomic JSON pairs replace
+  name/text concatenation; no previous summary or truncation; overflow rejects
+  the whole mandatory range using the existing provider budget selector.
+- summarizeChatMain lines681–753: single-call generation and empty-result
+  rejection adapted through Scenario.SUMMARY and SummaryModelReply in the
+  existing completion service/policy pipeline. Desktop validates provenance
+  and owns explicit consent, cancellation and local cache. No upstream UI,
+  automatic triggers, identity-only lifecycle predicate, or storage is copied.
+The existing backend-wide AGPL/source-offer terms above include these changes.

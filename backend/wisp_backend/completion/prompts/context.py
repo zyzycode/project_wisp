@@ -16,3 +16,5 @@ class PromptContext:
     event: dict[str, object] | None = None
     touch_variant: Literal["stroke", "touch", "ruffle", "poke"] | None = None
     lore: LoreCatalogue | None = None
+    summary: str | None = None
+    summary_pairs: list[dict[str, str]] = field(default_factory=list)

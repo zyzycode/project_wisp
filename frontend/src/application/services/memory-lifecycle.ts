@@ -10,6 +10,7 @@ import { projectCharacterMemory, restoreCharacterMemory } from './character-memo
 import { MemoryHistory } from './memory-history';
 
 interface Options {
+  readonly summary?: Pick<import('../ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>;
   readonly storage: MemoryRepositories;
   readonly character: CharacterStateService;
   readonly scheduler: MemoryScheduler;
@@ -40,7 +41,7 @@ export class MemoryLifecycle {
   private startupTimer: unknown;
   private shutdownPromise: Promise<void> | undefined;
   constructor(private readonly options: Options) {
-    this.knowledge = new MemoryKnowledge({ facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
+    this.knowledge = new MemoryKnowledge({ invalidateSummary: () => options.summary?.invalidate(), facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
     this.history = new MemoryHistory({ ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => this.knowledge.persisted(turn, context), ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
   }
   currentGeneration(): number { return this.generation; }
@@ -112,12 +113,14 @@ export class MemoryLifecycle {
   }
   async upsertFact(fact: UserFact): Promise<MemoryResult<UserFact>> {
     const c = this.context(); if (!c || this.phase !== 'running') return { ok: false, code: 'unavailable' };
+    this.options.summary?.invalidate();
     const result = await this.safe(() => this.options.storage.facts.upsert(fact, c));
     if (this.context()?.generation !== c.generation) return { ok: false, code: 'stale' };
     if (!result.ok) this.failure(result.code); return result;
   }
   async removeFact(key: string): Promise<MemoryResult<void>> {
     const c = this.context(); if (!c || this.phase !== 'running') return { ok: false, code: 'unavailable' };
+    this.options.summary?.invalidate();
     const result = await this.safe(() => this.options.storage.facts.removeByKey(key, c));
     if (this.context()?.generation !== c.generation) return { ok: false, code: 'stale' };
     if (!result.ok) this.failure(result.code); return result;
@@ -135,6 +138,7 @@ export class MemoryLifecycle {
     const generation = this.generation;
     // Abort dialogue/events and drop volatile projections synchronously, including on rollback.
     // Local Character FSM, motion, and ordinary input keep running.
+    this.options.summary?.invalidate();
     this.options.invalidateMemory?.();
     const result = await this.safe(() => {
       const context = { generation };
@@ -152,9 +156,12 @@ export class MemoryLifecycle {
   }
   async reset(): Promise<MemoryResult<void>> {
     if (this.phase !== 'running' || !this.storageReady) return { ok: false, code: 'unavailable' };
+    this.options.summary?.invalidate();
     this.phase = 'resetting'; this.generation++; this.stopTimer(); this.options.pause();
     const generation = this.generation;
-    const result = await this.safe(() => this.options.storage.clear.clearUserMemory({ generation }));
+    const summaryReset = this.options.summary ? await this.options.summary.reset() : undefined;
+    const cleared = await this.safe(() => this.options.storage.clear.clearUserMemory({ generation }));
+    const result = summaryReset && !summaryReset.ok && cleared.ok ? { ok: false as const, code: 'io_error' as const } : cleared;
     if (this.phase !== 'resetting' || this.generation !== generation) return { ok: false, code: 'stale' };
     if (result.ok) {
       this.options.character.resetToDefaults(); this.history.reset(); this.knowledge.reset(); this.savedSignature = null; this.snapshotWritable = true;
@@ -167,7 +174,7 @@ export class MemoryLifecycle {
   private async stop(): Promise<void> {
     this.options.scheduler.clearTimeout(this.startupTimer); this.stopTimer();
     const c = this.context(); const sessionClose = c ? this.history.close(this.options.timestamp()) : Promise.resolve();
-    this.phase = 'stopping'; this.options.pause();
+    this.phase = 'stopping'; this.options.summary?.dispose(); this.options.pause();
     let grace: unknown;
     const deadline = new Promise<void>(resolve => { grace = this.options.scheduler.setTimeout(() => { void this.options.storage.abort().then(resolve); }, 7000); });
     const drain = async () => {

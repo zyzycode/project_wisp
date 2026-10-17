@@ -9,6 +9,7 @@ from wisp_backend.api.schemas.events import (
     EventAwareChatRequest, EventAwareChatResponse, EventRequest, EventResponse,
 )
 from wisp_backend.api.schemas.memory import MemoryRequest, MemoryResponse
+from wisp_backend.api.schemas.summary import SummaryRequest, SummaryResponse, SummaryChatRequest, SummaryChatResponse
 from wisp_backend.api.schemas.touch import TouchRequest, TouchResponse
 from wisp_backend.completion.policies import Scenario
 
@@ -36,5 +37,7 @@ TOUCH = Endpoint("/v1/touch", 1, Scenario.TOUCH, TouchRequest, TouchResponse)
 MEMORY_CHAT = Endpoint("/v2/chat", 2, Scenario.MEMORY_CHAT, MemoryRequest, MemoryResponse)
 EVENT_CHAT = Endpoint("/v3/chat", 3, Scenario.EVENT_CHAT, EventAwareChatRequest, EventAwareChatResponse)
 EVENT = Endpoint("/v3/events", 3, Scenario.EVENT, EventRequest, EventResponse)
-ENDPOINTS = {endpoint.path: endpoint for endpoint in (CHAT, TOUCH, MEMORY_CHAT, EVENT_CHAT, EVENT)}
+SUMMARY = Endpoint("/v5/summary", 5, Scenario.SUMMARY, SummaryRequest, SummaryResponse)
+SUMMARY_CHAT = Endpoint("/v5/chat", 5, Scenario.SUMMARY_CHAT, SummaryChatRequest, SummaryChatResponse)
+ENDPOINTS = {endpoint.path: endpoint for endpoint in (CHAT, TOUCH, MEMORY_CHAT, EVENT_CHAT, EVENT, SUMMARY, SUMMARY_CHAT)}
 ENDPOINTS_BY_REQUEST = {endpoint.request_type: endpoint for endpoint in ENDPOINTS.values()}

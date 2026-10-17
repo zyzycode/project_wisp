@@ -1,3 +1,4 @@
+import { readSummarySources, summarySources } from './summary-source-reader';
 import { MemoryItemStore } from './item-store';
 import Database from 'better-sqlite3';
 import type { MemoryResult } from '../../application/ports/memory-repository.interface';
@@ -48,6 +49,8 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'summaryRecent': return readSummarySources(this.db, null);
+      case 'summaryExact': return readSummarySources(this.db, summarySources(c.payload));
       case 'mutateMemoryItem': return new MemoryItemStore(this.db).mutate(c.payload);
       case 'listMemoryItems': return new MemoryItemStore(this.db).list(c.payload);
       case 'appendTurn': return this.appendTurn(c.payload);

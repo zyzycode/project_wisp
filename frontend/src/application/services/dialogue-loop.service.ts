@@ -58,6 +58,7 @@ export class DialogueRuntime {
       this.options.transaction(() => { this.reset(); this.options.publish(); });
       return { status: 'accepted', conversationId: this.conversationId };
     }
+    this.options.summary?.interrupt();
     if (this.executing) return { status: 'rejected', reason: 'busy' };
     const previousInitiative = this.options.events?.takePreviousInitiative();
     const requestId = this.options.createId();
@@ -80,6 +81,7 @@ export class DialogueRuntime {
   }
   private reset(): void {
     this.options.events?.invalidate();
+    this.options.summary?.interrupt();
     this.generation++; this.cancelTimer();
     this.options.setBehaviorContext?.(null);
     if (this.active) { this.options.provider.cancel?.(this.active.request.requestId); this.options.endThinking(this.active.request.requestId); }
@@ -104,8 +106,10 @@ export class DialogueRuntime {
       await this.options.events?.interruptForUser();
       if (!this.mayContinue(turn)) return;
       let request = turn.request;
+      const summary = this.options.summary ? await this.options.summary.capture(request.userMessage.text) : undefined;
+      if (!this.mayContinue(turn)) return;
       if (this.options.memory?.recall) {
-        const recalled = await this.options.memory.recall.recall({ text: request.userMessage.text, excludedMessageIds: [...this.contextMessageIds] }, { generation: turn.memoryGeneration });
+        const recalled = await this.options.memory.recall.recall({ text: request.userMessage.text, excludedMessageIds: [...this.contextMessageIds, ...(summary?.excludedMessageIds ?? [])] }, { generation: turn.memoryGeneration });
         if (!this.mayContinue(turn)) return;
         request = { ...request, memoryContext: recalled.ok ? recalled.value : emptyMemoryContext() };
       }
@@ -114,6 +118,18 @@ export class DialogueRuntime {
       const status = parseProviderStatus(rawStatus);
       if (status.kind === 'offline') { this.executing = false; this.finish(turn, 'offline'); return; }
       if (status.kind !== 'ready' && status.kind !== 'degraded') { this.executing = false; this.finish(turn, 'provider_error'); return; }
+      if (summary) {
+        if (!this.options.summary?.isCurrent(summary)) request = { ...request, memoryContext: emptyMemoryContext() };
+        else {
+          const withSummary = { ...request, summary: { text: summary.text } };
+          if (this.options.provider.canIncludeSummary?.(withSummary) !== false) request = withSummary;
+          else if (this.options.memory?.recall) {
+            const recalled = await this.options.memory.recall.recall({ text: request.userMessage.text, excludedMessageIds: [...this.contextMessageIds] }, { generation: turn.memoryGeneration });
+            if (!this.mayContinue(turn)) return;
+            request = { ...request, memoryContext: recalled.ok && this.options.summary.isCurrent(summary) ? recalled.value : emptyMemoryContext() };
+          }
+        }
+      }
       const responsePromise = this.options.provider.generateResponse(request);
       this.options.transaction(() => { this.options.publish(); });
       const rawResponse = await responsePromise;

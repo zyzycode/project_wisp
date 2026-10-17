@@ -11,6 +11,7 @@ export interface DialogueRuntimeOptions {
     invalidate(): void;
   };
   readonly memory?: DialogueMemoryHooks;
+  readonly summary?: import('./summary').ISummaryRuntime;
   readonly now: () => number;
   readonly timestamp: () => string;
   readonly createId: () => string;

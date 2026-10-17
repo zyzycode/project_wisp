@@ -1,11 +1,10 @@
-# CTX-A01: авторский lore и производная summary (planned)
+# CTX-A01: авторский lore и производная summary
 
 Решение [#77](https://github.com/zyzycode/project_wisp/issues/77), 2026-10-17;
 implementation slices — [#78](https://github.com/zyzycode/project_wisp/issues/78)
-и [#79](https://github.com/zyzycode/project_wisp/issues/79). Это принятый целевой
-контракт, не объявление работающих endpoints. Текущие v1–v3 и planned
+и [#79](https://github.com/zyzycode/project_wisp/issues/79). Lore реализован в #78, explicit summary/v5 — в #79. Текущие v1–v3 и planned
 [v4 knowledge](BACKEND_MEMORY_CONTRACT.md#6-mem-a03-planned-расширение-событий-и-шуток)
-не расширяются. Типы/guards/общие fixtures объявляет соответствующий slice до runtime.
+не расширяются. Независимые TS/Python schemas и shared v5 fixtures поставляются с #79.
 
 ## 1. Владельцы и доверие
 
@@ -81,13 +80,14 @@ completion, RAM replay cache старого процесса исчезает; �
 
 ## 3. Summary: две явные операции v5
 
-Локальный source/cache/trigger/invalidation — [Memory §12](../../frontend/docs/engine/MEMORY_ENGINE.md#12-ctx-a01-производная-summary-planned).
+Локальный source/cache/trigger/invalidation — [Memory §12](../../frontend/docs/engine/MEMORY_ENGINE.md#12-ctx-a01-производная-summary).
 Version5 — отдельная ветка **на базе v3**, а не обещание superset v4. Это позволяет
 #79 не зависеть от MEM-I02/03; MEM-I01/#80 нужен для source provenance и suppression.
 Event/joke variants v4 здесь запрещены. Совместное
 включение v4 knowledge и summary потребует отдельного versioned gate, не downgrade.
 
-Main-конфигурация opt-in `chatVersion5`, `summaryEnabled=true`; defaults прежние.
+Main-конфигурация opt-in `WISP_BACKEND_API_VERSION=5`, `WISP_SUMMARY_ENABLED=true`
+и настроенный `WISP_BACKEND_URL`; defaults прежние.
 EventVersion3/interlock/previousInitiative60s сохраняются, touch1 неизменен. Summary
 команда доступна только при этом сочетании, исправной локальной persistence/cache
 и настроенном backend adapter. Нет probe/downgrade, автоматического enable или
@@ -182,9 +182,9 @@ provider сохраняются, summary не разрешает реальны�
 
 ## 5. Общие fixtures и rollout
 
-#79 сначала объявляет независимые TS DTO/guards и Python schemas и создаёт единый
+#79 содержит независимые TS DTO/guards и Python schemas и единый
 corpus `docs/contracts/fixtures/desktop-backend-v5/`; старые fixtures не меняются.
-Нужны summary request/success/error, chat с summary/без неё/previousInitiative,
+Corpus покрывает summary request/success/error, chat с summary/без неё/previousInitiative,
 Unicode/control/exact caps/byte escaping, unknown fields, wrong version/ID,
 v4 category rejection. Обе стороны читают те же JSON, не копии.
 
@@ -198,7 +198,7 @@ output reserve/equality/overflow, mandatory priority, adversarial sources, от�
 facts/state writes, shared interlock/replay/timeout/outage/malformed/disconnect и
 once-only usage на Groq и Gemini mocks. Live качество/цену эти тесты не доказывают.
 
-До прохождения обеими сторонами corpus включение v5 запрещено; несовместимый сервер
+Обе стороны проверяют corpus перед включением v5; несовместимый сервер
 даёт обычный safe failure, не перевод в другую версию. #78 и #79 независимы по
 runtime, но первый перенёсший upstream код выполняет общий license/source gate
 [Context/Prompt Engine](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#перенос-ctx-a01-и-лицензионная-граница).

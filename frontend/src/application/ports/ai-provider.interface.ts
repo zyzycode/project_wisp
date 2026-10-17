@@ -43,6 +43,7 @@ export interface AIPreviousInitiative {
 }
 
 export interface AIProviderRequest {
+  readonly summary?: { readonly text: string };
   requestId: string;
   userMessage: AIProviderUserMessage;
   characterSnapshot: AIProviderCharacterSnapshot;
@@ -119,6 +120,8 @@ export interface AIProviderResponse {
 }
 
 export interface IAIProvider {
+  /** Whether the final wire projection keeps summary; lets recall restore covered sources when it does not fit. */
+  canIncludeSummary?(request: AIProviderRequest): boolean;
   /** Abort a retired request when supported; generation checks still reject late results. */
   cancel?(requestId: string): void;
   getStatus(): Promise<AIProviderStatus>;

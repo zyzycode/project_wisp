@@ -1,0 +1,516 @@
+[
+  {
+    "name": "wrong-version",
+    "operation": "summary",
+    "request": {
+      "version": 4,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 0",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 1",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 2",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 3",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        }
+      ]
+    }
+  },
+  {
+    "name": "unknown-field",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 0",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 1",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 2",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 3",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        }
+      ],
+      "character": {}
+    }
+  },
+  {
+    "name": "missing-pairs",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": []
+    }
+  },
+  {
+    "name": "controls",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "bad\u0000",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\u0000",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\u0000",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\u0000",
+          "assistantText": "ok"
+        }
+      ]
+    }
+  },
+  {
+    "name": "overflow-user",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "assistantText": "ok"
+        }
+      ]
+    }
+  },
+  {
+    "name": "wrong-id",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "not-uuid",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 0",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 1",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 2",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        },
+        {
+          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 3",
+          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+        }
+      ]
+    }
+  },
+  {
+    "name": "unknown-pair-field",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "ok",
+          "assistantText": "ok",
+          "id": "local"
+        },
+        {
+          "userText": "ok",
+          "assistantText": "ok",
+          "id": "local"
+        },
+        {
+          "userText": "ok",
+          "assistantText": "ok",
+          "id": "local"
+        },
+        {
+          "userText": "ok",
+          "assistantText": "ok",
+          "id": "local"
+        }
+      ]
+    }
+  },
+  {
+    "name": "v4-kind",
+    "operation": "chat",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "event": {
+        "type": "user_message"
+      },
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "memory": {
+        "facts": [
+          {
+            "key": "user.display_name",
+            "value": "\u0410\u043d\u044f"
+          },
+          {
+            "key": "user.reply_style",
+            "value": "brief"
+          }
+        ],
+        "episodes": [
+          {
+            "kind": "shared_joke",
+            "text": "invented"
+          }
+        ],
+        "characterPreferences": [
+          {
+            "key": "activity.cursor_game",
+            "value": 12,
+            "confidence": 0.5
+          }
+        ]
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "\u0414\u0430, \u0434\u0430\u0432\u0430\u0439."
+        }
+      ],
+      "previousInitiative": {
+        "kind": "social_bid",
+        "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+        "createdAt": "2026-09-18T09:00:01.000Z"
+      }
+    }
+  },
+  {
+    "name": "null-summary",
+    "operation": "chat",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "event": {
+        "type": "user_message"
+      },
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "memory": {
+        "facts": [
+          {
+            "key": "user.display_name",
+            "value": "\u0410\u043d\u044f"
+          },
+          {
+            "key": "user.reply_style",
+            "value": "brief"
+          }
+        ],
+        "episodes": [
+          {
+            "kind": "cursor_game",
+            "outcome": "caught",
+            "executedMs": 1900,
+            "occurredAt": "2026-09-18T08:30:00.000Z"
+          }
+        ],
+        "characterPreferences": [
+          {
+            "key": "activity.cursor_game",
+            "value": 12,
+            "confidence": 0.5
+          }
+        ]
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "\u0414\u0430, \u0434\u0430\u0432\u0430\u0439."
+        }
+      ],
+      "previousInitiative": {
+        "kind": "social_bid",
+        "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+        "createdAt": "2026-09-18T09:00:01.000Z"
+      },
+      "summary": null
+    }
+  },
+  {
+    "name": "summary-extra",
+    "operation": "chat",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "event": {
+        "type": "user_message"
+      },
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "memory": {
+        "facts": [
+          {
+            "key": "user.display_name",
+            "value": "\u0410\u043d\u044f"
+          },
+          {
+            "key": "user.reply_style",
+            "value": "brief"
+          }
+        ],
+        "episodes": [
+          {
+            "kind": "cursor_game",
+            "outcome": "caught",
+            "executedMs": 1900,
+            "occurredAt": "2026-09-18T08:30:00.000Z"
+          }
+        ],
+        "characterPreferences": [
+          {
+            "key": "activity.cursor_game",
+            "value": 12,
+            "confidence": 0.5
+          }
+        ]
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "\u0414\u0430, \u0434\u0430\u0432\u0430\u0439."
+        }
+      ],
+      "previousInitiative": {
+        "kind": "social_bid",
+        "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+        "createdAt": "2026-09-18T09:00:01.000Z"
+      },
+      "summary": {
+        "text": "ok",
+        "sourceId": "local"
+      }
+    }
+  },
+  {
+    "name": "carriage-return",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "bad\r",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\r",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\r",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\r",
+          "assistantText": "ok"
+        }
+      ]
+    }
+  },
+  {
+    "name": "c1-control",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "bad\u0085",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\u0085",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\u0085",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\u0085",
+          "assistantText": "ok"
+        }
+      ]
+    }
+  },
+  {
+    "name": "unpaired-surrogate",
+    "operation": "summary",
+    "request": {
+      "version": 5,
+      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+      "locale": "ru",
+      "stream": false,
+      "pairs": [
+        {
+          "userText": "bad\ud800",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\ud800",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\ud800",
+          "assistantText": "ok"
+        },
+        {
+          "userText": "bad\ud800",
+          "assistantText": "ok"
+        }
+      ]
+    }
+  }
+]

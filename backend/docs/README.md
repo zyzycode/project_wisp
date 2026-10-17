@@ -6,7 +6,9 @@ Backend формирует AI-ответы и ведёт служебный уч
 
 ## Фактическая реализация
 
-`GET /health`; `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`.
+`GET /health`; `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`,
+`/v5/chat`, `/v5/summary`. V5 opt-in: отдельная ветка v3 с производной summary;
+генерация только после явного desktop preview/confirm, без server history.
 Ответы — JSON без streaming. Один активный провайдер на процесс: Groq или Gemini.
 Health проверяет HTTP runtime; доступность провайдера проверяется отдельно.
 

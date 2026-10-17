@@ -28,3 +28,13 @@ it('exposes event provider only for explicitly enabled v3 and shares its transpo
     else expect(c.eventProvider).toBeUndefined();
   }
 });
+
+it('enables summary only for explicit v5 plus flag, retaining v3 events on that same adapter', () => {
+  for (const backendApiVersion of [undefined, '1', '2', '3', '5']) for (const summaryEnabled of [false, true]) {
+    const c = createMainAIProvider({ backendUrl: 'https://backend.example', backendApiVersion, summaryEnabled, eventsEnabled: true, development: false, now: () => 1000 });
+    if (backendApiVersion === '5' && summaryEnabled) expect(c.summaryGenerator).toBe(c.provider);
+    else expect(c.summaryGenerator).toBeUndefined();
+    if (backendApiVersion === '5') expect(c.eventProvider).toBe(c.provider);
+  }
+  expect(createMainAIProvider({ backendUrl: undefined, backendApiVersion: '5', summaryEnabled: true, development: false, now: () => 0 }).summaryGenerator).toBeUndefined();
+});

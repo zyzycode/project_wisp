@@ -1,3 +1,4 @@
+import { parseSummaryCommand, parseSummaryConfirm, parseSummaryDeleteResult, parseSummaryPreviewResult, parseSummaryTextResult } from '../shared/summary-ipc-validation';
 import { parseMemoryCardCommand, parseMemoryCardListCommand, parseMemoryCardListResult, parseMemoryCardResult } from '../shared/memory-card-validation';
 import { parseClearMemoryCommand, parseClearMemoryResult, parseMemoryStatus } from '../shared/memory-ipc-validation';
 import { parseQuietModeCommand, parseAutonomyMode } from '../shared/quiet-mode-validation';
@@ -47,6 +48,11 @@ const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown):
 ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
+  summary: {
+    preview: async command => parseSummaryPreviewResult(await ipcRenderer.invoke('wisp:summary-preview', parseSummaryCommand(command))),
+    confirm: async command => parseSummaryTextResult(await ipcRenderer.invoke('wisp:summary-confirm', parseSummaryConfirm(command))),
+    deleteSummary: async command => parseSummaryDeleteResult(await ipcRenderer.invoke('wisp:summary-delete', parseSummaryCommand(command))),
+  },
   mutateMemoryCard: async command => parseMemoryCardResult(await ipcRenderer.invoke('wisp:mutate-memory-card', parseMemoryCardCommand(command))),
   listMemoryCards: async command => parseMemoryCardListResult(await ipcRenderer.invoke('wisp:list-memory-cards', parseMemoryCardListCommand(command))),
   clearMemory: async command => parseClearMemoryResult(await ipcRenderer.invoke('wisp:clear-memory', parseClearMemoryCommand(command))),

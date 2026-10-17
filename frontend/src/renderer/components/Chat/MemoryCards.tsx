@@ -1,8 +1,9 @@
+import { SummaryControls } from './SummaryControls';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { BrainStateDTO, MemoryCardContentDTO, MemoryCardDTO, MemoryCardSourceDTO, WispApiBridge } from '../../../shared/ipc-contracts';
 import { getMemoryCardClient } from '../../memory-card-client';
 
-interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards'>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
+interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary'>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
 interface Draft extends MemoryCardContentDTO { readonly source: MemoryCardSourceDTO; readonly item?: MemoryCardDTO }
 export function MemoryCards({ bridge, snapshot }: Props) {
   const client = getMemoryCardClient(bridge);
@@ -24,6 +25,7 @@ export function MemoryCards({ bridge, snapshot }: Props) {
     <button type="button" onClick={() => setOpen(!open)}>Память</button>
     {source && <><button type="button" disabled={locked} onClick={() => begin('important_event')}>Сохранить событие</button>
       <button type="button" disabled={locked} onClick={() => begin('shared_joke')}>Сохранить шутку</button></>}
+    {bridge.summary && <SummaryControls bridge={bridge.summary} snapshot={snapshot} />}
     {open && <>
       <p>Сохраняются только явно подтверждённые карточки. Отзыв и удаление карточки сохраняют переписку.</p>
       {state.message && <p role="status">{state.message}</p>}

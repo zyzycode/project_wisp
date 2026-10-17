@@ -433,7 +433,23 @@ export interface DebugTelemetryDTO {
   logs: readonly DebugLogEntryDTO[];
 }
 
+export type SummaryFailureDTO = 'unavailable' | 'busy' | 'stale' | 'rate_limited' | 'failed' | 'conflict';
+export interface SummaryPreviewDTO {
+  readonly previewId: string;
+  readonly expiresAt: number;
+  readonly pairs: readonly { readonly userText: string; readonly assistantText: string }[];
+}
+export type SummaryResultDTO<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly code: SummaryFailureDTO };
+export interface SummaryCommandDTO { readonly streamId: string }
+export interface SummaryConfirmCommandDTO extends SummaryCommandDTO { readonly commandId: string; readonly previewId: string }
+export interface SummaryApiBridge {
+  preview(command: SummaryCommandDTO): Promise<SummaryResultDTO<SummaryPreviewDTO>>;
+  confirm(command: SummaryConfirmCommandDTO): Promise<SummaryResultDTO<string>>;
+  deleteSummary(command: SummaryCommandDTO): Promise<SummaryResultDTO<null>>;
+}
+
 export interface WispApiBridge {
+  readonly summary?: SummaryApiBridge;
   mutateMemoryCard(command: MemoryCardCommandDTO): Promise<MemoryCardResultDTO>;
   listMemoryCards(command: MemoryCardListCommandDTO): Promise<MemoryCardListResultDTO>;
   clearMemory(command: ClearMemoryCommandDTO): Promise<ClearMemoryResultDTO>;

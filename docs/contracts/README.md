@@ -7,6 +7,7 @@
 | v1: chat, ошибки, серверные budgets и lifecycle | [Backend API](BACKEND_API_CONTRACT.md) | [v1](fixtures/desktop-backend-v1) |
 | v2: выбранная память и проверяемые кандидаты | [Backend Memory](BACKEND_MEMORY_CONTRACT.md) | [v2](fixtures/desktop-backend-v2) |
 | v3: события и последующий разговор; явное касание v1 | [AI Events](AI_EVENTS_CONTRACT.md) | [v3](fixtures/desktop-backend-v3); touch — проверки обеих реализаций |
+| v5: явная summary и opt-in chat на базе v3 | [Context Data](CONTEXT_DATA_CONTRACT.md) | [v5](fixtures/desktop-backend-v5) |
 
 AI Events также определяет связанные causal gates и правила использования результата на клиенте: перенос документа не разделяет и не меняет этот сквозной контракт. Детали локальных движков — в [frontend contracts](../../frontend/docs/engine/README.md).
 
@@ -15,4 +16,4 @@ AI Events также определяет связанные causal gates и п�
 
 Наличие контракта и fixtures не подтверждает реализацию endpoint. Поддерживаемые текущим сервером версии и gaps — в [backend docs](../../backend/docs/README.md#фактическая-реализация). Python-схемы и TypeScript-типы не импортируют друг друга; совместимость проверяется общими fixtures. Их путь `docs/contracts/fixtures/` сохранён для существующих тестов.
 
-Planned lore/summary: [CTX-A01](CONTEXT_DATA_CONTRACT.md) — server-owned lore без wire delta и отдельная v5 ветка на базе v3; #79 зависит от MEM-I01/#80 для source provenance/suppression. V4 knowledge не меняется; v5 fixtures поставляются в #79.
+Lore/summary: [CTX-A01](CONTEXT_DATA_CONTRACT.md) — server-owned lore без wire delta и отдельная opt-in v5 ветка на базе v3. Локальная summary требует source provenance/suppression schema2; генерация запускается только явно. V4 knowledge не входит в v5.

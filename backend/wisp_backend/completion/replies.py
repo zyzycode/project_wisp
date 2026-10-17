@@ -114,4 +114,8 @@ class EventModelReply(Contract):
         return trim_text(value)
 
 
-CompletionReply: TypeAlias = ModelReply | MemoryModelReply | TouchModelReply | EventModelReply
+class SummaryModelReply(Contract):
+    text: text_type(1200)
+
+
+CompletionReply: TypeAlias = SummaryModelReply | ModelReply | MemoryModelReply | TouchModelReply | EventModelReply

@@ -26,6 +26,22 @@ function exposedApi(): WispApiBridge {
 }
 
 describe('Preload: Shimeji bridge', () => {
+  it('validates explicit summary preview, confirm and deletion in both directions', async () => {
+    const api = exposedApi(); electronMocks.invoke.mockReset();
+    const value = { previewId: 'p', expiresAt: 120000, pairs: Array.from({ length: 4 }, () => ({ userText: 'u', assistantText: 'a' })) };
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, value });
+    await expect(api.summary!.preview({ streamId: 's' })).resolves.toEqual({ ok: true, value });
+    expect(electronMocks.invoke).toHaveBeenLastCalledWith('wisp:summary-preview', { streamId: 's' });
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, value: 'summary' });
+    await expect(api.summary!.confirm({ streamId: 's', commandId: 'c', previewId: 'p' })).resolves.toEqual({ ok: true, value: 'summary' });
+    await expect(api.summary!.confirm({ streamId: 's', commandId: '', previewId: 'p' })).rejects.toThrow();
+    expect(electronMocks.invoke).toHaveBeenCalledTimes(2);
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, value: null });
+    await expect(api.summary!.deleteSummary({ streamId: 's' })).resolves.toEqual({ ok: true, value: null });
+    electronMocks.invoke.mockResolvedValueOnce({ ok: false, code: 'private/path' });
+    await expect(api.summary!.preview({ streamId: 's' })).rejects.toThrow(); electronMocks.invoke.mockReset();
+  });
+
   it('validates card commands and pages across the typed bridge', async () => {
     const api = exposedApi(); electronMocks.invoke.mockReset();
     const command = { streamId: 's', sequence: 1, commandId: 'c', generation: 0, itemId: 'i', expectedRevision: 1, kind: 'delete' } as const;

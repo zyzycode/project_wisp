@@ -292,9 +292,9 @@ Score — число совпавших различных query tokens в label
 
 Эти fixtures проверяют selected context, а не точную недетерминированную фразу LLM. Приёмка long-history набора: 100% включение ожидаемого item для пяти фиксированных уникальных query/labels после 1000 пар, 0 withdrawn/deleted/старых revisions, ≤96 payloads/turn. Embeddings рассматриваются новым gate только после измеренных lexical misses на сохранённом наборе; текущая цена — отсутствие синонимов и bounded fan-out.
 
-## 12. CTX-A01: производная summary (planned)
+## 12. CTX-A01: производная summary
 
-Решение [#77](https://github.com/zyzycode/project_wisp/issues/77), реализация #79;
+Решение [#77](https://github.com/zyzycode/project_wisp/issues/77), реализовано в #79;
 передача/доверие/budgets — [Context data](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md).
 Summary — неподтверждённый пересказ, не knowledge item, transcript, факт или adaptation.
 Application владеет selection/generation/revalidation; Infrastructure — локальным cache
@@ -320,7 +320,7 @@ run 4–8 допустимых пар одной session вне последни
 «Forget» исключаются: исправленные значения не возвращаются через пересказ.
 
 Preview хранит source IDs, их content revisions и snapshot текущих scalar facts;
-TTL120s, current stream/memory generation. Source revision — SHA-256 exact UTF-8 JSON
+TTL120s по monotonic clock, current stream/memory generation. Source revision — SHA-256 exact UTF-8 JSON
 массива [userID, assistantID, sessionID, userText, assistantText, eligibility]; явные
 mutable revisions, если появятся, также включаются. Hash не подтверждает истинность.
 Confirm повторно читает exact IDs/provenance/suppression/facts и сравнивает snapshot;
@@ -330,7 +330,8 @@ Confirm повторно читает exact IDs/provenance/suppression/facts и 
 без очереди/фоновых retries; clock rollback не сокращает ожидание. До fetch атомарно
 записать receipt: commandId, requestId, source digest, admittedAt, generatorVersion=1,
 без текстов. Write failure запрещает fetch; restart не сбрасывает receipt. Идентичный
-повтор command присоединяется к pending/result без нового inference. Тот же source digest/
+повтор command присоединяется к pending/result без нового inference; persisted receipt
+того же commandId не разрешает повтор и после24h. Тот же source digest/
 generatorVersion при валидном cache возвращает cache даже с новым commandId; другой payload
 с тем же ID — conflict. После ошибки/timeout/unknown outcome попытка тоже израсходована;
 повтор возможен только новым явным подтверждением после24h. Это локальный guard,

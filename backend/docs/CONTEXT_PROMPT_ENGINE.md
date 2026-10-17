@@ -98,7 +98,7 @@ extensions, WI probability/recursive activation/sticky/cooldown и ignoreBudget.
 Они требуют других источников/доверия, нарушают детерминизм или обходят общий budget.
 WI per-class cap не нужен для уже bounded desktop memory. Документированный
 constant-first не принят за инвариант pinned WI source: там source strategy и
-sticky priority. В #78 lore реализован; summary остаётся planned до #79.
+sticky priority. В #78 реализован lore; в #79 — explicit summary.
 
 Upstream [package.json](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/package.json)
 указывает [AGPL-3.0](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/LICENSE).
@@ -125,17 +125,17 @@ quiet/reset/dispose/deadline с текущим backend без правки front
 планируемая v4 memory, новое хранение, квоты и routing не входят в поставку.
 
 
-## CTX-A01: lore реализован, summary planned
+## CTX-A01: lore и summary
 
 Slices #78/#79 следуют [Context data contract](../../docs/contracts/CONTEXT_DATA_CONTRACT.md):
 §2 — авторский catalogue/source revision, deterministic matching и отсутствие lore wire delta;
 §3–4 — отдельные v5 summary/chat operations, source/limits и общий lifecycle;
 §5 — совместный corpus. Локальный cache/trigger/invalidation принадлежит
-[Memory §12](../../frontend/docs/engine/MEMORY_ENGINE.md#12-ctx-a01-производная-summary-planned).
-В #78 работает lore для chat v1/v2/v3; v5 остаётся planned до #79.
+[Memory §12](../../frontend/docs/engine/MEMORY_ENGINE.md#12-ctx-a01-производная-summary).
+Lore работает для chat v1/v2/v3/v5; #79 добавляет `/v5/chat` и явный `/v5/summary`.
 
 Lore — optional untrusted JSON block со source=lore; role=system запрещена.
-Summary получит отдельный source при реализации #79. Priority/order
+Summary имеет отдельные sources `summary` и `summary_sources`. Priority/order
 заданы в общем contract §4. Summary generation — отдельный completion scenario
 с output cap512, без character/lore/memory/history injection. Groq/Gemini используют
 существующие formatters/HTTP client, общий ledger и settlement. Существующие chat
@@ -146,14 +146,14 @@ Summary получит отдельный source при реализации #79
 Исследование 2026-10-17 использует тот же pinned commit
 [`06bde939fb1e9c4c8d8641d810f0a916b5bce127`](https://github.com/SillyTavern/SillyTavern/commit/06bde939fb1e9c4c8d8641d810f0a916b5bce127),
 не плавающую release ветку. Фрагменты #78 адаптированы в [lore.py](../wisp_backend/completion/prompts/lore.py);
-фрагменты #79 остаются planned. В документационной #77 исходники не копировались.
+фрагменты #79 перенесены в summary prompt/scenario. В документационной #77 исходники не копировались.
 
 | Slice / pinned фрагмент | Решение и обязательная адаптация |
 |---|---|
 | #78: [WorldInfoBuffer.matchKeys L337–369](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/world-info.js#L337-L369), [primary activation L4900–4935](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/world-info.js#L4900-L4935) | Адаптировать проверку ключей/primary activation в Python `completion/prompts/lore.py`; plain keys, NFC/lowercase и Unicode token boundaries вместо JS \W, без regex/macros/secondary policy |
 | #78: [rank L4993–5007](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/world-info.js#L4993-L5007), [budget accumulation L5056–5079](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/world-info.js#L5056-L5079) | Перенести ordered activation/accumulation с Wisp ties/caps; sticky и ignoreBudget удалить, source content не мутировать; равенство budget допустимо по контракту Wisp, полный provider payload проверяет существующий selector |
-| #79: [getRawSummaryPrompt L761–825](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L761-L825) | Адаптировать bounded chronological accumulation/coverage в Python `completion/prompts/summary.py`; вход уже выбран desktop, пара атомарна, JSON вместо name/text concatenation, no recursive latestSummary; overflow отвергает весь generation request, не теряет coverage молча |
-| #79: [summarizeChatMain L681–753](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L681-L753) | Адаптировать одноразовый generate/empty-result branch в существующий backend completion scenario; lifecycle/interlock/cancellation остаются Wisp. Не переносить generateRaw client/UI locking и запись chat.extra.memory |
+| #79: [getRawSummaryPrompt L761–825](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L761-L825) | Адаптировано bounded chronological accumulation/coverage в Python `completion/prompts/summary.py`; вход уже выбран desktop, пара атомарна, JSON вместо name/text concatenation, no recursive latestSummary; overflow отвергает весь generation request, не теряет coverage молча |
+| #79: [summarizeChatMain L681–753](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L681-L753) | Адаптирован одноразовый generate/empty-result branch в существующий backend completion scenario; lifecycle/interlock/cancellation остаются Wisp. Не переносить generateRaw client/UI locking и запись chat.extra.memory |
 
 Предикат [isContextChanged L399–408](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L399-L408)
 сравнивает chat/character/group identity, но не источник/revision/reset; его перенос

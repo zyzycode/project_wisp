@@ -43,7 +43,10 @@ class HTTPProvider(ABC):
             return estimate_input(payload, len(messages))
 
         try:
-            allowance = CONTEXT_WINDOWS[(self.settings.provider, self.settings.model)] - cap
+            window = CONTEXT_WINDOWS[(self.settings.provider, self.settings.model)]
+            if request.context_window is not None:
+                window = min(window, request.context_window)
+            allowance = window - cap
             selected = select_context(request.blocks, allowance, estimate)
         except ContextOverflow:
             # Valid wire input cannot fit the server profile; no upstream expense.

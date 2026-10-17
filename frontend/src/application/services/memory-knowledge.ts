@@ -6,6 +6,7 @@ import { recognizeMemoryFact } from './memory-fact-registry';
 export class MemoryKnowledge {
   private readonly observed = new Set<string>();
   constructor(private readonly options: {
+    readonly invalidateSummary?: () => void;
     readonly facts: IUserFactsRepository;
     readonly isCurrent: (generation: number) => boolean;
     readonly createId: () => string;
@@ -16,6 +17,7 @@ export class MemoryKnowledge {
   async persisted(turn: CompletedDialogueMemoryTurn, context: MemoryOperationContext): Promise<void> {
     if (!this.options.isCurrent(context.generation) || this.observed.has(turn.user.id)) return;
     const fact = recognizeMemoryFact(turn.user.text); if (!fact) return;
+    this.options.invalidateSummary?.();
     this.observed.add(turn.user.id);
     try {
       const result = await this.options.facts.upsert({ id: this.options.createId(), factKey: fact.key, factValue: fact.value,
