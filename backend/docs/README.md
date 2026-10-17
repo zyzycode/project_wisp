@@ -14,9 +14,11 @@ Backend формирует AI-ответы и ведёт служебный уч
 без memory extraction; metadata не сохраняется в ledger/logs, response cache — до 10 минут.
 [V7 interactions](../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v7) —
 явный touch с bounded appraisal и полноценный v5-compatible chat с card/effectPolicy,
-summary, memory, previousInitiative и optional previousTouch. В этапе #89 desktop chat
-передаёт suppressed; appraisal neutral/low/clear сопровождает обычный ответ без нового
-эффекта разговора. PreviousTouch — обязательный при наличии atomic untrusted context,
+summary, memory, previousInitiative и optional previousTouch. Desktop передаёт eligible
+только при доступном локальном semantic gate; тогда chat предлагает одну оценку текущей
+реплики. Suppressed строго требует neutral/low/clear без числового эффекта. Цитаты, роли
+и неоднозначность отделяются от направленного отношения пользователя; качество живой
+классификации не подтверждается mock-тестами. PreviousTouch — обязательный при наличии atomic untrusted context,
 не user fact и не extraction evidence. Числа и окончательное принятие принадлежат desktop.
 Оба endpoint используют прежние service/provider/budget/ledger, один inference; request/context
 остаются в RAM, response cache — до 10 минут, durable conversation storage не добавлен.

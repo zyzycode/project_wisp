@@ -247,18 +247,7 @@ function interactionDeltas(
         personality: { agreeableness: 0.001 * intensity },
       };
     case 'chat_message':
-      return {
-        needs: {
-          attention: -12 * intensity,
-          play: -4 * intensity,
-          comfort: -1 * intensity,
-          boredom: -12 * intensity,
-        },
-        friendship: 6 * intensity,
-        love: 1 * intensity,
-        intimacy: { flirtiness: -0.5 * intensity },
-        personality: { extraversion: 0.003 * intensity, agreeableness: 0.001 * intensity },
-      };
+      return { needs: { attention: -4 * intensity }, friendship: 0, love: 0, intimacy: {}, personality: {} };
     case 'topic_dialogue':
       return {
         needs: {

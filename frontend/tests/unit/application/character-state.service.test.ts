@@ -67,12 +67,12 @@ describe('Application: CharacterStateService', () => {
     });
 
     expect(after).not.toBe(before);
-    expect(after.relationship.friendship).toBe(401);
+    expect(after.relationship.friendship).toBe(before.relationship.friendship);
     expect(after.relationship.loveUnlocked).toBe(false);
     expect(after.relationship.love).toBe(0);
-    expect(after.needs.attention).toBeLessThan(before.needs.attention);
-    expect(after.needs.play).toBeLessThan(before.needs.play);
-    expect(after.needs.boredom ?? 0).toBeLessThan(before.needs.boredom ?? 0);
+    expect(after.needs.attention).toBe(before.needs.attention - 4);
+    expect(after.needs.play).toBe(before.needs.play);
+    expect(after.needs.boredom).toBe(before.needs.boredom);
   });
 
   it('ticks need metabolism in memory without relationship decay', () => {

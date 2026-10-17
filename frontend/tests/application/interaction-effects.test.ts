@@ -83,3 +83,25 @@ it('click never changes axes and pet retains the independent five minute adaptat
   expect(learned).not.toEqual(initial); f.time(320000); f.service.beginTouch(3); f.service.applyStimulus({ type: 'pet', source: 'user' });
   expect(f.service.getState().personality.axes).toEqual(learned);
 });
+it('user messages share the ten-second base gate with click and never grant old chat reward', () => {
+  const f = fixture(), before = f.service.getState();
+  f.service.applyStimulus({ type: 'user_message', source: 'user' });
+  expect(f.service.getState().needs).toEqual({ ...before.needs, attention: before.needs.attention - 4 });
+  expect(f.service.getState().relationship).toEqual(before.relationship);
+  f.service.beginTouch(2); expect(f.service.getState().needs.energy).toBe(before.needs.energy);
+  f.time(10000); f.service.beginTouch(3); f.service.applyStimulus({ type: 'user_message', source: 'user' });
+  expect(f.service.getState().needs.attention).toBe(before.needs.attention - 6);
+});
+it.each([[999, .5, 'supportive', 1000, 0], [1, 99, 'hostile', 0, 100]] as const)('chat clamps %s friendship and %s comfort with moderate %s while preserving historical love', (friendship, comfort, category, expectedFriendship, expectedComfort) => {
+  const f = fixture(), state = f.service.getState(); state.relationship = { friendship, love: 40, loveUnlocked: true }; state.needs = { ...state.needs, comfort };
+  f.service.replaceRestoredState(state); f.time(30000); const receipt = f.service.beginChat(1);
+  expect(f.service.commitChat(receipt, { category, intensity: 'moderate', confidence: 'clear' }).effect).toBe('accepted');
+  expect(f.service.getState().relationship).toEqual({ friendship: expectedFriendship, love: 40, loveUnlocked: true }); expect(f.service.getState().needs.comfort).toBe(expectedComfort);
+  f.time(60000); expect(f.service.commitChat(receipt, supportive).effect).toBe('rejected');
+});
+it('chat-only semantic unlock checks current consent without adding love', () => {
+  const f = fixture(), state = f.service.getState(); state.relationship.friendship = 399; state.intimacy.userConsentEnabled = true;
+  f.service.replaceRestoredState(state); f.time(30000); f.service.commitChat(f.service.beginChat(1), supportive);
+  expect(f.service.getState().relationship).toEqual({ friendship: 401, love: 0, loveUnlocked: true });
+  expect(f.service.getState().intimacy).toEqual(state.intimacy);
+});

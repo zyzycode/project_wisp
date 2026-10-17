@@ -1,3 +1,4 @@
+import type { InteractionAppraisal, PreviousTouchReaction, InteractionReceipt } from './interaction-appraisal';
 import type { DialogueMemoryHooks } from './memory-runtime';
 import type { IAIProvider } from './ai-provider.interface';
 import type { CharacterSnapshot, CharacterStimulus } from '../../domain/character';
@@ -7,6 +8,8 @@ import type { ProviderBehaviorOffer, BehaviorAdmissionReceipt, BehaviorTurnConte
 export interface DialogueRuntimeOptions {
   readonly provider: IAIProvider;
   readonly interactionEnabled?: boolean;
+  readonly beginInteraction?: () => InteractionReceipt;
+  readonly commitInteraction?: (receipt: InteractionReceipt, proposal?: InteractionAppraisal) => Pick<PreviousTouchReaction, 'effect' | 'reason'>;
   readonly observation?: import('./ai-event-provider.interface').IAIEventInterlock & { reset(): void; invalidate(): void };
   readonly events?: import('./ai-event-provider.interface').IAIEventInterlock & {
     getPreviousTouch?(): import('./interaction-appraisal').PreviousTouchReaction | undefined;

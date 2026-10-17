@@ -1,5 +1,5 @@
-import type { CharacterStateService, TouchInteractionReceipt } from './character-state.service';
-import type { InteractionAppraisal, PreviousTouchReaction } from '../ports/interaction-appraisal';
+import type { CharacterStateService } from './character-state.service';
+import type { InteractionAppraisal, PreviousTouchReaction, TouchInteractionReceipt } from '../ports/interaction-appraisal';
 import { exactRecord, enumValue } from '../../shared/dialogue-ipc-validation';
 
 export const NEUTRAL_TOUCH_APPRAISAL: InteractionAppraisal = { category: 'neutral', intensity: 'low', confidence: 'uncertain' };

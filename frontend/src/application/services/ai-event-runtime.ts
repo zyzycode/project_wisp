@@ -1,4 +1,4 @@
-import type { TouchInteractionReceipt } from './character-state.service';
+import type { TouchInteractionReceipt } from '../ports/interaction-appraisal';
 import { TouchReactionContext, parseInteractionAppraisal } from './touch-reaction-context';
 import type { AICompanionEvent, AIEventProviderRequest, IAIEventInterlock, IAIEventProvider, IGameEpisodeCommitObserver } from '../ports/ai-event-provider.interface';
 import type { AIProviderRequest } from '../ports/ai-provider.interface';

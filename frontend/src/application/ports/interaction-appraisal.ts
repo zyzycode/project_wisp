@@ -22,3 +22,12 @@ export interface PreviousTouchReaction {
   readonly energyBand: 'tired' | 'rested';
   readonly comfortBand: 'overloaded' | 'calm';
 }
+
+/** Local once-only admission receipt; never serialized to provider or Renderer. */
+export interface InteractionReceipt {
+  readonly sequence: number; readonly generation: number; readonly signature: string;
+  readonly effectPolicy: 'eligible' | 'suppressed';
+}
+export interface TouchInteractionReceipt extends InteractionReceipt {
+  readonly energyBand: 'tired' | 'rested'; readonly comfortBand: 'calm' | 'overloaded';
+}

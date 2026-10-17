@@ -75,7 +75,7 @@ it('follow-up receives published trace repeatedly, suppressed chat appraisal giv
   send(1); await flush(); send(2); await flush();
   expect(generateResponse).toHaveBeenCalledTimes(2);
   for (const [request] of generateResponse.mock.calls) { expect(request.interaction).toMatchObject({ effectPolicy: 'suppressed', previousTouch: prior }); expect(request.recentContext.some(p => p.text === 'Спасибо!')).toBe(false); }
-  expect(f.character.getState().relationship.friendship).toBe(friendship + 12); // one legacy chat reward per user turn until #90
+  expect(f.character.getState().relationship.friendship).toBe(friendship); // chat base and neutral appraisal never add relationship reward
   chat.clearMemoryContext(); expect(f.context.get()).toBeUndefined(); chat.dispose(); f.runtime.dispose();
 });
 it('pending transport skips further requests while later input still applies its bounded base', async () => {

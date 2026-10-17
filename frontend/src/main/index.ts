@@ -1,5 +1,5 @@
 import { TouchReactionContext } from '../application/services/touch-reaction-context';
-import type { TouchInteractionReceipt } from '../application/services/character-state.service';
+import type { TouchInteractionReceipt } from '../application/ports/interaction-appraisal';
 import { ObservationRuntime } from '../application/services/observation-runtime';
 import { createActiveApplicationObservation, type ActiveApplicationObservationManagement } from '../infrastructure/platform/active-application-factory';
 import { registerObservationIpc } from './observation-ipc-registration';
@@ -368,6 +368,8 @@ function initializeAutonomyComposition(): void {
         completed: turn => { void memoryRuntime?.history.completed(turn); }, ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
       getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
+      beginInteraction: () => defaultCharacterStateService.beginChat(++interactionSequence),
+      commitInteraction: (receipt, proposal) => defaultCharacterStateService.commitChat(receipt, proposal),
       applyStimulus: stimulus => { defaultCharacterStateService.applyStimulus(stimulus); },
       beginThinking: id => autonomyComposition?.beginDialogueThinking(id),
       endThinking: id => autonomyComposition?.endDialogueThinking(id),

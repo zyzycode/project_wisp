@@ -1,3 +1,4 @@
+import type { InteractionReceipt } from '../ports/interaction-appraisal';
 import { emptyMemoryContext } from './memory-recall';
 import { boundMemoryContext } from './memory-context';
 import type { DialogueRuntimeOptions } from '../ports/dialogue-runtime';
@@ -7,7 +8,7 @@ import { parseDialogueCommand, parseDialoguePresentation } from '../../shared/di
 import { parseProviderResponse, parseProviderStatus, fallbackReason, DIALOGUE_FALLBACK } from './dialogue-provider-result';
 import { mapProviderResponseToBehaviorIntent } from './provider-response-intent-mapper';
 
-interface Turn { readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; readonly memoryGeneration: number; }
+interface Turn { readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; readonly memoryGeneration: number; readonly interactionReceipt?: InteractionReceipt; }
 
 /** One instance per Main lifecycle, including while its window is closed. */
 export class DialogueRuntime {
@@ -69,10 +70,11 @@ export class DialogueRuntime {
     const deadline = requestedAtMs + 15000;
     this.executing = true;
     this.options.transaction(() => {
-      this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
-      const request: AIProviderRequest = { ...(this.options.interactionEnabled ? { interaction: { card: { id: 'shyDreamGirl', revision: 1 }, effectPolicy: 'suppressed', ...(previousTouch ? { previousTouch } : {}) } } : {}), requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
+      const interactionReceipt = this.options.beginInteraction?.();
+      if (!interactionReceipt) this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
+      const request: AIProviderRequest = { ...(this.options.interactionEnabled ? { interaction: { card: { id: 'shyDreamGirl', revision: 1 }, effectPolicy: interactionReceipt?.effectPolicy ?? 'suppressed', ...(previousTouch ? { previousTouch } : {}) } } : {}), requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };
-      const active: Turn = { request, generation: this.generation, deadline, requestedAtMs, memoryGeneration: this.options.memory?.generation() ?? 0 };
+      const active: Turn = { ...(interactionReceipt ? { interactionReceipt } : {}), request, generation: this.generation, deadline, requestedAtMs, memoryGeneration: this.options.memory?.generation() ?? 0 };
       this.active = active; this.turn = { phase: 'thinking', requestId };
       this.timer = this.options.scheduler.setTimeout(() => this.finish(active, 'timeout'), Math.max(0, deadline - this.options.now()));
       this.options.setBehaviorContext?.({ requestId, conversationId: this.conversationId, generation: this.generation, requestedAtMs });
@@ -137,7 +139,7 @@ export class DialogueRuntime {
       }
       if (request.interaction) {
         const previousTouch = this.options.events?.getPreviousTouch?.();
-        request = { ...request, interaction: { card: request.interaction.card, effectPolicy: 'suppressed', ...(previousTouch ? { previousTouch } : {}) } };
+        request = { ...request, interaction: { card: request.interaction.card, effectPolicy: request.interaction.effectPolicy, ...(previousTouch ? { previousTouch } : {}) } };
       }
       const responsePromise = this.options.provider.generateResponse(request);
       this.options.transaction(() => { this.options.publish(); });
@@ -145,7 +147,7 @@ export class DialogueRuntime {
       this.executing = false;
       if (!this.mayContinue(turn)) return;
       let response: AIProviderResponse;
-      try { response = parseProviderResponse(rawResponse, turn.request.requestId); if (this.options.interactionEnabled && response.status === 'ok' && (response.appraisal?.category !== 'neutral' || response.appraisal.intensity !== 'low' || response.appraisal.confidence !== 'clear')) throw new TypeError('Invalid suppressed appraisal'); if (!this.options.interactionEnabled && response.appraisal) throw new TypeError('Unexpected appraisal'); }
+      try { response = parseProviderResponse(rawResponse, turn.request.requestId); if (this.options.interactionEnabled && response.status === 'ok' && (!response.appraisal || (turn.request.interaction?.effectPolicy === 'suppressed' && (response.appraisal.category !== 'neutral' || response.appraisal.intensity !== 'low' || response.appraisal.confidence !== 'clear')))) throw new TypeError('Invalid suppressed appraisal'); if (!this.options.interactionEnabled && response.appraisal) throw new TypeError('Unexpected appraisal'); }
       catch { this.finish(turn, 'invalid_response'); return; }
       this.finish(turn, response.status === 'fallback' ? fallbackReason(response) : undefined, response);
     } catch {
@@ -162,6 +164,10 @@ export class DialogueRuntime {
     this.active = null; this.cancelTimer();
     this.options.transaction(() => {
       const requestId = active.request.requestId;
+      if (active.interactionReceipt && this.options.commitInteraction) {
+        const outcome = this.options.commitInteraction(active.interactionReceipt, reason === undefined && this.options.interactionEnabled ? response?.appraisal : undefined);
+        if (reason === undefined && this.options.interactionEnabled && (outcome.effect === 'rejected' || outcome.effect === 'suppressed')) { reason = 'degraded'; response = undefined; }
+      }
       this.options.endThinking(requestId);
       const replyText = response?.reply.text ?? DIALOGUE_FALLBACK;
       const assistantId = this.options.createId();

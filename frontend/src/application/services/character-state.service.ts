@@ -1,5 +1,5 @@
 import { applyInteractionProposal, interactionSignature, isNonzeroProposal } from '../../domain/character/interaction-effects';
-import type { InteractionAppraisal, PreviousTouchReaction } from '../ports/interaction-appraisal';
+import type { InteractionAppraisal, PreviousTouchReaction, InteractionReceipt, TouchInteractionReceipt } from '../ports/interaction-appraisal';
 import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '../ports/memory-knowledge.interface';
 import { createAdaptationGate, type AdaptationGate } from '../../domain/character/adaptation-gate';
 import { learnVerifiedCursorPreference } from '../../domain/character/preferences';
@@ -84,11 +84,6 @@ function normalizeDeltaMs(deltaMs: number): number {
   return Number.isFinite(deltaMs) ? Math.min(60_000, Math.max(0, deltaMs)) : 0;
 }
 
-export interface TouchInteractionReceipt {
-  readonly sequence: number; readonly generation: number; readonly signature: string;
-  readonly effectPolicy: 'eligible' | 'suppressed';
-  readonly energyBand: 'tired' | 'rested'; readonly comfortBand: 'calm' | 'overloaded';
-}
 export class CharacterStateService implements ICharacterPreferenceLearning {
   private state: CharacterState;
   private interactionGeneration = 0;
@@ -129,32 +124,41 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
 
   public beginTouch(sequence: number): TouchInteractionReceipt {
     const before = this.getSnapshot();
-    if (sequence > this.baseSequence) {
-      this.baseSequence = sequence;
-      this.applyTouchBase();
-    }
-    return { sequence, generation: this.interactionGeneration, signature: interactionSignature(this.getSnapshot()),
-      effectPolicy: this.monotonicNow() >= this.nextAppraisalAt ? 'eligible' : 'suppressed',
+    return { ...this.beginInteraction(sequence, 'user_click'),
       energyBand: before.needs.energy <= 30 ? 'tired' : 'rested', comfortBand: before.needs.comfort >= 80 ? 'overloaded' : 'calm' };
   }
+  public beginChat(sequence: number): InteractionReceipt { return this.beginInteraction(sequence, 'user_message'); }
+  private beginInteraction(sequence: number, type: 'user_click' | 'user_message'): InteractionReceipt {
+    if (sequence > this.baseSequence) {
+      this.baseSequence = sequence;
+      if (this.monotonicNow() >= this.nextBaseAt) {
+        this.nextBaseAt = this.monotonicNow() + 10000;
+        const result = processStimulusWithAdaptation(this.state, { type, source: 'user' }, this.axesGate, this.monotonicNow());
+        this.state = result.state; this.axesGate = result.gate;
+      }
+    }
+    return { sequence, generation: this.interactionGeneration, signature: interactionSignature(this.getSnapshot()),
+      effectPolicy: this.monotonicNow() >= this.nextAppraisalAt ? 'eligible' : 'suppressed' };
+  }
   public commitTouch(receipt: TouchInteractionReceipt, proposal?: InteractionAppraisal): Pick<PreviousTouchReaction, 'effect' | 'reason'> {
+    return this.commitInteraction(receipt, proposal, true);
+  }
+  public commitChat(receipt: InteractionReceipt, proposal?: InteractionAppraisal): Pick<PreviousTouchReaction, 'effect' | 'reason'> {
+    return this.commitInteraction(receipt, proposal, false);
+  }
+  private commitInteraction(receipt: InteractionReceipt, proposal: InteractionAppraisal | undefined, touch: boolean): Pick<PreviousTouchReaction, 'effect' | 'reason'> {
     if (receipt.generation !== this.interactionGeneration || receipt.sequence <= this.appraisalSequence) return { effect: 'rejected', reason: 'state_changed' };
     this.appraisalSequence = receipt.sequence;
     if (receipt.signature !== interactionSignature(this.getSnapshot())) return { effect: 'rejected', reason: 'state_changed' };
-    if (!proposal || proposal.intensity !== 'low' || proposal.category === 'hostile') return { effect: 'rejected', reason: 'unavailable' };
+    if (!proposal || (touch && (proposal.intensity !== 'low' || proposal.category === 'hostile'))) return { effect: 'rejected', reason: 'unavailable' };
     if (!isNonzeroProposal(proposal)) return { effect: 'neutral', reason: proposal.confidence === 'uncertain' ? 'uncertain' : 'neutral' };
     if (receipt.effectPolicy === 'suppressed' || this.monotonicNow() < this.nextAppraisalAt) return { effect: 'suppressed', reason: 'cooldown' };
     this.state = applyInteractionProposal(this.state, proposal);
     this.nextAppraisalAt = this.monotonicNow() + 30000;
     return { effect: 'accepted', reason: 'applied' };
   }
-  private applyTouchBase(): void {
-    if (this.monotonicNow() < this.nextBaseAt) return;
-    this.nextBaseAt = this.monotonicNow() + 10000;
-    const result = processStimulusWithAdaptation(this.state, { type: 'user_click', source: 'user' }, this.axesGate, this.monotonicNow());
-    this.state = result.state; this.axesGate = result.gate;
-  }
   public applyStimulus(stimulus: CharacterStimulus): CharacterState {
+    if (stimulus.type === 'user_message' || stimulus.type === 'chat_message') { this.beginChat(this.baseSequence + 1); return this.getState(); }
     if (['click', 'user_click', 'user_double_click', 'user_right_click'].includes(stimulus.type)) { this.beginTouch(this.baseSequence + 1); return this.getState(); }
     const runId = stimulus.metadata?.activityRunId;
     const effect = stimulus.type === 'play' ? 'play' : stimulus.metadata?.activityOutcome === 'explore_completed' ? 'explore' : null;

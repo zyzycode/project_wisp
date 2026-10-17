@@ -300,12 +300,12 @@ describe('Domain: Character Engine v2', () => {
     expect(petted.relationship.love).toBe(12);
     expect(petted.needs.boredom ?? 0).toBeLessThan(clicked.needs.boredom ?? 0);
 
-    expect(chatted.relationship.friendship).toBe(420);
-    expect(chatted.relationship.love).toBe(13);
+    expect(chatted.relationship.friendship).toBe(414);
+    expect(chatted.relationship.love).toBe(12);
     expect(chatted.needs.attention).toBeLessThan(state.needs.attention);
-    expect(chatted.needs.play).toBeLessThan(state.needs.play);
+    expect(chatted.needs.play).toBe(state.needs.play);
     expect(chatted.needs.comfort).toBeLessThan(state.needs.comfort);
-    expect(chatted.needs.boredom ?? 0).toBeLessThan(petted.needs.boredom ?? 0);
+    expect(chatted.needs.boredom).toBe(petted.needs.boredom);
   });
 
   it('catches up need metabolism before applying a non-idle stimulus', () => {
@@ -326,7 +326,7 @@ describe('Domain: Character Engine v2', () => {
     expect(next.needs.attention).toBeGreaterThan(0);
     expect(next.needs.attention).toBeLessThan(56);
     expect(next.needs.play).toBeGreaterThan(0);
-    expect(next.relationship.friendship).toBe(106);
+    expect(next.relationship.friendship).toBe(100);
     expect(state.needs).toEqual({ energy: 40, attention: 0, play: 0, comfort: 20, boredom: 0 });
   });
 

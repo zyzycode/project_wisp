@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import replace
 import json
 import sqlite3
+from types import SimpleNamespace
 from uuid import uuid4
 
 from fastapi import FastAPI
@@ -12,7 +13,9 @@ import pytest
 
 from tests.api.test_interaction_validation import fixture, REQUESTS
 from tests.helpers import Clock, gemini_completion
-from wisp_backend.accounting.contracts import Usage
+from tests.doubles import MemoryLedger
+from wisp_backend.completion import service as service_module
+from wisp_backend.accounting.contracts import Admission, Usage
 from wisp_backend.accounting.policy import ID_TTL
 from wisp_backend.accounting.replay import CACHE_TTL
 from wisp_backend.api.dispatch import prepare_job
@@ -159,11 +162,21 @@ def test_late_usage_settles_once_without_publishing(app_factory: Callable[..., F
 @pytest.mark.parametrize('provider', ['groq', 'gemini'])
 def test_deadline_closes_response_stream(app_factory: Callable[..., FastAPI], monkeypatch: pytest.MonkeyPatch,
                                         operation: str, scenario: Scenario, provider: str) -> None:
-    monkeypatch.setitem(POLICIES, scenario, replace(POLICIES[scenario], timeout=.1))
+    assert POLICIES[scenario].timeout == 10
     async def run() -> None:
-        closed = asyncio.Event()
+        entered, closed = asyncio.Event(), asyncio.Event()
+        async def wait_until_stream_deadline(tasks: set, *, timeout: float | None = None, **kwargs: object) -> tuple[set, set]:
+            if any(task.get_coro().__qualname__ == 'HTTPProvider.complete' for task in tasks):
+                # Expire the provider wait only once a stream actually exists. A tiny
+                # route deadline can expire during admission, before anything needs closing.
+                await asyncio.wait_for(entered.wait(), 2)
+                return set(), set(tasks)
+            return await asyncio.wait(tasks, timeout=timeout, **kwargs)
+        monkeypatch.setattr(service_module, 'asyncio', SimpleNamespace(**{
+            **vars(asyncio), 'wait': wait_until_stream_deadline}))
         class Stream(httpx.AsyncByteStream):
             async def __aiter__(self):
+                entered.set()
                 yield b'{'
                 await asyncio.Future()
             async def aclose(self) -> None: closed.set()
@@ -171,6 +184,30 @@ def test_deadline_closes_response_stream(app_factory: Callable[..., FastAPI], mo
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
                 response = await client.post(f'/v7/{operation}', json=fixture(f'request.{operation}.json'))
-                assert response.status_code == 504
+                assert entered.is_set() and response.status_code == 504
                 await asyncio.wait_for(closed.wait(), 2)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('operation,scenario', [('touch', Scenario.INTERACTION_TOUCH), ('chat', Scenario.INTERACTION_CHAT)])
+def test_admission_deadline_can_expire_without_opening_a_stream(app_factory: Callable[..., FastAPI],
+                                                               monkeypatch: pytest.MonkeyPatch,
+                                                               operation: str, scenario: Scenario) -> None:
+    monkeypatch.setitem(POLICIES, scenario, replace(POLICIES[scenario], timeout=.1))
+    async def run() -> None:
+        entered, release = asyncio.Event(), asyncio.Event()
+        class PendingLedger(MemoryLedger):
+            async def admit(self, request_id: str, digest: str, legacy_digest: str | None = None) -> Admission:
+                entered.set()
+                await release.wait()
+                return await super().admit(request_id, digest, legacy_digest)
+        app = app_factory(lambda _: pytest.fail('Expired admission must not open a provider stream'))
+        async with app.router.lifespan_context(app):
+            app.state.completion_service.ledger = PendingLedger()
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+                try:
+                    response = await client.post(f'/v7/{operation}', json=fixture(f'request.{operation}.json'))
+                    assert entered.is_set() and response.status_code == 504
+                finally:
+                    release.set()
     asyncio.run(run())
