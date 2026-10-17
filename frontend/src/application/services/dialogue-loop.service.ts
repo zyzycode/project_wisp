@@ -82,7 +82,7 @@ export class DialogueRuntime {
     this.options.events?.invalidate();
     this.generation++; this.cancelTimer();
     this.options.setBehaviorContext?.(null);
-    if (this.active) this.options.endThinking(this.active.request.requestId);
+    if (this.active) { this.options.provider.cancel?.(this.active.request.requestId); this.options.endThinking(this.active.request.requestId); }
     this.active = null; this.context = []; this.contextMessageIds = []; this.turn = { phase: 'idle' }; this.conversationId = this.options.createId();
   }
   private cancelTimer(): void {
@@ -139,10 +139,11 @@ export class DialogueRuntime {
       const requestId = active.request.requestId;
       this.options.endThinking(requestId);
       const replyText = response?.reply.text ?? DIALOGUE_FALLBACK;
+      const assistantId = this.options.createId();
       let presentation: DialoguePresentationDTO;
       try {
         presentation = parseDialoguePresentation({ conversationId: this.conversationId, canSubmit: false,
-          turn: { phase: 'completed', requestId, replyText, outcome: reason === undefined ? { kind: 'success' } : { kind: 'fallback', reason } } });
+          turn: { phase: 'completed', requestId, replyText, ...(reason === undefined ? { memorySource: { userMessageId: active.request.userMessage.id, assistantMessageId: assistantId } } : {}), outcome: reason === undefined ? { kind: 'success' } : { kind: 'fallback', reason } } });
       } catch {
         this.turn = { phase: 'error', requestId, message: 'Не удалось показать ответ. Попробуй позже.' };
         this.options.publish(); return;
@@ -163,10 +164,9 @@ export class DialogueRuntime {
         }
       }
       this.options.publish();
-      const assistantId = this.options.createId();
       this.contextMessageIds = [...this.contextMessageIds, active.request.userMessage.id, assistantId].slice(-this.context.length);
       this.options.memory?.completed({ user: active.request.userMessage,
-        assistant: { id: assistantId, text: replyText, createdAt }, memoryGeneration: active.memoryGeneration });
+        assistant: { id: assistantId, text: replyText, createdAt }, memoryConfirmable: reason === undefined, memoryGeneration: active.memoryGeneration });
     });
   }
 }

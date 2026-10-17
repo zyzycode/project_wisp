@@ -1,3 +1,4 @@
+import type { MemoryItemMutation, MemoryItemPage, MemoryItemReceipt } from '../ports/memory-items.interface';
 import { MemoryKnowledge } from './memory-knowledge';
 import type { ICharacterPreferenceLearning } from '../ports/memory-knowledge.interface';
 import type { MemoryRepositories, MemoryScheduler } from '../ports/memory-runtime';
@@ -22,6 +23,7 @@ interface Options {
   readonly hydrate: (messages: readonly AIProviderContextMessage[]) => void;
   readonly start: () => void;
   readonly pause: () => void;
+  readonly invalidateMemory?: () => void;
   readonly resetCommitted: () => void;
   readonly resume: () => void;
 }
@@ -29,7 +31,7 @@ export class MemoryLifecycle {
   readonly history: MemoryHistory;
   private readonly knowledge: MemoryKnowledge;
   private generation = 0;
-  private phase: 'initializing' | 'running' | 'resetting' | 'stopping' = 'initializing';
+  private phase: 'initializing' | 'running' | 'mutating' | 'resetting' | 'stopping' = 'initializing';
   private status: MemoryStatusDTO = { mode: 'initializing' };
   private storageReady = false;
   private snapshotWritable = true;
@@ -84,7 +86,7 @@ export class MemoryLifecycle {
       this.storageReady = false; this.status = { mode: 'volatile', reason: 'unavailable' };
       void this.options.storage.abort(); this.start();
     }
-    return this.phase === 'running';
+    return this.phase === 'running' || this.phase === 'mutating';
   }
   private start(): void {
     if (this.phase !== 'initializing') return;
@@ -119,6 +121,34 @@ export class MemoryLifecycle {
     const result = await this.safe(() => this.options.storage.facts.removeByKey(key, c));
     if (this.context()?.generation !== c.generation) return { ok: false, code: 'stale' };
     if (!result.ok) this.failure(result.code); return result;
+  }
+  async listItems(query: { readonly cursor: number | null; readonly limit: number }): Promise<MemoryResult<MemoryItemPage>> {
+    const c = this.context(), items = this.options.storage.items;
+    if (!c || !items || this.phase !== 'running') return { ok: false, code: 'unavailable' };
+    const result = await this.safe(() => items.list(query, c));
+    return this.context()?.generation === c.generation ? result : { ok: false, code: 'stale' };
+  }
+  async mutateItem(command: MemoryItemMutation): Promise<MemoryResult<MemoryItemReceipt>> {
+    const items = this.options.storage.items;
+    if (!items || this.phase !== 'running' || !this.context()) return { ok: false, code: 'unavailable' };
+    this.phase = 'mutating'; this.generation++; this.stopTimer();
+    const generation = this.generation;
+    // Abort dialogue/events and drop volatile projections synchronously, including on rollback.
+    // Local Character FSM, motion, and ordinary input keep running.
+    this.options.invalidateMemory?.();
+    const result = await this.safe(() => {
+      const context = { generation };
+      switch (command.kind) {
+        case 'confirm': return items.confirm(command, context);
+        case 'update': return items.update(command, context);
+        case 'withdraw': return items.withdraw({ ...command, kind: 'withdraw' }, context);
+        case 'delete': return items.delete({ ...command, kind: 'delete' }, context);
+      }
+    });
+    if (this.phase !== 'mutating' || generation !== this.generation) return { ok: false, code: 'stale' };
+    if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
+    this.phase = 'running'; this.scheduleCheckpoint();
+    return result;
   }
   async reset(): Promise<MemoryResult<void>> {
     if (this.phase !== 'running' || !this.storageReady) return { ok: false, code: 'unavailable' };

@@ -54,6 +54,7 @@ async function readBoundedJson(response: Response, signal: AbortSignal): Promise
 }
 
 export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
+  private chatAbort: { id: string; controller: AbortController } | undefined;
   private eventAbort: { id: string; controller: AbortController } | undefined;
   private readonly url: URL;
   private readonly fetch: typeof fetch;
@@ -72,6 +73,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
     if (this.activeRequestId) throw new Error('Transport unavailable');
     const startedAt = this.options.now();
     const controller = new AbortController();
+    this.chatAbort = { id: request.requestId, controller };
     this.activeRequestId = request.requestId;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
@@ -107,10 +109,11 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider {
       return this.fallback(request.requestId, error instanceof TransportTimeout ? 'timeout' : 'provider_unavailable', startedAt);
     } finally {
       clearTimeout(timer);
+      if (this.chatAbort?.id === request.requestId) this.chatAbort = undefined;
       this.activeRequestId = undefined;
     }
   }
-  public cancel(requestId: string): void { if (this.eventAbort?.id === requestId) this.eventAbort.controller.abort(); }
+  public cancel(requestId: string): void { if (this.chatAbort?.id === requestId) this.chatAbort.controller.abort(); if (this.eventAbort?.id === requestId) this.eventAbort.controller.abort(); }
   public async generateEvent(request: AIEventProviderRequest): Promise<AIEventProviderResponse> {
     const touch = request.event.type === 'user_touch';
     if (!touch && this.options.apiVersion !== 3) throw new Error('Events unavailable');

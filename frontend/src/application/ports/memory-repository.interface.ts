@@ -41,6 +41,8 @@ export interface ConversationSession {
 
 /** A completed, displayed turn; session creation and both messages commit together. */
 export interface CompletedChatTurn {
+  /** Only a displayed successful result can be selected for explicit confirmation. */
+  readonly memoryConfirmable?: boolean;
   readonly session: ConversationSession;
   readonly user: PersistedChatMessage & { readonly role: 'user' };
   readonly assistant: PersistedChatMessage & { readonly role: 'assistant' };

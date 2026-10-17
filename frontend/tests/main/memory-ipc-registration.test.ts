@@ -20,3 +20,19 @@ it('accepts no arguments for status and releases both handlers', async () => {
   expect(await status({ sender: f.sender })).toEqual({ mode: 'persistent', characterRestore: 'restored' });
   f.unregister(); expect(f.remove.mock.calls).toEqual([['wisp:get-memory-status'], ['wisp:clear-memory']]);
 });
+it('validates card sender, arguments, inputs and results and removes optional handlers', async () => {
+  const f = fixture(); const mutate = vi.fn(async () => ({ ok: false, generation: 0, code: 'unavailable' } as const));
+  const list = vi.fn(async () => ({ ok: true, generation: 0, items: [], nextCursor: null } as const));
+  const unregister = registerMemoryIpc({ register: (channel, handler) => f.handlers.set(channel, handler), remove: f.remove,
+    getSender: () => f.sender, getStatus: () => ({ mode: 'persistent', characterRestore: 'restored' }),
+    clear: new ClearMemoryUseCase(f.reset), cards: { mutate, list } });
+  const mutation = f.handlers.get('wisp:mutate-memory-card')!, listing = f.handlers.get('wisp:list-memory-cards')!;
+  const command = { streamId: 'stream', sequence: 1, commandId: 'cmd', generation: 0, itemId: 'item', expectedRevision: 1, kind: 'delete' };
+  await expect(mutation({ sender: {} }, command)).rejects.toThrow('Untrusted');
+  await expect(mutation({ sender: f.sender }, { ...command, secret: true })).rejects.toThrow();
+  expect(mutate).not.toHaveBeenCalled(); expect(await mutation({ sender: f.sender }, command)).toMatchObject({ ok: false, code: 'unavailable' });
+  await expect(listing({ sender: f.sender }, { streamId: 'stream', cursor: null, limit: 21 })).rejects.toThrow();
+  await expect(listing({ sender: f.sender })).rejects.toThrow(); expect(list).not.toHaveBeenCalled();
+  expect(await listing({ sender: f.sender }, { streamId: 'stream', cursor: null, limit: 20 })).toMatchObject({ ok: true, items: [] });
+  unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:mutate-memory-card'); expect(f.remove).toHaveBeenCalledWith('wisp:list-memory-cards');
+});

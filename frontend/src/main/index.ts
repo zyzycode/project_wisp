@@ -1,3 +1,4 @@
+import { MemoryCards } from '../application/services/memory-cards';
 import { AIEventRuntime } from '../application/services/ai-event-runtime';
 import { LocalMemoryRecall } from '../application/services/memory-recall';
 import { MemoryLifecycle } from '../application/services/memory-lifecycle';
@@ -91,6 +92,7 @@ let memoryShutdownComplete = false;
 let memoryRuntime: MemoryLifecycle | null = null;
 let unregisterMemory: (() => void) | null = null;
 const localMock = !process.env.WISP_BACKEND_URL?.trim();
+const memoryCards = new MemoryCards(() => memoryRuntime, () => new Date().toISOString());
 const clearMemory = new ClearMemoryUseCase(() => memoryRuntime?.reset() ?? Promise.resolve({ ok: false, code: 'unavailable' }));
 const platformAdapter = createPlatformAdapter();
 const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
@@ -120,7 +122,7 @@ const appLogger = new AppLogger({
 });
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { const id = randomUUID(); dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); return id; },
+  createStreamId: () => { const id = randomUUID(); dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryCards.replaceStream(id); return id; },
   prepareSnapshot: () => {
     aiEventRuntime?.tick();
     autonomyComposition?.tick();
@@ -238,7 +240,7 @@ function beginBrainStream(): void {
 function clearBrainStream(): void {
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
-  clearMemory.replaceStream(null);
+  clearMemory.replaceStream(null); memoryCards.replaceStream(null);
   dialogueRuntime?.detachStream();
 }
 
@@ -318,7 +320,7 @@ function initializeAutonomyComposition(): void {
       ? new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
     if (ai.touchProvider) aiEventRuntime = new AIEventRuntime({ provider: ai.touchProvider, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
       now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
-      gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0 }) });
+      gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0, ...(!memoryRuntime?.isRunning() ? { allowed: false, touchAllowed: false } : {}) }) });
     dialogueRuntime = new DialogueRuntime({
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
       memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
@@ -519,11 +521,11 @@ function registerIpcHandlers(): void {
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null,
     receive: payload => {
       try { parseDialogueCommand(payload); } catch { return { status: 'rejected', reason: 'invalid_input' }; }
-      if (!memoryRuntime?.admitInput()) return { status: 'rejected', reason: 'unavailable' };
+      if (!memoryRuntime?.admitInput() || !memoryRuntime.isRunning()) return { status: 'rejected', reason: 'unavailable' };
       return dialogueRuntime?.receive(payload) ?? { status: 'rejected', reason: 'unavailable' };
     },
   });
-  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory });
+  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, cards: memoryCards });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
@@ -731,7 +733,8 @@ if (!gotTheLock) {
       scheduler: createMainAutonomyScheduler(), now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
-      pause: pauseCharacterRuntime, resetCommitted: () => dialogueRuntime?.clearMemoryContext(),
+      pause: pauseCharacterRuntime, invalidateMemory: () => { dialogueRuntime?.clearMemoryContext(); aiEventRuntime?.invalidate(); },
+      resetCommitted: () => { dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
     initializeServices();

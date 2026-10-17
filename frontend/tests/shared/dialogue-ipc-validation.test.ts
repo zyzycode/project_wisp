@@ -27,3 +27,14 @@ it('copies a trimmed admission notice only while submission is blocked', () => {
     expect(() => parseDialoguePresentation({ ...value, submissionMessage })).toThrow();
   }
 });
+it('exposes exact distinct memory source ids only for a successfully completed turn', () => {
+  const memorySource = { userMessageId: 'user', assistantMessageId: 'assistant' };
+  const turn = { phase: 'completed', requestId: 'r', replyText: 'Ответ', outcome: { kind: 'success' }, memorySource };
+  const p = { conversationId: 'c', canSubmit: true, turn };
+  expect(parseDialoguePresentation(p).turn).toEqual(turn);
+  for (const invalid of [{ ...turn, outcome: { kind: 'fallback', reason: 'offline' } },
+    { phase: 'idle', memorySource }, { ...turn, memorySource: { ...memorySource, extra: true } },
+    { ...turn, memorySource: { userMessageId: 'same', assistantMessageId: 'same' } }]) {
+    expect(() => parseDialoguePresentation({ ...p, turn: invalid })).toThrow();
+  }
+});

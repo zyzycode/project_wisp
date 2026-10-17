@@ -40,9 +40,10 @@ export class MemoryHistory {
   private async appendCompleted(turn: CompletedDialogueMemoryTurn, c: MemoryOperationContext): Promise<void> {
     if (!this.isCurrent(c.generation)) return;
     const session = this.session ?? { id: this.options.createId(), appRunId: this.appRunId, startedAt: turn.user.createdAt, endedAt: null };
-    const result = await this.safe(() => this.options.history.appendTurn({ session,
+    const result = await this.safe(() => this.options.history.appendTurn({ session, ...(turn.memoryConfirmable === undefined ? {} : { memoryConfirmable: turn.memoryConfirmable }),
       user: { id: turn.user.id, conversationSessionId: session.id, role: 'user', content: turn.user.text, createdAt: turn.user.createdAt },
       assistant: { id: turn.assistant.id, conversationSessionId: session.id, role: 'assistant', content: turn.assistant.text, createdAt: turn.assistant.createdAt } }, c));
+    if (result.ok && session.appRunId === this.appRunId) this.session = session;
     if (!this.isCurrent(c.generation)) return;
     if (result.ok) { this.session = session; await this.options.onPersisted?.(turn, c); } else this.options.onFailure(result.code);
   }

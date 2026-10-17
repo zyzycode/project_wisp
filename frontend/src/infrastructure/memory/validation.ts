@@ -40,10 +40,12 @@ export function message(value: unknown): PersistedChatMessage {
   return { id: text(v.id), conversationSessionId: text(v.conversationSessionId), role: v.role, content: plainText(v.content, v.role === 'user' ? 240 : 2000), createdAt: timestamp(v.createdAt) };
 }
 export function turn(value: unknown): CompletedChatTurn {
-  const v = record(value, ['session', 'user', 'assistant']);
+  const raw = record(value);
+  const v = record(value, Object.hasOwn(raw, 'memoryConfirmable') ? ['session', 'user', 'assistant', 'memoryConfirmable'] : ['session', 'user', 'assistant']);
+  if (v.memoryConfirmable !== undefined && typeof v.memoryConfirmable !== 'boolean') throw new MemoryDataError('invalid_data');
   const s = session(v.session), u = message(v.user), a = message(v.assistant);
   if (u.role !== 'user' || a.role !== 'assistant' || u.id === a.id || u.conversationSessionId !== s.id || a.conversationSessionId !== s.id || s.endedAt !== null) throw new MemoryDataError('invalid_data');
-  return { session: s, user: { ...u, role: 'user' }, assistant: { ...a, role: 'assistant' } };
+  return { ...(v.memoryConfirmable === undefined ? {} : { memoryConfirmable: v.memoryConfirmable }), session: s, user: { ...u, role: 'user' }, assistant: { ...a, role: 'assistant' } };
 }
 export function fact(value: unknown): UserFact {
   const v = record(value, ['id', 'factKey', 'factValue', 'confidence', 'sourceMessageId', 'createdAt', 'updatedAt']);

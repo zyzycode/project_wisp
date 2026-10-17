@@ -64,6 +64,42 @@ export type ClearMemoryResultDTO =
         | 'unsupported_version' | 'io_error' | 'stale';
     };
 
+/** Explicit local event/joke cards; never a provider DTO. */
+export interface MemoryCardContentDTO {
+  readonly category: 'important_event' | 'shared_joke';
+  readonly label: string;
+  readonly text: string;
+  readonly occurredOn: string | null;
+}
+export interface MemoryCardSourceDTO { readonly userMessageId: string; readonly assistantMessageId: string }
+export interface MemoryCardDTO extends MemoryCardContentDTO {
+  readonly id: string;
+  readonly revision: number;
+  readonly status: 'active' | 'withdrawn';
+  readonly confirmedAt: string;
+  readonly source: MemoryCardSourceDTO;
+}
+interface MemoryCardEnvelopeDTO {
+  readonly streamId: string;
+  readonly sequence: number;
+  readonly commandId: string;
+  readonly generation: number;
+  readonly itemId: string;
+  readonly expectedRevision: number;
+}
+export type MemoryCardCommandDTO = MemoryCardEnvelopeDTO & (
+  | { readonly kind: 'confirm' | 'update'; readonly confirmed: true; readonly content: MemoryCardContentDTO; readonly source: MemoryCardSourceDTO }
+  | { readonly kind: 'withdraw' | 'delete' }
+);
+export interface MemoryCardListCommandDTO { readonly streamId: string; readonly cursor: number | null; readonly limit: number }
+export type MemoryCardFailureDTO = 'unavailable' | 'busy' | 'storage_full' | 'corrupt' | 'unsupported_version' | 'invalid_data' | 'conflict' | 'stale' | 'io_error';
+export type MemoryCardResultDTO =
+  | { readonly ok: true; readonly generation: number; readonly receipt: { readonly commandId: string; readonly itemId: string; readonly revision: number; readonly outcome: 'active' | 'withdrawn' | 'deleted' } }
+  | { readonly ok: false; readonly generation: number; readonly code: MemoryCardFailureDTO };
+export type MemoryCardListResultDTO =
+  | { readonly ok: true; readonly generation: number; readonly items: readonly MemoryCardDTO[]; readonly nextCursor: number | null }
+  | { readonly ok: false; readonly generation: number; readonly code: MemoryCardFailureDTO };
+
 export interface IgnoreMouseEventsDTO {
   ignore: boolean;
   forward?: boolean;
@@ -283,6 +319,7 @@ export type DialogueTurnPresentationDTO =
       readonly phase: 'completed';
       readonly requestId: string;
       readonly replyText: string;
+      readonly memorySource?: MemoryCardSourceDTO;
       readonly outcome:
         | { readonly kind: 'success' }
         | { readonly kind: 'fallback'; readonly reason: DialogueFallbackReasonDTO };
@@ -397,6 +434,8 @@ export interface DebugTelemetryDTO {
 }
 
 export interface WispApiBridge {
+  mutateMemoryCard(command: MemoryCardCommandDTO): Promise<MemoryCardResultDTO>;
+  listMemoryCards(command: MemoryCardListCommandDTO): Promise<MemoryCardListResultDTO>;
   clearMemory(command: ClearMemoryCommandDTO): Promise<ClearMemoryResultDTO>;
   getMemoryStatus(): Promise<MemoryStatusDTO>;
   setQuietMode(command: SetQuietModeDTO): Promise<AutonomyModeDTO>;

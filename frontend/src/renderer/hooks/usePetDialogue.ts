@@ -34,6 +34,7 @@ export function usePetDialogue({
   const closeChat = useCallback(() => setChatOpen(false), []);
 
   return {
+    memoryCards: { bridge, snapshot },
     currentMessage,
     setCurrentMessage,
     chatOpen,

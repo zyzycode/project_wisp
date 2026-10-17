@@ -1,10 +1,11 @@
 import type { MemoryFailureCode, MemoryResult } from '../../application/ports/memory-repository.interface';
+import { itemMutation, itemListQuery, itemReceipt, itemPage } from './item-validation';
 import * as v from './validation';
 
-export type Operation = 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
+export type Operation = 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
 export interface Command { readonly id: number; readonly generation: number; readonly operation: Operation; readonly payload: unknown }
 export interface Reply { readonly id: number; readonly result: MemoryResult<unknown> }
-const operations: readonly string[] = ['appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
+const operations: readonly string[] = ['mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
 const codes: readonly string[] = ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'invalid_data', 'conflict', 'stale', 'io_error'];
 export function command(value: unknown): Command {
   const c = v.record(value, ['id', 'generation', 'operation', 'payload']);
@@ -12,6 +13,8 @@ export function command(value: unknown): Command {
   const operation = c.operation as Operation;
   let payload: unknown;
   switch (operation) {
+    case 'mutateMemoryItem': payload = itemMutation(c.payload); break;
+    case 'listMemoryItems': payload = itemListQuery(c.payload); break;
     case 'getRecentEpisodes': payload = v.integer(c.payload, 1, 20); break;
     case 'appendTurn': payload = v.turn(c.payload); break;
     case 'getRecent': case 'listFacts': payload = v.integer(c.payload, 1, 100); break;
@@ -47,6 +50,8 @@ export function failure(error: unknown): MemoryResult<never> {
 
 export function responseValue(operation: Operation, value: unknown): unknown {
   switch (operation) {
+    case 'mutateMemoryItem': return itemReceipt(value);
+    case 'listMemoryItems': return itemPage(value);
     case 'getRecent': case 'listFacts': {
       if (!Array.isArray(value) || value.length > 100) throw new v.MemoryDataError('invalid_data');
       return value.map((item: unknown) => operation === 'getRecent' ? v.message(item) : v.fact(item));

@@ -26,6 +26,20 @@ function exposedApi(): WispApiBridge {
 }
 
 describe('Preload: Shimeji bridge', () => {
+  it('validates card commands and pages across the typed bridge', async () => {
+    const api = exposedApi(); electronMocks.invoke.mockReset();
+    const command = { streamId: 's', sequence: 1, commandId: 'c', generation: 0, itemId: 'i', expectedRevision: 1, kind: 'delete' } as const;
+    electronMocks.invoke.mockResolvedValueOnce({ ok: false, generation: 0, code: 'unavailable' });
+    await expect(api.mutateMemoryCard(command)).resolves.toMatchObject({ ok: false });
+    expect(electronMocks.invoke).toHaveBeenLastCalledWith('wisp:mutate-memory-card', command);
+    await expect(api.mutateMemoryCard({ ...command, expectedRevision: 0 })).rejects.toThrow();
+    expect(electronMocks.invoke).toHaveBeenCalledTimes(1);
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, generation: 0, items: [], nextCursor: null });
+    await expect(api.listMemoryCards({ streamId: 's', cursor: null, limit: 20 })).resolves.toMatchObject({ items: [] });
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, generation: 0, items: [], nextCursor: null, secret: true });
+    await expect(api.listMemoryCards({ streamId: 's', cursor: null, limit: 20 })).rejects.toThrow();
+    electronMocks.invoke.mockReset();
+  });
   it('exposes typed memory status/reset with validation in both directions', async () => {
     const api = exposedApi(); electronMocks.invoke.mockReset();
     electronMocks.invoke.mockResolvedValueOnce({ mode: 'persistent', characterRestore: 'restored' });

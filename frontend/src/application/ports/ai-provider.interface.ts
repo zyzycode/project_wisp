@@ -119,6 +119,8 @@ export interface AIProviderResponse {
 }
 
 export interface IAIProvider {
+  /** Abort a retired request when supported; generation checks still reject late results. */
+  cancel?(requestId: string): void;
   getStatus(): Promise<AIProviderStatus>;
   generateResponse(request: AIProviderRequest): Promise<AIProviderResponse>;
 }

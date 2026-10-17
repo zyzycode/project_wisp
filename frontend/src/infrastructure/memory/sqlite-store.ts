@@ -1,3 +1,4 @@
+import { MemoryItemStore } from './item-store';
 import Database from 'better-sqlite3';
 import type { MemoryResult } from '../../application/ports/memory-repository.interface';
 import { command, failure, type Command } from './protocol';
@@ -31,7 +32,7 @@ export class SqliteMemoryStore {
     try {
       const c = command(input);
       if (c.operation === 'close') { this.db.close(); this.unavailable = true; return { ok: true, value: undefined }; }
-      if (c.operation === 'clear') {
+      if ((c.operation === 'clear' || c.operation === 'mutateMemoryItem')) {
         if (c.generation !== this.generation + 1) return { ok: false, code: 'stale' };
         // The barrier survives rollback: old callbacks never regain write access.
         this.generation = c.generation;
@@ -47,8 +48,10 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'mutateMemoryItem': return new MemoryItemStore(this.db).mutate(c.payload);
+      case 'listMemoryItems': return new MemoryItemStore(this.db).list(c.payload);
       case 'appendTurn': return this.appendTurn(c.payload);
-      case 'getRecent': return this.db.prepare(`SELECT ${messageColumns} FROM (SELECT * FROM messages ORDER BY sequence DESC LIMIT ?) ORDER BY sequence`).all(v.integer(c.payload, 1, 100)).map(v.message);
+      case 'getRecent': return this.db.prepare(`SELECT ${messageColumns} FROM (SELECT * FROM messages WHERE NOT EXISTS (SELECT 1 FROM memory_suppressed_pairs s WHERE s.user_message_id = messages.id OR s.assistant_message_id = messages.id) ORDER BY sequence DESC LIMIT ?) ORDER BY sequence`).all(v.integer(c.payload, 1, 100)).map(v.message);
       case 'closeSession': {
         const p = v.record(c.payload);
         this.db.prepare('UPDATE conversation_sessions SET ended_at = max(started_at, ?) WHERE id = ? AND ended_at IS NULL').run(v.timestamp(p.endedAt), v.text(p.sessionId)); return;
@@ -56,7 +59,7 @@ export class SqliteMemoryStore {
       case 'closeUnfinishedSessions': return this.closeSessions(v.timestamp(c.payload));
       case 'upsertFact': return this.upsertFact(c.payload);
       case 'removeFact': this.db.prepare('DELETE FROM user_facts WHERE fact_key = ?').run(v.text(c.payload)); return;
-      case 'listFacts': return this.db.prepare(`SELECT ${factColumns} FROM user_facts ORDER BY fact_key COLLATE BINARY LIMIT ?`).all(v.integer(c.payload, 1, 100)).map(v.fact);
+      case 'listFacts': return this.db.prepare(`SELECT ${factColumns} FROM user_facts WHERE NOT EXISTS (SELECT 1 FROM memory_suppressed_pairs s WHERE s.user_message_id = user_facts.source_message_id OR s.assistant_message_id = user_facts.source_message_id) ORDER BY fact_key COLLATE BINARY LIMIT ?`).all(v.integer(c.payload, 1, 100)).map(v.fact);
       case 'getRecentEpisodes': return this.db.prepare(`SELECT ${episodeColumns} FROM game_episodes ORDER BY rowid DESC LIMIT ?`).all(v.integer(c.payload, 1, 20)).map(row => { const r = v.record(row); return v.episode({ ...r, playCompleted: r.playCompleted === 1 }); });
       case 'appendEpisode': return this.appendEpisode(c.payload);
       case 'loadSnapshot': {
@@ -73,7 +76,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 1, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { this.db.exec('DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { this.db.exec('DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }
@@ -90,7 +93,10 @@ export class SqliteMemoryStore {
       const s = existing[0] === undefined ? undefined : v.session(existing[0]);
       if (s && (s.id !== t.session.id || s.appRunId !== t.session.appRunId || s.startedAt !== t.session.startedAt)) throw new v.MemoryDataError('conflict');
       if (messages.length !== 0) {
-        if (s && messages.length === 2 && identical(messages[0], t.user) && identical(messages[1], t.assistant)) return;
+        if (s && messages.length === 2 && identical(messages[0], t.user) && identical(messages[1], t.assistant)) {
+          const flags = this.db.prepare('SELECT memory_confirmable FROM messages WHERE id IN (?, ?)').all(t.user.id, t.assistant.id);
+          if (flags.every(row => v.record(row).memory_confirmable === (t.memoryConfirmable === true ? 1 : 0))) return;
+        }
         throw new v.MemoryDataError('conflict');
       }
       if (s?.endedAt !== null && s !== undefined) throw new v.MemoryDataError('conflict');
@@ -99,8 +105,8 @@ export class SqliteMemoryStore {
         this.closeSessions(t.user.createdAt);
         this.db.prepare('INSERT INTO conversation_sessions VALUES (?, ?, ?, NULL)').run(t.session.id, t.session.appRunId, t.session.startedAt);
       }
-      const insert = this.db.prepare('INSERT INTO messages (id, conversation_session_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)');
-      for (const m of [t.user, t.assistant]) insert.run(m.id, m.conversationSessionId, m.role, m.content, m.createdAt);
+      const insert = this.db.prepare('INSERT INTO messages (id, conversation_session_id, role, content, created_at, memory_confirmable) VALUES (?, ?, ?, ?, ?, ?)');
+      for (const m of [t.user, t.assistant]) insert.run(m.id, m.conversationSessionId, m.role, m.content, m.createdAt, t.memoryConfirmable === true ? 1 : 0);
     }).immediate();
   }
   private upsertFact(payload: unknown): unknown {

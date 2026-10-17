@@ -1,3 +1,4 @@
+import { parseMemoryCardCommand, parseMemoryCardListCommand, parseMemoryCardListResult, parseMemoryCardResult } from '../shared/memory-card-validation';
 import { parseClearMemoryCommand, parseClearMemoryResult, parseMemoryStatus } from '../shared/memory-ipc-validation';
 import { parseQuietModeCommand, parseAutonomyMode } from '../shared/quiet-mode-validation';
 import { contextBridge, ipcRenderer } from 'electron';
@@ -46,6 +47,8 @@ const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown):
 ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
+  mutateMemoryCard: async command => parseMemoryCardResult(await ipcRenderer.invoke('wisp:mutate-memory-card', parseMemoryCardCommand(command))),
+  listMemoryCards: async command => parseMemoryCardListResult(await ipcRenderer.invoke('wisp:list-memory-cards', parseMemoryCardListCommand(command))),
   clearMemory: async command => parseClearMemoryResult(await ipcRenderer.invoke('wisp:clear-memory', parseClearMemoryCommand(command))),
   getMemoryStatus: async () => parseMemoryStatus(await ipcRenderer.invoke('wisp:get-memory-status')),
   setQuietMode: async command => parseAutonomyMode(await ipcRenderer.invoke('wisp:set-quiet-mode', parseQuietModeCommand(command))),

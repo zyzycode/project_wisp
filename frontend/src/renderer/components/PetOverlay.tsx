@@ -3,6 +3,7 @@ import type { RenderPresentationState } from '../render-engine';
 import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../shared/pet-presentation-layout';
 import { calculateRenderedDimensions } from '../../domain/models/character-visuals';
 import { CharacterRenderer } from './Character/CharacterRenderer';
+import { MemoryCards } from './Chat/MemoryCards';
 import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { DebugHUD } from './Debug';
@@ -63,6 +64,7 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
     >
       <div className={`chat-overlay ${model.dialogue.chatOpen ? 'has-input' : ''}`}>
         <SpeechBubble message={model.dialogue.currentMessage} onDismiss={model.dialogue.dismissMessage} />
+        {model.dialogue.chatOpen && <MemoryCards {...model.dialogue.memoryCards} />}
         <ChatInput
           canSubmit={model.dialogue.canSubmit}
           errorMessage={model.dialogue.error}

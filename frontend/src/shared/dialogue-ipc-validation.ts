@@ -1,4 +1,4 @@
-import type { DialogueCommandDTO, DialogueCommandReceiptDTO, DialoguePresentationDTO, DialogueFallbackReasonDTO } from './ipc-contracts';
+import type { DialogueCommandDTO, DialogueCommandReceiptDTO, DialoguePresentationDTO, DialogueFallbackReasonDTO, MemoryCardSourceDTO } from './ipc-contracts';
 
 export function exactRecord(value: unknown, keys: readonly string[], optional: readonly string[] = []): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Invalid dialogue payload');
@@ -42,7 +42,7 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
   if (r.canSubmit && Object.hasOwn(r, 'submissionMessage')) throw new TypeError('Available dialogue cannot have admission notice');
   const meta = { conversationId: id(r.conversationId), canSubmit: r.canSubmit,
     ...(Object.hasOwn(r, 'submissionMessage') ? { submissionMessage: plainText(r.submissionMessage, 240, true) } : {}) };
-  const t = exactRecord(r.turn, ['phase'], ['requestId', 'replyText', 'outcome', 'message']);
+  const t = exactRecord(r.turn, ['phase'], ['requestId', 'replyText', 'outcome', 'message', 'memorySource']);
   switch (t.phase) {
     case 'idle': exactRecord(t, ['phase']); return { ...meta, turn: { phase: 'idle' } };
     case 'thinking': exactRecord(t, ['phase', 'requestId']);
@@ -51,12 +51,19 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
     case 'error': exactRecord(t, ['phase', 'requestId', 'message']);
       return { ...meta, turn: { phase: 'error', requestId: id(t.requestId), message: plainText(t.message, 2000) } };
     case 'completed': {
-      exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome']);
+      exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome'], ['memorySource']);
       const o = exactRecord(t.outcome, ['kind'], ['reason']);
       const kind = enumValue(o.kind, ['success', 'fallback']);
       exactRecord(o, kind === 'success' ? ['kind'] : ['kind', 'reason']);
       const outcome = kind === 'success' ? { kind } : { kind, reason: enumValue<DialogueFallbackReasonDTO>(o.reason, ['degraded', 'offline', 'timeout', 'provider_error', 'invalid_response']) };
-      return { ...meta, turn: { phase: 'completed', requestId: id(t.requestId), replyText: plainText(t.replyText, 2000), outcome } };
+      let memorySource: MemoryCardSourceDTO | undefined;
+      if (Object.hasOwn(t, 'memorySource')) {
+        if (kind !== 'success') throw new TypeError('Fallback cannot provide memory source');
+        const source = exactRecord(t.memorySource, ['userMessageId', 'assistantMessageId']);
+        memorySource = { userMessageId: id(source.userMessageId), assistantMessageId: id(source.assistantMessageId) };
+        if (memorySource.userMessageId === memorySource.assistantMessageId) throw new TypeError('Invalid memory source');
+      }
+      return { ...meta, turn: { phase: 'completed', ...(memorySource ? { memorySource } : {}), requestId: id(t.requestId), replyText: plainText(t.replyText, 2000), outcome } };
     }
     default: throw new TypeError('Invalid turn');
   }

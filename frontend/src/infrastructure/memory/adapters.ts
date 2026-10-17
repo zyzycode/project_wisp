@@ -1,3 +1,5 @@
+import { itemReceipt, itemPage } from './item-validation';
+import type { IMemoryItemsRepository } from '../../application/ports/memory-items.interface';
 import type { IGameEpisodeReader } from '../../application/ports/memory-knowledge.interface';
 import type { ICharacterStateRepository, IChatHistoryRepository, IClearMemoryStore, IGameEpisodeRepository, IUserFactsRepository, MemoryResult, MemoryOperationContext } from '../../application/ports/memory-repository.interface';
 import type { MemoryWorkerClient } from './worker-client';
@@ -10,6 +12,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly items: IMemoryItemsRepository;
   readonly history: IChatHistoryRepository;
   readonly facts: IUserFactsRepository;
   readonly episodes: IGameEpisodeRepository;
@@ -24,6 +27,13 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    items: {
+      confirm: (command, c) => call('mutateMemoryItem', command, c, itemReceipt),
+      update: (command, c) => call('mutateMemoryItem', command, c, itemReceipt),
+      withdraw: (command, c) => call('mutateMemoryItem', command, c, itemReceipt),
+      delete: (command, c) => call('mutateMemoryItem', command, c, itemReceipt),
+      list: (query, c) => call('listMemoryItems', query, c, itemPage),
+    },
     history: {
       appendTurn: (turn, c) => call('appendTurn', turn, c, nothing),
       getRecent: (limit, c) => call('getRecent', limit, c, value => list(value, v.message)),
