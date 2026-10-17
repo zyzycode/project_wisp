@@ -292,71 +292,6 @@ Score — число совпавших различных query tokens в label
 
 Эти fixtures проверяют selected context, а не точную недетерминированную фразу LLM. Приёмка long-history набора: 100% включение ожидаемого item для пяти фиксированных уникальных query/labels после 1000 пар, 0 withdrawn/deleted/старых revisions, ≤96 payloads/turn. Embeddings рассматриваются новым gate только после измеренных lexical misses на сохранённом наборе; текущая цена — отсутствие синонимов и bounded fan-out.
 
-## 11. REM-A01: обещания и локальные напоминания (planned)
-
-Решение [#68](https://github.com/zyzycode/project_wisp/issues/68). Раздел задаёт следующий локальный slice, **не работающую возможность**. Он независим от AI extraction/recall/wire и требует только storage slice MEM-I01 с migration2 (§10.3), затем additive migration3. Текущая реализация schema1 не поддерживает напоминания.
-
-
-### 11.1. Семантика и подтверждение
-
-| Понятие | Значение и разрешённый эффект |
-|---|---|
-| Пожелание | «Надо бы сделать перерыв», «напомни потом» и свободная реплика в чате не создают запись/таймер. Неизвестные действие, дата или час требуют явного заполнения карточки. |
-| Обещание персонажа | Текст «я напомню» в ответе модели — разговорная реплика, не подтверждение обязательства. MVP не вводит произвольные обещания, самостоятельное выполнение дел или вывод обещания из истории. |
-| Подтверждённое напоминание | Пользователь подтвердил точный plain-text текст дела и единственный момент времени; commit SQLite разрешает UI показать «Сохранено». Обязательство — локально показать напоминание при условиях ниже, не выполнить дело и не гарантировать доставку при закрытом приложении. |
-
-Первый ввод — отдельная локальная форма «Напомнить о деле» в существующей поверхности диалога ([UI §7](UI_SPEC.md#7-rem-a01-локальные-напоминания-planned)). Текст 1–240 UTF-16 units после trim, без HTML/Markdown execution; он не разбирается как команда. Не требуются source message, успешный turn или provider. Не извлекать кандидатов из LLM, цитат, чужих обещаний, старой истории, памяти событий или заголовков окон; не отправлять карточку в chat/AI context/telemetry.
-
-Application готовит preview из явных полей, затем принимает отдельное подтверждение preview. Preview привязан к текущим stream/memory generation и точному нормализованному payload; живёт ≤120 s monotonic, один текущий preview на stream. Изменение полей требует нового preview. Только confirm создаёт durable запись; invalid/stale/expired/недоступная память не создают volatile обещание. Срок повторно проверяется перед первым admission confirm; при уже наступившем сроке нужно выбрать новый. Идентичный повтор уже принятой команды присоединяется к её результату до проверки срока/expiry preview и не создаёт нового reminder; stale stream всё равно запрещён. Commit, задержанный после admission, допустим: запись сразу становится overdue.
-
-MVP — один срок, без recurrence, snooze, автоматического переноса, редактирования действующего срока или догадок о «каждый день». Повтор — новая явная карточка с новым ID. Исправление уже сохранённой карточки — отменить прежнюю и подтвердить новую; обе операции имеют отдельные результаты.
-
-### 11.2. Время, timezone и DST
-
-Источник due — введённые календарные дата `YYYY-MM-DD`, время `HH:mm` и **явно подтверждённый фиксированный UTC offset** `±HH:mm` (от −14:00 до +14:00, минуты 00–59, край ±14 только :00). Offset означает число минут восточнее UTC. Application проверяет календарь без rollover и вычисляет `dueAt = civilTimeAsUtc - offsetMinutes * 60000`; хранит канонический UTC timestamp по §3. Допустим только момент позже injected now и не далее 365 суток. Дата «завтра», длительность «через час», имя зоны без offset и неуказанное время не угадываются.
-
-Это fixed-offset MVP: текущий offset ОС можно показать как подсказку, но пользователь подтверждает offset **для выбранной даты**. Автоматический IANA/DST resolver и перенос по локальным часам не вводятся. Для двойного часа при осеннем DST пользователь выбирает offset нужного вхождения; два разных offset дают два разных UTC момента. Весенний несуществующий локальный час не интерпретируется как время IANA-зоны: карточка явно подписана фиксированным offset и не обещает соответствие гражданскому времени города. Не делать скрытый сдвиг на час; полноценный zone-aware ввод — отдельный gate.
-
-Подтверждение показывает исходную дату/время/offset и итоговый UTC момент. После сохранения изменение timezone, DST или системной зоны не меняет dueAt. Можно дополнительно показать пересчёт в текущую зону, сохраняя исходную подпись. Forward wall-clock jump может сделать pending overdue; backward jump отодвигает проверку оставшихся pending, но не возвращает announced/missed/cancelled в pending. Величина задержки и 24-hour catch-up оцениваются по текущему wall clock; без внешнего trusted clock точность системных часов не обещается.
-
-### 11.3. Source of truth, schema и retention
-
-Источник истины — тот же локальный SQLite файл/worker §1, с тем же single-instance lock, readiness и generation. Character snapshot/user_facts/memory_items не хранят сроки. Additive migration3 `local_reminders_v3` запускается после migration2 MEM-I01; не менять уже применённый SQL v1/v2, не извлекать записи из истории. Fresh DB проходит 1→2→3; старые записи сохраняются, version/journal изменяются транзакционно, rollback не повышает версию. Старый бинарник отказывает future schema по §2–4.
-
-| Таблица / данные | Инвариант |
-|---|---|
-| `reminders`: `id`, `revision`, `text` | TEXT primary key, Application UUID; revision positive integer; text 1–240. Один current payload, без истории редакций. |
-| `local_date`, `local_time`, `offset_minutes`, `due_at`, `confirmed_at` | Исходное подтверждение и вычисленный UTC момент; adapter проверяет согласованность арифметики и даты. Время supplied Application, не SQL `now`. |
-| `state`, `terminal_at` | `pending`, `announced`, `missed`, `cancelled`; terminal_at null только pending, иначе валидный UTC. `announced` означает расход права на автоматический показ, не прочтение пользователем. |
-| `reminder_receipts`: `command_id`, `kind`, `reminder_id`, `digest`, `result` | Durable идемпотентность confirm/cancel/delete: IDs/код результата/revision и digest нормализованных аргументов, без текста дела. Не FK, требующий сохранения удалённой карточки. |
-
-Индекс `(state, due_at, id)`; bounded due/query/list с лимитами ≤20, страницы через opaque cursor, стабильный порядок due_at/id. Не более 100 pending на профиль; превышение возвращает limit failure, не удаляет прежние записи. Терминальные записи доступны страницами до явного удаления/reset, без TTL; количество receipts также не ограничивается UI cap. Автоматический эффект исполняется переходом pending→announced/missed с expected revision в одной worker transaction; CAS conflict не повторяет эффект. Cancel повышает revision и переводит pending/announced/missed в cancelled; повтор cancelled идемпотентен. Delete удаляет payload при любой state.
-
-Receipt и соответствующая mutation коммитятся вместе. Повтор command ID с тем же digest возвращает прежний outcome без нового write; другой payload → conflict. Receipt после delete не содержит удалённый текст и не позволяет повторному confirm восстановить карточку: возвращается уже обработанный результат/отсутствие current record. IDs не переиспользуются. Структурированные reminders остаются local-only, не включаются в existing memory allowlist или provider prompt; это не server storage и не sync. Retention/безопасные ошибки/не forensic erasure — §2–4/§6.
-
-### 11.4. Владельцы и срабатывание
-
-Чистая policy в `frontend/src/domain/reminders/` получает state, UTC now и gates явными входами; возвращает eligibility/transition, без системного времени, таймеров и SQL. Этот минимальный модуль допускается данным architect gate. Application владеет preview/confirm, clock inputs, bounded выборкой, claim orchestration и current notice. Main создаёт единственный coordinator после persistent readiness, injects wall/monotonic clocks и существующий `MemoryScheduler`; Infrastructure скрывает worker/SQL. Никакого отдельного процесса, OS task/service, backend scheduler или нового scheduler package.
-
-- Один cancellable timer с задержкой ≤30 s, не более одного reconcile в полёте; при future pending выбирается ближайший due, длинный таймер дробится. Уже overdue, но blocked запись повторно проверяется через 30 s либо по gate change; нулевой timer loop запрещён. При отсутствии pending polling не нужен; confirm/cancel/delete/reset запускают пересчёт. На startup после readiness прочитать ближайшие pending; во время ожидания restore напоминания не работают.
-- Timer — повод перечитать время и current запись, не доказательство наступления due. Gate проверяется перед claim и повторно после await до publish: persistent mode, current memory/reminder epochs, trusted visible stream, quiet=false, Character awake, нет текущего notice. При недоступном документе, quiet, Character sleep или reset нет автоматического показа и wake.
-- Для `0 <= now - dueAt <= 24 h` pending допускает claim→announced; для `now - dueAt > 24 h` → missed без автоматического показа. Если блокируется только показ, pending сохраняется до снятия gate или истечения 24 h. Missed читается в списке; автоматического «догоняющего» сообщения нет.
-- Due selection — earliest dueAt/id, максимум один claim на 10 s; blocked backlog не выдаётся burst. Соседняя запись заново проверяется по своему сроку. List показывает overdue как производное pending + dueAt≤now, без отдельной persisted state.
-- После подтверждённого claim commit Application публикует notice с immutable ID и сроком 10 s по monotonic clock. Без commit/при неизвестном исходе не публиковать и не повторять claim вслепую. Crash после commit до показа теряет автоматический banner: это сознательная **at-most-once** семантика, не exactly-once доставка. Карточка announced остаётся в списке; UI не говорит «прочитано»/«доставлено».
-- Повтор reconcile, повтор snapshot, reload/restart не создают второй notice для announced/missed/cancelled. При replacement stream уже активный notice очищается и не replay-ится; passive список доступен по явному открытию. Notice не имеет Renderer acknowledgment, не вызывает Domain stimulus, речь LLM, звук или OS notification; независимая карточка не вытесняет dialogue/game speech.
-- OS suspend задерживает timer: первый callback после resume пересчитывает wall time, без catch-up ticks и offline runtime. Если platform resume event доступен, он только вызывает тот же reconcile; отсутствие события компенсируется timer. Закрытое приложение не будится; startup делает тот же bounded catch-up. Quiet session mode на новом запуске имеет существующее default false, не сохраняется в reminders; это явно видно в UI.
-
-### 11.5. Отмена, удаление, reset и поздние результаты
-
-Application сериализует confirm/cancel/delete/claim в одном reminder coordinator поверх существующей worker queue. При принятии cancel/delete немедленно инвалидирует reminder epoch, закрывает соответствующий показ и удаляет текущий notice этого ID; до завершения mutation новые claims не допускаются. В worker проверяются memory generation, current row/revision; отсутствие записи не разрешает recreate. После каждого await сверяются оба epoch; поздний due-read/claim/preview никогда не публикуется в новый stream или новую generation.
-
-При известном rollback отмены/удаления старая durable карточка остаётся; UI сообщает failure и перечитывает state, не объявляя отмену успешной. Старые callbacks всё равно invalid; новое reconcile может рассматривать сохранившийся pending только после завершения mutation. При timeout/потере ack исход неизвестен: остановить coordinator, не выдавать success и не восстанавливать запись из cache; восстановление только через фактический state следующего startup согласно §4. Storage unavailable/volatile отключает durable commands и automatic notices, локальный Character продолжает работать.
-
-Полный reset §6 до барьера останавливает coordinator, уничтожает preview/notice, повышает memory/reminder epochs. Одна clear transaction дополнительно удаляет `reminders` и `reminder_receipts` вместе с остальной памятью; schema/version сохраняются. После commit список пуст, поздние callbacks и старые command stream недействительны. Reset rollback сохраняет durable rows, новая generation допускает только новые чтения; старый notice не replay-ится. Повтор исходной команды reset не стирает новые записи.
-
-Dialogue reset не отменяет подтверждённые напоминания: он очищает незавершённый preview/notice и его epoch, сохраняя durable rows и once-only marker. Unsubscribe/reload/dispose/shutdown очищают preview/notice/timer, инвалидируют in-flight callbacks; при shutdown новая запись/claim не принимается. Cancel/delete не означают завершение дела; полный reset не обещает удаления серверного transcript, но structured reminders туда никогда не передавались.
-
-
 ## 12. CTX-A01: производная summary (planned)
 
 Решение [#77](https://github.com/zyzycode/project_wisp/issues/77), реализация #79;
@@ -410,7 +345,7 @@ coverage (точный список пар), digest scalar facts, locale, genera
 Нет копии исходных текстов. Сохраняет Infrastructure через serial queue, temporary file
 и atomic replace, без нового package; failed write не означает «сохранено».
 Неизвестный format/corrupt файл → summary отключена до явной очистки cache, не автоматический
-сброс receipt/новый платный вызов; исходная SQLite не повреждена. Миграция schema2/3
+сброс receipt/новый платный вызов; исходная SQLite не повреждена. Схема SQLite
 не меняется; cache можно удалить без потери источников, старый binary его игнорирует.
 
 Перед save и каждым включением в chat (также после restart) перечитать exact source
