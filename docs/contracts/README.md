@@ -17,3 +17,5 @@ AI Events также определяет связанные causal gates и п�
 Наличие контракта и fixtures не подтверждает реализацию endpoint. Поддерживаемые текущим сервером версии и gaps — в [backend docs](../../backend/docs/README.md#фактическая-реализация). Python-схемы и TypeScript-типы не импортируют друг друга; совместимость проверяется общими fixtures. Их путь `docs/contracts/fixtures/` сохранён для существующих тестов.
 
 Lore/summary: [CTX-A01](CONTEXT_DATA_CONTRACT.md) — server-owned lore без wire delta и отдельная opt-in v5 ветка на базе v3. Локальная summary требует source provenance/suppression schema2; генерация запускается только явно. V4 knowledge не входит в v5.
+
+Планируемая v6 observation: [AI Events §9](AI_EVENTS_CONTRACT.md#9-observation-boundary) и [#84 (OBS-A02)](https://github.com/zyzycode/project_wisp/issues/84). Реакции на разрешённые приложение и заголовок реализуются в #81 отдельным endpoint; действующие v1–v5 не расширяются.

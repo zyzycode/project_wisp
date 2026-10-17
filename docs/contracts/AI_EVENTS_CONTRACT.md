@@ -104,12 +104,98 @@ Runtime deadline15s, transport12s, сервер использует сущес�
 
 ## 9. Observation boundary
 
-[OBS-A01](../../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a01-активное-приложение-и-заголовок)
-разрешает будущий локальный observer; это не новый event API. Desktop не отправляет
-appKey/категорию/title/usage/pixels/OCR и не подмешивает их в messages, memory,
-character, previousInitiative или существующие event types. Пользовательская реплика
-о приложении остаётся обычным user input, а не автоматической observation projection.
-Backend v1–v3 сохраняет закрытые schemas, отклоняет неизвестные поля/types и не
-передаёт observation provider. Нового endpoint/server storage нет. Offline screen
-experiment тоже не использует backend; удалённый вариант требует отдельного
-двустороннего wire/data-policy gate из [Perception §12](../../frontend/docs/engine/PERCEPTION_ENGINE.md#12-obs-a01-отдельный-эксперимент-содержимого-экрана).
+[OBS-A02 #84](https://github.com/zyzycode/project_wisp/issues/84) задаёт planned #81:
+[Perception §11](../../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a02-активное-приложение-и-заголовок)
+разрешает только explicit consent + allowlisted foreground metadata. Отдельный
+`POST /v6/observation`, **не** новый variant `/v3/events` и не chat. V1–v3, planned v4,
+summary/chat v5 закрыты прежними schemas; observation не подмешивается в messages,
+memory, character, summary или previousInitiative. Включение observer не меняет
+chatVersion/eventsEnabled/summary configuration; v6 доступен независимо от chat mode.
+Main создаёт v6 adapter только при настроенном backend; mock/direct-only mode даёт
+unavailable без сетевого/fixed-speech fallback. Consent обязателен и в backend mode.
+
+### 9.1. Exact wire и compatibility
+
+Request — exact object `version:6`, UUIDv4 `requestId`, `stream:false`, `locale:ru|en`,
+`character` по [v1 §2](BACKEND_API_CONTRACT.md#2-поля-и-валидация), `observation`.
+Observation — exact `{appName, windowTitle}`: обе строки обязательны; appName trimmed
+1–80, windowTitle trimmed 0–160 UTF-16 units. Empty caption — empty string, не null.
+C0/C1, bidi controls U+061C/U+200E/F/U+202A–E/U+2066–9 и lone surrogates запрещены.
+AppName source/normalization — Perception §11.1; schema не превращает их в доверенные
+данные. Нет event/occurredAt/messages/memory/lore/summary, appKey/category/local IDs,
+executable paths/native handles/PID, usage history, pixels/OCR/clipboard/documents.
+
+HTTP200 success — exact `version:6, requestId, text`: trimmed plain 1–240 UTF-16 units
+по общим text rules v1. Никаких decision/memoryCandidates/tools/actions/deltas;
+**любые** лишние model/response keys делают весь результат invalid, без chat sanitization.
+Model даёт только `{text}`; backend сам добавляет version/ID. Ошибка — прежняя exact
+error shape v1 с envelope6; таблица HTTP/code [v1 §3](BACKEND_API_CONTRACT.md#3-http-и-ошибки).
+Wrong version на этом path →400 unsupported_version/envelope6; ID null только если
+не распознан. UTF-8 JSON request≤32KiB/response≤16KiB, strict types/no coercion,
+unknown fields rejected до admission; body overflow→413, malformed→400.
+
+HTTPS/loopback и closed private access без application auth — [v1 §5](BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы).
+401/403 gateway означают нет доступа, не success/повод обхода или автоматического
+login/retry. 404/unsupported/malformed/timeout/offline → нет observation речи.
+Никаких probe/downgrade/failover/automatic retries. UUID назначается на одну попытку;
+общий ledger digest включает method/path/body: identical pending→409 in_progress,
+terminal replay≤10min без нового inference; changed/cross-endpoint/expired replay→409
+conflict. Это существующий ledger, без новых tables, user storage/auth/quota topology.
+
+### 9.2. Admission, interlock и цена
+
+30s dwell/one attempt per episode/10min guard/InitiativeBudget принадлежат
+Perception §11.3. Частота — максимум шесть попыток за любой полуоткрытый час app run
+при непрерывной работе; каждый transport start расходует попытку даже при cancel/error.
+Один upstream call с output cap `min(server setting,1024)`; provider input budget
+16384 минус output reserve и прежняя UTF-8/framing оценка. Это bounded cost, не обещание
+денежной цены/серверной квоты. Provider и current character profile прежние.
+
+Все chat/touch/events/explicit summary/observation используют **один** desktop
+transport/interlock. Observation стартует только при свободном slot/gates, не отменяет
+другую работу и не ожидает её в очереди. Принятый user chat/touch/explicit summary
+отменяет pending observation и его speech, ждёт settlement старого HTTP promise перед
+новым fetch; это не два concurrent requests. Event при уже занятом observation slot
+пропускается по обычным event rules; опубликованная higher-priority speech снимает
+observation. Observation не блокирует canSubmit. После await ещё раз проверить
+собственный current request/generation/deadline. Abort settlement≤3000ms; пользовательский
+15s deadline включает ожидание. Summary interlock из [Context §4](CONTEXT_DATA_CONTRACT.md#4-бюджет-ошибки-cancellation-и-retention)
+сохраняется в обе стороны, отдельный параллельный HTTP client запрещён.
+
+Runtime≤3500ms от admission, desktop transport≤3000ms, server≤2500ms включая body≤500ms;
+ровно на deadline результат поздний. Request сборка и проверки входят в runtime.
+До dispatch/после каждого await/до speech проверяется current source согласно
+Perception §11.2, не timestamp исходного payload и не boolean от Renderer.
+Source/policy change, stale, pause/revoke/lock/suspend/reset/reload/dispose и user
+preemption abort-ят request и инвалидируют publication; resume не возвращает очередь.
+Disconnect/shutdown закрывают provider stream/task; late usage settles once без речи.
+Остановка remote inference/charge при abort физически не гарантирована.
+
+### 9.3. Prompt, данные и fixtures
+
+Backend использует [отдельный observation scenario](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#obs-a02-untrusted-observation)
+с character/current state и untrusted appName/windowTitle, без memory extraction,
+lore/recall/history/summary. Ни caption, ни reply не user fact или authority о занятии.
+Local FSM/Motion/input независимы; нет фиксированной fallback фразы.
+
+Desktop RAM/policy — Perception §11.4. Backend request/context RAM только до terminal;
+не хранить observation/profile/history durable и не логировать payload/AI text/APM.
+Terminal response RAM cache≤10min/eviction/restart может содержать производную от title
+реплику. Existing ledger хранит только ID/path/body digest/accounting≤24h, aggregates≤30d,
+metadata logs≤7d по [v1 §6](BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление), без app fields/usage history.
+Provider получает только согласованный context по действующему provider-specific режиму:
+Groq ZDR verification до внешних тестеров; Gemini synthetic-only, пока rollout gate
+не выполнен. Local revoke/delete не удаляет replay/provider copy и не обещает немедленный
+remote erasure; server-delete endpoint отсутствует. No real capture/provider call в #81.
+
+#81 создаёт общий corpus `fixtures/desktop-backend-v6/`: `request.valid.json`,
+`request.empty-title.json`, `request.hostile-title.json`, `response.success.json`,
+`response.error.json` (альтернатива HTTP503), `invalid.json` с named invalid requests/
+responses (wrong version, missing/extra keys, strict types, UTF-16/control/bidi/surrogate,
+byte caps и forbidden response candidates). Обе стороны читают один corpus, старые
+fixtures неизменны. Fixtures пока planned, не заявление наличия файлов.
+Acceptance: boundary reject до provider, hostile strings только data, strict text-only,
+один call/accounting/replay/mixed-ID conflict, 401/403/404/502/503/504/malformed/timeout,
+cancel/late usage, source freshness/preemption/no overlap/no retry, restart без consent,
+non-Windows unsupported; Groq/Gemini handlers только mock transport. Windows smoke
+отдельно: consent/allowlist/title switch/pause/revoke/helper shutdown/offline.

@@ -240,3 +240,25 @@ in-place code updates. При binary/image поставке сохранить �
 До сетевой поставки скачать `/source` archive через пользовательский/VPN access path,
 проверить SHA-256 и полноту install/run материалов. [Тесты доставки](../tests/api/test_source.py)
 проверяют доступность, notices, immutable bytes и отсутствие runtime data.
+
+## OBS-A02: untrusted observation
+
+Planned #81 реализует [v6 observation](../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary)
+отдельным completion scenario в существующем dispatch/provider client. Existing event
+prompt с factual outcome authority для него не применяется. Mandatory blocks:
+server instructions priority1000/order0, atomic character/current state1000/10 и
+source=`observation`1000/100. Последний — JSON appName/windowTitle под role=user,
+никогда system/template substitution. Без memory/lore/history/summary/examples.
+Title/name могут содержать hostile instructions и личные данные: они только metadata,
+не команды/факты памяти/доказательство занятия. System rules требуют короткую уместную
+реплику в character/locale без уверенных утверждений о деятельности, цитирования
+личного caption, долга ответа или действий ОС. Это не доказательство injection immunity.
+
+Output — exact `{text}` 1–240 UTF-16, strict text-only parser как events; любые extra
+keys, decision/memoryCandidates делают invalid_model_response. Никакого extraction
+или chat hint sanitization. Output cap1024, existing16384/framing budget; mandatory
+overflow→503 до HTTP с usage0. Endpoint/scenario registry задаёт envelope6/body500ms/
+server2500ms; общие JSON caps/ledger/settlement/cache остаются по v6 contract.
+Mock tests обеих Groq/Gemini веток проверяют no system injection, current character,
+text-only/extra rejection, один call, timeout/cancel/shutdown/late usage и отсутствие
+payload в logs. No live provider/observations; provider rollout restrictions сохраняются.

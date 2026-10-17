@@ -12,7 +12,7 @@
 | Desktop ↔ backend: wire v1/v2/v3 и fixtures | [Общие контракты](contracts/README.md) |
 | Продуктовые решения и следующие этапы | [Vision и roadmap](PRODUCT_VISION_AND_ROADMAP.md) |
 | Следующее расширение памяти событий и общих шуток | [#65 (MEM-A03)](https://github.com/zyzycode/project_wisp/issues/65); канонический контракт — [Memory §10](../frontend/docs/engine/MEMORY_ENGINE.md#10-mem-a03-важные-события-и-общие-шутки-planned) |
-| Локальное наблюдение приложений и отдельный эксперимент экрана | [#67 (OBS-A01)](https://github.com/zyzycode/project_wisp/issues/67); канонический контракт — [Perception §11](../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a01-активное-приложение-и-заголовок) |
+| AI-реакции на приложение и заголовок; отдельный эксперимент экрана | [#84 (OBS-A02)](https://github.com/zyzycode/project_wisp/issues/84); канонический контракт — [Perception §11](../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a02-активное-приложение-и-заголовок) |
 | Причины архитектурных решений | [Реестр ADR](adr/README.md), только связанная запись |
 | Создание Issue, выдача/закрытие спринта | [Инструкция и шаблоны менеджера](../.agents/agents/project-manager/agent.md#шаблоны-работы-менеджера) |
 
@@ -21,4 +21,4 @@
 
 Для поиска: `rg -n '^#{1,3} |<имя типа или правила>' <путь>`, затем читать владение и нужный раздел. Весь каталог движков, все роли и историю отчётов заранее не загружать.
 
-`frontend/asset-pipeline/` и `discord_orcestrations/` — внешние скоупы. Графику предоставляет художник-человек; правила готовых ассетов и отчётности — в [frontend/AGENTS.md](../frontend/AGENTS.md#ассеты-и-проверки).
+`frontend/asset-pipeline/` и `discord_orcestrations/` — внешние скоупы. Графику предоставляет художник-человек; правила готовых ассетов и отчётности — в [frontend/AGENTS.md](../frontend/AGENTS.md#7-ассеты-и-проверки).

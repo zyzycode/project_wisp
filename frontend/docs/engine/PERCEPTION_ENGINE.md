@@ -264,129 +264,134 @@ Bounded newline JSON: token/physical geometry, без handles/PID. До публ
 - [Add-Type 5.1](https://github.com/MicrosoftDocs/PowerShell-Docs/blob/main/reference/5.1/Microsoft.PowerShell.Utility/Add-Type.md): вызовы native Windows API из C#.
 - [PowerShell support lifecycle](https://learn.microsoft.com/en-us/powershell/scripting/install/powershell-support-lifecycle): обслуживание Windows PowerShell как компонента ОС.
 
-## 11. OBS-A01: активное приложение и заголовок
+## 11. OBS-A02: активное приложение и заголовок
 
-Принятое проектное решение и требования реализации — в [#67 (OBS-A01)](https://github.com/zyzycode/project_wisp/issues/67).
-Это целевой контракт, не включённая runtime capability. Первый этап локален;
-
-geometry/cursor contracts и запрет чтения titles в §10 сохраняются.
-Наблюдение не означает внимание, удовольствие, интерес или согласие.
+[#84](https://github.com/zyzycode/project_wisp/issues/84) заменяет local-only/fixed-speech
+решение #67; целевой контракт #81, не утверждение runtime readiness. Geometry/cursor
+contracts и запрет чтения titles в §10 сохраняются. Наблюдение не доказывает внимание,
+удовольствие, занятие или предпочтение пользователя.
 
 ### 11.1. Управление и разрешённые данные
 
-В существующих настройках: секция «Наблюдение», off по умолчанию, allowlist,
-отдельное разрешение titles для каждого приложения, «Приостановить / Продолжить»,
-«Удалить настройки наблюдения». Текст: «Только локально. Заголовки могут содержать
-личные данные. На сервер не отправляются». Main-owned file picker выбирает executable;
-Renderer получает только пользовательский alias и случайный appKey. Пользователь
-назначает категорию `editor`, `other` или `unknown`; имя executable не доказывает занятие.
-Статус различает off, paused, available, unavailable. Pause не выключает персонажа.
-После restart всегда требуется «Продолжить»; пустой allowlist ничего не читает.
+В существующих настройках: «Наблюдение», off по умолчанию, exact executable allowlist,
+«Приостановить / Продолжить», «Удалить настройки наблюдения», explicit local preview.
+Единый opt-in разрешает app name **и** title; отдельного обязательного title toggle нет.
+До включения показать: «Название разрешённого приложения и заголовок активного окна
+отправляются backend и внешнему AI-провайдеру для короткой реакции персонажа.
+Заголовок может содержать личные данные. Отключение останавливает новые отправки,
+но не отзывает уже отправленные данные». Действует [provider data policy](../../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление).
+Старый local-only consent не разрешает сеть: нужен новый opt-in.
 
-Сбор касается только foreground top-level окна разрешённого приложения. Wisp,
-helpers/devtools, shell/system/secure desktop, неизвестный процесс, отказ доступа
-и пользовательские исключения блокируют sample **до чтения title**. Allowlist —
-точное соответствие executable, не wildcard/substring/PID; deny важнее allow.
-Браузеры, мессенджеры, password managers по умолчанию отсутствуют в allowlist.
-Нет обещания распознавать все private/incognito/финансовые окна; для чувствительных
-окон пользователь исключает приложение целиком либо отключает titles.
-Очистка строки не считается защитой от секретов.
+**#81 policy RAM-only:** нового config/persistence subsystem нет. Restart очищает
+consent/allowlist; требуется заново разрешить приложения и включить наблюдение.
+Reload/lock/suspend/helper failure приостанавливают сессию до explicit resume.
+Main-owned picker выбирает executable; Infrastructure хранит canonical absolute path
+для case-insensitive Windows exact matching, без wildcard/substring/PID. Renderer
+получает случайный appKey и alias без path/native metadata; alias не источник appName.
+Локальная категория editor/other/unknown допустима для baseline §12, не gate AI-вызова.
+Статусы off/paused/available/unavailable; до active opt-in/при empty allowlist helper
+не запускается, metadata не читается и observation HTTP отсутствует.
 
-Без per-app consent API title не вызывается. Разрешённый title — untrusted plain
-text ≤160 UTF-16 units, без control/bidi символов и lone surrogates; обрезка не
-разрывает Unicode scalar. Только текущий Main snapshot и явно открытая local preview
-в настройках, без HTML/link/action parsing. Preview очищается при закрытии секции
-и invalidation; Renderer не получает handles/PID/path/process metadata.
-Domain и речь не получают title, даже очищенный.
+Только foreground top-level окно. Wisp/helpers/devtools, shell/system/secure desktop,
+неизвестный процесс, отказ доступа и user exclusions блокируются **до чтения title**;
+deny важнее allow. Браузеры, мессенджеры, password managers изначально не разрешены.
+Все private/incognito/чувствительные окна распознать нельзя: исключить приложение
+целиком либо выключить наблюдение. Очистка текста не защищает от секретов.
+
+appName — basename проверенного executable без последнего `.exe`, 1–80 UTF-16 units,
+без file contents/version-resource reads. Title — caption foreground окна, 0–160 units:
+empty caption допустим; API failure → unavailable. Adapter удаляет C0/C1 и bidi controls
+(U+061C, U+200E/F, U+202A–E, U+2066–9), trim, отбрасывает lone surrogates и обрезает
+по Unicode scalar boundary; пустой appName недопустим. Wire независимо отклоняет
+запрещённые символы/overflow, не исправляет invalid input. Preview только в открытых
+settings, plain text без HTML/link/action parsing; close/invalidation очищает его.
+Domain не получает appName/title. Строки всегда untrusted data.
 
 ### 11.2. Порт, platform adapter и lifecycle
 
-До реализации объявить `ActiveApplicationObservationPort` в
-`frontend/src/application/ports/active-application-observation.port.ts`:
-consumer — Application; Infrastructure даёт cached immutable snapshot, ordered
-subscription, policy replacement/pause и idempotent dispose. Это отдельный порт от
-[ExternalWindowSurfacesPort](../../src/application/ports/external-window-surfaces.port.ts)
+Contracts-first #81 объявляет `ActiveApplicationObservationPort` в
+`frontend/src/application/ports/active-application-observation.port.ts` и отдельный
+semantic observation-provider port. Consumer — Application; Infrastructure даёт cached
+immutable snapshot, ordered subscription, policy replacement/pause и idempotent dispose.
+Это отдельный observer от [ExternalWindowSurfacesPort](../../src/application/ports/external-window-surfaces.port.ts)
 и [IPlatformAdapter](../../src/application/ports/platform-adapter.interface.ts).
-Формы типов объявляются implementation contracts-first; здесь заданы инварианты.
 
-| Проекция | Допустимый состав и владелец |
+| Проекция | Разрешённый состав |
 |---|---|
-| Infrastructure → Application | capability/reason, policy generation, revision, Main request-start monotonic time; available: opaque appKey, foreground episode token, категория из policy, optional title |
-| Application → существующий Domain behavior | Только `editor_active` либо `unknown`, возраст, непрерывный dwell, epoch; без title, executable, appKey, alias |
-| Main → Renderer | Безопасный статус/settings, optional explicit title preview, отдельная `observationSpeech`; typed IPC, Main валидирует команды до изменения policy |
+| Infrastructure → Application | capability/reason, policy generation, increasing sample revision, Main request-start time; available: opaque appKey/foreground episode/source token, appName/title, локальная категория |
+| Application → existing Domain behavior | Только fresh/age/dwell и eligibility inputs; без строк/native metadata/сетевых решений |
+| Main → Renderer | Safe status/settings, только explicit preview, отдельная observationSpeech; typed validated IPC |
+| Application → Infrastructure AI → backend | Только [v6 projection](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary); local tokens/revisions не передаются |
 
-`unavailable` не содержит прошлого observation; reasons: `disabled`, `paused`,
-`unsupported`, `initializing`, `excluded`, `permission_denied`, `bridge_failed`,
-`stale`. Missing/недопустимый title становится absent, app-only sample остаётся
-допустимым; malformed envelope/ошибка process identity инвалидирует весь sample.
-Main создаёт adapter factory; ОС, пути и native metadata только в platform layer.
+Unavailable без старых данных; reasons: disabled, paused, unsupported, initializing,
+excluded, permission_denied, bridge_failed, stale. Malformed envelope, непроверенная
+identity/title failure инвалидируют весь sample; fabricated title запрещён.
 
-Windows: отдельный opt-in read-only helper со способом запуска/ограничениями §10,
-независимый от geometry helper. Один process на активную сессию, 0 новых npm/Python
-dependencies. Нет keyboard hooks, clipboard, UI Automation или чтения document/control
-text. Только foreground identity и разрешённый title; `GetForegroundWindow` до/после
-чтения должен совпасть, иначе sample discarded. Native identity не покидает helper.
-Episode token новый после наблюдаемого переключения/потери источника. Межопросные
-переключения могут быть пропущены: это sampled presence, не точный журнал работы.
-Linux/macOS: `unsupported`, без запроса screen/accessibility permission;
-cursor, опоры и локальная автономность продолжаются независимо.
+Windows: отдельный opt-in read-only helper на принятом bridge §10, один process на
+сессию. Policy: ≤32 allow/deny entries, path≤1024 UTF-16, JSON stdin≤128KiB, без interpolation
+в script/arguments; overflow отклоняется без изменения policy. Никаких
+keyboard hooks/clipboard/UI Automation/document text. Helper сверяет foreground HWND
+и process identity до/после caption; mismatch → discard. Raw caption≤4096 UTF-16:
+большая длина/рост при чтении → unavailable, без partial read. Native identity внутри helper.
+Foreground episode меняется при наблюдаемой смене окна/потере источника; source token
+также меняется при изменении полного caption, даже если truncated title прежний.
+Межопросные изменения могут быть пропущены: sampled presence не журнал работы.
+Linux/macOS — unsupported без запроса screen/accessibility permission.
 
-Poll ≤1 Hz, один in-flight, без очереди/catch-up; request budget 500 ms, startup
-≤10 s в initializing. Exact-schema response ≤4 KiB, revision растёт; Main timestamp
-на request-start, cache read его не освежает. TTL: `0 <= now - capturedAt <= 2500 ms`;
-gap между successful samples >1500 ms сбрасывает dwell. Timeout/parse error останавливает
-helper и очищает sample; запуск вновь только явным «Продолжить», без restart loop.
+Poll ≤1Hz, один in-flight без queue/catch-up, request budget500ms, startup≤10s.
+Exact response≤4KiB, increasing sample revision; capturedAt — Main request-start,
+cache read не освежает timestamp. TTL `0 <= now - capturedAt <= 2500ms`; gap между
+successful samples >1500ms сбрасывает dwell/source eligibility. Timeout/parse error
+останавливает helper, очищает sample; explicit resume, без auto-restart loop.
 
-Pause/off/изменение allowlist или title consent/lock/suspend/reset/dispose повышают
-generation, отменяют read, очищают snapshot/preview/dwell/speech, останавливают helper.
-Lock/suspend требует явного resume. После каждого await, перед preview и реакцией
-проверяются generation/current policy; late callback не восстанавливает consent.
-Policy change может запустить свежую сессию, только если пользователь сохранил active;
-старые данные не переиспользуются. Dispose терминален.
+Pause/off/policy change/lock/suspend/reset/reload/dispose повышают generation,
+отменяют read/HTTP, очищают sample/preview/dwell/speech, останавливают helper.
+Policy change запускает новую сессию только при сохранённом explicit active consent;
+reset/reload требуют resume, dispose терминален. Foreground/title change или stale
+также отменяют pending HTTP/speech, но ordinary polling может продолжаться.
+После каждого await и перед send/preview/publication: current generation/policy/stream,
+тот же appKey/episode/source token и свежий **последний** sample с revision не меньше
+захваченной. Новая revision того же token подтверждает freshness, но не продлевает
+общий deadline. Missing/stale/new token не позволяет старому результату ожить.
 
-### 11.3. Минимальная реакция и приёмка
+### 11.3. AI-реакция и приёмка
 
-В existing behavior module — чистая eligibility-функция, не новый Domain engine.
-При `editor_active` непрерывно ≥30 s и fresh sample допустима одна локальная реплика:
-«Вижу редактор. Побуду рядом, пока ты занимаешься своими делами» (en локализация аналогична).
-Не утверждать, что пользователь пишет код, работает, любит приложение или хочет совета.
-Title не интерпретируется/цитируется; `other/unknown` дают только observation/preview.
+Непрерывные 30s одного source token с fresh samples → одна causal opportunity для
+любого allowlisted приложения. Title change начинает новый dwell, foreground episode
+прежний. Existing behavior module даёт pure eligibility; нового Domain engine нет.
+Gates: quiet/menu/disabled/sleep/P0–P2/forced physics/thinking, speech priority и
+existing InitiativeBudget. При первом threshold занято/запрещено → opportunity
+потеряна до нового source token; нет deferred retry после освобождения gates.
+При принятом transport start атомарно расходуются budget.start, один attempt на
+foreground episode и общий 10-min monotonic guard на app run. Error/cancel/malformed
+тоже расходуют попытку; pause/resume/policy change не сбрасывают guard. Poll не inference.
 
-Это lowest-priority presentation без Activity/движения/Character deltas/AI call.
-Действуют quiet/menu/disabled/sleep/P0–P2/forced-physics/thinking gates и общий local
-InitiativeBudget, расходуемый только при публикации. Речь user dialogue (с existing
-guard), игры и AI важнее. Занято/запрещено при первом достижении 30-s eligibility →
-пропуск до нового foreground episode, без очереди. Не чаще одного сообщения за
-10 min monotonic на app run и одного за episode; pause/resume/policy change не
-обнуляют 10-min guard. Это лимит локальной реакции, не квота AI events.
-Lifetime ≤2 s, source loss снимает speech. Existing bubble получает отдельную
-optional typed `observationSpeech`, без подделки AI `initiativeSpeech`/previousInitiative.
+Общий interlock, deadlines/caps/text-only — [AI Events §9](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary).
+Local FSM/Motion/input не ждут сервер. Offline/unsupported/error → нет observation
+реплики; фиксированная локальная фраза не заменяет AI. Нет Activity/Character writes,
+provider_response stimulus, usage facts или learned preferences.
+Speech lowest priority: user dialogue +5s guard → game → AI initiative → observation.
+Lifetime≤2s с Main expiry; invalidation снимает речь сразу. Без previousInitiative,
+transcript/session/memory/summary writes или follow-up slot.
+Fake-clock tests: samples 0..30s дают один call/budget.start; неизменный source не
+повторяется; title/foreground switch отменяет pending; pause/stale на threshold не
+отправляет; busy opportunity не копится, errors не дают retry/fixed speech.
 
-Fake clock: allowlisted editor, fresh samples с 0 до 30 s и свободные gates дают
-одну реплику и один budget.start. Samples/title changes до 60 s не дают вторую.
-Pause/exclusion/stale ровно на 30 s запрещают публикацию; late sample после revoke
-не восстанавливает preview. Missing title допускает app-only реакцию, malformed
-envelope — нет. Backend outage не меняет результат. Usage counters не создаются
-и не меняют learned preferences/факты.
+### 11.4. Retention и источники
 
-### 11.4. Retention, сеть и источники
+Source of truth consent/allowlist/exclusions — RAM Main/platform policy, paths только
+Infrastructure; restart очищает её. «Удалить настройки» выключает сбор, удаляет policy,
+очищает runtime, не удаляет обычную историю чата. Последний sample RAM до replace/TTL/
+invalidation; immutable request snapshot до terminal/cancel (runtime≤3500ms); speech
+до expiry/invalidation. Без observation history, SQLite/dialogue/logs/trace/errors/
+metrics/crash payloads, extraction/recall. GC strings не обещают secure erasure.
+Backend replay/provider deletion — [AI Events §9](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary).
 
-Source of truth policy — существующий local config: consent/allowlist/категории,
-executable matching хранит Infrastructure; без observations. «Удалить настройки»
-выключает сбор, удаляет policy, очищает runtime. Один последний sample в RAM до
-TTL/replace/invalidation, без истории; GC strings не обещают secure erasure.
-Title/app usage не сохраняются в SQLite, dialogue, logs/trace/errors/metrics/crash
-payloads, не запускают extraction/recall. Отключение не удаляет обычную историю чата.
-Backend/provider получают **ноль** observation data, включая косвенную вставку в
-messages/memory/character/events; [wire boundary](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary).
-
-Проверенные 2026-10-14 API: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow)
-может вернуть NULL; [GetWindowTextW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowtextw)
-даёт caption, а не содержимое приложения;
-[QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew)
-только в helper с limited query access. Access denied → fallback, без elevation.
-Продолжается Dependency Review §10: 0 packages/transitives, системная Windows,
-без Electron native addon; сторонняя библиотека/обход policy не разрешены.
+API источники сохранены из #67: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow),
+[GetWindowTextW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowtextw),
+[QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew).
+Access denied → fallback без elevation. Dependency Review §10 сохраняется: 0 новых
+packages/transitives/toolchains, существующий системный bridge; geometry helper без правок.
 
 ## 12. OBS-A01: отдельный эксперимент содержимого экрана
 
@@ -421,7 +426,7 @@ pause/revoke без автозапуска и capture port/capability fallback.
 Сеть в эксперименте off; outage не вызывает fallback upload. Для remote analysis
 **до передачи** отдельный architect утверждает оба DTO, endpoint/version/fixtures,
 content/byte limits, auth/access, provider/model/retention/deletion и цену вызова.
-Title/capture consent не является upload consent. Desktop валидирует/минимизирует
+Consent §11 разрешает только metadata v6, не capture/upload pixels. Desktop валидирует/минимизирует
 подтверждённый payload, отменяет request и отбрасывает late result. Backend независимо
 проверяет schema/size/access/deadline, даёт bounded semantic-only response без raw
 OCR/tools, не сохраняет pixels/text и не логирует payload. Неизвестный endpoint,
