@@ -11,6 +11,7 @@ import type { BrainVisualEpisode } from '../main-autonomy-composition';
 
 export interface BrainStateSource {
   readonly globalCursor?: BrainStateDTO['globalCursor'];
+  readonly observationSpeech?: BrainStateDTO['observationSpeech'];
   readonly initiativeSpeech?: BrainStateDTO['initiativeSpeech'];
   readonly cursorGame: BrainStateDTO['cursorGame'];
   readonly autonomy: BrainStateDTO['autonomy'];
@@ -88,6 +89,7 @@ export function toBrainStateDTO(state: BrainStateSource): BrainStateDTO {
   return {
     ...(state.globalCursor === undefined ? {} : { globalCursor: state.globalCursor }),
     dialogue: state.dialogue,
+    ...(state.observationSpeech === undefined ? {} : { observationSpeech: state.observationSpeech }),
     ...(state.initiativeSpeech === undefined ? {} : { initiativeSpeech: state.initiativeSpeech }),
     cursorGame: state.cursorGame,
     autonomy: { ...state.autonomy },

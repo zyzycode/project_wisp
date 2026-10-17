@@ -104,7 +104,7 @@ Runtime deadline15s, transport12s, сервер использует сущес�
 
 ## 9. Observation boundary
 
-[OBS-A02 #84](https://github.com/zyzycode/project_wisp/issues/84) задаёт planned #81:
+[OBS-A02 #84](https://github.com/zyzycode/project_wisp/issues/84) реализован в #81:
 [Perception §11](../../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a02-активное-приложение-и-заголовок)
 разрешает только explicit consent + allowlisted foreground metadata. Отдельный
 `POST /v6/observation`, **не** новый variant `/v3/events` и не chat. V1–v3, planned v4,
@@ -188,12 +188,12 @@ Groq ZDR verification до внешних тестеров; Gemini synthetic-onl
 не выполнен. Local revoke/delete не удаляет replay/provider copy и не обещает немедленный
 remote erasure; server-delete endpoint отсутствует. No real capture/provider call в #81.
 
-#81 создаёт общий corpus `fixtures/desktop-backend-v6/`: `request.valid.json`,
+Общий [corpus v6](fixtures/desktop-backend-v6/) содержит `request.valid.json`,
 `request.empty-title.json`, `request.hostile-title.json`, `response.success.json`,
 `response.error.json` (альтернатива HTTP503), `invalid.json` с named invalid requests/
 responses (wrong version, missing/extra keys, strict types, UTF-16/control/bidi/surrogate,
 byte caps и forbidden response candidates). Обе стороны читают один corpus, старые
-fixtures неизменны. Fixtures пока planned, не заявление наличия файлов.
+fixtures неизменны. Desktop и backend валидируют этот corpus в тестах #81.
 Acceptance: boundary reject до provider, hostile strings только data, strict text-only,
 один call/accounting/replay/mixed-ID conflict, 401/403/404/502/503/504/malformed/timeout,
 cancel/late usage, source freshness/preemption/no overlap/no retry, restart без consent,

@@ -5,7 +5,7 @@ import { selectSummaryPairs } from '../../src/application/services/summary-selec
 import type { ISummaryCache, SummaryCache, SummaryPair, SummarySourceSnapshot } from '../../src/application/ports/summary';
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const pair = (n: number, userText = `Тема космос ${n}`): SummaryPair => ({ userMessageId: `u${n}`, assistantMessageId: `a${n}`, sessionId: 's', userText, assistantText: 'Обсудили космос.', eligible: true });
-function fixture() {
+function fixture(interruptObservation?: () => Promise<void>) {
   let stored: SummaryCache = { formatVersion: 1, entry: null, receipt: null }, epoch = 0, generation = 0;
   let snapshot: SummarySourceSnapshot = { pairs: Array.from({ length: 11 }, (_, n) => pair(n)), facts: [] };
   const write = vi.fn<ISummaryCache['write']>(async (value, g) => { if (g !== epoch) return { ok: false, code: 'stale' }; stored = value; return { ok: true, value: undefined }; });
@@ -13,7 +13,7 @@ function fixture() {
   const generateSummary = vi.fn(async () => 'Пользователь обсуждал космос.');
   const recent = vi.fn(async () => ({ ok: true as const, value: snapshot }));
   const exact = vi.fn(async (sources: readonly { userMessageId: string }[]) => ({ ok: true as const, value: { ...snapshot, pairs: snapshot.pairs.filter(p => sources.some(s => s.userMessageId === p.userMessageId)) } }));
-  const options = { cache, generator: { generateSummary }, sources: { recent, exact }, context: () => ({ generation }), now: Date.now, createId: randomUUID, hash, scheduler: { setTimeout, clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) }, locale: 'ru' as const, beforeRead: async () => {}, canGenerate: () => true };
+  const options = { ...(interruptObservation ? { interruptObservation } : {}), cache, generator: { generateSummary }, sources: { recent, exact }, context: () => ({ generation }), now: Date.now, createId: randomUUID, hash, scheduler: { setTimeout, clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) }, locale: 'ru' as const, beforeRead: async () => {}, canGenerate: () => true };
   const runtime = new SummaryRuntime(options);
   return { runtime, options, cache, write, generateSummary, recent, exact, stored: () => stored, mutate: (pairs: readonly SummaryPair[]) => { snapshot = { ...snapshot, pairs }; }, generation: () => generation++, facts: () => { snapshot = { ...snapshot, facts: [{ id: 'f', factKey: 'user.display_name', factValue: 'Мария', confidence: 1, sourceMessageId: null, createdAt: '2026-10-17T00:00:00.000Z', updatedAt: '2026-10-17T00:00:00.000Z' }] }; } };
 }
@@ -73,4 +73,17 @@ it('persisted failed command remains once-only after restart and24h; a new expli
   const restarted = new SummaryRuntime(f.options), p2 = await restarted.preview(); if (!p2.ok) throw new Error(p2.code);
   expect(await restarted.confirm(commandId, p2.value.previewId)).toEqual({ ok: false, code: 'failed' });
   expect(f.generateSummary).toHaveBeenCalledTimes(1);
+});
+
+it('explicit summary confirmation preempts observation and waits for settlement within its deadline', async () => {
+  let settle!: () => void; const interlock = vi.fn(() => new Promise<void>(resolve => { settle = resolve; }));
+  const f = fixture(interlock), p = await preview(f); expect(interlock).not.toHaveBeenCalled();
+  const pending = f.runtime.confirm(randomUUID(), p.previewId); expect(interlock).toHaveBeenCalledTimes(1);
+  expect(f.generateSummary).not.toHaveBeenCalled(); expect(f.write).not.toHaveBeenCalled();
+  settle(); expect(await pending).toMatchObject({ ok: true }); expect(f.generateSummary).toHaveBeenCalledTimes(1);
+});
+it('summary interrupted during observation drain never writes receipt or dispatches later', async () => {
+  let settle!: () => void; const f = fixture(() => new Promise<void>(resolve => { settle = resolve; })), p = await preview(f);
+  const pending = f.runtime.confirm(randomUUID(), p.previewId); f.runtime.interrupt(); settle();
+  expect(await pending).toMatchObject({ ok: false, code: 'stale' }); expect(f.generateSummary).not.toHaveBeenCalled(); expect(f.write).not.toHaveBeenCalled();
 });

@@ -1,3 +1,4 @@
+import type { IObservationProvider } from '../application/ports/observation-provider.interface';
 import type { ISummaryGenerator } from '../application/ports/summary';
 import type { IAIEventProvider } from '../application/ports/ai-event-provider.interface';
 import type { IAIProvider } from '../application/ports/ai-provider.interface';
@@ -12,12 +13,12 @@ export function createMainAIProvider(options: {
   readonly summaryEnabled?: boolean;
   readonly development: boolean;
   readonly now: () => number;
-}): { readonly provider: IAIProvider; readonly touchProvider?: IAIEventProvider; readonly eventProvider?: IAIEventProvider; readonly summaryGenerator?: ISummaryGenerator } {
+}): { readonly provider: IAIProvider; readonly observationProvider?: IObservationProvider; readonly touchProvider?: IAIEventProvider; readonly eventProvider?: IAIEventProvider; readonly summaryGenerator?: ISummaryGenerator } {
   if (!options.backendUrl?.trim()) return { provider: new MockAIProvider({ simulatedLatencyMs: 300 }) };
   try {
     if (options.backendApiVersion !== undefined && !['1', '2', '3', '5'].includes(options.backendApiVersion)) throw new TypeError('Invalid backend version');
     const provider = new ExternalAIProviderClient({ baseUrl: options.backendUrl, apiVersion: options.backendApiVersion === '5' ? 5 : options.backendApiVersion === '3' ? 3 : options.backendApiVersion === '2' ? 2 : 1, development: options.development, now: options.now });
-    return { provider, touchProvider: provider, ...(['3', '5'].includes(options.backendApiVersion ?? '') && options.eventsEnabled ? { eventProvider: provider } : {}), ...(options.backendApiVersion === '5' && options.summaryEnabled ? { summaryGenerator: provider } : {}) };
+    return { provider, observationProvider: provider, touchProvider: provider, ...(['3', '5'].includes(options.backendApiVersion ?? '') && options.eventsEnabled ? { eventProvider: provider } : {}), ...(options.backendApiVersion === '5' && options.summaryEnabled ? { summaryGenerator: provider } : {}) };
   } catch {
     // Invalid deployment configuration must not stop local character startup.
     return { provider: { getStatus: async () => ({ kind: 'offline' }), generateResponse: async () => { throw new Error('Backend unavailable'); } } };

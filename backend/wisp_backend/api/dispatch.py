@@ -7,6 +7,7 @@ from wisp_backend.api.responses import WireReplyEncoder
 from wisp_backend.api.schemas.chat import ChatRequest
 from wisp_backend.api.schemas.events import EventAwareChatRequest, EventRequest
 from wisp_backend.api.schemas.memory import MemoryRequest
+from wisp_backend.api.schemas.observation import ObservationRequest
 from wisp_backend.api.schemas.summary import SummaryRequest, SummaryChatRequest
 from wisp_backend.api.schemas.touch import TouchRequest
 from wisp_backend.completion.contracts import CompletionJob, InferenceRequest
@@ -16,7 +17,7 @@ from wisp_backend.completion.prompts.lore import LoreCatalogue
 from wisp_backend.validation import trim_text
 
 
-CompletionRequest: TypeAlias = SummaryRequest | SummaryChatRequest | ChatRequest | TouchRequest | MemoryRequest | EventRequest
+CompletionRequest: TypeAlias = ObservationRequest | SummaryRequest | SummaryChatRequest | ChatRequest | TouchRequest | MemoryRequest | EventRequest
 
 
 def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> CompletionJob:
@@ -24,6 +25,7 @@ def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> C
     policy = POLICIES[endpoint.scenario]
     context = PromptContext(
         locale=body.locale,
+        observation=body.observation.model_dump() if isinstance(body, ObservationRequest) else None,
         lore=lore,
         character=body.character.model_dump(exclude_unset=True) if not isinstance(body, SummaryRequest) else {},
         summary_pairs=[pair.model_dump() for pair in body.pairs] if isinstance(body, SummaryRequest) else [],

@@ -1,3 +1,4 @@
+import { ObservationSettings } from './Interaction/ObservationSettings';
 import React, { useState } from 'react';
 import type { RenderPresentationState } from '../render-engine';
 import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../shared/pet-presentation-layout';
@@ -87,6 +88,7 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         debugHudVisible={model.debugHudVisible}
         isAlwaysOnTop={model.isAlwaysOnTop}
         debugContent={debugHud}
+        observationContent={<ObservationSettings bridge={window.wispAPI?.observationCommand} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
         previewContent={<AnimationPreviewControls
           bodyKeys={model.manifestAnimations.bodyKeys}
           faceKeys={model.manifestAnimations.faceKeys}

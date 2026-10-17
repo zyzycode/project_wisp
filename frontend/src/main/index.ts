@@ -1,3 +1,6 @@
+import { ObservationRuntime } from '../application/services/observation-runtime';
+import { createActiveApplicationObservation, type ActiveApplicationObservationManagement } from '../infrastructure/platform/active-application-factory';
+import { registerObservationIpc } from './observation-ipc-registration';
 import { SummaryRuntime } from '../application/services/summary-runtime';
 import { registerSummaryIpc } from './summary-ipc-registration';
 import { MemoryCards } from '../application/services/memory-cards';
@@ -11,7 +14,7 @@ import { DEFAULT_CHAT_CONTEXT_LIMITS } from '../application/ports/memory-reposit
 import { createMainMemoryComposition } from './main-memory-composition';
 import { createExternalWindowSurfaces } from '../infrastructure/platform/external-window-surfaces.factory';
 import type { ExternalWindowSurfacesPort } from '../application/ports/external-window-surfaces.port';
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
@@ -94,6 +97,9 @@ let memoryShutdownComplete = false;
 let memoryRuntime: MemoryLifecycle | null = null;
 let unregisterMemory: (() => void) | null = null;
 let unregisterSummary: (() => void) | null = null;
+let observationRuntime: ObservationRuntime | null = null;
+let observationManagement: ActiveApplicationObservationManagement | null = null;
+let unregisterObservation: (() => void) | null = null;
 let summaryRuntime: SummaryRuntime | null = null;
 let summaryGenerating = false;
 let summaryStream: string | null = null;
@@ -130,9 +136,11 @@ const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
   createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryCards.replaceStream(id); return id; },
   prepareSnapshot: () => {
+    observationRuntime?.tick();
     aiEventRuntime?.tick();
     autonomyComposition?.tick();
     aiEventRuntime?.tick();
+    observationRuntime?.tick();
   },
   createSnapshot: ({ streamId, revision, sampledAtMs }) => {
     if (shimejiMotionOrchestrator === null || autonomyComposition === null || dialogueRuntime === null) {
@@ -141,6 +149,7 @@ const brainStatePublisher = new BrainStatePublisher({
     return toBrainStateDTO({
       dialogue: dialogueRuntime.getPresentation(),
       initiativeSpeech: aiEventRuntime?.getSpeech() ?? null,
+      observationSpeech: observationRuntime?.getSpeech() ?? null,
       cursorGame: autonomyComposition.getCursorGamePresentation(),
       globalCursor: autonomyComposition.getGlobalCursorSample(),
       streamId,
@@ -286,8 +295,8 @@ function initializeAutonomyComposition(): void {
     },
     onActivityStarted: () => aiEventRuntime?.activityStarted(),
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
-    onAIInvalidated: () => aiEventRuntime?.invalidate(),
-    onUserContact: () => aiEventRuntime?.userContact(),
+    onAIInvalidated: () => { aiEventRuntime?.invalidate(); observationRuntime?.invalidate(); },
+    onUserContact: () => { aiEventRuntime?.userContact(); observationRuntime?.invalidate(); },
     onCursorGameResult: result => { aiEventRuntime?.gameTerminal(result, memoryGeneration); void memoryRuntime?.history.game(result, memoryGeneration); },
     onActivityOutcome: event => {
       if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
@@ -325,12 +334,23 @@ function initializeAutonomyComposition(): void {
     const ai = createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, backendApiVersion: process.env.WISP_BACKEND_API_VERSION, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
     const recall = !localMock && ['2', '3', '5'].includes(process.env.WISP_BACKEND_API_VERSION ?? '') && memoryComposition
       ? new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
-    if (ai.touchProvider) aiEventRuntime = new AIEventRuntime({ provider: ai.touchProvider, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
+    observationManagement = createActiveApplicationObservation();
+    observationRuntime = new ObservationRuntime({ observer: observationManagement.port, ...(ai.observationProvider ? { provider: ai.observationProvider } : {}),
+      now: () => brainStatePublisher.now(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
+      character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
+      spendBudget: atMs => autonomyComposition?.spendObservationBudget(atMs) ?? false,
+      gate: () => { const state = autonomyComposition?.getAIEventState(); return {
+        identity: dialogueRuntime?.getIdentity() ?? null, allowed: !!state?.allowed && !!memoryRuntime?.isRunning(),
+        busy: !dialogueRuntime?.getPresentation().canSubmit || !!aiEventRuntime?.isBusy() || !!summaryRuntime?.isBusy() || summaryGenerating,
+        higherSpeech: !!state?.localSpeech || !!aiEventRuntime?.getSpeech(),
+      }; },
+    });
+    if (ai.touchProvider) aiEventRuntime = new AIEventRuntime({ observation: observationRuntime, provider: ai.touchProvider, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
       now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
-      gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0, ...(!memoryRuntime?.isRunning() || summaryGenerating || summaryRuntime?.isBusy() ? { allowed: false, touchAllowed: false } : {}) }) });
+      gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), ...(observationRuntime?.isBusy() ? { allowed: false } : {}), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0, ...(!memoryRuntime?.isRunning() || summaryGenerating || summaryRuntime?.isBusy() ? { allowed: false, touchAllowed: false } : {}) }) });
     if (ai.summaryGenerator && memoryComposition) {
       const generator = ai.summaryGenerator;
-      summaryRuntime = new SummaryRuntime({ sources: memoryComposition.summarySources, cache: memoryComposition.summaryCache,
+      summaryRuntime = new SummaryRuntime({ interruptObservation: () => observationRuntime?.interruptForUser() ?? Promise.resolve(), sources: memoryComposition.summarySources, cache: memoryComposition.summaryCache,
         generator: { generateSummary: async (request, signal) => { summaryGenerating = true; try { return await generator.generateSummary(request, signal); } finally { summaryGenerating = false; } } },
         context: () => memoryRuntime?.context() ?? null, now: Date.now, monotonicNow: () => performance.now(), createId: randomUUID,
         hash: text => createHash('sha256').update(text, 'utf8').digest('hex'), scheduler: createMainAutonomyScheduler(), locale: 'ru',
@@ -338,7 +358,7 @@ function initializeAutonomyComposition(): void {
         canGenerate: () => !!dialogueRuntime?.getPresentation().canSubmit && !aiEventRuntime?.isBusy() && !summaryGenerating,
       });
     }
-    dialogueRuntime = new DialogueRuntime({
+    dialogueRuntime = new DialogueRuntime({ observation: observationRuntime,
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
       memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
@@ -351,7 +371,7 @@ function initializeAutonomyComposition(): void {
       setBehaviorContext: context => { autonomyComposition?.setBehaviorContext(context); if (context === null) autonomyComposition?.resetCursorGame(); },
       offerIntent: offer => autonomyComposition?.offerDialogueIntent(offer) ?? { status: 'rejected', reason: 'disabled' },
       transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } },
-      publish: () => { if (dialogueRuntime) { autonomyComposition?.observeDialoguePresentation(dialogueRuntime.getPresentation()); aiEventRuntime?.observeDialogue(dialogueRuntime.getPresentation()); } publishBrainState(); },
+      publish: () => { if (dialogueRuntime) { autonomyComposition?.observeDialoguePresentation(dialogueRuntime.getPresentation()); aiEventRuntime?.observeDialogue(dialogueRuntime.getPresentation()); observationRuntime?.observeDialogue(dialogueRuntime.getPresentation()); } publishBrainState(); },
     });
   }
 }
@@ -444,7 +464,7 @@ function startCharacterRuntime(): void {
   stopShimejiMotionLoopHandle = startShimejiMotionLoop({
     orchestrator: shimejiMotionOrchestrator,
     getWindow: () => mainWindow,
-    advanceBrain: () => { aiEventRuntime?.tick(); const changed = autonomyComposition?.tick() ?? false; aiEventRuntime?.tick(); return changed; },
+    advanceBrain: () => { observationRuntime?.tick(); aiEventRuntime?.tick(); const changed = autonomyComposition?.tick() ?? false; aiEventRuntime?.tick(); return changed; },
     publishPresentation: publishBrainState,
     beginPresentationTransaction: () => brainStatePublisher.beginTransaction(),
     commitPresentationTransaction: () => brainStatePublisher.commitTransaction(),
@@ -542,6 +562,12 @@ function registerIpcHandlers(): void {
       if (!memoryRuntime?.admitInput() || !memoryRuntime.isRunning()) return { status: 'rejected', reason: 'unavailable' };
       return dialogueRuntime?.receive(payload) ?? { status: 'rejected', reason: 'unavailable' };
     },
+  });
+  unregisterObservation = registerObservationIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
+    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => observationRuntime,
+    pick: async () => { const snapshot = observationManagement?.port.getSnapshot(); if (!mainWindow || (snapshot?.capability === 'unavailable' && snapshot.reason === 'unsupported')) return null; const result = await dialog.showOpenDialog(mainWindow, { title: 'Разрешённое приложение', properties: ['openFile'], filters: [{ name: 'Приложение', extensions: ['exe'] }] }); return result.canceled ? null : result.filePaths[0] ?? null; },
+    registerExecutable: filename => { if (!observationManagement) throw new Error('Observation unavailable'); return observationManagement.registerExecutable(filename); },
+    forgetExecutable: key => observationManagement?.forgetExecutable(key), clearExecutables: () => observationManagement?.clearExecutables(),
   });
   unregisterSummary = registerSummaryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
@@ -792,7 +818,7 @@ app.on('before-quit', event => {
     event.preventDefault();
     void (memoryRuntime?.shutdown() ?? memoryComposition.close(0)).then(() => { memoryShutdownComplete = true; app.quit(); });
   }
-  aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.();
+  observationRuntime?.dispose(); unregisterObservation?.(); aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();

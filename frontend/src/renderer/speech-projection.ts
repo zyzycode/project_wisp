@@ -6,14 +6,15 @@ export class SpeechProjection {
   private stream: string | null = null;
   private dialogue: string | null = null;
   private game: string | null = null;
+  private observation: string | null = null;
   private initiative: string | null = null;
-  private owner: 'dialogue' | 'game' | 'initiative' | null = null;
+  private owner: 'dialogue' | 'game' | 'initiative' | 'observation' | null = null;
   public accept(snapshot: BrainStateDTO): ChatMessage | null | undefined {
     const changedStream = this.stream !== snapshot.streamId;
-    if (changedStream) { this.stream = snapshot.streamId; this.dialogue = null; this.game = null; this.initiative = null; this.owner = null; }
+    if (changedStream) { this.stream = snapshot.streamId; this.dialogue = null; this.game = null; this.initiative = null; this.observation = null; this.owner = null; }
     const turn = snapshot.dialogue.turn;
     if (turn.phase === 'thinking') {
-      if (this.owner === 'game' || this.owner === 'initiative') { this.owner = null; return null; }
+      if (this.owner === 'game' || this.owner === 'initiative' || this.owner === 'observation') { this.owner = null; return null; }
       return changedStream ? null : undefined;
     }
     const dialogueKey = turn.phase === 'completed' || turn.phase === 'error'
@@ -35,7 +36,13 @@ export class SpeechProjection {
       return { id: `${snapshot.streamId}:${initiative.id}`, sender: 'pet', text: initiative.text,
         timestamp: initiative.startedAtMs, durationMs: initiative.expiresAtMs - snapshot.sampledAtMs };
     }
-    if ((!initiative && this.owner === 'initiative') || (!speech && this.owner === 'game') || (turn.phase === 'idle' && this.owner === 'dialogue') || changedStream) {
+    const observation = snapshot.observationSpeech;
+    if (!speech && !initiative && observation && observation.expiresAtMs > snapshot.sampledAtMs && this.observation !== observation.id) {
+      this.observation = observation.id; this.owner = 'observation';
+      return { id: `${snapshot.streamId}:${observation.id}`, sender: 'pet', text: observation.text,
+        timestamp: observation.startedAtMs, durationMs: observation.expiresAtMs - snapshot.sampledAtMs };
+    }
+    if ((!observation && this.owner === 'observation') || (!initiative && this.owner === 'initiative') || (!speech && this.owner === 'game') || (turn.phase === 'idle' && this.owner === 'dialogue') || changedStream) {
       this.owner = null; return null;
     }
     return undefined;

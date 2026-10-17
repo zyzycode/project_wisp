@@ -7,6 +7,7 @@ interface Options {
   readonly sources: ISummarySourceReader; readonly cache: ISummaryCache; readonly generator: ISummaryGenerator;
   readonly context: () => MemoryOperationContext | null; readonly now: () => number; readonly monotonicNow?: () => number; readonly createId: () => string;
   readonly hash: (text: string) => string; readonly scheduler: MemoryScheduler; readonly locale: 'ru' | 'en';
+  readonly interruptObservation?: () => Promise<void>;
   readonly beforeRead: () => Promise<void>; readonly canGenerate: () => boolean;
 }
 interface Preview { readonly monotonicExpiresAt: number; readonly public: SummaryPreview; readonly entry: SummaryEntry; readonly generation: number; readonly memoryGeneration: number }
@@ -55,6 +56,8 @@ export class SummaryRuntime implements ISummaryRuntime {
     this.pending = { commandId, previewId, result }; return result;
   }
   private async generate(commandId: string, preview: Preview, controller: AbortController): Promise<SummaryResult<string>> {
+    await this.options.interruptObservation?.();
+    if (controller.signal.aborted) return failure('stale');
     const { entry } = preview;
     const valid = () => !controller.signal.aborted && this.current(preview.generation, preview.memoryGeneration);
     const cache = await this.bounded(async () => { await this.clearing; return this.options.cache.read(); }, 200);

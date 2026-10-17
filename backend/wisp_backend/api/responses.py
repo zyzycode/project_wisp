@@ -8,6 +8,7 @@ from starlette.responses import JSONResponse, Response
 from wisp_backend.api.schemas.common import ErrorDetail, ErrorResponse
 from wisp_backend.api.schemas.events import EventErrorResponse
 from wisp_backend.api.schemas.summary import SummaryErrorResponse
+from wisp_backend.api.schemas.observation import ObservationErrorResponse
 from wisp_backend.api.schemas.memory import MemoryErrorResponse
 from wisp_backend.completion.policies import CompletionPolicy
 from wisp_backend.errors import ErrorCode, ServiceError
@@ -21,7 +22,7 @@ ERROR_STATUS = {
     "invalid_model_response": 502,
 }
 
-ERROR_MODELS = {1: ErrorResponse, 2: MemoryErrorResponse, 3: EventErrorResponse, 5: SummaryErrorResponse}
+ERROR_MODELS = {1: ErrorResponse, 2: MemoryErrorResponse, 3: EventErrorResponse, 5: SummaryErrorResponse, 6: ObservationErrorResponse}
 
 
 def failure(code: ErrorCode, request_id: str | None, retry_after_ms: int | None = None,

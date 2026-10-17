@@ -26,6 +26,7 @@ export interface ContextMenuProps {
   isAlwaysOnTop?: boolean;
   debugContent?: React.ReactNode;
   previewContent?: React.ReactNode;
+  observationContent?: React.ReactNode;
   onTabChange?: (tab: ContextMenuTab) => void;
   onClose: () => void;
   onPet: () => void;
@@ -121,6 +122,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   isAlwaysOnTop = false,
   debugContent,
   previewContent,
+  observationContent,
   onTabChange,
   onClose,
   onPet,
@@ -234,6 +236,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       ) : (
         <div className="menu-scroll-body" role="tabpanel" aria-label="Main controls">
           {previewContent}
+          {observationContent}
           {/* Actions */}
           <div className="menu-section">
             <div className="menu-section-title">Действия</div>

@@ -263,6 +263,7 @@ export interface BrainStateDTO {
   readonly cursorGame: CursorGamePresentationDTO | null;
   /** Optional additive projection; absent/null both mean no autonomous AI speech. */
   readonly initiativeSpeech?: AIInitiativeSpeechDTO | null;
+  readonly observationSpeech?: AIInitiativeSpeechDTO | null;
   readonly autonomy: AutonomyModeDTO;
   readonly dialogue: DialoguePresentationDTO;
   readonly streamId: string;
@@ -449,6 +450,7 @@ export interface SummaryApiBridge {
 }
 
 export interface WispApiBridge {
+  readonly observationCommand?: import('./observation-contracts').ObservationBridge['observationCommand'];
   readonly summary?: SummaryApiBridge;
   mutateMemoryCard(command: MemoryCardCommandDTO): Promise<MemoryCardResultDTO>;
   listMemoryCards(command: MemoryCardListCommandDTO): Promise<MemoryCardListResultDTO>;

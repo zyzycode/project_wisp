@@ -12,6 +12,7 @@ import { emptyMemoryContext } from './memory-recall';
 interface Gate { readonly allowed: boolean; readonly touchAllowed?: boolean; readonly identity: string | null; readonly memoryGeneration: number; readonly activeRunId: string | null; readonly localSpeech: boolean }
 interface Source { readonly runId: string; readonly kind: 'cursor_game' | 'social_bid' | 'user_touch'; readonly event: AICompanionEvent; readonly terminalAt: number; readonly identity: string; readonly memoryGeneration: number; readonly epoch: number }
 interface Options {
+  readonly observation?: IAIEventInterlock;
   readonly provider: IAIEventProvider; readonly recall?: ILocalMemoryRecall;
   readonly now: () => number; readonly timestamp: () => string; readonly createId: () => string; readonly scheduler: MemoryScheduler;
   readonly gate: () => Gate; readonly character: () => AIProviderRequest['characterSnapshot']; readonly publish: () => void;
@@ -126,6 +127,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
   }
   private async execute(source: Source, deadline: number): Promise<void> {
     try {
+      if (source.kind === 'user_touch') { await this.options.observation?.interruptForUser(); if (!this.current(source) || this.options.now() >= deadline) return; }
       const locale = this.options.locale ?? 'ru';
       const query = source.kind === 'cursor_game' ? locale === 'ru' ? 'игра курсор' : 'cursor game' : '';
       if (!this.current(source)) return;

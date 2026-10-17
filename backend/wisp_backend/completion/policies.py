@@ -8,6 +8,7 @@ from wisp_backend.completion.context import ContextBlock
 from wisp_backend.completion.prompts.chat import build_chat_blocks
 from wisp_backend.completion.prompts.context import PromptContext
 from wisp_backend.completion.prompts.events import build_event_blocks
+from wisp_backend.completion.prompts.observation import build_observation_blocks
 from wisp_backend.completion.prompts.summary import build_summary_blocks
 from wisp_backend.completion.prompts.touch import build_touch_blocks
 from wisp_backend.completion.replies import (
@@ -17,6 +18,7 @@ from wisp_backend.json_codec import decode_json
 
 
 class Scenario(Enum):
+    OBSERVATION = "observation"
     SUMMARY = "summary"
     SUMMARY_CHAT = "summary_chat"
     CHAT = "chat"
@@ -39,6 +41,7 @@ class CompletionPolicy:
 
 
 POLICIES = {
+    Scenario.OBSERVATION: CompletionPolicy(build_observation_blocks, EventModelReply, timeout=2.5, max_output_tokens=1024, context_window=16384),
     Scenario.SUMMARY: CompletionPolicy(build_summary_blocks, SummaryModelReply, max_output_tokens=512, context_window=8192),
     Scenario.SUMMARY_CHAT: CompletionPolicy(build_chat_blocks, MemoryModelReply),
     Scenario.CHAT: CompletionPolicy(build_chat_blocks, ModelReply),

@@ -9,6 +9,7 @@ from wisp_backend.api.schemas.events import (
     EventAwareChatRequest, EventAwareChatResponse, EventRequest, EventResponse,
 )
 from wisp_backend.api.schemas.memory import MemoryRequest, MemoryResponse
+from wisp_backend.api.schemas.observation import ObservationRequest, ObservationResponse
 from wisp_backend.api.schemas.summary import SummaryRequest, SummaryResponse, SummaryChatRequest, SummaryChatResponse
 from wisp_backend.api.schemas.touch import TouchRequest, TouchResponse
 from wisp_backend.completion.policies import Scenario
@@ -29,7 +30,7 @@ class Endpoint:
 
     @property
     def body_timeout(self) -> float:
-        return EVENT_BODY_TIMEOUT if self.scenario is Scenario.EVENT else BODY_TIMEOUT
+        return EVENT_BODY_TIMEOUT if self.scenario in (Scenario.EVENT, Scenario.OBSERVATION) else BODY_TIMEOUT
 
 
 CHAT = Endpoint("/v1/chat", 1, Scenario.CHAT, ChatRequest, ChatResponse, legacy_digest=True)
@@ -39,5 +40,6 @@ EVENT_CHAT = Endpoint("/v3/chat", 3, Scenario.EVENT_CHAT, EventAwareChatRequest,
 EVENT = Endpoint("/v3/events", 3, Scenario.EVENT, EventRequest, EventResponse)
 SUMMARY = Endpoint("/v5/summary", 5, Scenario.SUMMARY, SummaryRequest, SummaryResponse)
 SUMMARY_CHAT = Endpoint("/v5/chat", 5, Scenario.SUMMARY_CHAT, SummaryChatRequest, SummaryChatResponse)
-ENDPOINTS = {endpoint.path: endpoint for endpoint in (CHAT, TOUCH, MEMORY_CHAT, EVENT_CHAT, EVENT, SUMMARY, SUMMARY_CHAT)}
+OBSERVATION = Endpoint("/v6/observation", 6, Scenario.OBSERVATION, ObservationRequest, ObservationResponse)
+ENDPOINTS = {endpoint.path: endpoint for endpoint in (CHAT, TOUCH, MEMORY_CHAT, EVENT_CHAT, EVENT, SUMMARY, SUMMARY_CHAT, OBSERVATION)}
 ENDPOINTS_BY_REQUEST = {endpoint.request_type: endpoint for endpoint in ENDPOINTS.values()}

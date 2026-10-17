@@ -6,7 +6,7 @@ from typing import Literal
 
 
 ContextSource = Literal["server_instructions", "desktop_character", "desktop_memory",
-                        "server_examples", "desktop_event", "previous_ai", "dialogue", "lore", "summary", "summary_sources"]
+                        "server_examples", "desktop_event", "previous_ai", "dialogue", "lore", "summary", "summary_sources", "observation"]
 
 
 @dataclass(frozen=True)

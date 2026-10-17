@@ -267,7 +267,8 @@ Bounded newline JSON: token/physical geometry, без handles/PID. До публ
 ## 11. OBS-A02: активное приложение и заголовок
 
 [#84](https://github.com/zyzycode/project_wisp/issues/84) заменяет local-only/fixed-speech
-решение #67; целевой контракт #81, не утверждение runtime readiness. Geometry/cursor
+решение #67; реализация #81: [runtime](../../src/application/services/observation-runtime.ts),
+[Windows observer](../../src/infrastructure/platform/active-application-observer.ts). Native Windows smoke остаётся отдельной приёмкой. Geometry/cursor
 contracts и запрет чтения titles в §10 сохраняются. Наблюдение не доказывает внимание,
 удовольствие, занятие или предпочтение пользователя.
 
@@ -289,7 +290,8 @@ Main-owned picker выбирает executable; Infrastructure хранит canon
 для case-insensitive Windows exact matching, без wildcard/substring/PID. Renderer
 получает случайный appKey и alias без path/native metadata; alias не источник appName.
 Локальная категория editor/other/unknown допустима для baseline §12, не gate AI-вызова.
-Статусы off/paused/available/unavailable; до active opt-in/при empty allowlist helper
+Статусы off/paused/available/unavailable; без backend — unavailable/backend_unavailable, helper не запускается.
+До active opt-in/при empty allowlist helper
 не запускается, metadata не читается и observation HTTP отсутствует.
 
 Только foreground top-level окно. Wisp/helpers/devtools, shell/system/secure desktop,

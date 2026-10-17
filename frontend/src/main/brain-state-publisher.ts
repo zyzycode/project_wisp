@@ -227,6 +227,7 @@ function createProjectionSignature(state: BrainStateDTO): string {
   return JSON.stringify({
     globalCursor: state.globalCursor,
     initiativeSpeech: state.initiativeSpeech,
+    observationSpeech: state.observationSpeech,
     cursorGame: state.cursorGame,
     dialogue: state.dialogue,
     autonomy: state.autonomy,
@@ -240,6 +241,7 @@ function createProjectionSignature(state: BrainStateDTO): string {
 function createSemanticSignature(state: BrainStateDTO): string {
   return JSON.stringify({
     initiativeSpeech: state.initiativeSpeech,
+    observationSpeech: state.observationSpeech,
     cursorGame: state.cursorGame,
     dialogue: state.dialogue,
     autonomy: state.autonomy,

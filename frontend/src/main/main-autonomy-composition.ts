@@ -320,6 +320,8 @@ export class MainAutonomyComposition {
   }
   public resetCursorGame(): void { if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true); this.resetCursorInterest(); this.gamePresentation.reset(); }
 
+  public spendObservationBudget(atMs: number): boolean { return this.initiativeBudget.start(atMs); }
+
   public getAIEventState(): { allowed: boolean; touchAllowed: boolean; activeRunId: string | null; localSpeech: boolean } {
     return { allowed: this.started && !this.disposed && this.enabled && !this.quiet && !this.menuOpen
       && !this.deferredUserInteractionResume && this.character.isAutonomyEligible() && !requiresVitalSleep(this.options.getCharacterSnapshot())

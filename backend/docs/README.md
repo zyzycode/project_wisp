@@ -7,8 +7,11 @@ Backend формирует AI-ответы и ведёт служебный уч
 ## Фактическая реализация
 
 `GET /health`; `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`,
-`/v5/chat`, `/v5/summary`. V5 opt-in: отдельная ветка v3 с производной summary;
+`/v5/chat`, `/v5/summary`, `/v6/observation`. V5 opt-in: отдельная ветка v3 с производной summary;
 генерация только после явного desktop preview/confirm, без server history.
+[V6 observation](../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary) —
+изолированная реакция на untrusted appName/windowTitle и current character: только text,
+без memory extraction; metadata не сохраняется в ledger/logs, response cache — до 10 минут.
 Ответы — JSON без streaming. Один активный провайдер на процесс: Groq или Gemini.
 Health проверяет HTTP runtime; доступность провайдера проверяется отдельно.
 

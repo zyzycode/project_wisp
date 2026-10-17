@@ -109,14 +109,15 @@ Application выбирает текст по Activity outcome и locale, вла�
 
 P17-A04 добавляет optional `BrainStateDTO.initiativeSpeech` для bounded AI-фразы (absent/null — нет речи), независимо от game outcome/Dialogue turn. Lifetime/priority/current generation — [AI Events §4](../../../docs/contracts/AI_EVENTS_CONTRACT.md#4-речь-связь-со-следующим-диалогом-и-память). Publisher/validator/Renderer подключаются в #59 атомарно; UI не инициирует event calls и не сообщает факт прочтения/проигрывания. Existing immediate game speech выше инициативы и не задерживается ради сети.
 
-OBS-A02 планирует optional `BrainStateDTO.observationSpeech`; absent/null — нет речи.
-#81 атомарно подключает types/publisher/validator/consumer. Exact speech object:
+OBS-A02/#81 реализует optional `BrainStateDTO.observationSpeech`; absent/null — нет речи.
+Types/publisher/validator/consumer подключены атомарно. Exact speech object:
 `id` trimmed1–128, `text` plain1–240 UTF-16 units, finite nonnegative `startedAtMs`,
 `expiresAtMs > startedAtMs`, lifetime≤2000ms; Main times, dedupe streamId+id.
 Main expiry/invalidation публикует null; late timer не очищает новую speech. Reload не
 переигрывает речь. Priority: dialogue+5s guard → game → initiative → observation;
 потеря eligibility скрывает её, expiry не возвращает предыдущую bubble.
 Consent/settings/preview — [Perception §11](PERCEPTION_ENGINE.md#11-obs-a02-активное-приложение-и-заголовок).
+Settings reason `backend_unavailable` сообщает об отсутствии настроенного backend; helper при этом не запускается.
 UI явно пишет про backend/внешнего provider и RAM-only настройки: после перезапуска
 allowlist/согласие очищаются. Один opt-in на app name+title; no separate title toggle.
 Typed commands: выбрать executable через Main picker, удалить/исключить appKey,

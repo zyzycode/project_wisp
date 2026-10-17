@@ -243,8 +243,8 @@ in-place code updates. При binary/image поставке сохранить �
 
 ## OBS-A02: untrusted observation
 
-Planned #81 реализует [v6 observation](../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary)
-отдельным completion scenario в существующем dispatch/provider client. Existing event
+Реализованный #81 [v6 observation](../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary)
+использует отдельный completion scenario в существующем dispatch/provider client. Existing event
 prompt с factual outcome authority для него не применяется. Mandatory blocks:
 server instructions priority1000/order0, atomic character/current state1000/10 и
 source=`observation`1000/100. Последний — JSON appName/windowTitle под role=user,
@@ -262,3 +262,8 @@ server2500ms; общие JSON caps/ledger/settlement/cache остаются по
 Mock tests обеих Groq/Gemini веток проверяют no system injection, current character,
 text-only/extra rejection, один call, timeout/cancel/shutdown/late usage и отсутствие
 payload в logs. No live provider/observations; provider rollout restrictions сохраняются.
+
+[HTTP/schema tests](../tests/api/test_observation.py) читают общий v6 corpus и проверяют
+обе provider ветки; [lifecycle](../tests/completion/test_observation_lifecycle.py) и
+[retention tests](../tests/completion/test_observation_retention.py) проверяют общий UUID
+namespace, once-only usage, cache expiry/restart и late-result publication barriers.

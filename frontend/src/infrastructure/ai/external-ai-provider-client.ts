@@ -1,3 +1,5 @@
+import type { IObservationProvider, ObservationProviderRequest } from '../../application/ports/observation-provider.interface';
+import { projectObservationRequest, parseObservationResponse, parseObservationError } from './backend-observation-validation';
 import type { ISummaryGenerator } from '../../application/ports/summary';
 import { parseSummaryRequest, parseSummaryResponse, projectSummaryChat, parseSummaryChatResponse, parseSummaryError } from './backend-summary-validation';
 import type { AIEventProviderRequest, AIEventProviderResponse, IAIEventProvider } from '../../application/ports/ai-event-provider.interface';
@@ -55,7 +57,7 @@ async function readBoundedJson(response: Response, signal: AbortSignal): Promise
   } finally { signal.removeEventListener('abort', cancel); reader.releaseLock(); }
 }
 
-export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, ISummaryGenerator {
+export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, ISummaryGenerator, IObservationProvider {
   private chatAbort: { id: string; controller: AbortController } | undefined;
   private eventAbort: { id: string; controller: AbortController } | undefined;
   private readonly url: URL;
@@ -169,6 +171,34 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
       };
       return await Promise.race([operation(), cancelled]);
     } finally { clearTimeout(timer); controller.abort(); signal.removeEventListener('abort', abort); if (this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+  }
+  public canStartObservation(): boolean { return this.activeRequestId === undefined; }
+  public async generateObservation(request: ObservationProviderRequest, signal: AbortSignal): Promise<string> {
+    if (this.activeRequestId || signal.aborted) throw new Error('Observation unavailable');
+    const body = JSON.stringify(projectObservationRequest(request));
+    const controller = new AbortController(), startedAt = this.options.now();
+    this.activeRequestId = request.requestId;
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const abort = () => controller.abort();
+    signal.addEventListener('abort', abort, { once: true });
+    try {
+      const timeout = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => { controller.abort(); reject(new TransportTimeout()); }, 3000);
+      });
+      const operation = async () => {
+        try {
+        const url = new URL(this.url); url.pathname = url.pathname.replace(/v[1235]\/chat$/u, 'v6/observation');
+        const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
+        const value = await readBoundedJson(response, controller.signal);
+        if (controller.signal.aborted || this.options.now() - startedAt >= 3000) throw new TransportTimeout();
+        if (response.status !== 200) { parseObservationError(value, request.requestId, response.status); throw new ProtocolError('Observation unavailable'); }
+        return parseObservationResponse(value, request.requestId);
+        } finally { settled = true; if (this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+      };
+      return await Promise.race([operation(), timeout]);
+    } finally { clearTimeout(timer); controller.abort(); signal.removeEventListener('abort', abort); if (settled && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
   }
   private fallback(requestId: string, fallbackReason: AIProviderFallbackReason, startedAt: number): AIProviderResponse {
     return { requestId, status: 'fallback', reply: { text: DIALOGUE_FALLBACK }, confidence: 0,

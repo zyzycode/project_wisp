@@ -18,3 +18,4 @@ class PromptContext:
     lore: LoreCatalogue | None = None
     summary: str | None = None
     summary_pairs: list[dict[str, str]] = field(default_factory=list)
+    observation: dict[str, str] | None = None

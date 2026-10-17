@@ -60,6 +60,7 @@ export class DialogueRuntime {
     }
     this.options.summary?.interrupt();
     if (this.executing) return { status: 'rejected', reason: 'busy' };
+    this.options.observation?.invalidate();
     const previousInitiative = this.options.events?.takePreviousInitiative();
     const requestId = this.options.createId();
     const createdAt = this.options.timestamp();
@@ -80,6 +81,7 @@ export class DialogueRuntime {
     return { status: 'accepted', conversationId: this.conversationId };
   }
   private reset(): void {
+    this.options.observation?.reset();
     this.options.events?.invalidate();
     this.options.summary?.interrupt();
     this.generation++; this.cancelTimer();
@@ -102,6 +104,8 @@ export class DialogueRuntime {
   }
   private async execute(turn: Turn): Promise<void> {
     try {
+      if (!this.mayContinue(turn)) return;
+      await this.options.observation?.interruptForUser();
       if (!this.mayContinue(turn)) return;
       await this.options.events?.interruptForUser();
       if (!this.mayContinue(turn)) return;

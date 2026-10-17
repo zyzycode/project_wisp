@@ -55,3 +55,11 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
     reason: 'local_utility', ...(kind === 'social_bid' ? { activityFamily: 'social_bid' } : {}),
     ...(kind === 'idle' ? { calmPose } : {}) }, trace };
 }
+
+/** Observation is a one-shot causal opportunity, never a scheduled Activity. */
+export function isObservationEligible(gates: {
+  readonly allowed: boolean; readonly busy: boolean; readonly higherSpeech: boolean;
+  readonly thinking: boolean; readonly dialogueGuard: boolean; readonly budgetGuard: boolean;
+}): boolean {
+  return gates.allowed && !gates.busy && !gates.higherSpeech && !gates.thinking && !gates.dialogueGuard && !gates.budgetGuard;
+}
