@@ -9,12 +9,14 @@ from starlette.responses import Response
 from wisp_backend.api.boundary import CompletionBoundary
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.api.responses import error_response
-from wisp_backend.api.routes import chat, events, health, memory, touch
+from wisp_backend.api.routes import chat, events, health, memory, source, touch
 from wisp_backend.errors import ServiceError
 
 
 def install_api(app: FastAPI) -> None:
     app.add_middleware(CompletionBoundary)
+    app.add_middleware(source.SourceOffer)
+    app.description = "[Исходный код / AGPL — бесплатный полный Corresponding Source](./source)"
 
     @app.exception_handler(ServiceError)
     async def service_error(request: Request, error: ServiceError) -> Response:
@@ -26,7 +28,7 @@ def install_api(app: FastAPI) -> None:
         return error_response("invalid_request", getattr(request.state, "request_id", None),
                               version=getattr(request.state, "wire_version", 1))
 
-    for router in (health.router, chat.router, touch.router, memory.router, events.router):
+    for router in (health.router, chat.router, touch.router, memory.router, events.router, source.router):
         app.include_router(router)
 
     default_openapi = app.openapi

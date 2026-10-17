@@ -1,4 +1,4 @@
-# Context/Prompt Engine — первый этап
+# Context/Prompt Engine
 
 Поставка [#75](https://github.com/zyzycode/project_wisp/issues/75) расширяет существующий
 server prompt flow. [Dispatch](../wisp_backend/api/dispatch.py) строит типизированные
@@ -21,6 +21,7 @@ Wire v1/v2/v3, text-only touch/events, semantic validation и lifecycle оста
 | Instructions / сервер | Да | 1000 / 0 | Существующие ограничения scenario, locale и правила доверия |
 | Profile + state / desktop character | Да | 1000 / 10 | Единый неизменённый character snapshot: personality, needs, relationship, intimacy, tone |
 | Memory / desktop selected projection | Для v2/v3 | 1000 / 20 | Вся уже ограниченная projection, включая корректные пустые массивы |
+| Lore / reviewed server catalogue | Нет | 40 / 25 | Атрибутированный untrusted world context текущей locale, только для chat |
 | Examples / сервер | Нет | 10 / 30 | Собственные краткие RU/EN примеры речи, отдельно от реальной истории |
 | Previous initiative / desktop-reported AI phrase | Нет | 200 / 40 | Прежняя опубликованная фраза, не доказательство внимания или user fact |
 | History pairs / desktop dialogue | Нет | 100 / 50+ | Пары user+assistant, отбор от новых к старым, отправка хронологически |
@@ -97,7 +98,7 @@ extensions, WI probability/recursive activation/sticky/cooldown и ignoreBudget.
 Они требуют других источников/доверия, нарушают детерминизм или обходят общий budget.
 WI per-class cap не нужен для уже bounded desktop memory. Документированный
 constant-first не принят за инвариант pinned WI source: там source strategy и
-sticky priority. Lore и summary не реализованы, пустых интерфейсов для них нет.
+sticky priority. В #78 lore реализован; summary остаётся planned до #79.
 
 Upstream [package.json](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/package.json)
 указывает [AGPL-3.0](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/LICENSE).
@@ -120,21 +121,21 @@ context и непринятие examples как evidence. Прежние lifecyc
 quiet/reset/dispose/deadline с текущим backend без правки frontend.
 
 Тесты устанавливают структуру и совместимость, не качество ответов реальной LLM.
-Платные/provider calls, live оценка стиля, Windows product smoke, lore/summary,
+Платные/provider calls, live оценка стиля, Windows product smoke, summary,
 планируемая v4 memory, новое хранение, квоты и routing не входят в поставку.
 
 
-## CTX-A01: lore и summary (planned)
+## CTX-A01: lore реализован, summary planned
 
-Следующие slices #78/#79 реализуют [Context data contract](../../docs/contracts/CONTEXT_DATA_CONTRACT.md):
+Slices #78/#79 следуют [Context data contract](../../docs/contracts/CONTEXT_DATA_CONTRACT.md):
 §2 — авторский catalogue/source revision, deterministic matching и отсутствие lore wire delta;
 §3–4 — отдельные v5 summary/chat operations, source/limits и общий lifecycle;
 §5 — совместный corpus. Локальный cache/trigger/invalidation принадлежит
 [Memory §12](../../frontend/docs/engine/MEMORY_ENGINE.md#12-ctx-a01-производная-summary-planned).
-Эти разделы не объявляют v5 или lore работающими в #75.
+В #78 работает lore для chat v1/v2/v3; v5 остаётся planned до #79.
 
-Lore и summary — optional untrusted JSON blocks со source=lore/summary;
-source enum расширяется до runtime, role=system остаётся запрещённой. Priority/order
+Lore — optional untrusted JSON block со source=lore; role=system запрещена.
+Summary получит отдельный source при реализации #79. Priority/order
 заданы в общем contract §4. Summary generation — отдельный completion scenario
 с output cap512, без character/lore/memory/history injection. Groq/Gemini используют
 существующие formatters/HTTP client, общий ledger и settlement. Существующие chat
@@ -144,7 +145,8 @@ source enum расширяется до runtime, role=system остаётся з
 
 Исследование 2026-10-17 использует тот же pinned commit
 [`06bde939fb1e9c4c8d8641d810f0a916b5bce127`](https://github.com/SillyTavern/SillyTavern/commit/06bde939fb1e9c4c8d8641d810f0a916b5bce127),
-не плавающую release ветку. Ниже **план переноса**, исходники в #77 не копируются.
+не плавающую release ветку. Фрагменты #78 адаптированы в [lore.py](../wisp_backend/completion/prompts/lore.py);
+фрагменты #79 остаются planned. В документационной #77 исходники не копировались.
 
 | Slice / pinned фрагмент | Решение и обязательная адаптация |
 |---|---|
@@ -180,11 +182,10 @@ instructions следуют untrusted/source-only contract. UI/jQuery/Extensions
 MIT permission не разрешает убрать AGPL с адаптации. Не менять frontend license,
 root license или авторство MIT; новый upstream package не добавляется.
 
-Первый из #78/#79, переносящий код, добавляет `backend/COPYING` (полный upstream AGPL),
-`backend/NOTICE` (provenance, commit/file/ranges, исходные notices, изменения/даты,
-граница backend и ссылка на Corresponding Source) и provenance headers в adapted
-файлах. LICENSE сохраняет MIT notice; README явно объясняет dual provenance и AGPL
-условия программы в целом, без утверждения, что upstream теперь MIT.
+#78 добавляет [COPYING](../COPYING) (полный pinned upstream AGPL),
+[NOTICE](../NOTICE) (commit/file/ranges, notices, изменения/дата и source offer)
+и provenance header в adapted lore.py. [LICENSE](../LICENSE) сохраняет MIT notice дословно;
+[README](README.md#лицензия-и-исходный-код) объясняет происхождение и AGPL условия backend целиком.
 
 Corresponding Source — бесплатный immutable archive/tag **точной running версии**
 со всем backend-кодом, adapted source, notices, requirements, API definitions и
@@ -200,3 +201,42 @@ distribution архив и явная ссылка публикуются ряд
 новый service/provider routing или dependency не нужны. Для local source разработки
 страница может указывать точный checkout archive; сетевую поставку без доступного
 source offer не разрешать. Проверки доставки/notice входят в acceptance первого slice.
+
+
+## Реализация lore и проверка source offer (#78)
+
+[Каталог](../wisp_backend/completion/prompts/lore.json) содержит только `desktop-home-ru/en`:
+«Wisp живёт на рабочем столе» и точный перевод, с provenance на product vision §1.
+Формат/caps/правила metadata и нормализации канонически заданы в Context data §2.
+[Loader/selector](../wisp_backend/completion/prompts/lore.py) читает immutable snapshot при startup;
+NFC/lowercase и Unicode letter/digit tokens текущей реплики активируют locale entries.
+Отбор priority DESC → matched keys DESC → id ASC; вывод order ASC → id ASC.
+≤3 записи/≤1200 UTF-16 text, whole-entry skip; sourceRef в provider input не передаётся.
+Нет match, пустой, отсутствующий или невалидный catalogue → обычный chat без lore.
+Диагностика содержит только `lore_catalogue_unavailable`, без содержимого.
+После изменения/удаления поднять revision и перезапустить процесс; hot reload отсутствует.
+Shutdown сохраняет существующую отмену pending completion и запрет публикации late result.
+
+Lore уступает mandatory instructions/current/state/facts, recent history и previous initiative;
+общий provider selector удаляет весь lore block до сокращения обязательного контекста.
+Touch/events не активируют lore. Model extraction по-прежнему использует только текущий
+исходный user text; lore не создаёт user facts, память, команды ОС или вторую personality.
+[Selection tests](../tests/completion/test_lore.py) проверяют Unicode, caps, порядок, дубли,
+metadata conflicts и границы бюджета; [HTTP tests](../tests/api/test_lore.py) — Groq/Gemini,
+все три chat routes, adversarial input, revision/delete/restart, shutdown и late result.
+Это не проверка live качества LLM или семантической истинности авторских утверждений.
+
+[Source route](../wisp_backend/api/routes/source.py) при startup строит бесплатный immutable
+архив по allowlist исходников; SHA-256 архива служит точной source revision.
+`GET /source` даёт полный URL `/source/archive/{sha256}.tar.gz`, лицензию и инструкции запуска;
+описание `/docs` содержит заметную ссылку, все HTTP responses — Link на `/source`, включая errors.
+Архив включает backend code/tests/docs/notices, requirements, API contracts/fixtures,
+product provenance и `scripts/{wisp,commands,processes}.mjs`; исходные licenses сохраняются.
+Рабочие `.env`, ledger, runtime JSON, cache, venv и произвольные deployment directories
+не архивируются. Обязательные source files должны входить в поставку; отсутствие запрещает
+startup. Отсутствующий optional lore.json остаётся допустимым и не входит в архив.
+Дерево исходников неизменно в течение процесса: после edits нужен restart; не использовать
+in-place code updates. При binary/image поставке сохранить этот архив рядом с артефактом.
+До сетевой поставки скачать `/source` archive через пользовательский/VPN access path,
+проверить SHA-256 и полноту install/run материалов. [Тесты доставки](../tests/api/test_source.py)
+проверяют доступность, notices, immutable bytes и отсутствие runtime data.

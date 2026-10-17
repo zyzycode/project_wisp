@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import httpx
 
+from wisp_backend.api.routes.source import build_source_archive
 from wisp_backend.api.setup import install_api
+from wisp_backend.completion.prompts.lore import load_catalogue
 from wisp_backend.config.loader import load_settings
 from wisp_backend.config.settings import Settings
 from wisp_backend.runtime import open_runtime
@@ -15,6 +17,8 @@ from wisp_backend.runtime import open_runtime
 def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        app.state.source_archive = build_source_archive()
+        app.state.lore_catalogue = load_catalogue()
         config = settings if settings is not None else load_settings()
         async with open_runtime(config, transport) as service:
             app.state.completion_service = service

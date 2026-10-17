@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "revision": 1,
+  "entries": [
+    {
+      "id": "desktop-home-ru",
+      "topic": "desktop-home",
+      "locale": "ru",
+      "keys": ["рабочий стол", "рабочем столе", "desktop"],
+      "text": "Wisp живёт на рабочем столе.",
+      "priority": 50,
+      "order": 50,
+      "sourceRef": "399bc8b498d229d9b3fa3356a1ce5a77955c10d8:docs/PRODUCT_VISION_AND_ROADMAP.md#1-центральная-идея"
+    },
+    {
+      "id": "desktop-home-en",
+      "topic": "desktop-home",
+      "locale": "en",
+      "keys": ["рабочий стол", "рабочем столе", "desktop"],
+      "text": "Wisp lives on the desktop.",
+      "priority": 50,
+      "order": 50,
+      "sourceRef": "399bc8b498d229d9b3fa3356a1ce5a77955c10d8:docs/PRODUCT_VISION_AND_ROADMAP.md#1-центральная-идея"
+    }
+  ]
+}

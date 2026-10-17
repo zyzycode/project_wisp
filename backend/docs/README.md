@@ -34,3 +34,15 @@ python -m venv .venv
 
 Из `backend/`: `.venv/Scripts/python.exe -m pip check`, затем
 `.venv/Scripts/python.exe -m pytest -q`. Тесты подменяют внешние provider-вызовы.
+
+
+## Лицензия и исходный код
+
+Backend содержит Python-адаптацию SillyTavern и поставляется как единая производная
+программа под [AGPL-3.0](../COPYING). Исходный [MIT notice](../LICENSE) сохранён;
+[NOTICE](../NOTICE) фиксирует upstream commit, перенесённые фрагменты и изменения.
+Независимый HTTP desktop и монорепозиторий целиком автоматически не перелицензируются.
+`/source` выдаёт бесплатный полный архив точной startup source revision (SHA-256);
+заметная ссылка есть в `/docs`, HTTP responses содержат Link. До сетевой/binary поставки
+проверить доступность архива пользователям и сохранить его рядом с артефактом.
+[Состав, ограничения и проверка offer](CONTEXT_PROMPT_ENGINE.md#реализация-lore-и-проверка-source-offer-78).

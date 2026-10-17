@@ -25,5 +25,5 @@ async def event(body: EventRequest, request: Request, service: Annotated[Complet
 
 @router.post(EVENT_CHAT.path, response_model=EVENT_CHAT.response_type, response_model_exclude_none=True, responses=ERROR_RESPONSES)
 async def chat(body: EventAwareChatRequest, request: Request, service: Annotated[CompletionService, Depends(get_completion_service)]) -> Response:
-    outcome = await service.complete(prepare_job(body), request.state.digest, request.state.started)
+    outcome = await service.complete(prepare_job(body, request.app.state.lore_catalogue), request.state.digest, request.state.started)
     return http_response(outcome)

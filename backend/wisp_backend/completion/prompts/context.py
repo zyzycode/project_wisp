@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Literal
 
+from wisp_backend.completion.prompts.lore import LoreCatalogue
+
 
 @dataclass(frozen=True)
 class PromptContext:
@@ -13,3 +15,4 @@ class PromptContext:
     previous_initiative: dict[str, object] | None = None
     event: dict[str, object] | None = None
     touch_variant: Literal["stroke", "touch", "ruffle", "poke"] | None = None
+    lore: LoreCatalogue | None = None

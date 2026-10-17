@@ -11,17 +11,19 @@ from wisp_backend.api.schemas.touch import TouchRequest
 from wisp_backend.completion.contracts import CompletionJob, InferenceRequest
 from wisp_backend.completion.policies import POLICIES
 from wisp_backend.completion.prompts.context import PromptContext
+from wisp_backend.completion.prompts.lore import LoreCatalogue
 from wisp_backend.validation import trim_text
 
 
 CompletionRequest: TypeAlias = ChatRequest | TouchRequest | MemoryRequest | EventRequest
 
 
-def prepare_job(body: CompletionRequest) -> CompletionJob:
+def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> CompletionJob:
     endpoint = ENDPOINTS_BY_REQUEST[type(body)]
     policy = POLICIES[endpoint.scenario]
     context = PromptContext(
         locale=body.locale,
+        lore=lore,
         character=body.character.model_dump(exclude_unset=True),
         messages=[{"role": item.role, "content": trim_text(item.content)} for item in body.messages]
         if isinstance(body, ChatRequest) else [],

@@ -18,5 +18,5 @@ router = APIRouter(tags=["chat"])
 @router.post(CHAT.path, response_model=CHAT.response_type, response_model_exclude_none=True,
              responses={status: {"model": ErrorResponse} for status in (400, 409, 413, 429, 502, 503, 504)})
 async def chat(body: ChatRequest, request: Request, service: Annotated[CompletionService, Depends(get_completion_service)]) -> Response:
-    outcome = await service.complete(prepare_job(body), request.state.digest, request.state.started, request.state.legacy_digest)
+    outcome = await service.complete(prepare_job(body, request.app.state.lore_catalogue), request.state.digest, request.state.started, request.state.legacy_digest)
     return http_response(outcome)
