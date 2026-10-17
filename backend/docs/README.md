@@ -7,11 +7,19 @@ Backend формирует AI-ответы и ведёт служебный уч
 ## Фактическая реализация
 
 `GET /health`; `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`,
-`/v5/chat`, `/v5/summary`, `/v6/observation`. V5 opt-in: отдельная ветка v3 с производной summary;
+`/v5/chat`, `/v5/summary`, `/v6/observation`, `/v7/touch`, `/v7/chat`. V5 opt-in: отдельная ветка v3 с производной summary;
 генерация только после явного desktop preview/confirm, без server history.
 [V6 observation](../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary) —
 изолированная реакция на untrusted appName/windowTitle и current character: только text,
 без memory extraction; metadata не сохраняется в ledger/logs, response cache — до 10 минут.
+[V7 interactions](../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v7) —
+явный touch с bounded appraisal и полноценный v5-compatible chat с card/effectPolicy,
+summary, memory, previousInitiative и optional previousTouch. В этапе #89 desktop chat
+передаёт suppressed; appraisal neutral/low/clear сопровождает обычный ответ без нового
+эффекта разговора. PreviousTouch — обязательный при наличии atomic untrusted context,
+не user fact и не extraction evidence. Числа и окончательное принятие принадлежат desktop.
+Оба endpoint используют прежние service/provider/budget/ledger, один inference; request/context
+остаются в RAM, response cache — до 10 минут, durable conversation storage не добавлен.
 Ответы — JSON без streaming. Один активный провайдер на процесс: Groq или Gemini.
 Health проверяет HTTP runtime; доступность провайдера проверяется отдельно.
 

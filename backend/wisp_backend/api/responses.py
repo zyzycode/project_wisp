@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ValidationError
 from starlette.responses import JSONResponse, Response
 
+from wisp_backend.api.schemas.interaction import InteractionErrorResponse
 from wisp_backend.api.schemas.common import ErrorDetail, ErrorResponse
 from wisp_backend.api.schemas.events import EventErrorResponse
 from wisp_backend.api.schemas.summary import SummaryErrorResponse
@@ -22,7 +23,7 @@ ERROR_STATUS = {
     "invalid_model_response": 502,
 }
 
-ERROR_MODELS = {1: ErrorResponse, 2: MemoryErrorResponse, 3: EventErrorResponse, 5: SummaryErrorResponse, 6: ObservationErrorResponse}
+ERROR_MODELS = {1: ErrorResponse, 2: MemoryErrorResponse, 3: EventErrorResponse, 5: SummaryErrorResponse, 6: ObservationErrorResponse, 7: InteractionErrorResponse}
 
 
 def failure(code: ErrorCode, request_id: str | None, retry_after_ms: int | None = None,
@@ -49,13 +50,14 @@ class WireReplyEncoder:
     policy: CompletionPolicy
     response_type: type[BaseModel]
     evidence_quote: str | None = None
+    effect_policy: str | None = None
 
     def success(self, text: str) -> Outcome:
         try:
-            reply = self.policy.parse_reply(text, self.evidence_quote)
+            reply = self.policy.parse_reply(text, self.evidence_quote, self.effect_policy)
             response = self.response_type.model_validate(
                 {"version": self.version, "requestId": self.request_id, **reply.model_dump(exclude_none=True)},
-                context={"evidence_quote": self.evidence_quote},
+                context={"evidence_quote": self.evidence_quote, "effect_policy": self.effect_policy},
             )
             outcome = Outcome(200, JSONResponse(response.model_dump(exclude_none=True)).body)
         except (ValidationError, ValueError, TypeError, RecursionError):

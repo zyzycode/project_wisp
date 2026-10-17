@@ -29,10 +29,10 @@ it('uses explicit monotonic time, includes the exact boundary and never catches 
   expect(takeAdaptationOpportunity(gate, 3_600_000, true).gate.nextEligibleAtMs).toBe(3_900_000);
   for (const time of [NaN, Infinity, -1, 10]) expect(takeAdaptationOpportunity(gate, time, true).accepted).toBe(false);
 });
-it('keeps immediate Needs effects but gives no extra axes experience to provider replies or uncompleted play', () => {
+it('provider replies have no numeric effect and uncompleted play gives no axes experience', () => {
   const state = new CharacterStateService().getState(), gate = createAdaptationGate(0);
   const reply = processStimulusWithAdaptation(state, { type: 'provider_response', source: 'provider' }, gate, 300000);
-  expect(reply.state.needs.attention).toBeLessThan(state.needs.attention); expect(reply.state.personality.axes).toEqual(state.personality.axes); expect(reply.gate).toBe(gate);
+  expect(reply.state).toEqual(state); expect(reply.state.personality.axes).toEqual(state.personality.axes); expect(reply.gate).toBe(gate);
   const play = processStimulusWithAdaptation(state, { type: 'play', source: 'user' }, gate, 300000); expect(play.gate).toBe(gate);
   const actual = processStimulusWithAdaptation(state, { type: 'play', source: 'system', metadata: { activityRunId: 'completed' } }, gate, 300000);
   expect(actual.state.personality.axes.playfulness.current).toBeGreaterThan(state.personality.axes.playfulness.current); expect(actual.gate.nextEligibleAtMs).toBe(600000);

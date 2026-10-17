@@ -57,8 +57,8 @@ describe('Application: CharacterInteractionUseCase', () => {
     const afterPet = useCase.execute({ type: 'pet' });
     const afterDrag = useCase.execute({ type: 'drag_end' });
 
-    expect(afterClick.needs.attention).toBe(46);
-    expect(afterPet.needs.attention).toBe(37);
+    expect(afterClick.needs.attention).toBe(48);
+    expect(afterPet.needs.attention).toBe(39);
     expect(afterDrag.needs).toEqual(afterPet.needs);
   });
 });

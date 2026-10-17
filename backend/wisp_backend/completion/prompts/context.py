@@ -19,3 +19,6 @@ class PromptContext:
     summary: str | None = None
     summary_pairs: list[dict[str, str]] = field(default_factory=list)
     observation: dict[str, str] | None = None
+    card: dict[str, object] | None = None
+    effect_policy: Literal["eligible", "suppressed"] | None = None
+    previous_touch: dict[str, object] | None = None

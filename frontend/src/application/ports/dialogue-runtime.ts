@@ -6,8 +6,10 @@ import type { ProviderBehaviorOffer, BehaviorAdmissionReceipt, BehaviorTurnConte
 /** All effects are injected by Main; provider execution belongs to one app lifecycle. */
 export interface DialogueRuntimeOptions {
   readonly provider: IAIProvider;
+  readonly interactionEnabled?: boolean;
   readonly observation?: import('./ai-event-provider.interface').IAIEventInterlock & { reset(): void; invalidate(): void };
   readonly events?: import('./ai-event-provider.interface').IAIEventInterlock & {
+    getPreviousTouch?(): import('./interaction-appraisal').PreviousTouchReaction | undefined;
     takePreviousInitiative(): import('./ai-provider.interface').AIProviderRequest['previousInitiative'];
     invalidate(): void;
   };

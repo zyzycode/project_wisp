@@ -38,3 +38,22 @@ it('enables summary only for explicit v5 plus flag, retaining v3 events on that 
   }
   expect(createMainAIProvider({ backendUrl: undefined, backendApiVersion: '5', summaryEnabled: true, development: false, now: () => 0 }).summaryGenerator).toBeUndefined();
 });
+
+
+it('exposes interactions only for valid explicit v7 and retains optional shared capabilities', async () => {
+  for (const backendApiVersion of [undefined, '1', '2', '3', '5', '7', 'invalid']) {
+    const c = createMainAIProvider({ backendUrl: 'https://backend.example', backendApiVersion, summaryEnabled: true, eventsEnabled: true, development: false, now: () => 0 });
+    expect(c.interactionEnabled).toBe(backendApiVersion === '7');
+    if (backendApiVersion === '7') {
+      expect(c.touchProvider).toBe(c.provider); expect(c.eventProvider).toBe(c.provider);
+      expect(c.summaryGenerator).toBe(c.provider); expect(c.observationProvider).toBe(c.provider);
+    }
+  }
+  for (const backendUrl of [undefined, 'http://remote.example']) {
+    const c = createMainAIProvider({ backendUrl, backendApiVersion: '7', development: false, now: () => 0 });
+    expect(c.interactionEnabled).toBe(false);
+  }
+  const c = createMainAIProvider({ backendUrl: 'https://backend.example', backendApiVersion: '7', development: false, now: () => 0 });
+  expect(c.interactionEnabled).toBe(true); expect(c.touchProvider).toBe(c.provider);
+  expect(c.eventProvider).toBeUndefined(); expect(c.summaryGenerator).toBeUndefined();
+});

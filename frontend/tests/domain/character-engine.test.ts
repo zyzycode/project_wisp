@@ -291,15 +291,16 @@ describe('Domain: Character Engine v2', () => {
     const petted = processStimulus(clicked, { type: 'pet' });
     const chatted = processStimulus(petted, { type: 'chat_message' });
 
-    expect(clicked.relationship.friendship).toBe(411);
+    expect(clicked.relationship.friendship).toBe(410);
     expect(clicked.relationship.love).toBe(10);
-    expect(clicked.needs.boredom ?? 0).toBeLessThan(state.needs.boredom ?? 0);
+    expect(clicked.needs.boredom).toBe(state.needs.boredom);
+    expect(clicked.needs.attention).toBe(48);
 
-    expect(petted.relationship.friendship).toBe(415);
+    expect(petted.relationship.friendship).toBe(414);
     expect(petted.relationship.love).toBe(12);
     expect(petted.needs.boredom ?? 0).toBeLessThan(clicked.needs.boredom ?? 0);
 
-    expect(chatted.relationship.friendship).toBe(421);
+    expect(chatted.relationship.friendship).toBe(420);
     expect(chatted.relationship.love).toBe(13);
     expect(chatted.needs.attention).toBeLessThan(state.needs.attention);
     expect(chatted.needs.play).toBeLessThan(state.needs.play);

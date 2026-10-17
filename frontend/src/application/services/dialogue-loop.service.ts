@@ -61,6 +61,7 @@ export class DialogueRuntime {
     this.options.summary?.interrupt();
     if (this.executing) return { status: 'rejected', reason: 'busy' };
     this.options.observation?.invalidate();
+    const previousTouch = this.options.interactionEnabled ? this.options.events?.getPreviousTouch?.() : undefined;
     const previousInitiative = this.options.events?.takePreviousInitiative();
     const requestId = this.options.createId();
     const createdAt = this.options.timestamp();
@@ -69,7 +70,7 @@ export class DialogueRuntime {
     this.executing = true;
     this.options.transaction(() => {
       this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
-      const request: AIProviderRequest = { requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
+      const request: AIProviderRequest = { ...(this.options.interactionEnabled ? { interaction: { card: { id: 'shyDreamGirl', revision: 1 }, effectPolicy: 'suppressed', ...(previousTouch ? { previousTouch } : {}) } } : {}), requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };
       const active: Turn = { request, generation: this.generation, deadline, requestedAtMs, memoryGeneration: this.options.memory?.generation() ?? 0 };
       this.active = active; this.turn = { phase: 'thinking', requestId };
@@ -134,13 +135,17 @@ export class DialogueRuntime {
           }
         }
       }
+      if (request.interaction) {
+        const previousTouch = this.options.events?.getPreviousTouch?.();
+        request = { ...request, interaction: { card: request.interaction.card, effectPolicy: 'suppressed', ...(previousTouch ? { previousTouch } : {}) } };
+      }
       const responsePromise = this.options.provider.generateResponse(request);
       this.options.transaction(() => { this.options.publish(); });
       const rawResponse = await responsePromise;
       this.executing = false;
       if (!this.mayContinue(turn)) return;
       let response: AIProviderResponse;
-      try { response = parseProviderResponse(rawResponse, turn.request.requestId); }
+      try { response = parseProviderResponse(rawResponse, turn.request.requestId); if (this.options.interactionEnabled && response.status === 'ok' && (response.appraisal?.category !== 'neutral' || response.appraisal.intensity !== 'low' || response.appraisal.confidence !== 'clear')) throw new TypeError('Invalid suppressed appraisal'); if (!this.options.interactionEnabled && response.appraisal) throw new TypeError('Unexpected appraisal'); }
       catch { this.finish(turn, 'invalid_response'); return; }
       this.finish(turn, response.status === 'fallback' ? fallbackReason(response) : undefined, response);
     } catch {

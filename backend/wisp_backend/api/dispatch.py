@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 from wisp_backend.api.endpoints import ENDPOINTS_BY_REQUEST
 from wisp_backend.api.responses import WireReplyEncoder
+from wisp_backend.api.schemas.interaction import InteractionChatRequest, InteractionTouchRequest
 from wisp_backend.api.schemas.chat import ChatRequest
 from wisp_backend.api.schemas.events import EventAwareChatRequest, EventRequest
 from wisp_backend.api.schemas.memory import MemoryRequest
@@ -17,7 +18,7 @@ from wisp_backend.completion.prompts.lore import LoreCatalogue
 from wisp_backend.validation import trim_text
 
 
-CompletionRequest: TypeAlias = ObservationRequest | SummaryRequest | SummaryChatRequest | ChatRequest | TouchRequest | MemoryRequest | EventRequest
+CompletionRequest: TypeAlias = InteractionChatRequest | InteractionTouchRequest | ObservationRequest | SummaryRequest | SummaryChatRequest | ChatRequest | TouchRequest | MemoryRequest | EventRequest
 
 
 def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> CompletionJob:
@@ -25,6 +26,10 @@ def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> C
     policy = POLICIES[endpoint.scenario]
     context = PromptContext(
         locale=body.locale,
+        card=body.card.model_dump() if isinstance(body, (InteractionChatRequest, InteractionTouchRequest)) else None,
+        effect_policy=body.effectPolicy if isinstance(body, (InteractionChatRequest, InteractionTouchRequest)) else None,
+        previous_touch=body.previousTouch.model_dump()
+        if isinstance(body, InteractionChatRequest) and body.previousTouch is not None else None,
         observation=body.observation.model_dump() if isinstance(body, ObservationRequest) else None,
         lore=lore,
         character=body.character.model_dump(exclude_unset=True) if not isinstance(body, SummaryRequest) else {},
@@ -43,5 +48,5 @@ def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> C
         request_id=body.requestId,
         inference=InferenceRequest(policy.build_blocks(context), policy.max_output_tokens, policy.context_window),
         timeout=policy.timeout,
-        encoder=WireReplyEncoder(body.requestId, body.version, policy, endpoint.response_type, quote),
+        encoder=WireReplyEncoder(body.requestId, body.version, policy, endpoint.response_type, quote, context.effect_policy),
     )

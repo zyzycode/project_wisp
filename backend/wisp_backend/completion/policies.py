@@ -14,10 +14,14 @@ from wisp_backend.completion.prompts.touch import build_touch_blocks
 from wisp_backend.completion.replies import (
     CompletionReply, SummaryModelReply, EventModelReply, MemoryModelReply, ModelReply, TouchModelReply,
 )
+from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply
+from wisp_backend.completion.prompts.interaction import build_interaction_chat_blocks, build_interaction_touch_blocks
 from wisp_backend.json_codec import decode_json
 
 
 class Scenario(Enum):
+    INTERACTION_TOUCH = "interaction_touch"
+    INTERACTION_CHAT = "interaction_chat"
     OBSERVATION = "observation"
     SUMMARY = "summary"
     SUMMARY_CHAT = "summary_chat"
@@ -36,11 +40,13 @@ class CompletionPolicy:
     max_output_tokens: int | None = None
     context_window: int | None = None
 
-    def parse_reply(self, text: str, evidence_quote: str | None) -> CompletionReply:
-        return self.reply_type.model_validate(decode_json(text), context={"evidence_quote": evidence_quote})
+    def parse_reply(self, text: str, evidence_quote: str | None, effect_policy: str | None = None) -> CompletionReply:
+        return self.reply_type.model_validate(decode_json(text), context={"evidence_quote": evidence_quote, "effect_policy": effect_policy})
 
 
 POLICIES = {
+    Scenario.INTERACTION_TOUCH: CompletionPolicy(build_interaction_touch_blocks, InteractionTouchReply, max_output_tokens=1024, context_window=16384),
+    Scenario.INTERACTION_CHAT: CompletionPolicy(build_interaction_chat_blocks, InteractionChatReply, max_output_tokens=4096, context_window=16384),
     Scenario.OBSERVATION: CompletionPolicy(build_observation_blocks, EventModelReply, timeout=2.5, max_output_tokens=1024, context_window=16384),
     Scenario.SUMMARY: CompletionPolicy(build_summary_blocks, SummaryModelReply, max_output_tokens=512, context_window=8192),
     Scenario.SUMMARY_CHAT: CompletionPolicy(build_chat_blocks, MemoryModelReply),

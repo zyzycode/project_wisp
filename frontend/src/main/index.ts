@@ -1,3 +1,5 @@
+import { TouchReactionContext } from '../application/services/touch-reaction-context';
+import type { TouchInteractionReceipt } from '../application/services/character-state.service';
 import { ObservationRuntime } from '../application/services/observation-runtime';
 import { createActiveApplicationObservation, type ActiveApplicationObservationManagement } from '../infrastructure/platform/active-application-factory';
 import { registerObservationIpc } from './observation-ipc-registration';
@@ -295,7 +297,7 @@ function initializeAutonomyComposition(): void {
     },
     onActivityStarted: () => aiEventRuntime?.activityStarted(),
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
-    onAIInvalidated: () => { aiEventRuntime?.invalidate(); observationRuntime?.invalidate(); },
+    onAIInvalidated: () => { if (!processingTouchInput || !aiEventRuntime?.isTouchPending()) aiEventRuntime?.invalidate(true, false); observationRuntime?.invalidate(); },
     onUserContact: () => { aiEventRuntime?.userContact(); observationRuntime?.invalidate(); },
     onCursorGameResult: result => { aiEventRuntime?.gameTerminal(result, memoryGeneration); void memoryRuntime?.history.game(result, memoryGeneration); },
     onActivityOutcome: event => {
@@ -332,7 +334,7 @@ function initializeAutonomyComposition(): void {
   if (memoryRuntime?.isRunning()) autonomyComposition.start();
   if (dialogueRuntime === null) {
     const ai = createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, backendApiVersion: process.env.WISP_BACKEND_API_VERSION, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
-    const recall = !localMock && ['2', '3', '5'].includes(process.env.WISP_BACKEND_API_VERSION ?? '') && memoryComposition
+    const recall = !localMock && ['2', '3', '5', '7'].includes(process.env.WISP_BACKEND_API_VERSION ?? '') && memoryComposition
       ? new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
     observationManagement = createActiveApplicationObservation();
     observationRuntime = new ObservationRuntime({ observer: observationManagement.port, ...(ai.observationProvider ? { provider: ai.observationProvider } : {}),
@@ -345,7 +347,8 @@ function initializeAutonomyComposition(): void {
         higherSpeech: !!state?.localSpeech || !!aiEventRuntime?.getSpeech(),
       }; },
     });
-    if (ai.touchProvider) aiEventRuntime = new AIEventRuntime({ observation: observationRuntime, provider: ai.touchProvider, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
+    const touchContext = ai.interactionEnabled || !ai.touchProvider ? new TouchReactionContext(defaultCharacterStateService, () => brainStatePublisher.now()) : undefined;
+    aiEventRuntime = new AIEventRuntime({ ...(touchContext ? { touchContext } : {}), transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } }, observation: observationRuntime, provider: ai.touchProvider ?? { generateEvent: async () => { throw new Error('Touch unavailable'); }, cancel: () => undefined }, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
       now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
       gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), ...(observationRuntime?.isBusy() ? { allowed: false } : {}), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0, ...(!memoryRuntime?.isRunning() || summaryGenerating || summaryRuntime?.isBusy() ? { allowed: false, touchAllowed: false } : {}) }) });
     if (ai.summaryGenerator && memoryComposition) {
@@ -484,6 +487,8 @@ function getNativePosition(): PetPositionDTO {
   return rootToNativePosition(positionService.getRootPosition(), bounds, ROOT_PIVOT_OFFSET);
 }
 
+let interactionSequence = 0;
+let processingTouchInput = false;
 function handleAcceptedBodyEvent(
   event: Exclude<BodyEventDTO, { readonly type: 'menu_visibility_changed' }>
 ): void {
@@ -538,16 +543,19 @@ function handleAcceptedBodyEvent(
   if (event.type !== 'interaction') return;
 
   const interactionType = event.interaction;
-  if (interactionType === 'click' && aiEventRuntime?.isTouchPending()) return;
   if (interactionType !== 'click') autonomyComposition?.suspendForUserInteraction();
-  if (interactionType !== 'think') {
+  let touchReceipt: TouchInteractionReceipt | undefined;
+  if (interactionType === 'click' || interactionType === 'double_click' || interactionType === 'right_click') {
+    touchReceipt = defaultCharacterStateService.beginTouch(++interactionSequence);
+  } else if (interactionType !== 'think') {
     defaultCharacterInteractionUseCase.execute({
       type: interactionType,
       ...(event.intensity === undefined ? {} : { intensity: event.intensity }),
     });
   }
-  autonomyComposition?.handleCharacterInteraction(interactionType);
-  if (interactionType === 'click') aiEventRuntime?.touch();
+  processingTouchInput = interactionType === 'click';
+  try { autonomyComposition?.handleCharacterInteraction(interactionType); } finally { processingTouchInput = false; }
+  if (interactionType === 'click') aiEventRuntime?.touch(process.env.WISP_BACKEND_API_VERSION === '7' || !process.env.WISP_BACKEND_URL?.trim() ? touchReceipt : undefined);
   publishDebugTelemetry();
   publishBrainState();
   if (interactionType !== 'click') autonomyComposition?.resumeAfterUserInteraction();

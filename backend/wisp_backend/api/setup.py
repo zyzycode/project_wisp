@@ -9,7 +9,7 @@ from starlette.responses import Response
 from wisp_backend.api.boundary import CompletionBoundary
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.api.responses import error_response
-from wisp_backend.api.routes import chat, events, health, memory, observation, source, summary, touch
+from wisp_backend.api.routes import chat, events, health, interaction, memory, observation, source, summary, touch
 from wisp_backend.errors import ServiceError
 
 
@@ -28,7 +28,7 @@ def install_api(app: FastAPI) -> None:
         return error_response("invalid_request", getattr(request.state, "request_id", None),
                               version=getattr(request.state, "wire_version", 1))
 
-    for router in (health.router, chat.router, touch.router, memory.router, events.router, source.router, summary.router, observation.router):
+    for router in (health.router, chat.router, touch.router, memory.router, events.router, source.router, summary.router, observation.router, interaction.router):
         app.include_router(router)
 
     default_openapi = app.openapi

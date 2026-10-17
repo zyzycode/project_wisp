@@ -1,0 +1,102 @@
+"""Independent exact v7 wire forms, extending only the v5 chat capabilities."""
+from typing import Annotated, Literal
+
+from pydantic import BeforeValidator, field_validator, model_validator
+
+from wisp_backend.api.schemas.common import ErrorResponse, RequestId
+from wisp_backend.api.schemas.memory import Timestamp
+from wisp_backend.api.schemas.summary import SummaryChatRequest
+from wisp_backend.api.schemas.touch import TouchEvent, TouchRequest
+from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply, TouchAppraisal
+from wisp_backend.validation import Contract, omittable, text_type, trim_text
+
+
+def version_seven(value: object) -> int:
+    if type(value) is not int or value != 7:
+        raise ValueError('Expected integer version 7')
+    return value
+
+
+def revision_one(value: object) -> int:
+    if type(value) is not int or value != 1:
+        raise ValueError('Expected integer revision 1')
+    return value
+
+
+VersionSeven = Annotated[Literal[7], BeforeValidator(version_seven)]
+
+
+class CharacterCard(Contract):
+    id: Literal['shyDreamGirl']
+    revision: Annotated[Literal[1], BeforeValidator(revision_one)]
+
+
+class InteractionPolicy(Contract):
+    card: CharacterCard
+    effectPolicy: Literal['eligible', 'suppressed']
+
+
+class ActualTouch(TouchEvent):
+    variant: Literal['touch']
+
+
+class PreviousTouch(Contract):
+    action: Literal['touch']
+    occurredAt: Timestamp
+    publishedText: text_type(240)
+    appraisal: TouchAppraisal
+    effect: Literal['accepted', 'neutral', 'suppressed', 'rejected']
+    reason: Literal['applied', 'neutral', 'uncertain', 'cooldown', 'state_changed', 'unavailable']
+    energyBand: Literal['tired', 'rested']
+    comfortBand: Literal['calm', 'overloaded']
+
+    @field_validator('publishedText')
+    @classmethod
+    def already_trimmed(cls, value: str) -> str:
+        if value != trim_text(value):
+            raise ValueError('Published text must be trimmed')
+        return value
+
+    @model_validator(mode='after')
+    def effect_reason(self) -> 'PreviousTouch':
+        pairs = {'accepted': ('applied',), 'neutral': ('neutral', 'uncertain'),
+                 'suppressed': ('cooldown',), 'rejected': ('state_changed', 'unavailable')}
+        if self.reason not in pairs[self.effect]:
+            raise ValueError('Invalid effect/reason pair')
+        return self
+
+
+class InteractionTouchRequest(TouchRequest, InteractionPolicy):
+    version: VersionSeven
+    event: ActualTouch
+
+    @model_validator(mode='after')
+    def card_matches(self) -> 'InteractionTouchRequest':
+        if self.card.id != self.character.personality.presetId:
+            raise ValueError('Card does not match character')
+        return self
+
+
+class InteractionChatRequest(SummaryChatRequest, InteractionPolicy):
+    version: VersionSeven
+    previousTouch: PreviousTouch = omittable()
+
+    @model_validator(mode='after')
+    def card_matches(self) -> 'InteractionChatRequest':
+        if self.card.id != self.character.personality.presetId:
+            raise ValueError('Card does not match character')
+        return self
+
+
+class InteractionTouchResponse(InteractionTouchReply):
+    version: VersionSeven
+    requestId: RequestId
+
+
+class InteractionChatResponse(InteractionChatReply):
+    version: VersionSeven
+    requestId: RequestId
+
+
+class InteractionErrorResponse(ErrorResponse):
+    version: VersionSeven

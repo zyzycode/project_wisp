@@ -30,7 +30,7 @@ def read_request(line: bytes) -> tuple[str, str, bytes]:
     if not isinstance(value, dict) or set(value) != {"method", "path", "body"}:
         raise ValueError("Invalid bridge frame")
     method, path, body = value["method"], value["path"], value["body"]
-    if method != "POST" or path not in {"/v1/chat", "/v2/chat", "/v3/events", "/v3/chat", "/v5/summary", "/v5/chat", "/v6/observation"} or not isinstance(body, str):
+    if method != "POST" or path not in {"/v1/chat", "/v2/chat", "/v3/events", "/v3/chat", "/v5/summary", "/v5/chat", "/v6/observation", "/v7/touch", "/v7/chat"} or not isinstance(body, str):
         raise ValueError("Invalid bridge request")
     encoded = body.encode("utf-8")
     if len(encoded) > 32 * 1024:
@@ -57,9 +57,12 @@ def main() -> None:
         ):
             raise ValueError("Invalid provider messages")
         messages.extend(cast(list[dict[str, str]], raw_messages))
-        text = {"/v6/observation": "Может, сделать небольшую паузу?", "/v5/summary": "Пользователь обсуждал космос.", "/v5/chat": "Продолжим.", "/v3/events": "Мне нравится игра с курсором", "/v3/chat": "Давай ещё поиграем."}.get(route, "Помню нашу игру, Мария.")
+        text = {"/v7/touch": "Ой, лёгкое касание.", "/v7/chat": "Я отреагировала на твоё лёгкое касание.", "/v6/observation": "Может, сделать небольшую паузу?", "/v5/summary": "Пользователь обсуждал космос.", "/v5/chat": "Продолжим.", "/v3/events": "Мне нравится игра с курсором", "/v3/chat": "Давай ещё поиграем."}.get(route, "Помню нашу игру, Мария.")
+        reply: dict[str, object] = {"text": text}
+        if route in {"/v7/touch", "/v7/chat"}:
+            reply["appraisal"] = {"category": "neutral", "intensity": "low", "confidence": "clear"}
         return httpx.Response(200, json={
-            "choices": [{"message": {"content": json.dumps({"text": text})},
+            "choices": [{"message": {"content": json.dumps(reply)},
                          "finish_reason": "stop"}],
             "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7},
         })

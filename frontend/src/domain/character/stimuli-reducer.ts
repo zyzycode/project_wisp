@@ -139,8 +139,9 @@ function normalizeStimulusType(type: CharacterStimulusType): NormalizedStimulusT
       return 'feed';
     case 'chat_message':
     case 'user_message':
-    case 'provider_response':
       return 'chat_message';
+    case 'provider_response':
+      return 'other';
     case 'idle_tick':
     case 'timer_tick':
     case 'autonomous_timer':
@@ -206,18 +207,7 @@ function interactionDeltas(
 } {
   switch (type) {
     case 'click':
-      return {
-        needs: {
-          attention: -4 * intensity,
-          play: -2 * intensity,
-          energy: -0.4 * intensity,
-          boredom: -6 * intensity,
-        },
-        friendship: 1 * intensity,
-        love: 0,
-        intimacy: {},
-        personality: { extraversion: 0.002 * intensity, playfulness: 0.002 * intensity },
-      };
+      return { needs: { attention: -2 * intensity, energy: -0.2 * intensity }, friendship: 0, love: 0, intimacy: {}, personality: {} };
     case 'pet':
       return {
         needs: {
@@ -295,6 +285,7 @@ function interactionDeltas(
 }
 
 export function processStimulus(state: CharacterState, stimulus: CharacterStimulus): CharacterState {
+  if (stimulus.type === 'provider_response') return state;
   const normalizedType = normalizeStimulusType(stimulus.type);
   const intensity = normalizeIntensity(stimulus.intensity);
   const deltaMs = deltaMsFor(state, stimulus);

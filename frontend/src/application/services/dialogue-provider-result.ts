@@ -1,3 +1,4 @@
+import { parseInteractionAppraisal } from './touch-reaction-context';
 import { parseMemoryCandidates } from './memory-fact-registry';
 import type { AIProviderResponse, AIProviderStatus } from '../ports/ai-provider.interface';
 import type { DialogueFallbackReasonDTO } from '../../shared/ipc-contracts';
@@ -10,12 +11,12 @@ export function parseProviderStatus(value: unknown): AIProviderStatus {
   return { kind: enumValue(r.kind, ['ready', 'thinking', 'degraded', 'offline', 'error']) };
 }
 export function parseProviderResponse(value: unknown, requestId: string): AIProviderResponse {
-  const r = exactRecord(value, ['requestId', 'status', 'reply', 'confidence'], ['suggestedMood', 'suggestedBehavior', 'diagnostics', 'memoryCandidates']);
+  const r = exactRecord(value, ['requestId', 'status', 'reply', 'confidence'], ['suggestedMood', 'suggestedBehavior', 'diagnostics', 'memoryCandidates', 'appraisal']);
   if (r.requestId !== requestId || typeof r.confidence !== 'number' || !Number.isFinite(r.confidence) || r.confidence < 0 || r.confidence > 1) throw new TypeError('Invalid provider response');
   const reply = exactRecord(r.reply, ['text'], ['tone']);
   if (typeof reply.text !== 'string') throw new TypeError('Invalid reply');
   const memoryCandidates = r.status === 'ok' ? parseMemoryCandidates(r.memoryCandidates) : undefined;
-  const response: AIProviderResponse = { requestId, status: enumValue(r.status, ['ok', 'fallback']), confidence: r.confidence,
+  const response: AIProviderResponse = { ...(r.appraisal === undefined ? {} : { appraisal: parseInteractionAppraisal(r.appraisal) }), requestId, status: enumValue(r.status, ['ok', 'fallback']), confidence: r.confidence,
     ...(memoryCandidates === undefined ? {} : { memoryCandidates }),
     reply: { text: plainText(reply.text.trim().slice(0, 2000), 2000),
       ...(reply.tone === undefined ? {} : { tone: enumValue(reply.tone, ['warm', 'playful', 'sleepy', 'curious', 'confused', 'quiet', 'shy', 'affectionate']) }) },
