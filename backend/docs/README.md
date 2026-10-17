@@ -18,14 +18,13 @@ Health проверяет HTTP runtime; доступность провайде�
 
 ```powershell
 python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
+.venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
 
 Создайте `backend/.env` по [.env.example](../.env.example), задайте `WISP_AI_PROVIDER`
 и соответствующий `GROQ_API_KEY` или `GEMINI_API_KEY`. Все параметры и подсказки —
 в шаблоне; process environment имеет приоритет. После изменений нужен перезапуск.
-Секреты не коммитятся. Состав зависимостей — в [requirements.txt](../requirements.txt)
-и [requirements-dev.txt](../requirements-dev.txt).
+Секреты не коммитятся. Состав зависимостей — в [requirements.txt](../requirements.txt).
 
 Из корня репозитория: `node scripts/wisp.mjs dev:backend`.
 Адрес по умолчанию — `http://127.0.0.1:8000`, Swagger — `/docs`.

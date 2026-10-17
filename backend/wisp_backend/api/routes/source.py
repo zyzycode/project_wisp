@@ -32,7 +32,7 @@ def build_source_archive(root: Path = ROOT) -> SourceArchive:
     """
     paths = {root / name for name in (
         "backend/main.py", "backend/LICENSE", "backend/COPYING", "backend/NOTICE",
-        "backend/requirements.txt", "backend/requirements-dev.txt", "backend/.env.example",
+        "backend/requirements.txt", "backend/.env.example",
         "backend/tests/fixtures/request.local.json", "docs/PRODUCT_VISION_AND_ROADMAP.md",
         "scripts/wisp.mjs", "scripts/commands.mjs", "scripts/processes.mjs",
     )}

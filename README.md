@@ -17,7 +17,7 @@ Desktop AI-компаньон на Electron + React + TypeScript и Python/FastA
 ```powershell
 npm --prefix frontend install
 python -m venv backend/.venv
-./backend/.venv/Scripts/python.exe -m pip install -r backend/requirements-dev.txt
+./backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
 Copy-Item backend/.env.example backend/.env
 ```
 

@@ -29,7 +29,7 @@ def test_source_offer_archive_docs_errors_and_notices(client_factory: Callable[.
             names = set(source.getnames())
             required = {"backend/main.py", "backend/wisp_backend/completion/prompts/lore.py",
                         "backend/wisp_backend/completion/prompts/lore.json", "backend/COPYING", "backend/LICENSE",
-                        "backend/NOTICE", "backend/requirements.txt", "backend/requirements-dev.txt",
+                        "backend/NOTICE", "backend/requirements.txt",
                         "backend/docs/README.md", "scripts/wisp.mjs", "scripts/commands.mjs", "scripts/processes.mjs",
                         "docs/contracts/BACKEND_API_CONTRACT.md",
                         "docs/contracts/fixtures/desktop-backend-v1/request.valid.json"}
