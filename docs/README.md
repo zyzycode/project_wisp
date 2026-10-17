@@ -14,9 +14,8 @@
 | Следующее расширение памяти событий и общих шуток | [#65 (MEM-A03)](https://github.com/zyzycode/project_wisp/issues/65); канонический контракт — [Memory §10](../frontend/docs/engine/MEMORY_ENGINE.md#10-mem-a03-важные-события-и-общие-шутки-planned) |
 | Локальное наблюдение приложений и отдельный эксперимент экрана | [#67 (OBS-A01)](https://github.com/zyzycode/project_wisp/issues/67); канонический контракт — [Perception §11](../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a01-активное-приложение-и-заголовок) |
 | Причины архитектурных решений | [Реестр ADR](adr/README.md), только связанная запись |
-| Задачи, зависимости и фактические статусы | [GitHub Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1) |
-| Создание Issue, выдача/закрытие спринта | [Шаблоны менеджера](workflow/ISSUE_HANDOFF.md), только для этой операции |
-| Обзор для человека | [ARCHITECTURE.md](../ARCHITECTURE.md), необязателен для агентной задачи |
+| Создание Issue, выдача/закрытие спринта | [Инструкция и шаблоны менеджера](../.agents/agents/project-manager/agent.md#шаблоны-работы-менеджера) |
+
 
 Каноническая спецификация задаёт семантику, код — форму типов; расхождение требует architect gate для затронутой части. Навигаторы, сценарии и отчёты не переопределяют contracts. Связанные с Issue `ARCHITECT RESULT`/`Implementation consequences` берутся из комментариев к соответствующей Issue. Исторические статусы и разовые разрешения не действуют на новые задачи.
 
