@@ -1,6 +1,6 @@
 # Контракт движка памяти
 
-Статус: архитектурные решения [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21) и [P15-A02 / #55](https://github.com/zyzycode/project_wisp/issues/55), 2026-09-18. §1–8 — базовая persistence и lifecycle; §9 — явные знания и recall; §10–11 — planned расширения. [Выбор драйвера](../adr/ADR-016-local-memory-sqlite.md#decision).
+Статус: архитектурные решения [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21) и [P15-A02 / #55](https://github.com/zyzycode/project_wisp/issues/55), 2026-09-18. §1–8 — базовая persistence и lifecycle; §9 — явные знания и recall; §10–12 — planned расширения. [Выбор драйвера](../adr/ADR-016-local-memory-sqlite.md#decision).
 
 
 
@@ -355,3 +355,86 @@ Application сериализует confirm/cancel/delete/claim в одном rem
 Полный reset §6 до барьера останавливает coordinator, уничтожает preview/notice, повышает memory/reminder epochs. Одна clear transaction дополнительно удаляет `reminders` и `reminder_receipts` вместе с остальной памятью; schema/version сохраняются. После commit список пуст, поздние callbacks и старые command stream недействительны. Reset rollback сохраняет durable rows, новая generation допускает только новые чтения; старый notice не replay-ится. Повтор исходной команды reset не стирает новые записи.
 
 Dialogue reset не отменяет подтверждённые напоминания: он очищает незавершённый preview/notice и его epoch, сохраняя durable rows и once-only marker. Unsubscribe/reload/dispose/shutdown очищают preview/notice/timer, инвалидируют in-flight callbacks; при shutdown новая запись/claim не принимается. Cancel/delete не означают завершение дела; полный reset не обещает удаления серверного transcript, но structured reminders туда никогда не передавались.
+
+
+## 12. CTX-A01: производная summary (planned)
+
+Решение [#77](https://github.com/zyzycode/project_wisp/issues/77), реализация #79;
+передача/доверие/budgets — [Context data](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md).
+Summary — неподтверждённый пересказ, не knowledge item, transcript, факт или adaptation.
+Application владеет selection/generation/revalidation; Infrastructure — локальным cache
+и backend transport; Main — DI/typed IPC; Renderer — явной командой/безопасным статусом.
+Новые Domain engine, SQLite migration, server storage и scheduler не требуются.
+
+### 12.1. Источники и явный trigger
+
+Зависимость #79 — MEM-I01/#80: durable признак допустимого successful source и suppression
+из §10; без них нельзя после restart доказать, что persisted pair не fallback.
+Schema1 → summary недоступна, обычная память/chat работают. MEM-I02/v4 не требуются.
+Исходники — только соседние completed user→assistant пары одной сохранённой session,
+подтверждённые worker append, с допустимой provenance; suppressed/withdrawn/deleted
+source, непоказанный результат, event speech и lore никогда не источник.
+
+Команда «Составить краткое содержание» в существующем диалоге открывает preview
+диапазона и отдельное подтверждение отправки этих пар backend/provider. Application
+читает ≤100 последних messages за ≤200ms; из них выбирает самый поздний непрерывный
+run 4–8 допустимых пар одной session вне последних трёх volatile пар. Невалидная пара
+разрывает run; массив не склеивает пропуски. Среди suffixes run выбирается самый
+длинный помещающийся в wire caps; тексты не обрезаются. Нет 4 пар → генерации нет.
+Пары с scalar registry forms или префиксами «Исправление:»/«Correction:», «Забудь»/
+«Forget» исключаются: исправленные значения не возвращаются через пересказ.
+
+Preview хранит source IDs, их content revisions и snapshot текущих scalar facts;
+TTL120s, current stream/memory generation. Source revision — SHA-256 exact UTF-8 JSON
+массива [userID, assistantID, sessionID, userText, assistantText, eligibility]; явные
+mutable revisions, если появятся, также включаются. Hash не подтверждает истинность.
+Confirm повторно читает exact IDs/provenance/suppression/facts и сравнивает snapshot;
+изменение → отказ stale без HTTP. Backend получает только тексты пар, не IDs/digests.
+
+Максимум одна принятая попытка на локальный профиль за rolling24h по persisted времени,
+без очереди/фоновых retries; clock rollback не сокращает ожидание. До fetch атомарно
+записать receipt: commandId, requestId, source digest, admittedAt, generatorVersion=1,
+без текстов. Write failure запрещает fetch; restart не сбрасывает receipt. Идентичный
+повтор command присоединяется к pending/result без нового inference. Тот же source digest/
+generatorVersion при валидном cache возвращает cache даже с новым commandId; другой payload
+с тем же ID — conflict. После ошибки/timeout/unknown outcome попытка тоже израсходована;
+повтор возможен только новым явным подтверждением после24h. Это локальный guard,
+не аккаунтная квота/гарантия денежного лимита при удалении userData или смене часов.
+Chat никогда не запускает summary inference, включая cache miss и startup.
+
+### 12.2. Disposable cache и актуальность
+
+Один cache formatVersion1 по пути path.join(userData, 'memory', 'summary-cache.json'),
+вне SQLite, ≤32KiB: одна summary≤1200 UTF-16, 4–8 source ID/revision tuples/session,
+coverage (точный список пар), digest scalar facts, locale, generatorVersion и receipt.
+Нет копии исходных текстов. Сохраняет Infrastructure через serial queue, temporary file
+и atomic replace, без нового package; failed write не означает «сохранено».
+Неизвестный format/corrupt файл → summary отключена до явной очистки cache, не автоматический
+сброс receipt/новый платный вызов; исходная SQLite не повреждена. Миграция schema2/3
+не меняется; cache можно удалить без потери источников, старый binary его игнорирует.
+
+Перед save и каждым включением в chat (также после restart) перечитать exact source
+IDs, eligibility, suppression и scalar facts в общем200ms budget; все hashes/locale/
+generatorVersion должны совпасть. Missing/changed/suppressed/timeout → cache непригоден,
+без late write/send. Проверяется ≤16 source messages, не scan старой истории.
+После 1000 новых пар summary остаётся доступна по этим IDs, если источники актуальны.
+Проверка и захват chat snapshot сериализованы с memory mutations; новый source change
+между read и dispatch инвалидирует capture. Late read не обогащает отправленный запрос.
+
+### 12.3. Invalidation и удаление
+
+| Событие | Действие |
+|---|---|
+| Source correction/delete; scalar fact correction/removal; item confirm/update/withdraw/delete | Закрыть admission summary, invalidate generation/abort; очистить производный text/coverage до нового capture; §10 suppression и commit barrier сохраняются. Receipt без текстов остаётся до24h. Rollback не возвращает старые callbacks. |
+| Full memory reset | Сначала invalidate/abort и закрыть admission, затем удалить cache/temporary files/receipt вместе с reset workflow §6. До подтверждённой очистки success не показывать; при ошибке summary disabled. Source reset всё равно исключает старые IDs; поздний writer не создаёт файл заново. |
+| Dialogue reset / Renderer reload | Abort pending generation/preview, очистить volatile selection; durable cache/receipt остаются. Только следующий явный send может заново валидировать и использовать summary. |
+| Restart | Никаких генераций/replay; cache проходит bounds/source validation, receipt учитывается. Незавершённая попытка не повторяется. |
+| Dispose | Abort/invalid generation, закрыть queue; pending save после границы запрещён. Ранее committed cache остаётся до следующей валидации. |
+
+Произвольный transcript editor не вводится. Будущий source edit/delete обязан пройти
+тот же barrier; file hash не заменяет mutation notification. Для свободной correction,
+которую scalar recognizer не понимает, пользователь может явно «Удалить краткое
+содержание»: удалить text/coverage, invalidate pending, оставить24h receipt; transcript
+и confirmed knowledge не изменяются. UI не обещает забыть источник навсегда.
+Удаление полного memory/cache не удаляет уже переданные backend/provider копии;
+retention — общий contract. Ошибки/отсутствие cache никогда не блокируют FSM/input/chat.

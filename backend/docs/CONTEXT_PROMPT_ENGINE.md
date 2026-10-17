@@ -101,11 +101,11 @@ sticky priority. Lore и summary не реализованы, пустых ин�
 
 Upstream [package.json](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/package.json)
 указывает [AGPL-3.0](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/LICENSE).
-Это не permissive-компонент для копирования в текущий backend. Перенесены описанные
+В поставке #75 перенесены описанные
 алгоритмические подходы самостоятельной реализацией; исходные строки кода,
 prompt text/templates и assets SillyTavern **не копировались**. Поэтому upstream
-license notices в runtime не добавлены. Прямой перенос кода потребовал бы отдельного
-решения о применении AGPL и сохранения её лицензии/уведомлений; такого переноса нет.
+license notices в runtime не добавлены. В #75 прямого переноса нет. Следующее решение CTX-A01 ниже разрешает
+адаптацию исходников с явной лицензионной границей; AGPL сама по себе не причина отказа.
 
 ## Приёмка и ограничения
 
@@ -122,3 +122,81 @@ quiet/reset/dispose/deadline с текущим backend без правки front
 Тесты устанавливают структуру и совместимость, не качество ответов реальной LLM.
 Платные/provider calls, live оценка стиля, Windows product smoke, lore/summary,
 планируемая v4 memory, новое хранение, квоты и routing не входят в поставку.
+
+
+## CTX-A01: lore и summary (planned)
+
+Следующие slices #78/#79 реализуют [Context data contract](../../docs/contracts/CONTEXT_DATA_CONTRACT.md):
+§2 — авторский catalogue/source revision, deterministic matching и отсутствие lore wire delta;
+§3–4 — отдельные v5 summary/chat operations, source/limits и общий lifecycle;
+§5 — совместный corpus. Локальный cache/trigger/invalidation принадлежит
+[Memory §12](../../frontend/docs/engine/MEMORY_ENGINE.md#12-ctx-a01-производная-summary-planned).
+Эти разделы не объявляют v5 или lore работающими в #75.
+
+Lore и summary — optional untrusted JSON blocks со source=lore/summary;
+source enum расширяется до runtime, role=system остаётся запрещённой. Priority/order
+заданы в общем contract §4. Summary generation — отдельный completion scenario
+с output cap512, без character/lore/memory/history injection. Groq/Gemini используют
+существующие formatters/HTTP client, общий ledger и settlement. Существующие chat
+сохраняют один inference; отдельная генерация запускается только явной командой.
+
+## Перенос CTX-A01 и лицензионная граница
+
+Исследование 2026-10-17 использует тот же pinned commit
+[`06bde939fb1e9c4c8d8641d810f0a916b5bce127`](https://github.com/SillyTavern/SillyTavern/commit/06bde939fb1e9c4c8d8641d810f0a916b5bce127),
+не плавающую release ветку. Ниже **план переноса**, исходники в #77 не копируются.
+
+| Slice / pinned фрагмент | Решение и обязательная адаптация |
+|---|---|
+| #78: [WorldInfoBuffer.matchKeys L337–369](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/world-info.js#L337-L369), [primary activation L4900–4935](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/world-info.js#L4900-L4935) | Адаптировать проверку ключей/primary activation в Python `completion/prompts/lore.py`; plain keys, NFC/lowercase и Unicode token boundaries вместо JS \W, без regex/macros/secondary policy |
+| #78: [rank L4993–5007](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/world-info.js#L4993-L5007), [budget accumulation L5056–5079](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/world-info.js#L5056-L5079) | Перенести ordered activation/accumulation с Wisp ties/caps; sticky и ignoreBudget удалить, source content не мутировать; равенство budget допустимо по контракту Wisp, полный provider payload проверяет существующий selector |
+| #79: [getRawSummaryPrompt L761–825](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L761-L825) | Адаптировать bounded chronological accumulation/coverage в Python `completion/prompts/summary.py`; вход уже выбран desktop, пара атомарна, JSON вместо name/text concatenation, no recursive latestSummary; overflow отвергает весь generation request, не теряет coverage молча |
+| #79: [summarizeChatMain L681–753](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L681-L753) | Адаптировать одноразовый generate/empty-result branch в существующий backend completion scenario; lifecycle/interlock/cancellation остаются Wisp. Не переносить generateRaw client/UI locking и запись chat.extra.memory |
+
+Предикат [isContextChanged L399–408](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L399-L408)
+сравнивает chat/character/group identity, но не источник/revision/reset; его перенос
+в desktop **отклонён по недостаточности**. Wisp использует существующие generation
+barriers и новое exact-source validation. [getSummaryPromptForNow L565–624](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L565-L624)
+автоматизирует interval/word triggers и waits — они не соответствуют explicit action
+и общему deadline, поэтому заменяются существующими Wisp use cases. Upstream default
+prompt [L105–106](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/extensions/memory/index.js#L105-L106)
+содержит override и recursive facts framing; не использовать. Собственные summary
+instructions следуют untrusted/source-only contract. UI/jQuery/Extensions/Extras/WebLLM,
+полные мировые библиотеки, prompts/assets и зависимости upstream не переносятся.
+Это функциональные причины ограничения переноса; пригодные перечисленные фрагменты
+адаптируются с attribution, не объявляются самостоятельной MIT-реализацией.
+
+**Принятая граница поставки:** Python backend, который импортирует adapted modules,
+рассматривается для compliance как единая производная программа и поставляется
+как целое под AGPL-3.0. Перенос кода только в backend; независимый desktop общается
+существующим HTTP wire, не импортирует upstream. Это обоснованная граница выбранной
+архитектуры, не юридическая гарантия для любого способа упаковки/будущего связывания.
+Монорепозиторий целиком автоматически AGPL не объявляется.
+
+Основание: [upstream AGPL §§1, 4–6, 13](https://github.com/SillyTavern/SillyTavern/blob/06bde939fb1e9c4c8d8641d810f0a916b5bce127/LICENSE)
+определяет source/modified work, условия notices/распространения и сетевой source offer.
+Существующий [backend MIT notice](../LICENSE) допускает модификацию/распространение
+с сохранением copyright/permission; он сохраняется дословно для исходного MIT-кода.
+MIT permission не разрешает убрать AGPL с адаптации. Не менять frontend license,
+root license или авторство MIT; новый upstream package не добавляется.
+
+Первый из #78/#79, переносящий код, добавляет `backend/COPYING` (полный upstream AGPL),
+`backend/NOTICE` (provenance, commit/file/ranges, исходные notices, изменения/даты,
+граница backend и ссылка на Corresponding Source) и provenance headers в adapted
+файлах. LICENSE сохраняет MIT notice; README явно объясняет dual provenance и AGPL
+условия программы в целом, без утверждения, что upstream теперь MIT.
+
+Corresponding Source — бесплатный immutable archive/tag **точной running версии**
+со всем backend-кодом, adapted source, notices, requirements, API definitions и
+необходимыми install/run scripts; секреты/runtime data не входят. При binary/image
+distribution архив и явная ссылка публикуются рядом с артефактом. Для network mode
+добавляется читаемая `/source` страница и заметная ссылка «Исходный код / AGPL» в
+существующей `/docs`; HTTP responses дают Link на `/source`, без изменения JSON DTO.
+Страница указывает полный source URL/revision/лицензию; ссылка на upstream или main
+недостаточна. Оператор предоставляет этот заметный offer всем взаимодействующим
+пользователям, включая закрытый VPN, и проверяет доступность архива до запуска.
+Один незаметный header без доступного offer не считается выполнением gate.
+Минимальная static source page/metadata route разрешена в #78/#79 этим решением;
+новый service/provider routing или dependency не нужны. Для local source разработки
+страница может указывать точный checkout archive; сетевую поставку без доступного
+source offer не разрешать. Проверки доставки/notice входят в acceptance первого slice.

@@ -14,3 +14,5 @@ AI Events также определяет связанные causal gates и п�
 
 
 Наличие контракта и fixtures не подтверждает реализацию endpoint. Поддерживаемые текущим сервером версии и gaps — в [backend docs](../../backend/docs/README.md#фактическая-реализация). Python-схемы и TypeScript-типы не импортируют друг друга; совместимость проверяется общими fixtures. Их путь `docs/contracts/fixtures/` сохранён для существующих тестов.
+
+Planned lore/summary: [CTX-A01](CONTEXT_DATA_CONTRACT.md) — server-owned lore без wire delta и отдельная v5 ветка на базе v3; #79 зависит от MEM-I01/#80 для source provenance/suppression. V4 knowledge не меняется; v5 fixtures поставляются в #79.
