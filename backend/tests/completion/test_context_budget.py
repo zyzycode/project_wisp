@@ -8,6 +8,9 @@ import pytest
 from wisp_backend.completion.context import ContextBlock, ContextMessage, ContextOverflow, ContextSource, render_messages, select_context
 from wisp_backend.completion.prompts.chat import build_chat_blocks
 from wisp_backend.completion.prompts.context import PromptContext
+from wisp_backend.completion.prompts.chat import MEMORY_SYSTEM_PROMPT, SYSTEM_PROMPT
+from wisp_backend.completion.prompts.touch import build_touch_blocks
+from wisp_backend.completion.replies import Decision
 from wisp_backend.providers.context_budget import estimate_input
 
 
@@ -89,3 +92,19 @@ def test_fact_correction_and_current_state_survive_old_history_and_examples() ->
     assert messages[-1]["content"] == "Call me New"
     assert "Old" not in json.dumps(messages[1:])
     assert context.messages[0]["content"] == "Old"  # Selection never mutates its source.
+
+
+def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> None:
+    schema = Decision.model_json_schema()
+    assert set(schema["required"]) == {"behavior", "confidence"}
+    assert "requires behavior and numeric confidence (0..1)" in MEMORY_SYSTEM_PROMPT
+    for field in ("behavior", "tone", "mood"):
+        described = MEMORY_SYSTEM_PROMPT.split(f"Allowed {field}: ", 1)[1].split(".", 1)[0].split(", ")
+        assert described == schema["properties"][field]["enum"]
+        for value in described:
+            assert Decision.model_validate({"behavior": "respond", "confidence": 0.5, field: value})
+    assert "flustered" not in MEMORY_SYSTEM_PROMPT
+    assert "Allowed behavior:" not in SYSTEM_PROMPT
+    touch = build_touch_blocks(PromptContext("en", {}, touch_variant="touch"))
+    assert "Allowed behavior:" not in touch[0].messages[0].content
+    assert "No decision or memory fields" in touch[0].messages[0].content

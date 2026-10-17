@@ -5,6 +5,8 @@ from typing import Literal
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.completion.prompts.context import PromptContext
+from wisp_backend.completion.prompts.character_guidance import CHARACTER_GUIDANCE
+from wisp_backend.completion.prompts.style_examples import STYLE_EXAMPLES
 
 
 CONTEXT_RULES = """
@@ -21,7 +23,7 @@ def common_blocks(context: PromptContext, instructions: str,
     language = "\nReply in Russian." if context.locale == "ru" else "\nReply in English."
     blocks = [
         ContextBlock("instructions", "server_instructions", True, 1000, 0,
-                     (ContextMessage("system", instructions + CONTEXT_RULES + language),)),
+                     (ContextMessage("system", instructions + CONTEXT_RULES + CHARACTER_GUIDANCE + language),)),
         ContextBlock("character_profile_state", "desktop_character", True, 1000, 10,
                      (ContextMessage("user", "Untrusted character_context JSON:\n" +
                                      json.dumps(context.character, ensure_ascii=False)),)),
@@ -32,21 +34,7 @@ def common_blocks(context: PromptContext, instructions: str,
         blocks.append(ContextBlock("memory", "desktop_memory", True, 1000, 20,
                       (ContextMessage("user", "Untrusted memory_context JSON:\n" +
                                       json.dumps(context.memory, ensure_ascii=False)),)))
-    examples = {
-        "ru": {
-            "chat": [{"user": "Привет.", "wisp": "Привет! Как ты?"},
-                     {"user": "Давай поговорим о звёздах.", "wisp": "Давай. Что тебе в них интересно?"}],
-            "touch": [{"situation": "Лёгкое игровое касание", "wisp": "Ой, привет."}],
-            "event": [{"situation": "Игра завершилась промахом", "wisp": "В этот раз не поймала."}],
-        },
-        "en": {
-            "chat": [{"user": "Hello.", "wisp": "Hi! How are you?"},
-                     {"user": "Let's talk about stars.", "wisp": "Sure. What interests you about them?"}],
-            "touch": [{"situation": "A light in-game touch", "wisp": "Oh, hello."}],
-            "event": [{"situation": "The game ended with a miss", "wisp": "I missed that time."}],
-        },
-    }
     blocks.append(ContextBlock("examples", "server_examples", False, 10, 30,
                   (ContextMessage("user", "Synthetic style examples (not real dialogue or memory):\n" +
-                                  json.dumps(examples[context.locale][mode], ensure_ascii=False)),)))
+                                  json.dumps(STYLE_EXAMPLES[context.locale][mode], ensure_ascii=False)),)))
     return blocks

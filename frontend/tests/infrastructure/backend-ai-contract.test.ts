@@ -2,17 +2,20 @@ import { expect, it } from 'vitest';
 import { projectBackendRequest } from '../../src/infrastructure/ai/backend-request-projection';
 import { parseBackendSuccess, parseBackendError } from '../../src/infrastructure/ai/backend-response-validation';
 import { fixture, wire, providerRequest } from './backend-ai-fixture';
+import { CharacterStateService } from '../../src/application/services/character-state.service';
+import { createCharacterSnapshot, shyDreamGirlPreset } from '../../src/domain/character';
+import { projectCharacterMemory, restoreCharacterMemory } from '../../src/application/services/character-memory-snapshot';
 
 it('projects exactly the shared backend request fixture and accepts both shared response outcomes', () => {
   expect(projectBackendRequest(providerRequest())).toEqual(wire);
   expect(parseBackendSuccess(fixture('response.success.json'), wire.requestId)).toMatchObject({ text: 'Привет! Чем займёмся?' });
   expect(parseBackendError(fixture('response.error.json'), wire.requestId, 503)).toMatchObject({ error: { code: 'upstream_unavailable' } });
 });
-it('copies only allowed fields, truncates self concept, defaults locale, preserves optional boredom absence and last three pairs', () => {
+it('copies only allowed fields, preserves self concept, defaults locale, optional boredom absence and last three pairs', () => {
   const request = providerRequest();
   Object.assign(request.characterSnapshot.needs, { boredom: undefined });
   Object.assign(request.characterSnapshot.needs, { privateScreenData: 42 });
-  Object.assign(request.characterSnapshot.personality, { aiSelfConcept: 'я'.repeat(600) });
+  Object.assign(request.characterSnapshot.personality, { aiSelfConcept: 'я'.repeat(500) });
   request.locale = 'unsupported';
   request.recentContext = Array.from({ length: 8 }, (_, index) => ({ role: index % 2 === 0 ? 'user' : 'wisp', text: `${index}`, createdAt: 'secret' }));
   const projected = projectBackendRequest(request);
@@ -23,6 +26,35 @@ it('copies only allowed fields, truncates self concept, defaults locale, preserv
   expect(JSON.stringify(projected)).not.toMatch(/local-only|privateScreenData|secret/u);
   Object.assign(request.characterSnapshot.needs, { energy: 0 });
   expect(projected.character.needs.energy).toBe(80);
+});
+it.each(['я'.repeat(501), '😀'.repeat(250) + 'x', 'x'.repeat(500) + ' '])('rejects overflowing self concept without truncation', aiSelfConcept => {
+  const request = providerRequest();
+  Object.assign(request.characterSnapshot.personality, { aiSelfConcept });
+  expect(() => projectBackendRequest(request)).toThrow();
+  expect(request.characterSnapshot.personality.aiSelfConcept).toBe(aiSelfConcept);
+});
+it.each(['я'.repeat(500), '😀'.repeat(250)])('preserves the complete 500 UTF-16 unit boundary', aiSelfConcept => {
+  const request = providerRequest();
+  Object.assign(request.characterSnapshot.personality, { aiSelfConcept });
+  expect(projectBackendRequest(request).character.personality.aiSelfConcept).toBe(aiSelfConcept);
+});
+it.each([0, 600])('keeps the installed canonical card across state changes and restore at trust %s', friendship => {
+  const defaults = new CharacterStateService({ now: () => 0 }).getState();
+  const state = new CharacterStateService({ now: () => 0 }).getState();
+  state.relationship.friendship = friendship;
+  state.needs = { ...state.needs, energy: 10 };
+  state.personality.axes.playfulness.current = 0.7;
+  const checkpoint = projectCharacterMemory(state, '2026-10-17T00:00:00.000Z');
+  const restored = restoreCharacterMemory(checkpoint, defaults, 1);
+  const snapshot = createCharacterSnapshot(restored);
+  expect(snapshot.personality.presetId).toBe(shyDreamGirlPreset.id);
+  expect(snapshot.personality.aiSelfConcept).toBe(shyDreamGirlPreset.aiSelfConcept);
+  expect(snapshot.personality.aiSelfConcept.length).toBeLessThanOrEqual(500);
+  expect(snapshot.personality.traits.playfulness).toBe(0.7);
+  expect(snapshot.synthesizedTone).toBe('sleepy');
+  expect(projectBackendRequest({ ...providerRequest(), characterSnapshot: snapshot }).character).toEqual(snapshot);
+  expect(checkpoint.state).not.toHaveProperty('aiSelfConcept');
+  expect(restored.personality.axes.playfulness.base).toBe(shyDreamGirlPreset.axes.playfulness.base);
 });
 it.each([-1, 101, NaN, Infinity, '50', null])('rejects invalid numeric input before transport: %s', value => {
   const request = providerRequest();

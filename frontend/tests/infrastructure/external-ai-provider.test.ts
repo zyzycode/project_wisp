@@ -37,6 +37,13 @@ it('rejects invalid snapshot without sending', async () => {
   await expect(f.provider.generateResponse(request)).rejects.toThrow(); expect(f.fetcher).not.toHaveBeenCalled();
   await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
 });
+it('rejects a 501-unit self concept before HTTP and leaves the provider ready', async () => {
+  const f = setup(); const request = providerRequest();
+  Object.assign(request.characterSnapshot.personality, { aiSelfConcept: 'я'.repeat(501) });
+  await expect(f.provider.generateResponse(request)).rejects.toThrow();
+  expect(f.fetcher).not.toHaveBeenCalled();
+  await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
+});
 it('keeps maximum valid multibyte context within the wire byte limit', async () => {
   const fetcher = vi.fn(async (_url: Parameters<typeof fetch>[0], _init?: Parameters<typeof fetch>[1]) => json(fixture('response.success.json')));
   const f = setup(fetcher); const request = providerRequest();

@@ -23,7 +23,7 @@ export function projectBackendRequest(request: AIProviderRequest): BackendAIRequ
       play: finiteRange(s.needs.play, 100), comfort: finiteRange(s.needs.comfort, 100),
       ...(s.needs.boredom === undefined ? {} : { boredom: finiteRange(s.needs.boredom, 100) }) },
     relationship: { friendship: finiteRange(s.relationship.friendship, 1000), love: finiteRange(s.relationship.love, 1000), loveUnlocked: boolean(s.relationship.loveUnlocked) },
-    personality: { presetId: plainText(s.personality.presetId, 128, true), aiSelfConcept: plainText(s.personality.aiSelfConcept.slice(0, 500), 500, true),
+    personality: { presetId: plainText(s.personality.presetId, 128, true), aiSelfConcept: plainText(s.personality.aiSelfConcept, 500),
       traits: { shyness: finiteRange(s.personality.traits.shyness, 1), playfulness: finiteRange(s.personality.traits.playfulness, 1),
         sensitivity: finiteRange(s.personality.traits.sensitivity, 1), boldness: finiteRange(s.personality.traits.boldness, 1) } },
     intimacy: { flirtiness: finiteRange(s.intimacy.flirtiness, 100), romanticCharge: finiteRange(s.intimacy.romanticCharge, 100), userConsentEnabled: boolean(s.intimacy.userConsentEnabled) },
