@@ -58,7 +58,8 @@ describe('Infrastructure: MockAIProvider', () => {
       'unknown',
     ]);
     for (const templates of Object.values(CATEGORY_TEMPLATES)) {
-      expect(templates).toHaveLength(2);
+      expect(templates.ru).toHaveLength(1);
+      expect(templates.en).toHaveLength(1);
     }
     expect(DEFAULT_FALLBACK_TEMPLATE.text).toBe(
       '*Мерцает мягким светом* Я пока не всё знаю, но всегда рядом с тобой!'
@@ -71,6 +72,47 @@ describe('Infrastructure: MockAIProvider', () => {
 
     expect(status.kind).toBe('ready');
     expect(status.activeRequestId).toBeUndefined();
+  });
+
+  describe('Response locale', () => {
+    it.each([
+      ['greeting', 'Привет', 'Hello'],
+      ['question', 'Почему?', 'Why?'],
+      ['care', 'Обнять', 'Hug'],
+      ['play', 'Поиграем', 'Play'],
+      ['sleep', 'Спать', 'Sleep'],
+      ['unknown', 'абвгд 42', 'xyz 42'],
+    ])('uses the requested language for %s regardless of requestId or input language', async (_category, russian, english) => {
+      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+      for (const locale of ['ru', 'en']) {
+        for (const requestId of ['a', 'b']) {
+          for (const text of [russian, english]) {
+            const request = { ...createRequest(text, requestId), locale };
+            const response = await provider.generateResponse(request);
+            expect(response.status).toBe('ok');
+            expect(/[А-Яа-яЁё]/u.test(response.reply.text)).toBe(locale === 'ru');
+            const repeated = await provider.generateResponse(request);
+            expect(repeated.reply).toEqual(response.reply);
+            expect(repeated.suggestedBehavior).toBe(response.suggestedBehavior);
+            expect(repeated.suggestedMood).toBe(response.suggestedMood);
+          }
+        }
+      }
+    });
+
+    it.each([undefined, '', 'unsupported'])('defaults locale %s to Russian', async (locale) => {
+      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+      const response = await provider.generateResponse({ ...createRequest('Hello', 'a'), locale });
+      expect(response.reply.text).toBe('Привет! Я Wisp, твой настольный компаньон. Рад тебя видеть!');
+    });
+
+    it.each(['ru', 'en'])('localizes the too-long fallback for %s', async (locale) => {
+      const provider = new MockAIProvider({ simulatedLatencyMs: 0, maxMessageLength: 10 });
+      const response = await provider.generateResponse({ ...createRequest('x'.repeat(11)), locale });
+      expect(response.status).toBe('fallback');
+      expect(response.diagnostics?.fallbackReason).toBe('message_too_long');
+      expect(/[А-Яа-яЁё]/u.test(response.reply.text)).toBe(locale === 'ru');
+    });
   });
 
   describe('Category detection & responses', () => {

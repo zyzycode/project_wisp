@@ -11,7 +11,6 @@ import type {
 import {
   CARE_WORDS,
   CATEGORY_TEMPLATES,
-  DEFAULT_FALLBACK_TEMPLATE,
   GREETING_WORDS,
   PLAY_WORDS,
   QUESTION_WORDS,
@@ -20,6 +19,7 @@ import {
 import type {
   MockMessageCategory,
   MockResponseTemplate,
+  MockResponseLocale,
 } from './mock-response-catalog';
 
 export type { MockMessageCategory } from './mock-response-catalog';
@@ -85,6 +85,7 @@ export class MockAIProvider implements IAIProvider {
 
       const text = request.userMessage.text ?? '';
       const trimmed = text.trim();
+      const locale = request.locale === 'en' ? 'en' : 'ru';
 
       // Empty input fallback
       if (trimmed.length === 0) {
@@ -104,7 +105,9 @@ export class MockAIProvider implements IAIProvider {
         return this.createFallbackResponse(
           request.requestId,
           'message_too_long',
-          'Ой, слишком много текста сразу! Можешь сказать чуть короче?',
+          locale === 'en'
+            ? 'Oh, that is a lot of text at once! Could you say it a little shorter?'
+            : 'Ой, слишком много текста сразу! Можешь сказать чуть короче?',
           'confused',
           'confused',
           'react_confused',
@@ -113,7 +116,7 @@ export class MockAIProvider implements IAIProvider {
       }
 
       const category = this.detectCategory(trimmed);
-      const template = this.pickTemplate(category, request.requestId);
+      const template = this.pickTemplate(category, request.requestId, locale);
 
       return {
         requestId: request.requestId,
@@ -157,11 +160,12 @@ export class MockAIProvider implements IAIProvider {
     return 'unknown';
   }
 
-  private pickTemplate(category: MockMessageCategory, requestId: string): MockResponseTemplate {
-    const templates = CATEGORY_TEMPLATES[category];
-    if (!templates || templates.length === 0) {
-      return DEFAULT_FALLBACK_TEMPLATE;
-    }
+  private pickTemplate(
+    category: MockMessageCategory,
+    requestId: string,
+    locale: MockResponseLocale
+  ): MockResponseTemplate {
+    const templates = CATEGORY_TEMPLATES[category][locale];
 
     // Deterministic selection based on requestId hash for predictable reproducibility
     let hash = 0;
@@ -170,7 +174,7 @@ export class MockAIProvider implements IAIProvider {
     }
     const index = hash % templates.length;
     const selected = templates[index];
-    return selected ?? DEFAULT_FALLBACK_TEMPLATE;
+    return selected ?? templates[0];
   }
 
   private createFallbackResponse(
