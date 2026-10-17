@@ -1,10 +1,10 @@
-"""Connection, operation-scoped ORM sessions and compatibility DDL for SQLite."""
+"""Connection, operation-scoped ORM sessions and schema initialization for SQLite."""
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 import sqlite3
 
-from sqlalchemy import create_engine, event, inspect
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Connection, Engine, URL
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import ConnectionPoolEntry, NullPool
@@ -41,20 +41,17 @@ def create_ledger_engine(path: Path) -> Engine:
 
 
 def initialize_schema(connection: Connection) -> None:
-    """Create missing tables and upgrade legacy reservation before crash recovery.
+    """Create missing tables.
 
     The caller owns the encompassing transaction. Existing tables and counters
     are never rebuilt or reset during startup.
     """
     Base.metadata.create_all(connection)
-    columns = {column["name"] for column in inspect(connection).get_columns("entries")}
-    if "reservation" not in columns:
-        connection.exec_driver_sql("ALTER TABLE entries ADD COLUMN reservation INTEGER NOT NULL DEFAULT 131072")
 
 
 @contextmanager
 def ledger_session(connection: Connection) -> Iterator[Session]:
-    """One unit of work per serialized operation, including startup migration.
+    """One unit of work per serialized operation.
 
     The Session owns commit/rollback and is always closed before returning.
     The ledger retains ownership of its externally supplied Connection. No ORM
