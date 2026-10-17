@@ -2,6 +2,7 @@ import { screen, BrowserWindow } from 'electron';
 import { readCursorScreenPosition } from './cursor-screen-position';
 import type {
   IPlatformAdapter,
+  OverlayWindowOptions,
   ScreenBounds,
   SupportedPlatform,
 } from '../../application/ports/platform-adapter.interface';
@@ -15,6 +16,12 @@ export class MacOSPlatformAdapter implements IPlatformAdapter {
 
   getDisplaySessionType(): string {
     return 'cocoa';
+  }
+
+  getOverlayWindowOptions(): OverlayWindowOptions {
+    // Frameless windows must keep their transparent origin above/left of the display
+    // when the rendered contact root approaches a screen edge.
+    return { enableLargerThanScreen: true };
   }
 
   configureOverlayWindow(window: BrowserWindow): void {

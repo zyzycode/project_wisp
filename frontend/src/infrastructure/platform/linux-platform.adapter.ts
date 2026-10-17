@@ -2,6 +2,7 @@ import { screen, BrowserWindow } from 'electron';
 import { readCursorScreenPosition } from './cursor-screen-position';
 import type {
   IPlatformAdapter,
+  OverlayWindowOptions,
   ScreenBounds,
   SupportedPlatform,
 } from '../../application/ports/platform-adapter.interface';
@@ -31,6 +32,10 @@ export class LinuxPlatformAdapter implements IPlatformAdapter {
 
   getDisplaySessionType(): string {
     return process.env.XDG_SESSION_TYPE?.toLowerCase() || 'x11';
+  }
+
+  getOverlayWindowOptions(): OverlayWindowOptions {
+    return {};
   }
 
   configureOverlayWindow(window: BrowserWindow): void {

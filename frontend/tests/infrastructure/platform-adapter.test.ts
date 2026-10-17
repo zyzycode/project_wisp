@@ -20,6 +20,14 @@ vi.mock('electron', () => {
 });
 
 describe('Platform Adapters', () => {
+  it('allows a frameless macOS overlay origin outside the display to preserve its contact root', () => {
+    expect(new MacOSPlatformAdapter().getOverlayWindowOptions()).toEqual({ enableLargerThanScreen: true });
+  });
+
+  it.each([new WindowsPlatformAdapter(), new LinuxPlatformAdapter()])('keeps native constructor defaults on other platforms', adapter => {
+    expect(adapter.getOverlayWindowOptions()).toEqual({});
+  });
+
   it('LinuxPlatformAdapter returns correct platform name and session type', () => {
     const adapter = new LinuxPlatformAdapter();
     expect(adapter.getPlatformName()).toBe('linux');

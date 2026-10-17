@@ -2,6 +2,7 @@ import { screen, BrowserWindow } from 'electron';
 import { readCursorScreenPosition } from './cursor-screen-position';
 import type {
   IPlatformAdapter,
+  OverlayWindowOptions,
   ScreenBounds,
   SupportedPlatform,
 } from '../../application/ports/platform-adapter.interface';
@@ -15,6 +16,10 @@ export class WindowsPlatformAdapter implements IPlatformAdapter {
 
   getDisplaySessionType(): string {
     return 'dwm';
+  }
+
+  getOverlayWindowOptions(): OverlayWindowOptions {
+    return {};
   }
 
   configureOverlayWindow(window: BrowserWindow): void {

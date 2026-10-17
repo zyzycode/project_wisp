@@ -695,6 +695,7 @@ function createWindow(): void {
   const initialPos = calculateInitialPosition();
 
   mainWindow = new BrowserWindow({
+    ...platformAdapter.getOverlayWindowOptions(),
     x: initialPos.x,
     y: initialPos.y,
     width: COMPACT_WINDOW_WIDTH,

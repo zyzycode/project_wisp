@@ -31,7 +31,8 @@ describe('Windows helper launch security', () => {
   });
 });
 describe('non-Windows external observation', () => {
-  it.skipIf(process.platform === 'win32')('is unavailable without spawning or touching native display APIs', () => {
+  it.each(['darwin', 'linux'])('is unavailable on %s arm64 without spawning or touching native display APIs', platform => {
+    vi.stubGlobal('process', { ...process, platform, arch: 'arm64' });
     const port = createExternalWindowSurfaces();
     expect(port.getSnapshot()).toMatchObject({ capability: 'unavailable', reason: 'unsupported', surfaces: [] });
     expect(port.getSnapshot()).toBe(port.getSnapshot());

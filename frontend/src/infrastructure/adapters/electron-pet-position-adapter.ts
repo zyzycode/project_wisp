@@ -24,8 +24,9 @@ export function rootToNativePosition(
   pivotOffset: Vector2Dto
 ): NativeWindowPosition {
   return {
-    x: Math.round(clamp(rootPosition.x - pivotOffset.x, bounds.x, bounds.x + bounds.width)),
-    y: Math.round(clamp(rootPosition.y - pivotOffset.y, bounds.y, bounds.y + bounds.height)),
+    // Screen bounds constrain the contact root, not the transparent window origin.
+    x: Math.round(clamp(rootPosition.x - pivotOffset.x, bounds.x - pivotOffset.x, bounds.x + bounds.width - pivotOffset.x)),
+    y: Math.round(clamp(rootPosition.y - pivotOffset.y, bounds.y - pivotOffset.y, bounds.y + bounds.height - pivotOffset.y)),
   };
 }
 

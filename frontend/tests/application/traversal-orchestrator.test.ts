@@ -19,6 +19,10 @@ function fixture(x = 50, y = 790) {
     initialSurface: { phase: 'grounded', locomotionVelocityPxPerSec: { x: 0, y: 0 }, updatedAtMs: 0 },
     motionEngine: new MotionEngine(), surfaceKinematics: new SurfaceKinematics(), now: () => now,
     environment: () => environment, positionPort: { commitRootPosition: commit },
+    externalWindows: {
+      getSnapshot: () => ({ capability: 'unavailable', reason: 'unsupported', capturedAtMs: now, revision: 0, surfaces: [] }),
+      subscribe: () => () => {}, dispose: () => {},
+    },
     onVoluntaryMovementCompleted: complete, onTraversalRejected: rejected,
     eventDispatcher: { dispatchMotionEvent: e => events.push(e), dispatchSurfaceEvent: () => {} },
   });
@@ -27,6 +31,7 @@ function fixture(x = 50, y = 790) {
     request: (action: TraversalAction, stepId = 'step') => orchestrator.requestTraversal({ runId: 'run', stepId, action }),
     advance: (ms: number) => { for (let i = 0; i < ms / 10; i++) { now += 10; orchestrator.tick(); } },
     invalidate: () => { environment = { ...environment, currentSurface: { ...environment.currentSurface!, isValidSupport: false } }; },
+    removeSupport: () => { environment = { ...environment, currentSurface: undefined }; },
     resize: () => { environment = { ...environment, screenBounds: { ...bounds, width: 900 } }; },
   };
 }
@@ -34,6 +39,30 @@ const up: TraversalAction = { kind: 'screen_climb', side: 'left', direction: 'up
 const jump: TraversalAction = { kind: 'directed_jump', target: { x: 450, y: 790 }, bounds, supportId: 'floor' };
 
 describe('AUTO-I04 Application traversal', () => {
+  it('rejects screen climbing without a screen support when external windows are unavailable', () => {
+    const f = fixture();
+    f.removeSupport();
+    expect(f.request(up)).toBe(false);
+    f.advance(100);
+    expect(f.orchestrator.getSurfaceState().phase).toBe('grounded');
+    expect(f.commit).not.toHaveBeenCalled();
+  });
+
+  it.each([1000, 3500])('loses removed screen support once after %i ms, including while waiting at the top', elapsedMs => {
+    const f = fixture();
+    expect(f.request(up)).toBe(true);
+    f.advance(elapsedMs);
+    expect(f.orchestrator.getSurfaceState().phase).toBe('climbing_wall');
+    const completedBeforeLoss = f.complete.mock.calls.length;
+    f.removeSupport();
+    f.advance(10);
+    expect(f.orchestrator.getSurfaceState().phase).toBe('airborne');
+    f.advance(4000);
+    expect(f.events.filter(e => e.type === 'airborne_started' && e.cause === 'support_lost')).toHaveLength(1);
+    expect(f.orchestrator.getSurfaceState().phase).toBe('grounded');
+    expect(f.complete).toHaveBeenCalledTimes(completedBeforeLoss);
+  });
+
   it('rejects invalidated pending work on the floor without inventing an airborne lifecycle', () => {
     const f = fixture();
     f.request(up);

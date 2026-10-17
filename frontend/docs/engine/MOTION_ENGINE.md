@@ -166,6 +166,7 @@ Forced Motion или voluntary Behavior/Surface → PetPositionService → `comm
 2. Drag/throw release/support loss (P1/P0) монопольно передают position Motion и немедленно отменяют Activity; voluntary commands не применяются до grounded + stable settle.
 3. Contact root идёт через [PetPositionPort](../../src/application/ports/pet-position-port.ts). [ElectronPetPositionAdapter](../../src/infrastructure/adapters/electron-pet-position-adapter.ts) делает root→native:
 $$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_x, \dots)), \quad y_{\text{native}} = \text{round}(\text{clamp}(y_{\text{root}} - \text{offset}_y, \dots))$$
+   Диапазон native clamp по каждой оси — `[bounds.min - offset, bounds.max - offset]`: ограничивается contact root, а прозрачный origin может выйти за экран ([Render geometry](RENDER_ENGINE.md)).
 4. `BrowserWindow.setPosition` — только при изменении integer coordinates, без параллельных владельцев позиции.
 
 ### #43: wander в пределах текущей опоры
