@@ -207,7 +207,8 @@ HTTP/code mapping определён только [wire-контрактом](..
 
 Wire DTO и клиентская policy определяют подключение HTTP adapter через Main; поддерживаемые сервером версии и gaps перечислены в [серверном навигаторе](../../../backend/docs/README.md). Существующих DialogueCommandDTO, receipt unavailable и presentation fallback/error достаточно: новый IPC канал и передача transport/quota/auth в Renderer не нужны. canSubmit учитывает привязку runtime и выполняющийся turn, без квот, таймеров разблокировки и network polling. Draft сохраняется при rejection; server error после admission завершает turn безопасным сообщением.
 
-Desktop реализует policy, exact validators/projection и aborting adapter через Main DI; при отсутствии backend URL остаётся Mock. Backend реализует endpoint/schema, prompt mapping и validation model output; серверные admission/retention и последствия аудита определены в [BE-A01](../../../docs/archive/BE_A01_RESULT.md) и §5–6 wire-контракта. Локальных квот desktop и backend нет; закрытая alpha не добавляет auth в wire.
+Desktop реализует policy, exact validators/projection и aborting adapter через Main DI; при отсутствии backend URL остаётся Mock. Backend реализует endpoint/schema, prompt mapping и validation model output; серверные admission/retention и последствия аудита определены в §5–6 wire-контракта. Локальных квот desktop и backend нет; закрытая alpha не добавляет auth в wire.
+
 
 Общие JSON fixtures находятся в wire-контракте. Developer добавляет проверки ranges/enum/projection, text-only и invalid hint, malformed/oversize, ID mismatch, отсутствия minute/session квот и пауз после ошибок, absence auto-retry, timeout/late/reset/dispose, сохранения локального ввода и отсутствия утечки экранных данных. Windows smoke включает HTTPS/offline/timeout и работающие drag/курсор; Linux/macOS — capability fallback. Typecheck затем npm test по developer gate; независимый reviewer проверяет контракт отдельно.
 

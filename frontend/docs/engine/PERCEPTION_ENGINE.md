@@ -266,9 +266,9 @@ Bounded newline JSON: token/physical geometry, без handles/PID. До публ
 
 ## 11. OBS-A01: активное приложение и заголовок
 
-Принятое проектное решение [#67](https://github.com/zyzycode/project_wisp/issues/67),
-[ARCHITECT RESULT и задачи реализации](../../../docs/OBS_A01_RESULT.md).
+Принятое проектное решение и требования реализации — в [#67 (OBS-A01)](https://github.com/zyzycode/project_wisp/issues/67).
 Это целевой контракт, не включённая runtime capability. Первый этап локален;
+
 geometry/cursor contracts и запрет чтения titles в §10 сохраняются.
 Наблюдение не означает внимание, удовольствие, интерес или согласие.
 

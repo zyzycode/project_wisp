@@ -1,6 +1,7 @@
 # Desktop ↔ Backend v2: ограниченная локальная память
 
-Явное совместимое расширение рядом с v1, решение [P15-A02 #55](../archive/P15_A02_RESULT.md). Формы — [backend-memory-contract.ts](../../frontend/src/application/ports/backend-memory-contract.ts); imports только из автономных v1 wire types. Клиентская реализация связана с #56; фактические возможности сервера в `backend/` перечислены в [серверном навигаторе](../../backend/docs/README.md). Наличие этого документа не означает доступность `/v2/chat` на сервере.
+Явное совместимое расширение рядом с v1, решение [#55](https://github.com/zyzycode/project_wisp/issues/55). Формы — [backend-memory-contract.ts](../../frontend/src/application/ports/backend-memory-contract.ts); imports только из автономных v1 wire types. Клиентская реализация связана с #56; фактические возможности сервера в `backend/` перечислены в [серверном навигаторе](../../backend/docs/README.md). Наличие этого документа не означает доступность `/v2/chat` на сервере.
+
 
 ## 1. Версия и границы
 
@@ -51,7 +52,8 @@ Full local memory reset очищает источники и инвалидир�
 
 ## 6. MEM-A03: planned расширение событий и шуток
 
-Решение [#65 / ARCHITECT RESULT](../MEM_A03_RESULT.md), локальная семантика — [Memory §10](../../frontend/docs/engine/MEMORY_ENGINE.md#10-mem-a03-важные-события-и-общие-шутки-planned). **Будущий контракт**, не реализованные route/types/fixtures. §1–5 и действующие v1/v2/v3 формы остаются неизменными; перенос backend #62–64 не включает v4. Ни новый enum variant в v2/v3, ни превращение шутки в обычный dialogue episode не являются совместимым способом включения.
+Решение [#65](https://github.com/zyzycode/project_wisp/issues/65), локальная семантика — [Memory §10](../../frontend/docs/engine/MEMORY_ENGINE.md#10-mem-a03-важные-события-и-общие-шутки-planned). **Будущий контракт**, не реализованные route/types/fixtures. §1–5 и действующие v1/v2/v3 формы остаются неизменными; перенос backend #62–64 не включает v4. Ни новый enum variant в v2/v3, ни превращение шутки в обычный dialogue episode не являются совместимым способом включения.
+
 
 ### Версия, admission и rollout
 

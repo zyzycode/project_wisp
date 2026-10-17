@@ -1,6 +1,8 @@
 # Контракт движка памяти
 
-Статус: архитектурные решения [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21) и [P15-A02 / #55](../../../docs/archive/P15_A02_RESULT.md), 2026-09-18. §1–8 — базовая persistence и lifecycle; §9 — явные знания и recall; §10–11 — planned расширения. История задач и разовые исключения сохранены в связанных отчётах. [Выбор драйвера](../adr/ADR-016-local-memory-sqlite.md#decision); [P15-A01 RESULT](../archive/P15_A01_RESULT.md).
+Статус: архитектурные решения [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21) и [P15-A02 / #55](https://github.com/zyzycode/project_wisp/issues/55), 2026-09-18. §1–8 — базовая persistence и lifecycle; §9 — явные знания и recall; §10–11 — planned расширения. [Выбор драйвера](../adr/ADR-016-local-memory-sqlite.md#decision).
+
+
 
 ## 1. Границы, владение и источник истины
 
@@ -164,7 +166,8 @@ Reset удаляет логическую локальную память, не 
 
 ## 7. Нецели и gates
 
-Базовые persistence/history и расширенный recall разделены в §5 и §9; адаптация принадлежит Character. Embeddings/vector DB, FTS, cloud sync, server memory, многопрофильность и graphic assets остаются вне MVP. Исторические последствия #6–#8 — [P15-A01 RESULT](../archive/P15_A01_RESULT.md#implementation-consequences), #56/#57 — [P15-A02 RESULT](../../../docs/archive/P15_A02_RESULT.md#implementation-consequences).
+Базовые persistence/history и расширенный recall разделены в §5 и §9; адаптация принадлежит Character. Embeddings/vector DB, FTS, cloud sync, server memory, многопрофильность и graphic assets остаются вне MVP. Исторические последствия зафиксированы в связанных Issues #6–#8 и #56/#57.
+
 
 
 ## 8. Integration scope и платформенная приёмка
@@ -232,7 +235,8 @@ Provider DTO получает optional memoryContext только в явно в
 
 ## 10. MEM-A03: важные события и общие шутки (planned)
 
-Решение [#65 / ARCHITECT RESULT](../../../docs/MEM_A03_RESULT.md). Этот раздел — следующая реализация поверх §9, **не описание работающего MVP**. Schema v1, пять wire facts, текущие v1/v2/v3 DTO и перенос backend #62–64 не изменяются. Новая schema2 и wire v4 включаются только завершёнными slices из результата. Character snapshot не меняется; записи ниже не дают adaptation evidence, consent или числовых rewards.
+Решение [#65](https://github.com/zyzycode/project_wisp/issues/65). Этот раздел — следующая реализация поверх §9, **не описание работающего MVP**. Schema v1, пять wire facts, текущие v1/v2/v3 DTO и перенос backend #62–64 не изменяются. Новая schema2 и wire v4 включаются только завершёнными slices из результата. Character snapshot не меняется; записи ниже не дают adaptation evidence, consent или числовых rewards.
+
 
 ### 10.1. Допустимые знания и evidence
 
@@ -290,7 +294,8 @@ Score — число совпавших различных query tokens в label
 
 ## 11. REM-A01: обещания и локальные напоминания (planned)
 
-Решение [#68 / ARCHITECT RESULT](../REM_A01_RESULT.md). Раздел задаёт следующий локальный slice, **не работающую возможность**. Он независим от AI extraction/recall/wire и требует только storage slice MEM-I01 с migration2 (§10.3), затем additive migration3. Текущая реализация schema1 не поддерживает напоминания.
+Решение [#68](https://github.com/zyzycode/project_wisp/issues/68). Раздел задаёт следующий локальный slice, **не работающую возможность**. Он независим от AI extraction/recall/wire и требует только storage slice MEM-I01 с migration2 (§10.3), затем additive migration3. Текущая реализация schema1 не поддерживает напоминания.
+
 
 ### 11.1. Семантика и подтверждение
 

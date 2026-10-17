@@ -12,7 +12,7 @@ Scope задаётся задачей: desktop, backend или обе части
 
 ## Работа
 
-1. Прочитать назначенную Issue: scope, acceptance criteria, out of scope. Проверить `ARCHITECT RESULT` связанных gates; их `Implementation consequences` обязательны, постоянные правила брать из указанных canonical contracts.
+1. Прочитать назначенную Issue: scope, acceptance criteria, out of scope. Проверить `ARCHITECT RESULT` связанных gates в комментариях к Issue; их `Implementation consequences` обязательны, постоянные правила брать из указанных canonical contracts.
 2. Найти целевые файлы через `rg`; прочитать владение/границы и нужные разделы затронутой спецификации, типы и соответствующие тесты. Закончить сбор контекста, когда понятны scope, инварианты и приёмка.
 3. Назвать файлы и минимальный vertical slice. На Fast-Track самостоятельно объявлять/эволюционно расширять порты и DTO в существующих границах; contracts-first сохраняется.
 4. Реализовать slice: Domain/Application, Main/Preload, Renderer, adapters, persistence/provider, desktop/backend integration — в пределах Issue. Новая подсистема/технология требует architect gate.

@@ -71,7 +71,8 @@ eligible(c) = catalog(c)
 
 ## 7. Scoring и arbitration
 
-Каноническая локальная политика — weighted Utility [AUTO-I12](https://github.com/zyzycode/project_wisp/issues/47), реализованная как `AUTO-I12-v2` в [local-activity-policy.ts](../../src/domain/behavior/local-activity-policy.ts). [CHAR-A01 decision](../CHAR_A01_RESULT.md#decision) разрешает прежнее расхождение этой секции с работающим weighted selector; max/clamp-to-one arbitration больше не требуется.
+Каноническая локальная политика — weighted Utility [AUTO-I12](https://github.com/zyzycode/project_wisp/issues/47), реализованная как `AUTO-I12-v2` в [local-activity-policy.ts](../../src/domain/behavior/local-activity-policy.ts). Решение [#66 (CHAR-A01)](https://github.com/zyzycode/project_wisp/issues/66) разрешает прежнее расхождение этой секции с работающим weighted selector; max/clamp-to-one arbitration больше не требуется.
+
 
 Для eligible семейства baseline `w0 = need × personality × repetition`; для ineligible `w0=0`. Факторы — конечные неотрицательные versioned функции Needs, Character traits/relationship и затухающей истории. Environment/quiet/cooldown служат gates. Вес не probability и не обрезается до 1: нормализация выполняется суммой весов. Единственный выбор — по накопленным весам в стабильном порядке calm, Explore, Rest, play, SocialBid, используя один явный RNG draw `[0,1)`. На точной правой границе выигрывает предыдущее положительное ведро; zero-weight rows не выигрывают. Relative position внутри calm bucket переиспользуется для semantic pose без дополнительного draw.
 

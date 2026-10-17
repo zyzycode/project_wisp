@@ -194,7 +194,8 @@ Toggle в существующем меню не включает sleep и не 
 
 ## 7. REM-A01: локальные напоминания (planned)
 
-Семантика, хранение, timing и lifecycle — только [Memory §11](MEMORY_ENGINE.md#11-rem-a01-обещания-и-локальные-напоминания-planned); [ARCHITECT RESULT](../REM_A01_RESULT.md). Этот раздел не объявляет уже доступные методы/поля. REM-I01 сначала добавляет точные TS declarations в [ipc-contracts.ts](../../src/shared/ipc-contracts.ts) и Application ports, затем атомарно подключает validators/Main/Preload/Renderer.
+Семантика, хранение, timing и lifecycle — только [Memory §11](MEMORY_ENGINE.md#11-rem-a01-обещания-и-локальные-напоминания-planned); архитектурное решение — в [#68 (REM-A01)](https://github.com/zyzycode/project_wisp/issues/68). Этот раздел не объявляет уже доступные методы/поля. REM-I01 сначала добавляет точные TS declarations в [ipc-contracts.ts](../../src/shared/ipc-contracts.ts) и Application ports, затем атомарно подключает validators/Main/Preload/Renderer.
+
 
 В существующей поверхности диалога нужны действие «Напомнить о деле» и локальный список «Напоминания». Форма содержит дело, дату, время, фиксированный UTC offset. Подпись поясняет: время не меняется автоматически при переходе на летнее/зимнее время; offset выбирается для заданной даты. Незаданные/неоднозначные поля показывают inline уточнение, без отправки сообщения модели. Свободная реплика в чате сама не создаёт напоминание; возможность формы доступна offline независимо от provider. Отдельное окно Settings/календарь не нужны.
 

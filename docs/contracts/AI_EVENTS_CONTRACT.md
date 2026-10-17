@@ -1,6 +1,7 @@
 # P17-A04: игровые события и AI-инициативы
 
-Canonical contract для [#58](https://github.com/zyzycode/project_wisp/issues/58); реализация — #59 и отдельная server v3 задача. [ARCHITECT RESULT](../archive/P17_A04_RESULT.md). Локальные механики [cursor-game](../../frontend/docs/engine/ACTIVITY_ENGINE.md#17-cursor-game-v1) и [SocialBid](../../frontend/docs/engine/AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость) не ждут сеть и сохраняют владельцев/пределы. Эта функция добавляет короткую речь и ограниченное использование уже выученного предпочтения, без новых сенсоров/игр/графики.
+Canonical contract для [#58](https://github.com/zyzycode/project_wisp/issues/58); реализация — #59 и отдельная server v3 задача. Локальные механики [cursor-game](../../frontend/docs/engine/ACTIVITY_ENGINE.md#17-cursor-game-v1) и [SocialBid](../../frontend/docs/engine/AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость) не ждут сеть и сохраняют владельцев/пределы. Эта функция добавляет короткую речь и ограниченное использование уже выученного предпочтения, без новых сенсоров/игр/графики.
+
 
 ## 1. Минимальный scope автономных событий и владение
 

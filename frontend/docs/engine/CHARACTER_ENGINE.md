@@ -159,7 +159,8 @@ Preferences/axes сохраняются существующим snapshot v1; tr
 
 ### 9.1. CHAR-A01: следующий локальный набор предпочтений
 
-**Целевой контракт, runtime ещё не реализован.** [Решение и Implementation consequences](../CHAR_A01_RESULT.md). Существующая `activity.cursor_game` сохраняет reducer и consumer выше. Добавляются ровно два ключа; произвольные темы, новая модель отношений, обучение от inferred knowledge/игровых исходов не входят в этот slice.
+**Целевой контракт, runtime ещё не реализован.** Решение и требования реализации — в [#66 (CHAR-A01)](https://github.com/zyzycode/project_wisp/issues/66). Существующая `activity.cursor_game` сохраняет reducer и consumer выше. Добавляются ровно два ключа; произвольные темы, новая модель отношений, обучение от inferred knowledge/игровых исходов не входят в этот slice.
+
 
 | Character key | Persisted user fact | Local consumer | Полная принимаемая фраза RU / EN |
 |---|---|---|---|

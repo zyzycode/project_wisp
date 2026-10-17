@@ -72,7 +72,8 @@ Success и error — альтернативы, не два ответа одно
 
 ## 5. Закрытая alpha: серверный admission, учёт и повторы
 
-Решение [BE-A01 #52](../archive/BE_A01_RESULT.md); текущая структура реализации — [архитектура backend](../../backend/docs/ARCHITECTURE.md). Wire v1, его типы и fixtures не меняются; quota/auth metadata не добавляются. Ниже — целевое поведение, не утверждение о готовности сервера. Клиентские ограничения остаются независимыми.
+Решение [#52](https://github.com/zyzycode/project_wisp/issues/52); текущая структура реализации — [архитектура backend](../../backend/docs/ARCHITECTURE.md). Wire v1, его типы и fixtures не меняются; quota/auth metadata не добавляются. Ниже — целевое поведение, не утверждение о готовности сервера. Клиентские ограничения остаются независимыми.
+
 
 Один admission, ledger и RAM replay cache обслуживают `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`. Все обращения учитываются совместно; health не вызывает provider и не создаёт запись расхода. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
 

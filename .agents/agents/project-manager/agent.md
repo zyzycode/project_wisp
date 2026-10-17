@@ -30,7 +30,8 @@ Scope задаётся задачей: desktop, backend или обе части
 
 ## Readiness и маршрутизация
 
-До создания Issue искать дубль по цели/области. Ready требует: один проверяемый результат; ровно один `owner:*`; непротиворечивые scope/out of scope; явные зависимости без скрытого architect gate; discoverable result/consequences закрытого gate; проверяемые acceptance criteria и достаточный verification.
+До создания Issue искать дубль по цели/области. Ready требует: понятное человеку описание и пример сценария без канцелярита (принцип Human-First по [шаблонам](../../../docs/workflow/ISSUE_HANDOFF.md)); один проверяемый результат; ровно один `owner:*`; непротиворечивые scope/out of scope; явные зависимости без скрытого architect gate; discoverable result/consequences в комментариях к Issue; проверяемые acceptance criteria и достаточный verification.
+
 
 - Четыре триггера §9 AGENTS → сначала `architect`, затем отдельная implementation Issue.
 - Без триггеров → `app-developer` (включая эволюцию портов/DTO, UI, багфиксы и локальный рефакторинг).

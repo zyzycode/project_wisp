@@ -1,6 +1,7 @@
 # ADR-016: Локальная память MVP и SQLite-драйвер
 
-Status: architect accepted; independent review временно отменён пользователем для запуска 2026-09-18. Task: [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21). [ARCHITECT RESULT и Implementation consequences](../archive/P15_A01_RESULT.md). Версии и security findings ниже — снимок этого review.
+Status: architect accepted; independent review временно отменён пользователем для запуска 2026-09-18. Task: [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21). Версии и security findings ниже — снимок этого review.
+
 
 ## Decision
 
