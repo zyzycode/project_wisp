@@ -12,7 +12,7 @@ Desktop AI-компаньон на Electron + React + TypeScript и Python/FastA
 
 ## Подготовка
 
-Проверенный runtime: Node.js 24, npm 10+, Python 3.10+. Тесты памяти требуют `node:module.registerHooks`; Node 22.13 недостаточен. Все команды ниже выполняются из корня репозитория.
+Проверенный runtime: Node.js 24, npm 10+, Python 3.12+. Тесты памяти требуют `node:module.registerHooks`; Node 22.13 недостаточен. Все команды ниже выполняются из корня репозитория.
 
 ```powershell
 npm --prefix frontend install

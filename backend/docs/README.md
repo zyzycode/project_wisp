@@ -12,7 +12,7 @@ Health проверяет HTTP runtime; доступность провайде�
 
 ## Запуск
 
-Из `backend/`, Python 3.10+:
+Из `backend/`, Python 3.12+:
 
 ```powershell
 python -m venv .venv

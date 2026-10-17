@@ -4,7 +4,7 @@
 
 ## Runtime и границы
 
-- Python 3.10+, FastAPI, Pydantic, httpx, Groq. Entry point — `main.py`; application composition — `wisp_backend/application.py`. Зависимости — `requirements.txt` и `requirements-dev.txt`; тесты — pytest.
+- Python 3.12+, FastAPI, Pydantic, httpx, Groq. Entry point — `main.py`; application composition — `wisp_backend/application.py`. Зависимости — `requirements.txt` и `requirements-dev.txt`; тесты — pytest.
 - API boundary валидирует вход, JSON/UTF-8, разрешённые поля, длины UTF-16, byte caps и ошибки до provider call. Wire DTO — Pydantic schemas; provider credentials, model и prompts остаются серверными.
 - Канонические контракты — [Backend v1](../docs/contracts/BACKEND_API_CONTRACT.md), [memory](../docs/contracts/BACKEND_MEMORY_CONTRACT.md), [events](../docs/contracts/AI_EVENTS_CONTRACT.md). Читать только контракт изменяемого endpoint. Фактическая версия импортированного сервера и известные gaps — в [серверном навигаторе](docs/README.md).
 - Сервер возвращает семантические предложения; не исполняет локальные FSM/physics, не меняет локальную память напрямую. Desktop и backend не импортируют реализацию друг друга.
