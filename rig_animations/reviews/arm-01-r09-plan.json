@@ -1,6 +1,6 @@
 {
   "revision": "ARM-01/r09-plan",
-  "stage": "layer and overlap map; awaiting user review",
+  "stage": "layer and overlap map accepted; layer preparation started",
   "target_acceptance": {
     "revision": "ARM-01/r08-target/v1",
     "user_statement": "найс, давай дальше",
@@ -141,5 +141,9 @@
     "Save and reopen separate PSD2Live working copy before accepting native assembly."
   ],
   "generated_this_stage": false,
-  "editor_changed": false
+  "editor_changed": false,
+  "map_acceptance": {
+    "user_statement": "дальше",
+    "scope": "Proceed from reviewed layer map to separate layer preparation"
+  }
 }
