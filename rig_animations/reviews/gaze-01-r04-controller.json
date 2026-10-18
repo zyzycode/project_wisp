@@ -1,6 +1,6 @@
 {
   "revision": "GAZE-01/r04",
-  "status": "prototype delivered; user visual acceptance pending",
+  "status": "rejected by user: extreme downward pose visually unacceptable",
   "feedback": "r03 horizontal gaze accepted; add up/down and remove lower iris clipping",
   "scope": "rig_animations only",
   "project": "work/gaze-01/r04/gaze-01-r04.psd2live",
@@ -89,7 +89,7 @@
     "poses_checked": 121,
     "outside_eye_region_static": true,
     "authored_two_axis_motion_exported": true,
-    "acceptance": "r03 accepted; r04 user visual acceptance pending",
+    "acceptance": "r03 horizontal accepted; r04 extreme downward pose rejected",
     "cubism_core_consistency": 1,
     "moc3_bytes": 72256,
     "runtime_render_tested": false
@@ -181,5 +181,11 @@
     "Small original iris edge irregularities and slight top continuation texture remain at high magnification",
     "No blink rig, Wisp integration or official Cubism Player visual verification",
     "Projects, frames and exports are local ignored artifacts; Git stores authoring recipe and review page"
-  ]
+  ],
+  "user_review": {
+    "feedback": "реализация в самом нижнем положении ужасна, думаю что нужно поменять флоу, чтобы так не получалось",
+    "next_step": "Target downward image beside accepted r03; then neutral/middle/extreme visual check before full motion/export",
+    "accepted_gaze_base": "r03",
+    "numerical_pass_is_not_visual_acceptance": true
+  }
 }
