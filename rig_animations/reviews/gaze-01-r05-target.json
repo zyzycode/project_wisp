@@ -1,0 +1,89 @@
+{
+  "revision": "GAZE-01/r05-target",
+  "stage": "target appearance; no new gaze controller or motion",
+  "status": "candidate C ready for user visual review; not accepted",
+  "accepted_gaze_base": "r03",
+  "presented_candidate": "down-c",
+  "project": "work/gaze-01/r05-target/down-c/down-c.psd2live",
+  "recipe": "python3 scripts/prepare_gaze_down_targets.py (refuses existing targets)",
+  "method": "Local PSD2Live layer placement/scaling only; source PNGs reused byte-for-byte from r03",
+  "scope": "rig_animations only; no new texture reconstruction, cloud calls, models or dependencies",
+  "visual_review": {
+    "down-a": "rejected internally: diagonal lower iris clipping",
+    "down-b": "rejected internally: stronger diagonal/flat lower clipping",
+    "down-c": "candidate: round lower contours and no upper gap; downward direction weak",
+    "down-d": "rejected internally: white gap under upper lid"
+  },
+  "material_limitations": [
+    "C shortens both irises, pupils and highlights vertically by about6%; this is not rigid vertical translation",
+    "At384px character display height downward gaze is very subtle; upper lid lowering is more apparent",
+    "Static target only; no accepted vertical rig, diagonals or motion"
+  ],
+  "verification": {
+    "stage": "static target reference; user selection pending",
+    "new_gaze_axis": false,
+    "authored_motion": false,
+    "source_sha256": "f0c3a98fc8876b3aebbaf9804db8ccd611c2465c6bca49d0171e7bff7fd13cb7",
+    "r03_project_sha256": "a4efbbee6ed191fbc8005132a215b79cab03623c400f1770ae64f1a7368cb702",
+    "source_layer_pixels_unchanged": true,
+    "poses": {
+      "neutral": {
+        "upper_lash_down_px": 0,
+        "upper_aperture_down_px": 0,
+        "aperture_width_and_bottom_unchanged": true,
+        "reopen_identical": true,
+        "outside_eyes_identical_to_r03": true,
+        "changed_pixels_from_neutral": 0,
+        "iris_top_down_px": 0,
+        "iris_height_reduction_px": 0
+      },
+      "down-a": {
+        "upper_lash_down_px": 2,
+        "upper_aperture_down_px": 2,
+        "aperture_width_and_bottom_unchanged": true,
+        "reopen_identical": true,
+        "outside_eyes_identical_to_r03": true,
+        "changed_pixels_from_neutral": 10810,
+        "iris_top_down_px": 2,
+        "iris_height_reduction_px": 0
+      },
+      "down-b": {
+        "upper_lash_down_px": 3,
+        "upper_aperture_down_px": 3,
+        "aperture_width_and_bottom_unchanged": true,
+        "reopen_identical": true,
+        "outside_eyes_identical_to_r03": true,
+        "changed_pixels_from_neutral": 11190,
+        "iris_top_down_px": 3,
+        "iris_height_reduction_px": 0
+      },
+      "down-c": {
+        "upper_lash_down_px": 4,
+        "iris_height_reduction_px": 4,
+        "upper_aperture_down_px": 4,
+        "aperture_width_and_bottom_unchanged": true,
+        "reopen_identical": true,
+        "outside_eyes_identical_to_r03": true,
+        "changed_pixels_from_neutral": 11308,
+        "iris_top_down_px": 4
+      },
+      "down-d": {
+        "iris_top_down_px": 8,
+        "upper_lash_down_px": 5,
+        "iris_height_reduction_px": 8,
+        "upper_aperture_down_px": 5,
+        "aperture_width_and_bottom_unchanged": true,
+        "reopen_identical": true,
+        "outside_eyes_identical_to_r03": true,
+        "changed_pixels_from_neutral": 11569
+      }
+    }
+  },
+  "review_browser": {
+    "native_face_and_full_images_loaded": true,
+    "comparison_at_same_scale": true,
+    "neutral_comparison_toggle": true,
+    "dark_and_light_backgrounds": true,
+    "character_display_height_px": 384
+  }
+}
