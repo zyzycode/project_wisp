@@ -29,11 +29,12 @@
   "outside_eye_region_identical_to_r03": true,
   "axis_samples": 21,
   "method": "Rigid mesh translation; iris masked by unchanged r03 sclera",
-  "controller_acceptance": "Pending user review",
+  "controller_acceptance": "Accepted by user: eyes ready; four cardinal directions",
   "authored_clip": false,
   "export": "Not run: controller review stage; no runtime integration",
   "accepted_r07_project_unchanged": true,
   "accepted_r07_sha256": "53811beb527fb7b6ac86052fabc8f0c95352cc560819e616544095b45a33e4d8",
   "neutral_and_horizontal_extremes_identical_to_r07": true,
-  "both_vertical_extremes_changed_from_r07": true
+  "both_vertical_extremes_changed_from_r07": true,
+  "acceptance_record": "gaze-01-r08-acceptance.json"
 }
