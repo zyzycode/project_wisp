@@ -12,7 +12,8 @@ from mcp import ROOT, client
 from prepare_mask_test import EXPECTED
 from prototype_gaze_rigid import checksum, write
 
-OUT = ROOT / "work/gaze-01/r07"
+REVISION = "r07"
+OUT = ROOT / "work/gaze-01" / REVISION
 BASE = ROOT / "work/gaze-01/r03"
 ART = ROOT / "work/gaze-01/r06-layers/v2/native"
 PROJECT = OUT / "gaze-01-r07.psd2live"
@@ -41,7 +42,7 @@ def prepare(config):
     source = OUT / "source"
     source.mkdir(parents=True, exist_ok=True)
     layout = json.loads((BASE / "source/layout.json").read_text())
-    layout["name"] = "Wisp accepted generated irises r07"
+    layout["name"] = "Wisp accepted generated irises " + REVISION
     for layer in layout["layers"]:
         name = layer["image"]["path"]
         is_iris = layer["id"].startswith("iris_")
@@ -101,7 +102,7 @@ def build():
             "masked_by": [meshes["white_" + side].split(":")[1]]} for side in ["right", "left"]])
         dimensions = {p["id"]: (p["rect"]["width"], p["rect"]["height"]) for p in layout["layers"]}
         horizontal = [{"target": meshes["iris_" + side], "value": value,
-            "operations": [{"type": "translate", "delta": [value * 8 / dimensions["iris_" + side][0], 0]}]}
+            "operations": [{"type": "translate", "delta": [value * config["horizontal_px"] / dimensions["iris_" + side][0], 0]}]}
             for side in ["right", "left"] for value in [-1, 1]]
         c.edit("author_axis", parameter={"id": X, "name": "Gaze horizontal", "min": -1, "max": 1, "default": 0}, shapes=horizontal)
         vertical = [{"target": meshes["iris_" + side], "value": value, "key": {X: x},
@@ -111,14 +112,17 @@ def build():
         c.edit("author_axis", parameter={"id": Y, "name": "Gaze vertical", "min": -1, "max": 1, "default": 0}, shapes=vertical)
         write(OUT / "authored-axes.json", {"horizontal": horizontal, "vertical": vertical})
         c.edit("project_save_as", path=str(PROJECT))
-        for name, y in [("up", -1), ("neutral", 0), ("down", 1)]:
-            render(c, f"poses/{name}-face.png", y=y)
-            render(c, f"poses/{name}-full.png", y=y, face=False)
+        for name, x, y in [("up", 0, -1), ("neutral", 0, 0), ("down", 0, 1),
+                           ("left", -1, 0), ("right", 1, 0)]:
+            render(c, f"poses/{name}-face.png", x=x, y=y)
+            render(c, f"poses/{name}-full.png", x=x, y=y, face=False)
     print("Built", PROJECT, flush=True)
 
 
 def verify():
     prior_hash = checksum(BASE / "gaze-01-r03.psd2live")
+    accepted_project = ROOT / "work/gaze-01/r07/gaze-01-r07.psd2live"
+    accepted_hash = checksum(accepted_project)
     config = json.loads((OUT / "placement.json").read_text())
     source = OUT / "source"
     layout = json.loads((source / "layout.json").read_text())
@@ -141,6 +145,14 @@ def verify():
         assert structure["items"] == c.call("workspace_inspect", {"scope": "parameters", "limit": 64})[0]["items"]
         assert not np.array_equal(after[0], after[2])
         assert not np.array_equal(after[3], after[4])
+        if REVISION == "r08":
+            accepted = accepted_project.parent
+            for current, path in [(after[1], "poses/neutral-full.png"),
+                                  (after[3], "frames/x-full-00.png"),
+                                  (after[4], "frames/x-full-20.png")]:
+                assert np.array_equal(current, np.array(Image.open(accepted / path).convert("RGBA")))
+            for current, name in [(after[0], "up"), (after[2], "down")]:
+                assert not np.array_equal(current, np.array(Image.open(accepted / f"poses/{name}-full.png").convert("RGBA")))
         fixed = [name for name in LAYERS if not name.startswith("iris_")]
         fixed_up = render(c, "checks/fixed-up.png", y=-1, face=False, include=fixed)
         fixed_down = render(c, "checks/fixed-down.png", y=1, face=False, include=fixed)
@@ -159,7 +171,9 @@ def verify():
             print("Verified axis", axis, flush=True)
     assert checksum(ROOT / "character_reference.png") == EXPECTED
     assert checksum(BASE / "gaze-01-r03.psd2live") == prior_hash
-    report = {"revision": "GAZE-01/r07", "placement": config,
+    if REVISION != "r07":
+        assert checksum(accepted_project) == accepted_hash
+    report = {"revision": "GAZE-01/" + REVISION, "placement": config,
         "accepted_artwork": "r06-layers/v2/native; user accepted and requested rig implementation",
         "source_unchanged": True, "r03_project_unchanged": True, "accepted_pngs_byte_identical": True,
         "fixed_layer_images_and_rects_identical_to_r03": True, "fixed_layer_extreme_renders_identical": True,
@@ -168,13 +182,27 @@ def verify():
         "method": "Rigid mesh translation; iris masked by unchanged r03 sclera",
         "controller_acceptance": "Pending user review", "authored_clip": False,
         "export": "Not run: controller review stage; no runtime integration"}
+    if REVISION != "r07":
+        report["accepted_r07_project_unchanged"] = True
+        report["accepted_r07_sha256"] = accepted_hash
+        report["neutral_and_horizontal_extremes_identical_to_r07"] = True
+        report["both_vertical_extremes_changed_from_r07"] = True
     write(OUT / "verification.json", report)
-    write(ROOT / "reviews/gaze-01-r07-controller.json", report)
+    write(ROOT / f"reviews/gaze-01-{REVISION}-controller.json", report)
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["build", "verify"])
+    parser.add_argument("--revision", choices=["r07", "r08"], default="r07")
     args = parser.parse_args()
+    if args.revision == "r08":
+        REVISION = "r08"
+        OUT = ROOT / "work/gaze-01/r08"
+        PROJECT = OUT / "gaze-01-r08.psd2live"
+        PLACEMENT = {**PLACEMENT, "up_px": 8, "down_px": 4,
+                     "reason": "User accepted r07 and requested larger amplitude and left/right",
+                     "lower_limit": "One pixel beyond r07 downward limit; visually inspect rounded tip",
+                     "combinations": "Current review uses cardinal directions separately"}
     (build if args.action == "build" else verify)()
