@@ -1,0 +1,63 @@
+{
+  "revision": "ARM-01/r08-target",
+  "stage": "target pose only; user acceptance pending",
+  "generator": "built-in image_gen; cloud; cost not reported",
+  "requested_edit_region": {
+    "rectangle_xyxy": [
+      600,
+      280,
+      950,
+      1000
+    ],
+    "description": "viewer-right bracelet arm, sleeve and adjacent shoulder; semantic prompt restriction, not an enforced input mask"
+  },
+  "selected_candidate": "work/arm-01/r08-target/raw/target-v1.png",
+  "selection_reason": "v2 retained halo and changed the mouth further; retain v1 for pose discussion",
+  "source_sha256": "f0c3a98fc8876b3aebbaf9804db8ccd611c2465c6bca49d0171e7bff7fd13cb7",
+  "requests": [
+    {
+      "output": "work/arm-01/r08-target/raw/target-v1.png",
+      "references": [
+        "character_reference.png"
+      ],
+      "prompt": "Use case: precise-object-edit.\nInput image: the attached ORIGINAL Wisp character PNG, 1024 x 1536, is both the edit target and the sole identity/style reference.\nDeliver EXACTLY ONE full-body character image, not a sheet, not multiple poses, not separated layers. Transparent PNG with real alpha. Requested canvas 1024x1536; preserve source framing, character scale and alignment with generous room for the raised hand. This is a target pose for a later 2D arm rig.\nPrimary edit: change ONLY the character's LEFT arm (on the viewer's RIGHT, the arm wearing blue and red wrist bracelets) and the attached local shirt sleeve into a raised, elbow-bent pose. Raise the upper arm outward to the viewer's right, elbow to the right of the torso and somewhat below shoulder height; bend the elbow approximately 90 degrees so the forearm points upward and the hand is beside the head, outside the face/hair silhouette. Show a relaxed open hand, fingers together/slightly separated, anatomically coherent stylized chibi hand with five fingers total. Preserve arm thickness and limb length. Keep the blue and red bracelets correctly encircling this wrist, same ordering as the source.\nThe upper sleeve must follow the shoulder/upper arm, retain the same loose white fabric, coherent sleeve opening, local folds and clean overlap over the skin. Preserve the rest of the torso silhouette and shirt graphic; only modest physically necessary shoulder/armpit sleeve changes. No dislocated shoulder, no disconnected forearm, no elongated thin arm.\nStrictly preserve EVERYTHING ELSE from the original: identical blue/white asymmetric hair, hair clips and colors; identical golden eyes/pupils and highlights, brows, lashes, small smiling mouth, face shape and expression; head pose/size; chest graphic with gold circle; opposite arm and hand stay lowered exactly as the source; shorts, drawstrings, legs, socks/leg warmers, footwear, stance, proportions, lighting and understated shaded anime/chibi illustration style. Do not reinterpret or beautify the whole character. No new accessories, no lettering, no props, no background, no shadow floor, no watermark. Do not mirror the image. Only one arm raised and bent.\nAim for the original pixels outside the raised-arm/sleeve area to remain unchanged. Keep full head and both shoes inside the frame. One complete target-pose image only.\n",
+      "size": [
+        1024,
+        1536
+      ],
+      "alpha_extrema": [
+        0,
+        254
+      ],
+      "sha256": "3e9f02ddc85692bd2c012811a967cfbbb745da233a510e28be218a65a11a16c2",
+      "outside_region_changed_pixels": 1223310,
+      "outside_region_source_foreground_changed_fraction": 0.9901
+    },
+    {
+      "output": "work/arm-01/r08-target/raw/target-v2.png",
+      "references": [
+        "work/arm-01/r08-target/raw/target-v1.png",
+        "character_reference.png"
+      ],
+      "prompt": "Use case: background-extraction / precise-object-edit.\nImage 1 is the target pose to edit: Wisp with the bracelet arm on the viewer's RIGHT raised and bent at the elbow. Image 2 is the original character reference for faithful appearance.\nProduce EXACTLY ONE full-body target-pose PNG, 1024x1536. KEEP THE RAISED BENT ARM POSE FROM IMAGE 1, same arm, elbow, open hand and wrist bracelets; opposite arm remains lowered. Preserve its full-body placement, size and framing.\nCorrection: remove ALL the invented smoky backdrop, glow, bloom, drop shadow and soft halos surrounding the character. Outside the precise character silhouette must be genuinely transparent alpha=0, including between arm and body, beside hair, between legs and shoes. Only a narrow ordinary antialiased character edge. No background color, no opaque black, no checkerboard, no atmospheric lighting. Keep colors opaque inside the actual character; do not fade or feather the figure itself. No external glow around hair, hand, arm, torso or legs.\nMatch the original source character in Image 2 as closely as possible for face, eyes, hair silhouette, shirt graphic, shorts, footwear and rendering, while retaining the raised bent bracelet-arm pose. Do not move the face or regenerate a different expression. Preserve golden eyes, small smile, blue/white hair, two hair clips, blue and red bracelets. No extra fingers, limbs, accessories or text. Output one image only; not a sheet or multiple alternatives.\n",
+      "size": [
+        1024,
+        1536
+      ],
+      "alpha_extrema": [
+        0,
+        254
+      ],
+      "sha256": "df7db6c0c1ca6c408f5200e00cb5b9cd1565d8bec8d2cd5911c9f7d5f0374138",
+      "outside_region_changed_pixels": 1237516,
+      "outside_region_source_foreground_changed_fraction": 0.9905
+    }
+  ],
+  "limitations": [
+    "Background halo remains: not a clean isolated layer.",
+    "Pixels outside the arm region differ, including linework and shading.",
+    "Neither target approval nor this generation automatically replaces accepted rig layers."
+  ],
+  "editor_modified": false,
+  "layers_generated": false
+}

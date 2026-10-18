@@ -52,6 +52,15 @@ reviewed, not extraction masks or approved anatomy.
 
 ## Reference-generated layers
 
+Generate each image in a separate request: one target-pose variant or one isolated
+layer per call. Never ask for multiple layers, both paired parts, alternate poses,
+contact sheets or sprite sheets in one generated output. Several reference inputs
+may support that single output. Anchor every request to the original character;
+add the accepted pose or assembly as needed. Save and inspect each output before
+requesting the next, so an error is not propagated through the whole set. Reuse
+accepted assets instead of regenerating them with neighboring parts. Separate
+requests reduce cross-part drift but do not guarantee fidelity; check every layer.
+
 When the user requests a separate layer generated from a reference, prepare that
 layer before forcing motion out of an incomplete cutout. Read the current scope
 and the "Отдельный слой по референсу" workflow in the workspace README. The user
