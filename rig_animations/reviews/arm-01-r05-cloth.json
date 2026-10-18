@@ -1,6 +1,6 @@
 {
   "revision": "ARM-01/r05-candidate-1",
-  "status": "awaiting texture review",
+  "status": "rejected by user; do not use in rig",
   "approved_plan": "arm-01-r05-plan.json",
   "native_material_draw": {
     "id": "wisp_hidden_cloth_A_r05",
@@ -54,5 +54,6 @@
     "authoring_material": "work/arm-01/r05/arm-01-r05-authoring.psd2live",
     "psd": "work/arm-01/r05/arm-01-r05.psd"
   },
-  "next_review": "Assess patch A shape and shading; do not proceed automatically to rim/skin/controller"
+  "next_review": "Assess patch A shape and shading; do not proceed automatically to rim/skin/controller",
+  "rejection": "Wide gradient patch was not justified by actual sleeve movement; return to deformation study before determining hidden cloth"
 }
