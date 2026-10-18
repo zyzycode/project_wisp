@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARM-01 · реальные слои PSD2Live · r03</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf1f6;color:#20314a;font:15px/1.5 system-ui,sans-serif}
+main{max-width:1100px;margin:auto;padding:22px}h1{font-size:25px;margin:8px 0}h2{font-size:18px}
+.badge{background:#fff0c9;padding:5px 10px;border-radius:6px}button{font:inherit;border:1px solid #bac6d8;background:white;color:#20314a;padding:9px 12px;border-radius:7px;cursor:pointer}
+button[aria-pressed=true]{background:#264c80;color:white}.tools{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.stage{background:repeating-conic-gradient(#e0e5ed 0% 25%,#f5f7fa 0% 50%) 0/24px 24px;border:1px solid #c5cede;border-radius:12px;overflow:hidden}
+svg{display:block;width:100%;max-height:650px}.notes{background:white;border-radius:12px;padding:16px 22px;margin-top:16px}
+a{color:#285c9e}.zone{fill:#ffb020;fill-opacity:.3;stroke:#a85d00;stroke-width:2;stroke-dasharray:6 4}
+svg text{font:700 11px system-ui;fill:#6d3900;paint-order:stroke;stroke:white;stroke-width:3px}
+small{color:#53657a}li{margin:6px 0}
+</style>
+<main>
+<span class="badge">ARM-01 / r03 · слои в редакторе · черновик на просмотр</span>
+<h1>Рукав отделён в PSD2Live</h1>
+<p>На странице — PNG реальных слоёв из редактора. Здесь можно только рассматривать результат; рабочий проект и история разделения находятся в PSD2Live.</p>
+<div class="tools" aria-label="Просмотр слоёв">
+<button data-mode="all" aria-pressed="true">Сборка</button><button data-mode="without" aria-pressed="false">Без рукава</button>
+<button data-mode="sleeve" aria-pressed="false">Рукав отдельно</button><button data-mode="rim" aria-pressed="false">Кромка отдельно</button>
+<button data-mode="body" aria-pressed="false">Корпус футболки</button>
+</div>
+<div class="tools"><button id="zones" aria-pressed="false">Показать скрытые зоны</button><button id="background">Тёмный фон</button><button id="zoom">Крупно рукав</button></div>
+<p id="caption" role="status">Все четыре слоя в исходном положении. Анимация не добавлялась.</p>
+<div class="stage" id="stage">
+<svg viewBox="255 475 530 480" role="img" aria-label="Слои корпуса футболки, переднего рукава и внутренней кромки">
+<image id="context" href="arm-01-r03-assets/character_context.png" width="1024" height="1536"/>
+<image id="body" href="arm-01-r03-assets/shirt_body.png" width="1024" height="1536"/>
+<image id="rim" href="arm-01-r03-assets/sleeve_rim_L.png" width="1024" height="1536"/>
+<image id="front" href="arm-01-r03-assets/sleeve_front_L.png" width="1024" height="1536"/>
+<g id="missing" style="display:none">
+<path class="zone" d="M617 580 Q638 606 645 655 L671 736 L644 770 Q617 720 606 647Z"/>
+<path class="zone" d="M660 738 Q681 720 708 705 L735 754 Q707 781 682 790Z"/>
+<text x="546" y="621">A · ткань под рукавом</text><text x="634" y="809">B · продолжение кромки</text>
+</g>
+</svg></div>
+<section class="notes">
+<h2>Что смотреть</h2>
+<ul><li><b>Корпус:</b> ткань над плечом и принт остаются отдельными от рабочего рукава. Противоположный рукав пока включён в корпус.</li>
+<li><b>Рукав:</b> передняя белая ткань отделена от двух видимых фрагментов серой внутренней кромки. Между фрагментами находится рука; скрытое продолжение ещё не восстановлено.</li>
+<li><b>Без рукава:</b> прозрачное место показывает, что в одном исходном рисунке нет ткани корпуса под перекрытием. Это ещё не готовая поверхность для поднятой руки.</li></ul>
+<h2>Ограничения этой версии</h2>
+<p>Границы — первый проход. У кромки есть тонкие остатки цвета кожи/контура руки; подол корпуса и край под прядью выделены приближённо. Оставшиеся пиксели находятся в слое контекста, поэтому полная сборка скрывает эти недостатки. Перед движением контуры нужно довести.</p>
+<p>Оранжевые зоны A/B — схема будущего восстановления, <b>не утверждённая маска генерации</b>. Их окончательный объём зависит от согласованного подъёма руки. Скрытая кожа, нахлёсты и задняя ткань не дорисованы; готовность к анимации не заявляется.</p>
+<h2>Проверка</h2>
+<p>Четыре PNG совпадают до и после повторного открытия проекта. Альфа обратной сборки совпадает с исходником; у 1587 видимых пикселей цвет отличается максимум на 1/255. Исходный PNG не изменён. Экспорт PSD содержит четыре слоя.</p>
+<p><a href="arm-01-r03-assets/arm-01-r03.psd2live" download>Проект PSD2Live</a> · <a href="arm-01-r03-assets/arm-01-r03.psd" download>Слоёный PSD</a> · <a href="arm-01.html">Предыдущая карта r02</a></p>
+<small>Следующее решение: замечания к разделению рукава и перекрытиям. Дорисовка и контроллеры автоматически не запускаются.</small>
+</section>
+</main>
+<script>
+const modes={all:['context','body','rim','front'],without:['context','body'],sleeve:['rim','front'],rim:['rim'],body:['body']};
+const captions={all:'Все четыре слоя в исходном положении. Анимация не добавлялась.',without:'Скрыты передняя ткань и кромка. Под ними пока нет восстановленного корпуса.',sleeve:'Две реальные детали рукава: передняя ткань и внутренняя кромка.',rim:'Два видимых фрагмента внутренней кромки; скрытой ткани между ними пока нет.',body:'Корпус футболки с противоположным рукавом. Контур подола и участок под волосами — черновые.'};
+document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{
+ const mode=button.dataset.mode;
+ for(const id of modes.all)document.getElementById(id).style.display=modes[mode].includes(id)?'':'none';
+ document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+ document.querySelector('#caption').textContent=captions[mode];
+});
+document.querySelector('#zones').onclick=function(){const show=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',String(show));document.querySelector('#missing').style.display=show?'':'none';this.textContent=show?'Скрыть зоны':'Показать скрытые зоны';};
+let dark=false;document.querySelector('#background').onclick=function(){dark=!dark;document.querySelector('#stage').style.background=dark?'#243145':'';this.textContent=dark?'Светлый фон':'Тёмный фон';};
+let closeup=false;document.querySelector('#zoom').onclick=function(){closeup=!closeup;document.querySelector('svg').setAttribute('viewBox',closeup?'575 515 205 320':'255 475 530 480');this.textContent=closeup?'Вся футболка':'Крупно рукав';};
+</script>
+</html>
