@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wisp · взгляд · r03</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #243043; background: #edf1f6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1180px; margin: auto; padding: 28px 20px 40px; }
+    h1 { margin: 0 0 8px; font-size: clamp(24px, 4vw, 36px); line-height: 1.2; }
+    h2 { margin: 0; font-size: 18px; }
+    p { margin: 8px 0 16px; }
+    .eyebrow { color: #536880; font-size: 13px; font-weight: 700; letter-spacing: .06em; }
+    .status { display: inline-block; padding: 4px 11px; border-radius: 20px; background: #fff2cb; color: #654d0b; font-size: 14px; }
+    .controls, .card { border: 1px solid #d4dce6; border-radius: 16px; background: #fff; overflow: hidden; }
+    .controls { padding: 18px; margin: 22px 0; }
+    .row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .row + .row { margin-top: 16px; }
+    button, select { font: inherit; border: 1px solid #b1bfd0; border-radius: 8px; padding: 8px 12px; color: inherit; background: #fff; cursor: pointer; }
+    button.primary { background: #314f93; border-color: #314f93; color: white; min-width: 150px; }
+    button:hover, select:hover { filter: brightness(.96); }
+    :focus-visible { outline: 3px solid #6291ed; outline-offset: 3px; }
+    .slider-group { flex: 1; min-width: 230px; }
+    .slider-label { display: flex; justify-content: space-between; gap: 12px; }
+    output { font-variant-numeric: tabular-nums; min-width: 55px; text-align: right; }
+    input[type="range"] { width: 100%; accent-color: #314f93; cursor: pointer; }
+    .scale { display: flex; justify-content: space-between; font-size: 12px; color: #536880; }
+    label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    input[type="checkbox"] { width: 18px; height: 18px; accent-color: #314f93; }
+    .gallery { display: grid; grid-template-columns: minmax(230px, .8fr) minmax(320px, 1.3fr); gap: 20px; align-items: start; }
+    .card-head { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .badge { font-size: 12px; color: #536880; }
+    .stage { position: relative; overflow: hidden; background: #f5f5f5; }
+    .stage.full { aspect-ratio: 2 / 3; max-height: 650px; }
+    .stage.face { aspect-ratio: 11 / 7; }
+    .stage > img { width: 100%; height: 100%; position: absolute; inset: 0; object-fit: contain; object-position: center center; }
+    .stage img[hidden] { display: none; }
+    .stage.checker { background-color: #f8f8f8; background-image: linear-gradient(45deg, #dbe0e7 25%, transparent 25%), linear-gradient(-45deg, #dbe0e7 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #dbe0e7 75%), linear-gradient(-45deg, transparent 75%, #dbe0e7 75%); background-size: 24px 24px; background-position: 0 0, 0 12px, 12px -12px, -12px 0; }
+    .stage.dark { background: #242b36; }
+    .caption { margin: 0; padding: 12px 18px; font-size: 14px; color: #536880; }
+    .note { margin-top: 20px; max-width: 850px; color: #536880; }
+    a { color: #244d9d; text-underline-offset: 3px; }
+    nav { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 20px; }
+    #load-error { color: #9d2424; }
+    @media (max-width: 650px) { .gallery { grid-template-columns: 1fr; } main { padding: 20px 12px; } .stage.full { max-height: 540px; } }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">WISP / ПРОБА ДВИЖЕНИЯ / r03</p>
+    <h1>Горизонтальное движение радужек</h1>
+    <p>Радужки, зрачки и блики перемещаются целиком. Форма глаза остаётся неподвижной.</p>
+    <span class="status">Прототип · ещё не принят пользователем</span>
+
+    <section class="controls" aria-label="Управление просмотром">
+      <div class="row">
+        <button id="play" class="primary" type="button" aria-pressed="false">▶ Воспроизвести</button>
+        <button id="neutral" type="button">Исходная поза</button>
+        <div class="slider-group">
+          <div class="slider-label"><label for="gaze">Направление взгляда</label><output id="value" for="gaze">0.00</output></div>
+          <input id="gaze" type="range" min="-1" max="1" step="0.1" value="0" aria-valuetext="Исходное положение">
+          <div class="scale" aria-hidden="true"><span>← Влево на экране</span><span>Вправо на экране →</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <label for="variant">Версия</label>
+        <select id="variant"><option value="r03">r03 — отдельные радужки</option><option value="r02">r02 — деформация глаза</option></select>
+        <label for="background">Фон</label>
+        <select id="background"><option value="light">Светлый</option><option value="dark">Тёмный</option><option value="checker">Шахматный</option></select>
+        <label class="check"><input id="source" type="checkbox">Показать исходник в полный рост</label>
+      </div>
+    </section>
+
+    <div class="gallery">
+      <section class="card" aria-labelledby="full-title">
+        <div class="card-head"><h2 id="full-title">В полный рост</h2><span class="badge" id="full-badge">Кадр редактора</span></div>
+        <div class="stage full">
+          <img id="full" src="../work/gaze-01/r03/frames/full-10.png" alt="Wisp в полный рост, исходное направление взгляда">
+          <img id="original" src="../character_reference.png" alt="Исходное изображение Wisp для сравнения" hidden>
+        </div>
+        <p class="caption">Переключите исходник, чтобы сравнить лицо, одежду и силуэт в одном масштабе.</p>
+      </section>
+      <section class="card" aria-labelledby="face-title">
+        <div class="card-head"><h2 id="face-title">Лицо крупно</h2><span class="badge">21 положение</span></div>
+        <div class="stage face"><img id="face" src="../work/gaze-01/r03/frames/face-10.png" alt="Лицо Wisp, исходное направление взгляда"></div>
+        <p class="caption">Проверьте форму радужек и век в крайних и промежуточных положениях. Ползунок останавливает цикл.</p>
+      </section>
+    </div>
+
+    <p id="load-error" role="status" hidden>Кадры пока недоступны. Откройте страницу через локальный сервер после завершения экспорта.</p>
+    <p class="note">В r03 возвращён прежний способ движения: две радужки со зрачками и бликами сдвигаются целиком, без изменения формы. Веки и белки неподвижны, край глаза ограничивает видимую часть радужки. Использованы слои глаз из прежнего полного рига, включая его восстановленные подложки; остальной персонаж взят из исходника. Переключатель версии показывает отличие от деформации r02 при том же положении ползунка. Показаны нативные кадры PSD2Live.</p>
+    <nav aria-label="Файлы прототипа">
+      <a href="../work/gaze-01/r03/gaze-01-r03.psd2live" download>Скачать проект PSD2Live</a>
+      <a id="native" href="../work/gaze-01/r03/web/index.html" hidden>Открыть нативный веб-просмотр</a>
+    </nav>
+  </main>
+  <script>
+    'use strict';
+    const slider = document.getElementById('gaze');
+    const output = document.getElementById('value');
+    const full = document.getElementById('full');
+    const face = document.getElementById('face');
+    const play = document.getElementById('play');
+    const error = document.getElementById('load-error');
+    let running = false;
+    let started = 0;
+    let request = 0;
+    let currentIndex = 10;
+    let frames = '../work/gaze-01/r03/frames/';
+    function show(value) {
+      const index = Math.max(0, Math.min(20, Math.round((value + 1) * 10)));
+      const actual = (index - 10) / 10;
+      slider.value = actual;
+      output.value = actual.toFixed(2);
+      const direction = actual === 0 ? 'Исходное положение' : `Взгляд ${actual < 0 ? 'влево' : 'вправо'} на экране, ${Math.round(Math.abs(actual) * 100)}%`;
+      slider.setAttribute('aria-valuetext', direction);
+      if (index === currentIndex) return;
+      currentIndex = index;
+      const suffix = String(index).padStart(2, '0');
+      full.src = `${frames}full-${suffix}.png`;
+      face.src = `${frames}face-${suffix}.png`;
+      full.alt = `Wisp в полный рост. ${direction}`;
+      face.alt = `Лицо Wisp. ${direction}`;
+    }
+    function pause() {
+      running = false;
+      cancelAnimationFrame(request);
+      play.textContent = '▶ Воспроизвести';
+      play.setAttribute('aria-pressed', 'false');
+    }
+    const stops = [[0, 0], [.6, 0], [1.1, -1], [1.9, -1], [2.7, 1], [3.5, 1], [4.2, 0], [5, 0]];
+    function tick(now) {
+      if (!running) return;
+      const time = ((now - started) / 1000) % 5;
+      for (let i = 1; i < stops.length; i++) {
+        if (time > stops[i][0]) continue;
+        const [a, from] = stops[i - 1];
+        const [b, to] = stops[i];
+        const fraction = (time - a) / (b - a);
+        const smooth = fraction * fraction * (3 - 2 * fraction);
+        show(from + (to - from) * smooth);
+        break;
+      }
+      request = requestAnimationFrame(tick);
+    }
+    play.addEventListener('click', () => {
+      if (running) return pause();
+      running = true;
+      started = performance.now();
+      play.textContent = 'Ⅱ Пауза';
+      play.setAttribute('aria-pressed', 'true');
+      request = requestAnimationFrame(tick);
+    });
+    slider.addEventListener('input', () => { pause(); show(Number(slider.value)); });
+    document.getElementById('neutral').addEventListener('click', () => { pause(); show(0); });
+    document.getElementById('variant').addEventListener('change', event => {
+      frames = `../work/gaze-01/${event.target.value}/frames/`;
+      currentIndex = -1;
+      show(Number(slider.value));
+    });
+    document.getElementById('background').addEventListener('change', event => {
+      document.querySelectorAll('.stage').forEach(stage => {
+        stage.classList.remove('dark', 'checker');
+        if (event.target.value !== 'light') stage.classList.add(event.target.value);
+      });
+    });
+    document.getElementById('source').addEventListener('change', event => {
+      document.getElementById('original').hidden = !event.target.checked;
+      full.hidden = event.target.checked;
+      document.getElementById('full-badge').textContent = event.target.checked ? 'Исходное изображение' : 'Кадр редактора';
+    });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+    [full, face].forEach(img => img.addEventListener('error', () => { error.hidden = false; pause(); }));
+    [full, face].forEach(img => img.addEventListener('load', () => {
+      if (full.complete && full.naturalWidth && face.complete && face.naturalWidth) error.hidden = true;
+    }));
+    for (let index = 0; index <= 20; index++) {
+      for (const kind of ['full', 'face']) {
+        const preload = new Image();
+        preload.src = `${frames}${kind}-${String(index).padStart(2, '0')}.png`;
+      }
+    }
+    const native = document.getElementById('native');
+    fetch(native.href, { method: 'HEAD' }).then(response => { native.hidden = !response.ok; }).catch(() => {});
+  </script>
+</body>
+</html>
