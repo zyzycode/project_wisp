@@ -1,0 +1,185 @@
+{
+  "revision": "GAZE-01/r04",
+  "status": "prototype delivered; user visual acceptance pending",
+  "feedback": "r03 horizontal gaze accepted; add up/down and remove lower iris clipping",
+  "scope": "rig_animations only",
+  "project": "work/gaze-01/r04/gaze-01-r04.psd2live",
+  "recipe": [
+    "python3 scripts/prototype_gaze_vertical.py build (refuses existing project)",
+    "python3 scripts/prototype_gaze_vertical.py verify",
+    "node scripts/verify_gaze_vertical_runtime.mjs"
+  ],
+  "parameters": {
+    "ParamGazeX": [
+      -1,
+      0,
+      1
+    ],
+    "ParamGazeY": [
+      -1,
+      0,
+      1
+    ],
+    "positive_y": "down"
+  },
+  "motion": {
+    "id": "gaze_xy",
+    "duration_seconds": 6.5,
+    "loop": true
+  },
+  "source_sha256": "f0c3a98fc8876b3aebbaf9804db8ccd611c2465c6bca49d0171e7bff7fd13cb7",
+  "preparation": {
+    "base": "r03 source layers; original body and smile retained",
+    "method": "CPU Pillow/NumPy: lower white silhouette envelope with smooth upper transition, sampled sclera color; 8px hidden upper iris continuation using existing colored pixels, skipping white fringe",
+    "execution": "local, no cloud uploads, no neural generation, no paid calls",
+    "support": {
+      "left": {
+        "sclera_support_pixels": 1207,
+        "top_edge_samples": 376,
+        "sclera_rgb": [
+          250,
+          250,
+          250
+        ],
+        "sclera_rect": {
+          "left": 551,
+          "top": 321,
+          "width": 91,
+          "height": 76
+        }
+      },
+      "right": {
+        "sclera_support_pixels": 1168,
+        "top_edge_samples": 368,
+        "sclera_rgb": [
+          250,
+          250,
+          250
+        ],
+        "sclera_rect": {
+          "left": 392,
+          "top": 321,
+          "width": 90,
+          "height": 76
+        }
+      },
+      "lower_opaque_pixels_clipped": {
+        "left": 0,
+        "right": 0
+      }
+    }
+  },
+  "regression": {
+    "baseline": "r03",
+    "lower_opaque_pixels_clipped_at_supported_integer_offsets": {
+      "left": 378,
+      "right": 394
+    },
+    "after_fix": {
+      "left": 0,
+      "right": 0
+    },
+    "two_axis_runtime_baseline": "Expected FAIL: Export must include ParamGazeY"
+  },
+  "verification": {
+    "source_unchanged": true,
+    "reopen_poses_identical": true,
+    "reopen_motion_identical": true,
+    "cmo3_roundtrip_poses_identical": true,
+    "poses_checked": 121,
+    "outside_eye_region_static": true,
+    "authored_two_axis_motion_exported": true,
+    "acceptance": "r03 accepted; r04 user visual acceptance pending",
+    "cubism_core_consistency": 1,
+    "moc3_bytes": 72256,
+    "runtime_render_tested": false
+  },
+  "runtime_verification": {
+    "runtime_load": true,
+    "poses_checked": 121,
+    "grid": "11x11",
+    "endpoint_combinations_checked": 9,
+    "independent_iris_layers": [
+      "iris_left",
+      "iris_right"
+    ],
+    "rigid_two_axis_translation": true,
+    "positive_y_direction": "down",
+    "pairwise_size_preserved": true,
+    "independent_additive_axes": true,
+    "tolerance_px": 0.001,
+    "new_triangle_flips": 0,
+    "static_mesh_count": 5,
+    "static_context_max_vertex_displacement": 0,
+    "irises": [
+      {
+        "layer": "iris_left",
+        "maximum_translation_variation": 0,
+        "maximum_pairwise_distance_change": 0,
+        "maximum_additivity_error": 0,
+        "endpoints": {
+          "y=-1": [
+            0,
+            -4.819488525390625
+          ],
+          "x=-1": [
+            -7.61328125,
+            0
+          ],
+          "x=1": [
+            7.61328125,
+            0
+          ],
+          "y=1": [
+            0,
+            4.819488525390625
+          ]
+        }
+      },
+      {
+        "layer": "iris_right",
+        "maximum_translation_variation": 0,
+        "maximum_pairwise_distance_change": 0,
+        "maximum_additivity_error": 0,
+        "endpoints": {
+          "y=-1": [
+            0,
+            -4.8221435546875
+          ],
+          "x=-1": [
+            -7.72216796875,
+            0
+          ],
+          "x=1": [
+            7.72216796875,
+            0
+          ],
+          "y=1": [
+            0,
+            4.8221435546875
+          ]
+        }
+      }
+    ]
+  },
+  "lower_mesh_coverage": {
+    "method": "Opaque iris source pixel centers (>128 alpha), transformed by actual runtime translation; lower canvas y>=365; point-in-triangle coverage of exported meshes",
+    "poses_per_eye": 9,
+    "maximum_lower_samples_outside_white_mesh": 0,
+    "maximum_lower_samples_outside_iris_mesh": 0
+  },
+  "review_browser": {
+    "up_and_down_visual_check": true,
+    "diagonal_sliders": true,
+    "comparison_r03": true,
+    "play_pause_cycle": true,
+    "exported_native_clip_loaded_and_selected": true
+  },
+  "web_export_losses": [],
+  "limitations": [
+    "Sclera lower opening is slightly broader than r03",
+    "Small original iris edge irregularities and slight top continuation texture remain at high magnification",
+    "No blink rig, Wisp integration or official Cubism Player visual verification",
+    "Projects, frames and exports are local ignored artifacts; Git stores authoring recipe and review page"
+  ]
+}
