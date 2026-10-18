@@ -16,9 +16,13 @@ stage. Read the current stage and acceptance record in the workspace README.
 Preserve `work/full-rig-v1/` as the prototype; do not run its end-to-end rebuild
 commands to implement a new stage.
 
-1. Propose the part/joint/overlap map for one anatomical area.
+0. Obtain the user's acceptance of a target image showing the character at the
+   end of the intended movement; for a loop returning to its start, use its
+   expressive interior pose. Follow "Target image before rigging" below.
+1. Propose the part/joint/overlap map for one anatomical area from that target.
 2. After map acceptance, prepare that area's layers and neutral reconstruction.
-3. After layer acceptance, author and show one controller at a time.
+3. After layer acceptance, match the target's static shape with one controller,
+   then show the transition, including intermediate and extreme positions.
 4. After controller acceptance, check combinations of accepted controls.
 5. After combined-pose acceptance, author one motion clip at a time.
 6. After clip acceptance, export and compare in the intended player.
@@ -28,14 +32,16 @@ known defects and the precise decision needed, then wait for the user's explicit
 acceptance. Technical checks, praise for a demo, silence, or permission to start
 the workflow do not accept later stages. Corrections stay within the current
 stage; keep prior versions. Record accepted scope/revision only after the user
-accepts it. Later stages may proceed only if the user explicitly expands scope.
+accepts it. Proceed after acceptance of the current stage or explicit scope expansion.
 
-Texture reconstruction is also reviewable. Before generating/inpainting or
-procedurally reconstructing hidden artwork, show the missing region and mask,
-method, local/cloud execution, and any download, upload or cost. Obtain the user's
+Target-image editing and texture reconstruction are also reviewable. Before
+generating/editing a target image or reconstructing hidden artwork, show the
+intended change region/mask, method, local/cloud execution, and any download,
+upload or cost. Obtain the user's
 approval of that concrete plan before running it. Show the resulting alternatives
-and an outside-mask comparison; only the user-selected result becomes an accepted
-layer. Acceptance of a layer map alone does not approve hidden-surface generation.
+and an outside-mask comparison. Record whether acceptance concerns a pose reference
+or a layer addition; one does not accept the other. Acceptance of a layer map alone
+does not approve hidden-surface generation.
 Do not implicitly install neural models or upload source art. GPU rendering,
 CPU masks and neural inference are distinct; report only observed usage.
 
@@ -43,6 +49,29 @@ For the arm revision, keep shirt body, sleeve, upper arm, forearm, hand and
 bracelets distinct in the plan. Elbow movement must not drag the whole shirt;
 shoulder movement may deform the sleeve locally. Boundaries are proposals until
 reviewed, not extraction masks or approved anatomy.
+
+## Target image before rigging
+
+Use an existing suitable image if provided or already accepted. Otherwise propose
+editing a copy of `character_reference.png` into the desired end pose, preserving
+identity, proportions, style, shirt print and asymmetric details. The rigger
+produces the candidates within the agreed generation scope; the user selects one.
+Keep its revision and path with the movement's acceptance record. This is an image
+of the intended result, not merely an angle diagram or a render of a rejected rig.
+
+Start and end images suffice for a simple movement. Add an intermediate reference
+only when the trajectory, joint shape or overlap change needs clarification. A
+loop with identical endpoints needs an expressive interior pose instead. Reuse an
+accepted target when its area and range still match; do not generate every frame.
+
+Infer the joints, front/back overlaps and missing surfaces from the accepted target
+and the transition. A target is neither an extraction mask nor a replacement layer;
+transferring generated pixels into the rig requires acceptance of that addition.
+Match the static target before polishing timing. Compare silhouette, joint volume,
+seams, cuff edges and folds, then inspect intermediate poses for tears and stretching
+at source and display sizes. Valid triangles and neutral pixel equality are not a
+visual quality gate. If the target exceeds the drawing or rig's capabilities, show
+the limitation and agree on a correction instead of silently changing the target.
 
 ## Environment
 
@@ -95,8 +124,9 @@ visible-only trial contours, not a production eye rig.
   print and original proportions. Left/right tags mean the character's side.
 - Compare composited neutral pixels and alpha before rigging; review mask edges
   visually. A zero neutral difference does not prove moving parts are correct.
-- Don't regenerate whole frames or claim that translating a flat cutout is a
-  finished facial/walking animation. Don't use whole-eye squash for a blink.
+- Don't generate the animation frame by frame; the accepted target-image stage
+  supplies a reference, not a rendered clip. Don't claim that translating a flat
+  cutout is a finished facial/walking animation or use whole-eye squash for a blink.
 
 ## Import and author
 
@@ -110,7 +140,18 @@ configure generation, then `rig_generate`. Use real discovered IDs for geometry
 and keys. `author_axis` can compile a custom parameter and deformation; inspect
 its schema and optionally `author_compile` before committing. `rig_deform`
 uses normalized bounds, while layout rectangles use canvas pixels. Never mix
-these coordinate spaces. Author facial controls first, then body/feet.
+these coordinate spaces. Prefer facial controls before body/feet unless the user
+has selected a different area.
+
+For limbs, inspect the native `skeleton_*` contract before inventing per-vertex
+rotation recipes. PSD2Live supports bone proposals, bindings and FK/IK posing;
+use discovered schemas and actual IDs. Bones position the limb; weights, local
+deformers and corrective keyforms must still reproduce the target's shape. A single
+mesh can span a joint with suitable topology and weights; do not assume every bone
+requires its own PNG. Sleeve front/back overlaps and hidden skin remain artwork
+tasks. Neural segmentation provides masks; generated layer decompositions provide
+candidates, not accepted anatomy or a finished rig. Neither installs nor full-frame
+video generation are implied by choosing this workflow.
 
 ## Acceptance and limits
 
