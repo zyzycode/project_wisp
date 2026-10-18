@@ -1,6 +1,6 @@
 {
   "revision": "ARM-01/r04",
-  "status": "awaiting visual review",
+  "status": "accepted by user",
   "source": "character_reference.png",
   "previous_revision": "ARM-01/r03",
   "operations": [
@@ -72,5 +72,8 @@
     "Shirt hem remains approximate",
     "Native rebuild on split meshes produced broken UV appearance; undone, final meshes generated from fresh Layout",
     "No controllers or animation accepted"
-  ]
+  ],
+  "accepted_at": "2026-10-18",
+  "acceptance_scope": "visible layer cleanup shown in r04; existing disclosed limits remain",
+  "user_acceptance": "r04 готова, давай к след этапу"
 }

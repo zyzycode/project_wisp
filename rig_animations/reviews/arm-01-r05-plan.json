@@ -1,0 +1,66 @@
+{
+  "revision": "ARM-01/r05",
+  "stage": "hidden cloth restoration plan",
+  "status": "awaiting concrete restoration approval",
+  "accepted_base": {
+    "revision": "ARM-01/r04",
+    "date": "2026-10-18",
+    "user_statement": "r04 готова, давай к след этапу",
+    "scope": "reviewed visible layer cleanup; no acceptance of hidden artwork or controllers",
+    "sha256": {
+      "arm-01-r04.psd2live": "af42e3cc1ebf3ff8366fd98bf14dde31fa35ce6948a313da6989ac138cd37ce3",
+      "arm-01-r04.psd": "c6621ecc980050a9c71d4072e14ae35b39db90142001c248d70ed672963b37a1",
+      "character_context.png": "984ebe87179b5baafb8cb1cba8b7fd4ea8f09c39496aecd89a324d49e15ba38b",
+      "shirt_body.png": "57e413dc79c59f10e0d12b60effbd233206cdb027afbe8a6c14e240a38ac7933",
+      "sleeve_front_L.png": "3c428cffb3941d5913e81ffe2b6a64e46b49614a25b07b3295185b12fa4545b5",
+      "sleeve_rim_L.png": "4e95844958134936a0b647dd977bf457d509c8ddca29f4e015a3b000b8e97d58"
+    }
+  },
+  "proposed_motion": {
+    "shoulder_pivot": [
+      628,
+      553
+    ],
+    "outward_degrees_from_rest": 30,
+    "status": "proposal; awaiting range preference",
+    "elbow": "unchanged in first shoulder test"
+  },
+  "patch": {
+    "id": "A",
+    "name": "shirt_body_under_sleeve_L",
+    "canvas": [
+      1024,
+      1536
+    ],
+    "path": "M640 541 Q655 561 659 591 Q657 636 665 682 Q676 729 664 784 L641 765 Q627 721 616 668 Q609 618 614 581 Z",
+    "placement": "behind accepted shirt_body and sleeve layers",
+    "visible_pixels": "protected by original layers; no replacement of source texture",
+    "style": "continue plain off-white cloth with subtle existing grey shading; no print extension or invented decorative folds"
+  },
+  "method": {
+    "tool": "PSD2Live 3.5.1 authenticated local MCP",
+    "operations": [
+      "source_paint_shape",
+      "source_paint_brush",
+      "material_paint"
+    ],
+    "execution": "local raster painting; no neural inference",
+    "cloud_upload": false,
+    "model_download": false,
+    "paid_provider_calls": 0,
+    "variants": 1
+  },
+  "checks": [
+    "original source and accepted r04 files unchanged",
+    "patch isolated and viewed over white/dark/checker backgrounds",
+    "patch hidden in neutral pose except intentional subpixel overlap; inspect full composite",
+    "after restoring and reviewing necessary overlap layers, inspect shoulder at neutral/intermediate/maximum poses",
+    "native save/reopen and PSD layer export"
+  ],
+  "deferred": [
+    "B: concealed sleeve rim between the two visible fragments",
+    "C: cloth behind hair; unnecessary for first shoulder-only movement",
+    "Skin under sleeve and separate arm layers before whole arm controller",
+    "Actual controller and deformation; mask diagram is not a motion proof"
+  ]
+}
