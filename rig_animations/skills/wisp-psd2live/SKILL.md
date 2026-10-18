@@ -50,6 +50,38 @@ bracelets distinct in the plan. Elbow movement must not drag the whole shirt;
 shoulder movement may deform the sleeve locally. Boundaries are proposals until
 reviewed, not extraction masks or approved anatomy.
 
+## Reference-generated layers
+
+When the user requests a separate layer generated from a reference, prepare that
+layer before forcing motion out of an incomplete cutout. Read the current scope
+and the "Отдельный слой по референсу" workflow in the workspace README. The user
+may authorize generation and its neutral assembly review together; do not request
+the same authorization again. Record the reference, specific layer/hidden region,
+generator, local/cloud execution, transmitted images and known costs. Preserve the
+source and every previously accepted layer; generate into a new revision.
+
+Use a complete transparent PNG with suitable hidden margins, consistent color,
+proportions, lighting and asymmetry. Check actual alpha (not painted checkerboard),
+edge halos, interior holes and the component in isolation on light/dark backgrounds.
+Use the original character image as an actual generation input; earlier generated
+layers are not a substitute for that reference. Specify the intended source layer
+dimensions and check the delivered PNG dimensions, not just the prompt. Preserve
+the raw output; if native sizing requires normalization, record crop/scale/padding
+and preserve aspect ratio. Never silently stretch a generated layer to fit.
+Then import a candidate into a separate editor project and compare its neutral
+assembly to the accepted base at face/source and intended display sizes. Record
+the original generation, prompt, transforms and hashes; keep raw output immutable.
+Generated artwork is a candidate until the user accepts it. Layer acceptance does
+not accept its controller or clip; numerical checks do not establish likeness.
+
+For current gaze work, generate each complete iris with pupil and highlights as
+one layer. Eyelids, sclera and eye-opening shape remain fixed to r03. Do not move
+eyelids, enlarge sclera or squash pupils to compensate for incomplete artwork.
+Texture completeness and eye-opening clipping are separate checks: a complete
+PNG does not repair a bad aperture mask. After layer acceptance, inspect neutral,
+up and down positions before combinations or clips; report aperture limits rather
+than silently changing neighboring features.
+
 ## Target image before rigging
 
 Use an existing suitable image if provided or already accepted. Otherwise propose
