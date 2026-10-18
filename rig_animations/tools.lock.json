@@ -1,0 +1,11 @@
+{
+  "version": "3.5.1",
+  "editor": {
+    "url": "https://github.com/tsunehimatoi/psd2live/releases/download/v3.5.1/PSD2Live-3.5.1-linux-x64.tar.gz",
+    "sha256": "2450a06bc2c2397899036900729be5766fde43e9d1f7f04bdfb21b3b9d6dff2e"
+  },
+  "client": {
+    "url": "https://raw.githubusercontent.com/tsunehimatoi/psd2live/v3.5.1/mcp_proxy.py",
+    "sha256": "ae6df5898bc9927f2fbad6ce93f22ff14430210164cf080ea5395a093686692c"
+  }
+}

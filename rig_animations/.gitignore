@@ -1,0 +1,5 @@
+.tools/
+.cache/
+.local/
+work/
+__pycache__/
