@@ -1,7 +1,7 @@
 {
   "revision": "ARM-01/r05",
   "stage": "hidden cloth restoration plan",
-  "status": "awaiting concrete restoration approval",
+  "status": "mask A and local method approved; one candidate executed; texture awaits review",
   "accepted_base": {
     "revision": "ARM-01/r04",
     "date": "2026-10-18",
@@ -62,5 +62,10 @@
     "C: cloth behind hair; unnecessary for first shoulder-only movement",
     "Skin under sleeve and separate arm layers before whole arm controller",
     "Actual controller and deformation; mask diagram is not a motion proof"
-  ]
+  ],
+  "approval": {
+    "user_statement": "всё норм, давай дальше",
+    "date": "2026-10-18",
+    "scope": "mask A and one local restoration candidate; not acceptance of resulting texture or controller"
+  }
 }

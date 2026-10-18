@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARM-01 · ткань A · вариант r05</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf1f6;color:#20314a;font:15px/1.5 system-ui,sans-serif}main{max-width:1150px;margin:auto;padding:22px}h1{font-size:25px;margin:8px 0}h2{font-size:18px}.badge{background:#fff0c9;padding:5px 10px;border-radius:6px}button{font:inherit;border:1px solid #bac6d8;background:white;color:#20314a;padding:8px 12px;border-radius:7px;cursor:pointer}button[aria-pressed=true]{background:#264c80;color:white}.tools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel h2{margin:8px 0}.stage{background:repeating-conic-gradient(#dce1e9 0% 25%,#f5f7fa 0% 50%) 0/24px 24px;border:1px solid #c5cede;border-radius:10px;overflow:hidden}svg{display:block;width:100%;height:460px}.notes{background:white;border-radius:12px;padding:16px 22px;margin-top:16px}a{color:#285c9e}small{color:#53657a}li{margin:6px 0}@media(max-width:720px){.panels{grid-template-columns:1fr}svg{height:350px}}
+</style>
+<main>
+<span class="badge">ARM-01 / r05 · участок A · один вариант на просмотр</span>
+<h1>Скрытая ткань под рукавом добавлена отдельным слоем</h1>
+<p>Слева принятая r04, справа r05 с новой тканью. Это PNG настоящих слоёв из PSD2Live; форма восстановлена локальным инструментом редактора.</p>
+<div class="tools" aria-label="Просмотр">
+<button data-mode="join" aria-pressed="true">Стык крупно</button><button data-mode="patch" aria-pressed="false">Только новая ткань</button><button data-mode="body" aria-pressed="false">Корпус без рукава</button><button data-mode="all" aria-pressed="false">Полная сборка</button>
+</div>
+<div class="tools" aria-label="Фон"><button data-bg="checker" aria-pressed="true">Шахматка</button><button data-bg="white" aria-pressed="false">Белый</button><button data-bg="dark" aria-pressed="false">Чёрный</button><button id="outline" aria-pressed="false">Граница согласованной маски</button></div>
+<p id="caption" role="status"></p>
+<div class="panels"><section class="panel"><h2>r04 · принятый корпус</h2><div class="stage"><svg data-revision="r04" role="img" aria-label="Принятые слои r04"></svg></div></section><section class="panel"><h2>r05 · корпус и ткань A</h2><div class="stage"><svg data-revision="r05" role="img" aria-label="Новый вариант с тканью A"></svg></div></section></div>
+<section class="notes">
+<h2>Что получилось</h2>
+<p>Добавлен слой <b>shirt_body_hidden_A</b>: продолжение светлой ткани с мягкой серой тенью. Он находится под четырьмя принятыми слоями. Нижний запас подрезан внутри согласованной области, чтобы не выступать за исходный силуэт.</p>
+<p>Форма и градиент созданы штатным <b>material_draw в PSD2Live</b>. Цвета взяты с футболки. Нейросеть и облачная обработка не использовались. История и редактируемый вектор материала сохранены в отдельном authoring-проекте.</p>
+<h2>Что смотреть</h2>
+<ul><li><b>Стык крупно:</b> подходит ли светлая ткань и мягкая тень рядом с исходной складкой.</li><li><b>Только новая ткань:</b> форма отдельного запаса. Это скрытая поверхность, а не внешний рукав.</li><li><b>Полная сборка:</b> новая ткань закрыта исходными деталями. Их цвет и контур не перерисованы.</li></ul>
+<h2>Проверено и ограничения</h2>
+<p>Четыре слоя r04 и её сохранённые файлы не изменились. Новых пикселей и изменений сборки вне согласованной маски — <b>0</b>. Пять PNG и рендер редактора идентичны после повторного открытия; экспорт PSD содержит пять слоёв.</p>
+<p>Из-за исходной полупрозрачности новый нижний слой повышает альфу сборки максимум на 4/255. На чёрном фоне максимальное отличие от r04 — 4,08/255, на белом — 1,20/255. Это не изменение принятых текстур, но небольшой эффект в итоговом изображении.</p>
+<p>Контроллер ещё не создан, достаточность запаса в движении не проверена. 30° наружу остаются рабочим предложением для первого теста. Внутренняя кромка B, скрытая кожа и отдельные слои руки требуют следующих проходов. Прозрачный участок под волосами C пока сохранён.</p>
+<p><a href="arm-01-r05-assets/arm-01-r05.psd2live" download>Проект r05</a> · <a href="arm-01-r05-assets/arm-01-r05.psd" download>Пятислойный PSD</a> · <a href="arm-01-r05-assets/shirt_body_hidden_A.png" download>Новый слой PNG</a> · <a href="arm-01-r05.html">Согласованный план A</a></p>
+<small>Для текущего этапа нужно оценить только вариант ткани A. Принятие r04 сохранено; новая ткань пока ожидает твоего просмотра.</small>
+</section></main>
+<script>
+const names=['shirt_body_hidden_A','character_context','shirt_body','sleeve_rim_L','sleeve_front_L'];
+const modes={join:{box:'590 525 110 270',show:[0,2],text:'Корпус с отключённым рукавом. Справа виден запас ткани A под исходной линией стыка.'},patch:{box:'590 525 110 270',show:[0],text:'Справа только новый слой; в принятой r04 такого слоя ещё нет.'},body:{box:'255 475 530 450',show:[0,2],text:'Корпус футболки целиком. Новый запас добавлен только на рабочей стороне; область под волосами пока не восстановлена.'},all:{box:'255 465 545 500',show:[0,1,2,3,4],text:'Нейтральная сборка. Это проверка наложения слоёв, а не тест подъёма руки.'}};
+for(const svg of document.querySelectorAll('svg')){
+ names.forEach((name,i)=>{if(i===0&&svg.dataset.revision==='r04')return;const el=document.createElementNS('http://www.w3.org/2000/svg','image');el.setAttribute('href',`arm-01-${svg.dataset.revision}-assets/${name}.png`);el.setAttribute('width','1024');el.setAttribute('height','1536');el.dataset.layer=String(i);svg.append(el);});
+ const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M640 541 Q655 561 659 591 Q657 636 665 682 Q676 729 664 784 L641 765 Q627 721 616 668 Q609 618 614 581 Z');path.setAttribute('fill','none');path.setAttribute('stroke','#d37b00');path.setAttribute('stroke-width','1');path.setAttribute('stroke-dasharray','3 2');path.classList.add('outline');path.style.display='none';svg.append(path);
+}
+function show(key){const mode=modes[key];document.querySelectorAll('svg').forEach(svg=>{svg.setAttribute('viewBox',mode.box);svg.querySelectorAll('image').forEach(el=>el.style.display=mode.show.includes(Number(el.dataset.layer))?'':'none');});document.querySelector('#caption').textContent=mode.text;document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===key)));}
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>show(b.dataset.mode));
+document.querySelectorAll('[data-bg]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.stage').forEach(s=>s.style.background={checker:'',white:'#fff',dark:'#000'}[b.dataset.bg]);document.querySelectorAll('[data-bg]').forEach(other=>other.setAttribute('aria-pressed',String(other===b)));});
+document.querySelector('#outline').onclick=function(){const on=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',String(on));document.querySelectorAll('.outline').forEach(p=>p.style.display=on?'':'none');};
+show('join');
+</script>
+</html>
