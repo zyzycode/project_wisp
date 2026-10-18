@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARM-01 · очистка краёв · r04</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf1f6;color:#20314a;font:15px/1.5 system-ui,sans-serif}
+main{max-width:1150px;margin:auto;padding:22px}h1{font-size:25px;margin:8px 0}h2{font-size:18px}
+.badge{background:#fff0c9;padding:5px 10px;border-radius:6px}button{font:inherit;border:1px solid #bac6d8;background:white;color:#20314a;padding:8px 12px;border-radius:7px;cursor:pointer}
+button[aria-pressed=true]{background:#264c80;color:white}.tools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel h2{margin:8px 0}.stage{background:repeating-conic-gradient(#dce1e9 0% 25%,#f5f7fa 0% 50%) 0/24px 24px;border:1px solid #c5cede;border-radius:10px;overflow:hidden}
+svg{display:block;width:100%;height:440px}.notes{background:white;border-radius:12px;padding:16px 22px;margin-top:16px}a{color:#285c9e}small{color:#53657a}li{margin:6px 0}
+@media(max-width:720px){.panels{grid-template-columns:1fr}svg{height:330px}}
+</style>
+<main>
+<span class="badge">ARM-01 / r04 · исправление масок · на просмотр</span>
+<h1>Чище кромка рукава и граница под волосами</h1>
+<p>Слева предыдущая версия, справа исправленная. Показаны настоящие PNG слоёв из PSD2Live. Кнопки меняют только просмотр.</p>
+<div class="tools" aria-label="Участок">
+<button data-detail="rim" aria-pressed="true">Кромка крупно</button><button data-detail="sleeve" aria-pressed="false">Весь рукав</button>
+<button data-detail="hair" aria-pressed="false">Под волосами</button><button data-detail="body" aria-pressed="false">Вся футболка</button><button data-detail="all" aria-pressed="false">Сборка</button>
+</div>
+<div class="tools" aria-label="Фон"><button data-bg="checker" aria-pressed="true">Шахматка</button><button data-bg="white" aria-pressed="false">Белый</button><button data-bg="dark" aria-pressed="false">Тёмный</button></div>
+<p id="caption" role="status">Два видимых фрагмента внутренней кромки. Между ними в исходнике находится рука.</p>
+<div class="panels">
+<section class="panel"><h2>r03 · до исправления</h2><div class="stage"><svg data-revision="r03" viewBox="632 680 125 95" role="img" aria-label="Предыдущие слои r03"></svg></div></section>
+<section class="panel"><h2>r04 · после исправления</h2><div class="stage"><svg data-revision="r04" viewBox="632 680 125 95" role="img" aria-label="Очищенные слои r04"></svg></div></section>
+</div>
+<section class="notes">
+<h2>Что исправлено</h2>
+<ul><li>Пиксели кожи на кромке и передней ткани рукава возвращены в слой остального персонажа.</li>
+<li>Синие пиксели пряди убраны из футболки. Возвращена пропущенная видимая ткань около плеча; очищен край горловины.</li>
+<li>Смягчены ступеньки внутренних границ. Удалены 36 отделившихся пикселей из слоёв одежды, в том числе слабая белая кайма у серой кромки.</li></ul>
+<h2>Что ещё видно</h2>
+<p>Прозрачный вырез под прядью — место скрытой ткани. Её нет в исходном изображении; дорисовка ещё не выполнялась. У кромки остаётся тёмный авторский контур. Сам PNG прозрачен: чёрный фон не был впечён при вырезании.</p>
+<p>Это исправление видимых слоёв, а не готовность к движению. Подол корпуса ещё выделен приблизительно; нахлёсты и ткань под поднятым рукавом предстоит подготовить отдельно. Полная сборка может скрывать недостатки разделения — поэтому проверять нужно и отдельные детали.</p>
+<h2>Проверено</h2>
+<p>Четыре PNG и нейтральный рендер редактора идентичны до и после сохранения и повторного открытия. Альфа сборки совпадает с исходником. На белом и чёрном фоне максимальная разница цвета — 1,43 из 255. Исходный файл не изменён; экспорт PSD содержит четыре слоя.</p>
+<p><a href="arm-01-r04-assets/arm-01-r04.psd2live" download>Проект PSD2Live r04</a> · <a href="arm-01-r04-assets/arm-01-r04.psd" download>Слоёный PSD r04</a> · <a href="arm-01-r03.html">Предыдущий просмотр r03</a></p>
+<small>Текущий этап — проверка контуров. Скрытая ткань и контроллеры движения пока не добавлены.</small>
+</section>
+</main>
+<script>
+const layers=['character_context','shirt_body','sleeve_rim_L','sleeve_front_L'];
+const details={
+ rim:{box:'632 680 125 95',show:[2],text:'Два видимых фрагмента внутренней кромки. Между ними в исходнике находится рука.'},
+ sleeve:{box:'600 515 165 270',show:[2,3],text:'Передняя ткань и серая кромка вместе, без кожи руки и корпуса.'},
+ hair:{box:'385 480 120 100',show:[1],text:'Только футболка: видимая ткань сохранена, прядь отделена. Прозрачное место под прядью ещё требует восстановления ткани.'},
+ body:{box:'255 475 530 450',show:[1],text:'Корпус с противоположным рукавом. Подол остаётся черновым; это не законченная поверхность для движения.'},
+ all:{box:'255 465 545 500',show:[0,1,2,3],text:'Все четыре слоя в исходной позе. Кожа и волосы остаются в сборке, но отделены от рабочего рукава и футболки.'}
+};
+for(const svg of document.querySelectorAll('svg'))layers.forEach((name,i)=>{
+ const image=document.createElementNS('http://www.w3.org/2000/svg','image');
+ image.setAttribute('href',`arm-01-${svg.dataset.revision}-assets/${name}.png`);
+ image.setAttribute('width','1024');image.setAttribute('height','1536');image.dataset.layer=String(i);svg.append(image);
+});
+function showDetail(key){const detail=details[key];for(const svg of document.querySelectorAll('svg')){
+ svg.setAttribute('viewBox',detail.box);for(const image of svg.querySelectorAll('image'))image.style.display=detail.show.includes(Number(image.dataset.layer))?'':'none';
+}document.querySelector('#caption').textContent=detail.text;document.querySelectorAll('[data-detail]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.detail===key)));}
+document.querySelectorAll('[data-detail]').forEach(b=>b.onclick=()=>showDetail(b.dataset.detail));
+document.querySelectorAll('[data-bg]').forEach(b=>b.onclick=()=>{
+ const colors={checker:'',white:'#fff',dark:'#182233'};document.querySelectorAll('.stage').forEach(s=>s.style.background=colors[b.dataset.bg]);
+ document.querySelectorAll('[data-bg]').forEach(other=>other.setAttribute('aria-pressed',String(other===b)));
+});
+showDetail('rim');
+</script>
+</html>
