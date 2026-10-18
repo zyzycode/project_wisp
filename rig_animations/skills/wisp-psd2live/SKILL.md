@@ -1,6 +1,6 @@
 ---
 name: wisp-psd2live
-description: Prepare and edit the Wisp chibi character with pinned PSD2Live 3.5.1 through its authenticated local MCP, preserving source pixels. Use for layer masks, Layout manifests, parameter rigs, motions, save/reopen/export checks in rig_animations. Does not integrate a runtime into Wisp or generate replacement artwork.
+description: Prepare and edit the Wisp chibi character in user-reviewed stages with pinned PSD2Live 3.5.1 and local MCP. Use for layer plans, masks, Layout manifests, parameter rigs, motions and export checks in rig_animations. Does not integrate a runtime into Wisp or authorize replacement artwork.
 ---
 
 # Wisp rig authoring — PSD2Live 3.5.1
@@ -8,6 +8,41 @@ description: Prepare and edit the Wisp chibi character with pinned PSD2Live 3.5.
 Work in `/home/zybz/code/project_wisp/rig_animations`. Read its README for the
 current verified state and outstanding visual work. The source is
 `character_reference.png`; never overwrite it. Keep experiments in `work/`.
+
+## User-controlled stages (current working mode)
+
+The user explicitly replaced the one-prompt full build with review at every
+stage. Read the current stage and acceptance record in the workspace README.
+Preserve `work/full-rig-v1/` as the prototype; do not run its end-to-end rebuild
+commands to implement a new stage.
+
+1. Propose the part/joint/overlap map for one anatomical area.
+2. After map acceptance, prepare that area's layers and neutral reconstruction.
+3. After layer acceptance, author and show one controller at a time.
+4. After controller acceptance, check combinations of accepted controls.
+5. After combined-pose acceptance, author one motion clip at a time.
+6. After clip acceptance, export and compare in the intended player.
+
+At each boundary deliver the actual review artifact, its revision, changes,
+known defects and the precise decision needed, then wait for the user's explicit
+acceptance. Technical checks, praise for a demo, silence, or permission to start
+the workflow do not accept later stages. Corrections stay within the current
+stage; keep prior versions. Record accepted scope/revision only after the user
+accepts it. Later stages may proceed only if the user explicitly expands scope.
+
+Texture reconstruction is also reviewable. Before generating/inpainting or
+procedurally reconstructing hidden artwork, show the missing region and mask,
+method, local/cloud execution, and any download, upload or cost. Obtain the user's
+approval of that concrete plan before running it. Show the resulting alternatives
+and an outside-mask comparison; only the user-selected result becomes an accepted
+layer. Acceptance of a layer map alone does not approve hidden-surface generation.
+Do not implicitly install neural models or upload source art. GPU rendering,
+CPU masks and neural inference are distinct; report only observed usage.
+
+For the arm revision, keep shirt body, sleeve, upper arm, forearm, hand and
+bracelets distinct in the plan. Elbow movement must not drag the whole shirt;
+shoulder movement may deform the sleeve locally. Boundaries are proposals until
+reviewed, not extraction masks or approved anatomy.
 
 ## Environment
 
@@ -45,7 +80,7 @@ publishes family tools; the official client routes operations and waits for jobs
 
 ## Source-preserving preparation
 
-Start with `python3 scripts/prepare_mask_test.py`. It demonstrates binary masks
+The existing `python3 scripts/prepare_mask_test.py` demonstrates binary masks
 on the original irises and verifies exact neutral reconstruction. These are
 visible-only trial contours, not a production eye rig.
 
