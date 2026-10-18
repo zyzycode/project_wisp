@@ -6,12 +6,12 @@
 </style>
 <main><p>WISP / GAZE-01 / r06-layers · v2</p>
 <h1>Отдельные радужки по оригиналу персонажа</h1>
-<p class="badge">Кандидаты PNG · в риг не импортированы</p>
+<p class="badge">PNG приняты пользователем · используются в риге r07</p>
 <p>В генерацию передан исходный персонаж. Здесь исходный фрагмент и новые слои при одинаковом увеличении ×3. Под ними — PNG в исходных размерах ×1. Стороны указаны относительно персонажа.</p>
 <div id="eyes"></div>
 <p>Размеры файлов: справа 58×68 px, слева 61×68 px. Генератор вернул большой растр; прозрачные поля обрезаны, затем выполнено равномерное уменьшение и добавлены прозрачные поля до нужного размера.</p>
 <p><strong>Остаются отличия:</strong> форма и размер бликов, оттенки и контур радужки. Совпадение размеров холста не означает совпадения рисунка. Веки, белки и принятая горизонталь r03 не менялись.</p>
-<p><a href="gaze-01-r06-layers-v2.json">Промпты, размеры, преобразования и проверки</a> · <a href="../character_reference.png">Исходный персонаж</a></p>
+<p><a href="gaze-01-r07.html">Риг вверх и вниз · r07</a> · <a href="gaze-01-r06-layers-v2.json">Промпты, размеры, преобразования и проверки</a> · <a href="../character_reference.png">Исходный персонаж</a></p>
 <script>
 const base='../work/gaze-01/r06-layers/v2/native/';
 document.getElementById('eyes').innerHTML=[['right','Правый глаз',58],['left','Левый глаз',61]].map(([side,title,width])=>`<h2>${title} · ${width}×68</h2><div class="row"><section class="card"><h2>Исходник ×3</h2><div class="stage"><div role="img" aria-label="Глаз исходного персонажа" class="crop zoom ${side}"></div></div><div class="native"><div class="crop ${side}"></div></div></section>${['light','dark'].map(bg=>`<section class="card"><h2>${bg==='light'?'Светлый':'Тёмный'} фон ×3</h2><div class="stage ${bg}"><img class="zoom" width="${width}" height="68" src="${base}iris_${side}.png" alt="Новая радужка"></div><div class="native ${bg}"><img width="${width}" height="68" src="${base}iris_${side}.png" alt="Слой в исходном размере"></div><small><a href="${base}iris_${side}.png" download>Скачать PNG ${width}×68</a></small></section>`).join('')}</div>`).join('');
