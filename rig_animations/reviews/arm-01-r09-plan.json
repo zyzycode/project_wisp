@@ -1,0 +1,145 @@
+{
+  "revision": "ARM-01/r09-plan",
+  "stage": "layer and overlap map; awaiting user review",
+  "target_acceptance": {
+    "revision": "ARM-01/r08-target/v1",
+    "user_statement": "найс, давай дальше",
+    "scope": "Raised bent bracelet-arm target pose; not generated background, changed face or automatic layer replacement",
+    "path": "work/arm-01/r08-target/raw/target-v1.png",
+    "sha256": "3e9f02ddc85692bd2c012811a967cfbbb745da233a510e28be218a65a11a16c2"
+  },
+  "side": "character left / viewer right",
+  "canvas": [
+    1024,
+    1536
+  ],
+  "reference": "character_reference.png",
+  "layers": [
+    {
+      "id": "shirt_body",
+      "name": "Корпус футболки",
+      "color": "#64748b",
+      "method": "reuse",
+      "detail": "Принятые видимые пиксели ARM-01/r04. Корпус остаётся на месте; локальная складка у проймы не тянет всю футболку."
+    },
+    {
+      "id": "sleeve_front_L",
+      "name": "Наружная часть рукава",
+      "color": "#8b5cf6",
+      "method": "reuse_then_assess",
+      "detail": "Видимую ткань взять из r04. Недостающую форму под поднятую позу восстанавливать отдельным запросом только при необходимости; принт корпуса не включать."
+    },
+    {
+      "id": "sleeve_rim_L",
+      "name": "Внутренний край рукава",
+      "color": "#db2777",
+      "method": "separate_candidate_if_needed",
+      "detail": "Исходные фрагменты r04 + отдельный кандидат для скрытого продолжения. Задняя часть за плечом, передняя кромка поверх кожи; это две технические маски одной детали."
+    },
+    {
+      "id": "upper_arm_L",
+      "name": "Плечо",
+      "color": "#ea580c",
+      "method": "one_generation_request",
+      "detail": "Один полный слой от плечевого сустава до локтя. Скрытая кожа под рукавом и запас около локтя; без ткани, кисти и браслетов."
+    },
+    {
+      "id": "forearm_L",
+      "name": "Предплечье",
+      "color": "#0891b2",
+      "method": "one_generation_request",
+      "detail": "Отдельный полный слой от локтя до запястья. Продолжение кожи на обоих концах; без плеча, кисти и браслетов."
+    },
+    {
+      "id": "hand_L",
+      "name": "Кисть",
+      "color": "#16a34a",
+      "method": "one_generation_request",
+      "detail": "Одна открытая кисть по принятой позе, с коротким скрытым запасом запястья. Пока без отдельного движения пальцев."
+    },
+    {
+      "id": "bracelet_blue_L",
+      "name": "Синий браслет",
+      "color": "#2563eb",
+      "method": "source_mask_or_one_request",
+      "detail": "Выделить исходную деталь, если её формы достаточно. Иначе генерировать только один синий браслет; сохранить порядок относительно красного."
+    },
+    {
+      "id": "bracelet_red_L",
+      "name": "Красный браслет",
+      "color": "#dc2626",
+      "method": "source_mask_or_one_request",
+      "detail": "Отдельный слой и, при необходимости, отдельный запрос. Оба браслета следуют запястью без самостоятельного качания на первом этапе."
+    },
+    {
+      "id": "underarm_support_L",
+      "name": "Скрытый участок у проймы — только при необходимости",
+      "color": "#a16207",
+      "method": "conditional_local_candidate",
+      "detail": "Сначала проверить открывающуюся область при подъёме. Только затем точная маска и один отдельный кандидат; прежнюю широкую вставку r05 не использовать."
+    }
+  ],
+  "joint_proposals": {
+    "neutral": {
+      "shoulder": [
+        628,
+        553
+      ],
+      "elbow": [
+        710,
+        775
+      ],
+      "wrist": [
+        750,
+        832
+      ]
+    },
+    "target": {
+      "shoulder": [
+        628,
+        553
+      ],
+      "elbow": [
+        791,
+        565
+      ],
+      "wrist": [
+        839,
+        451
+      ]
+    },
+    "status": "visual landmarks only; shoulder/elbow are provisional under loose sleeve; calibrate lengths and mesh against source before controller authoring"
+  },
+  "overlaps": [
+    "Upper arm continues beneath sleeve; only local sleeve deformation at shoulder.",
+    "Rounded skin overlap at elbow, initially about 12-20 source pixels per segment; inspect silhouettes, do not paint a dark seam inside the joint.",
+    "Hand wrist overlap is hidden under bracelet layers.",
+    "Sleeve rear rim behind skin; front rim and front sleeve in front; do not draw whole ring on top of arm."
+  ],
+  "base_cleanup": "Remove original arm from static character base with exact source masks; keep non-arm pixels and accepted GAZE-01/r08 meshes/parameters unchanged. Do not use generated target as replacement character_context.",
+  "generation": {
+    "execution": "built-in image_gen cloud, only when layer stage begins",
+    "cost": "not reported by tool",
+    "one_output_per_request": true,
+    "reference_policy": "Original character on every request; accepted target additionally for pose/occlusion. Previously generated layer may support alignment but never replace original reference.",
+    "native_scale": "Keep source canvas units 1:1; specify crop dimensions and position per asset during layer preparation; no silent aspect stretching.",
+    "sequence": [
+      "upper_arm_L",
+      "forearm_L",
+      "hand_L",
+      "sleeve_front_L only if needed",
+      "sleeve_rim_L only if needed",
+      "bracelet_blue_L only if needed",
+      "bracelet_red_L only if needed",
+      "underarm_support_L only after measured reveal"
+    ]
+  },
+  "validation": [
+    "Each candidate separately on light/dark backgrounds: true alpha, no halo, complete hidden ends, no neighboring parts.",
+    "Neutral assembly: no double arm; accepted eyes and outside arm region unchanged.",
+    "Local elbow/shoulder tests after layer acceptance; assess neutral, middle and accepted target.",
+    "Save and reopen separate PSD2Live working copy before accepting native assembly."
+  ],
+  "generated_this_stage": false,
+  "editor_changed": false
+}
