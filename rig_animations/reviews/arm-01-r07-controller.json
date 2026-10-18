@@ -1,0 +1,256 @@
+{
+  "revision": "ARM-01/r07",
+  "status": "joint shoulder test awaiting user review",
+  "authorization": "User said далее after sleeve-only diagnostic r06",
+  "base": "accepted r04",
+  "parameter": {
+    "id": "ParamShoulderLiftL",
+    "range": [
+      0,
+      20
+    ],
+    "keys": [
+      0,
+      10,
+      20
+    ],
+    "pivot_canvas": [
+      628,
+      553
+    ]
+  },
+  "arm_extraction_polygon": [
+    [
+      646,
+      735
+    ],
+    [
+      706,
+      694
+    ],
+    [
+      750,
+      731
+    ],
+    [
+      800,
+      820
+    ],
+    [
+      844,
+      903
+    ],
+    [
+      845,
+      973
+    ],
+    [
+      750,
+      977
+    ],
+    [
+      696,
+      862
+    ],
+    [
+      675,
+      797
+    ],
+    [
+      645,
+      770
+    ]
+  ],
+  "source_layer_order": [
+    "character_context_rest",
+    "arm_L_visible",
+    "shirt_body",
+    "sleeve_rim_L",
+    "sleeve_front_L"
+  ],
+  "seam_points": [
+    [
+      650,
+      543
+    ],
+    [
+      623,
+      577
+    ],
+    [
+      617,
+      609
+    ],
+    [
+      622,
+      669
+    ],
+    [
+      632,
+      722
+    ],
+    [
+      642,
+      759
+    ]
+  ],
+  "weight_formula": "t=clamp((x-seamX(y)-5)/42,0,1); w=t*t*(3-2*t); blend original point with rotation around [628,553] by -parameter degrees",
+  "native_authoring": "arm: author_axis rotate; sleeve front/rim: seeded keys and per-vertex canvas_deform_stroke in deform mode; no automatic glue",
+  "verification": {
+    "source_sha256": "f0c3a98fc8876b3aebbaf9804db8ccd611c2465c6bca49d0171e7bff7fd13cb7",
+    "accepted_r04_files_unchanged": true,
+    "layers": 5,
+    "psd_layers": 5,
+    "parameter": "ParamShoulderLiftL",
+    "range": [
+      0,
+      20
+    ],
+    "keys": [
+      0,
+      10,
+      20
+    ],
+    "native_preview_frames": 21,
+    "save_reopen_layer_bytes_identical": true,
+    "save_reopen_poses_identical": true,
+    "shirt_body_render_identical_at_0_10_20": true,
+    "neutral_layer_composite_alpha_max_difference_from_r04": 0,
+    "neutral_layer_composite_rgb_max_difference_from_r04": 0,
+    "no_hidden_artwork": true,
+    "r05_patch_present": false,
+    "limitations": [
+      "20-degree test only",
+      "Arm is one visible piece: no elbow/wrist articulation",
+      "Thin seam line and cuff shading need visual review",
+      "Hidden shoulder skin and rear sleeve fabric have not been reconstructed"
+    ]
+  },
+  "runtime_verification": {
+    "runtime_load": true,
+    "poses_checked": 21,
+    "static_body_context_max_vertex_displacement": 0,
+    "new_triangle_flips": 0,
+    "maximum_moving_coordinate_change": 124.80487060546875
+  },
+  "limits": [
+    "Arm kept as a single visible fragment for shoulder-only test",
+    "No accepted elbow, wrist, higher raise or hidden-surface reconstruction",
+    "Thin seam line and rim shading need review"
+  ],
+  "rejected_approaches": [
+    "r05 broad gradient patch",
+    "Automatic nearest-vertex glue altered neutral seam",
+    "Landmark interpolation distorted sleeve outline"
+  ],
+  "vertex_displacements": [
+    {"mesh":"ArtMeshLayerL","vertex":2,"angle":10,"weight":0.20599322294679187,"start":[657.8427124023438,554.8636474609375],"end":[657.815982954054,553.7903309751317]},
+    {"mesh":"ArtMeshLayerL","vertex":3,"angle":10,"weight":0.6458227161671406,"start":[664.1300048828125,563.1563720703125],"end":[664.9145112744685,559.0048895650843]},
+    {"mesh":"ArtMeshLayerL","vertex":4,"angle":10,"weight":0.9871920253148968,"start":[670.6401977539062,572.6583862304688],"end":[673.3706154417209,565.0539989760177]},
+    {"mesh":"ArtMeshLayerL","vertex":5,"angle":10,"weight":1,"start":[677.06640625,582.0899658203125],"end":[681.3723968405372,573.1277318447261]},
+    {"mesh":"ArtMeshLayerL","vertex":6,"angle":10,"weight":1,"start":[683.297607421875,591.466796875],"end":[689.1372016901156,581.2800710378958]},
+    {"mesh":"ArtMeshLayerL","vertex":7,"angle":10,"weight":1,"start":[689.7685546875,600.4879150390625],"end":[697.0763414563438,589.0404699462493]},
+    {"mesh":"ArtMeshLayerL","vertex":8,"angle":10,"weight":1,"start":[695.8272094726562,609.4542846679688],"end":[704.5999454079379,596.8185459106139]},
+    {"mesh":"ArtMeshLayerL","vertex":9,"angle":10,"weight":1,"start":[702.2819213867188,617.9724731445312],"end":[712.4357636503454,604.08647500271]},
+    {"mesh":"ArtMeshLayerL","vertex":10,"angle":10,"weight":1,"start":[708.3823852539062,627.7456665039062],"end":[720.1406449805645,612.6518571612498]},
+    {"mesh":"ArtMeshLayerL","vertex":11,"angle":10,"weight":1,"start":[715.4108276367188,636.8760375976562],"end":[728.6477818326103,620.423041190641]},
+    {"mesh":"ArtMeshLayerL","vertex":12,"angle":10,"weight":1,"start":[720.2319946289062,644.5985107421875],"end":[734.7366978537128,627.1910057533826]},
+    {"mesh":"ArtMeshLayerL","vertex":13,"angle":10,"weight":1,"start":[726.1679077148438,653.5125122070312],"end":[742.1303311920412,634.9388230161605]},
+    {"mesh":"ArtMeshLayerL","vertex":14,"angle":10,"weight":1,"start":[731.419189453125,661.2164916992188],"end":[748.6396161607537,641.6138862448456]},
+    {"mesh":"ArtMeshLayerL","vertex":15,"angle":10,"weight":1,"start":[737.2386474609375,670.4892578125],"end":[755.9808624626794,649.735239927008]},
+    {"mesh":"ArtMeshLayerL","vertex":16,"angle":10,"weight":1,"start":[743.5245361328125,679.7780151367188],"end":[763.7842301434545,657.7913470428593]},
+    {"mesh":"ArtMeshLayerL","vertex":17,"angle":10,"weight":1,"start":[748.205322265625,690.257568359375],"end":[770.213659937118,667.2988823226237]},
+    {"mesh":"ArtMeshLayerL","vertex":18,"angle":10,"weight":1,"start":[737.668212890625,694.34521484375],"end":[760.5464452932388,673.1541781128552]},
+    {"mesh":"ArtMeshLayerL","vertex":19,"angle":10,"weight":1,"start":[727.3888549804688,698.350830078125],"end":[751.1188217132136,678.8839308199363]},
+    {"mesh":"ArtMeshLayerL","vertex":20,"angle":10,"weight":1,"start":[717.212646484375,702.9480590820312],"end":[741.8955131288377,685.1783976462611]},
+    {"mesh":"ArtMeshLayerL","vertex":21,"angle":10,"weight":1,"start":[708.35498046875,704.680908203125],"end":[733.4733210551071,688.4230384575103]},
+    {"mesh":"ArtMeshLayerL","vertex":22,"angle":10,"weight":1,"start":[700.5579223632812,708.9375610351562],"end":[726.5338777893979,693.9689680995539]},
+    {"mesh":"ArtMeshLayerL","vertex":23,"angle":10,"weight":1,"start":[691.1326293945312,714.49462890625],"end":[718.2167509083482,701.0782965710224]},
+    {"mesh":"ArtMeshLayerL","vertex":24,"angle":10,"weight":1,"start":[682.037353515625,720.7688598632812],"end":[710.3491614789664,708.836585943446]},
+    {"mesh":"ArtMeshLayerL","vertex":25,"angle":10,"weight":0.9224541190785526,"start":[673.0916748046875,726.6802978515625],"end":[700.2802935477753,717.0234198129649]},
+    {"mesh":"ArtMeshLayerL","vertex":26,"angle":10,"weight":0.6724499024932057,"start":[665.8111572265625,732.7026977539062],"end":[686.4087076299631,726.4516530087782]},
+    {"mesh":"ArtMeshLayerL","vertex":27,"angle":10,"weight":0.3928950006982117,"start":[659.5877075195312,739.047607421875],"end":[672.0923530284199,735.7820099201249]},
+    {"mesh":"ArtMeshLayerL","vertex":28,"angle":10,"weight":0.13836945649298968,"start":[653.0027465820312,744.885986328125],"end":[657.5607477202396,743.8818584602052]},
+    {"mesh":"ArtMeshLayerL","vertex":29,"angle":10,"weight":0.0003403719483698818,"start":[645.1793212890625,750.602294921875],"end":[645.1909117319689,750.6002577342571]},
+    {"mesh":"ArtMeshLayerL","vertex":50,"angle":10,"weight":0.5178230626561864,"start":[657.6681518554688,717.5957641601562],"end":[672.235047244646,713.6331749520097]},
+    {"mesh":"ArtMeshLayerL","vertex":51,"angle":10,"weight":0.1507129317542069,"start":[637.5729370117188,670.489501953125],"end":[640.625838967841,669.9699564074098]},
+    {"mesh":"ArtMeshLayerL","vertex":52,"angle":10,"weight":0.14161297405565904,"start":[634.3497314453125,637.8742065429688],"end":[636.4231981092314,637.5354613412662]},
+    {"mesh":"ArtMeshLayerL","vertex":53,"angle":10,"weight":1,"start":[672.1172485351562,605.5232543945312],"end":[680.5675758097353,597.064428329358]},
+    {"mesh":"ArtMeshLayerL","vertex":54,"angle":10,"weight":1,"start":[702.9905395507812,685.4091796875],"end":[724.8438775112854,670.3756161909836]},
+    {"mesh":"ArtMeshLayerL","vertex":55,"angle":10,"weight":1,"start":[700.8887939453125,652.9306030273438],"end":[717.1342164939088,638.7554263835694]},
+    {"mesh":"ArtMeshLayerL","vertex":56,"angle":10,"weight":0.2973725121031592,"start":[641.177490234375,587.6651611328125],"end":[642.9080038840897,586.8280905626433]},
+    {"mesh":"ArtMeshLayerL","vertex":57,"angle":10,"weight":0.9797672301435814,"start":[668.6298828125,685.8570556640625],"end":[690.6287202651498,676.966939481775]},
+    {"mesh":"ArtMeshLayerL2","vertex":0,"angle":10,"weight":1,"start":[742.8900756835938,690.3775024414062],"end":[764.9999902287469,668.3399772192786]},
+    {"mesh":"ArtMeshLayerL2","vertex":1,"angle":10,"weight":1,"start":[746.8660278320312,690.9369506835938],"end":[769.0126858978886,668.2005093405269]},
+    {"mesh":"ArtMeshLayerL2","vertex":2,"angle":10,"weight":1,"start":[747.0213012695312,693.959716796875],"end":[769.6904982100601,671.1503898949668]},
+    {"mesh":"ArtMeshLayerL2","vertex":3,"angle":10,"weight":1,"start":[741.3978271484375,702.3228759765625],"end":[765.6047046478346,680.3629999280834]},
+    {"mesh":"ArtMeshLayerL2","vertex":4,"angle":10,"weight":1,"start":[733.8848266601562,710.0801391601562],"end":[759.5528781341046,689.3070316970435]},
+    {"mesh":"ArtMeshLayerL2","vertex":5,"angle":10,"weight":1,"start":[726.0205688476562,717.2567749023438],"end":[753.054305787078,697.7402522543377]},
+    {"mesh":"ArtMeshLayerL2","vertex":6,"angle":10,"weight":1,"start":[717.6817016601562,721.1578979492188],"end":[745.5195476374332,703.0301375672709]},
+    {"mesh":"ArtMeshLayerL2","vertex":7,"angle":10,"weight":1,"start":[712.3368530273438,710.7122802734375],"end":[738.4420367911578,693.6713355201535]},
+    {"mesh":"ArtMeshLayerL2","vertex":8,"angle":10,"weight":1,"start":[710.9290161132812,703.3478393554688],"end":[735.7767663382712,686.6632453221168]},
+    {"mesh":"ArtMeshLayerL2","vertex":9,"angle":10,"weight":1,"start":[721.3372192382812,698.1777954101562],"end":[745.1290767611357,679.7643804559157]},
+    {"mesh":"ArtMeshLayerL2","vertex":10,"angle":10,"weight":1,"start":[732.006591796875,693.719482421875],"end":[754.8621796507307,673.521082158052]},
+    {"mesh":"ArtMeshLayerL2","vertex":11,"angle":10,"weight":0.23368226815467633,"start":[655.222900390625,740.6516723632812],"end":[662.7408781634219,738.8808146756076]},
+    {"mesh":"ArtMeshLayerL2","vertex":12,"angle":10,"weight":0.37337325703744983,"start":[659.867431640625,742.1563720703125],"end":[671.950731666073,739.0172618925807]},
+    {"mesh":"ArtMeshLayerL2","vertex":13,"angle":10,"weight":0.41554614091565756,"start":[662.7322998046875,748.29638671875],"end":[676.6053908207223,744.5572229614996]},
+    {"mesh":"ArtMeshLayerL2","vertex":14,"angle":10,"weight":0.44351210317692913,"start":[665.3018188476562,754.8800048828125],"end":[680.5982836312264,750.646946296477]},
+    {"mesh":"ArtMeshLayerL2","vertex":15,"angle":10,"weight":0.16066399670255907,"start":[657.6639404296875,759.6192016601562],"end":[663.3560065098646,758.2872811989297]},
+    {"mesh":"ArtMeshLayerL2","vertex":16,"angle":10,"weight":0.005705079933731471,"start":[648.8591918945312,762.0008544921875],"end":[649.0644362500559,761.9620750484888]},
+    {"mesh":"ArtMeshLayerL2","vertex":21,"angle":10,"weight":0.012613586332263949,"start":[646.542236328125,746.9993286132812],"end":[646.9636049309805,746.921539222932]},
+    {"mesh":"ArtMeshLayerL","vertex":2,"angle":20,"weight":0.20599322294679187,"start":[657.8427124023438,554.8636474609375],"end":[657.6032801343246,552.7379620984599]},
+    {"mesh":"ArtMeshLayerL","vertex":3,"angle":20,"weight":0.6458227161671406,"start":[664.1300048828125,563.1563720703125],"end":[664.96620187961,554.780249302162]},
+    {"mesh":"ArtMeshLayerL","vertex":4,"angle":20,"weight":0.9871920253148968,"start":[670.6401977539062,572.6583862304688],"end":[674.7390639606335,557.0910073951685]},
+    {"mesh":"ArtMeshLayerL","vertex":5,"angle":20,"weight":1,"start":[677.06640625,582.0899658203125],"end":[684.0566941608107,563.5539269221614]},
+    {"mesh":"ArtMeshLayerL","vertex":6,"angle":20,"weight":1,"start":[683.297607421875,591.466796875],"end":[693.1191730219189,570.2340695527117]},
+    {"mesh":"ArtMeshLayerL","vertex":7,"angle":20,"weight":1,"start":[689.7685546875,600.4879150390625],"end":[702.285278544352,576.497953411477]},
+    {"mesh":"ArtMeshLayerL","vertex":8,"angle":20,"weight":1,"start":[695.8272094726562,609.4542846679688],"end":[711.0452307634419,582.8514028090193]},
+    {"mesh":"ArtMeshLayerL","vertex":9,"angle":20,"weight":1,"start":[702.2819213867188,617.9724731445312],"end":[720.0240679620143,588.648240168935]},
+    {"mesh":"ArtMeshLayerL","vertex":10,"angle":20,"weight":1,"start":[708.3823852539062,627.7456665039062],"end":[729.0992578349044,595.745556324045]},
+    {"mesh":"ArtMeshLayerL","vertex":11,"angle":20,"weight":1,"start":[715.4108276367188,636.8760375976562],"end":[738.8266041077532,601.9214297947531]},
+    {"mesh":"ArtMeshLayerL","vertex":12,"angle":20,"weight":1,"start":[720.2319946289062,644.5985107421875],"end":[745.9982605256096,607.5292445972216]},
+    {"mesh":"ArtMeshLayerL","vertex":13,"angle":20,"weight":1,"start":[726.1679077148438,653.5125122070312],"end":[754.6249623087026,613.8754641509889]},
+    {"mesh":"ArtMeshLayerL","vertex":14,"angle":20,"weight":1,"start":[731.419189453125,661.2164916992188],"end":[762.1944691779292,619.318792697713]},
+    {"mesh":"ArtMeshLayerL","vertex":15,"angle":20,"weight":1,"start":[737.2386474609375,670.4892578125],"end":[770.8344437199339,626.0419707267274]},
+    {"mesh":"ArtMeshLayerL","vertex":16,"angle":20,"weight":1,"start":[743.5245361328125,679.7780151367188],"end":[779.9181890313233,632.6206468960829]},
+    {"mesh":"ArtMeshLayerL","vertex":17,"angle":20,"weight":1,"start":[748.205322265625,690.257568359375],"end":[787.9009075150061,640.8672825845248]},
+    {"mesh":"ArtMeshLayerL","vertex":18,"angle":20,"weight":1,"start":[737.668212890625,694.34521484375],"end":[779.3973210273552,648.3123174809492]},
+    {"mesh":"ArtMeshLayerL","vertex":19,"angle":20,"weight":1,"start":[727.3888549804688,698.350830078125],"end":[771.1078853493325,655.5921120241264]},
+    {"mesh":"ArtMeshLayerL","vertex":20,"angle":20,"weight":1,"start":[717.212646484375,702.9480590820312],"end":[763.1177222407913,663.392562483506]},
+    {"mesh":"ArtMeshLayerL","vertex":21,"angle":20,"weight":1,"start":[708.35498046875,704.680908203125],"end":[755.3869081532806,668.0504082157281]},
+    {"mesh":"ArtMeshLayerL","vertex":22,"angle":20,"weight":1,"start":[700.5579223632812,708.9375610351562],"end":[749.5159311994315,674.7171044019864]},
+    {"mesh":"ArtMeshLayerL","vertex":23,"angle":20,"weight":1,"start":[691.1326293945312,714.49462890625],"end":[742.5596820976939,683.1626801257179]},
+    {"mesh":"ArtMeshLayerL","vertex":24,"angle":20,"weight":1,"start":[682.037353515625,720.7688598632812],"end":[736.1588318414557,692.1692962168366]},
+    {"mesh":"ArtMeshLayerL","vertex":25,"angle":20,"weight":0.9224541190785526,"start":[673.0916748046875,726.6802978515625],"end":[725.3789568063069,702.7919973526427]},
+    {"mesh":"ArtMeshLayerL","vertex":26,"angle":20,"weight":0.6724499024932057,"start":[665.8111572265625,732.7026977539062],"end":[705.6078524317859,716.7188485873966]},
+    {"mesh":"ArtMeshLayerL","vertex":27,"angle":20,"weight":0.3928950006982117,"start":[659.5877075195312,739.047607421875],"end":[683.8399598190699,730.3946152771946]},
+    {"mesh":"ArtMeshLayerL","vertex":28,"angle":20,"weight":0.13836945649298968,"start":[653.0027465820312,744.885986328125],"end":[661.8751376049769,742.1014969594085]},
+    {"mesh":"ArtMeshLayerL","vertex":29,"angle":20,"weight":0.0003403719483698818,"start":[645.1793212890625,750.602294921875],"end":[645.2019723360864,750.5962388368074]},
+    {"mesh":"ArtMeshLayerL","vertex":50,"angle":20,"weight":0.5178230626561864,"start":[657.6681518554688,717.5957641601562],"end":[685.8925423663882,707.2012715392291]},
+    {"mesh":"ArtMeshLayerL","vertex":51,"angle":20,"weight":0.1507129317542069,"start":[637.5729370117188,670.489501953125],"end":[643.5421423461878,668.9281730646701]},
+    {"mesh":"ArtMeshLayerL","vertex":52,"angle":20,"weight":0.14161297405565904,"start":[634.3497314453125,637.8742065429688],"end":[638.4063416685021,636.8418087326911]},
+    {"mesh":"ArtMeshLayerL","vertex":53,"angle":20,"weight":1,"start":[672.1172485351562,605.5232543945312],"end":[687.4206638938124,587.2667269070737]},
+    {"mesh":"ArtMeshLayerL","vertex":54,"angle":20,"weight":1,"start":[702.9905395507812,685.4091796875],"end":[743.7546632589759,651.7756539914318]},
+    {"mesh":"ArtMeshLayerL","vertex":55,"angle":20,"weight":1,"start":[700.8887939453125,652.9306030273438],"end":[730.6713409784273,621.97461450347]},
+    {"mesh":"ArtMeshLayerL","vertex":56,"angle":20,"weight":0.2973725121031592,"start":[641.177490234375,587.6651611328125],"end":[644.4668713639336,585.7032364336216]},
+    {"mesh":"ArtMeshLayerL","vertex":57,"angle":20,"weight":0.9797672301435814,"start":[668.6298828125,685.8570556640625],"end":[710.7495934714732,664.3918261058351]},
+    {"mesh":"ArtMeshLayerL2","vertex":0,"angle":20,"weight":1,"start":[742.8900756835938,690.3775024414062],"end":[782.9472293961397,642.7979051541879]},
+    {"mesh":"ArtMeshLayerL2","vertex":1,"angle":20,"weight":1,"start":[746.8660278320312,690.9369506835938],"end":[786.8747448586006,641.9637588154186]},
+    {"mesh":"ArtMeshLayerL2","vertex":2,"angle":20,"weight":1,"start":[747.0213012695312,693.959716796875],"end":[788.0545010613279,644.7511231830822]},
+    {"mesh":"ArtMeshLayerL2","vertex":3,"angle":20,"weight":1,"start":[741.3978271484375,702.3228759765625],"end":[785.6305328278477,654.5332635755772]},
+    {"mesh":"ArtMeshLayerL2","vertex":4,"angle":20,"weight":1,"start":[733.8848266601562,710.0801391601562],"end":[781.2237619749166,664.3923040505022]},
+    {"mesh":"ArtMeshLayerL2","vertex":5,"angle":20,"weight":1,"start":[726.0205688476562,717.2567749023438],"end":[776.2883309256913,673.8258702836855]},
+    {"mesh":"ArtMeshLayerL2","vertex":6,"angle":20,"weight":1,"start":[717.6817016601562,721.1578979492188],"end":[769.7866216275072,680.3437873742542]},
+    {"mesh":"ArtMeshLayerL2","vertex":7,"angle":20,"weight":1,"start":[712.3368530273438,710.7122802734375],"end":[761.1914951534397,672.3561634202201]},
+    {"mesh":"ArtMeshLayerL2","vertex":8,"angle":20,"weight":1,"start":[710.9290161132812,703.3478393554688],"end":[757.3497740557482,665.9173612165181]},
+    {"mesh":"ArtMeshLayerL2","vertex":9,"angle":20,"weight":1,"start":[721.3372192382812,698.1777954101562],"end":[765.3620265567756,657.4992939473938]},
+    {"mesh":"ArtMeshLayerL2","vertex":10,"angle":20,"weight":1,"start":[732.006591796875,693.719482421875],"end":[773.8631243712593,649.6607097994668]},
+    {"mesh":"ArtMeshLayerL2","vertex":11,"angle":20,"weight":0.23368226815467633,"start":[655.222900390625,740.6516723632812],"end":[669.8371347506737,735.8313771553186]},
+    {"mesh":"ArtMeshLayerL2","vertex":12,"angle":20,"weight":0.37337325703744983,"start":[659.867431640625,742.1563720703125],"end":[683.305358451248,733.827598822369]},
+    {"mesh":"ArtMeshLayerL2","vertex":13,"angle":20,"weight":0.41554614091565756,"start":[662.7322998046875,748.29638671875],"end":[689.6184194391127,738.4658285300352]},
+    {"mesh":"ArtMeshLayerL2","vertex":14,"angle":20,"weight":0.44351210317692913,"start":[665.3018188476562,754.8800048828125],"end":[694.9272978342901,743.8219941472855]},
+    {"mesh":"ArtMeshLayerL2","vertex":15,"angle":20,"weight":0.16066399670255907,"start":[657.6639404296875,759.6192016601562],"end":[668.7303117553917,755.9871787003357]},
+    {"mesh":"ArtMeshLayerL2","vertex":16,"angle":20,"weight":0.005705079933731471,"start":[648.8591918945312,762.0008544921875],"end":[649.2598285029094,761.8882444433636]},
+    {"mesh":"ArtMeshLayerL2","vertex":21,"angle":20,"weight":0.012613586332263949,"start":[646.542236328125,746.9993286132812],"end":[647.3650640120727,746.771761738202]}
+  ]
+}

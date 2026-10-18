@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARM-01 · рука и рукав вместе · r07</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf1f6;color:#20314a;font:16px/1.5 system-ui}main{max-width:1100px;margin:auto;padding:22px}h1{font-size:26px;margin:12px 0}h2{font-size:19px}.badge{background:#fff0c9;padding:6px 10px;border-radius:6px}.stage{background:repeating-conic-gradient(#dce1e9 0% 25%,#f5f7fa 0% 50%) 0/24px 24px;border:1px solid #bac6d8;border-radius:10px;overflow:hidden}svg{display:block;width:100%;height:590px}.tools{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}button{font:inherit;background:white;color:#20314a;border:1px solid #bac6d8;border-radius:7px;padding:8px 12px;cursor:pointer}button[aria-pressed=true]{background:#264c80;color:white}input{flex:1;min-width:180px}output{min-width:45px;font-weight:700}.notes{background:white;border-radius:12px;padding:18px 22px;margin-top:18px}a{color:#285c9e}small{color:#52657d}li{margin:7px 0}@media(max-width:700px){svg{height:400px}}
+</style><main>
+<span class="badge">ARM-01 / r07 · первый совместный тест · на просмотр</span>
+<h1>Рука поднимается вместе с рукавом</h1>
+<p>Один плечевой параметр, 0–20° от исходной позы. Корпус и принт остаются на месте; влияние движения рукава плавно уменьшается к шву. Вставки r05 нет.</p>
+<div class="tools"><button id="play" aria-pressed="false">Медленно воспроизвести</button><button data-angle="0">Исходная</button><button data-angle="10">Промежуточная</button><button data-angle="20">Крайняя</button></div>
+<div class="tools"><label for="angle">Подъём плеча</label><input id="angle" type="range" min="0" max="20" step="1" value="0"><output id="value" for="angle">0°</output></div>
+<div class="tools"><button id="zoom" aria-pressed="false">Крупно шов и кромка</button><button data-bg="checker" aria-pressed="true">Шахматка</button><button data-bg="white" aria-pressed="false">Белый</button><button data-bg="dark" aria-pressed="false">Тёмный</button></div>
+<div class="stage"><svg viewBox="0 0 1200 843" role="img" aria-label="Нативный рендер плечевого теста"><image id="frame" href="arm-01-r07-assets/frame-00.png" width="1200" height="843"/></svg></div>
+<p id="status" role="status">Исходная поза. Нажми воспроизведение или выбери угол вручную.</p>
+<small>Ползунок показывает 21 заранее проверенный кадр из PSD2Live. В редакторе это настоящий параметр с ключами 0 / 10 / 20°. Воспроизведение здесь — просмотр тестовых поз, не утверждённый анимационный клип.</small>
+<section class="notes"><h2>Что проверять</h2>
+<ul><li>Рука, кисть и браслеты должны подниматься согласованно с краем рукава.</li><li>Корпус и принт не должны следовать за рукой.</li><li>На увеличении оцени стык у плеча, тонкую линию вдоль проймы и серую внутреннюю кромку. Их качество ещё требует приёмки.</li></ul>
+<h2>Что сделано в редакторе</h2><p>Видимая рука отделена от контекста. Плечо вращает её вокруг выбранной опоры; вершины рукава получают плавное влияние того же подъёма с неподвижной зоной у шва. Автоматическое склеивание, которое искажало исходную позу, в этот вариант не вошло.</p>
+<p>Новая кожа и ткань не рисовались. Верх руки, предплечье, кисть и браслеты пока двигаются единым видимым фрагментом: для этого теста локоть и запястье не имеют отдельных контроллеров.</p>
+<h2>Проверено</h2><p>Нейтральная сборка пяти PNG совпадает с r04 по цвету и альфе. Принятые файлы r04 не изменены. Корпус одинаков в нативных рендерах 0 / 10 / 20°; во всех 21 положениях экспортированного теста его вершины и вершины остального контекста неподвижны. Новых перевёрнутых треугольников нет.</p>
+<p>Пять слоёв и три контрольные позы идентичны после сохранения и повторного открытия. Экспорт PSD содержит пять слоёв. Приёмка касается только этого диапазона; более высокий подъём и другие движения ещё не проверены.</p>
+<p><a href="arm-01-r07-assets/arm-01-r07.psd2live" download>Проект с плечевым параметром</a> · <a href="arm-01-r07-assets/arm-01-r07.psd" download>Пятислойный PSD</a> · <a href="arm-01-r04.html">Принятые слои r04</a></p>
+<small>Следующее решение — замечания или принятие совместного теста r07 в диапазоне 0–20°. Дорисовка и новые контроллеры автоматически не запускаются.</small></section>
+</main><script>
+const slider=document.querySelector('#angle'),frame=document.querySelector('#frame'),play=document.querySelector('#play');let running=false,start=0,handle=0;
+const path=n=>`arm-01-r07-assets/frame-${String(n).padStart(2,'0')}.png`;
+const ready=Promise.all(Array.from({length:21},(_,i)=>new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(true);image.onerror=()=>resolve(false);image.src=path(i);}))).then(results=>results.every(Boolean));
+function show(n){n=Math.max(0,Math.min(20,Math.round(n)));slider.value=n;document.querySelector('#value').textContent=n+'°';frame.setAttribute('href',path(n));document.querySelectorAll('[data-angle]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.angle)===n)));}
+function stop(){running=false;cancelAnimationFrame(handle);play.setAttribute('aria-pressed','false');play.textContent='Медленно воспроизвести';}
+function tick(time){if(!running)return;const phase=((time-start)/1000)%8;const angle=phase<1?0:phase<3.5?(phase-1)*8:phase<4.5?20:phase<7?20-(phase-4.5)*8:0;show(angle);handle=requestAnimationFrame(tick);}
+play.onclick=async()=>{if(running){stop();document.querySelector('#status').textContent='Пауза. Можно проверить текущую позу крупно.';return;}play.disabled=true;const loaded=await ready;play.disabled=false;if(!loaded){document.querySelector('#status').textContent='Не все кадры загрузились. Обнови страницу после запуска локального сервера.';return;}running=true;start=performance.now();play.setAttribute('aria-pressed','true');play.textContent='Пауза';document.querySelector('#status').textContent='Медленный просмотр: 0 → 20 → 0°, с остановками в крайних положениях.';handle=requestAnimationFrame(tick);};
+slider.oninput=()=>{stop();show(slider.value);document.querySelector('#status').textContent='Ручная проверка позы.';};document.querySelectorAll('[data-angle]').forEach(b=>b.onclick=()=>{stop();show(b.dataset.angle);document.querySelector('#status').textContent='Выбрана контрольная поза.';});
+document.querySelector('#zoom').onclick=function(){const on=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',String(on));document.querySelector('svg').setAttribute('viewBox',on?'535 70 455 450':'0 0 1200 843');this.textContent=on?'Общий вид':'Крупно шов и кромка';};
+document.querySelectorAll('[data-bg]').forEach(b=>b.onclick=()=>{document.querySelector('.stage').style.background={checker:'',white:'#fff',dark:'#182233'}[b.dataset.bg];document.querySelectorAll('[data-bg]').forEach(other=>other.setAttribute('aria-pressed',String(other===b)));});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});show(0);
+</script></html>
