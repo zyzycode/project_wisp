@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wisp — фронтальный риг</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #eef1f6; color: #273348; font: 14px/1.5 system-ui,sans-serif; }
+  main { display: grid; grid-template-columns: minmax(0,1fr) 270px; height: 100dvh; }
+  .stage { position: relative; min-height: 0; }
+  canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+  header { position: absolute; top: 20px; left: 24px; pointer-events: none; }
+  h1 { font-size: 18px; margin: 0; } header p { color: #637189; margin: 4px 0; font-size: 12px; }
+  aside { padding: 22px; background: #fff; border-left: 1px solid #d9e0ec; overflow: auto; }
+  h2 { margin: 0 0 10px; font-size: 15px; }
+  select, button { font: inherit; border: 1px solid #ccd6e5; border-radius: 8px; padding: 8px 10px; background: #f8faff; color: inherit; }
+  select { width: 100%; margin: 8px 0 12px; }
+  button { cursor: pointer; } button:hover { background: #e7efff; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 18px; }
+  label.control { display: grid; grid-template-columns: 1fr 36px; margin: 12px 0; font-size: 12px; }
+  output { grid-row: 1; grid-column: 2; text-align: right; color: #697993; font-variant-numeric: tabular-nums; }
+  input[type=range] { grid-row: 2; grid-column: 1 / -1; width: 100%; accent-color: #5389ce; }
+  details { border-top: 1px solid #e3e8f0; padding: 12px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  .note { color: #65748b; font-size: 12px; } #error { color: #ab2434; white-space: pre-wrap; }
+  #mode { padding: 5px 9px; background: #eaf1fc; border-radius: 7px; font-size: 12px; display: inline-block; }
+  @media(max-width:560px) { main { grid-template-columns: 1fr; height: auto; } .stage { height: 76dvh; } aside { border-left:0; } }
+</style>
+<main>
+  <section class="stage"><header><h1>Wisp / риг v1</h1><p>22 слоя · лицо и тело · фронтальный вид</p></header><canvas id="stage"></canvas></section>
+  <aside>
+    <h2>Посмотреть движение</h2>
+    <label for="clip">Анимация</label><select id="clip"></select>
+    <button id="pause">Пауза</button> <button id="reset">Нейтральная поза</button>
+    <p id="mode" aria-live="polite">Загрузка модели…</p>
+    <div class="presets">
+      <button data-preset="blink">Закрыть глаза</button><button data-preset="wink">Подмигнуть</button>
+      <button data-preset="happy">Радость</button><button data-preset="wave">Рука вверх</button>
+    </div>
+    <details open><summary>Лицо и взгляд</summary><div id="face"></div></details>
+    <details><summary>Голова, руки и ноги</summary><div id="body"></div></details>
+    <p class="note">Ползунок переключает модель в ручной режим. L/R — стороны персонажа. Для возврата к движению выбери анимацию.</p>
+    <p class="note">Шаги — на месте, во фронтальном виде. Профиль, бег и лежачие позы ещё не подготовлены. Это просмотр авторской модели, без подключения к Wisp.</p>
+    <p id="error" role="alert"></p>
+  </aside>
+</main>
+<script type="module">
+import { P2LPlayer } from './p2l.js';
+const names = {wisp_showcase:'Демонстрация · 12 секунд',wisp_idle:'Спокойное ожидание',
+  wisp_look_around:'Взгляд по сторонам',wisp_wink:'Подмигивание',wisp_talking:'Речь',
+  wisp_curious:'Любопытство',wisp_wave:'Приветствие рукой',wisp_step_front:'Шаги на месте',wisp_happy:'Радость'};
+const controls = [
+  ['face','ParamEyeBallX','Взгляд по горизонтали',-1,1,0],
+  ['face','ParamEyeBallY','Взгляд по вертикали',-1,1,0],
+  ['face','ParamEyeLOpen','Левый глаз',0,1,1],['face','ParamEyeROpen','Правый глаз',0,1,1],
+  ['face','ParamBrowLY','Левая бровь',-.6,.6,0],['face','ParamBrowRY','Правая бровь',-.6,.6,0],
+  ['face','ParamBrowAngleL','Наклон левой брови',-.6,.6,0],['face','ParamBrowAngleR','Наклон правой брови',-.6,.6,0],
+  ['face','ParamMouthOpenY','Открытие рта',0,1,0],['face','ParamMouthForm','Ширина улыбки',-1,1,0],
+  ['body','ParamAngleZ','Наклон головы',-3,3,0],['body','ParamBreath','Вдох',0,1,0],
+  ['body','ParamHairFront','Передняя прядь',-1,1,0],['body','ParamHairBack','Боковые волосы',-1,1,0],
+  ['body','ParamArmLA','Левое плечо',0,65,0],['body','ParamArmLB','Левый локоть',0,100,0],
+  ['body','ParamArmRA','Правое плечо',0,65,0],['body','ParamArmRB','Правый локоть',0,100,0],
+  ['body','ParamStepL','Подъём левой стопы',0,1,0],['body','ParamStepR','Подъём правой стопы',0,1,0]
+];
+const presets = {blink:{ParamEyeLOpen:0,ParamEyeROpen:0},wink:{ParamEyeLOpen:0,ParamMouthOpenY:.65,ParamMouthForm:1},
+  happy:{ParamEyeLOpen:.55,ParamEyeROpen:.55,ParamMouthOpenY:1,ParamMouthForm:1},
+  wave:{ParamArmLA:55,ParamArmLB:85,ParamMouthOpenY:.65}};
+try {
+  const player=await P2LPlayer.create(document.querySelector('canvas'),'p2l_runtime.wasm','layout.p2lrt');
+  // The stock viewer enables automatic blink/gaze. Disable those overrides so
+  // authored clips and the manual controls show the actual requested values.
+  player.rt.p2l_behaviors(player.rig,0);
+  const select=document.querySelector('#clip'), status=document.querySelector('#mode'),pause=document.querySelector('#pause');
+  select.add(new Option('Ручное управление',''));
+  for(const id of Object.keys(names)) if(player.clips.includes(id))select.add(new Option(names[id],id));
+  const sliders=new Map();let manual=false,paused=false;
+  function resume(){if(paused){player.start();paused=false;pause.textContent='Пауза';}}
+  function neutral(){
+    resume();player.play(null);player.expression(null);
+    for(const id of player.parameters)player.setParameter(id,id==='ParamEyeLOpen'||id==='ParamEyeROpen'?1:0);
+    for(const control of controls){const input=sliders.get(control[1]);input.value=control[5];input.nextElementSibling.value=Number(control[5]).toFixed(2);}
+    select.value='';manual=true;status.textContent='Ручное управление';
+  }
+  for(const [section,id,label,min,max,value] of controls){
+    const wrapper=document.createElement('label');wrapper.className='control';wrapper.textContent=label;
+    const input=document.createElement('input');input.type='range';input.min=min;input.max=max;input.step=(max-min)>2?'.1':'.01';input.value=value;input.setAttribute('aria-label',label);
+    const output=document.createElement('output');output.value=Number(value).toFixed(2);
+    wrapper.append(input,output);document.getElementById(section).append(wrapper);sliders.set(id,input);
+    input.oninput=()=>{const next=Number(input.value);if(!manual)neutral();resume();input.value=next;output.value=next.toFixed(2);player.setParameter(id,next);};
+  }
+  select.onchange=()=>{if(!select.value){neutral();return;}resume();manual=false;player.play(select.value);status.textContent='Играет: '+names[select.value];};
+  pause.onclick=()=>{if(paused){resume();}else{player.stop();paused=true;pause.textContent='Продолжить';}};
+  document.querySelector('#reset').onclick=neutral;
+  for(const button of document.querySelectorAll('[data-preset]'))button.onclick=()=>{
+    neutral();for(const [id,value] of Object.entries(presets[button.dataset.preset])){
+      player.setParameter(id,value);const input=sliders.get(id);input.value=value;input.nextElementSibling.value=value.toFixed(2);
+    }
+  };
+  select.value='wisp_showcase';select.onchange();
+} catch(error){document.querySelector('#error').textContent=String(error);}
+</script>
+</html>
