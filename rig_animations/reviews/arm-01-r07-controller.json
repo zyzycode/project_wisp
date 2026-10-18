@@ -1,6 +1,12 @@
 {
   "revision": "ARM-01/r07",
-  "status": "joint shoulder test awaiting user review",
+  "status": "rejected by user; archived for research; authoring paused",
+  "rejection": {
+    "date": "2026-10-18",
+    "user_statement": "честно говоря очень плохо, давай ты зафиксируешь всё что мы сделали, чтобы я смог в продулжить в новом чате после ресерча",
+    "scope": "visual result r07 rejected; technical checks do not constitute acceptance",
+    "next_step": "read ../HANDOFF.md; research and agree on a method before further authoring"
+  },
   "authorization": "User said далее after sleeve-only diagnostic r06",
   "base": "accepted r04",
   "parameter": {
