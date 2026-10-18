@@ -1,5 +1,6 @@
 """Build only the r11 hand/forearm review, without authoring a motion."""
 from datetime import datetime, timezone
+import argparse
 import hashlib
 import io
 import json
@@ -27,7 +28,7 @@ def main():
                        "rect": {"left": left, "top": top, "width": width, "height": height},
                        "tags": ["detail"]})
     write(OUT / "layout.json", {"format": "psd2live-layout", "version": 1,
-          "name": "ARM-01 r11 wrist subassembly only", "canvas": {"width": 240, "height": 330},
+          "name": PROJECT.stem + " static subassembly", "canvas": {"width": 240, "height": 330},
           "layers": layers})
     renders = {}
     with client() as c:
@@ -76,4 +77,9 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--revision", choices=["r11", "r12"], default="r11")
+    if parser.parse_args().revision == "r12":
+        OUT = ROOT / "work/arm-01/r12-wrist"
+        PROJECT = OUT / "arm-01-r12-wrist.psd2live"
     main()
