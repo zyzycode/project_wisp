@@ -4,34 +4,62 @@ Backend формирует AI-ответы и ведёт служебный уч
 [Архитектура и ORM-модели](ARCHITECTURE.md) · [Context/Prompt Engine](CONTEXT_PROMPT_ENGINE.md) ·
 [API-контракты и fixtures](../../docs/contracts/README.md).
 
-## Фактическая реализация
+## Реализованные возможности
 
-`GET /health`; `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`,
-`/v5/chat`, `/v5/summary`, `/v6/observation`, `/v7/touch`, `/v7/chat`. V5 opt-in: отдельная ветка v3 с производной summary;
-генерация только после явного desktop preview/confirm, без server history.
-[V6 observation](../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary) —
-изолированная реакция на untrusted appName/windowTitle и current character: только text,
-без memory extraction; metadata не сохраняется в ledger/logs, response cache — до 10 минут.
-[V7 interactions](../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v7) —
-явный touch с bounded appraisal и полноценный v5-compatible chat с card/effectPolicy,
-summary, memory, previousInitiative и optional previousTouch. Desktop передаёт eligible
-только при доступном локальном semantic gate; тогда chat предлагает одну оценку текущей
-реплики. Suppressed строго требует neutral/low/clear без числового эффекта. Цитаты, роли
-и неоднозначность отделяются от направленного отношения пользователя; качество живой
-классификации не подтверждается mock-тестами. PreviousTouch — обязательный при наличии atomic untrusted context,
-не user fact и не extraction evidence. Числа и окончательное принятие принадлежат desktop.
-Оба endpoint используют прежние service/provider/budget/ledger, один inference; request/context
-остаются в RAM, response cache — до 10 минут, durable conversation storage не добавлен.
-Ответы — JSON без streaming. Один активный провайдер на процесс: Groq или Gemini.
-Health проверяет HTTP runtime; доступность провайдера проверяется отдельно.
+**V7 реализован:** `/v7/chat` и `/v7/touch` работают через общий completion runtime.
+Версии обозначают поддерживаемые wire-сценарии, а не этапы готовности сервера.
+Старые endpoints сохранены для совместимости; v6 observation и v5 summary остаются
+отдельными операциями и при использовании v7 chat.
+
+| Endpoint | Возможности |
+|---|---|
+| `POST /v1/chat`, `/v1/touch` | Базовый диалог и короткая реакция на касание |
+| `POST /v2/chat` | Диалог с локальной проекцией памяти и предложениями фактов |
+| `POST /v3/chat`, `/v3/events` | Контекст предыдущей инициативы и реакции на события desktop |
+| `POST /v5/chat`, `/v5/summary` | Диалог с производной summary; отдельная генерация после desktop preview/confirm |
+| `POST /v6/observation` | Короткая реакция на appName/windowTitle; без истории, памяти и extraction |
+| `POST /v7/chat` | Возможности v5 плюс обязательная appraisal, card/effectPolicy и optional previousTouch |
+| `POST /v7/touch` | Реакция на явное касание с обязательной appraisal |
+| `GET /health` | Проверка HTTP runtime; не проверяет доступность LLM |
+
+[Appraisal v7](../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v7)
+— предложение оценки текущего взаимодействия. При `eligible` модель классифицирует
+текущую реплику; при `suppressed` допустима только `neutral/low/clear`. Числовой эффект,
+согласие, память и окончательное принятие принадлежат desktop. PreviousTouch хранит
+контекст уже опубликованной реакции, не является пользовательским фактом или evidence.
+
+Ответы — JSON без streaming. Один активный провайдер на процесс: Groq или Gemini;
+не более одного generation inference на запрос. Gemini предварительно считает
+токены через официальный countTokens в пределах того же deadline; Groq сохраняет
+консервативную оценку. [Точность и ограничения](CONTEXT_PROMPT_ENGINE.md#бюджет-и-ошибка).
+Сервер не хранит диалоги и память
+на диске: SQLite содержит служебный учёт, кеш ответов — только RAM до 10 минут.
+Схемы и точные ограничения — в [общих контрактах](../../docs/contracts/README.md).
+
+## Где находится логика
+
+- [Архитектура](ARCHITECTURE.md) — путь запроса, слои, ресурсы и SQLite ledger.
+- [Context/Prompt Engine](CONTEXT_PROMPT_ENGINE.md) — карта файлов, типы сценариев,
+  правила личности, сборка контекста и бюджет.
+- [CompletionService](../wisp_backend/completion/service.py) — повтор request ID,
+  deadline, cancellation и завершение учёта.
+- [Scenario policies](../wisp_backend/completion/policies.py) — связь сценария с
+  типом контекста, prompt builder, проверкой ответа и лимитами.
 
 ## Запуск
 
-Из `backend/`, Python 3.12+:
+Из `backend/`, Python 3.12+, Windows PowerShell:
 
 ```powershell
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r requirements.txt
+```
+
+Linux/macOS:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 ```
 
 Создайте `backend/.env` по [.env.example](../.env.example), задайте `WISP_AI_PROVIDER`
@@ -44,10 +72,21 @@ python -m venv .venv
 Запускать один ASGI worker. Внешний доступ и условия передачи данных провайдеру
 определены в [API-контракте](../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление).
 
+### Выбор v7 в desktop
+
+Backend регистрирует все перечисленные endpoints при запуске; отдельного server
+флага для v7 нет. Версию обращения выбирает desktop через `WISP_BACKEND_API_VERSION=7`
+при заданном `WISP_BACKEND_URL`. Events/summary имеют отдельные клиентские настройки.
+Общий `node scripts/wisp.mjs dev` сейчас принудительно задаёт desktop **v1** и отключает
+AI events; это поведение launcher, а не отсутствие v7 на сервере. Для v7 запускать
+`dev:backend` и `dev:frontend` отдельно с нужными переменными окружения desktop.
+
 ## Проверки
 
-Из `backend/`: `.venv/Scripts/python.exe -m pip check`, затем
-`.venv/Scripts/python.exe -m pytest -q`. Тесты подменяют внешние provider-вызовы.
+Из корня: `node scripts/wisp.mjs check:backend`, затем
+`node scripts/wisp.mjs test:backend`. CLI выбирает Python из backend `.venv`.
+Тесты подменяют внешние provider-вызовы; проверяют wire, prompts, бюджеты,
+timeout/disconnect/shutdown и ledger. Они не подтверждают качество живых ответов LLM.
 
 
 ## Лицензия и исходный код

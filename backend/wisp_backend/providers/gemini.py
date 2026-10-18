@@ -2,7 +2,13 @@
 
 from typing import Any
 
+import httpx
+
 from wisp_backend.accounting.contracts import Usage
+from wisp_backend.completion.context import ContextBlock, render_messages, select_context_async
+from wisp_backend.completion.contracts import InferenceRequest
+from wisp_backend.errors import ServiceError
+from wisp_backend.json_codec import decode_json
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.providers.http_provider import HTTPProvider
 
@@ -33,6 +39,45 @@ class GeminiProvider(HTTPProvider):
             "generationConfig": generation,
         }
         return f"models/{settings.model}:generateContent", payload
+
+    async def select_blocks(self, request: InferenceRequest, cap: int, allowance: int,
+                            deadline: float) -> tuple[ContextBlock, ...]:
+        async def count(blocks: tuple[ContextBlock, ...]) -> int:
+            _, payload = self.request(render_messages(blocks), self.settings, cap)
+            return await self.count_tokens(payload, deadline)
+        return await select_context_async(request.blocks, allowance, count)
+
+    async def count_tokens(self, payload: dict[str, Any], deadline: float) -> int:
+        """Official model preflight of the exact generateContent payload.
+
+        This is not billing usage: generation usageMetadata remains authoritative.
+        Nothing is cached beyond one context selection or persisted in the ledger.
+        """
+        remaining = self.remaining(deadline)
+        timeout = httpx.Timeout(remaining, connect=min(3, remaining, self.client.timeout.connect),
+                                pool=min(3, remaining, self.client.timeout.pool))
+        model = f"models/{self.settings.model}"
+        body = {"generateContentRequest": {"model": model, **payload}}
+        try:
+            async with self.client.stream("POST", model + ":countTokens", json=body, timeout=timeout) as response:
+                if not response.is_success:
+                    raise ServiceError("upstream_unavailable")
+                content = bytearray()
+                async for chunk in response.aiter_bytes():
+                    self.remaining(deadline)
+                    if len(content) + len(chunk) > 16 * 1024:
+                        raise ServiceError("upstream_unavailable")
+                    content.extend(chunk)
+            self.remaining(deadline)
+            data = decode_json(content.decode("utf-8"))
+            count = data.get("totalTokens") if isinstance(data, dict) else None
+            if type(count) is not int or count < 0:
+                raise ServiceError("upstream_unavailable")
+            return count
+        except httpx.TimeoutException:
+            raise ServiceError("upstream_timeout") from None
+        except (httpx.RequestError, ValueError, UnicodeError, RecursionError):
+            raise ServiceError("upstream_unavailable") from None
 
     def usage(self, data: dict[str, Any]) -> Usage | None:
         metadata = data.get("usageMetadata")

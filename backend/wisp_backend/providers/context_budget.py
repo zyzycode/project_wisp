@@ -1,4 +1,4 @@
-"""Conservative model-profile allowance; not exact tokenization or a quota."""
+"""Local model ceilings and the Groq estimate; Gemini uses its countTokens API."""
 
 import json
 from typing import Any

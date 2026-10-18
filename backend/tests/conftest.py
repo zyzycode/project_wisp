@@ -3,12 +3,12 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
-import httpx
 from pydantic import SecretStr
 import pytest
 
 from wisp_backend.application import create_app
 from wisp_backend.config.settings import Settings
+from tests.helpers import provider_transport
 
 
 @pytest.fixture
@@ -19,8 +19,9 @@ def body():
 @pytest.fixture
 def app_factory(tmp_path):
     def factory(handler, **options):
+        count_handler = options.pop("count_handler", None)
         options.setdefault("ledger_path", tmp_path / f"{uuid4()}.sqlite")
-        return create_app(httpx.MockTransport(handler), settings=Settings(api_key=SecretStr("test-key"), **options))
+        return create_app(provider_transport(handler, count_handler), settings=Settings(api_key=SecretStr("test-key"), **options))
     return factory
 
 

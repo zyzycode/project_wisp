@@ -1,17 +1,19 @@
 """Selection invariants and trust boundaries, without transport or a tokenizer."""
 
 from dataclasses import replace
+import asyncio
 import json
 
 import pytest
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage, ContextOverflow, ContextSource, render_messages, select_context
 from wisp_backend.completion.prompts.chat import build_chat_blocks
-from wisp_backend.completion.prompts.context import PromptContext
+from wisp_backend.completion.prompts.context import DialogueTurn, MemoryChatContext, TouchContext
 from wisp_backend.completion.prompts.chat import MEMORY_SYSTEM_PROMPT, SYSTEM_PROMPT
 from wisp_backend.completion.prompts.touch import build_touch_blocks
 from wisp_backend.completion.replies import Decision
 from wisp_backend.providers.context_budget import estimate_input
+from wisp_backend.completion.context import select_context_async
 
 
 def block(key: str, content: str, *, required: bool = False, priority: int = 100,
@@ -78,9 +80,8 @@ def test_data_blocks_cannot_use_system_role(source: ContextSource) -> None:
 def test_fact_correction_and_current_state_survive_old_history_and_examples() -> None:
     character = {"personality": {"aiSelfConcept": "I am Wisp"}, "synthesizedTone": "sleepy"}
     memory = {"facts": [{"key": "user.display_name", "value": "New"}], "episodes": [], "characterPreferences": []}
-    context = PromptContext("en", character, [{"role": "user", "content": "Old"},
-                            {"role": "assistant", "content": "Old"},
-                            {"role": "user", "content": "Call me New"}], memory=memory)
+    context = MemoryChatContext("en", character, messages=(DialogueTurn("user", "Old"),
+                                DialogueTurn("assistant", "Old"), DialogueTurn("user", "Call me New")), memory=memory)
     blocks = build_chat_blocks(context)
     required = tuple(item for item in blocks if item.required)
     selected = select_context(blocks, cost(required), cost)
@@ -91,7 +92,7 @@ def test_fact_correction_and_current_state_survive_old_history_and_examples() ->
     assert json.loads(messages[2]["content"].split("\n", 1)[1]) == memory
     assert messages[-1]["content"] == "Call me New"
     assert "Old" not in json.dumps(messages[1:])
-    assert context.messages[0]["content"] == "Old"  # Selection never mutates its source.
+    assert context.messages[0].content == "Old"  # Selection never mutates its source.
 
 
 def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> None:
@@ -105,6 +106,26 @@ def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> 
             assert Decision.model_validate({"behavior": "respond", "confidence": 0.5, field: value})
     assert "flustered" not in MEMORY_SYSTEM_PROMPT
     assert "Allowed behavior:" not in SYSTEM_PROMPT
-    touch = build_touch_blocks(PromptContext("en", {}, touch_variant="touch"))
+    touch = build_touch_blocks(TouchContext("en", {}, touch_variant="touch"))
     assert "Allowed behavior:" not in touch[0].messages[0].content
     assert "No decision or memory fields" in touch[0].messages[0].content
+
+
+def test_async_counts_preserve_selection_order_history_suffix_and_equality() -> None:
+    blocks = (block("required", "Текущая реплика", required=True, order=100),
+              block("old", "a", order=50), block("middle", "x" * 1000, order=52),
+              block("new", "Последняя пара", order=54),
+              replace(block("examples", "пример", priority=10), source="server_examples"))
+    async def run() -> None:
+        for budget in (cost(blocks), cost(blocks) - 1, cost((blocks[0], blocks[3], blocks[4])), cost((blocks[0],))):
+            calls = []
+            async def count(candidate: tuple[ContextBlock, ...]) -> int:
+                calls.append(candidate)
+                return cost(candidate)
+            assert await select_context_async(blocks, budget, count) == select_context(blocks, budget, cost)
+            assert len(calls) == len(set(calls)) <= 6
+            if budget == cost(blocks):
+                assert len(calls) == 1
+        with pytest.raises(ContextOverflow):
+            await select_context_async(blocks, cost((blocks[0],)) - 1, count)
+    asyncio.run(run())

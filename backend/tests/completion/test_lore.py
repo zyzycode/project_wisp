@@ -8,7 +8,7 @@ import pytest
 
 from wisp_backend.completion.context import ContextMessage, ContextOverflow, select_context
 from wisp_backend.completion.prompts.chat import build_chat_blocks
-from wisp_backend.completion.prompts.context import PromptContext
+from wisp_backend.completion.prompts.context import DialogueTurn, MemoryChatContext
 from wisp_backend.completion.prompts.lore import load_catalogue, lore_block, parse_catalogue, select_entries
 from tests.completion.test_context_budget import cost
 
@@ -96,9 +96,9 @@ def test_optional_file_failure_has_safe_diagnostic_and_no_stale_snapshot(
 
 def test_lore_is_atomic_optional_context_below_facts_state_and_recent_history() -> None:
     source = parse_catalogue(catalogue(entry(text="Untrusted synthetic castle " * 20)))
-    context = PromptContext("en", {"identity": "Wisp"}, [
-        {"role": "user", "content": "old"}, {"role": "assistant", "content": "old answer"},
-        {"role": "user", "content": "castle correction"}], memory={"facts": ["new fact"]}, lore=source)
+    context = MemoryChatContext("en", {"identity": "Wisp"}, messages=(
+        DialogueTurn("user", "old"), DialogueTurn("assistant", "old answer"),
+        DialogueTurn("user", "castle correction")), memory={"facts": ["new fact"]}, lore=source)
     blocks = build_chat_blocks(context)
     core = tuple(block for block in blocks if block.required or block.source == "dialogue")
     selected = select_context(blocks, cost(core), cost)

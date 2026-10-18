@@ -35,6 +35,17 @@ def test_eligible_prompt_has_current_message_semantics_without_rollout_override(
         assert distinction in system
 
 
+def test_v7_output_contract_does_not_depend_on_legacy_prompt_wording(monkeypatch: pytest.MonkeyPatch) -> None:
+    from wisp_backend.completion.prompts import chat
+
+    monkeypatch.setattr(chat, 'MEMORY_SYSTEM_PROMPT', chat.MEMORY_SYSTEM_PROMPT.replace(
+        'optional decision, and optional memoryCandidates.',
+        'You may also propose decision and memoryCandidates.'))
+    blocks = prepare_job(InteractionChatRequest.model_validate(CASES[0]['request'])).inference.blocks
+    instructions = next(block for block in blocks if block.key == 'instructions').messages[0].content
+    assert 'required appraisal, optional decision, and optional memoryCandidates.' in instructions
+
+
 @pytest.mark.parametrize('provider', ['groq', 'gemini'])
 @pytest.mark.parametrize('case', CASES, ids=lambda case: case['name'])
 def test_eligible_cases_through_real_route_and_provider(app_factory: Callable[..., FastAPI], completion: Callable[..., dict],

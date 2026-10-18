@@ -150,8 +150,10 @@ conflict. Это существующий ledger, без новых tables, user
 30s dwell/one attempt per episode/10min guard/InitiativeBudget принадлежат
 Perception §11.3. Частота — максимум шесть попыток за любой полуоткрытый час app run
 при непрерывной работе; каждый transport start расходует попытку даже при cancel/error.
-Один upstream call с output cap `min(server setting,1024)`; provider input budget
-16384 минус output reserve и прежняя UTF-8/framing оценка. Это bounded cost, не обещание
+Один generation inference с output cap `min(server setting,1024)`; provider input budget
+16384 минус output reserve. Gemini использует bounded countTokens preflight, Groq —
+консервативную UTF-8/framing оценку по [общему бюджету](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#бюджет-и-ошибка).
+Count и generation делят прежний deadline; count failure/overflow не запускает generation. Это bounded cost, не обещание
 денежной цены/серверной квоты. Provider и current character profile прежние.
 
 Все chat/touch/events/explicit summary/observation используют **один** desktop
@@ -263,6 +265,8 @@ Touch требует прежних input/quiet/menu/sleep/critical/forced-motio
 user touch/chat preempt observation по §9.2. Никаких дополнительных запросов для
 classification, reconciliation, extraction или объяснения: **один** inference на
 принятое обращение, output cap touch≤1024/chat≤4096, прежний общий budget16384.
+Gemini countTokens — bounded preflight полного payload до generation в том же deadline,
+не отдельная classification/extraction; Groq сохраняет локальную оценку.
 Вопрос «почему?» — обычный новый user chat, не автоматический follow-up.
 
 Runtime15s включает interlock wait и сборку; transport12s; server10s включая body2s.

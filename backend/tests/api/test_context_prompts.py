@@ -50,7 +50,7 @@ def test_handlers_supply_distinct_original_examples(client_factory: Callable[...
 
 @pytest.mark.parametrize("provider,model", list(CONTEXT_WINDOWS))
 @pytest.mark.parametrize("route,fixture", ROUTES)
-def test_mandatory_overflow_is_safe_before_network_and_replayable(
+def test_mandatory_overflow_is_safe_before_generation_and_replayable(
     app_factory: Callable[..., FastAPI], monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture, provider: str, model: str, route: str, fixture: str,
 ) -> None:

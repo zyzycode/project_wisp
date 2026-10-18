@@ -10,7 +10,7 @@ never recursively summarizes, and delegates cancellation/settlement to its servi
 import json
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage
-from wisp_backend.completion.prompts.context import PromptContext
+from wisp_backend.completion.prompts.context import SummaryContext
 
 
 SYSTEM = '''Summarize only the supplied completed conversation pairs in the requested language.
@@ -23,13 +23,13 @@ No earlier summary, outside knowledge, character lore or future continuation is 
 '''
 
 
-def build_summary_blocks(context: PromptContext) -> tuple[ContextBlock, ...]:
+def build_summary_blocks(context: SummaryContext) -> tuple[ContextBlock, ...]:
     # Upstream chronological buffer adaptation: desktop has selected full coverage.
     # Never pop/truncate the last pair to fit a budget; provider selection fails all
     # mandatory source content before HTTP when the complete payload cannot fit.
     buffer: list[dict[str, str]] = []
-    for pair in context.summary_pairs:
-        buffer.append({'userText': pair['userText'], 'assistantText': pair['assistantText']})
+    for pair in context.pairs:
+        buffer.append({'userText': pair.user_text, 'assistantText': pair.assistant_text})
     if not 4 <= len(buffer) <= 8:
         raise ValueError('No eligible summary range')
     return (

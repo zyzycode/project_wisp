@@ -147,11 +147,13 @@ blocks, previousInitiative и recent history отбираются раньше; 
 
 Summary inference имеет отдельный потолок **8192 бюджетные единицы**, output cap
 `min(server setting, 512)` provider tokens; input allowance = 8192 − фактический cap.
-Используется прежняя оценка финального payload UTF-8 bytes + framing, не точный
-tokenizer count. Входные пары обязательны целиком; overflow до HTTP →503
-upstream_unavailable с usage=0. Локальная предварительная граница 8000 UTF-16 не
+Gemini использует модельный countTokens полного generation payload, Groq —
+консервативную UTF-8/framing оценку по общему provider budget. Входные пары обязательны
+целиком; overflow до generation →503 upstream_unavailable с inference usage=0.
+Gemini preflight может передать весь диапазон источника провайдеру до обнаружения
+переполнения; count и generation используют тот же client и общий deadline. Локальная предварительная граница 8000 UTF-16 не
 обещает вместимость в provider budget. Денежная цена не фиксируется архитектурой;
-предел — один вызов с этими caps за одно подтверждённое действие, дополнительно
+предел — один generation inference с этими caps за одно подтверждённое действие, дополнительно
 локальный frequency guard из Memory §12. Это не новая серверная billing/quota система.
 
 Обе v5 routes используют [v1 errors/access/ledger](BACKEND_API_CONTRACT.md#3-http-и-ошибки):

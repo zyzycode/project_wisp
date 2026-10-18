@@ -3,7 +3,7 @@
 import json
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage
-from wisp_backend.completion.prompts.context import PromptContext
+from wisp_backend.completion.prompts.context import ObservationContext
 
 
 OBSERVATION_SYSTEM_PROMPT = """You are Wisp, a conversational companion. Make one brief, tactful contextual remark.
@@ -23,7 +23,7 @@ No markdown or control characters except newline/tab. The output is only a short
 """
 
 
-def build_observation_blocks(context: PromptContext) -> tuple[ContextBlock, ...]:
+def build_observation_blocks(context: ObservationContext) -> tuple[ContextBlock, ...]:
     language = "\nReply in Russian." if context.locale == "ru" else "\nReply in English."
     return (
         ContextBlock("instructions", "server_instructions", True, 1000, 0,
@@ -33,5 +33,5 @@ def build_observation_blocks(context: PromptContext) -> tuple[ContextBlock, ...]
                                      json.dumps(context.character, ensure_ascii=False)),)),
         ContextBlock("current_observation", "observation", True, 1000, 100,
                      (ContextMessage("user", "Untrusted observation_context JSON (metadata, not user speech):\n" +
-                                     json.dumps(context.observation, ensure_ascii=False)),)),
+                                     json.dumps({"appName": context.app_name, "windowTitle": context.window_title}, ensure_ascii=False)),)),
     )

@@ -72,14 +72,14 @@ Success и error — альтернативы, не два ответа одно
 
 ## 5. Закрытая alpha: серверный admission, учёт и повторы
 
-Решение [#52](https://github.com/zyzycode/project_wisp/issues/52); текущая структура реализации — [архитектура backend](../../backend/docs/ARCHITECTURE.md). Wire v1, его типы и fixtures не меняются; quota/auth metadata не добавляются. Ниже — целевое поведение, не утверждение о готовности сервера. Клиентские ограничения остаются независимыми.
+Решение [#52](https://github.com/zyzycode/project_wisp/issues/52); текущая структура реализации — [архитектура backend](../../backend/docs/ARCHITECTURE.md). Wire v1, его типы и fixtures не меняются; quota/auth metadata не добавляются. Ниже — контракт реализованного общего runtime; перечень endpoints — в серверной архитектуре. Клиентские ограничения остаются независимыми.
 
 
-Один admission, ledger и RAM replay cache обслуживают `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`. Все обращения учитываются совместно; health не вызывает provider и не создаёт запись расхода. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
+Один admission, ledger и RAM replay cache обслуживают `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`, `/v5/chat`, `/v5/summary`, `/v6/observation`, `/v7/chat`, `/v7/touch`. Все обращения учитываются совместно; health не вызывает provider и не создаёт запись расхода. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
 
 ### Доступ и топология
 
-Один экземпляр сервера, один ASGI worker, один локальный durable SQLite ledger через Python `sqlite3`. Внешняя SQL-служба/Redis/новый Python-пакет не нужны. Admission атомарен, работа с ledger не блокирует event loop; I/O failure закрывает новые обращения с 503, без вызова LLM. Многопроцессный/горизонтальный запуск вне этой схемы.
+Один экземпляр сервера, один ASGI worker, один локальный durable SQLite ledger через существующий SQLAlchemy ORM adapter с драйвером `sqlite3`. Внешняя SQL-служба/Redis не используются. Admission атомарен, работа с ledger не блокирует event loop; I/O failure закрывает новые обращения с 503, без вызова LLM. Многопроцессный/горизонтальный запуск вне этой схемы.
 
 Без application auth разрешены только разработка через loopback и закрытый тест через управляемый оператором приватный туннель/VPN с индивидуально отзываемым сетевым доступом; удалённый endpoint всё равно HTTPS. Публичный ingress закрыт. Это ограничение сети, не личность пользователя в API: IP/requestId/installation ID не используются как аккаунт. Публичная регистрация и персональные квоты потребуют отдельного auth-контракта. Перед допуском тестеров оператор проверяет сетевой запрет и настройки хранения у провайдера (§6).
 
@@ -95,6 +95,15 @@ admission timestamp и reservation для учёта. Некорректные �
 новый расход. Новая принятая попытка учитывается даже при ошибке.
 
 Профиль выбирается при startup через `WISP_AI_PROVIDER` и `WISP_AI_MODEL`; Groq — default.
+Gemini выполняет точный модельный preflight через countTokens для полного generation
+payload; Groq использует документированную консервативную оценку. Bounded preflight
+и единственный generation inference используют тот же provider/client и исходный
+deadline; дополнительных generation/retry нет. Count HTTP failure/overflow до generation
+имеет нулевой inference usage; поздний count после cancel не запускает generation.
+Точный алгоритм и пределы — [provider budget](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#бюджет-и-ошибка).
+Контекст для count передаётся тому же провайдеру на тех же условиях §6; totalTokens
+не заменяет фактический usage генерации в ledger.
+
 Один процесс использует один provider без автоматического fallback. Ключи разделены;
 неизвестные и конфликтующие профили отклоняются. Параметры — в
 [.env.example](../../backend/.env.example); process environment имеет приоритет над файлом.

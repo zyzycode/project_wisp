@@ -1,6 +1,8 @@
 """Test-only policy overrides without changing production defaults."""
 
 from dataclasses import replace
+from collections.abc import Awaitable, Callable
+import inspect
 import json
 from pathlib import Path
 
@@ -8,6 +10,30 @@ import httpx
 import pytest
 
 from wisp_backend.completion.policies import POLICIES, Scenario
+from wisp_backend.providers.context_budget import estimate_input
+
+
+ProviderHandler = Callable[[httpx.Request], httpx.Response | Awaitable[httpx.Response]]
+
+
+def provider_transport(generation: ProviderHandler, count: ProviderHandler | None = None) -> httpx.MockTransport:
+    """Separate mocked generation from preflight in existing lifecycle tests.
+
+    The default count is deliberately conservative and synthetic, not a model
+    tokenizer. Exact-count behavior is tested with explicit count handlers.
+    """
+    async def handle(request: httpx.Request) -> httpx.Response:
+        handler = generation
+        if request.url.path.endswith(":countTokens"):
+            if count is None:
+                payload = json.loads(request.content)["generateContentRequest"]
+                payload.pop("model")
+                messages = sum(len(item["parts"]) for item in payload["contents"]) + len(payload["systemInstruction"]["parts"])
+                return httpx.Response(200, json={"totalTokens": estimate_input(payload, messages)})
+            handler = count
+        response = handler(request)
+        return await response if inspect.isawaitable(response) else response
+    return httpx.MockTransport(handle)
 
 
 def set_event_timeout(monkeypatch: pytest.MonkeyPatch, timeout: float) -> None:
