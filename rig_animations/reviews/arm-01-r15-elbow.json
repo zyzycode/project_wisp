@@ -1,6 +1,6 @@
 {
   "revision": "ARM-01/r15-elbow",
-  "status": "candidate_awaiting_review",
+  "status": "accepted_static_arm_layers",
   "feedback": "Локоть крупно · r14 - есть артефакт на сгибе",
   "base": "reviews/arm-01-r14-width.json",
   "cause": "r14 internal forearm contour alpha mask drops from 255 to 0 between local rows 129 and 130, exposing a rectangular light notch",
@@ -217,5 +217,6 @@
     "work/arm-01/r15-elbow/arm-01-r15-layers.psd2live": {
       "sha256": "46f3c32d6db4586e5127e2a3969c4428c2ffcf060e6f39e30e0caed8d011d5fd"
     }
-  }
+  },
+  "acceptance": "reviews/arm-01-r15-acceptance.json"
 }
