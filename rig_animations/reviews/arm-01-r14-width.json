@@ -1,6 +1,6 @@
 {
   "revision": "ARM-01/r14-width",
-  "status": "candidate_awaiting_review",
+  "status": "needs_inner_elbow_correction",
   "feedback_on_r13": "Сборка пяти слоёв- рука члишком тонкая",
   "accepted_base": "reviews/arm-01-r12-acceptance.json",
   "method": "Local geometry deformation of existing textures via ImageMagick bilinear sampling; no generation or painting",
@@ -105,5 +105,7 @@
     "work/arm-01/r14-width/arm-01-r14-layers.psd2live": {
       "sha256": "9531632f40ef922b23c23c0aa85d48b7e1c2e3ae851af00d5f3f28934c1465bc"
     }
-  }
+  },
+  "user_feedback": "Локоть крупно · r14 - есть артефакт на сгибе",
+  "successor": "reviews/arm-01-r15-elbow.json"
 }

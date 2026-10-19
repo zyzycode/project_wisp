@@ -18,13 +18,13 @@ IDS = ["upper_arm_L", "forearm_L", "hand_L", "bracelet_red_L", "bracelet_blue_L"
 def main():
     global OUT, PROJECT
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--revision', choices=['r13', 'r14'], default='r13')
+    parser.add_argument('--revision', choices=['r13', 'r14', 'r15'], default='r13')
     parser.add_argument('--verify-existing', action='store_true', help='Reopen and verify without rebuilding')
     args = parser.parse_args()
     revision = args.revision
-    if revision == 'r14':
-        OUT = ROOT / 'work/arm-01/r14-width'
-        PROJECT = OUT / 'arm-01-r14-layers.psd2live'
+    if revision in ['r14', 'r15']:
+        OUT = ROOT / 'work/arm-01' / {'r14': 'r14-width', 'r15': 'r15-elbow'}[revision]
+        PROJECT = OUT / f'arm-01-{revision}-layers.psd2live'
     if PROJECT.exists() and not args.verify_existing:
         raise RuntimeError("Preserve this revision; use a new output for changes")
     if args.verify_existing and not PROJECT.is_file():
@@ -101,6 +101,18 @@ def main():
               "wrist_pixels_with_premultiplied_difference_over_2": int((premultiplied.max(axis=2)>2).sum()),
               "wrist_render_note": "Texture pixels preserved; regenerated mesh/atlas produces small fringe rasterization differences",
               "scope": "Static separate arm assembly; no full-character neutral, controller or export"}
+    if revision == 'r15':
+        from verify_elbow_overlap import verify
+        result['elbow_overlap'] = verify(OUT)
+        previous = ROOT / 'work/arm-01/r14-width'
+        for name in ['upper_arm_L', 'hand_L', 'bracelet_red_L', 'bracelet_blue_L']:
+            assert (OUT / 'native' / (name+'.png')).read_bytes() == (previous / 'native' / (name+'.png')).read_bytes()
+        old_arm = np.array(Image.open(previous / 'native/forearm_L.png').convert('RGBA'))
+        assert np.array_equal(old_arm[:, :, :3], current[:, :, :3])
+        assert np.array_equal(old_arm[:100], current[:100])
+        assert np.array_equal(old_arm[160:], current[160:])
+        result['four_layers_byte_identical_to_r14'] = True
+        result['forearm_rgb_identical_to_r14'] = True
     (OUT / "verification.json").write_text(json.dumps(result, indent=2)+"\n")
     print(json.dumps(result))
 
