@@ -32,25 +32,6 @@
       "sha256": "3e9f02ddc85692bd2c012811a967cfbbb745da233a510e28be218a65a11a16c2",
       "outside_region_changed_pixels": 1223310,
       "outside_region_source_foreground_changed_fraction": 0.9901
-    },
-    {
-      "output": "work/arm-01/r08-target/raw/target-v2.png",
-      "references": [
-        "work/arm-01/r08-target/raw/target-v1.png",
-        "character_reference.png"
-      ],
-      "prompt": "Use case: background-extraction / precise-object-edit.\nImage 1 is the target pose to edit: Wisp with the bracelet arm on the viewer's RIGHT raised and bent at the elbow. Image 2 is the original character reference for faithful appearance.\nProduce EXACTLY ONE full-body target-pose PNG, 1024x1536. KEEP THE RAISED BENT ARM POSE FROM IMAGE 1, same arm, elbow, open hand and wrist bracelets; opposite arm remains lowered. Preserve its full-body placement, size and framing.\nCorrection: remove ALL the invented smoky backdrop, glow, bloom, drop shadow and soft halos surrounding the character. Outside the precise character silhouette must be genuinely transparent alpha=0, including between arm and body, beside hair, between legs and shoes. Only a narrow ordinary antialiased character edge. No background color, no opaque black, no checkerboard, no atmospheric lighting. Keep colors opaque inside the actual character; do not fade or feather the figure itself. No external glow around hair, hand, arm, torso or legs.\nMatch the original source character in Image 2 as closely as possible for face, eyes, hair silhouette, shirt graphic, shorts, footwear and rendering, while retaining the raised bent bracelet-arm pose. Do not move the face or regenerate a different expression. Preserve golden eyes, small smile, blue/white hair, two hair clips, blue and red bracelets. No extra fingers, limbs, accessories or text. Output one image only; not a sheet or multiple alternatives.\n",
-      "size": [
-        1024,
-        1536
-      ],
-      "alpha_extrema": [
-        0,
-        254
-      ],
-      "sha256": "df7db6c0c1ca6c408f5200e00cb5b9cd1565d8bec8d2cd5911c9f7d5f0374138",
-      "outside_region_changed_pixels": 1237516,
-      "outside_region_source_foreground_changed_fraction": 0.9905
     }
   ],
   "limitations": [
@@ -66,5 +47,6 @@
     "scope": "Raised bent bracelet-arm target pose; not generated background, changed face or automatic layer replacement",
     "path": "work/arm-01/r08-target/raw/target-v1.png",
     "sha256": "3e9f02ddc85692bd2c012811a967cfbbb745da233a510e28be218a65a11a16c2"
-  }
+  },
+  "candidates": []
 }

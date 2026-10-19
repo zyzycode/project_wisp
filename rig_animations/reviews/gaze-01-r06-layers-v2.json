@@ -1,6 +1,6 @@
 {
   "revision": "GAZE-01/r06-layers/v2",
-  "status": "candidate; isolated PNG review only; not accepted or imported",
+  "status": "accepted layers; acceptance consolidated in gaze-01-r08-acceptance.json",
   "generator": "built-in image_gen; cloud; billing amount not reported by tool",
   "references": [
     "character_reference.png"

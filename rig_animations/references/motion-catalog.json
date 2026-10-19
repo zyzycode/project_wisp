@@ -1,0 +1,5453 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-19",
+  "purpose": "Самодостаточный справочник поз и движений для отдельного проекта рига; не очередь утверждённых анимаций и не runtime manifest.",
+  "limitations": [
+    "Проверены регистрация, наличие, PNG dimensions и SHA-256; новый визуальный аудит не проводился.",
+    "Пути sourcePath и manifestSnapshot.frames — происхождение в прежнем монорепозитории, не зависимости нового проекта. PNG сюда не скопированы.",
+    "Отсутствующие durationMs/fps сохранены как отсутствие; значения runtime по умолчанию не угадываются.",
+    "Историческая готовность спрайтов не означает пользовательскую приёмку рига.",
+    "Для плановых поз отсутствие PNG взято из ASSETS.md; поиск незарегистрированных рабочих изображений не выполнялся."
+  ],
+  "sources": [
+    {
+      "path": "frontend/asset-pipeline/AGENTS.md",
+      "sha256": "a8470db924da8d61c85eed19c8281c30bdcff45a5bd89fe0d10d5161ff3b5fe0"
+    },
+    {
+      "path": "frontend/asset-pipeline/STANDARDS.md",
+      "sha256": "6adaa7eb457a12511e260b9110cdb4138c80aa6afba47ddb088da5e859eb854f"
+    },
+    {
+      "path": "frontend/asset-pipeline/ASSETS.md",
+      "sha256": "f5d10f11dd295d50217a905f6e4802584237dcff28d07fec0e9ef2c41f014684"
+    },
+    {
+      "path": "frontend/public/assets/sprites/manifest.json",
+      "sha256": "3ba5faced943d0c3275a907b1e0cd26e437f688bfd830478660e9fb26fde393d"
+    },
+    {
+      "path": "frontend/asset-pipeline/references/REQUESTED_SPRITES_QA.md",
+      "sha256": "6b1096cbbf204d246d9948a3d6c615ae44054e8e4bba612e260332626a34e24d"
+    },
+    {
+      "path": "frontend/asset-pipeline/references/FIVE_POSES_V2_QA.md",
+      "sha256": "daf2f8d02952daeeff5c722011b160dffc8461893e4f2d15c4f507659e60c4cd"
+    },
+    {
+      "path": "frontend/asset-pipeline/references/CURSOR_GAME_QA.md",
+      "sha256": "5f79f533dda4575e3a33477d2aec0f6635a93d6a978b9842aa15a4061f95789f"
+    },
+    {
+      "path": "frontend/asset-pipeline/references/GAZE_RIG_2026_10_QA.md",
+      "sha256": "a57c84c626c904c2190abfb6df70b9b6e89a3977f4036166dfa2185e1c6577ec"
+    },
+    {
+      "path": "frontend/asset-pipeline/references/requested-sprites-export.json",
+      "sha256": "05c12d1d9fc2dc3c4f5bf39c85c1e7e871c4dc0a6499243e66e780ae64b01789"
+    }
+  ],
+  "counts": {
+    "catalogEntries": 70,
+    "bodyPoses": 39,
+    "registeredBody": 34,
+    "plannedBody": 5,
+    "registeredAllGroups": 50,
+    "registeredFrames": 208
+  },
+  "currentFrameIdentityChecks": [
+    {
+      "from": [
+        "body_grab_edge",
+        3
+      ],
+      "to": [
+        "body_pull_up_edge",
+        0
+      ],
+      "identicalFileSha256": true
+    },
+    {
+      "from": [
+        "body_sit_edge",
+        1
+      ],
+      "to": [
+        "body_sit_edge_settle",
+        0
+      ],
+      "identicalFileSha256": false
+    },
+    {
+      "from": [
+        "body_sit_edge_settle",
+        3
+      ],
+      "to": [
+        "body_sit_edge_sleep",
+        0
+      ],
+      "identicalFileSha256": true
+    },
+    {
+      "from": [
+        "body_cursor_play",
+        0
+      ],
+      "to": [
+        "body_cursor_play",
+        3
+      ],
+      "identicalFileSha256": true
+    },
+    {
+      "from": [
+        "body_sit_edge",
+        1
+      ],
+      "to": [
+        "body_sit_edge",
+        3
+      ],
+      "identicalFileSha256": true
+    },
+    {
+      "from": [
+        "body_sit_edge_sleep",
+        1
+      ],
+      "to": [
+        "body_sit_edge_sleep",
+        3
+      ],
+      "identicalFileSha256": true
+    }
+  ],
+  "entries": [
+    {
+      "key": "body_bored",
+      "group": "body",
+      "label": "Скука / Вздох",
+      "historicalQuality": "Нужна проверка",
+      "historicalRegistration": "Да",
+      "notes": "Старый дефект: слишком узкий силуэт. Вес на левой ноге → вдох с подъёмом плеч → выдох → вес на правой; сохранить объём платья.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/bored",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/bored/body_bored_00.png",
+          "/assets/sprites/body/bored/body_bored_01.png",
+          "/assets/sprites/body/bored/body_bored_02.png",
+          "/assets/sprites/body/bored/body_bored_03.png"
+        ],
+        "sourceFile": "body_bored.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/bored/body_bored_00.png",
+          "exists": true,
+          "sha256": "2af14cc8d10bc7476ddc481642809d89aef887d0e851ddcb8564f80ddca72abc",
+          "bytes": 118325,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/bored/body_bored_01.png",
+          "exists": true,
+          "sha256": "577a0511831018adee1b3f6b3319a4cbffd6cfe95804e875b9d4dbac21b124fd",
+          "bytes": 120478,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/bored/body_bored_02.png",
+          "exists": true,
+          "sha256": "837dab68692b116ef3afd7887f6bd4ab42cded2ba271a7a1635aae6825d50d64",
+          "bytes": 123037,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/bored/body_bored_03.png",
+          "exists": true,
+          "sha256": "7b337bd274ef921385ce5dab205dc6991cabb9bd53d5cf2595f87c5182b30853",
+          "bytes": 116695,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_ceiling_hang",
+      "group": "body",
+      "label": "Висение на потолке",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/ceiling_hang",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/ceiling_hang/body_ceiling_hang_00.png",
+          "/assets/sprites/body/ceiling_hang/body_ceiling_hang_01.png",
+          "/assets/sprites/body/ceiling_hang/body_ceiling_hang_02.png",
+          "/assets/sprites/body/ceiling_hang/body_ceiling_hang_03.png"
+        ],
+        "sourceFile": "body_ceiling_hang.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/ceiling_hang/body_ceiling_hang_00.png",
+          "exists": true,
+          "sha256": "1bd63c1a09d6edbeb8e905ccf360cf534a1b11bd4721cf1970d2cc0f54cfb265",
+          "bytes": 126114,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/ceiling_hang/body_ceiling_hang_01.png",
+          "exists": true,
+          "sha256": "e0460d8cec8f8b276ca6a18c755c6182e103a506deec7605235b710b77761e61",
+          "bytes": 129279,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/ceiling_hang/body_ceiling_hang_02.png",
+          "exists": true,
+          "sha256": "1255558e35a5ce914208165944ce92d50998addab5e3b6e5d250cebc6577eed3",
+          "bytes": 120643,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/ceiling_hang/body_ceiling_hang_03.png",
+          "exists": true,
+          "sha256": "0545d7799dfb6705a9c84a6cb8098bda23c06298fb04a7bb6c09b94b47949894",
+          "bytes": 126591,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_celebrate",
+      "group": "body",
+      "label": "Празднование / Радость",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Восстановлены срезанные волосы; 4 кадра выделены по силуэтам, масштаб по голове. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/celebrate",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/celebrate/body_celebrate_00.png",
+          "/assets/sprites/body/celebrate/body_celebrate_01.png",
+          "/assets/sprites/body/celebrate/body_celebrate_02.png",
+          "/assets/sprites/body/celebrate/body_celebrate_03.png"
+        ],
+        "sourceFile": "body_celebrate.png",
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/celebrate/body_celebrate_00.png",
+          "exists": true,
+          "sha256": "64612bffaebbba899234adf82d665933f117a9707c33a97ea5bc07f6cbcb728b",
+          "bytes": 131774,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/celebrate/body_celebrate_01.png",
+          "exists": true,
+          "sha256": "939d2ba6a62672403b7ccbfaebb5e24c86d467d68bfc0f5e9825477eb49dc37d",
+          "bytes": 170375,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/celebrate/body_celebrate_02.png",
+          "exists": true,
+          "sha256": "128dc4122e06c5f54c30293b42fa3097e7590b8bdfdafdd3898dc4aa4842568c",
+          "bytes": 143562,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/celebrate/body_celebrate_03.png",
+          "exists": true,
+          "sha256": "40ea1e71be9ee5696a6a26f93ab5e6f7f9fd3a6a1ec5f63816df5595c22f7bfb",
+          "bytes": 130065,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_climb_wall",
+      "group": "body",
+      "label": "Ползание по стене",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/climb_wall",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/climb_wall/body_climb_wall_00.png",
+          "/assets/sprites/body/climb_wall/body_climb_wall_01.png",
+          "/assets/sprites/body/climb_wall/body_climb_wall_02.png",
+          "/assets/sprites/body/climb_wall/body_climb_wall_03.png"
+        ],
+        "sourceFile": "body_climb_wall.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/climb_wall/body_climb_wall_00.png",
+          "exists": true,
+          "sha256": "09c023ca3b737192bc5a4c0b4a41c94bf20166f69cf91f94eb91dfd9bb36c59f",
+          "bytes": 124333,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/climb_wall/body_climb_wall_01.png",
+          "exists": true,
+          "sha256": "1886fb1bb16f928c050016c3ecd61a38ece95a4f1f6f62076d9ac9de0b76aba0",
+          "bytes": 124336,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/climb_wall/body_climb_wall_02.png",
+          "exists": true,
+          "sha256": "a556a4933b8b14ada7775010390f9358af39f26bc27eb233e9ee4c9352218edd",
+          "bytes": 125668,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/climb_wall/body_climb_wall_03.png",
+          "exists": true,
+          "sha256": "97acb15090d6dca3b5467a961621c3a688c530da40d284fc933d3c86a2ffb4fc",
+          "bytes": 116289,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_crash_splat",
+      "group": "body",
+      "label": "Удар о пол + 'x_x' + подъём",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Выравнен масштаб головы в 8 кадрах, фазы удара/восстановления сохранены. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/crash_splat",
+        "framesCount": 8,
+        "frames": [
+          "/assets/sprites/body/crash_splat/body_crash_splat_00.png",
+          "/assets/sprites/body/crash_splat/body_crash_splat_01.png",
+          "/assets/sprites/body/crash_splat/body_crash_splat_02.png",
+          "/assets/sprites/body/crash_splat/body_crash_splat_03.png",
+          "/assets/sprites/body/crash_splat/body_crash_splat_04.png",
+          "/assets/sprites/body/crash_splat/body_crash_splat_05.png",
+          "/assets/sprites/body/crash_splat/body_crash_splat_06.png",
+          "/assets/sprites/body/crash_splat/body_crash_splat_07.png"
+        ],
+        "sourceFile": "body_crash_splat.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crash_splat/body_crash_splat_00.png",
+          "exists": true,
+          "sha256": "9aab26d5b52d7dd80e575410577147a8ff5d821b64492bf77e4f20d7bfe1f106",
+          "bytes": 122029,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crash_splat/body_crash_splat_01.png",
+          "exists": true,
+          "sha256": "b53b39b95f4dce147bf17f880bec93fc1dd811728772cd465bf8d2b57594318d",
+          "bytes": 140140,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crash_splat/body_crash_splat_02.png",
+          "exists": true,
+          "sha256": "3518b440d21d75b28dbba1e77a5af638fd7403c1f9e36f4cad66348d5bc2df63",
+          "bytes": 104141,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crash_splat/body_crash_splat_03.png",
+          "exists": true,
+          "sha256": "b247b4554d6bf46fabd4481eb866bf5f844d7eb1c7d09eff756e8261b752c06a",
+          "bytes": 117446,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crash_splat/body_crash_splat_04.png",
+          "exists": true,
+          "sha256": "874f7830000e4ea252e506306c30166fe9bd9748825d1a0c5a55fdb547659d48",
+          "bytes": 133573,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crash_splat/body_crash_splat_05.png",
+          "exists": true,
+          "sha256": "9c0c886dcdc0df315c221ad41868ee7f8149f747d6abac4246af7a21710ad822",
+          "bytes": 140976,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crash_splat/body_crash_splat_06.png",
+          "exists": true,
+          "sha256": "3a784e69b8624b845594fce7e535879c5028ec35d56631627e59c9787c184bef",
+          "bytes": 147900,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crash_splat/body_crash_splat_07.png",
+          "exists": true,
+          "sha256": "ca8b2639b7e98689fb2066e7442d30c7842774c212bfa1f978432062722eb4e3",
+          "bytes": 159147,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_dragged",
+      "group": "body",
+      "label": "Перетаскивание мышью",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/dragged",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/dragged/body_dragged_00.png",
+          "/assets/sprites/body/dragged/body_dragged_01.png",
+          "/assets/sprites/body/dragged/body_dragged_02.png",
+          "/assets/sprites/body/dragged/body_dragged_03.png"
+        ],
+        "sourceFile": "body_dragged.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/dragged/body_dragged_00.png",
+          "exists": true,
+          "sha256": "02f39e15bdc63136ba681f891983aebc4396fe56b9f4710f839376364018373d",
+          "bytes": 136790,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/dragged/body_dragged_01.png",
+          "exists": true,
+          "sha256": "4ec92c2ee955e29efe15b30fc3fa245df27f596cabd01ce3235de0230ef3bced",
+          "bytes": 136457,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/dragged/body_dragged_02.png",
+          "exists": true,
+          "sha256": "be30857ec28707d586ced4504c6c6e5f85ba0cc21c1ab8b1b1a092e1b887a85e",
+          "bytes": 144032,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/dragged/body_dragged_03.png",
+          "exists": true,
+          "sha256": "ccbc8d81e8fbe7808ee41e52f195f173380f5f7c9937ff86c4ba376da86c1843",
+          "bytes": 130204,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_drink_tea",
+      "group": "body",
+      "label": "Пьёт чай с паром",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "План: baked_in. Кружка у груди с паром → поднести и подуть → глоток → опустить с довольным вздохом.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "body_fall",
+      "group": "body",
+      "label": "Паническое падение",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Масштаб увеличен ×1.12, поднятые волосы целиком внутри холста. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/fall",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/fall/body_fall_00.png",
+          "/assets/sprites/body/fall/body_fall_01.png",
+          "/assets/sprites/body/fall/body_fall_02.png",
+          "/assets/sprites/body/fall/body_fall_03.png"
+        ],
+        "sourceFile": "body_fall.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/fall/body_fall_00.png",
+          "exists": true,
+          "sha256": "3453141e3ec4aaeb224a1f44b0a2065c198f82d14ebe2f89a7bc1277be411708",
+          "bytes": 182532,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/fall/body_fall_01.png",
+          "exists": true,
+          "sha256": "3a5a2a085661ae24438ff1c6786d4fa97139fcdd43e0a2b52b3280e23b7b287b",
+          "bytes": 207668,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/fall/body_fall_02.png",
+          "exists": true,
+          "sha256": "3d52440f84cc830a6fcb9c8f1dd48f16ec40eb7831618b3a08d1f5fac9fc434e",
+          "bytes": 185703,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/fall/body_fall_03.png",
+          "exists": true,
+          "sha256": "e5bcb2690bfcf7ba89c8757bc01f6df29176d4032e77c3e1d659fa69765cf0ec",
+          "bytes": 161066,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_idle",
+      "group": "body",
+      "label": "Базовая стойка (дыхание)",
+      "historicalQuality": "Нужна проверка",
+      "historicalRegistration": "Да",
+      "notes": "В старой таблице 8 кадров, сейчас в манифесте и папке 4: согласовать число; не пересоздавать вслепую.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/idle",
+        "faceOverlay": {
+          "mode": "overlay",
+          "anchor": "face",
+          "allowedFaceKeys": [
+            "face_happy",
+            "face_sad",
+            "face_shocked",
+            "face_sleep",
+            "face_talking",
+            "face_thinking",
+            "face_angry",
+            "face_pout",
+            "face_winking",
+            "face_curious",
+            "face_dizzy",
+            "face_flirty",
+            "face_gaze"
+          ],
+          "fallback": "face_happy"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/idle/body_idle_00.png",
+          "/assets/sprites/body/idle/body_idle_01.png",
+          "/assets/sprites/body/idle/body_idle_02.png",
+          "/assets/sprites/body/idle/body_idle_03.png"
+        ],
+        "defaultAnchors": {
+          "face": {
+            "x": 256,
+            "y": 180
+          }
+        },
+        "frameMeta": [
+          {
+            "anchors": {
+              "face": {
+                "x": 256,
+                "y": 180
+              }
+            }
+          },
+          {
+            "anchors": {
+              "face": {
+                "x": 256,
+                "y": 176
+              }
+            }
+          },
+          {
+            "anchors": {
+              "face": {
+                "x": 256,
+                "y": 174
+              }
+            }
+          },
+          {
+            "anchors": {
+              "face": {
+                "x": 256,
+                "y": 181
+              }
+            }
+          }
+        ],
+        "sourceFile": "body_idle.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/idle/body_idle_00.png",
+          "exists": true,
+          "sha256": "8a5876f98874d36a81a2ba402dc5e62e44a26342b32631d4b865cd558cbe6b9e",
+          "bytes": 128105,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/idle/body_idle_01.png",
+          "exists": true,
+          "sha256": "7e7f951234c139266d7c69bf5c1ca2193a0f6e1da74ba7cc790ec7e8c8cf7e05",
+          "bytes": 132324,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/idle/body_idle_02.png",
+          "exists": true,
+          "sha256": "8d7b1c8a6cee7a68a7126540861959f70770b85f31602d67d1d87ab0e2449233",
+          "bytes": 134962,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/idle/body_idle_03.png",
+          "exists": true,
+          "sha256": "2fed65edb3d97513c4063603ec4e570be9cca6d2d412bdda1f6d4318d5828ea3",
+          "bytes": 129852,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_jump",
+      "group": "body",
+      "label": "Радостный подскак",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "4 целых кадра восстановлены из исходника: удалён дефект отдельного кадра с линиями и двух персонажей в одном кадре. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/jump",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/jump/body_jump_00.png",
+          "/assets/sprites/body/jump/body_jump_01.png",
+          "/assets/sprites/body/jump/body_jump_02.png",
+          "/assets/sprites/body/jump/body_jump_03.png"
+        ],
+        "sourceFile": "body_jump.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/jump/body_jump_00.png",
+          "exists": true,
+          "sha256": "4ae4a4cc91925e8cb4d8add3e6776d77515dd3c2a655611edc7a20fcce12ab7b",
+          "bytes": 109837,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/jump/body_jump_01.png",
+          "exists": true,
+          "sha256": "d493b4c04a61c56d49eeb16d4c7149960676eb5c2cfdb426974d7ce40cfe5e87",
+          "bytes": 121889,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/jump/body_jump_02.png",
+          "exists": true,
+          "sha256": "be689a22c13faa9038847e9be3bc173f12580ac1a2480edbba5337f4866e2893",
+          "bytes": 140176,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/jump/body_jump_03.png",
+          "exists": true,
+          "sha256": "07cc80577cac745084158ec1105002c4c8394ebb145d769ec7a5caac87ad2a1e",
+          "bytes": 110661,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_land",
+      "group": "body",
+      "label": "Приземление (зажмуривание)",
+      "historicalQuality": "Нужна проверка",
+      "historicalRegistration": "Да",
+      "notes": "Старые отметки конфликтуют. Касание → амортизация → подъём → бесшовное совпадение с idle; не повторять проседание в конце.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/land",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/land/body_land_00.png",
+          "/assets/sprites/body/land/body_land_01.png",
+          "/assets/sprites/body/land/body_land_02.png",
+          "/assets/sprites/body/land/body_land_03.png"
+        ],
+        "sourceFile": "body_land.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/land/body_land_00.png",
+          "exists": true,
+          "sha256": "667ea0cbae9747d407da7338dbf879df5b6d25b7a84f96e0384719c93341cfc5",
+          "bytes": 146301,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/land/body_land_01.png",
+          "exists": true,
+          "sha256": "08d90d97dc58e6e188101fd1494eb4556830167ac105e474ff459d8e05002e5c",
+          "bytes": 139067,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/land/body_land_02.png",
+          "exists": true,
+          "sha256": "6806672041649d4f149bd2ba1bbf838498ab042aca0616d2d1bedda810da9d8f",
+          "bytes": 150208,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/land/body_land_03.png",
+          "exists": true,
+          "sha256": "342cb87340b47b7d563a803ff7b8b5e6ea1550e338b6647c0acfd7395cf04eb7",
+          "bytes": 128946,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_look_around",
+      "group": "body",
+      "label": "Осмотр обычной точки",
+      "historicalQuality": "Готово (2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "SPRITE-LOOK-PACK-V2: полностью перегенерированный пак `generated_images/body_look_around_faces_v2.png`, затем нарезка 4 PNG. Глаза нарисованы в перспективе поворота, baked_in, без приклеивания face_*. QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/look_around",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/look_around/body_look_around_00.png",
+          "/assets/sprites/body/look_around/body_look_around_01.png",
+          "/assets/sprites/body/look_around/body_look_around_02.png",
+          "/assets/sprites/body/look_around/body_look_around_03.png"
+        ],
+        "sourceFile": "body_look_around_faces_v2.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/look_around/body_look_around_00.png",
+          "exists": true,
+          "sha256": "4c93eaded2b6ed50e6b9a4fe08ff2ba3da645de82bef92004142d9d87f5bf6ca",
+          "bytes": 140629,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/look_around/body_look_around_01.png",
+          "exists": true,
+          "sha256": "f08324dcce1def10d44463e512b1a4e03f5fbe4a8e5765586e85476a8574202f",
+          "bytes": 139015,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/look_around/body_look_around_02.png",
+          "exists": true,
+          "sha256": "da0303dc46094a409147031b91d528a1b954f901c6d42ef3abfa1c7012eba8f7",
+          "bytes": 141350,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/look_around/body_look_around_03.png",
+          "exists": true,
+          "sha256": "4249667197136d38f18ccf96f15255e0033228376339072df3b2c9d4d3f800ad",
+          "bytes": 137938,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_crouch_examine",
+      "group": "body",
+      "label": "Присесть и изучить угол",
+      "historicalQuality": "Готово (2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "SPRITE-FIVE-PACKS-V2: Полностью перегенерирован пак; глаза следуют наклону головы, 4 PNG, baked_in, без приклеивания face_*. QA, исходники и промпты.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/crouch_examine",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/crouch_examine/body_crouch_examine_00.png",
+          "/assets/sprites/body/crouch_examine/body_crouch_examine_01.png",
+          "/assets/sprites/body/crouch_examine/body_crouch_examine_02.png",
+          "/assets/sprites/body/crouch_examine/body_crouch_examine_03.png"
+        ],
+        "sourceFile": "body_crouch_examine_faces_v2.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crouch_examine/body_crouch_examine_00.png",
+          "exists": true,
+          "sha256": "cfeff66321b666a363a8d7756223153183632ca1602aa9c5bc43a718529f009b",
+          "bytes": 125621,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crouch_examine/body_crouch_examine_01.png",
+          "exists": true,
+          "sha256": "df94a1216232d4fcefc8f5fa149527b64af2fa306e58ef7ac251e16d1e774cc8",
+          "bytes": 127930,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crouch_examine/body_crouch_examine_02.png",
+          "exists": true,
+          "sha256": "9918cd3726fae1036de07256835b934398f10833e6b27749f1a6b95e13b60c30",
+          "bytes": 106639,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/crouch_examine/body_crouch_examine_03.png",
+          "exists": true,
+          "sha256": "f7d36e1505bbfc56d35523abd01507c8875adf3d5d7e1a32a842893c4206d5c4",
+          "bytes": 124077,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_edge_peek",
+      "group": "body",
+      "label": "Заглянуть за край",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Уточнены 4 face anchors при наклонах; PNG сохранены. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/edge_peek",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/edge_peek/body_edge_peek_00.png",
+          "/assets/sprites/body/edge_peek/body_edge_peek_01.png",
+          "/assets/sprites/body/edge_peek/body_edge_peek_02.png",
+          "/assets/sprites/body/edge_peek/body_edge_peek_03.png"
+        ],
+        "sourceFile": "body_edge_peek.png",
+        "faceOverlay": {
+          "mode": "overlay",
+          "anchor": "face",
+          "allowedFaceKeys": [
+            "face_happy",
+            "face_sad",
+            "face_shocked",
+            "face_sleep",
+            "face_talking",
+            "face_thinking",
+            "face_angry",
+            "face_pout",
+            "face_winking",
+            "face_curious",
+            "face_dizzy",
+            "face_flirty",
+            "face_gaze"
+          ],
+          "fallback": "face_curious"
+        },
+        "frameMeta": [
+          {
+            "anchors": {
+              "face": {
+                "x": 266,
+                "y": 168
+              }
+            }
+          },
+          {
+            "anchors": {
+              "face": {
+                "x": 284,
+                "y": 178
+              }
+            }
+          },
+          {
+            "anchors": {
+              "face": {
+                "x": 305,
+                "y": 205
+              }
+            }
+          },
+          {
+            "anchors": {
+              "face": {
+                "x": 284,
+                "y": 178
+              }
+            }
+          }
+        ],
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "defaultAnchors": {
+          "face": {
+            "x": 266,
+            "y": 168
+          }
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/edge_peek/body_edge_peek_00.png",
+          "exists": true,
+          "sha256": "63d26fe3e76eb09e5ca7eff3fc3ac5f49da09d5ca0c30ec691d3e98925aef0bf",
+          "bytes": 121762,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/edge_peek/body_edge_peek_01.png",
+          "exists": true,
+          "sha256": "53acb8ff92489e1ac4b2e2d8b682c16596014f7cb4e4a4a9c79e46de20fc3a61",
+          "bytes": 121537,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/edge_peek/body_edge_peek_02.png",
+          "exists": true,
+          "sha256": "0565262d9395da3bfb575c6a8e8bd074131192d018dd3217716c81a65e3f7edb",
+          "bytes": 132438,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/edge_peek/body_edge_peek_03.png",
+          "exists": true,
+          "sha256": "7a7dab948a7d5660a4345142e149c05db21770a7665ecfefe75d2a85b1d6db2d",
+          "bytes": 120189,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_surface_touch",
+      "group": "body",
+      "label": "Коснуться интересной поверхности",
+      "historicalQuality": "Готово (2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "SPRITE-SURFACE-PACK-V2: лица исправлены на исходном паке `generated_images/body_surface_touch_faces_v2.png`; затем нарезаны 4 PNG, baked_in. Старое наложение face_* для этого набора удалено из рецепта. QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/surface_touch",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/surface_touch/body_surface_touch_00.png",
+          "/assets/sprites/body/surface_touch/body_surface_touch_01.png",
+          "/assets/sprites/body/surface_touch/body_surface_touch_02.png",
+          "/assets/sprites/body/surface_touch/body_surface_touch_03.png"
+        ],
+        "sourceFile": "body_surface_touch_faces_v2.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/surface_touch/body_surface_touch_00.png",
+          "exists": true,
+          "sha256": "5f3fdae89aee7e7b7e551542ba33f8fc1c24f98a32c7c5b35ac3ef14f0a4ae9e",
+          "bytes": 131604,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/surface_touch/body_surface_touch_01.png",
+          "exists": true,
+          "sha256": "1b6ea0c5b1706dfdda2dec9c6b12b7e344908a197c7ef249332b3b03af0b8bb5",
+          "bytes": 122337,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/surface_touch/body_surface_touch_02.png",
+          "exists": true,
+          "sha256": "c5751fcd6bb6e27bebb26a46e07c043792bca3da756b8115951dc38f1a97c645",
+          "bytes": 110250,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/surface_touch/body_surface_touch_03.png",
+          "exists": true,
+          "sha256": "681a478dc29adec3cdd0e7834ccdbc5e70729913f1c97dfdfe9563d521155b59",
+          "bytes": 121110,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_lie",
+      "group": "body",
+      "label": "Лежит на животе, качает ножками, голова анфас",
+      "historicalQuality": "Готово (2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "SPRITE-FIVE-PACKS-V2: Новый пак с открытыми глазами в каждой позе; нарезаны 4 PNG, baked_in, старые face anchors удалены. QA, исходники и промпты.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/lie",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/lie/body_lie_00.png",
+          "/assets/sprites/body/lie/body_lie_01.png",
+          "/assets/sprites/body/lie/body_lie_02.png",
+          "/assets/sprites/body/lie/body_lie_03.png"
+        ],
+        "sourceFile": "body_lie_faces_v2.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/lie/body_lie_00.png",
+          "exists": true,
+          "sha256": "0bcdb00d1a581ae0c0c4706bf5baffe41306fb85bcd7526929188bc2035290b9",
+          "bytes": 106232,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/lie/body_lie_01.png",
+          "exists": true,
+          "sha256": "0475c0f66690c3bc74b87ce59aee4561cc293bae80a6628740d4094fb32bfecc",
+          "bytes": 109776,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/lie/body_lie_02.png",
+          "exists": true,
+          "sha256": "18804c03b58e9094dde4fb54bd6bc880bc70656fbae9981c086a0c82f4f8b902",
+          "bytes": 108899,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/lie/body_lie_03.png",
+          "exists": true,
+          "sha256": "bf9d25a5c3beea5512f9a4d52642595bcc47729f0013f269be4091ff5631eccc",
+          "bytes": 106130,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_listen_music",
+      "group": "body",
+      "label": "Слушает музыку в наушниках",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "План: baked_in, светящиеся наушники. Наклон головы влево → полуприсед в центре → наклон вправо → возврат в центр.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "body_peek_wall",
+      "group": "body",
+      "label": "Выглядывает из-за края",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "План: baked_in, привязка к вертикальному краю. Осторожный взгляд → лицо и руки за краем → максимальный наклон → спрятаться; видимость частей согласовать с runtime.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "body_petting",
+      "group": "body",
+      "label": "Реакция на поглаживание",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/petting",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/petting/body_petting_00.png",
+          "/assets/sprites/body/petting/body_petting_01.png",
+          "/assets/sprites/body/petting/body_petting_02.png",
+          "/assets/sprites/body/petting/body_petting_03.png"
+        ],
+        "sourceFile": "радость.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/petting/body_petting_00.png",
+          "exists": true,
+          "sha256": "e312c0809721aa54f477476992816a77d478c17cced4b8fce11e8b66cfd1ca23",
+          "bytes": 144998,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/petting/body_petting_01.png",
+          "exists": true,
+          "sha256": "8c8e44a76167e4058f1b94d3a4341d76487f758f14b88db3e4e00497962735d0",
+          "bytes": 147664,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/petting/body_petting_02.png",
+          "exists": true,
+          "sha256": "88221d3dc7c990dcb820dd91194b3f5b1175414f29c74e7cc27a92cc8d343d2a",
+          "bytes": 146281,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/petting/body_petting_03.png",
+          "exists": true,
+          "sha256": "10e860b36d8e67731b29177feda95bca95ca3b3c7c7e8d3a246aa1a5bcede7d9",
+          "bytes": 145511,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_read_book",
+      "group": "body",
+      "label": "Читает книгу знаний",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "План: baked_in, сидит с раскрытой книгой. Чтение → приподнять страницу → перелистнуть → пригладить новую страницу.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "body_run",
+      "group": "body",
+      "label": "Быстрый бег",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/run",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/run/body_run_00.png",
+          "/assets/sprites/body/run/body_run_01.png",
+          "/assets/sprites/body/run/body_run_02.png",
+          "/assets/sprites/body/run/body_run_03.png"
+        ],
+        "sourceFile": "body_run.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/run/body_run_00.png",
+          "exists": true,
+          "sha256": "f0bb8478b959b6fa3b64c6246d78d75b01b6633b012d775d232243085f92794c",
+          "bytes": 153460,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/run/body_run_01.png",
+          "exists": true,
+          "sha256": "438c453c6add28cf287ed4b26908e26f012713348dce7e65f61f70325ae23b36",
+          "bytes": 147122,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/run/body_run_02.png",
+          "exists": true,
+          "sha256": "4e3c69f41bf0ddc1f8b90c1f30d270bb7ce0c4a62d8533b91ac10d744a14ef3f",
+          "bytes": 149558,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/run/body_run_03.png",
+          "exists": true,
+          "sha256": "7076773745008da1904c25f88aeb278ec032fbe2d23d7da9466ef2ab4203e5f6",
+          "bytes": 145377,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_scared",
+      "group": "body",
+      "label": "Дрожь / Испуг тела",
+      "historicalQuality": "Нужна проверка",
+      "historicalRegistration": "Да",
+      "notes": "Старый дефект: уменьшенная масса тела. Руки к груди → дрожь влево → дрожь вправо → возврат; проверить объём и масштаб по референсу.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/scared",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/scared/body_scared_00.png",
+          "/assets/sprites/body/scared/body_scared_01.png",
+          "/assets/sprites/body/scared/body_scared_02.png",
+          "/assets/sprites/body/scared/body_scared_03.png"
+        ],
+        "sourceFile": "body_scared.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/scared/body_scared_00.png",
+          "exists": true,
+          "sha256": "0891851b92e5730daf002783ba0a462c08ebb8f17e352bb40411f9f4c8b4cdbc",
+          "bytes": 130842,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/scared/body_scared_01.png",
+          "exists": true,
+          "sha256": "52cf19ebeb0690b59824c408b2f4ccb0f646a8bfddfca3740ef6d9fcebef7224",
+          "bytes": 118139,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/scared/body_scared_02.png",
+          "exists": true,
+          "sha256": "3e1b3578f43400afdafe17371d365d784b6366fd508d6c4bd73177cc47a77844",
+          "bytes": 112845,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/scared/body_scared_03.png",
+          "exists": true,
+          "sha256": "3bb3c31a3965b5c0b2dbd4e73d5c86071b91d2ed6f8189f75f57247a7022c661",
+          "bytes": 116535,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_sit",
+      "group": "body",
+      "label": "Сидит на полу / окне",
+      "historicalQuality": "Готово (2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "SPRITE-FIVE-PACKS-V2: Полностью перегенерирован пак сидения на полу; 4 PNG с лицами в исходнике, baked_in. QA, исходники и промпты.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/sit",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/sit/body_sit_00.png",
+          "/assets/sprites/body/sit/body_sit_01.png",
+          "/assets/sprites/body/sit/body_sit_02.png",
+          "/assets/sprites/body/sit/body_sit_03.png"
+        ],
+        "sourceFile": "body_sit_faces_v2.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit/body_sit_00.png",
+          "exists": true,
+          "sha256": "34b74d9d7001e6a4d06605b30930e10459d9bb14b4f4f527d2b7be7e3224fd6d",
+          "bytes": 115965,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit/body_sit_01.png",
+          "exists": true,
+          "sha256": "6d55f4f6e2ebe3f28f49f4802fcd979a4d4636cdbb72845f97867b8108af3817",
+          "bytes": 120739,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit/body_sit_02.png",
+          "exists": true,
+          "sha256": "49f69873a181bf1c830c95e24482a1ec7025dab64bf42cb6597a56b82bae6697",
+          "bytes": 116670,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit/body_sit_03.png",
+          "exists": true,
+          "sha256": "29c57b474501729126f7993c2d50e86cf0defecbd6d2cc392645c4f7432a9213",
+          "bytes": 115412,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_sit_edge",
+      "group": "body",
+      "label": "Болтает ножками с окна",
+      "historicalQuality": "Готово (2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "SPRITE-FIVE-PACKS-V2: Перегенерирован пак с восстановленными цельными шеей, одеждой и волосами; 4 PNG, baked_in, цикл 0–1–2–1, pivot/hips (256,330). QA, исходники и промпты.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/sit_edge",
+        "frames": [
+          {
+            "pivot": {
+              "x": 256,
+              "y": 330
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 330
+              },
+              "hips": {
+                "x": 256,
+                "y": 330
+              },
+              "head": {
+                "x": 256,
+                "y": 69
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge/body_sit_edge_00.png",
+            "durationMs": 240,
+            "bounds": {
+              "x": 125,
+              "y": 68,
+              "width": 262,
+              "height": 362
+            }
+          },
+          {
+            "pivot": {
+              "x": 256,
+              "y": 330
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 330
+              },
+              "hips": {
+                "x": 256,
+                "y": 330
+              },
+              "head": {
+                "x": 256,
+                "y": 69
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge/body_sit_edge_01.png",
+            "durationMs": 240,
+            "bounds": {
+              "x": 123,
+              "y": 68,
+              "width": 265,
+              "height": 363
+            }
+          },
+          {
+            "pivot": {
+              "x": 256,
+              "y": 330
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 330
+              },
+              "hips": {
+                "x": 256,
+                "y": 330
+              },
+              "head": {
+                "x": 256,
+                "y": 69
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge/body_sit_edge_02.png",
+            "durationMs": 240,
+            "bounds": {
+              "x": 123,
+              "y": 68,
+              "width": 265,
+              "height": 363
+            }
+          },
+          {
+            "pivot": {
+              "x": 256,
+              "y": 330
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 330
+              },
+              "hips": {
+                "x": 256,
+                "y": 330
+              },
+              "head": {
+                "x": 256,
+                "y": 69
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge/body_sit_edge_03.png",
+            "durationMs": 240,
+            "bounds": {
+              "x": 123,
+              "y": 68,
+              "width": 265,
+              "height": 363
+            }
+          }
+        ],
+        "framesCount": 4,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "fps": 4.166666666666667,
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "sourceFile": "body_sit_edge_faces_v2.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge/body_sit_edge_00.png",
+          "exists": true,
+          "sha256": "461ed671aaef708d3412f4b473a4edbd9528d7cfa0b37e4c1dc318f1cf8dbe17",
+          "bytes": 135355,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge/body_sit_edge_01.png",
+          "exists": true,
+          "sha256": "3a956a0beda4d5ba12726a17e9f4fdf09b04ee53da4af899d94377495cf72387",
+          "bytes": 136124,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge/body_sit_edge_02.png",
+          "exists": true,
+          "sha256": "753d0ebd609eb41265695f67c62570db5e202b57929f9464f319d93e9cbe044d",
+          "bytes": 136312,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge/body_sit_edge_03.png",
+          "exists": true,
+          "sha256": "3a956a0beda4d5ba12726a17e9f4fdf09b04ee53da4af899d94377495cf72387",
+          "bytes": 136124,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_sleep",
+      "group": "body",
+      "label": "Поза сна на полу",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/sleep",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/sleep/body_sleep_00.png",
+          "/assets/sprites/body/sleep/body_sleep_01.png",
+          "/assets/sprites/body/sleep/body_sleep_02.png",
+          "/assets/sprites/body/sleep/body_sleep_03.png"
+        ],
+        "sourceFile": "спит.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sleep/body_sleep_00.png",
+          "exists": true,
+          "sha256": "f6c369dde88476dad01fe6b7fd519b312373653d7bf69a48273e259e7b78de7b",
+          "bytes": 77551,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sleep/body_sleep_01.png",
+          "exists": true,
+          "sha256": "3bcf5807ac799248bf786688736dc3549842ca2e378c3b3275f5cd15b6c3c794",
+          "bytes": 81244,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sleep/body_sleep_02.png",
+          "exists": true,
+          "sha256": "34782c4f23efef05254f260d67231c1921af6c3c2099f4dab7caba3dc3f5bbdc",
+          "bytes": 81231,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sleep/body_sleep_03.png",
+          "exists": true,
+          "sha256": "f602c04a793f270768bf25fb9f813e9d298fea0067402e9c4264d5ec20bad0f7",
+          "bytes": 75773,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_sleep_trans",
+      "group": "body",
+      "label": "Укладывание спать",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/sleep_transition",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/sleep_transition/body_sleep_trans_00.png",
+          "/assets/sprites/body/sleep_transition/body_sleep_trans_01.png",
+          "/assets/sprites/body/sleep_transition/body_sleep_trans_02.png",
+          "/assets/sprites/body/sleep_transition/body_sleep_trans_03.png"
+        ],
+        "sourceFile": "body_sleep_trans.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sleep_transition/body_sleep_trans_00.png",
+          "exists": true,
+          "sha256": "ae9a8cfa4bb1bf10d50395e63063ca1d9750c9cdf278b4276599c5bd49c9fd24",
+          "bytes": 146664,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sleep_transition/body_sleep_trans_01.png",
+          "exists": true,
+          "sha256": "5d9202dad21b7ee9ea2628bd6f6304cadd8fca36752731bce1b8912b9b26d292",
+          "bytes": 144469,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sleep_transition/body_sleep_trans_02.png",
+          "exists": true,
+          "sha256": "38af6f1e43e72367b27cd00038a119c2a91adfa36be57ac5cb5073fd314075c0",
+          "bytes": 117591,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sleep_transition/body_sleep_trans_03.png",
+          "exists": true,
+          "sha256": "e343b485099f4963f803e1056832e8681bee550747da479178b57e42ec91e5d4",
+          "bytes": 109933,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_stand_up",
+      "group": "body",
+      "label": "Вставание на ноги",
+      "historicalQuality": "Готово (2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "SPRITE-FIVE-PACKS-V2: Новый пак с лицом во всех фазах вставания; нарезаны 4 PNG, baked_in, старые face anchors удалены. QA, исходники и промпты.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/stand_up",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/stand_up/body_stand_up_00.png",
+          "/assets/sprites/body/stand_up/body_stand_up_01.png",
+          "/assets/sprites/body/stand_up/body_stand_up_02.png",
+          "/assets/sprites/body/stand_up/body_stand_up_03.png"
+        ],
+        "sourceFile": "body_stand_up_faces_v2.png",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/stand_up/body_stand_up_00.png",
+          "exists": true,
+          "sha256": "1ef9d724c8ace8bc94229fe6720d10b109edafcef6893a503608301ae3af41d5",
+          "bytes": 115703,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/stand_up/body_stand_up_01.png",
+          "exists": true,
+          "sha256": "b03f008df2d0b0476a82ff63d20c5d3835c8232cb72349f513459cd210274c2e",
+          "bytes": 121058,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/stand_up/body_stand_up_02.png",
+          "exists": true,
+          "sha256": "5e6ed941c70a7d44e53fde996b67a4e3f508590c0fa07b7a32c4a4d4e4fb1c02",
+          "bytes": 129080,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/stand_up/body_stand_up_03.png",
+          "exists": true,
+          "sha256": "38555112a5ec72e56d35b94984104c992eb06ca70ccbfa1931610dc046c5e2fd",
+          "bytes": 133873,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_thinking",
+      "group": "body",
+      "label": "Размышление / Мысли",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/thinking",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/thinking/body_thinking_00.png",
+          "/assets/sprites/body/thinking/body_thinking_01.png",
+          "/assets/sprites/body/thinking/body_thinking_02.png",
+          "/assets/sprites/body/thinking/body_thinking_03.png"
+        ],
+        "sourceFile": "body_thinking.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/thinking/body_thinking_00.png",
+          "exists": true,
+          "sha256": "cac36b993dc9d7d72774b0d8f72dde9c9980f246415a00ba01e5200fea2d3541",
+          "bytes": 148689,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/thinking/body_thinking_01.png",
+          "exists": true,
+          "sha256": "27c8c8f175831f782145ba95eb3b389efb13d679c338926849602e8a3bff9597",
+          "bytes": 143696,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/thinking/body_thinking_02.png",
+          "exists": true,
+          "sha256": "76f5bd1e434249bafa95a3da48bcb0512dc581ee90109850e46648e51b668d6e",
+          "bytes": 148550,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/thinking/body_thinking_03.png",
+          "exists": true,
+          "sha256": "5589a0bc7d98dca5db2a62773a1a397f581e7f6ff7c83e8067ae8f556f18ad33",
+          "bytes": 141108,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_typing",
+      "group": "body",
+      "label": "Печатает на ноутбуке",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "План: baked_in, сидит по-турецки с мини-ноутбуком. Левая рука печатает → правая → обе → радостный кивок.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "body_walk",
+      "group": "body",
+      "label": "Шаги / Ходьба",
+      "historicalQuality": "Готово*",
+      "historicalRegistration": "Да",
+      "notes": "Перенесено из журнала; новой визуальной проверки нет.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/walk",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/walk/body_walk_00.png",
+          "/assets/sprites/body/walk/body_walk_01.png",
+          "/assets/sprites/body/walk/body_walk_02.png",
+          "/assets/sprites/body/walk/body_walk_03.png"
+        ],
+        "sourceFile": "ходьба.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/walk/body_walk_00.png",
+          "exists": true,
+          "sha256": "540f7bac94bb634f0ee89b55ec4fa759453d7ab7073175da36e9518d30d68d80",
+          "bytes": 136417,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/walk/body_walk_01.png",
+          "exists": true,
+          "sha256": "662195be1411361c779c09192e19884e44aa8573cdc2b7b64c779f7db9f1bae0",
+          "bytes": 138974,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/walk/body_walk_02.png",
+          "exists": true,
+          "sha256": "a843ec2e2f1562b31eb3512d19debd496b68a49d36b2b2c1715ba74286b45c73",
+          "bytes": 136677,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/walk/body_walk_03.png",
+          "exists": true,
+          "sha256": "e5e88a1bef40df4d24619a0c331e14d53c6989748c8e1cca40ef310d0c3880d8",
+          "bytes": 127481,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_wave",
+      "group": "body",
+      "label": "Взмах ручкой (приветствие)",
+      "historicalQuality": "Нужна проверка",
+      "historicalRegistration": "Да",
+      "notes": "Старый дефект: тело меньше на 15–20%. Рука к плечу → взмах вправо у щеки → влево → возврат ладони в центр; голову/торс не уменьшать.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/wave",
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/body/wave/body_wave_00.png",
+          "/assets/sprites/body/wave/body_wave_01.png",
+          "/assets/sprites/body/wave/body_wave_02.png",
+          "/assets/sprites/body/wave/body_wave_03.png"
+        ],
+        "sourceFile": "body_wave.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/wave/body_wave_00.png",
+          "exists": true,
+          "sha256": "549fce9386df4077463a30239c6732ca62f92109085dd617a6a5fb27fe6089d1",
+          "bytes": 120503,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/wave/body_wave_01.png",
+          "exists": true,
+          "sha256": "4f27817b6e63e748fb892299c32d5f21c0a4932ea707c8c9e6e67adc6ef64501",
+          "bytes": 119337,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/wave/body_wave_02.png",
+          "exists": true,
+          "sha256": "5b998bccdcd324076ecf8678f44bdbc285f909c7ea2dd2251e4999ba2f40a327",
+          "bytes": 122288,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/wave/body_wave_03.png",
+          "exists": true,
+          "sha256": "aff184a10988eb2de3829da1f20c4ed93c16a303ff4229b6716fe014ee647d69",
+          "bytes": 119675,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_grab_edge",
+      "group": "body",
+      "label": "Зацеп края",
+      "historicalQuality": "Готово (2026-09-07)",
+      "historicalRegistration": "Да",
+      "notes": "AUTO-I04: 4 RGBA PNG 512×512, baked_in. Руки/pivot размечены, масштаб головы выровнен; grab 03 = pull-up 00. QA. Зарегистрировано 2026-09-07.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/grab_edge",
+        "frames": [
+          {
+            "pivot": {
+              "x": 256.49,
+              "y": 69.83
+            },
+            "anchors": {
+              "root": {
+                "x": 256.49,
+                "y": 69.83
+              },
+              "head": {
+                "x": 256.49,
+                "y": 66.85
+              },
+              "face": {
+                "x": 256.49,
+                "y": 174.09
+              },
+              "leftHand": {
+                "x": 181.43,
+                "y": 69.83
+              },
+              "rightHand": {
+                "x": 331.55,
+                "y": 69.83
+              }
+            },
+            "source": "/assets/sprites/body/grab_edge/body_grab_edge_00.png",
+            "durationMs": 160,
+            "bounds": {
+              "x": 129,
+              "y": 46,
+              "width": 254,
+              "height": 431
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.01,
+              "y": 70.4
+            },
+            "anchors": {
+              "root": {
+                "x": 256.01,
+                "y": 70.4
+              },
+              "head": {
+                "x": 256.01,
+                "y": 54.79
+              },
+              "face": {
+                "x": 256.01,
+                "y": 162.97
+              },
+              "leftHand": {
+                "x": 177.91,
+                "y": 70.4
+              },
+              "rightHand": {
+                "x": 332.95,
+                "y": 70.4
+              }
+            },
+            "source": "/assets/sprites/body/grab_edge/body_grab_edge_01.png",
+            "durationMs": 160,
+            "bounds": {
+              "x": 127,
+              "y": 49,
+              "width": 258,
+              "height": 363
+            }
+          },
+          {
+            "pivot": {
+              "x": 255.75,
+              "y": 70.2
+            },
+            "anchors": {
+              "root": {
+                "x": 255.75,
+                "y": 70.2
+              },
+              "head": {
+                "x": 255.75,
+                "y": 54.64
+              },
+              "face": {
+                "x": 255.75,
+                "y": 162.95
+              },
+              "leftHand": {
+                "x": 179.12,
+                "y": 70.2
+              },
+              "rightHand": {
+                "x": 332.37,
+                "y": 70.2
+              }
+            },
+            "source": "/assets/sprites/body/grab_edge/body_grab_edge_02.png",
+            "durationMs": 160,
+            "bounds": {
+              "x": 129,
+              "y": 46,
+              "width": 254,
+              "height": 405
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.17,
+              "y": 69.89
+            },
+            "anchors": {
+              "root": {
+                "x": 256.17,
+                "y": 69.89
+              },
+              "head": {
+                "x": 256.17,
+                "y": 54.91
+              },
+              "face": {
+                "x": 256.17,
+                "y": 163.23
+              },
+              "leftHand": {
+                "x": 179.55,
+                "y": 69.89
+              },
+              "rightHand": {
+                "x": 332.8,
+                "y": 69.89
+              }
+            },
+            "source": "/assets/sprites/body/grab_edge/body_grab_edge_03.png",
+            "durationMs": 160,
+            "bounds": {
+              "x": 130,
+              "y": 48,
+              "width": 252,
+              "height": 407
+            }
+          }
+        ],
+        "framesCount": 4,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "fps": 6.25,
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/grab_edge/body_grab_edge_00.png",
+          "exists": true,
+          "sha256": "ba44c6d25d7b498929b4f3131b2858361113ce352742173c12a8ad8218943012",
+          "bytes": 159113,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/grab_edge/body_grab_edge_01.png",
+          "exists": true,
+          "sha256": "46c52b0597dfffb0ddefc2c13a57513616d0eeb7c2bf2a92f6ed463087bf3eed",
+          "bytes": 147168,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/grab_edge/body_grab_edge_02.png",
+          "exists": true,
+          "sha256": "c040b69ae9ab5f1957b6876d4e8af2cfdd8efa084a40f18a08569cbf43558ef0",
+          "bytes": 148241,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/grab_edge/body_grab_edge_03.png",
+          "exists": true,
+          "sha256": "a06bfba81429e892a1575dc9c6fc07cbdaf647ccbf7e768f499be026eb5bd66f",
+          "bytes": 146642,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_jump_travel",
+      "group": "body",
+      "label": "Направленный полёт",
+      "historicalQuality": "Готово (2026-09-07)",
+      "historicalRegistration": "Да",
+      "notes": "AUTO-I04: 4 RGBA PNG 512×512, baked_in. Направленный полёт, единый масштаб головы и root; контуры проверены на двух фонах. QA. Зарегистрировано 2026-09-07.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/jump_travel",
+        "frames": [
+          {
+            "pivot": {
+              "x": 255.8,
+              "y": 285.2
+            },
+            "anchors": {
+              "root": {
+                "x": 255.8,
+                "y": 285.2
+              },
+              "head": {
+                "x": 283.8,
+                "y": 111.6
+              },
+              "face": {
+                "x": 285.2,
+                "y": 220.8
+              }
+            },
+            "source": "/assets/sprites/body/jump_travel/body_jump_travel_00.png",
+            "durationMs": 160,
+            "bounds": {
+              "x": 57,
+              "y": 106,
+              "width": 318,
+              "height": 321
+            }
+          },
+          {
+            "pivot": {
+              "x": 255.83,
+              "y": 285.38
+            },
+            "anchors": {
+              "root": {
+                "x": 255.83,
+                "y": 285.38
+              },
+              "head": {
+                "x": 271.81,
+                "y": 113.41
+              },
+              "face": {
+                "x": 271.81,
+                "y": 223.09
+              }
+            },
+            "source": "/assets/sprites/body/jump_travel/body_jump_travel_01.png",
+            "durationMs": 160,
+            "bounds": {
+              "x": 10,
+              "y": 109,
+              "width": 341,
+              "height": 279
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.22,
+              "y": 284.7
+            },
+            "anchors": {
+              "root": {
+                "x": 256.22,
+                "y": 284.7
+              },
+              "head": {
+                "x": 272.95,
+                "y": 113.46
+              },
+              "face": {
+                "x": 274.63,
+                "y": 222.78
+              }
+            },
+            "source": "/assets/sprites/body/jump_travel/body_jump_travel_02.png",
+            "durationMs": 160,
+            "bounds": {
+              "x": 61,
+              "y": 109,
+              "width": 282,
+              "height": 283
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.06,
+              "y": 284.62
+            },
+            "anchors": {
+              "root": {
+                "x": 256.06,
+                "y": 284.62
+              },
+              "head": {
+                "x": 269.26,
+                "y": 110.28
+              },
+              "face": {
+                "x": 270.32,
+                "y": 221.23
+              }
+            },
+            "source": "/assets/sprites/body/jump_travel/body_jump_travel_03.png",
+            "durationMs": 160,
+            "bounds": {
+              "x": 87,
+              "y": 105,
+              "width": 259,
+              "height": 312
+            }
+          }
+        ],
+        "framesCount": 4,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "fps": 6.25,
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/jump_travel/body_jump_travel_00.png",
+          "exists": true,
+          "sha256": "3b3ac9d90440e4c9aeb223a542580c76cfe2ca336e071cdf6f5c6d06c4214b74",
+          "bytes": 130055,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/jump_travel/body_jump_travel_01.png",
+          "exists": true,
+          "sha256": "04ead18456ed7602bd8b7a4ba1f23673b9f394b016dd2d8c41c181d56b88087c",
+          "bytes": 128593,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/jump_travel/body_jump_travel_02.png",
+          "exists": true,
+          "sha256": "f6b8fe20075c332c75148a48d5163f6797bc6a198343475f039ffab4f65332ba",
+          "bytes": 122314,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/jump_travel/body_jump_travel_03.png",
+          "exists": true,
+          "sha256": "8f6aa452637e8b2ab989735be28458e32a563190ee383beb1a3d54e6b836c5f9",
+          "bytes": 109157,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_pull_up_edge",
+      "group": "body",
+      "label": "Подъём на край",
+      "historicalQuality": "Готово (2026-09-07)",
+      "historicalRegistration": "Да",
+      "notes": "AUTO-I04: 4 RGBA PNG 512×512, baked_in. Вис → подтягивание → перенос ноги → присед; масштаб и покадровые контакты рук размечены. QA. Зарегистрировано 2026-09-07.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/pull_up_edge",
+        "frames": [
+          {
+            "pivot": {
+              "x": 256.17,
+              "y": 69.89
+            },
+            "anchors": {
+              "root": {
+                "x": 256.17,
+                "y": 69.89
+              },
+              "head": {
+                "x": 256.17,
+                "y": 54.91
+              },
+              "face": {
+                "x": 256.17,
+                "y": 163.23
+              },
+              "leftHand": {
+                "x": 179.55,
+                "y": 69.89
+              },
+              "rightHand": {
+                "x": 332.8,
+                "y": 69.89
+              }
+            },
+            "source": "/assets/sprites/body/pull_up_edge/body_pull_up_edge_00.png",
+            "durationMs": 200,
+            "bounds": {
+              "x": 130,
+              "y": 48,
+              "width": 252,
+              "height": 407
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.0,
+              "y": 112.71
+            },
+            "anchors": {
+              "root": {
+                "x": 256.0,
+                "y": 112.71
+              },
+              "head": {
+                "x": 256.0,
+                "y": 69.86
+              },
+              "face": {
+                "x": 256.0,
+                "y": 178.43
+              },
+              "leftHand": {
+                "x": 190.29,
+                "y": 112.71
+              },
+              "rightHand": {
+                "x": 321.71,
+                "y": 112.71
+              }
+            },
+            "source": "/assets/sprites/body/pull_up_edge/body_pull_up_edge_01.png",
+            "durationMs": 200,
+            "bounds": {
+              "x": 116,
+              "y": 67,
+              "width": 278,
+              "height": 419
+            }
+          },
+          {
+            "pivot": {
+              "x": 257.37,
+              "y": 257.35
+            },
+            "anchors": {
+              "root": {
+                "x": 257.37,
+                "y": 257.35
+              },
+              "head": {
+                "x": 256.27,
+                "y": 69.59
+              },
+              "face": {
+                "x": 256.27,
+                "y": 179.39
+              },
+              "leftHand": {
+                "x": 206.86,
+                "y": 257.35
+              },
+              "rightHand": {
+                "x": 307.88,
+                "y": 257.35
+              }
+            },
+            "source": "/assets/sprites/body/pull_up_edge/body_pull_up_edge_02.png",
+            "durationMs": 200,
+            "bounds": {
+              "x": 130,
+              "y": 63,
+              "width": 254,
+              "height": 304
+            }
+          },
+          {
+            "pivot": {
+              "x": 283.87,
+              "y": 324.31
+            },
+            "anchors": {
+              "root": {
+                "x": 283.87,
+                "y": 324.31
+              },
+              "head": {
+                "x": 256.21,
+                "y": 70.32
+              },
+              "face": {
+                "x": 256.21,
+                "y": 179.89
+              },
+              "leftHand": {
+                "x": 246.25,
+                "y": 324.31
+              },
+              "rightHand": {
+                "x": 328.14,
+                "y": 324.31
+              }
+            },
+            "source": "/assets/sprites/body/pull_up_edge/body_pull_up_edge_03.png",
+            "durationMs": 200,
+            "bounds": {
+              "x": 140,
+              "y": 67,
+              "width": 236,
+              "height": 269
+            }
+          }
+        ],
+        "framesCount": 4,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "fps": 5.0,
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/pull_up_edge/body_pull_up_edge_00.png",
+          "exists": true,
+          "sha256": "a06bfba81429e892a1575dc9c6fc07cbdaf647ccbf7e768f499be026eb5bd66f",
+          "bytes": 146642,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/pull_up_edge/body_pull_up_edge_01.png",
+          "exists": true,
+          "sha256": "1556eb04891cabd8a84ef39f0754820811ddb606b2d97959f974c868c6413676",
+          "bytes": 161711,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/pull_up_edge/body_pull_up_edge_02.png",
+          "exists": true,
+          "sha256": "9fcb07b28d069fd5c1d5864d792a7e7604067ed0f81b9e6f8c0ec4b431ba3bca",
+          "bytes": 110619,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/pull_up_edge/body_pull_up_edge_03.png",
+          "exists": true,
+          "sha256": "0b5bc828c7d833f0cb460db3b68ecddebcd3515e71437e32c893ca3a7c160a08",
+          "bytes": 120369,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_sit_edge_settle",
+      "group": "body",
+      "label": "Успокаивание сидя",
+      "historicalQuality": "Готово (2026-09-07)",
+      "historicalRegistration": "Да",
+      "notes": "AUTO-I06: 4 RGBA PNG 512×512, baked_in. Перегенерировано; sit 01 = settle 00, settle 03 = sleep 00; ручные anchors/pivot. QA. Зарегистрировано 2026-09-07.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/sit_edge_settle",
+        "frames": [
+          {
+            "pivot": {
+              "x": 255.58,
+              "y": 330.33
+            },
+            "anchors": {
+              "root": {
+                "x": 255.58,
+                "y": 330.33
+              },
+              "head": {
+                "x": 255.58,
+                "y": 81.85
+              },
+              "face": {
+                "x": 255.58,
+                "y": 196.36
+              },
+              "hips": {
+                "x": 255.58,
+                "y": 330.33
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_00.png",
+            "durationMs": 300,
+            "bounds": {
+              "x": 142,
+              "y": 80,
+              "width": 237,
+              "height": 338
+            }
+          },
+          {
+            "pivot": {
+              "x": 255.63,
+              "y": 330.19
+            },
+            "anchors": {
+              "root": {
+                "x": 255.63,
+                "y": 330.19
+              },
+              "head": {
+                "x": 255.63,
+                "y": 79.91
+              },
+              "face": {
+                "x": 255.63,
+                "y": 176.89
+              },
+              "hips": {
+                "x": 255.63,
+                "y": 330.19
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_01.png",
+            "durationMs": 300,
+            "bounds": {
+              "x": 143,
+              "y": 76,
+              "width": 224,
+              "height": 347
+            }
+          },
+          {
+            "pivot": {
+              "x": 255.51,
+              "y": 330.0
+            },
+            "anchors": {
+              "root": {
+                "x": 255.51,
+                "y": 330.0
+              },
+              "head": {
+                "x": 255.51,
+                "y": 81.78
+              },
+              "face": {
+                "x": 255.51,
+                "y": 180.16
+              },
+              "hips": {
+                "x": 255.51,
+                "y": 330.0
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_02.png",
+            "durationMs": 300,
+            "bounds": {
+              "x": 142,
+              "y": 78,
+              "width": 229,
+              "height": 343
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.14,
+              "y": 329.59
+            },
+            "anchors": {
+              "root": {
+                "x": 256.14,
+                "y": 329.59
+              },
+              "head": {
+                "x": 256.14,
+                "y": 63.78
+              },
+              "face": {
+                "x": 256.14,
+                "y": 177.77
+              },
+              "hips": {
+                "x": 256.14,
+                "y": 329.59
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_03.png",
+            "durationMs": 300,
+            "bounds": {
+              "x": 136,
+              "y": 60,
+              "width": 240,
+              "height": 358
+            }
+          }
+        ],
+        "framesCount": 4,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "fps": 3.3333333333333335,
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_00.png",
+          "exists": true,
+          "sha256": "0624c233f432bf7aeeeab87d66ad994728f4f569e2e8785cfcdb53175182d74d",
+          "bytes": 123376,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_01.png",
+          "exists": true,
+          "sha256": "3c67266ede2c19053ed687e138c88e390025453c45d160a24409b3331cbdc64e",
+          "bytes": 127388,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_02.png",
+          "exists": true,
+          "sha256": "9cfc992ec25fb268dc35b8313482dc5c6d9dc1fc6b13e44d3e722004b51ddc18",
+          "bytes": 123928,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge_settle/body_sit_edge_settle_03.png",
+          "exists": true,
+          "sha256": "f387f8053cfaa77455f91137cca3cca380ad7fddf6f87842df1a1c6bd41ba2ed",
+          "bytes": 131949,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_cursor_play",
+      "group": "body",
+      "label": "Игра с курсором",
+      "historicalQuality": "Готово (2026-09-07)",
+      "historicalRegistration": "Да",
+      "notes": "#48: 4 RGBA PNG 512×512, baked_in. Игровой жест с точным возвратом к кадру 00; масштаб и опора выровнены. QA. Зарегистрировано 2026-09-07.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/cursor_play",
+        "frames": [
+          {
+            "pivot": {
+              "x": 256.44,
+              "y": 459.76
+            },
+            "anchors": {
+              "root": {
+                "x": 256.44,
+                "y": 459.76
+              },
+              "head": {
+                "x": 256.44,
+                "y": 111.01
+              },
+              "face": {
+                "x": 256.44,
+                "y": 223.42
+              }
+            },
+            "source": "/assets/sprites/body/cursor_play/body_cursor_play_00.png",
+            "durationMs": 180,
+            "bounds": {
+              "x": 134,
+              "y": 107,
+              "width": 244,
+              "height": 356
+            }
+          },
+          {
+            "pivot": {
+              "x": 255.8,
+              "y": 459.91
+            },
+            "anchors": {
+              "root": {
+                "x": 255.8,
+                "y": 459.91
+              },
+              "head": {
+                "x": 258.35,
+                "y": 105.07
+              },
+              "face": {
+                "x": 258.35,
+                "y": 217.07
+              }
+            },
+            "source": "/assets/sprites/body/cursor_play/body_cursor_play_01.png",
+            "durationMs": 180,
+            "bounds": {
+              "x": 127,
+              "y": 101,
+              "width": 261,
+              "height": 362
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.09,
+              "y": 460.01
+            },
+            "anchors": {
+              "root": {
+                "x": 256.09,
+                "y": 460.01
+              },
+              "head": {
+                "x": 260.06,
+                "y": 114.97
+              },
+              "face": {
+                "x": 260.06,
+                "y": 227.67
+              }
+            },
+            "source": "/assets/sprites/body/cursor_play/body_cursor_play_02.png",
+            "durationMs": 180,
+            "bounds": {
+              "x": 128,
+              "y": 111,
+              "width": 257,
+              "height": 352
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.44,
+              "y": 459.76
+            },
+            "anchors": {
+              "root": {
+                "x": 256.44,
+                "y": 459.76
+              },
+              "head": {
+                "x": 256.44,
+                "y": 111.01
+              },
+              "face": {
+                "x": 256.44,
+                "y": 223.42
+              }
+            },
+            "source": "/assets/sprites/body/cursor_play/body_cursor_play_03.png",
+            "durationMs": 180,
+            "bounds": {
+              "x": 134,
+              "y": 107,
+              "width": 244,
+              "height": 356
+            }
+          }
+        ],
+        "framesCount": 4,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "fps": 5.555555555555555,
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_play/body_cursor_play_00.png",
+          "exists": true,
+          "sha256": "a107635449b0422424b2092e53e1de618e1c173b47ef5dab2e3932ed530738ca",
+          "bytes": 125781,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_play/body_cursor_play_01.png",
+          "exists": true,
+          "sha256": "7dde4688e78900b48fe37deb8860d921b8e833d81bad13f6aab7b531d0052eae",
+          "bytes": 133941,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_play/body_cursor_play_02.png",
+          "exists": true,
+          "sha256": "b457fd2fd9928677a6e3c1dc741030588e40069fc6cf6af75ea1653d8d887a9e",
+          "bytes": 128791,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_play/body_cursor_play_03.png",
+          "exists": true,
+          "sha256": "a107635449b0422424b2092e53e1de618e1c173b47ef5dab2e3932ed530738ca",
+          "bytes": 125781,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_sit_edge_sleep",
+      "group": "body",
+      "label": "Сон сидя",
+      "historicalQuality": "Готово (2026-09-07)",
+      "historicalRegistration": "Да",
+      "notes": "AUTO-I06: 4 RGBA PNG 512×512, baked_in. Настоящий alpha, сон сидя без опоры; цикл 0–1–2–1, дрейф pivot ≤1 px. QA. Зарегистрировано 2026-09-07.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/sit_edge_sleep",
+        "frames": [
+          {
+            "pivot": {
+              "x": 256.14,
+              "y": 329.59
+            },
+            "anchors": {
+              "root": {
+                "x": 256.14,
+                "y": 329.59
+              },
+              "head": {
+                "x": 256.14,
+                "y": 63.78
+              },
+              "face": {
+                "x": 256.14,
+                "y": 177.77
+              },
+              "hips": {
+                "x": 256.14,
+                "y": 329.59
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_00.png",
+            "durationMs": 500,
+            "bounds": {
+              "x": 136,
+              "y": 60,
+              "width": 240,
+              "height": 358
+            }
+          },
+          {
+            "pivot": {
+              "x": 255.88,
+              "y": 329.59
+            },
+            "anchors": {
+              "root": {
+                "x": 255.88,
+                "y": 329.59
+              },
+              "head": {
+                "x": 255.88,
+                "y": 62.84
+              },
+              "face": {
+                "x": 255.88,
+                "y": 176.82
+              },
+              "hips": {
+                "x": 255.88,
+                "y": 329.59
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_01.png",
+            "durationMs": 500,
+            "bounds": {
+              "x": 140,
+              "y": 60,
+              "width": 240,
+              "height": 358
+            }
+          },
+          {
+            "pivot": {
+              "x": 256.24,
+              "y": 329.65
+            },
+            "anchors": {
+              "root": {
+                "x": 256.24,
+                "y": 329.65
+              },
+              "head": {
+                "x": 256.24,
+                "y": 63.84
+              },
+              "face": {
+                "x": 256.24,
+                "y": 177.82
+              },
+              "hips": {
+                "x": 256.24,
+                "y": 329.65
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_02.png",
+            "durationMs": 500,
+            "bounds": {
+              "x": 138,
+              "y": 61,
+              "width": 241,
+              "height": 355
+            }
+          },
+          {
+            "pivot": {
+              "x": 255.88,
+              "y": 329.59
+            },
+            "anchors": {
+              "root": {
+                "x": 255.88,
+                "y": 329.59
+              },
+              "head": {
+                "x": 255.88,
+                "y": 62.84
+              },
+              "face": {
+                "x": 255.88,
+                "y": 176.82
+              },
+              "hips": {
+                "x": 255.88,
+                "y": 329.59
+              }
+            },
+            "source": "/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_03.png",
+            "durationMs": 500,
+            "bounds": {
+              "x": 140,
+              "y": 60,
+              "width": 240,
+              "height": 358
+            }
+          }
+        ],
+        "framesCount": 4,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "fps": 2.0,
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_00.png",
+          "exists": true,
+          "sha256": "f387f8053cfaa77455f91137cca3cca380ad7fddf6f87842df1a1c6bd41ba2ed",
+          "bytes": 131949,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_01.png",
+          "exists": true,
+          "sha256": "ed4a9d9296b8a7b56e2db9ff6016c752fe89c6b1d9551ec137a310f734c3c46f",
+          "bytes": 132655,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_02.png",
+          "exists": true,
+          "sha256": "e075490411723e17393d1b4599268b6bbfe77c5ec1e464d73d05ca65982784e1",
+          "bytes": 132010,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/sit_edge_sleep/body_sit_edge_sleep_03.png",
+          "exists": true,
+          "sha256": "ed4a9d9296b8a7b56e2db9ff6016c752fe89c6b1d9551ec137a310f734c3c46f",
+          "bytes": 132655,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_cursor_caught",
+      "group": "body",
+      "label": "Радость после поимки",
+      "historicalQuality": "Готово (2026-09-08)",
+      "historicalRegistration": "Да",
+      "notes": "CURSOR-GAME-V1: 6 RGBA PNG 512×512, 100 ms/кадр, baked_in; хватательный жест → радость → нейтральная поза. Pivot (256,460), стопы выровнены. QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/cursor_caught",
+        "framesCount": 6,
+        "fps": 10,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "pivot": {
+          "x": 256,
+          "y": 460
+        },
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "frames": [
+          {
+            "source": "/assets/sprites/body/cursor_caught/body_cursor_caught_00.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 132,
+              "y": 106,
+              "width": 247,
+              "height": 360
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_caught/body_cursor_caught_01.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 134,
+              "y": 105,
+              "width": 247,
+              "height": 361
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_caught/body_cursor_caught_02.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 132,
+              "y": 105,
+              "width": 246,
+              "height": 361
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_caught/body_cursor_caught_03.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 133,
+              "y": 108,
+              "width": 247,
+              "height": 356
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_caught/body_cursor_caught_04.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 132,
+              "y": 109,
+              "width": 247,
+              "height": 355
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_caught/body_cursor_caught_05.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 130,
+              "y": 107,
+              "width": 248,
+              "height": 357
+            }
+          }
+        ]
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_caught/body_cursor_caught_00.png",
+          "exists": true,
+          "sha256": "0f50b1160fd074ef98df50fdc20a9d29bb9bff1cf8fae6d4e7eb148e1ceffbfb",
+          "bytes": 128219,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_caught/body_cursor_caught_01.png",
+          "exists": true,
+          "sha256": "4adb1601899c2b651d90312e804e955d1e2afadeb0f389266b0e6e4b65014e1d",
+          "bytes": 128395,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_caught/body_cursor_caught_02.png",
+          "exists": true,
+          "sha256": "94cb25d1a9b1b74009059a580d225109e7a07492d634efbc9be970e055a4980f",
+          "bytes": 128177,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_caught/body_cursor_caught_03.png",
+          "exists": true,
+          "sha256": "e3c6aa8dd6372c8d812b05f45e7bdee24afb8bbad170e839956c2e95a5ba7936",
+          "bytes": 126302,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_caught/body_cursor_caught_04.png",
+          "exists": true,
+          "sha256": "f7986d06a0d79205ba2007c8f7e09af01a86db8a5ff15e3da7e89257f2b2945f",
+          "bytes": 129282,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_caught/body_cursor_caught_05.png",
+          "exists": true,
+          "sha256": "b0317ba97aacb16feb2c9406d0fee83e806d215f7c7f0b8b758c01a3749247cb",
+          "bytes": 129409,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "body_cursor_missed",
+      "group": "body",
+      "label": "Реакция на промах",
+      "historicalQuality": "Готово (2026-09-08)",
+      "historicalRegistration": "Да",
+      "notes": "CURSOR-GAME-V1: 6 RGBA PNG 512×512, 100 ms/кадр, baked_in; взгляд вслед цели → мягкое опускание рук → нейтральная поза. Pivot (256,460), без нарисованного курсора. QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "body/cursor_missed",
+        "framesCount": 6,
+        "fps": 10,
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "pivot": {
+          "x": 256,
+          "y": 460
+        },
+        "faceOverlay": {
+          "mode": "baked_in",
+          "fallback": "none"
+        },
+        "frames": [
+          {
+            "source": "/assets/sprites/body/cursor_missed/body_cursor_missed_00.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 112,
+              "y": 110,
+              "width": 278,
+              "height": 355
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_missed/body_cursor_missed_01.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 116,
+              "y": 109,
+              "width": 278,
+              "height": 356
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_missed/body_cursor_missed_02.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 114,
+              "y": 108,
+              "width": 278,
+              "height": 358
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_missed/body_cursor_missed_03.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 114,
+              "y": 106,
+              "width": 285,
+              "height": 359
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_missed/body_cursor_missed_04.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 114,
+              "y": 105,
+              "width": 281,
+              "height": 365
+            }
+          },
+          {
+            "source": "/assets/sprites/body/cursor_missed/body_cursor_missed_05.png",
+            "durationMs": 100,
+            "pivot": {
+              "x": 256,
+              "y": 460
+            },
+            "anchors": {
+              "root": {
+                "x": 256,
+                "y": 460
+              }
+            },
+            "bounds": {
+              "x": 116,
+              "y": 105,
+              "width": 275,
+              "height": 365
+            }
+          }
+        ]
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_missed/body_cursor_missed_00.png",
+          "exists": true,
+          "sha256": "40b9447a1c22a6854ab88eafa8d250b1f9011f9aa1830552eaba894f855ee2d1",
+          "bytes": 141589,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_missed/body_cursor_missed_01.png",
+          "exists": true,
+          "sha256": "ae58e99f21dc85c8396e16a0f41ebe60d4817b874a54ad3ca18d3c06cddea849",
+          "bytes": 143202,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_missed/body_cursor_missed_02.png",
+          "exists": true,
+          "sha256": "4929f3825cec61127891db2a9332cdc5b8f1c1552495a7438fc539cea3c543d5",
+          "bytes": 140108,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_missed/body_cursor_missed_03.png",
+          "exists": true,
+          "sha256": "f279eb8456a20464a1ad750a0db5383b1850a79ff23d43979ebe9d79bdb9c3b2",
+          "bytes": 141473,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_missed/body_cursor_missed_04.png",
+          "exists": true,
+          "sha256": "15c39ac6b59b18b82856fc529612bec84ba09a8571127799c7b8466692442654",
+          "bytes": 141696,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/body/cursor_missed/body_cursor_missed_05.png",
+          "exists": true,
+          "sha256": "2d63048e09ad845d9197e368d06aa4f1784e29183b0085b18bc9eb0e206975d8",
+          "bytes": 139858,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_angry",
+      "group": "face",
+      "label": "Злость",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/angry",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/angry/face_angry_00.png",
+          "/assets/sprites/faces/angry/face_angry_01.png",
+          "/assets/sprites/faces/angry/face_angry_02.png",
+          "/assets/sprites/faces/angry/face_angry_03.png"
+        ],
+        "sourceFile": "face_angry.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/angry/face_angry_00.png",
+          "exists": true,
+          "sha256": "5edd48db7889f07d01093e56172623ec775fadfad4d9ea59eb6f7ee557bad227",
+          "bytes": 10274,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/angry/face_angry_01.png",
+          "exists": true,
+          "sha256": "e91fffe7551151f73d68b0c3a8def1e8d3cae4436dc571a868f745f462295a96",
+          "bytes": 14234,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/angry/face_angry_02.png",
+          "exists": true,
+          "sha256": "26ff0c5d805caf91ff6bfcc34bf00a2a79ce9aa42df94a46dc7fc37f4c3aecd5",
+          "bytes": 10853,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/angry/face_angry_03.png",
+          "exists": true,
+          "sha256": "5d886ee0761410a347bbb4f7cbcfabf135b70a93d2b12f3f7bb0c73ab20e2c0e",
+          "bytes": 11994,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_blink",
+      "group": "face",
+      "label": "Моргание (открыты -> закрыты)",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Открыты → наполовину закрыты → закрыты → открываются; сохранить расстояние между глазами.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "face_crying",
+      "group": "face",
+      "label": "Слёзки (плач/обида)",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Слёзы в уголках глаз и дрожащий рот → капли по щекам → потоки слёз с зажмуриванием → всхлипывание с брызгами.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "face_curious",
+      "group": "face",
+      "label": "Любопытство",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/curious",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/curious/face_curious_00.png",
+          "/assets/sprites/faces/curious/face_curious_01.png",
+          "/assets/sprites/faces/curious/face_curious_02.png",
+          "/assets/sprites/faces/curious/face_curious_03.png"
+        ],
+        "sourceFile": "face_curious.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/curious/face_curious_00.png",
+          "exists": true,
+          "sha256": "c173744366e815e65827f6668cb0b415680082835591322ce5c64c6bab2bd72d",
+          "bytes": 12441,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/curious/face_curious_01.png",
+          "exists": true,
+          "sha256": "dd3b2b21474300a1bbd092f0e034f966e3054f27aeea0799822916fed2145a42",
+          "bytes": 12417,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/curious/face_curious_02.png",
+          "exists": true,
+          "sha256": "38d256347c3f7533cac5b3177ce4b9ef223082f6482d03f8c68bb82f0e51027b",
+          "bytes": 12474,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/curious/face_curious_03.png",
+          "exists": true,
+          "sha256": "95ea91557f8328ba4f976651d8df6435c695059ab33c8dd2c188b1023718df75",
+          "bytes": 12911,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_dizzy",
+      "group": "face",
+      "label": "Головокружение",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/dizzy",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/dizzy/face_dizzy_00.png",
+          "/assets/sprites/faces/dizzy/face_dizzy_01.png",
+          "/assets/sprites/faces/dizzy/face_dizzy_02.png",
+          "/assets/sprites/faces/dizzy/face_dizzy_03.png"
+        ],
+        "sourceFile": "face_dizzy.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/dizzy/face_dizzy_00.png",
+          "exists": true,
+          "sha256": "17493aa06074423514acd6f714a8eb99367f6e5db6277874fc209f0db190aedb",
+          "bytes": 11147,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/dizzy/face_dizzy_01.png",
+          "exists": true,
+          "sha256": "9604020421f990720b494383e0c6d374d8c71fa2af74d17768c7c2d30d8c7ffe",
+          "bytes": 13494,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/dizzy/face_dizzy_02.png",
+          "exists": true,
+          "sha256": "c3eb2c7f10c98bb7a92910cb20cb2cba11daf8a19b0b24954c23b645655e9ab0",
+          "bytes": 15195,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/dizzy/face_dizzy_03.png",
+          "exists": true,
+          "sha256": "6c669e341f443149e14f5eb184dde1c31fd84c4b692661d0448dd51306cfbeb9",
+          "bytes": 10796,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_embarrassed",
+      "group": "face",
+      "label": "Смущение `>///<`",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Взгляд вправо с румянцем → ярче румянец и вздох → зажмуривание с надутыми губами → робкий взгляд к центру.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "face_flirty",
+      "group": "face",
+      "label": "Флирт / смущение",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/flirty",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/flirty/face_flirty_00.png",
+          "/assets/sprites/faces/flirty/face_flirty_01.png",
+          "/assets/sprites/faces/flirty/face_flirty_02.png",
+          "/assets/sprites/faces/flirty/face_flirty_03.png"
+        ],
+        "sourceFile": "face_blush.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/flirty/face_flirty_00.png",
+          "exists": true,
+          "sha256": "b00af34ad531900c69481100b06c3094f02dc4e3f04c7e766c48977110721bef",
+          "bytes": 13393,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/flirty/face_flirty_01.png",
+          "exists": true,
+          "sha256": "b22ee601406ce56ef0e828a2786fd996e382d2f89108df3dc34b3e98e7df1dda",
+          "bytes": 13918,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/flirty/face_flirty_02.png",
+          "exists": true,
+          "sha256": "5057f87c07033a63c324f610c39cc2cb382718970ae0e90d5c51f8c598e61e8e",
+          "bytes": 11581,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/flirty/face_flirty_03.png",
+          "exists": true,
+          "sha256": "57c3c0c63897a9330daa858c483a5b94387a86db02490ecf03616fa0287e6304",
+          "bytes": 12750,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_gaze",
+      "group": "face",
+      "label": "Направления взгляда лица (L, R, U, D)",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/gaze",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/gaze/face_gaze_00.png",
+          "/assets/sprites/faces/gaze/face_gaze_01.png",
+          "/assets/sprites/faces/gaze/face_gaze_02.png",
+          "/assets/sprites/faces/gaze/face_gaze_03.png"
+        ],
+        "sourceFile": "face_gaze.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/gaze/face_gaze_00.png",
+          "exists": true,
+          "sha256": "f515053e2cdc97bc7043496a54df17df3ee5ecbe85f36aa73a8ca0532672535f",
+          "bytes": 11015,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/gaze/face_gaze_01.png",
+          "exists": true,
+          "sha256": "0ee2ecc35980a1d2d76515d5373a5d50576c7cef979cc91684ca5dcf9656e6ff",
+          "bytes": 10921,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/gaze/face_gaze_02.png",
+          "exists": true,
+          "sha256": "003864d3f2ee5fd47464d9f590828fa3764ca095762be98c7b34ebc11a498859",
+          "bytes": 11486,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/gaze/face_gaze_03.png",
+          "exists": true,
+          "sha256": "02f940f2f03a4a2d54141a2ffaa2dea775112ec55c627ccc11215fd172960c84",
+          "bytes": 10599,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_happy",
+      "group": "face",
+      "label": "Радость",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/happy",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/happy/face_happy_00.png",
+          "/assets/sprites/faces/happy/face_happy_01.png",
+          "/assets/sprites/faces/happy/face_happy_02.png",
+          "/assets/sprites/faces/happy/face_happy_03.png"
+        ],
+        "sourceFile": "face_счаст.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/happy/face_happy_00.png",
+          "exists": true,
+          "sha256": "d07c539c6054a8d7a6e78ae33fcd593d04cfc200b79054dddb56d5b69f26747f",
+          "bytes": 13509,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/happy/face_happy_01.png",
+          "exists": true,
+          "sha256": "81e2aad7e00ec03c5f4ed883ac33a440b2894f0c191b4527c9787aa06ec125b2",
+          "bytes": 14330,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/happy/face_happy_02.png",
+          "exists": true,
+          "sha256": "d947b79cbed083dec05559d9004f0aff3b83c1a5e00aec7f1eb568080b74bc6e",
+          "bytes": 10119,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/happy/face_happy_03.png",
+          "exists": true,
+          "sha256": "a16eaba697236c257a48663fcf075473d5b0f37547ec333779fa01a7097cfe5f",
+          "bytes": 12926,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_panic_scream",
+      "group": "face",
+      "label": "Панический крик `D:`",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Открытый рот D: и испуганный взгляд → рот шире с зигзагом зубов → крик со слезами → вдох перед новым криком.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "face_pout",
+      "group": "face",
+      "label": "Надутые щёчки / обида",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/pout",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/pout/face_pout_00.png",
+          "/assets/sprites/faces/pout/face_pout_01.png",
+          "/assets/sprites/faces/pout/face_pout_02.png",
+          "/assets/sprites/faces/pout/face_pout_03.png"
+        ],
+        "sourceFile": "face_pout.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pout/face_pout_00.png",
+          "exists": true,
+          "sha256": "bd5e77146dbff7da487cc7b32d8561d5cf346bc02680f51d20497c52bfc24b2f",
+          "bytes": 13104,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pout/face_pout_01.png",
+          "exists": true,
+          "sha256": "13e4614eed8f2c673bb105f6101c52af22cbfce8c95da2672ad089d6e31b150d",
+          "bytes": 13722,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pout/face_pout_02.png",
+          "exists": true,
+          "sha256": "49520a31aa7b8cf13a1dba7406c09b38dcf54637f6d2320e5a72e395be901479",
+          "bytes": 14043,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pout/face_pout_03.png",
+          "exists": true,
+          "sha256": "8257d9bd1d827ec529c12bd381525d2663cf386d7703a4a05d066eed3e10a1d9",
+          "bytes": 14753,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_sad",
+      "group": "face",
+      "label": "Грусть",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/sad",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/sad/face_sad_00.png",
+          "/assets/sprites/faces/sad/face_sad_01.png",
+          "/assets/sprites/faces/sad/face_sad_02.png",
+          "/assets/sprites/faces/sad/face_sad_03.png"
+        ],
+        "sourceFile": "face_грусть.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/sad/face_sad_00.png",
+          "exists": true,
+          "sha256": "cad7fbc8135715914f04d6305cd7af53013b7eacc7bd9c4454f7c8ee02ec021a",
+          "bytes": 12896,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/sad/face_sad_01.png",
+          "exists": true,
+          "sha256": "0615866c1ccfdbbf065ed7b2c62e9f73afbc90c79fabe3f429388ebf7ed99fa0",
+          "bytes": 13414,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/sad/face_sad_02.png",
+          "exists": true,
+          "sha256": "994a12454b4808613651c7e1a987b2654a5ce1897d74505c4f8497aa5bf9f32d",
+          "bytes": 14860,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/sad/face_sad_03.png",
+          "exists": true,
+          "sha256": "88804102708a80de7c09c218f8967da71afb3a8b6ef0453aae7ae8fede93f2f6",
+          "bytes": 17363,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_shocked",
+      "group": "face",
+      "label": "Удивление",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/shocked",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/shocked/face_shocked_00.png",
+          "/assets/sprites/faces/shocked/face_shocked_01.png",
+          "/assets/sprites/faces/shocked/face_shocked_02.png",
+          "/assets/sprites/faces/shocked/face_shocked_03.png"
+        ],
+        "sourceFile": "face_surprised.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/shocked/face_shocked_00.png",
+          "exists": true,
+          "sha256": "0ec9dcfa6e4bba10955f2db97a068e40341037fed230fc4a2c8750a2ea88a727",
+          "bytes": 11541,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/shocked/face_shocked_01.png",
+          "exists": true,
+          "sha256": "0f518b6824f2cdd8679384dd349aca595df45749db1a9ac3a894901c9abde5ed",
+          "bytes": 12652,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/shocked/face_shocked_02.png",
+          "exists": true,
+          "sha256": "c805346e8aaddba5e8098b271aee9eac306f1845e3c7ff4c97ca7b4f7a4220ef",
+          "bytes": 12240,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/shocked/face_shocked_03.png",
+          "exists": true,
+          "sha256": "ea3ba76e6acc45e9e3bde5ddf7c2c9b1909495e3417d3187c5ee103eeab528c3",
+          "bytes": 10924,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_sleep",
+      "group": "face",
+      "label": "Сонная мимика",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/sleep",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/sleep/face_sleep_00.png",
+          "/assets/sprites/faces/sleep/face_sleep_01.png",
+          "/assets/sprites/faces/sleep/face_sleep_02.png",
+          "/assets/sprites/faces/sleep/face_sleep_03.png"
+        ],
+        "sourceFile": "face_сон_лиц.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/sleep/face_sleep_00.png",
+          "exists": true,
+          "sha256": "d12884f6e0afdad4a8920f21b2cdeb0fe15328999d68858ab77dc365bf8875a0",
+          "bytes": 14137,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/sleep/face_sleep_01.png",
+          "exists": true,
+          "sha256": "3a1574f8e878ee88b13445f2d87084b0be6812403c99f5e663d89336e77aaca2",
+          "bytes": 13129,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/sleep/face_sleep_02.png",
+          "exists": true,
+          "sha256": "23f999de935d3c89b63e18c531f3b41108b35f0182a90c49e6af08cea3e8149b",
+          "bytes": 10411,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/sleep/face_sleep_03.png",
+          "exists": true,
+          "sha256": "f2fac8d355e06736a01ea93a216f55d96c91efb3b215e1a5ff58aef309e5d8e6",
+          "bytes": 11174,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_smug",
+      "group": "face",
+      "label": "Ухмылка (хитрая/уверенная)",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Прищур и бровь → блеск с :3 → широкая ухмылка → лёгкая ухмылка.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "face_sparkle_eyes",
+      "group": "face",
+      "label": "Глаза-звёздочки `✪ ω ✪`",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Четырёхконечные звёзды в глазах → расширение и вращение с приоткрытым ртом → максимальная вспышка → мягкий возврат к старту.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "face_talking",
+      "group": "face",
+      "label": "Разговор",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/talking",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/talking/face_talking_00.png",
+          "/assets/sprites/faces/talking/face_talking_01.png",
+          "/assets/sprites/faces/talking/face_talking_02.png",
+          "/assets/sprites/faces/talking/face_talking_03.png"
+        ],
+        "sourceFile": "face_речь.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/talking/face_talking_00.png",
+          "exists": true,
+          "sha256": "522cbc2cd3a3e0d24943969a612f0fcfbf73d5b0891ef4b5b2c71547127d9c02",
+          "bytes": 12640,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/talking/face_talking_01.png",
+          "exists": true,
+          "sha256": "6bb6e44b906d44bfe02be5987db0807de0dbde8d326a7149bf4f1760affc3369",
+          "bytes": 13106,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/talking/face_talking_02.png",
+          "exists": true,
+          "sha256": "8c2ed2bd32958593a68fe2de4d04f060fa7a9e4a5907938d6a6895a9901a7c52",
+          "bytes": 13860,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/talking/face_talking_03.png",
+          "exists": true,
+          "sha256": "0a89ea35593af658a0aecf50cd1b54c07ab2d7e3d85ecbf176d477873a35b4d2",
+          "bytes": 8169,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_thinking",
+      "group": "face",
+      "label": "Задумчивость",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/thinking",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/thinking/face_thinking_00.png",
+          "/assets/sprites/faces/thinking/face_thinking_01.png",
+          "/assets/sprites/faces/thinking/face_thinking_02.png",
+          "/assets/sprites/faces/thinking/face_thinking_03.png"
+        ],
+        "sourceFile": "face_озадаченност.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/thinking/face_thinking_00.png",
+          "exists": true,
+          "sha256": "7150d71414d6fbcdc84ba7899b704ec2983e266d2b3e953339663012e574be3e",
+          "bytes": 10652,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/thinking/face_thinking_01.png",
+          "exists": true,
+          "sha256": "6aceaa668c7f7a6ee7a4890cbb4d6216fc89795de9e21864a9de4d8c3816b91a",
+          "bytes": 11016,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/thinking/face_thinking_02.png",
+          "exists": true,
+          "sha256": "faaf5730ac49debc773523b97838cc786b476ac8be333abc626d24131656fce5",
+          "bytes": 10918,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/thinking/face_thinking_03.png",
+          "exists": true,
+          "sha256": "92cadfa4d016dd263e0cb189f43931c370386448a229c6bde8ae994fc479f961",
+          "bytes": 11941,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "face_winking",
+      "group": "face",
+      "label": "Подмигивание",
+      "historicalQuality": "Готово (геометрия, 2026-09-18)",
+      "historicalRegistration": "Да",
+      "notes": "Проверены 4 композиции с idle; размер сохранён, pivot (256,180) и canvasSize заданы явно. SPRITE-NORMALIZE-2026-09; QA.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/winking",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/winking/face_winking_00.png",
+          "/assets/sprites/faces/winking/face_winking_01.png",
+          "/assets/sprites/faces/winking/face_winking_02.png",
+          "/assets/sprites/faces/winking/face_winking_03.png"
+        ],
+        "sourceFile": "face_winking.png",
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/winking/face_winking_00.png",
+          "exists": true,
+          "sha256": "c0b3fafb2aebaebf01441aec2b522267ba28fc7a126ba10afeff1d7b0991a87e",
+          "bytes": 12333,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/winking/face_winking_01.png",
+          "exists": true,
+          "sha256": "a79e40e4f52457897cced8527900879cf5f2dbc0e9cbe88c38e84062ad51e8e0",
+          "bytes": 10018,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/winking/face_winking_02.png",
+          "exists": true,
+          "sha256": "f3ec8f15cd995a9484d6104adef419a95fc9c824211fc3abb324a8f5d01129b5",
+          "bytes": 12838,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/winking/face_winking_03.png",
+          "exists": true,
+          "sha256": "acdad15c52a63870c63871ac9cd85ab4a7feb54e3580cbbb0b68a6073cf588e7",
+          "bytes": 12255,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "prop_exclamation",
+      "group": "prop",
+      "label": "Знак внимания `!` FX",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Знак ! подскакивает со сжатием → распрямляется с ударными линиями → дрожит наверху → оседает.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "prop_heart",
+      "group": "prop",
+      "label": "Парящие сердечки FX",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Сердечко с искрами → растёт и поднимается → сияние на максимуме → рассеивание в пыльцу.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "prop_lightbulb",
+      "group": "prop",
+      "label": "Лампочка идеи `💡` FX",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Колба появляется снизу → загорается нить → яркая вспышка с лучами → мягкое свечение.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "prop_music_notes",
+      "group": "prop",
+      "label": "Музыкальные нотки `🎵` FX",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Восьмая нотка подскакивает слева → двойная кружится в центре → скрипичный ключ взлетает с искрами → растворение.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "prop_pillow",
+      "group": "prop",
+      "label": "Мягкая подушечка",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Пышная подушка → продавливание под головой → максимальное сжатие → расправление.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "prop_question",
+      "group": "prop",
+      "label": "Знак вопроса `?` FX",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Знак ? наклонён влево → подскок с искрой → верхняя точка с наклоном вправо → исходная позиция.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "prop_sparkle",
+      "group": "prop",
+      "label": "Звёздочки/искры `✨` FX",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Точка света → четырёхконечная звезда с ореолом → вращение и вспышка с искрами → угасание.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "prop_sweat_drop",
+      "group": "prop",
+      "label": "Капля неловкости `💧` FX",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Капля у виска → вытягивается и скользит вниз → соскальзывает со всплеском → исчезает.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "prop_zzz",
+      "group": "prop",
+      "label": "Сонные буковки `Z z z 💤` FX",
+      "historicalQuality": "Не готово",
+      "historicalRegistration": "Нет",
+      "notes": "Маленькая z внизу → растёт по диагонали, следом вторая → большая Z сверху в облачке → тает.",
+      "registered": false,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "availability": "no_working_png_reported_in_assets_table"
+    },
+    {
+      "key": "face_gaze_base",
+      "group": "face",
+      "label": "Основа плавного взгляда",
+      "historicalQuality": "Готово (2026-10-06)",
+      "historicalRegistration": "Да",
+      "notes": "Пара gaze_base/pupils_gaze: четыре одинаковых статических кадра, pivot (256,180), проверка смещений ±2 px X / ±1 px Y по QA 2026-10-06.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/gaze_base",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/gaze_base/face_gaze_base_00.png",
+          "/assets/sprites/faces/gaze_base/face_gaze_base_01.png",
+          "/assets/sprites/faces/gaze_base/face_gaze_base_02.png",
+          "/assets/sprites/faces/gaze_base/face_gaze_base_03.png"
+        ],
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "fps": 5
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/gaze_base/face_gaze_base_00.png",
+          "exists": true,
+          "sha256": "2d6a1a8129aa225056d89d04312f4616db88fba89d6b0cfaedaa4cb1d9defa3c",
+          "bytes": 11975,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/gaze_base/face_gaze_base_01.png",
+          "exists": true,
+          "sha256": "2d6a1a8129aa225056d89d04312f4616db88fba89d6b0cfaedaa4cb1d9defa3c",
+          "bytes": 11975,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/gaze_base/face_gaze_base_02.png",
+          "exists": true,
+          "sha256": "2d6a1a8129aa225056d89d04312f4616db88fba89d6b0cfaedaa4cb1d9defa3c",
+          "bytes": 11975,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/gaze_base/face_gaze_base_03.png",
+          "exists": true,
+          "sha256": "2d6a1a8129aa225056d89d04312f4616db88fba89d6b0cfaedaa4cb1d9defa3c",
+          "bytes": 11975,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "pupils_gaze",
+      "group": "pupils",
+      "label": "Радужки плавного взгляда",
+      "historicalQuality": "Готово (2026-10-06)",
+      "historicalRegistration": "Да",
+      "notes": "Пара gaze_base/pupils_gaze: четыре одинаковых статических кадра, pivot (256,180), проверка смещений ±2 px X / ±1 px Y по QA 2026-10-06.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/pupils_gaze",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/pupils_gaze/pupils_gaze_00.png",
+          "/assets/sprites/faces/pupils_gaze/pupils_gaze_01.png",
+          "/assets/sprites/faces/pupils_gaze/pupils_gaze_02.png",
+          "/assets/sprites/faces/pupils_gaze/pupils_gaze_03.png"
+        ],
+        "canvasSize": {
+          "width": 512,
+          "height": 512
+        },
+        "pivot": {
+          "x": 256,
+          "y": 180
+        },
+        "fps": 5
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pupils_gaze/pupils_gaze_00.png",
+          "exists": true,
+          "sha256": "d848e25b3b18b622dffeb3628ae22ba9535c290cd5fd781f0cc4f7c2ca76daac",
+          "bytes": 3997,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pupils_gaze/pupils_gaze_01.png",
+          "exists": true,
+          "sha256": "d848e25b3b18b622dffeb3628ae22ba9535c290cd5fd781f0cc4f7c2ca76daac",
+          "bytes": 3997,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pupils_gaze/pupils_gaze_02.png",
+          "exists": true,
+          "sha256": "d848e25b3b18b622dffeb3628ae22ba9535c290cd5fd781f0cc4f7c2ca76daac",
+          "bytes": 3997,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pupils_gaze/pupils_gaze_03.png",
+          "exists": true,
+          "sha256": "d848e25b3b18b622dffeb3628ae22ba9535c290cd5fd781f0cc4f7c2ca76daac",
+          "bytes": 3997,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    },
+    {
+      "key": "pupils_normal",
+      "group": "pupils",
+      "label": "Обычные зрачки",
+      "historicalQuality": "В таблице качества отсутствует",
+      "historicalRegistration": "Да",
+      "notes": "Зарегистрирован в манифесте; отдельная визуальная приёмка здесь не установлена.",
+      "registered": true,
+      "rigApproval": "not_established_by_asset_pipeline",
+      "sources": [
+        "frontend/asset-pipeline/ASSETS.md",
+        "frontend/public/assets/sprites/manifest.json"
+      ],
+      "manifestSnapshot": {
+        "category": "faces/pupils",
+        "framesCount": 4,
+        "frames": [
+          "/assets/sprites/faces/pupils/pupils_normal_00.png",
+          "/assets/sprites/faces/pupils/pupils_normal_01.png",
+          "/assets/sprites/faces/pupils/pupils_normal_02.png",
+          "/assets/sprites/faces/pupils/pupils_normal_03.png"
+        ],
+        "sourceFile": "pupils_normal.png"
+      },
+      "frameInventory": [
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pupils/pupils_normal_00.png",
+          "exists": true,
+          "sha256": "b70db18de06094e05513f95766ca7aed236220a646a8ff0914bf7d937869ac4c",
+          "bytes": 14975,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pupils/pupils_normal_01.png",
+          "exists": true,
+          "sha256": "ce8d7afb33d9f1a1bf14f99a70f6af55e7debf08762caffad29b8d7ca3155cbf",
+          "bytes": 15223,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pupils/pupils_normal_02.png",
+          "exists": true,
+          "sha256": "ac188caec516f32e4cccefd34725cd6c7cf7bb43c4281ce60e00a8e8eadc02ac",
+          "bytes": 15200,
+          "pngSize": [
+            512,
+            512
+          ]
+        },
+        {
+          "sourcePath": "frontend/public/assets/sprites/faces/pupils/pupils_normal_03.png",
+          "exists": true,
+          "sha256": "25eb4418dda8c418b18622c8f8f8867f3a112346376780d28c0203d08106e0cd",
+          "bytes": 15023,
+          "pngSize": [
+            512,
+            512
+          ]
+        }
+      ],
+      "availability": "all_registered_png_present"
+    }
+  ]
+}

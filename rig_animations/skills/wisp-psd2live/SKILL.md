@@ -5,7 +5,7 @@ description: Prepare and edit the Wisp chibi character in user-reviewed stages w
 
 # Wisp rig authoring — PSD2Live 3.5.1
 
-Work in `/home/zybz/code/project_wisp/rig_animations`. Read its README for the
+Work in the project root containing `character_reference.png` and `tools.lock.json`. Read its README for the
 current verified state and outstanding visual work. The source is
 `character_reference.png`; never overwrite it. Keep experiments in `work/`.
 
@@ -13,8 +13,10 @@ current verified state and outstanding visual work. The source is
 
 The user explicitly replaced the one-prompt full build with review at every
 stage. Read the current stage and acceptance record in the workspace README.
-Preserve `work/full-rig-v1/` as the prototype; do not run its end-to-end rebuild
-commands to implement a new stage.
+Read `docs/WORKFLOW.md`: rejected prototypes were deleted on user request.
+For the arm, first extract original pixels and reconstruct the neutral whole character;
+then test one joint at small amplitude. Generate only a demonstrated missing region.
+Retained r12/r15 fragments are limited approvals, not an accepted whole arm.
 
 0. Obtain the user's acceptance of a target image showing the character at the
    end of the intended movement; for a loop returning to its start, use its
@@ -31,7 +33,7 @@ At each boundary deliver the actual review artifact, its revision, changes,
 known defects and the precise decision needed, then wait for the user's explicit
 acceptance. Technical checks, praise for a demo, silence, or permission to start
 the workflow do not accept later stages. Corrections stay within the current
-stage; keep prior versions. Record accepted scope/revision only after the user
+stage; preserve accepted versions and keep candidates until review or explicit cleanup. Record accepted scope/revision only after the user
 accepts it. Proceed after acceptance of the current stage or explicit scope expansion.
 
 Target-image editing and texture reconstruction are also reviewable. Before
@@ -61,9 +63,9 @@ requesting the next, so an error is not propagated through the whole set. Reuse
 accepted assets instead of regenerating them with neighboring parts. Separate
 requests reduce cross-part drift but do not guarantee fidelity; check every layer.
 
-When the user requests a separate layer generated from a reference, prepare that
-layer before forcing motion out of an incomplete cutout. Read the current scope
-and the "Отдельный слой по референсу" workflow in the workspace README. The user
+When a specific replacement or missing region is authorized, prepare that layer
+and inspect it in the complete character. Read the current scope in README and
+`docs/WORKFLOW.md`; do not replace visible original arm pixels by default. The user
 may authorize generation and its neutral assembly review together; do not request
 the same authorization again. Record the reference, specific layer/hidden region,
 generator, local/cloud execution, transmitted images and known costs. Preserve the
@@ -84,7 +86,7 @@ Generated artwork is a candidate until the user accepts it. Layer acceptance doe
 not accept its controller or clip; numerical checks do not establish likeness.
 
 For current gaze work, generate each complete iris with pupil and highlights as
-one layer. Eyelids, sclera and eye-opening shape remain fixed to r03. Do not move
+one layer. Eyelids, sclera and eye-opening shape remain fixed to the accepted r08 source layers. Do not move
 eyelids, enlarge sclera or squash pupils to compensate for incomplete artwork.
 Texture completeness and eye-opening clipping are separate checks: a complete
 PNG does not repair a bad aperture mask. After layer acceptance, inspect neutral,
@@ -150,9 +152,8 @@ publishes family tools; the official client routes operations and waits for jobs
 
 ## Source-preserving preparation
 
-The existing `python3 scripts/prepare_mask_test.py` demonstrates binary masks
-on the original irises and verifies exact neutral reconstruction. These are
-visible-only trial contours, not a production eye rig.
+The accepted clothing Layout in `work/arm-01/r04/` records visible source
+separation. Its original-pixel evidence is retained; do not treat it as hidden art.
 
 - Prefer pixel masks and small contour corrections. SAM 2 is optional and is
   not installed by this workflow; GPU availability alone does not prove model

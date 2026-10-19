@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-19",
+  "method": "Extract clean archive under /tmp and open native projects without changing their bytes; restore accepted gaze in editor. No new rig acceptance or export claimed.",
+  "projects": [
+    {
+      "path": "work/arm-01/r04/arm-01-r04.psd2live",
+      "loaded_from_relocated_archive": true,
+      "layers": 4,
+      "parameters": 20,
+      "canvas": [
+        1024,
+        1536
+      ]
+    },
+    {
+      "path": "work/arm-01/r04/arm-01-r04-authoring.psd2live",
+      "loaded_from_relocated_archive": true,
+      "layers": 4,
+      "parameters": 20,
+      "canvas": [
+        1024,
+        1536
+      ]
+    },
+    {
+      "path": "work/arm-01/r12-wrist/arm-01-r12-wrist.psd2live",
+      "loaded_from_relocated_archive": true,
+      "layers": 2,
+      "parameters": 20,
+      "canvas": [
+        240,
+        330
+      ]
+    },
+    {
+      "path": "work/arm-01/r15-elbow/arm-01-r15-layers.psd2live",
+      "loaded_from_relocated_archive": true,
+      "layers": 5,
+      "parameters": 20,
+      "canvas": [
+        440,
+        380
+      ]
+    },
+    {
+      "path": "work/gaze-01/r08/gaze-01-r08.psd2live",
+      "loaded_from_relocated_archive": true,
+      "layers": 7,
+      "parameters": 22,
+      "canvas": [
+        1024,
+        1536
+      ]
+    }
+  ]
+}

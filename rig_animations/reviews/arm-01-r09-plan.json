@@ -1,6 +1,6 @@
 {
   "revision": "ARM-01/r09-plan",
-  "stage": "layer and overlap map accepted; layer preparation started",
+  "stage": "historically accepted map; implementation order superseded by docs/WORKFLOW.md",
   "target_acceptance": {
     "revision": "ARM-01/r08-target/v1",
     "user_statement": "найс, давай дальше",
