@@ -1,4 +1,5 @@
-"""Save/reopen the five-layer r13 authoring assembly; no movement or character replacement."""
+"""Save/reopen a five-layer arm assembly; no movement or character replacement."""
+import argparse
 from datetime import datetime, timezone
 import hashlib
 import io
@@ -15,8 +16,19 @@ IDS = ["upper_arm_L", "forearm_L", "hand_L", "bracelet_red_L", "bracelet_blue_L"
 
 
 def main():
-    if PROJECT.exists():
+    global OUT, PROJECT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--revision', choices=['r13', 'r14'], default='r13')
+    parser.add_argument('--verify-existing', action='store_true', help='Reopen and verify without rebuilding')
+    args = parser.parse_args()
+    revision = args.revision
+    if revision == 'r14':
+        OUT = ROOT / 'work/arm-01/r14-width'
+        PROJECT = OUT / 'arm-01-r14-layers.psd2live'
+    if PROJECT.exists() and not args.verify_existing:
         raise RuntimeError("Preserve this revision; use a new output for changes")
+    if args.verify_existing and not PROJECT.is_file():
+        raise RuntimeError('No saved project to verify')
     layout = json.loads((OUT / "layout.json").read_text())
     assert [layer["id"] for layer in layout["layers"]] == IDS
     renders = {}
@@ -32,14 +44,17 @@ def main():
             backup = OUT / ("workspace-backup-"+stamp+".psd2live")
             c.edit("project_save_as", path=str(backup))
             assert backup.is_file() and backup.stat().st_size
-        c.edit("project_import_layout", path=str(OUT / "layout.json"))
-        c.edit("settings_update", changes={"meshOnly": True, "alphaThreshold": 1,
+        if args.verify_existing:
+            c.edit('project_open', path=str(PROJECT))
+        else:
+            c.edit("project_import_layout", path=str(OUT / "layout.json"))
+            c.edit("settings_update", changes={"meshOnly": True, "alphaThreshold": 1,
                "meshOuterMargin": 2, "meshUnits": "PIXELS", "meshMaxEdgeDistance": 6,
                "generateDeformers": False, "generatePhysics": False, "featureDisplacementEnabled": False,
                "mouthOutlineEnabled": False, "motionBasic": False, "motionIdle": False,
                "motionBlink": False, "motionNod": False, "motionShake": False, "motionSkeleton": False})
-        c.edit("rig_generate")
-        c.edit("project_save_as", path=str(PROJECT))
+            c.edit("rig_generate")
+            c.edit("project_save_as", path=str(PROJECT))
         views = [("assembly", (0, 0, 440, 380), 880, IDS),
                  ("elbow", (240, 260, 100, 90), 600, IDS),
                  ("bracelets", (285, 130, 75, 60), 600, IDS),
@@ -61,8 +76,15 @@ def main():
             assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
     prior = np.array(Image.open(ROOT / "work/arm-01/r12-wrist/native/forearm_L.png").convert("RGBA"))
     current = np.array(Image.open(OUT / "native/forearm_L.png").convert("RGBA"))
-    assert np.array_equal(prior[:138], current[:138])
-    assert np.array_equal(prior[:, :, :3], current[:, :, :3])
+    if revision == 'r13':
+        assert np.array_equal(prior[:138], current[:138])
+        assert np.array_equal(prior[:, :, :3], current[:, :, :3])
+    else:
+        wrist = current[:60, 16:-16]
+        assert np.array_equal(prior[:60, :, 3], wrist[:, :, 3])
+        assert np.array_equal(prior[:60][prior[:60, :, 3] > 0], wrist[prior[:60, :, 3] > 0])
+        for name in ['hand_L', 'bracelet_red_L', 'bracelet_blue_L']:
+            assert (OUT / 'native' / (name+'.png')).read_bytes() == (ROOT / 'work/arm-01/r13-arm/native' / (name+'.png')).read_bytes()
     assert (OUT / "native/hand_L.png").read_bytes() == (ROOT / "work/arm-01/r12-wrist/native/hand_L.png").read_bytes()
     old = np.array(Image.open(ROOT / "work/arm-01/r12-wrist/wrist-after.png").convert("RGBA"))
     difference = np.abs(old.astype(int)-renders["wrist-uncovered", "after"].astype(int))
@@ -70,9 +92,11 @@ def main():
     premultiplied = np.abs(old[:, :, :3].astype(float)*old[:, :, 3:]/255 - now[:, :, :3]*now[:, :, 3:]/255)
     result = {"layers": 5, "save_reopen_all_four_views_equal": True,
               "accepted_files_hashes_unchanged": True, "hand_bytes_unchanged": True,
-              "forearm_rgb_unchanged": True, "forearm_above_local_y138_pixels_unchanged": True,
-              "wrist_r12_vs_r13_max_channel_difference": int(difference.max()),
-              "wrist_r12_vs_r13_mean_channel_difference": float(difference.mean()),
+              "forearm_rgb_unchanged": revision == 'r13',
+              "forearm_unchanged_top_rows": 138 if revision == 'r13' else 60,
+              "wrist_comparison": "Exact alpha and every nontransparent RGBA pixel; fully transparent RGB may normalize",
+              "wrist_r12_vs_current_max_channel_difference": int(difference.max()),
+              "wrist_r12_vs_current_mean_channel_difference": float(difference.mean()),
               "wrist_premultiplied_mean_difference": float(premultiplied.mean()),
               "wrist_pixels_with_premultiplied_difference_over_2": int((premultiplied.max(axis=2)>2).sum()),
               "wrist_render_note": "Texture pixels preserved; regenerated mesh/atlas produces small fringe rasterization differences",

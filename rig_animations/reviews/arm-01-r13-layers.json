@@ -1,6 +1,6 @@
 {
   "revision": "ARM-01/r13-layers",
-  "status": "candidate_awaiting_review",
+  "status": "rejected_arm_too_thin",
   "accepted_base": "reviews/arm-01-r12-acceptance.json",
   "scope": "Upper-arm candidate, elbow overlap and source bracelet layers in a separate static assembly",
   "generation": {
@@ -521,5 +521,7 @@
     "work/arm-01/r13-arm/forearm-internal-outline-mask.pgm": {
       "sha256": "0eb38e9b145c4eb7848f7ac94b5c2dca5033537a1783d6c328020c83925f4560"
     }
-  }
+  },
+  "user_feedback": "Сборка пяти слоёв- рука члишком тонкая",
+  "successor": "reviews/arm-01-r14-width.json"
 }

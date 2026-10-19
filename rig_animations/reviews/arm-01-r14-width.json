@@ -1,0 +1,109 @@
+{
+  "revision": "ARM-01/r14-width",
+  "status": "candidate_awaiting_review",
+  "feedback_on_r13": "Сборка пяти слоёв- рука члишком тонкая",
+  "accepted_base": "reviews/arm-01-r12-acceptance.json",
+  "method": "Local geometry deformation of existing textures via ImageMagick bilinear sampling; no generation or painting",
+  "shoulder": {
+    "source": "work/arm-01/r13-arm/native/upper_arm_L.png",
+    "thickness_scale": 1.5,
+    "fixed_contour": "lower 50% alpha contour per column",
+    "canvas_placement": [
+      110,
+      242
+    ],
+    "padding_top": 28,
+    "sample_x100_width_before_after": [
+      41,
+      62
+    ]
+  },
+  "forearm": {
+    "source": "work/arm-01/r12-wrist/native/forearm_L.png",
+    "unchanged_top_rows": 60,
+    "widening": "gain=0.22*smoothstep(clamp((local_y-60)/65,0,1)); expand leftward with right edge fixed",
+    "horizontal_padding_each_side": 16,
+    "canvas_placement": [
+      228,
+      145
+    ],
+    "sample_y125_width_before_after": [
+      57,
+      70
+    ],
+    "elbow_mask": "Only internal left outline under fully opaque shoulder; local y>=100, 4 px alpha ramp"
+  },
+  "preserved": [
+    "r12 accepted project and textures immutable",
+    "hand and bracelets byte-identical to r13; placements unchanged",
+    "first 60 forearm rows: alpha and visible RGBA identical; zero-alpha RGB may normalize",
+    "original character and accepted eyes unchanged"
+  ],
+  "verification": {
+    "layers": 5,
+    "save_reopen_all_four_views_equal": true,
+    "accepted_files_hashes_unchanged": true,
+    "hand_bytes_unchanged": true,
+    "forearm_rgb_unchanged": false,
+    "forearm_unchanged_top_rows": 60,
+    "wrist_comparison": "Exact alpha and every nontransparent RGBA pixel; fully transparent RGB may normalize",
+    "wrist_r12_vs_current_max_channel_difference": 255,
+    "wrist_r12_vs_current_mean_channel_difference": 0.06186698717948718,
+    "wrist_premultiplied_mean_difference": 0.02119211915535445,
+    "wrist_pixels_with_premultiplied_difference_over_2": 157,
+    "wrist_render_note": "Texture pixels preserved; regenerated mesh/atlas produces small fringe rasterization differences",
+    "scope": "Static separate arm assembly; no full-character neutral, controller or export"
+  },
+  "width_regression": {
+    "r13_fails_shoulder_minimum_58px": true,
+    "r14_shoulder_passes_58_to_66px": true,
+    "forearm_gain_at_row125_between_18_and_27_percent": true
+  },
+  "limitations": [
+    "Static detached assembly, no whole-character neutral or movement",
+    "Elbow lower contour remains angular",
+    "Layer proportions pending user review"
+  ],
+  "commands": [
+    "python3 scripts/widen_arm_layers.py",
+    "python3 scripts/assemble_arm_layers.py --revision r14"
+  ],
+  "assets": {
+    "work/arm-01/r14-width/native/bracelet_blue_L.png": {
+      "sha256": "fc1529717560940840e7a44ecf67dc23585bd20f915eecd915d3032dad9269a2"
+    },
+    "work/arm-01/r14-width/native/bracelet_red_L.png": {
+      "sha256": "daee93a83835c9dc393328d80d3b6442cbe6ddd0914d7118ff524e6bc81d4d18"
+    },
+    "work/arm-01/r14-width/native/forearm_L-base.png": {
+      "sha256": "cf9a876df63ead1538b074d38b149ad8d9f4de05c67a803696584e354d8b0aeb"
+    },
+    "work/arm-01/r14-width/native/forearm_L.png": {
+      "sha256": "d9f90c38f821c374caad2be368b1ec6080b7d9c41241e73d02f4eee08a980fc7"
+    },
+    "work/arm-01/r14-width/native/hand_L.png": {
+      "sha256": "ca78995b3dab5e42b785b24017c5699dd219eca63de46b3bdaf5c606f8ead9a1"
+    },
+    "work/arm-01/r14-width/native/upper_arm_L.png": {
+      "sha256": "b1ed33fee9af38b4a1e69e8f0e4b6d04a0830af1113c25da2114fa9e2f1132f7"
+    },
+    "work/arm-01/r14-width/assembly-after.png": {
+      "sha256": "ef84e63bb6f6186a38d4b5f6abb337fa6d0a56c346d92cbcb31322db97ae2be8"
+    },
+    "work/arm-01/r14-width/bracelets-after.png": {
+      "sha256": "6c385f8835732bf419a7be37dc02babd5a4c13492a36ebc33ad6a815a06f75ee"
+    },
+    "work/arm-01/r14-width/elbow-after.png": {
+      "sha256": "8ef1618fe31f9713b4117165cf366bbbc85d09688b21c1f125a08079ec9f19ea"
+    },
+    "work/arm-01/r14-width/wrist-uncovered-after.png": {
+      "sha256": "3f33eb3d55d1a76ac916fe595bd795b1a26762011e0e8208adfb8536ef77da7e"
+    },
+    "work/arm-01/r14-width/layout.json": {
+      "sha256": "44325a136beed1a5cfca2650ce5c04973c29ab0d49517461a1c110bd05c55285"
+    },
+    "work/arm-01/r14-width/arm-01-r14-layers.psd2live": {
+      "sha256": "9531632f40ef922b23c23c0aa85d48b7e1c2e3ae851af00d5f3f28934c1465bc"
+    }
+  }
+}
