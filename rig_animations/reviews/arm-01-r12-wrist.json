@@ -1,6 +1,6 @@
 {
   "revision": "ARM-01/r12-wrist",
-  "status": "candidate_awaiting_review",
+  "status": "accepted_static_wrist_join",
   "rejected_predecessor": "ARM-01/r11-layers",
   "user_feedback": "Стык крупно · без браслетов - ну криво же",
   "generation": "none; local technical geometry fit only",
@@ -554,5 +554,6 @@
     "work/arm-01/r12-wrist/wrist-after.png": "beb71ff6e0a49ead21d624460fff9333c7b60a3babd8f83390996555243697ab",
     "work/arm-01/r12-wrist/assembly-after.png": "36dbebfd1b1fe57f8136da58672f65e543f136540ad189670440483b7dbe28ea",
     "work/arm-01/r12-wrist/layout.json": "fc6f77cc3e1aa879a9e851ad351ea64e36cdd9d0d7bd26632e199f7038096322"
-  }
+  },
+  "acceptance_record": "reviews/arm-01-r12-acceptance.json"
 }
