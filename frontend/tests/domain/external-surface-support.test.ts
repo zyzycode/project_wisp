@@ -20,10 +20,10 @@ function moved(x: number, y: number, width = 200): EnvironmentSnapshot {
 describe('AUTO-I05 external support lifecycle', () => {
   it('follows a translated top once, preserves local DIP distance on resize and never adds window velocity', () => {
     const initial = start();
-    const first = surfaces.step({ state: initial.state, motion: initial.motion.state, environment: moved(350, 300, 250), nowMs: 100 }, engine);
-    expect(first.motion.state.position).toEqual({ x: 470, y: 300 });
-    const repeated = surfaces.step({ state: first.state, motion: first.motion.state, environment: moved(350, 300, 300), nowMs: 110 }, engine);
-    expect(repeated.motion.state.position).toEqual({ x: 470, y: 300 });
+    const first = surfaces.step({ state: initial.state, motion: initial.motion.state, environment: moved(350, 200, 250), nowMs: 100 }, engine);
+    expect(first.motion.state.position).toEqual({ x: 470, y: 200 });
+    const repeated = surfaces.step({ state: first.state, motion: first.motion.state, environment: moved(350, 200, 300), nowMs: 110 }, engine);
+    expect(repeated.motion.state.position).toEqual({ x: 470, y: 200 });
     expect(repeated.motion.state.velocityPxPerSec).toEqual({ x: 0, y: 0 });
     expect(repeated.state.externalAttachment?.localDistancePx).toBe(120);
   });
@@ -66,4 +66,12 @@ describe('AUTO-I05 external support lifecycle', () => {
     expect(selectWindowTopForRelease([top], { x: 301, y: 270 }, () => environment, insets)).toBeNull();
   });
 
+});
+
+it.each([250.01, 300])('detaches a descending top at y=%s before horizontal follow or resize', y => {
+  const initial = start();
+  const result = surfaces.step({ state: initial.state, motion: initial.motion.state,
+    environment: moved(350, y, 300), nowMs: 100 }, engine);
+  expect(result.motion.state).toMatchObject({ phase: 'airborne', position: motion.position, velocityPxPerSec: { x: 0, y: 0 } });
+  expect(result.events).toEqual([{ type: 'support_lost', surfaceId: top.id, atMs: 100 }]);
 });

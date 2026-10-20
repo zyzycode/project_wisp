@@ -9,7 +9,16 @@ import type { EnvironmentSnapshot } from '../../domain/behavior/surface-kinemati
 import type { CharacterAutonomySnapshot } from '../../domain/character';
 import type { BrainVisualEpisode } from '../main-autonomy-composition';
 
+import type { ExternalWindowSurfacesSnapshot } from '../../application/ports/external-window-surfaces.port';
+
+export function toExternalWindowSupport(snapshot: ExternalWindowSurfacesSnapshot | undefined): BrainStateDTO['externalWindowSupport'] {
+  if (snapshot === undefined) return undefined;
+  if (snapshot.capability === 'available') return 'available';
+  return snapshot.reason === 'initializing' || snapshot.reason === 'unsupported' ? snapshot.reason : 'unavailable';
+}
+
 export interface BrainStateSource {
+  readonly externalWindowSupport?: BrainStateDTO['externalWindowSupport'];
   readonly globalCursor?: BrainStateDTO['globalCursor'];
   readonly observationSpeech?: BrainStateDTO['observationSpeech'];
   readonly initiativeSpeech?: BrainStateDTO['initiativeSpeech'];
@@ -87,6 +96,7 @@ function toBrainVisualIntentDTO(episode: BrainVisualEpisode): BrainVisualIntentD
 
 export function toBrainStateDTO(state: BrainStateSource): BrainStateDTO {
   return {
+    ...(state.externalWindowSupport === undefined ? {} : { externalWindowSupport: state.externalWindowSupport }),
     ...(state.globalCursor === undefined ? {} : { globalCursor: state.globalCursor }),
     dialogue: state.dialogue,
     ...(state.observationSpeech === undefined ? {} : { observationSpeech: state.observationSpeech }),

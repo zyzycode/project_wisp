@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ShimejiMotionOrchestrator } from '../../src/application/services/shimeji-motion-orchestrator';
-import { MotionEngine } from '../../src/domain/behavior/motion-engine';
+import { MotionEngine, type MotionEvent } from '../../src/domain/behavior/motion-engine';
 import { SurfaceKinematics, type ExternalWindowSurface } from '../../src/domain/behavior/surface-kinematics';
 import type { ExternalWindowSurfacesSnapshot } from '../../src/application/ports/external-window-surfaces.port';
 import { normalizeBridgeWindows } from '../../src/infrastructure/platform/window-surfaces-protocol';
 function fixture(explorer = false) {
-  let now = 0; let revision = 0; let available = true;
+  let now = 0; let revision = 0; let available = true; let frozen = false;
   let surface: Extract<ExternalWindowSurface, { kind: 'window_top' }> = { id: 'opaque:top', kind: 'window_top', bounds: { x: 300, y: 250, width: 300, height: 300 }, supportY: 250, isValidSupport: true };
   const events: string[] = [];
+  const motionEvents: MotionEvent[] = [];
   if (explorer) {
     const normalized = normalizeBridgeWindows([{ token: 'a'.repeat(32), x: 167, y: 246, width: 1561, height: 815,
       top: true, left: false, right: false }], [{ physicalBounds: { x: 0, y: 0, width: 1920, height: 1080 },
@@ -24,9 +25,9 @@ function fixture(explorer = false) {
     environment: () => ({ capturedAtMs: now, screenBounds: bounds, currentSurface: { id: 'floor', kind: 'screen_floor', bounds, isValidSupport: true } }),
     positionPort: { commitRootPosition: vi.fn() },
     externalWindows: { getSnapshot: (): ExternalWindowSurfacesSnapshot => available
-      ? { capability: 'available', revision: ++revision, capturedAtMs: now, surfaces: [surface] }
+      ? { capability: 'available', revision: frozen ? revision : ++revision, capturedAtMs: now, surfaces: [surface] }
       : { capability: 'unavailable', reason: 'bridge_failed', revision: ++revision, capturedAtMs: now, surfaces: [] }, subscribe: () => () => {}, dispose: () => {} },
-    eventDispatcher: { dispatchMotionEvent: e => events.push(e.type), dispatchSurfaceEvent: e => events.push(e.type) },
+    eventDispatcher: { dispatchMotionEvent: e => { events.push(e.type); motionEvents.push(e); }, dispatchSurfaceEvent: e => events.push(e.type) },
   });
   o.start();
   const advance = (ms: number) => { for (let i = 0; i < ms / 10; i++) { now += 10; o.tick(); } };
@@ -42,8 +43,8 @@ function fixture(explorer = false) {
     o.releaseDrag({ pointerId: 1, dragSessionId, sequence: 2, screenPosition: { x: 310, y } });
     advance(10);
   };
-  return { o, advance, attach, releaseAbove, events, unavailable: () => { available = false; }, recover: () => { available = true; },
-    move: () => { surface = { ...surface, bounds: { ...surface.bounds, x: 400, y: 350 }, supportY: 350 }; } };
+  return { o, advance, attach, releaseAbove, events, motionEvents, freeze: () => { frozen = true; }, unavailable: () => { available = false; }, recover: () => { available = true; frozen = false; },
+    move: (x = 400, y = 200) => { surface = { ...surface, bounds: { ...surface.bounds, x, y }, supportY: y }; } };
 }
 describe('user-selected external support', () => {
   it.each([170, 230])('lands on the observed window after releasing above it at y=%s', y => {
@@ -72,7 +73,7 @@ describe('user-selected external support', () => {
     expect(f.o.requestVoluntaryMovement({ kind: 'horizontal_wander', targetRootPosition: { x: 348, y: 250 }, speedPxPerSec: 100 })).toBe(true);
     f.advance(100); f.move(); f.advance(500);
     expect(f.o.getSurfaceState().externalAttachment?.localDistancePx).toBeCloseTo(48);
-    expect(f.o.getMotionState().position).toEqual({ x: 448, y: 350 });
+    expect(f.o.getMotionState().position).toEqual({ x: 448, y: 200 });
     expect(f.o.getMotionState().velocityPxPerSec).toEqual({ x: 0, y: 0 });
   });
 
@@ -81,9 +82,9 @@ describe('user-selected external support', () => {
     expect(f.o.getSurfaceState().externalAttachment?.localDistancePx).toBe(10);
     expect(f.events).toContain('ceiling_hung');
     f.move(); f.advance(10);
-    expect(f.o.getMotionState().position).toEqual({ x: 410, y: 350 });
+    expect(f.o.getMotionState().position).toEqual({ x: 410, y: 200 });
     f.advance(50);
-    expect(f.o.getMotionState().position).toEqual({ x: 410, y: 350 });
+    expect(f.o.getMotionState().position).toEqual({ x: 410, y: 200 });
     expect(f.o.getMotionState().velocityPxPerSec).toEqual({ x: 0, y: 0 });
   });
   it('falls once on loss, lands and never reattaches after recovery', () => {
@@ -101,4 +102,54 @@ describe('user-selected external support', () => {
     expect(f.o.getMotionState().phase).toBe('dragged');
     expect(f.events).not.toContain('support_lost');
   });
+});
+
+it('falls from the old root and lands on the live top after it stops descending', () => {
+  const f = fixture(); f.attach(); f.move(300, 350); f.advance(10);
+  expect(f.o.getMotionState().phase).toBe('airborne');
+  expect(f.o.getMotionState().position.x).toBe(310);
+  expect(f.o.getMotionState().position.y).toBeLessThan(251);
+  expect(f.events.filter(e => e === 'support_lost')).toHaveLength(1);
+  f.move(300, 400); f.advance(1000);
+  expect(f.o.getMotionState().position).toEqual({ x: 310, y: 400 });
+  expect(f.o.getSurfaceState().externalAttachment?.surface.supportY).toBe(400);
+  expect(f.events.filter(e => e === 'landed')).toHaveLength(2);
+});
+
+it('falls to the floor when the descending support moves sideways out of reach', () => {
+  const f = fixture(); f.attach(); f.move(600, 350); f.advance(3000);
+  expect(f.o.getSurfaceState().externalAttachment).toBeUndefined();
+  expect(f.o.getMotionState().position.y).toBe(790);
+  expect(f.events.filter(e => e === 'support_lost')).toHaveLength(1);
+});
+
+it('lands against cached fresh geometry without a new observation on that step', () => {
+  const f = fixture(); f.attach(); f.move(300, 270); f.advance(10); f.freeze(); f.advance(200);
+  expect(f.o.getMotionState().position).toEqual({ x: 310, y: 270 });
+  expect(f.o.getSurfaceState().externalAttachment?.surface.id).toBe('opaque:top');
+  expect(f.events.filter(e => e === 'support_lost')).toHaveLength(1);
+  expect(f.events.filter(e => e === 'landed')).toHaveLength(2);
+});
+
+it('stale observations permanently remove a candidate from an active fall', () => {
+  const f = fixture(); f.attach(); f.move(300, 700); f.advance(10); f.freeze(); f.advance(400);
+  f.recover(); f.advance(3000);
+  expect(f.o.getSurfaceState().externalAttachment).toBeUndefined();
+  expect(f.o.getMotionState().position.y).toBe(790);
+});
+
+it('classifies window impact by the same thresholds as floor impact', () => {
+  const f = fixture(); f.attach(); f.move(300, 700); f.advance(1000);
+  const landed = f.motionEvents.filter(e => e.type === 'landed');
+  expect(landed).toHaveLength(2);
+  expect(landed[1]).toMatchObject({ outcome: 'crash_landing' });
+  expect(landed[1]?.impactSeverity).toBeGreaterThan(950);
+  expect(f.o.getMotionState().velocityPxPerSec).toEqual({ x: 0, y: 0 });
+  expect(f.o.getMotionState().position).toEqual({ x: 310, y: 700 });
+});
+
+it('does not revive an airborne episode after stop/start', () => {
+  const f = fixture(); f.releaseAbove(170); f.o.stop(); f.o.start(); f.advance(3000);
+  expect(f.o.getSurfaceState().externalAttachment).toBeUndefined();
+  expect(f.o.getMotionState().position.y).toBe(790);
 });

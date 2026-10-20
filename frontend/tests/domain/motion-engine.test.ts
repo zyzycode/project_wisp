@@ -449,3 +449,15 @@ describe('Domain: Motion Engine', () => {
     ).toThrow(RangeError);
   });
 });
+
+it('exposes the free airborne segment and velocity before wall/floor collisions', () => {
+  const engine = new MotionEngine();
+  const result = engine.step({ state: state({ phase: 'airborne', position: { x: 945, y: 785 },
+    velocityPxPerSec: { x: 1000, y: 1000 } }), stepSec: .02, bounds });
+  expect(result.state.position).toEqual({ x: 950, y: 790 });
+  expect(result.airborneStep?.position.x).toBeGreaterThan(950);
+  expect(result.airborneStep?.position.y).toBeGreaterThan(790);
+  expect(result.airborneStep?.velocityPxPerSec.x).toBeGreaterThan(0);
+  expect(result.airborneStep?.velocityPxPerSec.y).toBeGreaterThan(0);
+  expect(result.state.velocityPxPerSec.y).toBeLessThan(0);
+});

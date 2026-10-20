@@ -3,6 +3,8 @@ import type { CharacterTheme } from '../../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../../domain/models/character-visuals';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
 
+import type { BrainStateDTO } from '../../../shared/ipc-contracts';
+
 export type ContextMenuTab = 'main' | 'debug';
 
 export interface ContextMenuPosition {
@@ -12,6 +14,7 @@ export interface ContextMenuPosition {
 
 export interface ContextMenuProps {
   isOpen: boolean;
+  externalWindowSupport?: BrainStateDTO['externalWindowSupport'];
   position?: ContextMenuPosition;
   activeTab?: ContextMenuTab;
   tone?: SynthesizedEmotionalTone;
@@ -106,6 +109,7 @@ export function calculateContextMenuPosition(
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
+  externalWindowSupport,
   position,
   activeTab,
   tone = 'neutral',
@@ -232,6 +236,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       ) : (
         <div className="menu-scroll-body" role="tabpanel" aria-label="Main controls">
           {previewContent}
+          <p role="status" style={{ fontSize: 12, margin: '8px 0' }}>
+            {externalWindowSupport === 'available' ? 'Опоры на окнах доступны'
+              : externalWindowSupport === 'initializing' ? 'Проверяем доступность окон…'
+              : externalWindowSupport === 'unsupported' ? 'Опоры на окнах не поддерживаются — используются границы экрана'
+              : externalWindowSupport === 'unavailable' ? 'Окна недоступны — используются границы экрана'
+              : 'Доступность окон пока неизвестна'}
+          </p>
           {observationContent}
           {/* Actions */}
           <div className="menu-section">

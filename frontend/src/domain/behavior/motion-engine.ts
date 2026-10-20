@@ -125,6 +125,8 @@ export type MotionEvent =
   | { readonly type: 'landed'; readonly outcome: LandingOutcome; readonly impactSeverity: number };
 
 export interface MotionStepResult {
+  /** Free airborne integration before screen collisions; used for swept surface contact. */
+  readonly airborneStep?: { readonly position: Vector2Dto; readonly velocityPxPerSec: Vector2Dto };
   readonly state: MotionState;
   readonly events: readonly MotionEvent[];
 }
@@ -308,7 +310,14 @@ function clampMagnitude(vector: Vector2Dto, maximum: number): Vector2Dto {
   return { x: vector.x * scale, y: vector.y * scale };
 }
 
-function landingOutcome(severity: number, constraints: MotionConstraints): LandingOutcome {
+export function createLandingEvent(
+  velocity: Vector2Dto, previousSeverity: number, constraints: Pick<MotionConstraints, 'softLandingMaxSeverity' | 'stumbleMaxSeverity'>,
+): Extract<MotionEvent, { type: 'landed' }> {
+  const impactSeverity = Math.max(previousSeverity, Math.hypot(Math.max(0, velocity.y), .5 * Math.abs(velocity.x)));
+  return { type: 'landed', outcome: landingOutcome(impactSeverity, constraints), impactSeverity };
+}
+
+function landingOutcome(severity: number, constraints: Pick<MotionConstraints, 'softLandingMaxSeverity' | 'stumbleMaxSeverity'>): LandingOutcome {
   if (severity <= constraints.softLandingMaxSeverity) {
     return 'soft_landing';
   }
@@ -531,6 +540,7 @@ export class MotionEngine implements IMotionEngine {
     );
     let x = input.state.position.x + velocity.x * input.stepSec;
     let y = input.state.position.y + velocity.y * input.stepSec;
+    const airborneStep = { position: { x, y }, velocityPxPerSec: velocity };
     let vx = velocity.x;
     let vy = velocity.y;
     let peakSeverity = input.state.peakGroundImpactSeverity;
@@ -590,6 +600,7 @@ export class MotionEngine implements IMotionEngine {
               airborneElapsedSec: input.state.airborneElapsedSec + input.stepSec,
               peakGroundImpactSeverity: peakSeverity,
             },
+            airborneStep,
             events: [...events, { type: 'landed', outcome, impactSeverity: peakSeverity }],
           };
         }
@@ -605,6 +616,7 @@ export class MotionEngine implements IMotionEngine {
         airborneElapsedSec: input.state.airborneElapsedSec + input.stepSec,
         peakGroundImpactSeverity: peakSeverity,
       },
+      airborneStep,
       events,
     };
   }

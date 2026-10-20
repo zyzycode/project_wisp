@@ -69,6 +69,7 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         />
       </div>
       <ContextMenu
+        externalWindowSupport={model.bodySnapshot?.brain.externalWindowSupport}
         isOpen={model.menuOpen}
         tone={model.debugTelemetry.character.synthesizedTone}
         currentTheme={model.currentTheme}

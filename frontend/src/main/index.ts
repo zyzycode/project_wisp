@@ -59,6 +59,7 @@ import { SeededPrng } from '../infrastructure/random/seeded-prng';
 import {
   toEnvironmentSnapshotDTO,
   toBrainStateDTO,
+  toExternalWindowSupport,
 } from './mappers/shimeji-ipc.mapper';
 import { startShimejiMotionLoop } from './shimeji-motion-loop';
 import { MainAutonomyComposition } from './main-autonomy-composition';
@@ -149,6 +150,7 @@ const brainStatePublisher = new BrainStatePublisher({
       throw new Error('Brain state sources are unavailable');
     }
     return toBrainStateDTO({
+      externalWindowSupport: toExternalWindowSupport(externalWindowSurfaces?.getSnapshot()),
       dialogue: dialogueRuntime.getPresentation(),
       initiativeSpeech: aiEventRuntime?.getSpeech() ?? null,
       observationSpeech: observationRuntime?.getSpeech() ?? null,

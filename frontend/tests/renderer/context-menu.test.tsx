@@ -207,3 +207,17 @@ describe('Renderer: ContextMenu', () => {
     expect(removeEventListenerMock).toHaveBeenCalledWith('mousedown', handler);
   });
 });
+
+describe('external window status in ordinary menu', () => {
+  it.each([
+    ['available', 'Опоры на окнах доступны'], ['initializing', 'Проверяем доступность окон'],
+    ['unsupported', 'Опоры на окнах не поддерживаются'], ['unavailable', 'Окна недоступны'],
+    [undefined, 'Доступность окон пока неизвестна'],
+  ] as const)('shows %s without enabling debug', (externalWindowSupport, label) => {
+    const markup = renderToStaticMarkup(<ContextMenu isOpen activeTab="main" externalWindowSupport={externalWindowSupport}
+      currentTheme={DEFAULT_THEMES.cosmic!} autoWanderEnabled isSleeping={false} debugHudEnabled={false}
+      onClose={vi.fn()} onPet={vi.fn()} onThink={vi.fn()} onToggleSleep={vi.fn()} onToggleWander={vi.fn()}
+      onSelectTheme={vi.fn()} onQuit={vi.fn()} />);
+    expect(markup).toContain(label);
+  });
+});

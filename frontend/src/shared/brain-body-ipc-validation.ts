@@ -287,7 +287,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
     'dialogue',
     'autonomy',
     'cursorGame',
-  ], ['initiativeSpeech', 'observationSpeech', 'globalCursor']);
+  ], ['initiativeSpeech', 'observationSpeech', 'globalCursor', 'externalWindowSupport']);
   const sampledAtMs = finiteNumber(own(record, 'sampledAtMs'), 0);
   const character = asRecord(own(record, 'character'));
   requireExactKeys(character, ['needs', 'synthesizedTone']);
@@ -295,6 +295,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
   requireExactKeys(needs, ['energy', 'attention', 'play', 'comfort', 'boredom']);
   return {
     streamId: boundedId(own(record, 'streamId')),
+    ...(Object.hasOwn(record, 'externalWindowSupport') ? { externalWindowSupport: literal(own(record, 'externalWindowSupport'), ['available', 'initializing', 'unavailable', 'unsupported'] as const) } : {}),
     ...(Object.hasOwn(record, 'globalCursor') ? { globalCursor: parseGlobalCursor(own(record, 'globalCursor'), sampledAtMs) } : {}),
     dialogue: parseDialoguePresentation(own(record, 'dialogue')),
     ...(Object.hasOwn(record, 'observationSpeech') ? { observationSpeech: parseInitiativeSpeech(own(record, 'observationSpeech'), sampledAtMs) } : {}),

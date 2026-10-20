@@ -5,6 +5,7 @@ import { ReleasedWindowLanding } from '../../domain/behavior/released-window-lan
 import type { PetPositionPort } from '../ports/pet-position-port';
 import {
   calculateRootCollisionRange,
+  createLandingEvent,
   clampRootPosition,
   DEFAULT_MOTION_CONSTRAINTS,
   type IMotionEngine,
@@ -67,7 +68,8 @@ export interface ShimejiMotionOrchestratorOptions {
   readonly positionService?: PetPositionService;
   readonly now: () => number;
   readonly scheduler?: ShimejiMotionScheduler;
-  readonly constraints?: Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling' | 'collisionInsets'>;
+  readonly constraints?: Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling' | 'collisionInsets'>
+    & Partial<Pick<MotionConstraints, 'softLandingMaxSeverity'>>;
   readonly eventDispatcher?: ShimejiMotionEventDispatcher;
   readonly stimulusMapper?: IShimejiStimulusMapper;
   readonly applyStimulus?: (stimulus: StimulusDto) => void;
@@ -377,6 +379,7 @@ export class ShimejiMotionOrchestrator {
           || (action.direction === 'up' && this.motion.position.y <= range.minY)
           || (action.direction === 'down' && this.motion.position.y >= range.maxY)) return false;
     } else if (this.jumpPlan(action.target, action.bounds) === null) return false;
+    this.releasedWindowLanding.clear();
     this.traversal = { ...request, action: { ...action, bounds: { ...action.bounds },
       ...(action.kind === 'directed_jump' ? { target: { ...action.target } } : {}) } };
     this.traversalStarted = false;
@@ -458,8 +461,8 @@ export class ShimejiMotionOrchestrator {
     return hadVoluntaryMovement || hadTraversal;
   }
 
-  private constraints(): Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'stumbleMaxSeverity' | 'throwSampling' | 'collisionInsets'> {
-    return this.options.constraints ?? DEFAULT_MOTION_CONSTRAINTS;
+  private constraints(): Pick<MotionConstraints, 'fixedStepSec' | 'maxFrameDeltaSec' | 'softLandingMaxSeverity' | 'stumbleMaxSeverity' | 'throwSampling' | 'collisionInsets'> {
+    return { ...DEFAULT_MOTION_CONSTRAINTS, ...this.options.constraints };
   }
 
   private dragHoldThresholdMs(): number {
@@ -547,7 +550,7 @@ export class ShimejiMotionOrchestrator {
         this.motion = released.state;
         this.surface = { ...groundedSurface(stepAtMs), phase: 'airborne' };
         this.routeEvents(released.events, []);
-        this.releasedWindowLanding.begin(this.availableExternalSurfaces(), this.motion.activeBoundsId);
+        this.beginWindowLandingEpisode();
         this.emitFeedback({
           type: 'drag_ended', eventId: `${session.id}:ended`, dragRunId: session.id,
           heldMs: Math.max(0, event.receivedAtMs - session.startedAtMs), atMs: event.receivedAtMs,
@@ -555,6 +558,13 @@ export class ShimejiMotionOrchestrator {
         this.dragSession = undefined;
       }
     }
+  }
+
+  private beginWindowLandingEpisode(): void {
+    const boundsId = this.motion.activeBoundsId;
+    const surfaces = this.availableExternalSurfaces().filter(surface =>
+      this.options.environment({ x: surface.bounds.x, y: surface.bounds.y }).screenBounds.id === boundsId);
+    this.releasedWindowLanding.begin(surfaces, boundsId, this.options.environment(this.motion.position).screenBounds);
   }
 
   private emitDragHold(session: DragSession, atMs: number): void {
@@ -621,6 +631,7 @@ export class ShimejiMotionOrchestrator {
     this.surface = surfaceResult.state;
     this.motion = surfaceResult.motion.state;
     if (surfaceResult.events.some(event => event.type === 'support_lost')) {
+      this.beginWindowLandingEpisode();
       this.selectedExternalId = undefined; this.externalWalkTarget = undefined;
     }
     let motionEvents = surfaceResult.motion.events;
@@ -635,7 +646,7 @@ export class ShimejiMotionOrchestrator {
       this.motion = motionResult.state;
       motionEvents = [...motionEvents, ...motionResult.events];
       if (previous.directedJump === undefined && this.traversal === undefined) {
-        const landing = this.releasedWindowLanding.findLanding(previous.position, this.motion.position,
+        const landing = this.releasedWindowLanding.findLanding(previous.position, motionResult.airborneStep?.position ?? this.motion.position,
           this.availableExternalSurfaces(), environment, this.constraints().collisionInsets);
         if (landing !== null) {
           const attached = this.options.surfaceKinematics.startExternalSupport({
@@ -646,7 +657,9 @@ export class ShimejiMotionOrchestrator {
           if (attached !== null) {
             this.selectedExternalId = landing.surface.id;
             this.surface = attached.state; this.motion = attached.motion.state;
-            motionEvents = [...surfaceResult.motion.events, { type: 'landed', outcome: 'soft_landing', impactSeverity: 0 }];
+            const velocity = motionResult.airborneStep?.velocityPxPerSec ?? previous.velocityPxPerSec;
+            motionEvents = [...surfaceResult.motion.events,
+              createLandingEvent(velocity, previous.peakGroundImpactSeverity, this.constraints())];
             surfaceEvents.push(...attached.events);
           }
         }

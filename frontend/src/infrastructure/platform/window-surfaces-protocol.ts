@@ -21,11 +21,12 @@ export function parseBridgeResponse(value: unknown, requestId: number): readonly
     const r = raw as Record<string, unknown>;
     if (Object.keys(r).sort().join(',') !== [...fields].sort().join(',')
         || typeof r.token !== 'string' || !/^[0-9a-f]{32}$/.test(r.token) || tokens.has(r.token)
-        || !['x', 'y', 'width', 'height'].every(k => typeof r[k] === 'number' && Number.isSafeInteger(r[k]) && Math.abs(r[k] as number) <= 10_000_000)
+        || !['x', 'y', 'width', 'height'].every(k => typeof r[k] === 'number' && Number.isFinite(r[k]) && Math.abs(r[k] as number) <= 10_000_000)
         || (r.width as number) <= 0 || (r.height as number) <= 0
         || !['top', 'left', 'right'].every(k => typeof r[k] === 'boolean')) throw new Error('Invalid surface record');
     tokens.add(r.token);
-    return r as unknown as BridgeWindow;
+    return { token: r.token, x: r.x as number, y: r.y as number, width: r.width as number, height: r.height as number,
+      top: r.top as boolean, left: r.left as boolean, right: r.right as boolean };
   });
 }
 function contains(outer: SurfaceBoundsDto, inner: SurfaceBoundsDto): boolean {

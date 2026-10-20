@@ -98,3 +98,14 @@ describe('Renderer: Pet Main bridge', () => {
     expect(diagnostic).toHaveBeenCalledTimes(10);
   });
 });
+
+describe('external window capability projection', () => {
+  it.each(['available', 'initializing', 'unavailable', 'unsupported'] as const)('retains %s through the shared validator', status => {
+    const gate = new BrainStateRevisionGate(() => {});
+    expect(gate.accept({ ...brainState(), externalWindowSupport: status })?.externalWindowSupport).toBe(status);
+  });
+  it('keeps absent capability unknown and rejects arbitrary metadata', () => {
+    expect(new BrainStateRevisionGate(() => {}).accept(brainState())?.externalWindowSupport).toBeUndefined();
+    expect(new BrainStateRevisionGate(() => {}).accept({ ...brainState(), externalWindowSupport: { pid: 12 } })).toBeNull();
+  });
+});

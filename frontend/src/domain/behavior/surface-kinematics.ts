@@ -160,6 +160,8 @@ export class SurfaceKinematics {
         || surface.side !== attachment.surface.side || !isFreshExternalObservation(input.environment.capturedAtMs, input.observationNowMs ?? input.nowMs)) {
       return this.loseSupport(input, engine);
     }
+    if (surface.kind === 'window_top' && attachment.surface.kind === 'window_top'
+        && surface.supportY > attachment.surface.supportY) return this.loseSupport(input, engine);
     const speed = surface.kind === 'window_top' ? input.state.locomotionVelocityPxPerSec.x : input.state.locomotionVelocityPxPerSec.y;
     const localDistancePx = attachment.localDistancePx + speed * (input.nowMs - input.state.updatedAtMs) / 1000;
     const length = surface.kind === 'window_top' ? surface.bounds.width : surface.bounds.height;

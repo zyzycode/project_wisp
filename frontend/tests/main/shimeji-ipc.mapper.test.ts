@@ -81,3 +81,15 @@ describe('Main: Shimeji IPC mappers', () => {
     });
   });
 });
+
+describe('external capability mapping', () => {
+  it('preserves unknown, maps empty available and separates unsupported from failures', async () => {
+    const { toExternalWindowSupport } = await import('../../src/main/mappers/shimeji-ipc.mapper');
+    expect(toExternalWindowSupport(undefined)).toBeUndefined();
+    expect(toExternalWindowSupport({ capability: 'available', surfaces: [], capturedAtMs: 0, revision: 1 })).toBe('available');
+    for (const reason of ['initializing', 'unsupported', 'bridge_failed', 'stale'] as const) {
+      expect(toExternalWindowSupport({ capability: 'unavailable', reason, surfaces: [], capturedAtMs: 0, revision: 1 }))
+        .toBe(reason === 'initializing' || reason === 'unsupported' ? reason : 'unavailable');
+    }
+  });
+});
