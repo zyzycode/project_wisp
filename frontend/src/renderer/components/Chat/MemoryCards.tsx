@@ -1,11 +1,12 @@
 import { SummaryControls } from './SummaryControls';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import type { BrainStateDTO, MemoryCardContentDTO, MemoryCardDTO, MemoryCardSourceDTO, WispApiBridge } from '../../../shared/ipc-contracts';
 import { getMemoryCardClient } from '../../memory-card-client';
 
 interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary'>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
 interface Draft extends MemoryCardContentDTO { readonly source: MemoryCardSourceDTO; readonly item?: MemoryCardDTO }
 export function MemoryCards({ bridge, snapshot }: Props) {
+  const panelId = useId();
   const client = getMemoryCardClient(bridge);
   const state = useSyncExternalStore(client.subscribe, client.getState, client.getState);
   const [open, setOpen] = useState(false);
@@ -21,12 +22,15 @@ export function MemoryCards({ bridge, snapshot }: Props) {
     if (!source) return;
     setOpen(true); setRemoval(null); setDraft({ category, label: '', text: '', occurredOn: null, source });
   }
-  return <section data-wisp-interactive="true" aria-label="Карточки памяти" style={{ position: 'absolute', top: 'calc(100% + 4px)', width: '100%', boxSizing: 'border-box', pointerEvents: 'auto', background: '#fffaf2', color: '#332d30', borderRadius: 12, padding: 8, maxHeight: 220, overflowY: 'auto', fontSize: 12 }}>
-    <button type="button" onClick={() => setOpen(!open)}>Память</button>
-    {source && <><button type="button" disabled={locked} onClick={() => begin('important_event')}>Сохранить событие</button>
-      <button type="button" disabled={locked} onClick={() => begin('shared_joke')}>Сохранить шутку</button></>}
-    {bridge.summary && <SummaryControls bridge={bridge.summary} snapshot={snapshot} />}
-    {open && <>
+  return <section className={`memory-panel${open ? ' is-open' : ''}`} data-wisp-interactive="true" aria-label="Карточки памяти">
+    <button type="button" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => setOpen(!open)}>Память</button>
+    {open && <div id={panelId}>
+      {source ? <><button type="button" disabled={locked} onClick={() => begin('important_event')}>Сохранить событие</button>
+        <button type="button" disabled={locked} onClick={() => begin('shared_joke')}>Сохранить шутку</button></>
+        : <p>Сохранение события или шутки доступно после завершённого ответа, сохранённого в истории разговора.</p>}
+      {!streamId && <p role="status">Подключаем память…</p>}
+      {state.busy && <p role="status">Выполняется операция с памятью…</p>}
+      {!state.busy && state.generation !== null && state.items.length === 0 && <p>Сохранённых карточек пока нет.</p>}
       <p>Сохраняются только явно подтверждённые карточки. Отзыв и удаление карточки сохраняют переписку.</p>
       {state.message && <p role="status">{state.message}</p>}
       {state.uncertain && <button type="button" disabled={state.busy} onClick={() => { void client.retry().then(ok => { if (ok) { setDraft(null); setRemoval(null); } }); }}>Повторить ту же команду</button>}
@@ -52,6 +56,7 @@ export function MemoryCards({ bridge, snapshot }: Props) {
       </li>)}</ul>
       <button type="button" disabled={locked} onClick={() => { void client.list(); }}>Обновить список</button>
       {state.nextCursor !== null && <button type="button" disabled={locked} onClick={() => { void client.list(state.nextCursor); }}>Следующие 20</button>}
-    </>}
+    </div>}
+    {bridge.summary && <SummaryControls bridge={bridge.summary} snapshot={snapshot} visible={open} />}
   </section>;
 }

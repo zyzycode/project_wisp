@@ -724,3 +724,62 @@ html, body {
     transform: scale(1) translateY(0);
   }
 }
+
+/* Memory is an explicit disclosure within the existing dialogue surface. */
+.memory-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  width: 240px;
+  max-width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  pointer-events: auto;
+  cursor: default;
+  padding: 4px;
+  border-radius: 10px;
+  color: #f1f5f9;
+  background: rgba(15, 23, 42, 0.98);
+  font-size: 11px;
+}
+
+.memory-panel button,
+.memory-panel input,
+.memory-panel textarea {
+  max-width: 100%;
+  color: inherit;
+  font: inherit;
+  background: #25314a;
+  border: 1px solid #64748b;
+  border-radius: 5px;
+  padding: 4px 6px;
+}
+
+.memory-panel button {
+  cursor: pointer;
+  margin: 2px;
+}
+
+.memory-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.memory-panel button:focus-visible,
+.memory-panel input:focus-visible,
+.memory-panel textarea:focus-visible {
+  outline: 2px solid #c084fc;
+  outline-offset: 1px;
+}
+
+.memory-panel label,
+.memory-panel input,
+.memory-panel textarea {
+  display: block;
+  width: 100%;
+}
+
+.memory-panel ul,
+.memory-panel ol {
+  padding-left: 18px;
+}

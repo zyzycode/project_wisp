@@ -2,6 +2,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
 import { MemoryCards } from '../../src/renderer/components/Chat/MemoryCards';
 import type { DialogueTurnPresentationDTO, MemoryCardListResultDTO, MemoryCardResultDTO } from '../../src/shared/ipc-contracts';
+// Exercise source eligibility inside the explicitly opened memory panel.
+vi.mock('react', async importOriginal => ({
+  ...await importOriginal<typeof import('react')>(),
+  useState: <T,>(initial: T) => [typeof initial === 'boolean' ? true : initial, vi.fn()],
+}));
 function render(turn: DialogueTurnPresentationDTO) {
   const bridge = { listMemoryCards: vi.fn(async (): Promise<MemoryCardListResultDTO> => ({ ok: true, generation: 0, items: [], nextCursor: null })),
     mutateMemoryCard: vi.fn(async (): Promise<MemoryCardResultDTO> => ({ ok: false, generation: 0, code: 'unavailable' })) };

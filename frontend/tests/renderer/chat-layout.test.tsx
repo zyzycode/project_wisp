@@ -50,3 +50,14 @@ describe('chat layout', () => {
   });
 });
 
+
+it('keeps the expanded memory panel inside the compact window with scrollable forms', () => {
+  const panel = rule('.memory-panel');
+  expect(panel).toMatch(/top:\s*calc\(100% \+ 4px\)/);
+  expect(panel).toMatch(/max-height:\s*220px/);
+  expect(panel).toMatch(/overflow-y:\s*auto/);
+  expect(panel).toMatch(/pointer-events:\s*auto/);
+  expect(panel).toMatch(/max-width:\s*100%/);
+  const panelBottom = PET_PRESENTATION_LAYOUT.characterRect.y - 104 + 96 + 4 + 220;
+  expect(panelBottom).toBeLessThan(PET_PRESENTATION_LAYOUT.compactWindowSize.height);
+});
