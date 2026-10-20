@@ -258,6 +258,8 @@ export interface AIInitiativeSpeechDTO {
 }
 
 export interface BrainStateDTO {
+  /** Main-owned external support capability; absence means unknown, not available. */
+  readonly externalWindowSupport?: 'available' | 'initializing' | 'unavailable' | 'unsupported';
   /** Main monotonic sample; null means global source unavailable. Never a Body command. */
   readonly globalCursor?: { readonly globalPosition: { readonly x: number; readonly y: number }; readonly capturedAtMs: number } | null;
   readonly cursorGame: CursorGamePresentationDTO | null;

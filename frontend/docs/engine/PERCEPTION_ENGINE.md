@@ -193,21 +193,21 @@ Target implementation contract, не утверждение runtime readiness. [
 | `side` | Только для `window_side`, обязательно `left` или `right`; x равен bounds.x либо bounds.x + width, y от bounds.y до bounds.y + height. |
 | `isValidSupport` | true только для прошедшей все проверки кромки; false никогда не становится опорой. |
 
-Window top/floor используют общий behavior/pose selection (walk/observe/sit/rest/sleep); тип опоры не даёт бонуса target selection/отдельной arrival Activity. Геометрия ограничивает routes/walking; move переносит персонажа, support loss вызывает fall.
+Window top/floor используют общий behavior/pose selection (walk/observe/sit/rest/sleep); тип опоры не даёт бонуса target selection/отдельной arrival Activity. Геометрия ограничивает routes/walking; опускание top вызывает fall, остальные move — follow по [Motion §7.1](MOTION_ENGINE.md#71-lifecycle-внешней-опоры--целевой-auto-a07).
 
 До трёх edges с разными IDs на окно; immutable full replacement, не delta. `revision` строго возрастает в экземпляре порта, включая unavailable/recovery; меньшие/повторные игнорируются. `capturedAtMs` — Main monotonic **request-start**, не delivery/helper time; cache read timestamp не освежает.
 
-- Windows available только после complete valid sample; пустой массив = нет подходящих окон.
+- Windows/macOS available только после complete valid sample; пустой массив = нет подходящих окон.
 - Startup: `unavailable/initializing`; timeout/parse/API failure/запрещённый bridge: `unavailable/bridge_failed`; TTL: `unavailable/stale`.
-- Linux Wayland/X11 и macOS: `unavailable/unsupported`, пустые external surfaces, без Win32; screen-floor/work-area продолжают работать.
+- Linux Wayland/X11: `unavailable/unsupported`, пустые external surfaces; screen-floor/work-area продолжают работать.
 - Любой unavailable несёт пустой массив, не заменяет screen capability/не выдумывает geometry. Recovery available не делает auto-reattach.
 - Cache read синхронен, subscribe отдаёт full ordered snapshots; Main владеет lifecycle, dispose останавливает helper/sampling/callbacks.
 
 ### Filtering и приватность
 
-Только обычные прямоугольные top-level окна текущего interactive desktop. Bridge проверяет `EnumWindows`, `GetAncestor(GA_ROOT)`, `GetWindow(GW_OWNER)`, styles, `IsWindowVisible`, `IsIconic`, DWM attributes.
+Только видимые прямоугольные окна текущего interactive desktop; платформенные критерии macOS — ниже. Windows bridge проверяет `EnumWindows`, `GetAncestor(GA_ROOT)`, `GetWindow(GW_OWNER)`, styles, `IsWindowVisible`, `IsIconic`, DWM attributes.
 
-Исключить:
+На Windows исключить:
 - child/owned/disabled/custom-region; `WS_POPUP`, `WS_EX_TOOLWINDOW`, `WS_EX_NOACTIVATE`, `WS_EX_TRANSPARENT`, `WS_EX_LAYERED` (borderless/translucent могут не поддерживаться);
 - все Wisp windows/processes, включая helper/menu/devtools;
 - desktop/shell: `GetDesktopWindow`, `GetShellWindow`, `Progman`, `WorkerW`, `Shell_TrayWnd`, `Shell_SecondaryTrayWnd`;
@@ -226,11 +226,20 @@ HWND reuse между poll требует lifecycle create/destroy через `S
 
 Полная выборка ≤10 Hz, один in-flight, без catch-up queue. Invalidation может сразу снять опору, положительная geometry — только из complete sample. TTL: `0 <= nowMs - capturedAtMs <= 300` ms; stale не используется даже при hung helper, recovery требует нового sample. Request budget 250 ms; negative age/partial-corrupt response/sequence gap/topology change во время выборки инвалидируют её.
 
-Frame source: `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)` physical pixels; `GetWindowRect` не эквивалентен (DPI virtualization/invisible resize borders). Frame пересекает **ровно один** physical display; spanning исключён. AUTO-V01 допускает body окна за внешним краем desktop, если edge полностью внутри workArea; bounds сохраняются без clipping.
+Windows frame source: `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)` physical pixels; `GetWindowRect` не эквивалентен (DPI virtualization/invisible resize borders). Frame пересекает **ровно один** physical display; spanning исключён. AUTO-V01 допускает body окна за внешним краем desktop, если edge полностью внутри workArea; bounds сохраняются без clipping.
 
-Infrastructure ровно один раз применяет `screen.screenToDipRect(null, rect)`; нельзя делить global x/y на scaleFactor или брать display Wisp вместо display frame. Edge целиком в workArea своего display, clipping с ложной кромкой запрещён. Разные окна могут иметь разный DPI; глобальные DIP согласованы со ScreenBoundsDto. Перед commit Application выбирает bounds того же display и проверяет root/insets.
+Windows Infrastructure ровно один раз применяет `screen.screenToDipRect(null, rect)`; нельзя делить global x/y на scaleFactor или брать display Wisp вместо display frame. Edge целиком в workArea своего display, clipping с ложной кромкой запрещён. Разные окна могут иметь разный DPI; глобальные DIP согласованы со ScreenBoundsDto. Перед commit Application выбирает bounds того же display и проверяет root/insets.
 
 `display-added/removed/metrics-changed` инвалидируют все external supports и previous follow baseline до нового full sample. Ошибка normalization → unavailable.
+
+### macOS observer (#95)
+
+Один постоянный `/usr/bin/osascript -l JavaScript` helper с фиксированным bundled JXA source, Foundation/CoreGraphics и AppKit; без npm-зависимостей, компиляции, Xcode/CLT, AX/System Events и Apple Events к чужим приложениям. [JXA bridge](https://developer.apple.com/library/archive/releasenotes/InterapplicationCommunication/RN-JavaScriptForAutomation/Articles/OSX10-10.html) вызывает `CGWindowListCopyWindowInfo(onScreenOnly | excludeDesktopElements, 0)`. [Apple о metadata/permissions](https://developer.apple.com/videos/play/wwdc2019/701/): bounds/ID/PID доступны без Screen Recording; разрешения не запрашивать, изображения не получать, window/owner names и sharing state не читать и не требовать.
+Helper передаёт только opaque tokens, bounds и доступные edges; native IDs/PID/layer/alpha остаются внутри него. Окна regular applications (`NSRunningApplication.activationPolicy`) с layer=0, alpha=1, valid bounds — кандидаты; Wisp PID family и helper исключены. Invisible/minimized/другие Spaces не попадают в on-screen sample. Все остальные видимые non-desktop окна с alpha>0, включая panels/menu/translucent, остаются occluders; z-order — порядок front-to-back API, перекрытая кромка удаляется целиком. Неизвестная нужная geometry/повреждённая запись инвалидирует sample. Metadata не различает все sheet/dialog/custom-shape роли: layer-0 окно regular app трактуется по bounding rectangle, pixel-perfect/AX role filtering не обещаются.
+Identity: private `(CGWindowID, ownerPID)` → случайный opaque token в helper epoch; [Apple определяет ID уникальным в user session](https://developer.apple.com/documentation/coregraphics/kcgwindownumber). Move/resize сохраняют token; отсутствие/filter-out в complete sample, смена PID, restart/ошибка/потеря session continuity удаляют token. macOS использует эту session identity и polling, не Win32 hooks; краткие hide/restore между samples не наблюдаемы. Recovery не восстанавливает attachment. Sequence/request ID, лимиты payload/количества окон, 10 Hz/250 ms/300 ms и один in-flight — как у Windows; startup ≤10 s без available, retry после failure ≥1 s, late callbacks старого child/после dispose отбрасываются.
+`kCGWindowBounds` использует [screen space с origin сверху слева main display](https://developer.apple.com/documentation/coregraphics/kcgwindowbounds). macOS logical points передаются как global DIP: без Y-flip AppKit, умножения/деления на Retina scale или Windows `screenToDipRect`. Проверка against Electron display.bounds/workArea обязательна; spanning исключён, edge целиком в workArea, отрицательные координаты допустимы. Display topology/metrics и wake/session discontinuity сбрасывают epoch/in-flight до нового complete sample. Unsupported API/bridge failure → пустой unavailable, локальный runtime продолжает работу; отсутствие метаданных не лечится permission prompt.
+Main проецирует capability в optional `BrainStateDTO.externalWindowSupport`: available/initializing/unsupported либо unavailable для bridge_failed/stale. Existing Brain stream и его validators/mapper переносят только этот enum, без native metadata. В обычном ContextMenu показывать состояние окон и fallback «Окна недоступны — используются границы экрана»; отсутствие поля означает неизвестный статус, не available. Linux unsupported отличается от временного сбоя; available с пустыми surfaces не объявлять ошибкой. IPC/Renderer не выбирают опоры.
+Native приёмка: macOS arm64 без Screen Recording/Accessibility/Automation grants и без CLT; обычные окна, Wisp/devtools, menus/occlusion, hide/minimize/close/Spaces, move/resize/downward-stop; Retina + mixed-DPI/negative origins/second display, sleep/wake/disconnect, helper restart/dispose. Мок-тесты не подтверждают JXA bridge и geometry на Mac; обязательный native smoke фиксируется отдельно, без заявления готовности по одним unit tests.
 
 ### Dependency Review: Win32 bridge (2026-09-06)
 

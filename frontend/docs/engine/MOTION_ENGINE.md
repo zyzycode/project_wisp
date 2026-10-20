@@ -121,8 +121,9 @@ AND abs(y - maxY) <= ε
 | Наблюдение на очередном Main tick | Результат |
 |---|---|
 | Тот же ID, та же geometry, fresh/valid | Продолжить движение по касательной. |
-| Тот же ID, move без resize | Follow: сохранить локальное расстояние от начала кромки, применить новый origin. |
-| Тот же ID, resize (включая move+resize) | Recompute: сохранить абсолютное локальное расстояние в DIP, пересчитать normal coordinate; при выходе за новый диапазон — `support_lost`. |
+| Тот же top ID, `supportY_new > supportY_previous` (включая resize) | До follow — `support_lost`, физическое падение с прежней root; положительный сдвиг не переносить в позицию. |
+| Тот же ID, move без resize, кроме опускающейся top | Follow: сохранить локальное расстояние от начала кромки, применить новый origin. |
+| Тот же ID, resize, кроме опускающейся top | Recompute: сохранить абсолютное локальное расстояние в DIP, пересчитать normal coordinate; при выходе за новый диапазон — `support_lost`. |
 | Другой ID, окно отсутствует, minimize/close/hide/cloak/filter-out | `support_lost`; не выбирать замену в том же шаге. |
 | Unavailable, stale > 300 ms, invalid geometry, topology/DPI invalidation | `support_lost`, удалить attachment baseline. |
 | Restore/recovery/new window | Только новый кандидат; автоматического reattach нет. |
@@ -135,6 +136,16 @@ Resize не масштабирует/clamp-ит s: это скрытая тел�
 Application хранит previous accepted snapshot и передаёт с Main time в pure kinematics; алгоритм/step input реализует developer. Выход follow/recompute за screen collision bounds → support_lost, не clamped attachment.
 
 Отрыв начинается с последней принятой root/current locomotion velocity, без наследования window velocity/poll impulse. `support_lost` — один раз attached→airborne, без повторов stale/unavailable. Screen floor — последующий physics fallback, не мгновенная новая опора. Drag отменяет attachment приоритетно, без дополнительного support_lost в том же step.
+
+### 7.1.1 Падение вслед за опускающимся окном (#95)
+
+Правило действует одинаково на Windows и macOS, только для `window_top`; `window_side` сохраняет прежнюю кинематику. Любое положительное изменение нормализованного `supportY` от последнего принятого attachment запускает отрыв: порога скорости, debounce и переноса вниз нет. Одновременный горизонтальный сдвиг/resize также не переносит root при отрыве. Повтор того же snapshot не создаёт новых событий. Activity отменяется штатным forced-motion путём; Animation получает airborne/fall и один landed, поза стояния без контакта не удерживается.
+
+На user release и переходе attached→`support_lost` Application открывает один эпизод поиска приземления: IDs свежих valid top-кандидатов текущего display в этот момент, включая прежнюю опору, если она всё ещё valid. Новые/recovered IDs в текущий эпизод не добавляются. Domain получает live geometry этих IDs каждый physics step; движение/resize сами по себе не удаляют кандидата. Disappear/filter-out/stale/unavailable удаляют кандидатов окончательно для эпизода; topology/смена active display/drag/stop/dispose/новый directed route очищают весь эпизод.
+
+Между observations используется последняя fresh geometry без предсказания скорости окна. Для нисходящего отрезка root `p0→p1` контакт возможен только при `p0.y <= supportY <= p1.y`, `p1.y > p0.y`; `u=(supportY-p0.y)/(p1.y-p0.y)`, контактный x интерполируется по тому же u. Он должен лежать на live top и внутри root collision bounds. Новая geometry, перескочившая выше p0, не поднимает питомца и не создаёт контакт задним числом; кандидат удаляется из эпизода. Геометрический snap-distance user release при таком падении не применяется.
+
+Выбирается первый контакт по u среди оставшихся tops и screen floor; равенство между tops разрешается ID, с floor — в пользу floor. При window landing принимается именно проверенная live surface, обнуляется скорость, закрывается эпизод и выдаётся ровно один landed по существующим порогам impact severity, без дублирующего floor landed. Landing не зависит от наличия новой observation в этом step. Непрерывное медленное опускание может повторить цикл отрыв→контакт при следующем сдвиге; после остановки окна гравитация доводит питомца до его актуальной top, если она под ним. Если окно ушло вбок/исчезло/стало недоступно, остаётся физическое падение на остальные кандидаты или floor.
 
 ### 7.2 Traversal и направленные прыжки (AUTO-I04)
 
