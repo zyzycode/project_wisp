@@ -48,7 +48,7 @@ describe('Infrastructure: MockAIProvider', () => {
     locale: 'ru',
   });
 
-  it('keeps stable category coverage, pool sizes, and default fallback', () => {
+  it('keeps category coverage and default fallback', () => {
     expect(Object.keys(CATEGORY_TEMPLATES)).toEqual([
       'greeting',
       'question',
@@ -57,13 +57,40 @@ describe('Infrastructure: MockAIProvider', () => {
       'sleep',
       'unknown',
     ]);
-    for (const templates of Object.values(CATEGORY_TEMPLATES)) {
-      expect(templates.ru).toHaveLength(1);
-      expect(templates.en).toHaveLength(1);
-    }
     expect(DEFAULT_FALLBACK_TEMPLATE.text).toBe(
       '*Мерцает мягким светом* Я пока не всё знаю, но всегда рядом с тобой!'
     );
+  });
+
+  it.each([
+    ['greeting', 'Привет', 'react_happy', 4],
+    ['question', 'Почему?', 'respond', 4],
+    ['care', 'Обнять', 'react_happy', 4],
+    ['play', 'Поиграем', 'play', 4],
+    ['sleep', 'Спать', 'sleep', 4],
+    ['unknown', 'Сегодня отличный день', 'respond', 8],
+  ])('varies %s replies across requests while keeping reproducible localized semantics', async (
+    _category, text, behavior, minimumReplies
+  ) => {
+    const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+    const freshProvider = new MockAIProvider({ simulatedLatencyMs: 0 });
+    for (const locale of ['ru', 'en']) {
+      const replies = new Set<string>();
+      for (let index = 0; index < 32; index++) {
+        const request = { ...createRequest(text, `dialogue-${index}`), locale };
+        const response = await provider.generateResponse(request);
+        const repeated = await freshProvider.generateResponse(request);
+        expect(response.status).toBe('ok');
+        expect(response.suggestedBehavior).toBe(behavior);
+        expect(response.diagnostics?.provider).toBe('mock');
+        expect(/[А-Яа-яЁё]/u.test(response.reply.text)).toBe(locale === 'ru');
+        expect(repeated.reply).toEqual(response.reply);
+        expect(repeated.suggestedMood).toBe(response.suggestedMood);
+        expect(repeated.confidence).toBe(response.confidence);
+        replies.add(response.reply.text);
+      }
+      expect(replies.size).toBeGreaterThanOrEqual(minimumReplies);
+    }
   });
 
   it('initializes with default status ready', async () => {
@@ -103,7 +130,9 @@ describe('Infrastructure: MockAIProvider', () => {
     it.each([undefined, '', 'unsupported'])('defaults locale %s to Russian', async (locale) => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
       const response = await provider.generateResponse({ ...createRequest('Hello', 'a'), locale });
-      expect(response.reply.text).toBe('Привет! Я Wisp, твой настольный компаньон. Рад тебя видеть!');
+      const russianResponse = await provider.generateResponse({ ...createRequest('Hello', 'a'), locale: 'ru' });
+      expect(response.reply).toEqual(russianResponse.reply);
+      expect(/[А-Яа-яЁё]/u.test(response.reply.text)).toBe(true);
     });
 
     it.each(['ru', 'en'])('localizes the too-long fallback for %s', async (locale) => {

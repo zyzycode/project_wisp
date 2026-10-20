@@ -69,7 +69,7 @@ describe('Application: MockAI Dialogue Scenarios & Intent Mapping', () => {
       expect(intent.source).toBe('provider');
       expect(intent.priority).toBe('normal');
       expect(intent.moodHint).toBe('happy');
-      expect(intent.replyText).toContain('Wisp');
+      expect(intent.replyText).toBe(response.reply.text);
       expect(intent.requestId).toBe('req-dialogue-1');
     });
 
