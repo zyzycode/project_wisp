@@ -26,7 +26,7 @@ Desktop владеет локальными FSM, Needs/Mood, физикой, а�
 
 ## 5. Зависимости
 
-Zero New Dependencies First / YAGNI. До новой внешней npm/Python-зависимости `architect` проверяет: пермиссивную лицензию (MIT/Apache-2.0/BSD/ISC); размер и transitives; maintenance за последний год; предпочтение pure JS/WASM для desktop и pure Python для backend вместо новой native toolchain; возможность заменить пакет 50–100 строками своего кода. Пятифакторное решение фиксировать в связанной задаче/ADR. npm и Python dependencies остаются отдельными.
+Zero New Dependencies First / YAGNI. До новой внешней npm/Python-зависимости `architect` проверяет: maintenance за последний год; предпочтение pure JS/WASM для desktop и pure Python для backend вместо новой native toolchain; возможность заменить пакет 50–100 строками своего кода. Решение фиксировать в связанной задаче/ADR. npm и Python dependencies остаются отдельными.
 
 Аудит зависимостей не проводим.
 
