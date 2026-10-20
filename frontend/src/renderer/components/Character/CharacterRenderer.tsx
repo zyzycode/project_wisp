@@ -7,7 +7,6 @@ import type {
 } from '../../../domain/models/character-visuals';
 import {
   DEFAULT_THEMES,
-  calculateRenderedDimensions,
 } from '../../../domain/models/character-visuals';
 import {
   AssetResolver,
@@ -72,7 +71,6 @@ export interface ManifestAnimationRegistry {
 export interface CharacterRendererProps {
   expression?: CharacterExpression;
   theme?: CharacterTheme;
-  scale?: number;
   visualState?: Readonly<BodyVisualState>;
   isDragging?: boolean;
   debugAnimationSelection?: DebugAnimationSelection;
@@ -99,7 +97,6 @@ export interface CharacterRendererProps {
 export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   expression = 'idle',
   theme = DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!,
-  scale = 1.0,
   visualState = FALLBACK_VISUAL_STATE,
   isDragging = false,
   debugAnimationSelection,
@@ -138,7 +135,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
     debugAnimationSelection === undefined ? onAnimationCompleted : undefined,
     debugAnimationSelection === undefined ? onAnimationRejected : undefined
   );
-  const renderedSize = calculateRenderedDimensions(BASE_CHARACTER_SIZE, scale);
+  const renderedSize = BASE_CHARACTER_SIZE;
   const activePresentationState = presentationState;
   useEffect(() => { onPresentationChanged?.(presentationState); }, [onPresentationChanged, presentationState]);
 

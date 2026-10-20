@@ -2,7 +2,6 @@ import { ObservationSettings } from './Interaction/ObservationSettings';
 import React, { useState } from 'react';
 import type { RenderPresentationState } from '../render-engine';
 import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../shared/pet-presentation-layout';
-import { calculateRenderedDimensions } from '../../domain/models/character-visuals';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { MemoryCards } from './Chat/MemoryCards';
 import { ChatInput } from './Chat/ChatInput';
@@ -20,13 +19,7 @@ export interface PetOverlayProps {
 export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
   const [presentation, setPresentation] = useState<RenderPresentationState>();
   const [assetLoadError, setAssetLoadError] = useState<string>();
-  const labelAnchor = calculateWindowRootPivotOffset({
-    ...PET_PRESENTATION_LAYOUT,
-    characterRect: {
-      ...PET_PRESENTATION_LAYOUT.characterRect,
-      ...calculateRenderedDimensions(PET_PRESENTATION_LAYOUT.characterRect, model.scale),
-    },
-  });
+  const labelAnchor = calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT);
   const debugHud = (
     <DebugHUD
       runtimeDiagnostics={{ brain: model.bodySnapshot?.brain, presentation, assetLoadError }}
@@ -79,7 +72,6 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         isOpen={model.menuOpen}
         tone={model.debugTelemetry.character.synthesizedTone}
         currentTheme={model.currentTheme}
-        scale={model.scale}
         autoWanderEnabled={model.autoWanderEnabled}
         quietMode={model.quietMode}
         onToggleQuietMode={model.toggleQuietMode}
@@ -111,13 +103,11 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         onToggleAlwaysOnTop={model.toggleAlwaysOnTop}
         onResetPosition={model.handleResetPosition}
         onSelectTheme={model.setCurrentTheme}
-        onSelectScale={model.setScale}
         onQuit={model.closeApp}
       />
       <CharacterRenderer
         expression={model.expression}
         theme={model.currentTheme}
-        scale={model.scale}
         visualState={model.visualState}
         isDragging={model.isDragging}
         debugAnimationSelection={model.debugAnimationSelection}

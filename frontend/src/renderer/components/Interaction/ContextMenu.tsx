@@ -16,7 +16,6 @@ export interface ContextMenuProps {
   activeTab?: ContextMenuTab;
   tone?: SynthesizedEmotionalTone;
   currentTheme: CharacterTheme;
-  scale: number;
   autoWanderEnabled: boolean;
   quietMode?: boolean;
   onToggleQuietMode?: () => void;
@@ -39,7 +38,6 @@ export interface ContextMenuProps {
   onToggleAlwaysOnTop?: () => void;
   onResetPosition?: () => void;
   onSelectTheme: (theme: CharacterTheme) => void;
-  onSelectScale: (scale: number) => void;
   onQuit: () => void;
 }
 
@@ -112,7 +110,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   activeTab,
   tone = 'neutral',
   currentTheme,
-  scale,
   autoWanderEnabled,
   quietMode = false,
   onToggleQuietMode,
@@ -135,7 +132,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onToggleAlwaysOnTop,
   onResetPosition,
   onSelectTheme,
-  onSelectScale,
   onQuit,
 }) => {
   const [internalTab, setInternalTab] = useState<ContextMenuTab>('main');
@@ -278,37 +274,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                   {theme.name}
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* Scale */}
-          <div className="menu-section">
-            <div className="menu-divider" />
-            <div className="menu-section-title">Размер: {Math.round(scale * 100)}%</div>
-            <div className="menu-scale-controls">
-              <button
-                type="button"
-                className="menu-scale-btn"
-                disabled={scale <= 0.6}
-                onClick={() => onSelectScale(Math.max(0.5, Number((scale - 0.1).toFixed(1))))}
-              >
-                - Уменьшить
-              </button>
-              <button
-                type="button"
-                className={`menu-scale-btn ${scale === 1.0 ? 'active' : ''}`}
-                onClick={() => onSelectScale(1.0)}
-              >
-                100%
-              </button>
-              <button
-                type="button"
-                className="menu-scale-btn"
-                disabled={scale >= 2.0}
-                onClick={() => onSelectScale(Math.min(2.0, Number((scale + 0.1).toFixed(1))))}
-              >
-                + Увеличить
-              </button>
             </div>
           </div>
 

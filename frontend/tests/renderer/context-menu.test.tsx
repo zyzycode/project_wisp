@@ -15,7 +15,6 @@ describe('Renderer: ContextMenu', () => {
       <ContextMenu
         isOpen={false}
         currentTheme={DEFAULT_THEMES.cosmic!}
-        scale={1.0}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled={false}
@@ -27,7 +26,6 @@ describe('Renderer: ContextMenu', () => {
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
         onSelectTheme={vi.fn()}
-        onSelectScale={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -35,14 +33,13 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toBe('');
   });
 
-  it('renders actions, themes, and scales in compact layout without position override', () => {
+  it('renders actions and themes without character size controls', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
         activeTab="main"
         tone="affectionate"
         currentTheme={DEFAULT_THEMES.cosmic!}
-        scale={1.0}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled
@@ -65,7 +62,6 @@ describe('Renderer: ContextMenu', () => {
           onSelectBody={vi.fn()} onSelectFace={vi.fn()} onToggleLoop={vi.fn()} onReplay={vi.fn()}
         />}
         onSelectTheme={vi.fn()}
-        onSelectScale={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -100,7 +96,10 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Поверх окон: ВКЛ');
     expect(markup).toContain('Debug HUD: ВЫКЛ');
     expect(markup).toContain('Космический');
-    expect(markup).toContain('100%');
+    expect(markup).not.toContain('Размер:');
+    expect(markup).not.toContain('Уменьшить');
+    expect(markup).not.toContain('Увеличить');
+    expect(markup).not.toContain('100%');
     expect(markup).toContain('Выйти из приложения');
     expect(markup).toContain('Главное');
     expect(markup).toContain('Debug');
@@ -114,7 +113,6 @@ describe('Renderer: ContextMenu', () => {
         isOpen
         activeTab="debug"
         currentTheme={DEFAULT_THEMES.cosmic!}
-        scale={1.0}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled
@@ -125,7 +123,6 @@ describe('Renderer: ContextMenu', () => {
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
         onSelectTheme={vi.fn()}
-        onSelectScale={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -141,7 +138,6 @@ describe('Renderer: ContextMenu', () => {
         isOpen
         position={{ x: 100, y: 50 }}
         currentTheme={DEFAULT_THEMES.cosmic!}
-        scale={1.0}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled={false}
@@ -151,7 +147,6 @@ describe('Renderer: ContextMenu', () => {
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
         onSelectTheme={vi.fn()}
-        onSelectScale={vi.fn()}
         onQuit={vi.fn()}
       />
     );

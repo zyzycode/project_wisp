@@ -102,14 +102,10 @@ describe('Renderer: SpriteRenderer', () => {
 });
 
 describe('Renderer: CharacterRenderer Visual Polish', () => {
-  it('applies configured base dimensions and scale to root container', () => {
-    const markup100 = renderToStaticMarkup(<CharacterRenderer scale={1.0} />);
-    expect(markup100).toContain(`width:${BASE_CHARACTER_SIZE.width}px`);
-    expect(markup100).toContain(`height:${BASE_CHARACTER_SIZE.height}px`);
-
-    const markup150 = renderToStaticMarkup(<CharacterRenderer scale={1.5} />);
-    expect(markup150).toContain(`width:${Math.round(BASE_CHARACTER_SIZE.width * 1.5)}px`);
-    expect(markup150).toContain(`height:${Math.round(BASE_CHARACTER_SIZE.height * 1.5)}px`);
+  it('uses the fixed character dimensions from the shared layout', () => {
+    const markup = renderToStaticMarkup(<CharacterRenderer />);
+    expect(markup).toContain(`width:${BASE_CHARACTER_SIZE.width}px`);
+    expect(markup).toContain(`height:${BASE_CHARACTER_SIZE.height}px`);
   });
 
   it('applies theme drop-shadow glow and dragging class cleanly', () => {

@@ -60,7 +60,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
   const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
     DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
   );
-  const [scale, setScale] = useState(1);
   const [debugHudVisible, setDebugHudVisible] = useState(false);
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(true);
   const [manifestAnimations, setManifestAnimations] = useState<ManifestAnimationRegistry>({
@@ -339,8 +338,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     characterAnimationIntent,
     currentTheme,
     setCurrentTheme,
-    scale,
-    setScale,
     visualState: visual === null ? undefined : applyLocalTerminalState(visual,
       visual.visualIntent.episodeId === activeVisualEpisodeRef.current ? localTerminalVisualKind : null),
     flipX: visual?.reflex.transform.flipX ?? false,

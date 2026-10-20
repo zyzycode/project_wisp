@@ -655,41 +655,6 @@ html, body {
   box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 }
 
-.menu-scale-controls {
-  display: flex;
-  gap: 4px;
-}
-
-.menu-scale-btn {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
-  padding: 5px;
-  font-size: 10.5px;
-  font-weight: 500;
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.15s;
-}
-
-.menu-scale-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-}
-
-.menu-scale-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.menu-scale-btn.active {
-  background: #a855f7;
-  border-color: #a855f7;
-  color: #ffffff;
-}
-
 .menu-divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.07);

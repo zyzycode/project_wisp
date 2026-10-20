@@ -112,7 +112,6 @@ describe('Renderer: DebugHUD', () => {
         activeTab="main"
         tone="playful"
         currentTheme={DEFAULT_THEMES.cosmic!}
-        scale={1}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled
@@ -134,7 +133,6 @@ describe('Renderer: DebugHUD', () => {
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
         onSelectTheme={vi.fn()}
-        onSelectScale={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -152,7 +150,6 @@ describe('Renderer: DebugHUD', () => {
         activeTab="debug"
         tone="playful"
         currentTheme={DEFAULT_THEMES.cosmic!}
-        scale={1}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled
@@ -167,7 +164,6 @@ describe('Renderer: DebugHUD', () => {
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
         onSelectTheme={vi.fn()}
-        onSelectScale={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -183,7 +179,6 @@ describe('Renderer: DebugHUD', () => {
         activeTab="main"
         tone="playful"
         currentTheme={DEFAULT_THEMES.cosmic!}
-        scale={1}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled={false}
@@ -197,7 +192,6 @@ describe('Renderer: DebugHUD', () => {
           onSelectBody={vi.fn()} onSelectFace={vi.fn()} onToggleLoop={vi.fn()} onReplay={vi.fn()}
         />}
         onSelectTheme={vi.fn()}
-        onSelectScale={vi.fn()}
         onQuit={vi.fn()}
       />
     );

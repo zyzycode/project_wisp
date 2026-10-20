@@ -1,6 +1,6 @@
 /**
  * Domain Model: Character Visuals & Expressions
- * Pure domain definitions for rendering states, palettes, and scaling.
+ * Pure domain definitions for rendering states and palettes.
  */
 
 export type CharacterExpression =
@@ -62,27 +62,3 @@ export const DEFAULT_THEMES: Record<'cosmic' | 'emerald' | 'amber', CharacterThe
 };
 
 export const DEFAULT_THEME: CharacterTheme = DEFAULT_THEMES.cosmic;
-
-/**
- * Validates and clamps character scale between safe minimum and maximum multipliers.
- */
-export function clampCharacterScale(scale: number, min = 0.5, max = 2.5): number {
-  if (Number.isNaN(scale) || !Number.isFinite(scale)) {
-    return 1.0;
-  }
-  return Math.max(min, Math.min(max, Math.round(scale * 100) / 100));
-}
-
-/**
- * Calculates rendered dimensions in pixels based on base size and scale factor.
- */
-export function calculateRenderedDimensions(
-  baseSize: { width: number; height: number },
-  scale: number
-): { width: number; height: number } {
-  const safeScale = clampCharacterScale(scale);
-  return {
-    width: Math.round(baseSize.width * safeScale),
-    height: Math.round(baseSize.height * safeScale),
-  };
-}
