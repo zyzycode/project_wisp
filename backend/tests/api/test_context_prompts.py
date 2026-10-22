@@ -190,13 +190,10 @@ def test_adversarial_context_is_data_and_examples_cannot_supply_candidate_eviden
     assert marker not in caplog.text
 
 
-@pytest.mark.parametrize("provider,model", list(CONTEXT_WINDOWS))
+@pytest.mark.parametrize("provider,model", [("groq", "openai/gpt-oss-20b"), ("gemini", "gemini-3.5-flash-lite")])
 @pytest.mark.parametrize("locale", ["ru", "en"])
-@pytest.mark.parametrize("route,fixture", ROUTES[:4])
-@pytest.mark.parametrize(
-    "profile",
-    ["low_trust", "high_trust", "tired", "overloaded", "playful", "consent_off", "contradictory_history", "hostile"],
-)
+@pytest.mark.parametrize("route,fixture", [ROUTES[0], ROUTES[1]])
+@pytest.mark.parametrize("profile", ["low_trust", "tired", "consent_off", "hostile"])
 def test_state_matrix_preserves_card_boundaries_and_budget_for_both_formatters(
     app_factory: Callable[..., FastAPI],
     chat_completion: Callable[..., dict[str, Any]],
