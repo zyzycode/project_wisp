@@ -18,8 +18,13 @@ import sys
 from typing import List, Optional, Tuple
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(os.path.dirname(SCRIPTS_DIR))
-VENV_PYTHON = os.path.join(ROOT_DIR, ".venv", "bin", "python")
+PIPELINE_DIR = os.path.dirname(SCRIPTS_DIR)
+ROOT_DIR = os.path.dirname(PIPELINE_DIR)
+VENV_PYTHON = (
+    os.path.join(PIPELINE_DIR, ".venv", "Scripts", "python.exe")
+    if os.name == "nt"
+    else os.path.join(PIPELINE_DIR, ".venv", "bin", "python")
+)
 
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)

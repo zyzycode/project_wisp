@@ -6,9 +6,9 @@ by a customizable multiplier. Production PNGs can be updated in place; external
 source sheets and references remain read-only. Final exports stay in public/assets/sprites/.
 
 Usage:
-  .venv/bin/python asset-pipeline/scripts/scale_overlay.py --folder public/assets/sprites/faces/pupils --scale 0.65
-  .venv/bin/python asset-pipeline/scripts/scale_overlay.py --folder public/assets/sprites/faces/pupils --scale 0.70 --offset-y -5
-  .venv/bin/python asset-pipeline/scripts/scale_overlay.py --help
+  asset-pipeline/.venv/bin/python asset-pipeline/scripts/scale_overlay.py --folder public/assets/sprites/faces/pupils --scale 0.65
+  asset-pipeline/.venv/bin/python asset-pipeline/scripts/scale_overlay.py --folder public/assets/sprites/faces/pupils --scale 0.70 --offset-y -5
+  asset-pipeline/.venv/bin/python asset-pipeline/scripts/scale_overlay.py --help
 """
 
 import argparse

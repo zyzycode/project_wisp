@@ -2,49 +2,57 @@
 
 [Агент](AGENTS.md) → [Стандарты и шаблон промпта](STANDARDS.md) → [Таблица ассетов](ASSETS.md). Конкретная работа задаётся сообщением пользователя.
 
-Пути от корня репозитория: `asset-pipeline/generated_images/` — исходные листы, `references/` внутри пайплайна — референсы, `scripts/` — инструменты. Готовые PNG сразу в `public/assets/sprites/`; `asset-pipeline/output/` — только GIF, кеш и предложения метаданных.
+Все команды ниже выполняются из `frontend/` (из корня репозитория сначала `cd frontend`). Пути от этого каталога: `asset-pipeline/generated_images/` — исходные листы, `references/` внутри пайплайна — референсы, `scripts/` — инструменты. Готовые PNG сразу в `public/assets/sprites/`; `asset-pipeline/output/` — только GIF, кеш и предложения метаданных.
 
-Из корня репозитория, Python с Pillow, NumPy и SciPy. Если библиотеки только в существующей venv, использовать `.venv/bin/python` (Linux/macOS) или `.venv/Scripts/python.exe` (Windows).
+У пайплайна собственное окружение `frontend/asset-pipeline/.venv/` с Python 3.12, Pillow, NumPy и SciPy. Оно независимо от `backend/.venv/`; корневые `.venv/` и `frontend/.venv/` для пайплайна не используются. Само окружение исключено из Git.
 
-Установка окружения (Python 3.12, команды из корня проекта):
+Установка окружения на Windows из `frontend/`:
 
 ```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r asset-pipeline/requirements.txt
-.\.venv\Scripts\python.exe -m unittest discover -s asset-pipeline/tests -p 'test_*.py'
+py -3.12 -m venv asset-pipeline/.venv
+.\asset-pipeline\.venv\Scripts\python.exe -m pip install -r asset-pipeline/requirements.txt
+.\asset-pipeline\.venv\Scripts\python.exe -m unittest discover -s asset-pipeline/tests -p 'test_*.py'
 ```
 
-Linux/macOS: `python3.12 -m venv .venv`, затем `.venv/bin/python -m pip install -r asset-pipeline/requirements.txt`.
-Версии зависимостей закреплены в [requirements.txt](requirements.txt). Активация не обязательна: вызывайте Python из `.venv` явно.
+Linux/macOS, также из `frontend/`:
+
+```bash
+python3.12 -m venv asset-pipeline/.venv
+asset-pipeline/.venv/bin/python -m pip install -r asset-pipeline/requirements.txt
+asset-pipeline/.venv/bin/python -m unittest discover -s asset-pipeline/tests -p 'test_*.py'
+```
+
+Версии зависимостей закреплены в [requirements.txt](requirements.txt). Активация не обязательна: вызывайте Python из `asset-pipeline/.venv` явно. Для активации на Linux/macOS: `source asset-pipeline/.venv/bin/activate`; в PowerShell: `.\asset-pipeline\.venv\Scripts\Activate.ps1`.
+При переносе окружения создавайте его заново по requirements: простое перемещение venv оставляет абсолютные пути в служебных файлах. Исторические команды в отчётах `references/` следует запускать с интерпретатором из этого раздела.
 
 Семь наборов AUTO-I04/I05/I06 и #48 имеют ручную разметку масштаба и контактов в
 [рецепте экспорта](references/requested-sprites-export.json). Их повторная сборка из сохранённых исходников:
 
 ```powershell
 $env:PYTHONUTF8='1'
-.\.venv\Scripts\python.exe asset-pipeline/scripts/export_requested.py --recipe asset-pipeline/references/requested-sprites-export.json
-.\.venv\Scripts\python.exe asset-pipeline/scripts/verify_requested.py
+.\asset-pipeline\.venv\Scripts\python.exe asset-pipeline/scripts/export_requested.py --recipe asset-pipeline/references/requested-sprites-export.json
+.\asset-pipeline\.venv\Scripts\python.exe asset-pipeline/scripts/verify_requested.py
 ```
 
 Первая команда записывает 28 рабочих PNG и предложение метаданных, вторая проверяет кадры,
 стыки и формирует светлый/тёмный контактные листы и семь GIF. Подробности —
 [отчёт приёмки](references/REQUESTED_SPRITES_QA.md). Обычный `process_sprites.py`, в том числе
 с `--force`, пропускает ключи из этого рецепта, чтобы не потерять выверенное размещение.
-На Linux/macOS использовать `.venv/bin/python`; для тестов на Windows также задать `PYTHONUTF8=1`.
+На Linux/macOS использовать `asset-pipeline/.venv/bin/python`; для тестов на Windows также задать `PYTHONUTF8=1`.
 
 После приёмки художник регистрирует назначенные наборы в
 [public/assets/sprites/manifest.json](../public/assets/sprites/manifest.json): переносит
 соответствующие записи `entries` из предложения, сохраняя остальные записи манифеста.
-Проверка: `.venv/Scripts/python.exe scripts/validate_manifest.py --check --json` из корня проекта,
+Проверка: `asset-pipeline/.venv/Scripts/python.exe scripts/validate_manifest.py --check --json` из `frontend/`,
 затем `npm run test -- tests/renderer/manifest-loader.test.ts tests/renderer/asset-resolver.test.ts`.
 Экспорт и проверка PNG сами по себе манифест не изменяют.
 
 Нормализация размеров/совмещения **SPRITE-NORMALIZE-2026-09**:
 
 ```bash
-.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py
-.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py --apply
-.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py --check
+asset-pipeline/.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py
+asset-pipeline/.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py --apply
+asset-pipeline/.venv/bin/python asset-pipeline/scripts/normalize_reviewed.py --check
 ```
 
 Первая команда готовит сравнения «до/после», GIF и предложение в
@@ -75,15 +83,15 @@ PNG и метаданные из рецепта; `--check` проверяет р
 
 | Операция | Команда |
 |---|---|
-| Пробная нарезка | `python3 asset-pipeline/scripts/process_sprites.py --file asset-pipeline/generated_images/face_gaze.png --dry-run` |
+| Пробная нарезка | `asset-pipeline/.venv/bin/python asset-pipeline/scripts/process_sprites.py --file asset-pipeline/generated_images/face_gaze.png --dry-run` |
 | Записать готовые PNG | Та же команда без `--dry-run`; `npm run sprites:process` обрабатывает листы непосредственно в `generated_images/` |
 | GIF рабочих кадров | `npm run sprites:preview -- --all` → `output/previews/`; составного body/face-превью нет |
-| Масштабировать рабочие PNG на месте | `python3 asset-pipeline/scripts/scale_overlay.py --folder public/assets/sprites/faces/gaze --scale 0.9` |
+| Масштабировать рабочие PNG на месте | `asset-pipeline/.venv/bin/python asset-pipeline/scripts/scale_overlay.py --folder public/assets/sprites/faces/gaze --scale 0.9` |
 | Другие параметры | `scale_overlay.py --help`: внешнему input нужен `--output` рабочей папки; все CLI имеют `--help` |
-| Тесты инструментов | `python3 -m unittest discover -s asset-pipeline/tests -p 'test_*.py'` |
+| Тесты инструментов | `asset-pipeline/.venv/bin/python -m unittest discover -s asset-pipeline/tests -p 'test_*.py'` |
 
 CURSOR-GAME-V1: два шестикадровых набора пересобираются командой
-`python3 asset-pipeline/scripts/export_cursor_game.py` из исходников в
+`asset-pipeline/.venv/bin/python asset-pipeline/scripts/export_cursor_game.py` из исходников в
 `generated_images/cursor_game/`. Скрипт сохраняет PNG по папкам, формирует GIF и метаданные
 в `output/cursor_game/`. [Промпты, приёмка и проверки](references/CURSOR_GAME_QA.md).
 
