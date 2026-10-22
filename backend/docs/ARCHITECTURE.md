@@ -12,7 +12,7 @@ Backend — отдельный процесс с HTTP API, одним AI-про�
 | [runtime.py](../wisp_backend/runtime.py) | Создание и закрытие ресурсов, maintenance |
 | [api](../wisp_backend/api/) | HTTP boundary, маршруты, wire-схемы, преобразование запроса и сериализация ответа |
 | [completion](../wisp_backend/completion/) | Выполнение запроса, дедлайны, отмена, политики сценариев, prompts и модели ответа |
-| [providers](../wisp_backend/providers/) | Адаптеры Groq/Gemini, HTTP-транспорт, извлечение текста и usage |
+| [providers](../wisp_backend/providers/) | Адаптеры Groq/Gemini/OpenAI, HTTP-транспорт, извлечение текста и usage |
 | [accounting](../wisp_backend/accounting/) | Защита от повторов, ORM, учёт расхода и кеш повторных ответов |
 | [config](../wisp_backend/config/) | Загрузка и проверка настроек, профили моделей |
 
@@ -27,7 +27,7 @@ Backend — отдельный процесс с HTTP API, одним AI-про�
 2. Wire-схема проверяет вход; `dispatch` преобразует его в контекст конкретного сценария.
    Политика проверяет тип контекста, строит блоки и задаёт parser/лимиты `CompletionJob`.
 3. Ledger проверяет request ID, возвращает кешированный ответ либо открывает запись учёта.
-4. Provider adapter отбирает контекст: Gemini использует countTokens, Groq —
+4. Provider adapter отбирает контекст: Gemini использует countTokens, Groq/OpenAI —
    консервативную локальную оценку. Все preflight и generation делят исходный deadline.
    После одного inference `ReplyEncoder` проверяет семантический ответ и создаёт JSON.
 5. Ledger сохраняет расход. После commit ответ может попасть в RAM-кеш,
@@ -36,6 +36,25 @@ Backend — отдельный процесс с HTTP API, одним AI-про�
 Повторные вызовы, версии и ошибки определены в [общих API-контрактах](../../docs/contracts/README.md).
 Автоматических retry, redirect и переключения провайдера при ошибке нет.
 Ключи и prompts остаются на сервере; в ошибки и логи не попадают содержимое запросов и секреты.
+
+### OpenAI
+
+`WISP_AI_PROVIDER=openai` выбирает серверный `OPENAI_API_KEY`, официальный endpoint
+`https://api.openai.com/v1/` и `gpt-4.1-mini`. При переключении с Gemini очистить
+`WISP_AI_MODEL`, `WISP_AI_BASE_URL` и `WISP_AI_THINKING_LEVEL`, чтобы применились
+профильные значения. Все настройки перечислены в [.env.example](../.env.example).
+
+[Адаптер](../wisp_backend/providers/openai.py) использует text Chat Completions,
+JSON mode, `store=false`, без tools/files/batch. Это расширение существующего
+`Provider`/`HTTPProvider`; новые зависимости, wire DTO и клиентские ключи не нужны.
+Refusal, незавершённый вывод и tool calls считаются `invalid_model_response`;
+достоверный usage сохраняется даже при отклонении текста.
+
+Preflight оценивает полный JSON payload: UTF-8 bytes + 256 + 64 × число сообщений.
+Это локальная консервативная оценка, а не точный tokenizer; отдельного count HTTP нет.
+Локальный ceiling — 16384 вместе с output cap; reservation неизвестного usage —
+1047576 по [контекстному окну модели](https://developers.openai.com/api/docs/models/gpt-4.1-mini).
+Retention и удаление определены в [API §6](../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление).
 
 ## Сценарии и prompt engineering
 

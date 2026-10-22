@@ -72,6 +72,7 @@ test('invalid ports and modes fail before spawning', () => {
 test('server credentials and profile configuration are not inherited by desktop', () => {
   const [backend, frontend] = devCommands({ GROQ_API_KEY: 'server-key', token_api: 'legacy-key',
     GEMINI_API_KEY: 'gemini-key', gemini_api_key: 'lowercase-key',
+    OPENAI_API_KEY: 'openai-key', openai_api_key: 'lowercase-openai-key',
     WISP_AI_PROVIDER: 'gemini', WISP_AI_MODEL: 'gemini-3.5-flash-lite',
     WISP_AI_BASE_URL: 'https://example.com/', WISP_AI_MAX_OUTPUT_TOKENS: '512',
     WISP_AI_TEMPERATURE: '0.5', WISP_AI_THINKING_LEVEL: 'low',
@@ -79,8 +80,10 @@ test('server credentials and profile configuration are not inherited by desktop'
     ASSISTANTS_JSON: '{}', WISP_UPSTREAM_TRUST_ENV: 'true', PATH: 'host-path' });
   assert.equal(backend.env.GROQ_API_KEY, 'server-key');
   assert.equal(backend.env.GEMINI_API_KEY, 'gemini-key');
+  assert.equal(backend.env.OPENAI_API_KEY, 'openai-key');
   assert.equal(frontend.env.PATH, 'host-path');
   for (const key of ['GROQ_API_KEY', 'token_api', 'GEMINI_API_KEY', 'gemini_api_key',
+    'OPENAI_API_KEY', 'openai_api_key',
     'WISP_AI_PROVIDER', 'WISP_AI_MODEL', 'WISP_AI_BASE_URL', 'WISP_AI_MAX_OUTPUT_TOKENS',
     'WISP_AI_TEMPERATURE', 'WISP_AI_THINKING_LEVEL', 'WISP_AI_REQUEST_TIMEOUT',
     'WISP_AI_CONNECT_TIMEOUT', 'WISP_AI_POOL_TIMEOUT', 'ASSISTANTS_JSON', 'WISP_UPSTREAM_TRUST_ENV']) {

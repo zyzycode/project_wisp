@@ -13,6 +13,10 @@ class ProviderProfile:
 
 
 PROFILES = {
+    "openai": ProviderProfile(
+        "https://api.openai.com/v1/", "OPENAI_API_KEY", "gpt-4.1-mini",
+        ("gpt-4.1-mini",), 1_047_576,
+    ),
     "groq": ProviderProfile(
         "https://api.groq.com/openai/v1/", "GROQ_API_KEY", "openai/gpt-oss-20b",
         ("openai/gpt-oss-20b",), 131_072,

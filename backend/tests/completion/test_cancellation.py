@@ -35,7 +35,7 @@ def test_slow_body_never_admitted(monkeypatch):
 
 @pytest.mark.parametrize('shutdown', [False, True])
 @pytest.mark.parametrize('path', ['/v1/chat', '/v1/touch'])
-@pytest.mark.parametrize('provider', ['groq', 'gemini'])
+@pytest.mark.parametrize('provider', ['groq', 'gemini', 'openai'])
 def test_disconnect_or_shutdown_cancels_provider_and_releases_slot(app_factory, body, shutdown, path, provider):
     body = touch_body(body) if path == '/v1/touch' else body
     async def run():
@@ -79,7 +79,7 @@ def test_disconnect_or_shutdown_cancels_provider_and_releases_slot(app_factory, 
     asyncio.run(run())
 
 
-@pytest.mark.parametrize('provider', ['groq', 'gemini'])
+@pytest.mark.parametrize('provider', ['groq', 'gemini', 'openai'])
 def test_late_result_refines_usage_but_never_overwrites_timeout(app_factory, body, provider):
     async def run():
         release = asyncio.Event()

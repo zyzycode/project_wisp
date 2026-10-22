@@ -96,7 +96,7 @@ admission timestamp и reservation для учёта. Некорректные �
 
 Профиль выбирается при startup через `WISP_AI_PROVIDER` и `WISP_AI_MODEL`; Groq — default.
 Gemini выполняет точный модельный preflight через countTokens для полного generation
-payload; Groq использует документированную консервативную оценку. Bounded preflight
+payload; Groq и OpenAI используют документированную консервативную оценку. Bounded preflight
 и единственный generation inference используют тот же provider/client и исходный
 deadline; дополнительных generation/retry нет. Count HTTP failure/overflow до generation
 имеет нулевой inference usage; поздний count после cancel не запускает generation.
@@ -112,7 +112,7 @@ Custom base URL допускает только HTTPS либо HTTP loopback б�
 Пределы размера ввода/ответа, deadlines, TLS verification и validation сохраняются.
 
 Reservation — оценка неизвестного расхода, а не условие допуска или лимит вызова:
-131072 для Groq и 1114112 для Gemini. Она хранится в каждой записи; восстановление
+131072 для Groq, 1114112 для Gemini и 1047576 для OpenAI. Она хранится в каждой записи; восстановление
 после сбоя и позднее уточнение используют исходное значение при смене провайдера.
 Таблицы и накопленный учёт сохраняются. Старый флаг `halt` не блокирует admission.
 
@@ -162,3 +162,11 @@ Ledger-файлы не попадают в обычные backups alpha; при 
 Для Groq alpha используется только inference endpoint, без batch/fine-tuning/файлов. До передачи данных внешних тестеров оператор включает **ZDR** в Data Controls и фиксирует проверку; без неё допустимы только синтетические тестовые данные. По [политике Groq](https://console.groq.com/docs/your-data) от 2026-09-18 без ZDR возможны reliability/abuse logs inputs/outputs до 30 дней (дольше при юридической необходимости); usage metadata сохраняется отдельно, точный срок документацией не указан. ZDR относится к customer content, не обещает удаление metadata. Регион и договорные условия провайдера проверяются перед открытием доступа; нельзя объявлять удалённой провайдерскую копию по локальному reset.
 
 Gemini использует только text generateContent через server-owned endpoint, без tools/files/batch и без ослабления safety settings. По [условиям Google](https://ai.google.dev/gemini-api/terms) unpaid service может использовать содержимое для улучшения продуктов и human review; paid service не использует prompts/responses для этого, но не означает ZDR. [Abuse monitoring](https://ai.google.dev/gemini-api/docs/usage-policies) предусматривает хранение prompts/context/output 55 дней (проверено 2026-10-13). Поэтому текущий Gemini rollout допускает только синтетические данные. Перед внешними тестерами оператор отдельно подтверждает paid-service режим, доступный регион, допустимость retention и информирование пользователей; Groq ZDR не распространяется на Google. Локальный reset не удаляет provider copy; немедленное удаление этой интеграцией не поддерживается.
+
+OpenAI получает тот же разрешённый текстовый контекст через server-owned Chat Completions,
+без tools/files/batch; каждый запрос задаёт `store=false`. По [Data controls](https://developers.openai.com/api/docs/guides/your-data)
+данные API не используются для обучения без явного opt-in; abuse monitoring logs могут
+сохраняться до 30 дней, дольше при юридической необходимости. `store=false` не означает
+ZDR: этот режим отдельно согласуется с провайдером. Перед внешними тестерами оператор
+подтверждает регион, допустимость retention и информирование пользователей.
+Backend не отправляет запросы удаления в OpenAI; локальный reset не удаляет provider copy.

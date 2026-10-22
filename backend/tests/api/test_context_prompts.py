@@ -88,7 +88,7 @@ def test_long_unicode_history_is_trimmed_without_losing_current_facts_or_output_
     def upstream(request: httpx.Request) -> httpx.Response:
         data = json.loads(request.content)
         calls.append(data)
-        if provider == "groq":
+        if provider in {"groq", "openai"}:
             messages = data["messages"]
             output = data["max_completion_tokens"]
             content = "\n".join(item["content"] for item in messages)
@@ -188,7 +188,7 @@ def test_state_matrix_preserves_card_boundaries_and_budget_for_both_formatters(
     def upstream(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.content)
         calls.append(payload)
-        if provider == "groq":
+        if provider in {"groq", "openai"}:
             messages = payload["messages"]
             system = messages[0]["content"]
             data = [item["content"] for item in messages[1:]]

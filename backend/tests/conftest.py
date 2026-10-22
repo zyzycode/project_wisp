@@ -50,6 +50,7 @@ def env_values(monkeypatch):
     monkeypatch.delenv("WISP_AI_PROVIDER", raising=False)
     monkeypatch.delenv("WISP_AI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     for name in ("BASE_URL", "MAX_OUTPUT_TOKENS", "TEMPERATURE", "THINKING_LEVEL",
                  "REQUEST_TIMEOUT", "CONNECT_TIMEOUT", "POOL_TIMEOUT"):
         monkeypatch.delenv(f"WISP_AI_{name}", raising=False)

@@ -89,7 +89,7 @@ class HTTPProvider(ABC):
 
     async def select_blocks(self, request: InferenceRequest, cap: int, allowance: int,
                             deadline: float) -> tuple[ContextBlock, ...]:
-        """Groq selection: a documented conservative estimate, not exact tokens."""
+        """Local selection with a conservative estimate, not exact tokens."""
         def estimate(blocks: tuple[ContextBlock, ...]) -> int:
             self.remaining(deadline)
             messages = render_messages(blocks)

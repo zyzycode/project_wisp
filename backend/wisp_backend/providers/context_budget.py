@@ -1,4 +1,4 @@
-"""Local model ceilings and the Groq estimate; Gemini uses its countTokens API."""
+"""Local model ceilings and byte estimates; Gemini uses its countTokens API."""
 
 import json
 from typing import Any
@@ -7,6 +7,7 @@ from typing import Any
 # A local safety ceiling below supported context windows, not the vendor maximum.
 # Kept separate from usage reservations, wire caps, and operator configuration.
 CONTEXT_WINDOWS = {
+    ("openai", "gpt-4.1-mini"): 16_384,
     ("groq", "openai/gpt-oss-20b"): 16_384,
     ("gemini", "gemini-3.5-flash-lite"): 16_384,
     ("gemini", "gemini-3.8-flash"): 16_384,

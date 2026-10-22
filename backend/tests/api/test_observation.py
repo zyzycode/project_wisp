@@ -35,7 +35,7 @@ def test_actual_handler_untrusted_payload_and_output_reserve(
     def upstream(request: httpx.Request) -> httpx.Response:
         data = json.loads(request.content)
         calls.append(data)
-        if provider == "groq":
+        if provider in {"groq", "openai"}:
             messages = data["messages"]
             assert [message["role"] for message in messages] == ["system", "user", "user"]
             system, character, observation = [message["content"] for message in messages]

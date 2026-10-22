@@ -41,7 +41,7 @@ def test_chat_handlers_use_reviewed_lore_with_output_reserve(
     calls = []
     def upstream(request: httpx.Request) -> httpx.Response:
         data = json.loads(request.content)
-        if provider == "groq":
+        if provider in {"groq", "openai"}:
             parts = [item["content"] for item in data["messages"] if item["role"] != "system"]
             system = data["messages"][0]["content"]
             cap = data["max_completion_tokens"]
