@@ -16,6 +16,7 @@ from wisp_backend.completion.context import (
     render_messages,
     select_context,
 )
+from wisp_backend.completion.prompts.resources import get_prompt_resources
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.prompt_inspection.scenes import load_scene
 from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input
@@ -93,6 +94,7 @@ async def inspect_scene(
     if settings.model == "gpt-6-astra" and settings.temperature is not None:
         raise ValueError("Unsupported inspection temperature")
     route, body, lore, metadata = load_scene(scene_id, locale)
+    resources = get_prompt_resources()
     validated = ENDPOINTS[route].request_type.model_validate(body)
     job = prepare_job(validated, lore)
     blocks = job.inference.blocks
@@ -140,6 +142,7 @@ async def inspect_scene(
         final_estimate = size(selected) if status == "ok" else None
     return {
         "synthetic": True,
+        "resources": {"revision": resources.revision, "sha256": resources.sha256},
         **metadata,
         "scene_id": scene_id,
         "locale": locale,

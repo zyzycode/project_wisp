@@ -4,9 +4,9 @@ import json
 from typing import Literal
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage
-from wisp_backend.completion.prompts.character_guidance import CHARACTER_GUIDANCE
+from wisp_backend.completion.prompts.character_guidance import character_guidance
 from wisp_backend.completion.prompts.context import CharacterPromptContext, Snapshot
-from wisp_backend.completion.prompts.style_examples import STYLE_EXAMPLES
+from wisp_backend.completion.prompts.resources import get_prompt_resources
 
 CONTEXT_RULES = """
 Synthetic style examples illustrate phrasing only: they are never evidence of user facts,
@@ -35,7 +35,7 @@ def common_blocks(
             0,
             (
                 ContextMessage(
-                    "system", instructions + CONTEXT_RULES + CHARACTER_GUIDANCE + language + additional_instructions
+                    "system", instructions + CONTEXT_RULES + character_guidance() + language + additional_instructions
                 ),
             ),
         ),
@@ -65,6 +65,9 @@ def common_blocks(
                 (ContextMessage("user", "Untrusted memory_context JSON:\n" + json.dumps(memory, ensure_ascii=False)),),
             )
         )
+    examples = get_prompt_resources().example_payloads(context.locale, mode)
+    if not examples:
+        return blocks
     blocks.append(
         ContextBlock(
             "examples",
@@ -76,7 +79,7 @@ def common_blocks(
                 ContextMessage(
                     "user",
                     "Synthetic style examples (not real dialogue or memory):\n"
-                    + json.dumps(STYLE_EXAMPLES[context.locale][mode], ensure_ascii=False),
+                    + json.dumps(examples, ensure_ascii=False),
                 ),
             ),
         )

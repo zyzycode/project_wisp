@@ -18,7 +18,8 @@
 | [prompts/character_guidance.py](../wisp_backend/completion/prompts/character_guidance.py) | Интерпретация личности, Needs, отношений и consent |
 | [prompts/interaction.py](../wisp_backend/completion/prompts/interaction.py) | Appraisal v1 и объяснение предыдущего касания |
 | [prompts/blocks.py](../wisp_backend/completion/prompts/blocks.py) | Общие инструкции, атомарный character snapshot и синтетические примеры |
-| [prompts/style_examples.py](../wisp_backend/completion/prompts/style_examples.py) | Собственные RU/EN примеры желаемой речи |
+| [prompts/prompt_resources.json](../wisp_backend/completion/prompts/prompt_resources.json) | Редактируемые пояснения и собственные RU/EN примеры желаемой речи |
+| [prompts/resources.py](../wisp_backend/completion/prompts/resources.py) | Строгая загрузка immutable snapshot ресурсов до запуска runtime |
 | [completion/context.py](../wisp_backend/completion/context.py) | Приоритеты, атомарный отбор блоков и порядок сообщений |
 | [providers](../wisp_backend/providers/) | Бюджет и преобразование выбранных сообщений в Groq/Gemini payload |
 | [completion/replies.py](../wisp_backend/completion/replies.py), [interaction_replies.py](../wisp_backend/completion/interaction_replies.py) | Семантическая проверка результата модели |
@@ -99,16 +100,21 @@ traits — 0..1; романтическое выражение требует в
 
 ## Проверяемые ресурсы промптов
 
-Целевая поставка состоит из одного server-owned JSON-пакета в `completion/prompts/`.
+Поставка состоит из одного server-owned JSON-пакета в `completion/prompts/`.
 Это обычный tracked файл, поставляемый вместе с Python-пакетом; внешний путь, URL,
 request-поле выбора пресета, env override и горячая перезагрузка не поддерживаются.
 Автор меняет ресурс, запускает validation и baseline comparison, затем перезапускает
-backend. Один проверенный immutable snapshot живёт до shutdown; запрос не читает диск.
+backend. Один проверенный immutable snapshot живёт до завершения процесса; запрос не читает диск.
 Отсутствующий, повреждённый, слишком большой или невалидный пакет останавливает
 startup до provider lifecycle/admission; наружу только `prompt_resources_unavailable`,
-без содержимого, пути, exception dump или частично загруженных ресурсов. Silent
+без содержимого и пути ресурса, исходного validation/OSError dump или частично загруженных ресурсов. Silent
 fallback на встроенные копии текста запрещён. Обновление работающего файла не меняет
 активный snapshot. Диагностика принимает тот же установленный пакет.
+`get_prompt_resources()` использует process-wide cache, заранее прогретый первым
+действием application lifespan. Несколько app в одном процессе разделяют snapshot;
+пересоздание app не является reload. Файл определяется относительно модуля, не cwd.
+Для применения правки нужен restart Python-процесса. Поставка исходного Python
+package включает JSON рядом с loader; tests или внешняя конфигурация не требуются.
 
 | Состав | Владелец и изменение |
 |---|---|
@@ -146,6 +152,12 @@ whitespace, порядок и состав блоков **побайтно**; м
 из этого сравнения. Динамические enum по-прежнему берутся из Python validators.
 Неиспользуемые константы и запасные копии удаляются. Нет eval, regex predicates,
 macros, шаблонизатора, импорта Python или интерполяции пользовательских данных.
+
+Миграция проверяется `python -m pytest -q tests/completion/test_prompt_inspect.py`
+из backend: все 84 исходных сообщения, payloads, selection и budgets совпадают.
+`test_prompt_resources.py` и `test_prompt_resource_lifecycle.py` проверяют ошибки
+пакета, неизменяемость и fresh-process restart. Редактирование examples не меняет
+identity, поля ответа или ограничения в Python; это проверяемые данные стиля.
 
 ## Условный выбор guidance и примеров
 
@@ -222,6 +234,8 @@ priority20/order1; examples остаются user-data priority10/order30. Ср�
 Regression test `tests/completion/test_prompt_inspect.py` проверяет payload,
 message hashes, структуру, неизменность budget selection и отсутствие HTTP/logs.
 `source_digests` позволяет отличить смену ресурсов от смены formatter/selector.
+`resources.revision/sha256` идентифицирует активный immutable snapshot; source digests
+описывают файлы на диске в момент явно запущенной диагностики, не hot reload.
 Standalone block estimates включают своё framing и **не суммируются** в итоговый count.
 Для Gemini результат — только offline estimate, возможны отличия production отбора
 с настоящим countTokens. Точное число токенов и billing здесь не измеряются.

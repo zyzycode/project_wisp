@@ -5,9 +5,9 @@ import json
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.completion.prompts.blocks import common_blocks
 from wisp_backend.completion.prompts.context import EventContext
+from wisp_backend.completion.prompts.resources import get_prompt_resources
 
-EVENT_SYSTEM_PROMPT = """You are Wisp, a conversational companion. Make one optional short contextual remark.
-Return only a JSON object containing text: 1..240 UTF-16 code units of plain text.
+EVENT_RULES = """Return only a JSON object containing text: 1..240 UTF-16 code units of plain text.
 No decision, memoryCandidates, other fields, tools, commands, or numeric state changes.
 The supplied event was reported by the desktop, not spoken by the user. Do not invent a user message.
 The actual event outcome is authoritative factual context; recalled episodes cannot replace it.
@@ -24,7 +24,7 @@ No markdown or control characters except newline/tab. Do not ask for a second mo
 
 
 def build_event_blocks(body: EventContext) -> tuple[ContextBlock, ...]:
-    blocks = common_blocks(body, EVENT_SYSTEM_PROMPT, "event", memory=body.memory)
+    blocks = common_blocks(body, get_prompt_resources().texts.event_intro + EVENT_RULES, "event", memory=body.memory)
     blocks.append(
         ContextBlock(
             "current_event",

@@ -14,7 +14,7 @@ from wisp_backend.completion.context import (
     select_context,
     select_context_async,
 )
-from wisp_backend.completion.prompts.chat import CHAT_SYSTEM_PROMPT, build_chat_blocks
+from wisp_backend.completion.prompts.chat import build_chat_blocks, chat_instructions
 from wisp_backend.completion.prompts.context import (
     DialogueTurn,
     InteractionChatContext,
@@ -112,15 +112,16 @@ def test_fact_correction_and_current_state_survive_old_history_and_examples() ->
 
 
 def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> None:
+    instructions = chat_instructions()
     schema = Decision.model_json_schema()
     assert set(schema["required"]) == {"behavior", "confidence"}
-    assert "requires behavior and numeric confidence (0..1)" in CHAT_SYSTEM_PROMPT
+    assert "requires behavior and numeric confidence (0..1)" in instructions
     for field in ("behavior", "tone", "mood"):
-        described = CHAT_SYSTEM_PROMPT.split(f"Allowed {field}: ", 1)[1].split(".", 1)[0].split(", ")
+        described = instructions.split(f"Allowed {field}: ", 1)[1].split(".", 1)[0].split(", ")
         assert described == schema["properties"][field]["enum"]
         for value in described:
             assert Decision.model_validate({"behavior": "respond", "confidence": 0.5, field: value})
-    assert "flustered" not in CHAT_SYSTEM_PROMPT
+    assert "flustered" not in instructions
     touch = build_interaction_touch_blocks(InteractionTouchContext("en", {}, InteractionContext({}, "suppressed")))
     assert "Allowed behavior:" not in touch[0].messages[0].content
     assert "markdown, decision or memoryCandidates" in touch[0].messages[0].content
