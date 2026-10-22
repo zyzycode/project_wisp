@@ -1,4 +1,4 @@
-"""Shared v6 corpus and strict metadata boundary, without provider calls."""
+"""Shared v1 corpus and strict metadata boundary, without provider calls."""
 
 import json
 from copy import deepcopy
@@ -7,10 +7,11 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 from tests.helpers import CONTRACT_FIXTURES
-from wisp_backend.api.schemas.observation import ObservationErrorResponse, ObservationRequest, ObservationResponse
+from wisp_backend.api.schemas.common import ErrorResponse as ObservationErrorResponse
+from wisp_backend.api.schemas.observation import ObservationRequest, ObservationResponse
 from wisp_backend.outcomes import MAX_RESPONSE_BYTES
 
-FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v6"
+FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v1/observation"
 
 
 def fixture(name: str) -> Any:

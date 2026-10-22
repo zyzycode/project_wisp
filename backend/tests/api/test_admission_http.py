@@ -21,11 +21,11 @@ from wisp_backend.accounting.contracts import RESERVATION
     ],
 )
 @pytest.mark.parametrize("path", ["/v1/chat", "/v1/touch"])
-def test_usage_accounted_even_for_invalid_model_output(app_factory, body, completion, usage, confirmed, path):
+def test_usage_accounted_even_for_invalid_model_output(app_factory, body, chat_completion, usage, confirmed, path):
     body = touch_body(body) if path == "/v1/touch" else body
     from fastapi.testclient import TestClient
 
-    app = app_factory(lambda _: httpx.Response(200, json=completion({"text": ""}, usage=usage)))
+    app = app_factory(lambda _: httpx.Response(200, json=chat_completion({"text": ""}, usage=usage)))
     with TestClient(app) as client:
         first = client.post(path, json=body)
         assert first.status_code == 502
@@ -39,7 +39,7 @@ def test_usage_accounted_even_for_invalid_model_output(app_factory, body, comple
             )
 
 
-def test_duplicates_and_concurrent_requests_on_real_http_route(app_factory, body, completion):
+def test_duplicates_and_concurrent_requests_on_real_http_route(app_factory, body, chat_completion):
     async def run():
         calls = 0
         entered = asyncio.Event()
@@ -51,7 +51,7 @@ def test_duplicates_and_concurrent_requests_on_real_http_route(app_factory, body
             entered.set()
             await release.wait()
             return httpx.Response(
-                200, json=completion(usage={"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7})
+                200, json=chat_completion(usage={"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7})
             )
 
         app = app_factory(upstream)
@@ -83,7 +83,7 @@ def test_duplicates_and_concurrent_requests_on_real_http_route(app_factory, body
     asyncio.run(run())
 
 
-def test_payloads_never_persist_or_log(app_factory, body, completion, caplog):
+def test_payloads_never_persist_or_log(app_factory, body, chat_completion, caplog):
     from fastapi.testclient import TestClient
 
     marker = "SYNTHETIC_CONTENT_NOT_FOR_STORAGE"
@@ -91,7 +91,9 @@ def test_payloads_never_persist_or_log(app_factory, body, completion, caplog):
     app = app_factory(
         lambda _: httpx.Response(
             200,
-            json=completion({"text": marker}, usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}),
+            json=chat_completion(
+                {"text": marker}, usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+            ),
         )
     )
     with TestClient(app) as client:

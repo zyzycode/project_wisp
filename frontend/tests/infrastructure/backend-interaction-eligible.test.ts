@@ -5,7 +5,7 @@ import type { BackendInteractionAppraisal, BackendInteractionChatRequest, Backen
 import { projectInteractionChat, parseInteractionChatResponse, parseInteractionTouchResponse } from '../../src/infrastructure/ai/backend-interaction-validation';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
 
-const fixture = (name: string): unknown => JSON.parse(readFileSync(`../docs/contracts/fixtures/desktop-backend-v7/${name}`, 'utf8'));
+const fixture = (name: string): unknown => JSON.parse(readFileSync(`../docs/contracts/fixtures/desktop-backend-v1/interaction/${name}`, 'utf8'));
 const wire = fixture('request.chat.json') as BackendInteractionChatRequest;
 const neutral: BackendInteractionAppraisal = { category: 'neutral', intensity: 'low', confidence: 'clear' };
 const json = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
@@ -15,18 +15,18 @@ function input(value: BackendInteractionChatRequest = { ...wire, effectPolicy: '
     userMessage: { id: 'local-only', text: value.messages.at(-1)!.content, createdAt: 'local-only' }, summary: value.summary, previousInitiative: value.previousInitiative,
     interaction: { card: value.card, effectPolicy: value.effectPolicy, ...(value.previousTouch ? { previousTouch: value.previousTouch } : {}) } };
 }
-const client = (fetcher: typeof fetch, apiVersion: 1 | 2 | 3 | 5 | 7 = 7) => new ExternalAIProviderClient({ baseUrl: 'https://backend.example/api', apiVersion, development: false, now: () => 0, fetch: fetcher });
+const client = (fetcher: typeof fetch) => new ExternalAIProviderClient({ baseUrl: 'https://backend.example/api', development: false, now: () => 0, fetch: fetcher });
 function reply(appraisal: BackendInteractionAppraisal): BackendInteractionChatResponse {
-  return { version: 7, requestId: wire.requestId, text: 'Понимаю.', appraisal };
+  return { version: 1, requestId: wire.requestId, text: 'Понимаю.', appraisal };
 }
 const appraisals: readonly BackendInteractionAppraisal[] = (['supportive', 'playful', 'boundary', 'hostile', 'neutral'] as const)
   .flatMap(category => (['low', 'moderate'] as const).flatMap(intensity => (['clear', 'uncertain'] as const).map(confidence => ({ category, intensity, confidence }))));
-it.each(appraisals)('uses one v7 chat request for eligible $category/$intensity/$confidence', async appraisal => {
+it.each(appraisals)('uses one v1 chat request for eligible $category/$intensity/$confidence', async appraisal => {
   const fetcher = vi.fn<typeof fetch>(async () => json(reply(appraisal)));
   const result = await client(fetcher).generateResponse(input());
   expect(result).toMatchObject({ status: 'ok', appraisal, reply: { text: 'Понимаю.' } });
   expect(fetcher).toHaveBeenCalledTimes(1);
-  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://backend.example/api/v7/chat');
+  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://backend.example/api/v1/chat');
   expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({ ...wire, effectPolicy: 'eligible' });
   expect(result).not.toHaveProperty('memoryCandidates');
 });
@@ -77,14 +77,6 @@ it('source-validates memory candidates independently from current appraisal and 
     expect(fetcher).toHaveBeenCalledTimes(1);
   }
 });
-it.each([1, 2, 3, 5] as const)('keeps legacy v%s text-only even when local interaction is eligible', async apiVersion => {
-  const fetcher = vi.fn<typeof fetch>(async () => json({ version: apiVersion, requestId: wire.requestId, text: 'Ответ' }));
-  const result = await client(fetcher, apiVersion).generateResponse(input());
-  expect(result.status).toBe('ok'); expect(result).not.toHaveProperty('appraisal');
-  const sent = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body));
-  for (const key of ['interaction', 'effectPolicy', 'card', 'previousTouch']) expect(sent).not.toHaveProperty(key);
-  expect(fetcher).toHaveBeenCalledTimes(1);
-});
 
 const eligible = fixture('chat.eligible.json') as readonly { name: string; request: BackendInteractionChatRequest; response: BackendInteractionChatResponse }[];
 it.each(eligible)('shares the full eligible corpus case $name with the backend and uses one HTTP request', async entry => {
@@ -95,11 +87,11 @@ it.each(eligible)('shares the full eligible corpus case $name with the backend a
   const result = await client(fetcher).generateResponse(request);
   expect(result).toMatchObject({ status: 'ok', reply: { text: entry.response.text }, appraisal: entry.response.appraisal });
   expect(fetcher).toHaveBeenCalledTimes(1);
-  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://backend.example/api/v7/chat');
+  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://backend.example/api/v1/chat');
   expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(entry.request);
 });
-it.each([1, 2, 3, 5] as const)('rejects appraisal fields in strict legacy v%s success without an implicit upgrade', async apiVersion => {
+it.each([2, 3, 5, 6, 7] as const)('rejects obsolete response version %s without retry', async apiVersion => {
   const fetcher = vi.fn<typeof fetch>(async () => json({ ...reply(neutral), version: apiVersion }));
-  await expect(client(fetcher, apiVersion).generateResponse(input())).rejects.toThrow();
-  expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toContain(`/v${apiVersion}/chat`);
+  await expect(client(fetcher).generateResponse(input())).rejects.toThrow();
+  expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toContain('/v1/chat');
 });

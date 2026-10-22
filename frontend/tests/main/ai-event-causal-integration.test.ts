@@ -80,7 +80,7 @@ class SqliteWorker extends EventEmitter implements MemoryWorker {
 
 async function backendGameFixture(holdEvent = false) {
   const bridge = await backendIntegrationFixture();
-  const directory = mkdtempSync(path.join(os.tmpdir(), 'wisp-v3-game-')), filename = path.join(directory, 'memory.sqlite');
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'wisp-v1-game-')), filename = path.join(directory, 'memory.sqlite');
   const toTimestamp = (ms: number) => new Date(Date.UTC(2026, 8, 18) + ms).toISOString();
   const client = new MemoryWorkerClient({ workerPath: '', filename, now: toTimestamp(0), createWorker: () => new SqliteWorker(SqliteMemoryStore.open(filename, toTimestamp(0))) });
   const repos = createMemoryAdapters(client), failure = vi.fn(), publication = vi.fn();
@@ -104,17 +104,17 @@ async function backendGameFixture(holdEvent = false) {
 
     const fetcher: typeof fetch = async (input, init) => {
       const response = await bridge.fetch(input, init);
-      if (new URL(String(input)).pathname === '/v3/events') { arrived(); if (holdEvent) await held; }
+      if (new URL(String(input)).pathname === '/v1/events') { arrived(); if (holdEvent) await held; }
       return response;
     };
-    const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', apiVersion: 3, development: false, now: f.now, fetch: fetcher });
+    const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', development: false, now: f.now, fetch: fetcher });
     const eventCalls = vi.spyOn(provider, 'generateEvent'), chatCalls = vi.spyOn(provider, 'generateResponse');
     const knowledge = new MemoryKnowledge({ facts: repos.facts, isCurrent: generation => generation === 0, createId: randomUUID, onFailure: failure, preferenceLearning: f.character });
     const recall = new LocalMemoryRecall({ ...repos, scheduler, isCurrent: generation => generation === 0, beforeRead: () => history!.whenSettled(), preference: () => f.character.getState().preferences['activity.cursor_game'], onFailure: failure });
     events = new AIEventRuntime({ provider, recall, now: f.now, timestamp: () => toTimestamp(f.now()), createId: randomUUID, scheduler,
       character: () => f.character.getSnapshot(), gate: () => ({ ...f.main.getAIEventState(), memoryGeneration: 0, identity: dialogue?.getIdentity() ?? null }), publish: publication });
     history = new MemoryHistory({ ...repos, context: () => ({ generation: 0 }), createId: randomUUID, toTimestamp, onFailure: failure, gameObserver: events, onPersisted: (turn, context) => knowledge.persisted(turn, context) });
-    dialogue = new DialogueRuntime({ provider, events,
+    dialogue = new DialogueRuntime({ interactionEnabled: true, provider, events,
       memory: { generation: () => 0, recall, completed: turn => { void history!.completed(turn); } }, now: f.now, timestamp: () => toTimestamp(f.now()), createId: randomUUID, scheduler,
       getCharacterSnapshot: () => f.character.getSnapshot(), applyStimulus: stimulus => f.character.applyStimulus(stimulus), beginThinking: () => {}, endThinking: () => {},
       transaction: commit => commit(), offerIntent: offer => f.main.offerDialogueIntent(offer),
@@ -135,7 +135,7 @@ async function backendGameFixture(holdEvent = false) {
   } catch (error) { await close(); throw error; }
 }
 
-it('carries a committed real game through v3 events and the next accepted chat without fabricating history', async () => {
+it('carries a committed real game through v1 events and the next accepted chat without fabricating history', async () => {
   const f = await backendGameFixture();
   try {
     await f.game();
@@ -148,7 +148,7 @@ it('carries a committed real game through v3 events and the next accepted chat w
     expect(f.bridge.responses[0]?.status).toBe(200);
     const line = f.events.getSpeech(); expect(line?.text).toBe('Мне нравится игра с курсором');
     expect(f.character.getState().relationship).toEqual(relationship);
-    expect(f.bridge.requests[0]).toMatchObject({ path: '/v3/events', body: { version: 3,
+    expect(f.bridge.requests[0]).toMatchObject({ path: '/v1/events', body: { version: 1,
       event: { type: 'cursor_game_completed', outcome: episode.outcome, executedMs: episode.executedMs, occurredAt: episode.endedAt },
       memory: { episodes: [{ kind: 'cursor_game', outcome: episode.outcome, executedMs: episode.executedMs, occurredAt: episode.endedAt }] } } });
     expect(f.bridge.requests[0]?.body).not.toHaveProperty('messages');
@@ -158,26 +158,26 @@ it('carries a committed real game through v3 events and the next accepted chat w
     expect(f.send(1).status).toBe('accepted'); expect(f.send(2)).toMatchObject({ status: 'rejected', reason: 'busy' });
     await f.finishChat();
     expect(f.bridge.responses[1]?.status).toBe(200);
-    expect(f.bridge.requests[1]).toMatchObject({ path: '/v3/chat', body: { version: 3, messages: [{ role: 'user', content: 'да' }], previousInitiative: prior } });
+    expect(f.bridge.requests[1]).toMatchObject({ path: '/v1/chat', body: { version: 1, messages: [{ role: 'user', content: 'да' }], previousInitiative: prior } });
     const previousBlock = f.bridge.responses[1]?.upstreamMessages.find(message => message.content.startsWith('Previous published AI initiative'));
     expect(JSON.parse(previousBlock?.content.split('\n').slice(1).join('\n') ?? 'null')).toEqual(prior);
-    expect(f.dialogue.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Давай ещё поиграем.' });
+    expect(f.dialogue.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Я отреагировала на твоё лёгкое касание.' });
     expect(f.send(3, 'Ещё раз').status).toBe('accepted'); await f.finishChat();
     expect(f.bridge.requests[2]?.body).not.toHaveProperty('previousInitiative');
-    expect(f.bridge.requests[2]).toMatchObject({ path: '/v3/chat', body: { messages: [
-      { role: 'user', content: 'да' }, { role: 'assistant', content: 'Давай ещё поиграем.' }, { role: 'user', content: 'Ещё раз' },
+    expect(f.bridge.requests[2]).toMatchObject({ path: '/v1/chat', body: { messages: [
+      { role: 'user', content: 'да' }, { role: 'assistant', content: 'Я отреагировала на твоё лёгкое касание.' }, { role: 'user', content: 'Ещё раз' },
     ] } });
     const messages = await f.repos.history.getRecent(10, { generation: 0 });
-    expect(messages.ok && messages.value.map(message => message.content)).toEqual(['да', 'Давай ещё поиграем.', 'Ещё раз', 'Давай ещё поиграем.']);
+    expect(messages.ok && messages.value.map(message => message.content)).toEqual(['да', 'Я отреагировала на твоё лёгкое касание.', 'Ещё раз', 'Я отреагировала на твоё лёгкое касание.']);
     expect(await f.repos.facts.list(10, { generation: 0 })).toEqual({ ok: true, value: [] });
     expect(await f.repos.gameReader.getRecent(10, { generation: 0 })).toEqual(persisted);
     expect(f.character.getState().preferences).toEqual({}); expect(f.failure).not.toHaveBeenCalled();
-    expect(f.bridge.requests.map(request => request.path)).toEqual(['/v3/events', '/v3/chat', '/v3/chat']);
+    expect(f.bridge.requests.map(request => request.path)).toEqual(['/v1/events', '/v1/chat', '/v1/chat']);
     expect(f.bridge.responses.map(response => response.upstreamCalls)).toEqual([1, 2, 3]);
   } finally { await f.close(); }
 }, 20000);
 
-it.each(['quiet', 'reset', 'dispose', 'deadline'] as const)('suppresses a real successful v3 response delivered after %s', async action => {
+it.each(['quiet', 'reset', 'dispose', 'deadline'] as const)('suppresses a real successful v1 response delivered after %s', async action => {
   const f = await backendGameFixture(true);
   try {
     await f.game(); const relationship = f.character.getState().relationship;
@@ -194,7 +194,7 @@ it.each(['quiet', 'reset', 'dispose', 'deadline'] as const)('suppresses a real s
     expect(await f.repos.history.getRecent(10, { generation: 0 })).toEqual({ ok: true, value: [] });
     expect(await f.repos.facts.list(10, { generation: 0 })).toEqual({ ok: true, value: [] });
     const saved = await f.repos.gameReader.getRecent(10, { generation: 0 }); expect(saved.ok && saved.value).toHaveLength(1);
-    expect(f.bridge.requests.map(request => request.path)).toEqual(['/v3/events']); expect(f.bridge.responses[0]?.upstreamCalls).toBe(1);
+    expect(f.bridge.requests.map(request => request.path)).toEqual(['/v1/events']); expect(f.bridge.responses[0]?.upstreamCalls).toBe(1);
     expect(f.failure).not.toHaveBeenCalled();
   } finally { await f.close(); }
 }, 20000);

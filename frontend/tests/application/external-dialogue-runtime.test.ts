@@ -10,13 +10,13 @@ function setup(fetcher?: typeof fetch) {
     const parsed: unknown = JSON.parse(String(init?.body));
     if (!parsed || typeof parsed !== 'object' || !('requestId' in parsed) || typeof parsed.requestId !== 'string') throw new TypeError();
     requests.push(parsed.requestId);
-    return new Response(JSON.stringify({ version: 1, requestId: parsed.requestId, text: 'Привет!', decision: { behavior: 'play', confidence: 1 } }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ version: 1, requestId: parsed.requestId, text: 'Привет!', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, decision: { behavior: 'play', confidence: 1 } }), { headers: { 'Content-Type': 'application/json' } });
   }));
 
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.example', development: false, now: Date.now, fetch: transport });
   let id = 0;
   const applyStimulus = vi.fn(), offerIntent = vi.fn(), publish = vi.fn(), endThinking = vi.fn();
-  const runtime = new DialogueRuntime({ provider, now: Date.now, timestamp: () => new Date().toISOString(),
+  const runtime = new DialogueRuntime({ interactionEnabled: true, provider, now: Date.now, timestamp: () => new Date().toISOString(),
     createId: () => `00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus, offerIntent, publish,
@@ -53,7 +53,7 @@ it('allows an immediate new user request after server failure without automatic 
     const body: { requestId: string } = JSON.parse(String(init?.body));
     return new Response(JSON.stringify(fail
       ? { version: 1, requestId: body.requestId, error: { code: 'upstream_unavailable' } }
-      : { version: 1, requestId: body.requestId, text: 'Снова работаю' }),
+      : { version: 1, requestId: body.requestId, text: 'Снова работаю', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }),
       { status: fail ? 503 : 200, headers: { 'Content-Type': 'application/json' } });
   });
   f.runtime.receive(f.command(1)); await flush();

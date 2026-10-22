@@ -55,7 +55,7 @@ it('episode reads are newest by insertion despite wall-clock rollback and reject
   expect(await f.repos.gameReader.getRecent(21, { generation: 0 })).toEqual({ ok: false, code: 'invalid_data' });
 });
 
-it('passes restored SQLite facts and game through accepted dialogue to the current backend v2 and mocked Groq', async () => {
+it('passes restored SQLite facts and game through accepted dialogue to the current backend v1 and mocked Groq', async () => {
   const folder = mkdtempSync(path.join(os.tmpdir(), 'wisp-backend-restart-')); folders.push(folder);
   const filename = path.join(folder, 'wisp.sqlite3'), first = await open(filename);
   const turn = (id: string, text: string) => ({ user: { id, text, createdAt: date }, assistant: { id: id + 'a', text: 'Ответ', createdAt: date }, memoryGeneration: 0 });
@@ -65,8 +65,8 @@ it('passes restored SQLite facts and game through accepted dialogue to the curre
   await first.client.close(0);
   const restored = await open(filename), bridge = await backendIntegrationFixture();
   const completed = vi.fn();
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', apiVersion: 2, development: false, now: Date.now, fetch: bridge.fetch });
-  const runtime = new DialogueRuntime({ provider,
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', development: false, now: Date.now, fetch: bridge.fetch });
+  const runtime = new DialogueRuntime({ interactionEnabled: true, provider,
     memory: { generation: () => 0, recall: restored.recall, completed }, now: Date.now, timestamp: () => date, createId: randomUUID,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(),
@@ -76,12 +76,12 @@ it('passes restored SQLite facts and game through accepted dialogue to the curre
     expect(runtime.receive({ type: 'send', text: 'Мария игра', sequence: 1, streamId: 'restored', conversationId: runtime.getPresentation().conversationId }).status).toBe('accepted');
     await vi.waitFor(() => expect(runtime.getPresentation().turn.phase).not.toBe('thinking'), { timeout: 15000 });
     expect(bridge.responses[0]?.status).toBe(200);
-    expect(runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Помню нашу игру, Мария.' });
+    expect(runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Я отреагировала на твоё лёгкое касание.' });
     expect(bridge.requests).toHaveLength(1);
     const expectedMemory = {
       facts: [{ key: 'user.display_name', value: 'Мария' }], episodes: [{ kind: 'cursor_game', outcome: 'caught', executedMs: 1400, occurredAt: date }], characterPreferences: [],
     };
-    expect(bridge.requests[0]).toMatchObject({ path: '/v2/chat', body: { version: 2, messages: [{ role: 'user', content: 'Мария игра' }], memory: expectedMemory } });
+    expect(bridge.requests[0]).toMatchObject({ path: '/v1/chat', body: { version: 1, messages: [{ role: 'user', content: 'Мария игра' }], memory: expectedMemory } });
     expect(bridge.responses[0]?.upstreamCalls).toBe(1);
     const prefix = 'Untrusted memory_context JSON:\n';
     const memoryMessage = bridge.responses[0]?.upstreamMessages.find(message => message.content.startsWith(prefix));
@@ -99,9 +99,9 @@ it('passes restored SQLite facts and game through accepted dialogue to the curre
 it('bounds bridge input and closes its child once even with concurrent teardown', async () => {
   const bridge = await backendIntegrationFixture();
   try {
-    await expect(bridge.fetch('https://backend.invalid/v2/chat', { method: 'POST', body: JSON.stringify({ text: 'x'.repeat(64 * 1024) }) })).rejects.toThrow('input limit');
+    await expect(bridge.fetch('https://backend.invalid/v1/chat', { method: 'POST', body: JSON.stringify({ text: 'x'.repeat(64 * 1024) }) })).rejects.toThrow('input limit');
     expect(bridge.requests).toHaveLength(0);
   } finally { await Promise.all([bridge.close(), bridge.close()]); }
   expect(bridge.isClosed()).toBe(true);
-  await expect(bridge.fetch('https://backend.invalid/v2/chat', { method: 'POST', body: '{}' })).rejects.toThrow('unavailable');
+  await expect(bridge.fetch('https://backend.invalid/v1/chat', { method: 'POST', body: '{}' })).rejects.toThrow('unavailable');
 }, 15000);

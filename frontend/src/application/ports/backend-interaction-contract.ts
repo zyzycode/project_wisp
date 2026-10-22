@@ -1,4 +1,4 @@
-/** Explicit wire v7; imports only other wire contracts, never local semantic DTOs. */
+/** Explicit wire v1; imports only other wire contracts, never local semantic DTOs. */
 import type { BackendAIErrorCode, BackendCharacterContext } from './backend-ai-contract';
 import type { BackendSummaryChatRequest, BackendSummaryChatResponse } from './backend-summary-contract';
 
@@ -25,7 +25,7 @@ export interface BackendInteractionPolicy {
 }
 
 export interface BackendInteractionTouchRequest extends BackendInteractionPolicy {
-  readonly version: 7;
+  readonly version: 1;
   readonly requestId: string;
   readonly stream: false;
   readonly locale: 'ru' | 'en';
@@ -34,25 +34,23 @@ export interface BackendInteractionTouchRequest extends BackendInteractionPolicy
 }
 
 export interface BackendInteractionTouchResponse {
-  readonly version: 7;
+  readonly version: 1;
   readonly requestId: string;
   readonly text: string;
   readonly appraisal: BackendInteractionAppraisal;
 }
 
-export type BackendInteractionChatRequest = Omit<BackendSummaryChatRequest, 'version'> &
+export type BackendInteractionChatRequest = BackendSummaryChatRequest &
   BackendInteractionPolicy & {
-    readonly version: 7;
     readonly previousTouch?: BackendPreviousTouchReaction;
   };
 
-export type BackendInteractionChatResponse = Omit<BackendSummaryChatResponse, 'version'> & {
-  readonly version: 7;
+export type BackendInteractionChatResponse = BackendSummaryChatResponse & {
   readonly appraisal: BackendInteractionAppraisal;
 };
 
 export interface BackendInteractionErrorResponse {
-  readonly version: 7;
+  readonly version: 1;
   readonly requestId: string | null;
   readonly error: { readonly code: BackendAIErrorCode; readonly retryAfterMs?: number };
 }

@@ -1,4 +1,4 @@
-/** Explicit wire v2 extension. Imports are wire-only; local memory DTOs are independent. */
+/** Explicit wire v1 extension. Imports are wire-only; local memory DTOs are independent. */
 import type {
   BackendAIBehavior, BackendAITone, BackendAIMood, BackendCharacterContext,
   BackendAIErrorCode, BackendAIMessage,
@@ -33,7 +33,7 @@ export interface BackendMemoryContext {
 }
 
 export interface BackendMemoryRequest {
-  readonly version: 2;
+  readonly version: 1;
   readonly requestId: string;
   readonly event: { readonly type: 'user_message' };
   readonly messages: readonly BackendAIMessage[];
@@ -48,7 +48,7 @@ export interface BackendMemoryCandidate extends BackendMemoryFact {
 }
 
 export interface BackendMemoryResponse {
-  readonly version: 2;
+  readonly version: 1;
   readonly requestId: string;
   readonly text: string;
   readonly decision?: {
@@ -61,7 +61,7 @@ export interface BackendMemoryResponse {
 }
 
 export interface BackendMemoryErrorResponse {
-  readonly version: 2;
+  readonly version: 1;
   readonly requestId: string | null;
   readonly error: { readonly code: BackendAIErrorCode; readonly retryAfterMs?: number };
 }

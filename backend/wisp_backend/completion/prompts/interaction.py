@@ -1,4 +1,4 @@
-"""One-call v7 text/appraisal instructions and atomic untrusted cause context."""
+"""One-call v1 text/appraisal instructions and atomic untrusted cause context."""
 
 import json
 

@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 from tests.helpers import CONTRACT_FIXTURES, TrackedStream, gemini_completion
 from wisp_backend.accounting.contracts import Usage
 from wisp_backend.api.dispatch import prepare_job
-from wisp_backend.api.schemas.chat import ChatRequest
 from wisp_backend.api.schemas.interaction import InteractionChatRequest
+from wisp_backend.api.schemas.interaction import InteractionChatRequest as ChatRequest
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.completion.contracts import InferenceRequest
 from wisp_backend.config.settings import AssistantSettings
@@ -25,8 +25,8 @@ REQUEST = InferenceRequest(
 )
 
 
-def test_exact_count_keeps_russian_v7_history_and_counts_the_generated_payload(monkeypatch: pytest.MonkeyPatch) -> None:
-    body = json.loads((CONTRACT_FIXTURES / "desktop-backend-v7/request.chat.json").read_bytes())
+def test_exact_count_keeps_russian_v1_history_and_counts_the_generated_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    body = json.loads((CONTRACT_FIXTURES / "desktop-backend-v1/interaction/request.chat.json").read_bytes())
     body["messages"] = [
         turn
         for _ in range(3)

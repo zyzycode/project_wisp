@@ -15,7 +15,7 @@ import { backendIntegrationFixture } from '../backend-integration-fixture';
 const folders: string[] = []; const date = '2026-10-17T00:00:00.000Z';
 afterEach(async () => { for (const folder of folders.splice(0)) await rm(folder, { recursive: true, force: true }); });
 async function folder() { const value = await mkdtemp(path.join(os.tmpdir(), 'wisp-summary-')); folders.push(value); return value; }
-it('generates explicitly, restarts, resolves exact sources after1000 pairs, and sends actual v5 prompt with coverage', async () => {
+it('generates explicitly, restarts, resolves exact sources after1000 pairs, and sends actual v1 prompt with coverage', async () => {
   const root = await folder(), filename = path.join(root, 'memory.sqlite'), cachefile = path.join(root, 'summary.json');
   let store = SqliteMemoryStore.open(filename, date), id = 0, generation = 0, session = 'session';
   function call(operation: string, payload: unknown): MemoryResult<unknown> { return store.execute({ id: ++id, operation, payload, generation }); }
@@ -25,7 +25,7 @@ it('generates explicitly, restarts, resolves exact sources after1000 pairs, and 
   const sources: ISummarySourceReader = { recent: async () => { const r = call('summaryRecent', null); return r.ok ? { ok: true, value: summarySnapshot(r.value) } : r; }, exact: async s => { const r = call('summaryExact', s); return r.ok ? { ok: true, value: summarySnapshot(r.value) } : r; } };
   const bridge = await backendIntegrationFixture();
   try {
-  const generator = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', apiVersion: 5, development: false, now: Date.now, fetch: bridge.fetch });
+  const generator = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', development: false, now: Date.now, fetch: bridge.fetch });
   const options = () => ({ sources, cache: new FileSummaryCache(cachefile), generator, context: () => ({ generation }), now: Date.now, createId: randomUUID, hash: (s: string) => createHash('sha256').update(s).digest('hex'), scheduler: { setTimeout, clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) }, locale: 'ru' as const, beforeRead: async () => {}, canGenerate: () => true });
   for (let n = 0; n < 11; n++) append(n);
   const first = new SummaryRuntime(options()); const preview = await first.preview(); expect(preview.ok).toBe(true); if (!preview.ok) throw new Error('preview');
@@ -34,8 +34,8 @@ it('generates explicitly, restarts, resolves exact sources after1000 pairs, and 
   // Reuse the persisted session directly only for the synthetic fixture; normal app creates a new session.
   for (let n = 11; n < 1011; n++) append(n);
   const restarted = new SummaryRuntime(options()); const capture = await restarted.capture('Космос'); expect(capture?.excludedMessageIds).toHaveLength(16);
-  await generator.generateResponse({ ...providerRequest(), summary: { text: capture!.text } }); expect(bridge.requests.at(-1)?.body).toMatchObject({ version: 5, summary: { text: 'Пользователь обсуждал космос.' } });
-  expect(bridge.requests.filter(request => request.path === '/v5/summary')).toHaveLength(1);
+  await generator.generateResponse({ ...providerRequest(), summary: { text: capture!.text } }); expect(bridge.requests.at(-1)?.body).toMatchObject({ version: 1, summary: { text: 'Пользователь обсуждал космос.' } });
+  expect(bridge.requests.filter(request => request.path === '/v1/summary')).toHaveLength(1);
   expect(bridge.responses.at(-1)?.upstreamMessages.some(message => message.content.includes('Unconfirmed older-dialogue summary:'))).toBe(true);
   generation++; expect(call('mutateMemoryItem', { kind: 'confirm', commandId: 'confirm', itemId: 'item', expectedRevision: 0, confirmed: true, content: { category: 'shared_joke', label: 'Космос', text: 'История', occurredOn: null }, source: { userMessageId: 'u0', assistantMessageId: 'a0' }, confirmedAt: date }).ok).toBe(true);
   expect(await restarted.capture('Космос')).toBeUndefined(); await restarted.reset(); generation++; expect(call('clear', null).ok).toBe(true); expect(await restarted.capture('Космос')).toBeUndefined(); restarted.dispose();

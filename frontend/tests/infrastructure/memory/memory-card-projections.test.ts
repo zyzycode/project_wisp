@@ -30,15 +30,15 @@ async function open() {
   return { repos, history, recall, generation: () => generation, next: () => ++generation };
 }
 afterEach(async () => { for (const client of clients.splice(0)) await client.close(99); for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true }); });
-it.each([1, 2, 3] as const)('omits suppressed pairs from hydration, recall and real v%s network projection after every mutation', async version => {
+it('omits suppressed pairs from hydration, recall and unified network projection after every mutation', async () => {
   const f = await open(); const bodies: unknown[] = [];
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://fake.invalid', apiVersion: version, development: false, now: Date.now,
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://fake.invalid', development: false, now: Date.now,
     fetch: async (_url, init) => {
       const body: unknown = JSON.parse(String(init?.body)); bodies.push(body);
       if (!body || typeof body !== 'object' || !('requestId' in body)) throw new Error('missing request');
-      return new Response(JSON.stringify({ version, requestId: body.requestId, text: 'Северное сияние — незабываемая встреча' }), { headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ version: 1, appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, requestId: body.requestId, text: 'Северное сияние — незабываемая встреча' }), { headers: { 'content-type': 'application/json' } });
     } });
-  const runtime = new DialogueRuntime({ provider, memory: { generation: f.generation, ...(version > 1 ? { recall: f.recall } : {}), completed: turn => { void f.history.completed(turn); } },
+  const runtime = new DialogueRuntime({ interactionEnabled: true, provider, memory: { generation: f.generation, recall: f.recall, completed: turn => { void f.history.completed(turn); } },
     now: Date.now, timestamp: () => date, createId: randomUUID, scheduler: { setTimeout, clearTimeout: h => clearTimeout(h as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: work => work(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('stream'); let sequence = 0;
@@ -79,12 +79,12 @@ it('aborts an in-flight chat on mutation and never republishes or persists its l
   const fetcher: typeof fetch = async (_url, init) => { signal = init?.signal; return new Promise(yes => { resolve = yes; }); };
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://fake.invalid', development: false, now: Date.now, fetch: fetcher });
   const completed = vi.fn(); let generation = 0;
-  const runtime = new DialogueRuntime({ provider, memory: { generation: () => generation, completed }, now: Date.now, timestamp: () => date, createId: randomUUID,
+  const runtime = new DialogueRuntime({ interactionEnabled: true, provider, memory: { generation: () => generation, completed }, now: Date.now, timestamp: () => date, createId: randomUUID,
     scheduler: { setTimeout, clearTimeout: h => clearTimeout(h as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => providerRequest().characterSnapshot,
     applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: work => work(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('s'); runtime.receive({ type: 'send', sequence: 1, streamId: 's', conversationId: runtime.getPresentation().conversationId, text: 'old request' });
   await vi.waitFor(() => expect(signal).toBeDefined()); generation++; runtime.clearMemoryContext(); expect(signal?.aborted).toBe(true);
-  resolve(new Response(JSON.stringify({ version: 1, requestId: 'old', text: 'late secret' }), { headers: { 'content-type': 'application/json' } }));
+  resolve(new Response(JSON.stringify({ version: 1, requestId: 'old', text: 'late secret', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'content-type': 'application/json' } }));
   await vi.waitFor(() => expect(runtime.getPresentation().canSubmit).toBe(true));
   expect(runtime.getPresentation().turn.phase).toBe('idle'); expect(completed).not.toHaveBeenCalled(); runtime.dispose();
 });

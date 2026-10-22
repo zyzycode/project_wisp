@@ -22,7 +22,9 @@ def test_inherited_proxy_is_explicit(monkeypatch, body, trust_env, status, tmp_p
                     "choices": [
                         {
                             "finish_reason": "stop",
-                            "message": {"content": '{"text":"42"}'},
+                            "message": {
+                                "content": '{"text":"42","appraisal":{"category":"neutral","intensity":"low","confidence":"clear"}}'
+                            },
                         }
                     ]
                 }

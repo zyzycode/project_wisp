@@ -3,7 +3,7 @@
   "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
   "event": {
     "type": "user_touch",
-    "variant": "stroke"
+    "variant": "touch"
   },
   "stream": false,
   "locale": "ru",
@@ -21,7 +21,7 @@
       "loveUnlocked": false
     },
     "personality": {
-      "presetId": "default",
+      "presetId": "shyDreamGirl",
       "aiSelfConcept": "Я Wisp, твой компаньон.",
       "traits": {
         "shyness": 0.4,
@@ -36,5 +36,10 @@
       "userConsentEnabled": false
     },
     "synthesizedTone": "curious"
-  }
+  },
+  "card": {
+    "id": "shyDreamGirl",
+    "revision": 1
+  },
+  "effectPolicy": "suppressed"
 }

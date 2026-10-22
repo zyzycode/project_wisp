@@ -1,4 +1,4 @@
-"""Strict semantic proposals for v7; never numerical character writes."""
+"""Strict semantic proposals for v1; never numerical character writes."""
 
 from typing import Literal
 

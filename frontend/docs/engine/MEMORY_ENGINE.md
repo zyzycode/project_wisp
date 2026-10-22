@@ -229,13 +229,13 @@ LLM может предложить до трёх кандидатов в том
 
 ### Network mode и удаление
 
-Provider DTO получает optional memoryContext только в явно выбранном Main режиме v2; сетевой payload — [BACKEND_MEMORY_CONTRACT](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). v1 сохраняет прежний запрет memories; автоматического downgrade v2→v1/смены модели/второго запроса нет. После restart recall вновь читает сохранённое; после dialogue reset в новой conversation structured facts/релевантные episodes доступны по следующему явному user send, но не подмешиваются без запроса. Полный memory reset очищает источники по §6 и защищает поздние callbacks.
+Provider DTO получает memoryContext по умолчанию; сетевой payload — [BACKEND_MEMORY_CONTRACT](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). Единый `/v1/chat` отправляет bounded memory вместе с карточкой и effectPolicy; смены модели или второго запроса при ошибке нет. После restart recall вновь читает сохранённое; после dialogue reset в новой conversation structured facts/релевантные episodes доступны по следующему явному user send, но не подмешиваются без запроса. Полный memory reset очищает источники по §6 и защищает поздние callbacks.
 
-Исправление заменяет current fact, но не стирает исходный transcript. Команда забывания отдельного факта/редактирование истории не вводится: не обещать такого удаления в ответе LLM; полноценный full reset остаётся #8. `removeByKey` остаётся низкоуровневым портом для доверенного use case, не публичной семантикой «забыть навсегда». Retention server/cache/provider и отсутствие server-delete endpoint — [backend §6](../../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление), с явным составом v2 из отдельного контракта.
+Исправление заменяет current fact, но не стирает исходный transcript. Команда забывания отдельного факта/редактирование истории не вводится: не обещать такого удаления в ответе LLM; полноценный full reset остаётся #8. `removeByKey` остаётся низкоуровневым портом для доверенного use case, не публичной семантикой «забыть навсегда». Retention server/cache/provider и отсутствие server-delete endpoint — [backend §6](../../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление), с явным составом памяти из отдельного контракта.
 
 ## 10. MEM-A03: важные события и общие шутки (planned)
 
-Решение [#65](https://github.com/zyzycode/project_wisp/issues/65). Этот раздел — следующая реализация поверх §9, **не описание работающего MVP**. Schema v1, пять wire facts, текущие v1/v2/v3 DTO и перенос backend #62–64 не изменяются. Новая schema2 и wire v4 включаются только завершёнными slices из результата. Character snapshot не меняется; записи ниже не дают adaptation evidence, consent или числовых rewards.
+Решение [#65](https://github.com/zyzycode/project_wisp/issues/65). Этот раздел — следующая реализация поверх §9, **не описание работающего MVP**. Локальная schema2 не расширяет wire allowlist из пяти facts. Передача новых категорий потребует отдельного завершённого slice в едином API v1. Character snapshot не меняется; записи ниже не дают adaptation evidence, consent или числовых rewards.
 
 
 ### 10.1. Допустимые знания и evidence
@@ -268,7 +268,7 @@ Evidence — exact подтверждённые label/text/date/category тек�
 
 Текстовые токены — NFC/lowercase, Unicode letters/digits длиной 2–64; не более 64 различных токенов label+text на item в порядке появления. Детерминированный индекс `(token, item insertion order DESC, item ID)` обычными SQLite таблицами, без FTS/embeddings. Производный индекс можно транзакционно перестроить из current active items; потеря индекса не удаляет source. Состояние rebuild не выдаётся за пустую память: на turn — degraded recall. Rebuild выполняется worker порциями ≤100 items с сохранением cursor, без нового scheduler/LLM и без задержки локального runtime сверх §4 startup deadline.
 
-Application ports отдельно задают typed confirm/update/withdraw/delete, paged list и candidate search; Infrastructure скрывает SQL и порядок. Новые порты/IPC DTO/guards объявляются **до реализации** первого slice; v2 provider context не расширяется union-ом без независимой versioned projection. Имена таблиц и local IDs не входят в wire. Ограничение §3 read limit ≤100 действует также здесь; нет SELECT всей истории ради одного запроса.
+Application ports отдельно задают typed confirm/update/withdraw/delete, paged list и candidate search; Infrastructure скрывает SQL и порядок. Новые порты/IPC DTO/guards объявляются **до реализации** первого slice; provider context не расширяется без согласованной wire projection обеих сторон. Имена таблиц и local IDs не входят в wire. Ограничение §3 read limit ≤100 действует также здесь; нет SELECT всей истории ради одного запроса.
 
 ### 10.4. Bounded recall длительной истории
 
@@ -276,7 +276,7 @@ Application ports отдельно задают typed confirm/update/withdraw/de
 
 Score — число совпавших различных query tokens в label+text, только >0; затем больше label matches, затем более поздняя revision confirmation order, затем item ID по codepoint. Alias/synonyms, RNG, sentiment importance и embeddings не добавляются. В общем лимите **двух** episodes при game query сохраняется одно место последней допустимой игре §9; оставшиеся места занимают ranked items, затем обычные ranked recent pairs. Отобранная карточка не дублируется своим transcript; suppressed pairs исключаются до selection независимо от provider версии. При равном вводе/БД результат детерминирован.
 
-Всегда сначала текущие wire facts/Character projection, затем episodes; memory cap остаётся 2400 UTF-16 string values и 32KiB всего HTTP. Drop episodes с конца ranking, без усечения текущего подтверждённого text и без потери ядра/facts. Нулевой match → только разрешённый baseline context; не угадывать память. Любой storage error/timeout/stale → безопасная пустая memory projection текущего turn, без позднего send/write и без неограниченной очереди. В режимах v1–v3 новые категории не отправляются; после их фильтрации baseline episode slots заполняются допустимыми §9 кандидатами.
+Всегда сначала текущие wire facts/Character projection, затем episodes; memory cap остаётся 2400 UTF-16 string values и 32KiB всего HTTP. Drop episodes с конца ranking, без усечения текущего подтверждённого text и без потери ядра/facts. Нулевой match → только разрешённый baseline context; не угадывать память. Любой storage error/timeout/stale → безопасная пустая memory projection текущего turn, без позднего send/write и без неограниченной очереди. В API v1 новые категории не отправляются; после их фильтрации baseline episode slots заполняются допустимыми §9 кандидатами.
 
 ### 10.5. Проверяемые сценарии качества
 
@@ -305,7 +305,7 @@ Application владеет selection/generation/revalidation; Infrastructure —
 
 Зависимость #79 — MEM-I01/#80: durable признак допустимого successful source и suppression
 из §10; без них нельзя после restart доказать, что persisted pair не fallback.
-Schema1 → summary недоступна, обычная память/chat работают. MEM-I02/v4 не требуются.
+Schema1 → summary недоступна, обычная память/chat работают. Расширение wire memory не требуется.
 Исходники — только соседние completed user→assistant пары одной сохранённой session,
 подтверждённые worker append, с допустимой provenance; suppressed/withdrawn/deleted
 source, непоказанный результат, event speech и lore никогда не источник.
@@ -387,7 +387,7 @@ verified preference. При локальном fallback appraisal=neutral/low/un
 effect=rejected/reason=unavailable либо state_changed, suppressed/cooldown при rate gate.
 
 Trace заменяется следующим опубликованным touch. Его копия попадает только в явный
-v7 chat как previousTouch; не consume-on-read, последующие вопросы до TTL допускаются.
+`/v1/chat` как previousTouch; не consume-on-read, последующие вопросы до TTL допускаются.
 Никакого поиска старых touch из chat text. Исходный пользовательский вопрос и текущий
 snapshot приоритетнее старого trace; prompt честно отделяет состояние тогда от сейчас.
 Touch без публикации не создаёт trace и не затирает прежний, кроме invalidation.
@@ -403,5 +403,5 @@ pending late response, ни cache не возвращают след в конт
 
 Обычные chat pairs сохраняются по прежним правилам. AI appraisal не идёт в extraction,
 recall, подтверждение фактов, axes learning или summary. Backend получает только bounded
-projection согласно [Events §10](../../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v7),
+projection согласно [Events §10](../../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v1),
 не local interactionId/generation/monotonic clocks, не история прикосновений.

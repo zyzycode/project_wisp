@@ -1,4 +1,4 @@
-/** Explicit wire v3. Dependencies below are independently versioned wire types only. */
+/** Explicit wire v1. Dependencies below are wire types only. */
 import type { BackendAIErrorCode, BackendCharacterContext, BackendAIMessage } from './backend-ai-contract';
 import type { BackendMemoryContext, BackendMemoryResponse } from './backend-memory-contract';
 
@@ -12,7 +12,7 @@ export type BackendCompanionEvent =
   | { readonly type: 'social_bid_started'; readonly occurredAt: string };
 
 export interface BackendEventRequest {
-  readonly version: 3;
+  readonly version: 1;
   readonly requestId: string;
   readonly event: BackendCompanionEvent;
   readonly stream: false;
@@ -22,7 +22,7 @@ export interface BackendEventRequest {
 }
 
 export interface BackendEventResponse {
-  readonly version: 3;
+  readonly version: 1;
   readonly requestId: string;
   readonly text: string;
 }
@@ -33,9 +33,9 @@ export interface BackendPreviousInitiative {
   readonly createdAt: string;
 }
 
-/** V2 user-message semantics plus one explicitly sourced preceding initiative. */
+/** v1 user-message semantics plus one explicitly sourced preceding initiative. */
 export interface BackendEventAwareChatRequest {
-  readonly version: 3;
+  readonly version: 1;
   readonly requestId: string;
   readonly event: { readonly type: 'user_message' };
   readonly messages: readonly BackendAIMessage[];
@@ -46,10 +46,10 @@ export interface BackendEventAwareChatRequest {
   readonly previousInitiative?: BackendPreviousInitiative;
 }
 
-export type BackendEventAwareChatResponse = Omit<BackendMemoryResponse, 'version'> & { readonly version: 3 };
+export type BackendEventAwareChatResponse = BackendMemoryResponse;
 
 export interface BackendEventErrorResponse {
-  readonly version: 3;
+  readonly version: 1;
   readonly requestId: string | null;
   readonly error: { readonly code: BackendAIErrorCode; readonly retryAfterMs?: number };
 }

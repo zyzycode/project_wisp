@@ -8,23 +8,25 @@ import { DialogueRuntime } from '../../src/application/services/dialogue-loop.se
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
 import { providerRequest } from './backend-ai-fixture';
 import type { BackendEventRequest, BackendEventAwareChatRequest } from '../../src/application/ports/backend-events-contract';
-const fixture = (name: string): unknown => JSON.parse(readFileSync(path.join(process.cwd(), '../docs/contracts/fixtures/desktop-backend-v3', name), 'utf8'));
+
+function component(value: unknown) { if (!value || typeof value !== 'object') throw new Error('Expected fixture'); return Object.fromEntries(Object.entries(value).filter(([key]) => !["card", "effectPolicy", "appraisal"].includes(key))); }
+const fixture = (name: string): unknown => JSON.parse(readFileSync(path.join(process.cwd(), '../docs/contracts/fixtures/desktop-backend-v1/events', name), 'utf8'));
 const game = fixture('request.game.json') as BackendEventRequest, social = fixture('request.social.json') as BackendEventRequest, chat = fixture('request.chat.json') as BackendEventAwareChatRequest;
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(300000); });
 afterEach(() => vi.useRealTimers());
-it('matches all six common v3 fixtures without inventing a user message for events', () => {
+it('matches all six common v1 fixtures without inventing a user message for events', () => {
   for (const request of [game, social]) {
     const projected = projectEventRequest({ requestId: request.requestId, event: request.event, characterSnapshot: request.character, memoryContext: request.memory, locale: request.locale });
     expect(projected).toEqual(request); expect(projected).not.toHaveProperty('messages');
   }
-  expect(projectEventAwareChat({ ...providerRequest(), requestId: chat.requestId, characterSnapshot: chat.character, userMessage: { id: 'local', text: chat.messages.at(-1)!.content, createdAt: '' }, recentContext: [], memoryContext: chat.memory, previousInitiative: chat.previousInitiative })).toEqual(chat);
+  expect(projectEventAwareChat({ ...providerRequest(), requestId: chat.requestId, characterSnapshot: chat.character, userMessage: { id: 'local', text: chat.messages.at(-1)!.content, createdAt: '' }, recentContext: [], memoryContext: chat.memory, previousInitiative: chat.previousInitiative })).toEqual(component(chat));
   expect(parseEventResponse(fixture('response.event.success.json'), game.requestId).replyText).toBeDefined();
-  expect(parseEventError(fixture('response.error.json'), game.requestId, 503).version).toBe(3);
-  expect(parseEventAwareChat(fixture('response.chat.success.json'), chat.requestId, chat.messages.at(-1)!.content)).toEqual(fixture('response.chat.success.json'));
+  expect(parseEventError(fixture('response.error.json'), game.requestId, 503).version).toBe(1);
+  expect(parseEventAwareChat(component(fixture('response.chat.success.json')), chat.requestId, chat.messages.at(-1)!.content)).toEqual(component(fixture('response.chat.success.json')));
 });
-it.each([{ decision: null }, { memoryCandidates: [] }, { delta: 1 }, { text: '' }, { text: 'x'.repeat(241) }, { version: 2 }, { requestId: 'wrong' }])('strictly rejects event output extension/bounds %j', extra => {
-  expect(() => parseEventResponse({ version: 3, requestId: game.requestId, text: 'Привет', ...extra }, game.requestId)).toThrow();
+it.each([{ decision: null }, { memoryCandidates: [] }, { delta: 1 }, { text: '' }, { text: 'x'.repeat(241) }, { version: 1 }, { requestId: 'wrong' }])('strictly rejects event output extension/bounds %j', extra => {
+  expect(() => parseEventResponse({ version: 1, requestId: game.requestId, text: 'Привет', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, ...extra }, game.requestId)).toThrow();
 });
 it('does not expose source IDs or allow forged game outcomes/duration', () => {
   const request = { requestId: game.requestId, event: game.event, characterSnapshot: game.character, memoryContext: game.memory, locale: game.locale };
@@ -39,30 +41,31 @@ it('hands the single HTTP slot to an accepted user only after aborted event fetc
       init?.signal?.addEventListener('abort', () => { cancelled = true; setTimeout(() => { active--; no(new Error('aborted')); }, 500); }, { once: true });
     });
     active--; const body: { requestId: string } = JSON.parse(String(init?.body));
-    return new Response(JSON.stringify({ version: 3, requestId: body.requestId, text: 'Ответ' }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ version: 1, requestId: body.requestId, text: 'Ответ', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'Content-Type': 'application/json' } });
   });
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', apiVersion: 3, development: false, now: Date.now, fetch: fetcher });
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, now: Date.now, fetch: fetcher });
   let id = 0; const createId = () => `00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}`;
   const events = new AIEventRuntime({ provider, recall: { recall: async () => ({ ok: true, value: emptyMemoryContext() }) }, now: Date.now, timestamp: () => new Date().toISOString(), createId,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, character: () => providerRequest().characterSnapshot,
     gate: () => ({ allowed: true, activeRunId: 'social', localSpeech: false, memoryGeneration: 0, identity: 'current' }), publish: vi.fn() });
-  const runtime = new DialogueRuntime({ provider, events, now: Date.now, timestamp: () => new Date().toISOString(), createId,
+  const runtime = new DialogueRuntime({ interactionEnabled: true, provider, events, now: Date.now, timestamp: () => new Date().toISOString(), createId,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => providerRequest().characterSnapshot,
     applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: commit => commit(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('s'); events.socialStarted('social', Date.now()); await flush();
-  expect(paths).toEqual(['/v3/events']); expect(runtime.getPresentation().canSubmit).toBe(true);
+  expect(paths).toEqual(['/v1/events']); expect(runtime.getPresentation().canSubmit).toBe(true);
   expect(runtime.receive({ type: 'send', text: 'Привет', sequence: 1, streamId: 's', conversationId: runtime.getPresentation().conversationId }).status).toBe('accepted');
-  await flush(); expect(cancelled).toBe(true); expect(paths).toEqual(['/v3/events']);
+  await flush(); expect(cancelled).toBe(true); expect(paths).toEqual(['/v1/events']);
   await vi.advanceTimersByTimeAsync(499); expect(paths).toHaveLength(1);
-  await vi.advanceTimersByTimeAsync(1); expect(paths).toEqual(['/v3/events', '/v3/chat']); expect(maximum).toBe(1);
+  await vi.advanceTimersByTimeAsync(1); expect(paths).toEqual(['/v1/events', '/v1/chat']); expect(maximum).toBe(1);
   expect(runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Ответ' }); expect(events.getSpeech()).toBeNull();
   runtime.dispose(); events.dispose();
 });
 it('event transport aborts at3000ms without retries and rejects a later successful response', async () => {
   let resolve!: (response: Response) => void; let aborted = false;
 
+
   const fetcher = vi.fn<typeof fetch>(async (_url, init) => { init?.signal?.addEventListener('abort', () => { aborted = true; }); return new Promise(yes => { resolve = yes; }); });
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', apiVersion: 3, development: false, now: Date.now, fetch: fetcher });
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, now: Date.now, fetch: fetcher });
   const pending = provider.generateEvent({ requestId: game.requestId, event: game.event, characterSnapshot: game.character, memoryContext: game.memory, locale: 'ru' });
   const rejected = expect(pending).rejects.toThrow(); await vi.advanceTimersByTimeAsync(3000); await rejected; expect(aborted).toBe(true);
   resolve(new Response(JSON.stringify(fixture('response.event.success.json')), { headers: { 'Content-Type': 'application/json' } })); await flush(); expect(fetcher).toHaveBeenCalledTimes(1);

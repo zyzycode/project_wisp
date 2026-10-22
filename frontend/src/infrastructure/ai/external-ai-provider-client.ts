@@ -2,20 +2,15 @@ import { projectInteractionChat, projectInteractionTouch, parseInteractionChatRe
 import type { IObservationProvider, ObservationProviderRequest } from '../../application/ports/observation-provider.interface';
 import { projectObservationRequest, parseObservationResponse, parseObservationError } from './backend-observation-validation';
 import type { ISummaryGenerator } from '../../application/ports/summary';
-import { parseSummaryRequest, parseSummaryResponse, projectSummaryChat, parseSummaryChatResponse, parseSummaryError } from './backend-summary-validation';
+import { parseSummaryRequest, parseSummaryResponse, parseSummaryError } from './backend-summary-validation';
 import type { AIEventProviderRequest, AIEventProviderResponse, IAIEventProvider } from '../../application/ports/ai-event-provider.interface';
-import { projectEventRequest, projectEventAwareChat, parseEventAwareChat, parseEventResponse, parseEventError } from './backend-events-validation';
-import { projectBackendMemoryRequest, parseBackendMemorySuccess, parseBackendMemoryError } from './backend-memory-validation';
+import { projectEventRequest, parseEventResponse, parseEventError } from './backend-events-validation';
 import type { AIProviderFallbackReason, AIProviderRequest, AIProviderResponse, AIProviderStatus, IAIProvider } from '../../application/ports/ai-provider.interface';
 import { DEFAULT_AI_REQUEST_POLICY } from '../../application/ports/ai-request-policy';
 import { DIALOGUE_FALLBACK } from '../../application/services/dialogue-provider-result';
-import { projectBackendRequest } from './backend-request-projection';
-import { parseBackendError, parseBackendSuccess } from './backend-response-validation';
-import { projectTouchRequest, parseTouchResponse } from './backend-touch-validation';
 
 interface ExternalAIProviderOptions {
   readonly baseUrl: string;
-  readonly apiVersion?: 1 | 2 | 3 | 5 | 7;
   readonly development: boolean;
   readonly now: () => number;
   readonly fetch?: typeof fetch;
@@ -32,11 +27,11 @@ function boundedCancellation(signal: AbortSignal) {
 }
 
 /** Trusted Main configuration only; redirects, cookies and provider secrets are forbidden. */
-function endpoint(baseUrl: string, development: boolean, apiVersion: 1 | 2 | 3 | 5 | 7): URL {
+function endpoint(baseUrl: string, development: boolean, operation: 'chat' | 'touch' | 'events' | 'summary' | 'observation'): URL {
   const url = new URL(baseUrl);
   const loopback = url.hostname === 'localhost' || url.hostname === '[::1]' || /^127(?:\.\d{1,3}){3}$/u.test(url.hostname);
   if ((url.protocol !== 'https:' && !(development && loopback && url.protocol === 'http:')) || url.username || url.password || url.search || url.hash) throw new TypeError('Invalid backend URL');
-  url.pathname = `${url.pathname.replace(/\/$/u, '')}/v${apiVersion}/chat`;
+  url.pathname = `${url.pathname.replace(/\/$/u, '')}/v1/${operation}`;
   return url;
 }
 async function readBoundedJson(response: Response, signal: AbortSignal): Promise<unknown> {
@@ -69,22 +64,22 @@ async function readBoundedJson(response: Response, signal: AbortSignal): Promise
 export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, ISummaryGenerator, IObservationProvider {
   private chatAbort: { id: string; controller: AbortController } | undefined;
   private eventAbort: { id: string; controller: AbortController } | undefined;
-  private readonly url: URL;
+  private readonly urls: Readonly<Record<'chat' | 'touch' | 'events' | 'summary' | 'observation', URL>>;
   private readonly fetch: typeof fetch;
   private activeRequestId: string | undefined;
   constructor(private readonly options: ExternalAIProviderOptions) {
-    this.url = endpoint(options.baseUrl, options.development, options.apiVersion ?? 1);
+    this.urls = { chat: endpoint(options.baseUrl, options.development, 'chat'), touch: endpoint(options.baseUrl, options.development, 'touch'), events: endpoint(options.baseUrl, options.development, 'events'), summary: endpoint(options.baseUrl, options.development, 'summary'), observation: endpoint(options.baseUrl, options.development, 'observation') };
     this.fetch = options.fetch ?? globalThis.fetch;
   }
   public canIncludeSummary(request: AIProviderRequest): boolean {
-    return this.options.apiVersion === 7 ? projectInteractionChat(request).summary !== undefined : this.options.apiVersion === 5 && projectSummaryChat(request).summary !== undefined;
+    return projectInteractionChat(request).summary !== undefined;
   }
   public async getStatus(): Promise<AIProviderStatus> {
     if (this.activeRequestId) return { kind: 'thinking', activeRequestId: this.activeRequestId };
     return { kind: 'ready' };
   }
   public async generateResponse(request: AIProviderRequest): Promise<AIProviderResponse> {
-    const projected = this.options.apiVersion === 7 ? projectInteractionChat(request) : this.options.apiVersion === 5 ? projectSummaryChat(request) : this.options.apiVersion === 3 ? projectEventAwareChat(request) : this.options.apiVersion === 2 ? projectBackendMemoryRequest(request) : projectBackendRequest(request);
+    const projected = projectInteractionChat(request);
     const body = JSON.stringify(projected);
     if (new TextEncoder().encode(body).byteLength > 32 * 1024) throw new TypeError('Request too large');
     if (this.activeRequestId) throw new Error('Transport unavailable');
@@ -101,22 +96,22 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     try {
       const operation = async () => {
         try {
-        const response = await this.fetch(this.url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        const response = await this.fetch(this.urls.chat, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         const value = await readBoundedJson(response, controller.signal);
         return { response, value };
-        } finally { settled = true; if (completed && this.options.apiVersion === 7 && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+        } finally { settled = true; if (completed && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
       };
       const { response, value } = await Promise.race([operation(), timeout, cancellation.promise]);
       if (controller.signal.aborted || this.options.now() - startedAt >= DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs) throw new TransportTimeout();
       if (response.status !== 200) {
-        try { this.options.apiVersion === 7 ? parseInteractionError(value, request.requestId, response.status) : this.options.apiVersion === 5 ? parseSummaryError(value, request.requestId, response.status) : this.options.apiVersion === 3 ? parseEventError(value, request.requestId, response.status) : this.options.apiVersion === 2 ? parseBackendMemoryError(value, request.requestId, response.status) : parseBackendError(value, request.requestId, response.status); }
+        try { parseInteractionError(value, request.requestId, response.status); }
         catch { throw new ProtocolError('Invalid backend error'); }
         const reason = response.status === 504 ? 'timeout' : [429, 503].includes(response.status) ? 'provider_unavailable' : 'unexpected_error';
         return this.fallback(request.requestId, reason, startedAt);
       }
       let result;
-      try { result = this.options.apiVersion === 7 ? parseInteractionChatResponse(value, request.requestId, request.userMessage.text, 'effectPolicy' in projected ? projected.effectPolicy : 'suppressed') : this.options.apiVersion === 5 ? parseSummaryChatResponse(value, request.requestId, request.userMessage.text) : this.options.apiVersion === 3 ? parseEventAwareChat(value, request.requestId, request.userMessage.text) : this.options.apiVersion === 2 ? parseBackendMemorySuccess(value, request.requestId, request.userMessage.text) : parseBackendSuccess(value, request.requestId); }
+      try { result = parseInteractionChatResponse(value, request.requestId, request.userMessage.text, projected.effectPolicy); }
       catch { throw new ProtocolError('Invalid backend success'); }
       const decision = result.decision;
       return { requestId: result.requestId, status: 'ok',
@@ -134,14 +129,13 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
       clearTimeout(timer);
       cancellation.dispose();
       if (this.chatAbort?.id === request.requestId) this.chatAbort = undefined;
-      if ((settled || this.options.apiVersion !== 7) && this.activeRequestId === request.requestId) this.activeRequestId = undefined;
+      if (settled && this.activeRequestId === request.requestId) this.activeRequestId = undefined;
     }
   }
   public cancel(requestId: string): void { if (this.chatAbort?.id === requestId) this.chatAbort.controller.abort(); if (this.eventAbort?.id === requestId) this.eventAbort.controller.abort(); }
   public async generateEvent(request: AIEventProviderRequest): Promise<AIEventProviderResponse> {
     const touch = request.event.type === 'user_touch';
-    if (!touch && this.options.apiVersion !== 3 && this.options.apiVersion !== 5 && this.options.apiVersion !== 7) throw new Error('Events unavailable');
-    const projected = touch ? (this.options.apiVersion === 7 ? projectInteractionTouch(request) : projectTouchRequest(request)) : projectEventRequest(request);
+    const projected = touch ? projectInteractionTouch(request) : projectEventRequest(request);
     const body = JSON.stringify(projected);
     if (this.activeRequestId) throw new Error('Events unavailable');
     const controller = new AbortController(), startedAt = this.options.now();
@@ -152,27 +146,27 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     const timeoutMs = touch ? DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs : 3000;
     const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => { controller.abort(); reject(new TransportTimeout()); }, timeoutMs); });
     try {
-      const url = new URL(this.url); url.pathname = touch ? url.pathname.replace(/v[12357]\/chat$/u, this.options.apiVersion === 7 ? 'v7/touch' : 'v1/touch') : url.pathname.replace(/v[357]\/chat$/u, 'v3/events');
+      const url = touch ? this.urls.touch : this.urls.events;
       const operation = async () => {
         try {
         const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         return { response, value: await readBoundedJson(response, controller.signal) };
-        } finally { settled = true; if (completed && this.options.apiVersion === 7 && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+        } finally { settled = true; if (completed && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
       };
       const { response, value } = await Promise.race([operation(), timeout, cancellation.promise]);
       if (controller.signal.aborted || this.options.now() - startedAt >= timeoutMs) throw new TransportTimeout();
       if (response.status !== 200) {
-        touch ? (this.options.apiVersion === 7 ? parseInteractionError(value, request.requestId, response.status) : parseBackendError(value, request.requestId, response.status)) : parseEventError(value, request.requestId, response.status);
+        touch ? parseInteractionError(value, request.requestId, response.status) : parseEventError(value, request.requestId, response.status);
         throw new Error('Event unavailable');
       }
-      return touch ? (this.options.apiVersion === 7 ? parseInteractionTouchResponse(value, request.requestId, 'effectPolicy' in projected ? projected.effectPolicy : 'suppressed') : parseTouchResponse(value, request.requestId)) : parseEventResponse(value, request.requestId);
+      return touch ? parseInteractionTouchResponse(value, request.requestId, 'effectPolicy' in projected ? projected.effectPolicy : 'suppressed') : parseEventResponse(value, request.requestId);
     } catch (error) {
       controller.abort(); throw error;
-    } finally { completed = true; clearTimeout(timer); cancellation.dispose(); this.eventAbort = undefined; if ((settled || this.options.apiVersion !== 7) && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+    } finally { completed = true; clearTimeout(timer); cancellation.dispose(); this.eventAbort = undefined; if (settled && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
   }
   public async generateSummary(request: Parameters<ISummaryGenerator['generateSummary']>[0], signal: AbortSignal): Promise<string> {
-    if ((this.options.apiVersion !== 5 && this.options.apiVersion !== 7) || this.activeRequestId || signal.aborted) throw new Error('Summary unavailable');
-    const body = JSON.stringify(parseSummaryRequest({ ...request, version: 5, stream: false }));
+    if (this.activeRequestId || signal.aborted) throw new Error('Summary unavailable');
+    const body = JSON.stringify(parseSummaryRequest({ ...request, version: 1, stream: false }));
     const controller = new AbortController(); this.activeRequestId = request.requestId;
     let settled = false, completed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -186,16 +180,16 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
       });
       const operation = async () => {
         try {
-        const url = new URL(this.url); url.pathname = url.pathname.replace(/v[57]\/chat$/u, 'v5/summary');
+        const url = this.urls.summary;
         const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         const value = await readBoundedJson(response, controller.signal);
         if (signal.aborted || controller.signal.aborted) throw new TransportTimeout();
         if (response.status !== 200) { parseSummaryError(value, request.requestId, response.status); throw new ProtocolError('Summary failed'); }
         return parseSummaryResponse(value, request.requestId).text;
-        } finally { settled = true; if (completed && this.options.apiVersion === 7 && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+        } finally { settled = true; if (completed && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
       };
       return await Promise.race([operation(), cancelled]);
-    } finally { completed = true; clearTimeout(timer); controller.abort(); signal.removeEventListener('abort', abort); if ((settled || this.options.apiVersion !== 7) && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+    } finally { completed = true; clearTimeout(timer); controller.abort(); signal.removeEventListener('abort', abort); if (settled && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
   }
   public canStartObservation(): boolean { return this.activeRequestId === undefined; }
   public async generateObservation(request: ObservationProviderRequest, signal: AbortSignal): Promise<string> {
@@ -213,7 +207,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
       });
       const operation = async () => {
         try {
-        const url = new URL(this.url); url.pathname = url.pathname.replace(/v[12357]\/chat$/u, 'v6/observation');
+        const url = this.urls.observation;
         const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         const value = await readBoundedJson(response, controller.signal);

@@ -1,6 +1,6 @@
 # Контракт AI Provider
 
-`IAIProvider` генерирует текст и semantic hints по Character context; финальные behavior decisions и UI ему не принадлежат. Default — локальный offline `MockAIProvider`. Будущий `ExternalAIProviderClient` обращается к backend либо напрямую к LLM через Infrastructure adapter в Main; выбор маршрута не меняет семантический порт. Общая граница backend — [AGENTS.md](../../../AGENTS.md#2-архитектура-и-контракты).
+`IAIProvider` генерирует текст и semantic hints по Character context; финальные behavior decisions и UI ему не принадлежат. Default — локальный offline `MockAIProvider`. `ExternalAIProviderClient` обращается к backend либо напрямую к LLM через Infrastructure adapter в Main; выбор маршрута не меняет семантический порт. Общая граница backend — [AGENTS.md](../../../AGENTS.md#2-архитектура-и-контракты).
 
 ## Владение
 
@@ -18,9 +18,9 @@ Application владеет портом, сборкой `AIProviderRequest` и `
 
 `AIProviderRequest` сериализуем, без React/DOM/Electron handles/Node/SDK objects. `text` санитизируется на Application/Domain boundary; snapshot создаёт доменная фабрика, provider его не мутирует. `recentContext` ограничивает Application, не полный SQLite dump без отдельного memory contract. Tokens/model names/API keys/endpoints/auth/billing в DTO запрещены.
 
-P15-A02 объявляет optional `memoryContext`/response `memoryCandidates` в semantic порте для явного memory-capable режима #56. Правила source validation/recall — [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), wire — [Backend v2](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). Existing Mock/v1 их не требуют; v1 adapter не передаёт память и не принимает новые response fields. Model candidates не входят в Character mapper: запись выполняется отдельно после подтверждённого сохранения текущей user/assistant пары.
+P15-A02 объявляет optional `memoryContext`/response `memoryCandidates` в semantic порте для явного memory-capable режима #56. Правила source validation/recall — [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), wire — [Backend v1](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). Mock не требует памяти; внешний v1 adapter всегда передаёт memory projection и проверяет кандидаты. Model candidates не входят в Character mapper: запись выполняется отдельно после подтверждённого сохранения текущей user/assistant пары.
 
-P17-A04 объявляет optional `previousInitiative` только для явного режима v3: одна опубликованная AI-фраза в RAM≤60s/current generation, чтобы следующий user send имел контекст. Это не user message/долговременная память; v1/v2 её не передают. Отдельные event provider, жизненный цикл/прерывание, wire и speech — [AI_EVENTS_CONTRACT](../../../docs/contracts/AI_EVENTS_CONTRACT.md). User chat использует прежний semantic IAIProvider; v3 generateEvent имеет text-only result без Character commands; touch v7 отдельно расширен в INTERACTION-A01.
+P17-A04 объявляет optional `previousInitiative` для внешнего v1 адаптера: одна опубликованная AI-фраза в RAM≤60s/current generation, чтобы следующий user send имел контекст. Это не user message/долговременная память; она передаётся отдельным полем актуального chat. Отдельные event provider, жизненный цикл/прерывание, wire и speech — [AI_EVENTS_CONTRACT](../../../docs/contracts/AI_EVENTS_CONTRACT.md). User chat использует прежний semantic IAIProvider; v1 generateEvent имеет text-only result без Character commands; touch v1 отдельно расширен в INTERACTION-A01.
 
 ### Канонический CharacterSnapshot — P17-A03 (#27)
 
@@ -111,7 +111,7 @@ Deadline **15 000 ms от admission**, включая `getStatus()`/`generateRes
 | Deadline истёк | completed/fallback с reason=timeout; thinking немедленно завершён, поздний результат игнорируется. |
 | Не удалось сформировать безопасный fallback | error с локальным сообщением; thinking завершён, provider behavior и context не коммитятся. |
 
-Fallback — локальный deterministic catalog, без второго provider call. Валидная provider fallback-реплика отображается, но behavior/mood hints не применяются. Только success создаёт `provider_response`/candidate через Character; по INTERACTION-A01 этот stimulus имеет нулевой числовой reward, включая legacy modes (#89). Transport error — локальная UI-ошибка без Character reaction.
+Fallback — локальный deterministic catalog, без второго provider call. Валидная provider fallback-реплика отображается, но behavior/mood hints не применяются. Только success создаёт `provider_response`/candidate через Character; по INTERACTION-A01 этот stimulus имеет нулевой числовой reward. Transport error — локальная UI-ошибка без Character reaction.
 
 Terminal/reset/dispose освобождают только thinking Activity своего requestId, не чужую Activity/forced Motion. Текущие gates определяют reply/idle; `thinking_loop` не ждёт Skin completion.
 
@@ -171,7 +171,7 @@ Infrastructure adapter, создаваемый Main, для backend API v1 ни�
 
 ### Projection и допустимые решения
 
-Adapter создаёт явную wire projection без произвольных Needs keys, памяти, экранных данных и координат курсора. self-concept обрезается до 500 code units; locale ru/en, неподдерживаемая настройка даёт ru. Последние три полные пары volatile context отображаются из user/wisp в user/assistant; текущее user добавляется последним. Snapshot и ranges проверяются до отправки; reset очищает локальный контекст. Wire shape не меняется вслед за изменением Domain.
+Adapter создаёт явную wire projection без произвольных Needs keys, экранных данных и координат курсора; память передаётся только разрешённой projection. self-concept обрезается до 500 code units; locale ru/en, неподдерживаемая настройка даёт ru. Последние три полные пары volatile context отображаются из user/wisp в user/assistant; текущее user добавляется последним. Snapshot и ranges проверяются до отправки; reset очищает локальный контекст. Wire shape не меняется вслед за изменением Domain.
 
 Валидный текст без decision отображается в semantic response с suggestedBehavior=respond, confidence=1 (это transport default, не достоверность текста). Wire decision явно отображается в локальные provider enums; неизвестный/невалидный hint удаляется целиком. Модель не управляет FSM, физикой или сохранёнными числовыми состояниями. После mapping сохраняются ProviderResponseIntentMapper → IBehaviorAdmission → Character, current generation, P0–P5 и once-only commit. play выбирает доступную локальную Activity, а не обещает игру/поимку курсора; sleep/wake/quiet остаются candidates, не меняют настройки и не обходят P2.
 
@@ -183,9 +183,9 @@ Wire-valid `decision.mood = playful` не имеет точного соотве
 |---|---|
 | Принятая typed send(text) пользователя | Ровно один после validation/current IDs, single-flight и локальных ограничений. |
 | Reset, reload, dispose | Ноль; инвалидируют generation и результат. |
-| Cursor sample/dwell, старт/поимка/промах/конец игры | В v1/v2 ноль; локальные decisions и каталог реплик. Только явно включённый v3 post-game event описан отдельно. |
+| Cursor sample/dwell, старт/поимка/промах/конец игры | Сырые cursor samples не отправляются; только явно включённый post-game event описан отдельно. |
 | Autonomy pulse, idle, Needs, sleep/wake, pet/drag, Motion/Skin/frame | Ноль. |
-| Собственная социальная инициатива | Локальная; необязательная речь v3 — [P17-A04](../../../docs/contracts/AI_EVENTS_CONTRACT.md), без ожидания сети в Activity. |
+| Собственная социальная инициатива | Локальная; необязательная речь v1 — [P17-A04](../../../docs/contracts/AI_EVENTS_CONTRACT.md), без ожидания сети в Activity. |
 
 Нет polling, автоматического приветствия при запуске, фонового summary или второго LLM-вызова на fallback. Будущие сетевые события не маскируются под синтетическое пользовательское сообщение.
 
@@ -234,10 +234,10 @@ Desktop реализует policy, exact validators/projection и aborting adapt
 в [IAIProvider](../../src/application/ports/ai-provider.interface.ts) и
 [IAIEventProvider](../../src/application/ports/ai-event-provider.interface.ts).
 Это расширение существующих consumers, не новый AI engine. Runtime принимает appraisal
-только от явного v7 adapter; Mock/direct/v1–v6 не получают implicit capability.
+от внешнего v1 adapter; Mock/direct не получают implicit capability.
 Отсутствующая оценка означает нулевой semantic effect, не искусственно positive.
 Базовые effects реального ввода независимы от capability. Event responses cursor_game /
-social_bid остаются text-only; дополнительные appraisal keys вне touch v7 отклоняются.
+social_bid остаются text-only; дополнительные appraisal keys вне touch v1 отклоняются.
 
 Порядок: admission/once-only user base → post-base snapshot/signature → не более одного
 inference → strict adapter validation → current generation/deadline/signature/gates →
@@ -247,9 +247,7 @@ Character effect + согласованный text + RAM trace (для touch) �
 [Memory §13](MEMORY_ENGINE.md#13-interaction-a01-краткий-след-касания-87), никогда
 синтетический user turn. Future user question не повторяет appraisal старого touch.
 
-V7 chat сохраняет v5 memory/summary/previousInitiative capabilities без нового summary
-endpoint; v5 summary operation остаётся отдельной explicit командой. Network errors,
+V1 chat поддерживает memory/summary/previousInitiative; `/v1/summary` остаётся отдельной explicit командой. Network errors,
 shared interlock/abort settlement, 15s runtime/12s transport deadlines прежние.
-В #89 v7 chat уже переносит previousTouch, но semantic chat effectPolicy=suppressed
-до реализации #90. Это явная стадия поставки, не разрешение удвоить старый reward.
+Chat effectPolicy определяется текущим Character gate; previousTouch не создаёт повторный reward.
 Нет изменения public IPC: Renderer показывает только существующие dialogue/speech.

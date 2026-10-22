@@ -1,4 +1,4 @@
-"""One executable v7 corpus consumed independently by Python and desktop."""
+"""One executable v1 corpus consumed independently by Python and desktop."""
 
 import json
 from typing import Any
@@ -6,19 +6,17 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 from tests.helpers import CONTRACT_FIXTURES
+from wisp_backend.api.schemas.common import ErrorResponse as InteractionErrorResponse
 from wisp_backend.api.schemas.interaction import (
     InteractionChatRequest,
     InteractionChatResponse,
-    InteractionErrorResponse,
     InteractionTouchRequest,
     InteractionTouchResponse,
 )
-from wisp_backend.api.schemas.summary import SummaryChatRequest
-from wisp_backend.api.schemas.touch import TouchRequest
 
-FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v7"
-REQUESTS = {"/v7/touch": InteractionTouchRequest, "/v7/chat": InteractionChatRequest}
-RESPONSES = {"/v7/touch": InteractionTouchResponse, "/v7/chat": InteractionChatResponse}
+FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v1/interaction"
+REQUESTS = {"/v1/touch": InteractionTouchRequest, "/v1/chat": InteractionChatRequest}
+RESPONSES = {"/v1/touch": InteractionTouchResponse, "/v1/chat": InteractionChatResponse}
 
 
 def fixture(name: str) -> Any:
@@ -67,16 +65,6 @@ def test_previous_touch_effect_pairs(effect: str, reason: str) -> None:
     value = fixture("request.chat.json")
     value["previousTouch"].update(effect=effect, reason=reason)
     InteractionChatRequest.model_validate(value)
-
-
-@pytest.mark.parametrize(
-    "name,model,version", [("request.touch.json", TouchRequest, 1), ("request.chat.json", SummaryChatRequest, 5)]
-)
-def test_old_modes_reject_new_fields(name: str, model: type, version: int) -> None:
-    body = fixture(name)
-    body["version"] = version
-    with pytest.raises(ValidationError):
-        model.model_validate(body)
 
 
 @pytest.mark.parametrize(

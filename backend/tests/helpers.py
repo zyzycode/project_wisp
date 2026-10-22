@@ -45,8 +45,12 @@ def set_event_timeout(monkeypatch: pytest.MonkeyPatch, timeout: float) -> None:
 CONTRACT_FIXTURES = Path(__file__).resolve().parents[2] / "docs/contracts/fixtures"
 
 
-def touch_body(body, variant="stroke"):
-    return {key: value for key, value in body.items() if key != "messages"} | {
+def touch_body(body, variant="touch"):
+    return {
+        key: value
+        for key, value in body.items()
+        if key not in ("messages", "memory", "summary", "previousInitiative", "previousTouch")
+    } | {
         "event": {"type": "user_touch", "variant": variant},
     }
 
@@ -83,7 +87,18 @@ def gemini_completion(reply=None, usage=None):
                 "finishReason": "STOP",
                 "content": {
                     "role": "model",
-                    "parts": [{"text": json.dumps(reply if reply is not None else {"text": "Hello"})}],
+                    "parts": [
+                        {
+                            "text": json.dumps(
+                                reply
+                                if reply is not None
+                                else {
+                                    "text": "Hello",
+                                    "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
+                                }
+                            )
+                        }
+                    ],
                 },
             }
         ],

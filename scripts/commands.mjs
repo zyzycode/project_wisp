@@ -41,7 +41,7 @@ export function devCommands(env = process.env) {
   return [backend, {
     name: 'frontend', command: process.execPath, args: [vite], cwd,
     env: { ...frontendEnv, WISP_BACKEND_URL: `http://127.0.0.1:${env.WISP_BACKEND_PORT || '8000'}`,
-      WISP_BACKEND_API_VERSION: '1', WISP_AI_EVENTS_ENABLED: 'false' },
+      WISP_AI_EVENTS_ENABLED: 'false' },
   }];
 }
 

@@ -44,7 +44,7 @@ export interface AIPreviousInitiative {
 }
 
 export interface AIProviderRequest {
-  /** Explicit v7 mode only; older adapters never serialize these fields. */
+  /** Full interaction context for the external v1 adapter. */
   readonly interaction?: { readonly card: CharacterCardReference; readonly effectPolicy: 'eligible' | 'suppressed'; readonly previousTouch?: PreviousTouchReaction };
   readonly summary?: { readonly text: string };
   requestId: string;
@@ -52,9 +52,9 @@ export interface AIProviderRequest {
   characterSnapshot: AIProviderCharacterSnapshot;
   recentContext: AIProviderContextMessage[];
   locale?: string;
-  /** Explicit memory-capable provider mode only; never silently added to wire v1. */
+  /** Bounded local recall projected into the unified external chat request. */
   readonly memoryContext?: AIProviderMemoryContext;
-  /** Explicit v3 mode only, captured from the last current-generation published line. */
+  /** Captured from the last current-generation published line. */
   readonly previousInitiative?: AIPreviousInitiative;
 }
 

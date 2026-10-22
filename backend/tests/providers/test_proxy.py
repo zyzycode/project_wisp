@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 
-def test_server_owns_prompt_model_and_envelope(client_factory, body, completion):
+def test_server_owns_prompt_model_and_envelope(client_factory, body, chat_completion):
     def upstream(request):
         assert str(request.url) == "https://api.groq.com/openai/v1/chat/completions"
         assert request.headers["authorization"] == "Bearer test-key"
@@ -17,12 +17,19 @@ def test_server_owns_prompt_model_and_envelope(client_factory, body, completion)
         assert "boredom" not in payload["messages"][1]["content"]
         assert payload["messages"][-1] == body["messages"][-1]
         assert body["requestId"] not in request.content.decode()
-        return httpx.Response(200, json=completion(id="private", model="private"), headers={"x-request-id": "private"})
+        return httpx.Response(
+            200, json=chat_completion(id="private", model="private"), headers={"x-request-id": "private"}
+        )
 
     with client_factory(upstream) as client:
         response = client.post("/v1/chat", json=body)
         assert response.status_code == 200
-        assert response.json() == {"version": 1, "requestId": body["requestId"], "text": "Привет!"}
+        assert response.json() == {
+            "version": 1,
+            "requestId": body["requestId"],
+            "text": "Привет!",
+            "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
+        }
         assert "private" not in response.text
         assert "x-request-id" not in response.headers
 
@@ -73,18 +80,36 @@ def test_network_errors(client_factory, body, error, status, code):
         {"behavior": "respond", "confidence": 0.5, "tone": None},
     ],
 )
-def test_bad_hint_is_dropped(client_factory, body, completion, decision):
+def test_bad_hint_is_dropped(client_factory, body, chat_completion, decision):
     with client_factory(
-        lambda _: httpx.Response(200, json=completion({"text": "Good", "decision": decision}))
+        lambda _: httpx.Response(
+            200,
+            json=chat_completion(
+                {
+                    "text": "Good",
+                    "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
+                    "decision": decision,
+                }
+            ),
+        )
     ) as client:
         response = client.post("/v1/chat", json=body)
         assert response.status_code == 200
-        assert response.json() == {"version": 1, "requestId": body["requestId"], "text": "Good"}
+        assert response.json() == {
+            "version": 1,
+            "requestId": body["requestId"],
+            "text": "Good",
+            "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
+        }
 
 
-def test_valid_hint(client_factory, body, completion):
-    reply = {"text": "Good", "decision": {"behavior": "respond", "confidence": 0.9, "mood": "playful"}}
-    with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
+def test_valid_hint(client_factory, body, chat_completion):
+    reply = {
+        "text": "Good",
+        "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
+        "decision": {"behavior": "respond", "confidence": 0.9, "mood": "playful"},
+    }
+    with client_factory(lambda _: httpx.Response(200, json=chat_completion(reply))) as client:
         assert client.post("/v1/chat", json=body).json() == {"version": 1, "requestId": body["requestId"], **reply}
 
 
@@ -103,8 +128,8 @@ def test_valid_hint(client_factory, body, completion):
         {"text": " " + "a" * 2000},
     ],
 )
-def test_invalid_model_output(client_factory, body, completion, reply):
-    with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
+def test_invalid_model_output(client_factory, body, chat_completion, reply):
+    with client_factory(lambda _: httpx.Response(200, json=chat_completion(reply))) as client:
         response = client.post("/v1/chat", json=body)
         assert response.status_code == 502
         assert response.json()["error"]["code"] == "invalid_model_response"

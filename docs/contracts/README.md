@@ -1,22 +1,21 @@
 # Общие контракты desktop ↔ backend
 
-Единый wire contract для независимо запускаемых desktop и backend. Документы общие для обеих сторон; копии в каталогах приложений не создавать. Клиентские порты и IPC не являются серверным протоколом.
+Alpha использует один API `/v1` и JSON `version: 1`. Старые маршруты удалены;
+переключателя версии, probing и downgrade нет. Desktop и backend обновляются совместно.
 
-| Версия / область | Канонический контракт | Общие fixtures |
+| Область | Канонический контракт | Маршруты |
 |---|---|---|
-| v1: chat, ошибки, серверные budgets и lifecycle | [Backend API](BACKEND_API_CONTRACT.md) | [v1](fixtures/desktop-backend-v1) |
-| v2: выбранная память и проверяемые кандидаты | [Backend Memory](BACKEND_MEMORY_CONTRACT.md) | [v2](fixtures/desktop-backend-v2) |
-| v3: события и последующий разговор; явное касание v1 | [AI Events](AI_EVENTS_CONTRACT.md) | [v3](fixtures/desktop-backend-v3); touch — проверки обеих реализаций |
-| v5: явная summary и opt-in chat на базе v3 | [Context Data](CONTEXT_DATA_CONTRACT.md) | [v5](fixtures/desktop-backend-v5) |
-| v6: AI-реакция на разрешённые приложение и заголовок | [AI Events §9](AI_EVENTS_CONTRACT.md#9-observation-boundary) | [v6](fixtures/desktop-backend-v6) |
+| Транспорт, ошибки, lifecycle и данные | [Backend API](BACKEND_API_CONTRACT.md) | Все `/v1/*`, `GET /health` |
+| Диалог и локальная память | [Memory](BACKEND_MEMORY_CONTRACT.md) | `POST /v1/chat` |
+| Appraisal, касание, инициативы и наблюдение | [AI Events](AI_EVENTS_CONTRACT.md) | `POST /v1/chat`, `/v1/touch`, `/v1/events`, `/v1/observation` |
+| Lore и summary | [Context Data](CONTEXT_DATA_CONTRACT.md) | `POST /v1/chat`, `/v1/summary` |
 
-AI Events также определяет связанные causal gates и правила использования результата на клиенте: перенос документа не разделяет и не меняет этот сквозной контракт. Детали локальных движков — в [frontend contracts](../../frontend/docs/engine/README.md).
+[Общие fixtures](fixtures/desktop-backend-v1/) сгруппированы по возможностям.
+[Interaction DTO](../../frontend/src/application/ports/backend-interaction-contract.ts)
+определяет полный chat/touch контракт: обязательные card/effectPolicy, память в chat,
+appraisal в обоих ответах. Остальные wire-модули описывают составляющие этого контракта.
+Python-схемы и TypeScript-типы не импортируют друг друга; обе стороны проверяют общий corpus.
+Локальные Application ports и IPC остаются отдельными от HTTP DTO.
 
-Будущее расширение подтверждённых событий и общих шуток: [Memory §6](BACKEND_MEMORY_CONTRACT.md#6-mem-a03-planned-расширение-событий-и-шуток) и [#65 (MEM-A03)](https://github.com/zyzycode/project_wisp/issues/65). Планируемый v4 chat не меняет действующие v1–v3; DTO, fixtures и реализация поставляются отдельными задачами.
-
-
-Наличие контракта и fixtures не подтверждает реализацию endpoint. Поддерживаемые текущим сервером версии и gaps — в [backend docs](../../backend/docs/README.md#фактическая-реализация). Python-схемы и TypeScript-типы не импортируют друг друга; совместимость проверяется общими fixtures. Их путь `docs/contracts/fixtures/` сохранён для существующих тестов.
-
-Lore/summary: [CTX-A01](CONTEXT_DATA_CONTRACT.md) — server-owned lore без wire delta и отдельная opt-in v5 ветка на базе v3. Локальная summary требует source provenance/suppression schema2; генерация запускается только явно. V4 knowledge не входит в v5.
-
-V6 observation реализована в #81 по [OBS-A02](https://github.com/zyzycode/project_wisp/issues/84): отдельный endpoint и явное согласие на приложение и заголовок; действующие v1–v5 не расширяются. Настройки наблюдения хранятся только в RAM, после перезапуска требуется повторное согласие.
+Серверные границы — [backend](../../backend/docs/README.md),
+локальные движки — [frontend](../../frontend/docs/engine/README.md).

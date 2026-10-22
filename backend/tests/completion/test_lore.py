@@ -8,7 +8,7 @@ import pytest
 from tests.completion.test_context_budget import cost
 from wisp_backend.completion.context import ContextMessage, ContextOverflow, select_context
 from wisp_backend.completion.prompts.chat import build_chat_blocks
-from wisp_backend.completion.prompts.context import DialogueTurn, MemoryChatContext
+from wisp_backend.completion.prompts.context import DialogueTurn, InteractionChatContext, InteractionContext
 from wisp_backend.completion.prompts.lore import load_catalogue, lore_block, parse_catalogue, select_entries
 
 
@@ -133,7 +133,7 @@ def test_optional_file_failure_has_safe_diagnostic_and_no_stale_snapshot(
 
 def test_lore_is_atomic_optional_context_below_facts_state_and_recent_history() -> None:
     source = parse_catalogue(catalogue(entry(text="Untrusted synthetic castle " * 20)))
-    context = MemoryChatContext(
+    context = InteractionChatContext(
         "en",
         {"identity": "Wisp"},
         messages=(
@@ -142,6 +142,7 @@ def test_lore_is_atomic_optional_context_below_facts_state_and_recent_history() 
             DialogueTurn("user", "castle correction"),
         ),
         memory={"facts": ["new fact"]},
+        interaction=InteractionContext({}, "suppressed"),
         lore=source,
     )
     blocks = build_chat_blocks(context)

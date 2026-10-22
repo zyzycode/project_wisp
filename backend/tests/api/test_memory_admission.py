@@ -1,17 +1,13 @@
 import asyncio
-import hashlib
 import json
 import sqlite3
-import time
 from uuid import uuid4
 
 import httpx
 import pytest
 from tests.helpers import CONTRACT_FIXTURES, touch_body
-from wisp_backend.accounting.contracts import Usage
-from wisp_backend.outcomes import Outcome
 
-FIXTURE = CONTRACT_FIXTURES / "desktop-backend-v2/request.valid.json"
+FIXTURE = CONTRACT_FIXTURES / "desktop-backend-v1/memory/request.valid.json"
 
 
 @pytest.fixture
@@ -21,7 +17,7 @@ def memory_body():
 
 @pytest.mark.parametrize("first_version", [1, 2])
 def test_mixed_endpoint_same_id_conflicts_and_new_ids_are_admitted(
-    app_factory, body, memory_body, completion, first_version
+    app_factory, body, memory_body, chat_completion, first_version
 ):
     async def run():
         calls = []
@@ -29,7 +25,7 @@ def test_mixed_endpoint_same_id_conflicts_and_new_ids_are_admitted(
         def upstream(request):
             calls.append(request)
             return httpx.Response(
-                200, json=completion(usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
+                200, json=chat_completion(usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
             )
 
         app = app_factory(upstream)
@@ -39,62 +35,30 @@ def test_mixed_endpoint_same_id_conflicts_and_new_ids_are_admitted(
         async with app.router.lifespan_context(app):
             ledger = app.state.completion_service.ledger
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                first = await client.post(f"/v{first_version}/chat", json=requests[first_version])
+                first = await client.post("/v1/chat", json=requests[first_version])
                 assert first.status_code == 200
-                conflict = await client.post(f"/v{second_version}/chat", json=requests[second_version])
+                conflict = await client.post("/v1/chat", json=requests[second_version])
                 assert conflict.status_code == 409
                 assert conflict.json()["error"]["code"] == "request_conflict"
-                assert conflict.json()["version"] == second_version
+                assert conflict.json()["version"] == 1
                 next_response = await client.post(
-                    f"/v{second_version}/chat", json={**requests[second_version], "requestId": str(uuid4())}
+                    "/v1/chat", json={**requests[second_version], "requestId": str(uuid4())}
                 )
                 assert next_response.status_code == 200
-                replay = await client.post(f"/v{first_version}/chat", json=requests[first_version])
+                replay = await client.post("/v1/chat", json=requests[first_version])
                 assert replay.content == first.content
             with sqlite3.connect(ledger.path) as db:
                 assert db.execute("SELECT requests,confirmed FROM days").fetchone() == (2, 4)
                 stored = db.execute("SELECT digest FROM entries").fetchone()[0]
-                assert stored.startswith(f"POST /v{first_version}/chat:")
+                assert stored.startswith("POST /v1/chat:")
         assert len(calls) == 2
 
     asyncio.run(run())
 
 
-def test_legacy_body_digest_stays_v1_only_until_original_ttl(app_factory, body, memory_body, completion):
-    async def run():
-        calls = []
-
-        def upstream(request):
-            calls.append(request)
-            return httpx.Response(200, json=completion())
-
-        app = app_factory(upstream)
-        raw = json.dumps(body).encode()
-        old_digest = hashlib.sha256(raw).hexdigest()
-        memory_body["requestId"] = body["requestId"]
-        async with app.router.lifespan_context(app):
-            ledger = app.state.completion_service.ledger
-            clock = [time.time()]
-            ledger.clock = lambda: clock[0]
-            await ledger.admit(body["requestId"], old_digest)
-            await ledger.settle(body["requestId"], Usage(1, 1, 2), Outcome(200, b'{"version":1,"text":"legacy cache"}'))
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                replay = await client.post("/v1/chat", content=raw, headers={"content-type": "application/json"})
-                assert replay.status_code == 200 and replay.json()["text"] == "legacy cache"
-                assert (await client.post("/v2/chat", json=memory_body)).status_code == 409
-                clock[0] += 600
-                assert (
-                    await client.post("/v1/chat", content=raw, headers={"content-type": "application/json"})
-                ).status_code == 409
-                clock[0] += 86_400 - 600
-                admitted = await client.post("/v2/chat", json=memory_body)
-                assert admitted.status_code == 200 and admitted.json()["version"] == 2
-        assert len(calls) == 1
-
-    asyncio.run(run())
-
-
-def test_simultaneous_versions_share_id_namespace_without_concurrency_quota(app_factory, body, memory_body, completion):
+def test_simultaneous_versions_share_id_namespace_without_concurrency_quota(
+    app_factory, body, memory_body, chat_completion
+):
     async def run():
         entered, release = asyncio.Event(), asyncio.Event()
         calls = []
@@ -103,7 +67,7 @@ def test_simultaneous_versions_share_id_namespace_without_concurrency_quota(app_
             calls.append(request)
             entered.set()
             await release.wait()
-            return httpx.Response(200, json=completion())
+            return httpx.Response(200, json=chat_completion())
 
         app = app_factory(upstream)
         memory_body["requestId"] = body["requestId"]
@@ -111,9 +75,9 @@ def test_simultaneous_versions_share_id_namespace_without_concurrency_quota(app_
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
                 first = asyncio.create_task(client.post("/v1/chat", json=body))
                 await entered.wait()
-                conflict = await client.post("/v2/chat", json=memory_body)
+                conflict = await client.post("/v1/chat", json=memory_body)
                 assert conflict.json()["error"]["code"] == "request_conflict"
-                second = asyncio.create_task(client.post("/v2/chat", json={**memory_body, "requestId": str(uuid4())}))
+                second = asyncio.create_task(client.post("/v1/chat", json={**memory_body, "requestId": str(uuid4())}))
                 while len(calls) < 2:
                     await asyncio.sleep(0)
                 release.set()
@@ -124,17 +88,17 @@ def test_simultaneous_versions_share_id_namespace_without_concurrency_quota(app_
 
 
 @pytest.mark.parametrize("touch_first", [False, True])
-def test_touch_and_v2_share_id_namespace(app_factory, body, memory_body, completion, touch_first):
+def test_touch_and_v1_share_id_namespace(app_factory, body, memory_body, chat_completion, touch_first):
     async def run():
         calls = []
 
         def upstream(request):
             calls.append(request)
-            return httpx.Response(200, json=completion())
+            return httpx.Response(200, json=chat_completion())
 
         app = app_factory(upstream)
         memory_body["requestId"] = body["requestId"]
-        routes = [("/v1/touch", touch_body(body)), ("/v2/chat", memory_body)]
+        routes = [("/v1/touch", touch_body(body)), ("/v1/chat", memory_body)]
         if not touch_first:
             routes.reverse()
         async with app.router.lifespan_context(app):
@@ -152,20 +116,21 @@ def test_touch_and_v2_share_id_namespace(app_factory, body, memory_body, complet
     asyncio.run(run())
 
 
-def test_confirmed_usage_survives_invalid_v2_text_without_blocking_other_routes(
-    app_factory, body, memory_body, completion
+def test_confirmed_usage_survives_invalid_v1_text_without_blocking_other_routes(
+    app_factory, body, memory_body, chat_completion
 ):
     from fastapi.testclient import TestClient
 
     app = app_factory(
         lambda _: httpx.Response(
-            200, json=completion({"text": ""}, usage={"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7})
+            200,
+            json=chat_completion({"text": ""}, usage={"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7}),
         )
     )
     with TestClient(app) as client:
-        first = client.post("/v2/chat", json=memory_body)
+        first = client.post("/v1/chat", json=memory_body)
         assert first.status_code == 502
-        repeat = client.post("/v2/chat", json=memory_body)
+        repeat = client.post("/v1/chat", json=memory_body)
         assert repeat.content == first.content
         next_response = client.post("/v1/chat", json=body)
         assert next_response.status_code == 502

@@ -9,8 +9,8 @@ from tests.helpers import touch_body
 from wisp_backend.accounting.contracts import RESERVATION, Usage
 from wisp_backend.api.boundary import CompletionBoundary
 from wisp_backend.api.dispatch import prepare_job
-from wisp_backend.api.schemas.chat import ChatRequest
-from wisp_backend.api.schemas.touch import TouchRequest
+from wisp_backend.api.schemas.interaction import InteractionChatRequest as ChatRequest
+from wisp_backend.api.schemas.interaction import InteractionTouchRequest as TouchRequest
 from wisp_backend.completion.contracts import ProviderResult
 from wisp_backend.config.profiles import PROFILES
 
@@ -246,11 +246,11 @@ def test_disconnect_during_settlement_never_caches_success(app_factory, body):
 
 
 @pytest.mark.parametrize("touch", [False, True])
-def test_cached_commit_cannot_replay_success_after_deadline(app_factory, completion, body, touch):
+def test_cached_commit_cannot_replay_success_after_deadline(app_factory, chat_completion, body, touch):
     import time
 
     async def run():
-        app = app_factory(lambda _: httpx.Response(200, json=completion()))
+        app = app_factory(lambda _: httpx.Response(200, json=chat_completion()))
         async with app.router.lifespan_context(app):
             service = app.state.completion_service
             service.deadline = 0.03
@@ -314,7 +314,12 @@ def test_deadline_starts_before_body_and_admission(app_factory, body):
         class Provider:
             async def complete(self, request, timeout):
                 calls.append(timeout)
-                return ProviderResult(json.dumps({"text": "ok"}), Usage(1, 1, 2))
+                return ProviderResult(
+                    json.dumps(
+                        {"text": "ok", "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                    ),
+                    Usage(1, 1, 2),
+                )
 
         app = app_factory(lambda _: pytest.fail("unexpected HTTP"))
         async with app.router.lifespan_context(app):

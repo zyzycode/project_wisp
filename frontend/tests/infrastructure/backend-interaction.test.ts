@@ -8,11 +8,11 @@ import { projectSummaryChat, parseSummaryRequest } from '../../src/infrastructur
 import { parseObservationRequest } from '../../src/infrastructure/ai/backend-observation-validation';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
 
-const fixture = (name: string, version = 7): unknown => JSON.parse(readFileSync(`../docs/contracts/fixtures/desktop-backend-v${version}/${name}`, 'utf8'));
+const fixture = (name: string, feature = 'interaction'): unknown => JSON.parse(readFileSync(`../docs/contracts/fixtures/desktop-backend-v1/${feature}/${name}`, 'utf8'));
 const chatWire = fixture('request.chat.json') as BackendInteractionChatRequest;
 const touchWire = fixture('request.touch.json') as BackendInteractionTouchRequest;
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
-const client = (fetcher: typeof fetch, apiVersion: 1 | 2 | 3 | 5 | 7 = 7) => new ExternalAIProviderClient({ baseUrl: 'https://example.com/api', apiVersion, development: false, now: Date.now, fetch: fetcher });
+const client = (fetcher: typeof fetch) => new ExternalAIProviderClient({ baseUrl: 'https://example.com/api', development: false, now: Date.now, fetch: fetcher });
 function chatInput(wire = chatWire): AIProviderRequest {
   return { requestId: wire.requestId, locale: wire.locale, characterSnapshot: wire.character, memoryContext: wire.memory,
     recentContext: [], userMessage: { id: 'local-only', text: wire.messages.at(-1)!.content, createdAt: 'local-only' },
@@ -26,7 +26,7 @@ function touchInput(wire = touchWire): AIEventProviderRequest {
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(0); });
 afterEach(() => vi.useRealTimers());
 
-it('matches shared touch/chat/error fixtures and retains full v5 context', () => {
+it('matches shared touch/chat/error fixtures and retains full v1 context', () => {
   expect(projectInteractionChat(chatInput())).toEqual(chatWire);
   expect(projectInteractionTouch(touchInput())).toEqual(touchWire);
   expect(parseInteractionChatResponse(fixture('response.chat.json'), chatWire.requestId, chatInput().userMessage.text, 'suppressed')).toEqual(fixture('response.chat.json'));
@@ -51,58 +51,46 @@ it.each(projectionCases)('rejects shared invalid projection input $name before H
   else await expect(client(fetcher).generateResponse(chatInput(entry.value as BackendInteractionChatRequest))).rejects.toThrow();
   expect(fetcher).not.toHaveBeenCalled();
 });
-it('routes both interactions through explicit v7 and returns only validated semantic appraisal', async () => {
+it('routes both interactions through explicit v1 and returns only validated semantic appraisal', async () => {
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json(fixture('response.touch.json'))).mockResolvedValueOnce(json(fixture('response.chat.json')));
   const provider = client(fetcher);
   await expect(provider.generateEvent(touchInput())).resolves.toMatchObject({ appraisal: { category: 'supportive', intensity: 'low', confidence: 'clear' } });
   await expect(provider.generateResponse(chatInput())).resolves.toMatchObject({ status: 'ok', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, memoryCandidates: [], reply: { tone: 'warm' } });
-  expect(fetcher.mock.calls.map(call => String(call[0]))).toEqual(['https://example.com/api/v7/touch', 'https://example.com/api/v7/chat']);
+  expect(fetcher.mock.calls.map(call => String(call[0]))).toEqual(['https://example.com/api/v1/touch', 'https://example.com/api/v1/chat']);
   expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(touchWire);
   expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual(chatWire);
   for (const call of fetcher.mock.calls) expect(call[1]).toMatchObject({ credentials: 'omit', redirect: 'error', cache: 'no-store' });
 });
-it('retains v5 summary, v3 events and v6 observation on the shared v7 adapter', async () => {
-  const summary = parseSummaryRequest(fixture('request.summary.json', 5));
-  const observation = parseObservationRequest(fixture('request.valid.json', 6));
-  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json(fixture('response.summary.success.json', 5)))
-    .mockResolvedValueOnce(json({ version: 3, requestId: touchWire.requestId, text: 'Привет' }))
-    .mockResolvedValueOnce(json(fixture('response.success.json', 6)));
+it('routes summary, events and observation through the shared v1 adapter', async () => {
+  const summary = parseSummaryRequest(fixture('request.summary.json', 'summary'));
+  const observation = parseObservationRequest(fixture('request.valid.json', 'observation'));
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json(fixture('response.summary.success.json', 'summary')))
+    .mockResolvedValueOnce(json({ version: 1, requestId: touchWire.requestId, text: 'Привет' }))
+    .mockResolvedValueOnce(json(fixture('response.success.json', 'observation')));
   const provider = client(fetcher);
   expect(provider.canIncludeSummary(chatInput())).toBe(true);
   await provider.generateSummary({ requestId: summary.requestId, locale: summary.locale, pairs: summary.pairs }, new AbortController().signal);
   await provider.generateEvent({ ...touchInput(), interaction: undefined, event: { type: 'social_bid_started', occurredAt: '2026-10-17T00:00:00.000Z' } });
   await provider.generateObservation({ requestId: observation.requestId, locale: observation.locale, characterSnapshot: observation.character, observation: observation.observation }, new AbortController().signal);
-  expect(fetcher.mock.calls.map(call => String(call[0]))).toEqual(['https://example.com/api/v5/summary', 'https://example.com/api/v3/events', 'https://example.com/api/v6/observation']);
+  expect(fetcher.mock.calls.map(call => String(call[0]))).toEqual(['https://example.com/api/v1/summary', 'https://example.com/api/v1/events', 'https://example.com/api/v1/observation']);
 });
-it.each([1, 2, 3, 5] as const)('never serializes semantic interaction fields in legacy mode %s', async apiVersion => {
-  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ version: apiVersion, requestId: chatWire.requestId, text: 'Ответ' }))
-    .mockResolvedValueOnce(json({ version: 1, requestId: touchWire.requestId, text: 'Ответ' }));
-  const provider = client(fetcher, apiVersion);
-  const response = await provider.generateResponse(chatInput());
-  const touch = await provider.generateEvent(touchInput());
-  expect(response).not.toHaveProperty('appraisal'); expect(touch).not.toHaveProperty('appraisal');
-  for (const call of fetcher.mock.calls) {
-    const body = JSON.parse(String(call[1]?.body));
-    for (const field of ['interaction', 'card', 'effectPolicy', 'previousTouch']) expect(body).not.toHaveProperty(field);
-  }
-});
-it.each([401, 403, 404, 502, 503])('does not retry or downgrade a failed v7 request, HTTP %s', async status => {
-  const fetcher = vi.fn<typeof fetch>(async () => json({ version: 7, requestId: touchWire.requestId, error: { code: status === 503 ? 'upstream_unavailable' : 'invalid_model_response' } }, status));
+it.each([401, 403, 404, 502, 503])('does not retry or downgrade a failed v1 request, HTTP %s', async status => {
+  const fetcher = vi.fn<typeof fetch>(async () => json({ version: 1, requestId: touchWire.requestId, error: { code: status === 503 ? 'upstream_unavailable' : 'invalid_model_response' } }, status));
   await expect(client(fetcher).generateEvent(touchInput())).rejects.toThrow();
   const provider = client(fetcher);
   if (status === 502 || status === 503) await expect(provider.generateResponse(chatInput())).resolves.toMatchObject({ status: 'fallback' });
   else await expect(provider.generateResponse(chatInput())).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(2);
-  expect(fetcher.mock.calls.every(call => String(call[0]).includes('/v7/'))).toBe(true);
+  expect(fetcher.mock.calls.every(call => String(call[0]).includes('/v1/'))).toBe(true);
 });
 it.each(['touch', 'chat'] as const)('validates %s errors against request ID, HTTP status and envelope', kind => {
   const error = fixture('response.error.json') as Record<string, unknown>;
-  for (const extra of [{ version: 5 }, { requestId: null }, { requestId: 'wrong' }, { extra: true }]) {
+  for (const extra of [{ version: 7 }, { requestId: null }, { requestId: 'wrong' }, { extra: true }]) {
     expect(() => parseInteractionError({ ...error, ...extra }, kind === 'touch' ? touchWire.requestId : chatWire.requestId, 502)).toThrow();
   }
   expect(() => parseInteractionError(error, chatWire.requestId, 503)).toThrow();
 });
-it.each(['\ud800', '\udfff', '\u0085', '\r', 'x'.repeat(240) + ' '])('rejects invalid v7 text without trimming away overflow or controls', text => {
+it.each(['\ud800', '\udfff', '\u0085', '\r', 'x'.repeat(240) + ' '])('rejects invalid v1 text without trimming away overflow or controls', text => {
   const response = fixture('response.touch.json') as Record<string, unknown>;
   expect(() => parseInteractionTouchResponse({ ...response, text }, touchWire.requestId, 'eligible')).toThrow();
 });
@@ -122,7 +110,7 @@ it('enforces suppressed touch and captures policy before transport resolves', as
   resolve(json(fixture('response.touch.json')));
   await expect(pending).rejects.toThrow(); expect(fetcher).toHaveBeenCalledTimes(1);
 });
-it.each(['cancel', 'timeout'] as const)('ignores late v7 touch after %s without a second request', async kind => {
+it.each(['cancel', 'timeout'] as const)('ignores late v1 touch after %s without a second request', async kind => {
   let resolve!: (response: Response) => void;
   const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
   const provider = client(fetcher), pending = provider.generateEvent(touchInput());
@@ -133,7 +121,7 @@ it.each(['cancel', 'timeout'] as const)('ignores late v7 touch after %s without 
   for (let i = 0; i < 20; i++) await Promise.resolve();
   expect(fetcher).toHaveBeenCalledTimes(1); expect(await provider.getStatus()).toEqual({ kind: 'ready' });
 });
-it('preserves the shared admission slot during pending v7 touch', async () => {
+it('preserves the shared admission slot during pending v1 touch', async () => {
   let resolve!: (response: Response) => void;
   const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
   const provider = client(fetcher), pending = provider.generateEvent(touchInput());
@@ -141,7 +129,7 @@ it('preserves the shared admission slot during pending v7 touch', async () => {
   await expect(provider.generateEvent(touchInput())).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(1); resolve(json(fixture('response.touch.json'))); await pending;
 });
-it('drops summary when required v7 context crosses the final wire budget', () => {
+it('drops summary when required v1 context crosses the final wire budget', () => {
   const request = chatInput();
   const full: AIProviderRequest = { ...request, userMessage: { ...request.userMessage, text: '漢'.repeat(240) },
     characterSnapshot: { ...request.characterSnapshot, personality: { ...request.characterSnapshot.personality, aiSelfConcept: '漢'.repeat(500) } },
@@ -179,8 +167,8 @@ it.each(['chat', 'touch'] as const)('bounds ignored-abort %s settlement to 3s wh
   expect(await provider.getStatus()).toEqual({ kind: 'ready' });
   expect(settled).toHaveBeenCalledTimes(1);
 });
-it('keeps aborted v7 summary in the shared slot until its ignored-abort HTTP settles', async () => {
-  const summary = parseSummaryRequest(fixture('request.summary.json', 5));
+it('keeps aborted v1 summary in the shared slot until its ignored-abort HTTP settles', async () => {
+  const summary = parseSummaryRequest(fixture('request.summary.json', 'summary'));
   let resolve!: (response: Response) => void;
   const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
   const provider = client(fetcher), controller = new AbortController();
@@ -188,15 +176,15 @@ it('keeps aborted v7 summary in the shared slot until its ignored-abort HTTP set
   const rejected = expect(pending).rejects.toThrow(); controller.abort(); await rejected;
   await expect(provider.generateEvent(touchInput())).rejects.toThrow();
   expect(provider.canStartObservation()).toBe(false); expect(fetcher).toHaveBeenCalledTimes(1);
-  resolve(json(fixture('response.summary.success.json', 5)));
+  resolve(json(fixture('response.summary.success.json', 'summary')));
   for (let i = 0; i < 20; i++) await Promise.resolve();
   expect(await provider.getStatus()).toEqual({ kind: 'ready' });
 });
-it.each(['offline', 'malformed', 'timeout'] as const)('settles v7 chat %s without downgrade or accepting late output', async mode => {
+it.each(['offline', 'malformed', 'timeout'] as const)('settles v1 chat %s without downgrade or accepting late output', async mode => {
   let resolve!: (response: Response) => void;
   const fetcher = vi.fn<typeof fetch>(async () => {
     if (mode === 'offline') throw new TypeError('offline');
-    if (mode === 'malformed') return json({ version: 7, requestId: chatWire.requestId, text: 'Invalid without appraisal' });
+    if (mode === 'malformed') return json({ version: 1, requestId: chatWire.requestId, text: 'Invalid without appraisal' });
     return new Promise(yes => { resolve = yes; });
   });
   const provider = client(fetcher), pending = provider.generateResponse(chatInput());
@@ -205,7 +193,7 @@ it.each(['offline', 'malformed', 'timeout'] as const)('settles v7 chat %s withou
     if (mode === 'timeout') await vi.advanceTimersByTimeAsync(12000);
     await expect(pending).resolves.toMatchObject({ status: 'fallback' });
   }
-  expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toContain('/v7/chat');
+  expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toContain('/v1/chat');
   if (mode === 'timeout') {
     await expect(provider.generateEvent(touchInput())).rejects.toThrow();
     resolve(json(fixture('response.chat.json')));
@@ -213,8 +201,8 @@ it.each(['offline', 'malformed', 'timeout'] as const)('settles v7 chat %s withou
   }
   expect(await provider.getStatus()).toEqual({ kind: 'ready' });
 });
-it('preserves independent legacy decision and memory candidate sanitization inside valid v7 appraisal', () => {
-  const response = { version: 7, requestId: chatWire.requestId, text: 'Ответ', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' },
+it('preserves independent decision and memory candidate sanitization inside valid v1 appraisal', () => {
+  const response = { version: 1, requestId: chatWire.requestId, text: 'Ответ', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' },
     decision: { behavior: 'invented', confidence: 1 }, memoryCandidates: [{ key: 'user.display_name', value: 'Аня', evidenceQuote: 'not this user message' }] };
   const parsed = parseInteractionChatResponse(response, chatWire.requestId, 'Почему?', 'suppressed');
   expect(parsed).not.toHaveProperty('decision'); expect(parsed.memoryCandidates).toEqual([]); expect(parsed.text).toBe('Ответ');

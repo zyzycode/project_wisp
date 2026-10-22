@@ -9,12 +9,12 @@ from tests.helpers import touch_body
 from wisp_backend.api.boundary import CompletionBoundary
 
 
-def test_duplicate_and_cross_route_do_not_dispatch_twice(client_factory, body, completion):
+def test_duplicate_and_cross_route_do_not_dispatch_twice(client_factory, body, chat_completion):
     calls = []
 
     def upstream(request):
         calls.append(request)
-        return httpx.Response(200, json=completion())
+        return httpx.Response(200, json=chat_completion())
 
     with client_factory(upstream) as client:
         first = client.post("/v1/chat", json=body)
@@ -24,8 +24,8 @@ def test_duplicate_and_cross_route_do_not_dispatch_twice(client_factory, body, c
         assert len(calls) == 1
 
 
-def test_touch_does_not_exhaust_chat_rate_budget(client_factory, body, completion):
-    with client_factory(lambda _: httpx.Response(200, json=completion())) as client:
+def test_touch_does_not_exhaust_chat_rate_budget(client_factory, body, chat_completion):
+    with client_factory(lambda _: httpx.Response(200, json=chat_completion())) as client:
         for _ in range(12):
             request = touch_body(body) | {"requestId": str(uuid4())}
             assert client.post("/v1/touch", json=request).status_code == 200
@@ -34,8 +34,8 @@ def test_touch_does_not_exhaust_chat_rate_budget(client_factory, body, completio
 
 
 @pytest.mark.parametrize("extra", [{"decision": None}, {"decision": {"behavior": "invalid"}}, {"memoryCandidates": []}])
-def test_touch_never_sanitizes_extra_model_keys(client_factory, body, completion, extra):
-    with client_factory(lambda _: httpx.Response(200, json=completion({"text": "OK", **extra}))) as client:
+def test_touch_never_sanitizes_extra_model_keys(client_factory, body, chat_completion, extra):
+    with client_factory(lambda _: httpx.Response(200, json=chat_completion({"text": "OK", **extra}))) as client:
         assert client.post("/v1/touch", json=touch_body(body)).status_code == 502
 
 
@@ -100,10 +100,10 @@ def test_disconnect_cancels_application(path):
 
 
 @pytest.mark.parametrize("first_touch", [False, True])
-def test_touch_and_chat_allow_new_ids(app_factory, body, completion, first_touch):
+def test_touch_and_chat_allow_new_ids(app_factory, body, chat_completion, first_touch):
     from fastapi.testclient import TestClient
 
-    app = app_factory(lambda _: httpx.Response(200, json=completion()))
+    app = app_factory(lambda _: httpx.Response(200, json=chat_completion()))
     first_path, second_path = ("/v1/touch", "/v1/chat") if first_touch else ("/v1/chat", "/v1/touch")
     first_body = touch_body(body) if first_touch else body
     second_body = body if first_touch else touch_body(body)
@@ -115,7 +115,7 @@ def test_touch_and_chat_allow_new_ids(app_factory, body, completion, first_touch
 
 
 @pytest.mark.parametrize("path", ["/v1/chat", "/v1/touch"])
-def test_legacy_digest_replay_is_chat_only(app_factory, body, path):
+def test_body_only_digest_is_never_replayed(app_factory, body, path):
     import hashlib
     import json
 
@@ -134,7 +134,7 @@ def test_legacy_digest_replay_is_chat_only(app_factory, body, path):
             await ledger.settle(body["requestId"], Usage(1, 1, 2), outcome)
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
                 response = await client.post(path, content=raw, headers={"content-type": "application/json"})
-                assert response.status_code == (200 if path == "/v1/chat" else 409)
+                assert response.status_code == 409
 
     asyncio.run(run())
 

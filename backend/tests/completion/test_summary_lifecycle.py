@@ -17,23 +17,39 @@ from wisp_backend.completion.contracts import InferenceRequest, ProviderResult
 from wisp_backend.completion.policies import POLICIES, Scenario
 from wisp_backend.config.profiles import PROFILES
 
-FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v5"
+FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v1/summary"
 
 
 def fixture(name: str) -> dict:
     return json.loads((FIXTURES / name).read_bytes())
 
 
-def upstream_reply(provider: str, completion: Callable[..., dict]) -> dict:
+def upstream_reply(provider: str, completion: Callable[..., dict], interaction: bool = False) -> dict:
     if provider == "gemini":
         return gemini_completion(
-            {"text": "summary"}, usage={"promptTokenCount": 1, "candidatesTokenCount": 2, "totalTokenCount": 3}
+            {
+                "text": "summary",
+                **(
+                    {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                    if interaction
+                    else {}
+                ),
+            },
+            usage={"promptTokenCount": 1, "candidatesTokenCount": 2, "totalTokenCount": 3},
         )
-    return completion({"text": "summary"}, usage={"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3})
+    return completion(
+        {
+            "text": "summary",
+            **(
+                {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}} if interaction else {}
+            ),
+        },
+        usage={"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
+    )
 
 
 @pytest.mark.parametrize("provider", ["groq", "gemini"])
-def test_v5_replay_and_cross_endpoint_namespace_settle_once(
+def test_v1_replay_and_cross_endpoint_namespace_settle_once(
     app_factory: Callable[..., FastAPI],
     body: dict,
     completion: Callable[..., dict],
@@ -44,31 +60,36 @@ def test_v5_replay_and_cross_endpoint_namespace_settle_once(
 
         def upstream(request: httpx.Request) -> httpx.Response:
             calls.append(request)
-            return httpx.Response(200, json=upstream_reply(provider, completion))
+            return httpx.Response(
+                200, json=upstream_reply(provider, completion, b"interaction_policy" in request.content)
+            )
 
         app = app_factory(upstream, assistants={"default": {"provider": provider}})
         summary = fixture("request.summary.json")
         candidates = [
             ("/v1/chat", body),
             ("/v1/touch", touch_body(body)),
-            ("/v3/chat", json.loads((CONTRACT_FIXTURES / "desktop-backend-v3/request.chat.json").read_bytes())),
-            ("/v3/events", json.loads((CONTRACT_FIXTURES / "desktop-backend-v3/request.game.json").read_bytes())),
-            ("/v5/chat", fixture("request.chat-summary.json")),
+            ("/v1/chat", json.loads((CONTRACT_FIXTURES / "desktop-backend-v1/events/request.chat.json").read_bytes())),
+            (
+                "/v1/events",
+                json.loads((CONTRACT_FIXTURES / "desktop-backend-v1/events/request.game.json").read_bytes()),
+            ),
+            ("/v1/chat", fixture("request.chat-summary.json")),
         ]
         async with app.router.lifespan_context(app):
             service = app.state.completion_service
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                first = await client.post("/v5/summary", json=summary)
-                assert first.status_code == 200 and first.json()["version"] == 5
+                first = await client.post("/v1/summary", json=summary)
+                assert first.status_code == 200 and first.json()["version"] == 1
                 for route, candidate in candidates:
                     conflict = await client.post(route, json={**candidate, "requestId": summary["requestId"]})
                     assert conflict.status_code == 409
                     assert conflict.json()["error"]["code"] == "request_conflict"
                     assert conflict.json()["version"] == candidate["version"]
                     assert (await client.post(route, json={**candidate, "requestId": str(uuid4())})).status_code == 200
-                assert (await client.post("/v5/summary", json=summary)).content == first.content
+                assert (await client.post("/v1/summary", json=summary)).content == first.content
                 changed = {**summary, "locale": "en"}
-                assert (await client.post("/v5/summary", json=changed)).status_code == 409
+                assert (await client.post("/v1/summary", json=changed)).status_code == 409
             with sqlite3.connect(service.ledger.path) as db:
                 assert db.execute("SELECT requests,reserved,confirmed,uncertain FROM days").fetchone() == (6, 0, 18, 0)
         assert len(calls) == 6
@@ -77,7 +98,7 @@ def test_v5_replay_and_cross_endpoint_namespace_settle_once(
 
 
 @pytest.mark.parametrize("provider", ["groq", "gemini"])
-def test_v5_inflight_duplicate_and_conflict_never_dispatch_again(
+def test_v1_inflight_duplicate_and_conflict_never_dispatch_again(
     app_factory: Callable[..., FastAPI],
     completion: Callable[..., dict],
     provider: str,
@@ -90,24 +111,26 @@ def test_v5_inflight_duplicate_and_conflict_never_dispatch_again(
             calls.append(request)
             entered.set()
             await release.wait()
-            return httpx.Response(200, json=upstream_reply(provider, completion))
+            return httpx.Response(
+                200, json=upstream_reply(provider, completion, b"interaction_policy" in request.content)
+            )
 
         app = app_factory(upstream, assistants={"default": {"provider": provider}})
         summary = fixture("request.summary.json")
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                first = asyncio.create_task(client.post("/v5/summary", json=summary))
+                first = asyncio.create_task(client.post("/v1/summary", json=summary))
                 await asyncio.wait_for(entered.wait(), 1)
                 second = None
                 try:
-                    duplicate = await client.post("/v5/summary", json=summary)
+                    duplicate = await client.post("/v1/summary", json=summary)
                     assert duplicate.status_code == 409 and duplicate.json()["error"]["code"] == "request_in_progress"
-                    conflict = await client.post("/v5/chat", json=fixture("request.chat.json"))
+                    conflict = await client.post("/v1/chat", json=fixture("request.chat.json"))
                     assert conflict.status_code == 409 and conflict.json()["error"]["code"] == "request_conflict"
-                    changed = await client.post("/v5/summary", json={**summary, "locale": "en"})
+                    changed = await client.post("/v1/summary", json={**summary, "locale": "en"})
                     assert changed.status_code == 409 and changed.json()["error"]["code"] == "request_conflict"
                     second = asyncio.create_task(
-                        client.post("/v5/summary", json={**summary, "requestId": str(uuid4())})
+                        client.post("/v1/summary", json={**summary, "requestId": str(uuid4())})
                     )
 
                     async def wait_dispatch() -> None:
@@ -130,9 +153,9 @@ def test_v5_inflight_duplicate_and_conflict_never_dispatch_again(
 @pytest.mark.parametrize("provider", ["groq", "gemini"])
 @pytest.mark.parametrize("shutdown", [False, True])
 @pytest.mark.parametrize(
-    "route,filename", [("/v5/summary", "request.summary.json"), ("/v5/chat", "request.chat-summary.json")]
+    "route,filename", [("/v1/summary", "request.summary.json"), ("/v1/chat", "request.chat-summary.json")]
 )
-def test_v5_disconnect_and_shutdown_close_provider_and_release_capacity(
+def test_v1_disconnect_and_shutdown_close_provider_and_release_capacity(
     app_factory: Callable[..., FastAPI],
     provider: str,
     shutdown: bool,
@@ -228,7 +251,7 @@ def test_summary_late_usage_refines_once_without_replaying_success(
             service.provider = LateProvider()
             request = SummaryRequest.model_validate(fixture("request.summary.json"))
             first = await service.complete(prepare_job(request), "summary-digest", asyncio.get_running_loop().time())
-            assert first.status == 504 and json.loads(first.body)["version"] == 5
+            assert first.status == 504 and json.loads(first.body)["version"] == 1
             assert entered.is_set()
             release.set()
 
@@ -294,8 +317,8 @@ def test_summary_cancel_during_settlement_never_caches_success(
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("route", ["/v5/summary", "/v5/chat"])
-def test_slow_v5_body_never_enters_completion(route: str, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("route", ["/v1/summary", "/v1/chat"])
+def test_slow_v1_body_never_enters_completion(route: str, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("wisp_backend.api.endpoints.BODY_TIMEOUT", 0.01)
 
     async def run() -> None:
@@ -316,6 +339,6 @@ def test_slow_v5_body_never_enters_completion(route: str, monkeypatch: pytest.Mo
             send,
         )
         assert sent[0]["status"] == 400
-        assert json.loads(sent[1]["body"]) == {"version": 5, "requestId": None, "error": {"code": "invalid_request"}}
+        assert json.loads(sent[1]["body"]) == {"version": 1, "requestId": None, "error": {"code": "invalid_request"}}
 
     asyncio.run(run())

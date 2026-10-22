@@ -2,7 +2,7 @@ import type { AIProviderRequest } from '../../application/ports/ai-provider.inte
 import type { AIEventProviderRequest } from '../../application/ports/ai-event-provider.interface';
 import type { BackendInteractionAppraisal, BackendInteractionPolicy, BackendInteractionChatRequest, BackendInteractionTouchRequest, BackendPreviousTouchReaction } from '../../application/ports/backend-interaction-contract';
 import { exactRecord, enumValue, plainText } from '../../shared/dialogue-ipc-validation';
-import { projectSummaryChat, parseSummaryChatResponse, parseSummaryError } from './backend-summary-validation';
+import { projectSummaryChat, parseSummaryChatResponse } from './backend-summary-validation';
 import { projectTouchRequest } from './backend-touch-validation';
 
 function validUnicode(value: unknown): void {
@@ -45,7 +45,7 @@ function bytes(value: unknown): number { return new TextEncoder().encode(JSON.st
 export function projectInteractionTouch(request: AIEventProviderRequest): BackendInteractionTouchRequest {
   const base = projectTouchRequest(request);
   if (base.event.variant !== 'touch') throw new TypeError('Invalid factual touch');
-  const result: BackendInteractionTouchRequest = { ...base, version: 7, event: { type: 'user_touch', variant: 'touch' }, ...policy(request.interaction, base.character.personality.presetId, false) };
+  const result: BackendInteractionTouchRequest = { ...base, event: { type: 'user_touch', variant: 'touch' }, ...policy(request.interaction, base.character.personality.presetId, false) };
   validUnicode(result);
   if (bytes(result) > 32768) throw new TypeError('Request too large');
   return result;
@@ -54,9 +54,9 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
   const base = projectSummaryChat(request);
   const interaction = policy(request.interaction, base.character.personality.presetId, true);
   const previousTouch = request.interaction?.previousTouch === undefined ? undefined : parsePreviousTouch(request.interaction.previousTouch);
-  let result: BackendInteractionChatRequest = { ...base, ...interaction, version: 7, ...(previousTouch === undefined ? {} : { previousTouch }) };
+  let result: BackendInteractionChatRequest = { ...base, ...interaction, ...(previousTouch === undefined ? {} : { previousTouch }) };
   validUnicode(result);
-  // Added v7 context is required. Drop summary atomically, then optional episodes.
+  // Interaction context is required. Drop summary atomically, then optional episodes.
   if (bytes(result) > 32768 && result.summary !== undefined) { const { summary: _summary, ...withoutSummary } = result; result = withoutSummary; }
   while (bytes(result) > 32768 && result.memory.episodes.length) result = { ...result, memory: { ...result.memory, episodes: result.memory.episodes.slice(0, -1) } };
   if (bytes(result) > 32768) throw new TypeError('Request too large');
@@ -64,18 +64,14 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
 }
 export function parseInteractionTouchResponse(value: unknown, requestId: string, effectPolicy: BackendInteractionPolicy['effectPolicy']) {
   const r = exactRecord(value, ['version', 'requestId', 'text', 'appraisal']);
-  if (r.version !== 7 || r.requestId !== requestId) throw new TypeError('Invalid interaction envelope');
+  if (r.version !== 1 || r.requestId !== requestId) throw new TypeError('Invalid interaction envelope');
   return { requestId, replyText: text(r.text, 240), appraisal: parseInteractionAppraisal(r.appraisal, true, effectPolicy) };
 }
 export function parseInteractionChatResponse(value: unknown, requestId: string, userText: string, effectPolicy: BackendInteractionPolicy['effectPolicy']) {
   const r = exactRecord(value, ['version', 'requestId', 'text', 'appraisal'], ['decision', 'memoryCandidates']);
-  if (r.version !== 7) throw new TypeError('Invalid interaction envelope');
+  if (r.version !== 1) throw new TypeError('Invalid interaction envelope');
   const appraisal = parseInteractionAppraisal(r.appraisal, false, effectPolicy);
   const { appraisal: _appraisal, ...base } = r;
-  return { ...parseSummaryChatResponse({ ...base, text: text(r.text, 2000), version: 5 }, requestId, userText), version: 7 as const, appraisal };
+  return { ...parseSummaryChatResponse({ ...base, text: text(r.text, 2000) }, requestId, userText), appraisal };
 }
-export function parseInteractionError(value: unknown, requestId: string, status: number) {
-  const r = exactRecord(value, ['version', 'requestId', 'error']);
-  if (r.version !== 7) throw new TypeError('Invalid interaction error');
-  return { ...parseSummaryError({ ...r, version: 5 }, requestId, status), version: 7 as const };
-}
+export { parseBackendError as parseInteractionError } from './backend-response-validation';

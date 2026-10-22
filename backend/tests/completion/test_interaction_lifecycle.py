@@ -49,7 +49,7 @@ def test_pending_replay_conflict_and_retention(
 
         app = app_factory(upstream, assistants={"default": {"provider": provider}})
         body = fixture(f"request.{operation}.json")
-        route = f"/v7/{operation}"
+        route = f"/v1/{operation}"
         body["character"]["personality"]["aiSelfConcept"] = "PRIVATE_CHARACTER"
         if operation == "chat":
             body["previousTouch"]["publishedText"] = "PRIVATE_TOUCH"
@@ -70,10 +70,12 @@ def test_pending_replay_conflict_and_retention(
                     result = await first
                 assert result.status_code == 200
                 other = "chat" if operation == "touch" else "touch"
-                assert (await client.post(f"/v7/{other}", json=fixture(f"request.{other}.json"))).status_code == 409
+                assert (await client.post(f"/v1/{other}", json=fixture(f"request.{other}.json"))).status_code == 409
                 old = {k: v for k, v in body.items() if k not in ("card", "effectPolicy", "previousTouch")}
                 old["version"] = 1 if operation == "touch" else 5
-                assert (await client.post(f'/v{old["version"]}/{operation}', json=old)).status_code == 409
+                assert (await client.post(f'/v{old["version"]}/{operation}', json=old)).status_code == (
+                    400 if operation == "touch" else 404
+                )
                 clock.now += CACHE_TTL - 0.001
                 assert (await client.post(route, json=body)).content == result.content
                 clock.now += 0.001
@@ -143,7 +145,7 @@ def test_disconnect_or_shutdown_closes_http_and_settles(
             scope = {
                 "type": "http",
                 "asgi": {"version": "3.0"},
-                "path": f"/v7/{operation}",
+                "path": f"/v1/{operation}",
                 "method": "POST",
                 "headers": [(b"content-type", b"application/json")],
                 "query_string": b"",
@@ -200,9 +202,9 @@ def test_late_usage_settles_once_without_publishing(
         async with app.router.lifespan_context(app):
             service = app.state.completion_service
             service.provider = LateProvider()
-            body = REQUESTS[f"/v7/{operation}"].model_validate(fixture(f"request.{operation}.json"))
+            body = REQUESTS[f"/v1/{operation}"].model_validate(fixture(f"request.{operation}.json"))
             first = await service.complete(prepare_job(body), "digest", asyncio.get_running_loop().time())
-            assert first.status == 504 and json.loads(first.body)["version"] == 7
+            assert first.status == 504 and json.loads(first.body)["version"] == 1
             release.set()
 
             async def drain() -> None:
@@ -265,7 +267,7 @@ def test_deadline_closes_response_stream(
         )
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                response = await client.post(f"/v7/{operation}", json=fixture(f"request.{operation}.json"))
+                response = await client.post(f"/v1/{operation}", json=fixture(f"request.{operation}.json"))
                 assert entered.is_set() and response.status_code == 504
                 await asyncio.wait_for(closed.wait(), 2)
 
@@ -294,7 +296,7 @@ def test_admission_deadline_can_expire_without_opening_a_stream(
             app.state.completion_service.ledger = PendingLedger()
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
                 try:
-                    response = await client.post(f"/v7/{operation}", json=fixture(f"request.{operation}.json"))
+                    response = await client.post(f"/v1/{operation}", json=fixture(f"request.{operation}.json"))
                     assert entered.is_set() and response.status_code == 504
                 finally:
                     release.set()

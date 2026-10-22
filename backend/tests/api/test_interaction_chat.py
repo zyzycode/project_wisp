@@ -38,16 +38,7 @@ def test_eligible_prompt_has_current_message_semantics_without_rollout_override(
         assert distinction in system
 
 
-def test_v7_output_contract_does_not_depend_on_legacy_prompt_wording(monkeypatch: pytest.MonkeyPatch) -> None:
-    from wisp_backend.completion.prompts import chat
-
-    monkeypatch.setattr(
-        chat,
-        "MEMORY_SYSTEM_PROMPT",
-        chat.MEMORY_SYSTEM_PROMPT.replace(
-            "optional decision, and optional memoryCandidates.", "You may also propose decision and memoryCandidates."
-        ),
-    )
+def test_chat_output_contract_requires_appraisal() -> None:
     blocks = prepare_job(InteractionChatRequest.model_validate(CASES[0]["request"])).inference.blocks
     instructions = next(block for block in blocks if block.key == "instructions").messages[0].content
     assert "required appraisal, optional decision, and optional memoryCandidates." in instructions
@@ -86,9 +77,9 @@ def test_eligible_cases_through_real_route_and_provider(
     with TestClient(
         app_factory(upstream, assistants={"default": {"provider": provider, "max_output_tokens": 4096}})
     ) as client:
-        response = client.post("/v7/chat", json=body)
+        response = client.post("/v1/chat", json=body)
         assert response.status_code == 200 and response.json() == case["response"]
-        assert client.post("/v7/chat", json=body).content == response.content
+        assert client.post("/v1/chat", json=body).content == response.content
     assert len(calls) == 1
 
 
@@ -107,7 +98,7 @@ def test_eligible_proposal_cannot_bypass_suppressed_policy(
     body = {**case["request"], "effectPolicy": "suppressed"}
     reply = {key: value for key, value in case["response"].items() if key not in ("version", "requestId")}
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
-        result = client.post("/v7/chat", json=body)
+        result = client.post("/v1/chat", json=body)
         assert result.status_code == 502 and result.json()["error"]["code"] == "invalid_model_response"
 
 
@@ -137,7 +128,7 @@ def test_semantics_do_not_become_memory_evidence(
         ],
     }
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
-        result = client.post("/v7/chat", json=body)
+        result = client.post("/v1/chat", json=body)
         assert result.status_code == 200
         assert result.json()["memoryCandidates"] == reply["memoryCandidates"][:1]
         assert result.json()["appraisal"] == reply["appraisal"]
@@ -159,5 +150,5 @@ def test_eligible_never_accepts_numeric_or_multiple_appraisals(
     body = CASES[0]["request"]
     reply = {"text": "Спасибо.", "appraisal": {**CASES[0]["response"]["appraisal"], **extra}}
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
-        result = client.post("/v7/chat", json=body)
+        result = client.post("/v1/chat", json=body)
         assert result.status_code == 502 and result.json()["error"]["code"] == "invalid_model_response"

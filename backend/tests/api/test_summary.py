@@ -1,4 +1,4 @@
-"""Shared v5 corpus and real HTTP boundary/provider projections; synthetic only."""
+"""Shared v1 corpus and real HTTP boundary/provider projections; synthetic only."""
 
 import json
 
@@ -6,9 +6,10 @@ import httpx
 import pytest
 from pydantic import ValidationError
 from tests.helpers import CONTRACT_FIXTURES
-from wisp_backend.api.schemas.summary import SummaryChatRequest, SummaryRequest
+from wisp_backend.api.schemas.interaction import InteractionChatRequest as SummaryChatRequest
+from wisp_backend.api.schemas.summary import SummaryRequest
 
-FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v5"
+FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v1/summary"
 
 
 def fixture(name):
@@ -63,7 +64,7 @@ def test_exact_utf16_and_combined_cap(field, limit):
 )
 def test_malformed_summary_is_wholly_rejected(client_factory, completion, reply):
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
-        response = client.post("/v5/summary", json=fixture("request.summary.json"))
+        response = client.post("/v1/summary", json=fixture("request.summary.json"))
         assert response.status_code == 502
         assert response.json() == fixture("response.error.json")
 
@@ -71,14 +72,18 @@ def test_malformed_summary_is_wholly_rejected(client_factory, completion, reply)
 @pytest.mark.parametrize(
     "request_name,path,response_name",
     [
-        ("request.summary.json", "/v5/summary", "response.summary.success.json"),
-        ("request.chat.json", "/v5/chat", "response.chat.success.json"),
-        ("request.chat-summary.json", "/v5/chat", "response.chat.success.json"),
+        ("request.summary.json", "/v1/summary", "response.summary.success.json"),
+        ("request.chat.json", "/v1/chat", "response.chat.success.json"),
+        ("request.chat-summary.json", "/v1/chat", "response.chat.success.json"),
     ],
 )
 def test_shared_http_success(client_factory, completion, request_name, path, response_name):
     expected = fixture(response_name)
-    with client_factory(lambda _: httpx.Response(200, json=completion({"text": expected["text"]}))) as client:
+    with client_factory(
+        lambda _: httpx.Response(
+            200, json=completion({key: value for key, value in expected.items() if key not in ("version", "requestId")})
+        )
+    ) as client:
         response = client.post(
             path, content=(FIXTURES / request_name).read_bytes(), headers={"content-type": "application/json"}
         )
@@ -127,44 +132,58 @@ def test_actual_summary_provider_source_only_and512_cap(app_factory, completion,
         else {"assistants": {"default": AssistantSettings(provider="gemini", model="gemini-3.5-flash-lite")}}
     )
     with TestClient(app_factory(upstream, **options)) as client:
-        response = client.post("/v5/summary", json=body)
+        response = client.post("/v1/summary", json=body)
         assert response.status_code == 200
     assert len(calls) == 1
 
 
 @pytest.mark.parametrize(
-    "path,name", [("/v5/summary", "request.summary.json"), ("/v5/chat", "request.chat-summary.json")]
+    "path,name", [("/v1/summary", "request.summary.json"), ("/v1/chat", "request.chat-summary.json")]
 )
 def test_errors_byte_cap_and_no_downgrade(client_factory, completion, path, name):
     body = fixture(name)
     with client_factory(lambda _: pytest.fail("invalid reached upstream")) as client:
-        for version in [1, 2, 3, 4, 6]:
+        for version in [2, 3, 4, 5, 6, 7]:
             response = client.post(path, json={**body, "version": version})
             assert response.status_code == 400
             assert response.json()["error"]["code"] == "unsupported_version"
-            assert response.json()["version"] == 5
+            assert response.json()["version"] == 1
         for version in [True, 5.0, "5", None]:
             assert client.post(path, json={**body, "version": version}).json()["error"]["code"] == "invalid_request"
         assert client.post(path, content=b"x" * 32769, headers={"content-type": "application/json"}).status_code == 413
     raw = json.dumps(body).encode()
     raw += b" " * (32768 - len(raw))
-    with client_factory(lambda _: httpx.Response(200, json=completion())) as client:
+    with client_factory(
+        lambda _: httpx.Response(
+            200,
+            json=completion(
+                {
+                    "text": "Привет!",
+                    **(
+                        {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                        if path == "/v1/chat"
+                        else {}
+                    ),
+                }
+            ),
+        )
+    ) as client:
         assert client.post(path, content=raw, headers={"content-type": "application/json"}).status_code == 200
 
 
 @pytest.mark.parametrize("error,status", [(httpx.ConnectError("private"), 503), (httpx.ReadTimeout("private"), 504)])
-def test_provider_failure_keeps_safe_v5_envelope(client_factory, error, status):
+def test_provider_failure_keeps_safe_v1_envelope(client_factory, error, status):
     def upstream(_):
         raise error
 
     with client_factory(upstream) as client:
-        response = client.post("/v5/summary", json=fixture("request.summary.json"))
+        response = client.post("/v1/summary", json=fixture("request.summary.json"))
         assert response.status_code == status
-        assert response.json()["version"] == 5
+        assert response.json()["version"] == 1
         assert "private" not in response.text
 
 
-def test_summary_not_evidence_and_no_durable_history(app_factory, completion, caplog):
+def test_summary_not_evidence_and_no_durable_history(app_factory, chat_completion, caplog):
     from fastapi.testclient import TestClient
 
     body = fixture("request.chat-summary.json")
@@ -178,7 +197,7 @@ def test_summary_not_evidence_and_no_durable_history(app_factory, completion, ca
         assert data["messages"][-1] == body["messages"][-1]
         return httpx.Response(
             200,
-            json=completion(
+            json=chat_completion(
                 {
                     "text": "ok",
                     "memoryCandidates": [{"key": "user.favorite_topic", "value": marker, "evidenceQuote": marker}],
@@ -188,12 +207,12 @@ def test_summary_not_evidence_and_no_durable_history(app_factory, completion, ca
 
     app = app_factory(upstream)
     with TestClient(app) as client:
-        response = client.post("/v5/chat", json=body)
+        response = client.post("/v1/chat", json=body)
         assert response.status_code == 200
         assert response.json()["memoryCandidates"] == []
         ledger = app.state.completion_service.ledger.path
         spec = client.get("/openapi.json").json()
-        for route in ["/v5/summary", "/v5/chat"]:
+        for route in ["/v1/summary", "/v1/chat"]:
             assert set(spec["paths"][route]["post"]["responses"]) == {
                 "200",
                 "400",

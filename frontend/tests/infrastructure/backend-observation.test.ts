@@ -4,11 +4,11 @@ import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
 import { parseObservationRequest, projectObservationRequest, parseObservationResponse, parseObservationError } from '../../src/infrastructure/ai/backend-observation-validation';
 import { providerRequest } from './backend-ai-fixture';
-const fixture = (name: string): unknown => JSON.parse(readFileSync(join(process.cwd(), '../docs/contracts/fixtures/desktop-backend-v6', name), 'utf8'));
+const fixture = (name: string): unknown => JSON.parse(readFileSync(join(process.cwd(), '../docs/contracts/fixtures/desktop-backend-v1/observation', name), 'utf8'));
 const wire = parseObservationRequest(fixture('request.valid.json'));
 const input = { requestId: wire.requestId, locale: wire.locale, characterSnapshot: wire.character, observation: wire.observation };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
-const client = (fetcher: typeof fetch, apiVersion: 1 | 2 | 3 | 5 = 1) => new ExternalAIProviderClient({ baseUrl: 'https://example.com/api', development: false, apiVersion, now: Date.now, fetch: fetcher });
+const client = (fetcher: typeof fetch) => new ExternalAIProviderClient({ baseUrl: 'https://example.com/api', development: false, now: Date.now, fetch: fetcher });
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(1000000); });
 afterEach(() => vi.useRealTimers());
@@ -26,11 +26,11 @@ it.each(invalid)('rejects shared corpus $name', async entry => {
   }
   expect(() => entry.kind === 'request' ? parseObservationRequest(entry.value) : parseObservationResponse(entry.value, wire.requestId)).toThrow();
 });
-it.each([1, 2, 3, 5] as const)('uses independent /v6/observation with chat API v%s and exact projection', async version => {
-  const fetcher = vi.fn<typeof fetch>(async () => json(fixture('response.success.json'))), provider = client(fetcher, version);
+it('uses the fixed observation endpoint and exact projection', async () => {
+  const fetcher = vi.fn<typeof fetch>(async () => json(fixture('response.success.json'))), provider = client(fetcher);
   expect(await provider.getStatus()).toEqual({ kind: 'ready' }); expect(fetcher).not.toHaveBeenCalled();
   await expect(provider.generateObservation(input, new AbortController().signal)).resolves.toBe('Может, сделать небольшую паузу?');
-  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/api/v6/observation'); expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(wire);
+  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/api/v1/observation'); expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(wire);
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ credentials: 'omit', redirect: 'error', cache: 'no-store' }); expect(fetcher).toHaveBeenCalledTimes(1);
 });
 it.each(['offline', '401', '403', '404', '502', '503', '504', 'content-type', 'invalid-json', 'oversize', 'utf8'] as const)('silently rejects %s without retry/probe/downgrade', async failure => {
@@ -47,7 +47,7 @@ it.each(['offline', '401', '403', '404', '502', '503', '504', 'content-type', 'i
 });
 it('bounds public timeout by3s but retains draining slot until actual fetch settlement', async () => {
   let resolve!: (response: Response) => void;
-  const fetcher = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(yes => { resolve = yes; })).mockImplementation(async () => json({ version: 1, requestId: providerRequest().requestId, text: 'Chat reply' }));
+  const fetcher = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(yes => { resolve = yes; })).mockImplementation(async () => json({ version: 1, requestId: providerRequest().requestId, text: 'Chat reply', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }));
   const provider = client(fetcher), controller = new AbortController();
   const pending = provider.generateObservation(input, controller.signal); const rejection = expect(pending).rejects.toThrow();
   controller.abort(); await flush(); expect(await provider.getStatus()).toEqual({ kind: 'thinking', activeRequestId: wire.requestId });
@@ -67,5 +67,5 @@ it('does not start observation while chat owns the client', async () => {
   let resolve!: (response: Response) => void; const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
   const provider = client(fetcher), pending = provider.generateResponse(providerRequest());
   await expect(provider.generateObservation(input, new AbortController().signal)).rejects.toThrow(); expect(fetcher).toHaveBeenCalledTimes(1);
-  resolve(json({ version: 1, requestId: providerRequest().requestId, text: 'reply' })); await pending;
+  resolve(json({ version: 1, requestId: providerRequest().requestId, text: 'reply', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } })); await pending;
 });

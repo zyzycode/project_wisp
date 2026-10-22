@@ -63,10 +63,7 @@ class CompletionBoundary:
         request_id = read_request_id(data)
         namespace = scope["method"] + " " + scope["path"]
         digest = namespace + ":" + hashlib.sha256(namespace.encode() + b"\0" + chunks).hexdigest()
-        legacy_digest = hashlib.sha256(chunks).hexdigest() if endpoint.legacy_digest else None
-        scope.setdefault("state", {}).update(
-            request_id=request_id, started=started, digest=digest, legacy_digest=legacy_digest
-        )
+        scope.setdefault("state", {}).update(request_id=request_id, started=started, digest=digest)
         if isinstance(data, dict) and "version" in data and type(data["version"]) is int and data["version"] != version:
             return await error_response("unsupported_version", request_id, version=version)(scope, receive, send)
         delivered = asyncio.Event()

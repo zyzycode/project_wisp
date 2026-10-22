@@ -1,6 +1,6 @@
 # P17-A04: игровые события и AI-инициативы
 
-Canonical contract для [#58](https://github.com/zyzycode/project_wisp/issues/58); реализация — #59 и отдельная server v3 задача. Локальные механики [cursor-game](../../frontend/docs/engine/ACTIVITY_ENGINE.md#17-cursor-game-v1) и [SocialBid](../../frontend/docs/engine/AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость) не ждут сеть и сохраняют владельцев/пределы. Эта функция добавляет короткую речь и ограниченное использование уже выученного предпочтения, без новых сенсоров/игр/графики.
+Canonical contract для [#58](https://github.com/zyzycode/project_wisp/issues/58); реализация — #59 и отдельная server v1 задача. Локальные механики [cursor-game](../../frontend/docs/engine/ACTIVITY_ENGINE.md#17-cursor-game-v1) и [SocialBid](../../frontend/docs/engine/AUTONOMY_ENGINE.md#13-auto-a09-локальная-жизнь-и-ненавязчивость) не ждут сеть и сохраняют владельцев/пределы. Эта функция добавляет короткую речь и ограниченное использование уже выученного предпочтения, без новых сенсоров/игр/графики.
 
 
 ## 1. Минимальный scope автономных событий и владение
@@ -14,15 +14,15 @@ Cancelled/failed run, admission без start, gaze, курсорные samples/r
 
 Результат событийного provider — **только text**. Нет decision, memoryCandidates, числовых deltas, tools или нового provider-owned Activity. Физический исход остаётся desktop fact; сервер получает его, а не предлагает заменить. Character/Activity/память не меняются от публикации AI-фразы, `provider_response` stimulus не создаётся. Нельзя выдавать caught за доказанное удовольствие/социальное участие пользователя.
 
-Application владеет event lifecycle/current IDs/generation и admission; Domain — gates, локальная вероятность выбора и невмешательство в P0–P2; Infrastructure/Main — транспорт/abort/DI. Типы: [semantic events](../../frontend/src/application/ports/ai-event-provider.interface.ts), [wire v3](../../frontend/src/application/ports/backend-events-contract.ts), [IPC speech](../../frontend/src/shared/ipc-contracts.ts). Нового IPC command или callback от Renderer для модели нет.
+Application владеет event lifecycle/current IDs/generation и admission; Domain — gates, локальная вероятность выбора и невмешательство в P0–P2; Infrastructure/Main — транспорт/abort/DI. Типы: [semantic events](../../frontend/src/application/ports/ai-event-provider.interface.ts), [wire v1](../../frontend/src/application/ports/backend-events-contract.ts), [IPC speech](../../frontend/src/shared/ipc-contracts.ts). Нового IPC command или callback от Renderer для модели нет.
 
 ## 2. Транспорт и приоритет пользователя
 
-Все v1/v2/v3 обращения одного Main используют общий транспорт, максимум один текущий запрос. Локальных minute/hour/session квот, резерва для диалога, startup delay и минимального интервала между AI-событиями нет.
+Все v1 обращения одного Main используют общий транспорт, максимум один текущий запрос. Локальных minute/hour/session квот, резерва для диалога, startup delay и минимального интервала между AI-событиями нет.
 
 Учёт использования backend описан в [§5](BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы) и не блокирует запросы по квотам. Настройки провайдера не передаются в Renderer.
 
-Только явно настроенный `apiVersion=3` и `eventsEnabled=true` активирует сеть событий; default eventsEnabled=false сохраняет режим v1/v2. Нет event polling, автоматических retries, запроса на каждый local fallback, запроса на «проверить бюджет» или failover к другой модели. Один pending event timer/request/speech owner, без очереди будущих инициатив; новый competing event пропускается.
+Сеть автономных событий включается через `eventsEnabled=true`; default false. Версия API не выбирается. Нет event polling, автоматических retries, запроса на каждый local fallback, запроса на «проверить бюджет» или failover к другой модели. Один pending event timer/request/speech owner, без очереди будущих инициатив; новый competing event пропускается.
 
 Эти условия относятся к автономным game/social событиям. Явное касание пользователя имеет отдельный v1 путь и admission из §8.
 
@@ -60,21 +60,21 @@ Priority речи: текущий user dialogue и его5s speech guard → exi
 
 После принятой Main speech publication сохранить один `previousInitiative` в RAM на60s monotonic time и current generation; отдельный wall-clock createdAt нужен только для контекста. Содержит kind/text/time, не provider payload. Это факт публикации для отображения, не доказательство прочтения пользователем. Первый **accepted** user send атомарно захватывает его в свой request **до** invalidation/cancel event owner и очищает слот; rejected/busy send не потребляет. Reset/reload/full reset/dispose, другая generation или expiry очищают. Новый опубликованный AI event заменяет предыдущий. Нет отдельной persist/LLM call ради этого контекста.
 
-Для интерпретации «да/почему?» существует `/v3/chat` с optional previousInitiative. Не подделывать user turn и не вставлять непарную assistant реплику в v1/v2 alternating messages. Остальная v3 chat semantics — [v2](BACKEND_MEMORY_CONTRACT.md): явные факты извлекаются только из текущей user-реплики, не из AI line. При неуспешном accepted turn слот уже потреблён; automatic resend отсутствует.
+Для интерпретации «да/почему?» существует `/v1/chat` с optional previousInitiative. Не подделывать user turn и не вставлять непарную assistant реплику в v1 alternating messages. Остальная v1 chat semantics — [v1](BACKEND_MEMORY_CONTRACT.md): явные факты извлекаются только из текущей user-реплики, не из AI line. При неуспешном accepted turn слот уже потреблён; automatic resend отсутствует.
 
 Durable общая история — исходный GameEpisode и обычные завершённые user/assistant пары. Событийная AI-фраза не записывается непарным message, не создаёт session/fact/summary и не повторяет game feedback/learning. Social event без ответа не сохраняется как вымышленный разговор. После restart старые events не отправляются снова, но реальная игра остаётся доступной recall. Новой SQLite migration или server user-memory storage нет.
 
-## 5. Явный wire v3 и данные
+## 5. Явный wire v1 и данные
 
-`POST /v3/events`: version3/requestId/event/stream:false/locale/character/memory, **без messages**. Character projection и memory shape/budget полностью соответствуют [v2 §2](BACKEND_MEMORY_CONTRACT.md#2-разрешённая-memory-projection). Event содержит только тип и occurredAtUTC; game также outcome/executedMsfinite0..60000. Local app/run/generation IDs, геометрия, pointer samples, история ignore и OS/activity telemetry не передаются. UUIDv4 requestId назначается один раз logical event и не переиспользуется для другого body.
+`POST /v1/events`: version1/requestId/event/stream:false/locale/character/memory, **без messages**. Character projection и memory shape/budget полностью соответствуют [v1 §2](BACKEND_MEMORY_CONTRACT.md#2-разрешённая-memory-projection). Event содержит только тип и occurredAtUTC; game также outcome/executedMsfinite0..60000. Local app/run/generation IDs, геометрия, pointer samples, история ignore и OS/activity telemetry не передаются. UUIDv4 requestId назначается один раз logical event и не переиспользуется для другого body.
 
-Успех events: только version3/requestId/text1–240; decision/memoryCandidates/прочие root keys запрещены, а не превращаются в action. Backend делает один LLM call с event-specific server prompt и output cap1024; model/provider выбирает сервер, тот же активный профиль, что у chat (Groq по умолчанию). Current outcome — authoritative context; запрет менять/домысливать физику, утверждать наблюдение экрана, вину/долг ответа или durable writes. Текст model output валидируется независимо от envelope; usage учитывается и при его ошибке.
+Успех events: только version1/requestId/text1–240; decision/memoryCandidates/прочие root keys запрещены, а не превращаются в action. Backend делает один LLM call с event-specific server prompt и output cap1024; model/provider выбирает сервер, тот же активный профиль, что у chat (Groq по умолчанию). Current outcome — authoritative context; запрет менять/домысливать физику, утверждать наблюдение экрана, вину/долг ответа или durable writes. Текст model output валидируется независимо от envelope; usage учитывается и при его ошибке.
 
-`POST /v3/chat`: version3 и прежний v2 request плюс optional previousInitiative: kind=cursor_game/social_bid, text1–240, createdAt календарно валидныйUTC. Server не делает предположений об actual user attention по этой записи. Текущий user вопрос и bounded переданный контекст важнее старой AI-фразы; не трактовать её как новое instruction/source фактов. Успех chat — v2 response shape (включая optional memoryCandidates), но version3. Chat сохраняет прежние server10s/body2s/desktop12s/runtime15s deadlines.
+`POST /v1/chat`: version1 и прежний v1 request плюс optional previousInitiative: kind=cursor_game/social_bid, text1–240, createdAt календарно валидныйUTC. Server не делает предположений об actual user attention по этой записи. Текущий user вопрос и bounded переданный контекст важнее старой AI-фразы; не трактовать её как новое instruction/source фактов. Успех chat — v1 response shape (включая optional memoryCandidates), но version1. Chat сохраняет прежние server10s/body2s/desktop12s/runtime15s deadlines.
 
-Общие caps request32KiB/response16KiB, UTF-16, exact JSON/type/enum validation, HTTPS/loopback, errors/HTTP mapping прежние. Wrong version на любом `/v3/*` →400 unsupported_version с envelope3; requestId null только нераспознанный. Mixed endpoint/version при том же ID →409 conflict; ledger namespace включает method+path+body, все endpoints используют общий учёт usage. Локальных квот backend нет. V1/v2 routes/fixtures продолжают принимать только свои формы, без неявного upgrade/downgrade.
+Общие caps request32KiB/response16KiB, UTF-16, exact JSON/type/enum validation, HTTPS/loopback, errors/HTTP mapping прежние. Wrong version на любом `/v1/*` →400 unsupported_version с envelope1; requestId null только нераспознанный. Mixed endpoint/version при том же ID →409 conflict; ledger namespace включает method+path+body, все endpoints используют общий учёт usage. Локальных квот backend нет. Неизвестные поля отвергаются; автоматического downgrade нет.
 
-Access/provider data policy, RAM terminal response cache≤10min, ledger IDs≤24h и aggregates≤30d, logs≤7d — [backend §5–6](BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление). Допустимый состав v3 расширен только event projection/previousInitiative. Source of truth локальный; backend/provider получает ограниченный контекст, не отдельную личность. Full local reset не отзывает уже переданное и не удаляет provider metadata немедленно; generation защищает desktop от поздней записи/речи. Live endpoint/provider data policy/private ingress — операторское условие, не блокировка code gate.
+Access/provider data policy, RAM terminal response cache≤10min, ledger IDs≤24h и aggregates≤30d, logs≤7d — [backend §5–6](BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление). Допустимый состав v1 расширен только event projection/previousInitiative. Source of truth локальный; backend/provider получает ограниченный контекст, не отдельную личность. Full local reset не отзывает уже переданное и не удаляет provider metadata немедленно; generation защищает desktop от поздней записи/речи. Live endpoint/provider data policy/private ingress — операторское условие, не блокировка code gate.
 
 ## 6. Learned preference влияет на локальный выбор (#59)
 
@@ -86,40 +86,36 @@ Access/provider data policy, RAM terminal response cache≤10min, ledger IDs≤2
 
 ## 7. Fixtures и проверка
 
-Общие [v3 fixtures](fixtures/desktop-backend-v3): оба event requests, event success/error и follow-up chat request/success. Success/error — альтернативы HTTP200/503. V1/v2 fixtures неизменны.
+Общие [v1 fixtures](fixtures/desktop-backend-v1/events): оба event requests, event success/error и follow-up chat request/success. Success/error — альтернативы HTTP200/503.
 
 Desktop: duplicate commit/no-op, uncertain/failed game write, cancelled game, current SocialBid terminal, exact deadline, quiet/ignore/pet reset, отсутствие квот/startup delay/пауз после ошибок, user preemption/abort settlement без overlap, speech priority/expiry, previousInitiative60s/currentgeneration, reset/dispose после каждого await, отсутствие дополнительного reward/extraction/write/automatic calls, restored preference bias. Backend: route/version/schema/bounds/previousInitiative, event text-only, fixtures, shared endpoint accounting/ID conflict, deadline/cancel/usage-on-error, no payload logs. Typecheck→npm test для developer; pip check+pytest для backend. Windows smoke пользователь выполняет вручную; архитектор runtime tests/build не запускает.
 
 ## 8. Явное касание v1
 
-Этот раздел фиксирует legacy text-only protocol. Принятое #87 расширение touch/state
-описано отдельно в §10; ограничения v1 не запрещают его семантику.
-
-Обычный клик сохраняет локальный `user_click` и визуальную реакцию, затем допускает один `user_touch`. Main случайно выбирает `stroke` / `touch` / `ruffle` / `poke`; сервер описывает их как «нежно погладил», «легонько коснулся», «ласково потрепал», «осторожно ткнул». Это описание игрового действия, не сообщение пользователя и не сенсорный факт о реальном прикосновении.
-
-`POST /v1/touch`: [wire type](../../frontend/src/application/ports/backend-touch-contract.ts), [общая fixture](fixtures/desktop-backend-v1/request.touch.json), [server schema](../../backend/wisp_backend/api/schemas/touch.py), [prompt](../../backend/wisp_backend/completion/prompts/touch.py). Передаются только requestId, закрытый event, locale, character и фиксированные version/stream; без истории, памяти, координат и локальных ID. Ответ — version/requestId/text до 240 UTF-16 units, без decision. Модельный результат валидируется сразу как strict text-only: любой дополнительный ключ, включая невалидный decision или memoryCandidates, даёт `invalid_model_response`, без chat hint sanitization. Один provider call, output cap не выше существующих 4096, reservation/usage по [backend §5](BACKEND_API_CONTRACT.md#5-закрытая-alpha-серверный-admission-учёт-и-повторы), включая невалидный текст.
-
-Touch проходит тот же admission/ledger/deadline/cancellation, что chat; отдельного вызова provider в обход service нет. Wrong version →400 `unsupported_version` с envelope1; 409/429 и остальные ошибки — [общая таблица](BACKEND_API_CONTRACT.md#3-http-и-ошибки). Сервер не сохраняет событие/историю; разрешены только общий служебный ledger и bounded RAM response cache с прежним [retention](BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление). Новая auth/storage подсистема не вводится; фактические gaps импортированного сервера остаются в [backend README](../../backend/docs/README.md).
+Обычный клик сохраняет локальный базовый эффект и визуальную реакцию, затем
+допускает один `POST /v1/touch` с factual `user_touch/variant:touch` и appraisal.
+Полные DTO, локальные эффекты, fallback и trace определены в §10.
 
 Касание доступно при настроенном backend независимо от флага автономных AI-событий и автопрогулок. Касания не имеют локальных квот или задержек между запросами. Один shared transport, без retries/очереди: повторные клики во время touch request пропускаются. Занятый прежним запросом слот не создаёт отложенное касание. Quiet/menu/sleep/critical needs/forced motion и thinking блокируют отправку; текстовый чат отменяет касание и ждёт settlement перед своим запросом.
 
-Runtime deadline15s, transport12s, сервер использует существующий chat deadline. Ошибка/недоступность/невалидный/поздний ответ — без заготовки и error bubble. Reset/dispose/перетаскивание инвалидируют результат. Обычная автономная смена занятия не отменяет касание, если общие gates сохраняются. Ответ публикуется через existing initiativeSpeech на 2s, без повторного Character reward, recall, записи в память или previousInitiative. Режим без backend не генерирует mock-фразы на клик. Перетаскивания и серии кликов не создают новых типов запросов.
+Reset/dispose/перетаскивание инвалидируют результат. Обычная автономная смена
+занятия не отменяет касание при сохранении gates. Touch не создаёт previousInitiative;
+его краткий след previousTouch имеет отдельные правила §10.
 
 ## 9. Observation boundary
 
 [OBS-A02 #84](https://github.com/zyzycode/project_wisp/issues/84) реализован в #81:
 [Perception §11](../../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a02-активное-приложение-и-заголовок)
 разрешает только explicit consent + allowlisted foreground metadata. Отдельный
-`POST /v6/observation`, **не** новый variant `/v3/events` и не chat. V1–v3, planned v4,
-summary/chat v5 закрыты прежними schemas; observation не подмешивается в messages,
+`POST /v1/observation`, **не** новый variant `/v1/events` и не chat. Chat/touch/events/summary имеют отдельные schemas; observation не подмешивается в messages,
 memory, character, summary или previousInitiative. Включение observer не меняет
-chatVersion/eventsEnabled/summary configuration; v6 доступен независимо от chat mode.
-Main создаёт v6 adapter только при настроенном backend; mock/direct-only mode даёт
+eventsEnabled/summary configuration; observation доступен независимо от этих флагов.
+Main создаёт v1 adapter только при настроенном backend; mock/direct-only mode даёт
 unavailable без сетевого/fixed-speech fallback. Consent обязателен и в backend mode.
 
 ### 9.1. Exact wire и compatibility
 
-Request — exact object `version:6`, UUIDv4 `requestId`, `stream:false`, `locale:ru|en`,
+Request — exact object `version:1`, UUIDv4 `requestId`, `stream:false`, `locale:ru|en`,
 `character` по [v1 §2](BACKEND_API_CONTRACT.md#2-поля-и-валидация), `observation`.
 Observation — exact `{appName, windowTitle}`: обе строки обязательны; appName trimmed
 1–80, windowTitle trimmed 0–160 UTF-16 units. Empty caption — empty string, не null.
@@ -128,12 +124,12 @@ AppName source/normalization — Perception §11.1; schema не превраща
 данные. Нет event/occurredAt/messages/memory/lore/summary, appKey/category/local IDs,
 executable paths/native handles/PID, usage history, pixels/OCR/clipboard/documents.
 
-HTTP200 success — exact `version:6, requestId, text`: trimmed plain 1–240 UTF-16 units
+HTTP200 success — exact `version:1, requestId, text`: trimmed plain 1–240 UTF-16 units
 по общим text rules v1. Никаких decision/memoryCandidates/tools/actions/deltas;
 **любые** лишние model/response keys делают весь результат invalid, без chat sanitization.
 Model даёт только `{text}`; backend сам добавляет version/ID. Ошибка — прежняя exact
-error shape v1 с envelope6; таблица HTTP/code [v1 §3](BACKEND_API_CONTRACT.md#3-http-и-ошибки).
-Wrong version на этом path →400 unsupported_version/envelope6; ID null только если
+error shape v1 с envelope1; таблица HTTP/code [v1 §3](BACKEND_API_CONTRACT.md#3-http-и-ошибки).
+Wrong version на этом path →400 unsupported_version/envelope1; ID null только если
 не распознан. UTF-8 JSON request≤32KiB/response≤16KiB, strict types/no coercion,
 unknown fields rejected до admission; body overflow→413, malformed→400.
 
@@ -193,7 +189,7 @@ Groq ZDR verification до внешних тестеров; Gemini synthetic-onl
 не выполнен. Local revoke/delete не удаляет replay/provider copy и не обещает немедленный
 remote erasure; server-delete endpoint отсутствует. No real capture/provider call в #81.
 
-Общий [corpus v6](fixtures/desktop-backend-v6/) содержит `request.valid.json`,
+Общий [corpus v1](fixtures/desktop-backend-v1/observation/) содержит `request.valid.json`,
 `request.empty-title.json`, `request.hostile-title.json`, `response.success.json`,
 `response.error.json` (альтернатива HTTP503), `invalid.json` с named invalid requests/
 responses (wrong version, missing/extra keys, strict types, UTF-16/control/bidi/surrogate,
@@ -205,30 +201,27 @@ cancel/late usage, source freshness/preemption/no overlap/no retry, restart бе
 non-Windows unsupported; Groq/Gemini handlers только mock transport. Windows smoke
 отдельно: consent/allowlist/title switch/pause/revoke/helper shutdown/offline.
 
-## 10. INTERACTION-A01: семантическое взаимодействие v7
+## 10. INTERACTION-A01: семантическое взаимодействие v1
 
-Целевой контракт #87 для #89/#90. Existing v1–v6 routes и fixtures неизменны:
-v1 touch остаётся text-only; v2/v3 memory/event chat прежние; planned v4 не объявляется
-реализованным; v5 summary/chat и v6 observation не принимают appraisal/previousTouch.
-Новые `POST /v7/touch` и `POST /v7/chat` включаются только явным `chatVersion=7`
-в существующей backend configuration. Нет version probing, auto upgrade/downgrade,
-fallback на v1 touch, смены provider или второго inference при ошибке.
-Настройка eventsEnabled относится только к автономным v3 events; v7 touch независим.
-Summary при chatVersion7 использует существующий explicit `/v5/summary`, observation v6.
+Актуальные `POST /v1/touch` и `POST /v1/chat` всегда включают appraisal.
+Main включает interaction capability для настроенного внешнего адаптера.
+Автономные events остаются opt-in через `WISP_AI_EVENTS_ENABLED`, summary — через
+`WISP_SUMMARY_ENABLED`; обе возможности используют тот же клиент и `/v1`.
+Никаких version probing, upgrade/downgrade или второго inference при ошибке.
 
 ### 10.1. Точные DTO и validation
 
 Единственная TypeScript wire форма — [backend-interaction-contract.ts](../../frontend/src/application/ports/backend-interaction-contract.ts).
 Независимые Python schemas реализует #89; нельзя импортировать TS/Domain types.
-V7 touch request — exact version/requestId/stream/locale/character/event/card/effectPolicy.
+v1 touch request — exact version/requestId/stream/locale/character/event/card/effectPolicy.
 Character и UUIDv4/locale/stream:false как v1; event строго user_touch/variant:touch.
 Card exact id=shyDreamGirl/revision=1; id обязан совпадать с character.personality.presetId.
 Неизвестная revision/card →400 invalid_request до inference, не молчаливый другой profile.
 EffectPolicy eligible/suppressed — решение desktop о доступности numerical effect,
 не server authority. Никаких времени касания/координат/истории/memory/local IDs в touch.
 
-V7 chat = v5 chat request с version7 + обязательные card/effectPolicy + optional
-previousTouch. Все старые v5 caps и validation memory/messages/summary/previousInitiative
+Chat включает messages/memory, optional summary/previousInitiative, обязательные card/effectPolicy и optional
+previousTouch. Все старые v1 caps и validation memory/messages/summary/previousInitiative
 сохраняются; memory required (пустая допустима). PreviousTouch exact shape по wire type:
 action=touch, календарно валидный UTC occurredAt, publishedText trimmed plain 1–240 UTF-16,
 закрытый appraisal, effect/reason/bands. Допустимые пары effect/reason:
@@ -237,14 +230,14 @@ rejected/state_changed или unavailable. energyBand tired/rested и comfortBan
 calm/overloaded описывают локальный pre-base snapshot, не текущее состояние.
 Local requestId/generation/monotonic time, numeric deltas и полная история touch запрещены.
 
-Touch success exact version7/requestId/text/appraisal, text 1–240 UTF-16.
-Chat success = v5 success version7 + обязательный appraisal; text 1–2000 UTF-16;
+Touch success exact version1/requestId/text/appraisal, text 1–240 UTF-16.
+Chat success содержит version1/requestId/text, optional decision/memoryCandidates и обязательный appraisal; text 1–2000 UTF-16;
 decision/memoryCandidates остаются прежними optional полями. Appraisal exact
 category supportive/playful/boundary/hostile/neutral, intensity low/moderate,
 confidence clear/uncertain. Нет numeric scores/deltas/evidence/user fact fields.
 Неверный/пропущенный appraisal, unknown root/nested key, wrong enum/type, invalid text
 делают **весь** response invalid_model_response, без частичного принятия текста.
-Touch hostile/moderate недопустимы, отклоняются backend и desktop. Chat legacy decision
+Touch hostile/moderate недопустимы, отклоняются backend и desktop. Chat decision
 sanitization и memoryCandidates source validation сохраняются независимо от appraisal.
 Model выдаёт response content без envelope; version/ID добавляет только backend.
 
@@ -253,7 +246,7 @@ Model выдаёт response content без envelope; version/ID добавляе
 Desktop повторно проверяет policy/current gate, не доверяет server enforcement.
 При eligible model может выбрать neutral/uncertain; это корректный ответ без эффекта.
 Response не содержит новой auth, consent, tool calls или commands. Error envelope exact
-version7/requestId/error по v1 HTTP/code mapping; wrong version →400 unsupported_version,
+version1/requestId/error по v1 HTTP/code mapping; wrong version →400 unsupported_version,
 нераспознанный UUID →requestId null. UTF-8 JSON request≤32KiB/response≤16KiB;
 strict types/no coercion, unknown fields reject, UTF-16/control/surrogate rules v1.
 
@@ -292,23 +285,12 @@ Groq ZDR / Gemini synthetic-only rollout gate прежний. Local delete/reset
 след из последующего контекста, но не обещает remote erasure уже переданного/cache;
 новый server-delete endpoint не вводится.
 
-### 10.3. Стадии поставки и общий corpus
+### 10.3. Общий corpus
 
-#88 меняет common card/scale presentation существующих prompts, не открывает v7 routes.
-#89 атомарно поставляет оба v7 endpoints, desktop configuration/adapters и touch эффекты.
-V7 chat уже поддерживает memory/summary/previousInitiative и previousTouch, но desktop
-всегда отправляет для chat effectPolicy=suppressed; backend возвращает neutral/low/clear
-вместе с обычным ответом, decision и source-validated memoryCandidates. Этот режим
-полноценен: follow-up объясняет опубликованную touch reaction без chat appraisal reward.
-#90 включает eligible chat по тому же общему Character gate и меняет user_message base;
-wire shape не меняется. Old modes никогда не получают appraisal задним числом.
-
-#89 создаёт общий corpus `docs/contracts/fixtures/desktop-backend-v7/`:
-request.touch / response.touch; request.chat (previousTouch + memory + optional summary),
-response.chat (suppressed neutral), response.error и invalid.json с named variants.
-#90 расширяет corpus clear positive/negative/neutral/uncertain chat cases. Оба runtime
-читают один corpus; existing v1–v6 fixtures не переписываются под v7. #87 объявляет
-wire types/правила; runnable fixture/schema delivery принадлежит implementation #89.
+Обе стороны проверяют единый corpus `docs/contracts/fixtures/desktop-backend-v1/interaction/`:
+chat/touch requests, responses, ошибки, invalid cases и eligible chat cases.
+EffectPolicy определяется текущим Character gate; suppressed требует neutral/low/clear,
+eligible допускает разрешённый appraisal. Обе формы используют один маршрут и версию.
 
 Обязательные cases: actual touch не random gesture; happy/tired/overloaded; unchanged
 bands vs crossed bands during await; clear/uncertain/neutral; partial clamp; shared

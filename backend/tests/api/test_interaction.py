@@ -1,4 +1,4 @@
-"""Actual v7 routes and both mock HTTP providers share one execution path."""
+"""Actual v1 routes and both mock HTTP providers share one execution path."""
 
 import json
 import sqlite3
@@ -68,7 +68,7 @@ def test_complete_provider_path(
     with TestClient(
         app_factory(upstream, assistants={"default": {"provider": provider, "max_output_tokens": 4096}})
     ) as client:
-        response = client.post(f"/v7/{operation}", json=body)
+        response = client.post(f"/v1/{operation}", json=body)
         assert response.status_code == 200 and response.json() == expected
     assert len(calls) == 1
 
@@ -79,11 +79,11 @@ def test_invalid_requests_before_admission_and_strict_http(app_factory: Callable
         for case in fixture("invalid.json")["requests"]:
             response = client.post(case["endpoint"], json=case["value"])
             assert response.status_code == 400, case["name"]
-            assert response.json()["version"] == 7
+            assert response.json()["version"] == 1
             if case["name"].endswith("-invalid-uuid"):
                 assert response.json()["requestId"] is None
         for route in REQUESTS:
-            for raw in (b"{bad", b"\xff", b'{"version":7,"version":7}', b'{"x":NaN}'):
+            for raw in (b"{bad", b"\xff", b'{"version":1,"version":1}', b'{"x":NaN}'):
                 assert client.post(route, content=raw, headers={"content-type": "application/json"}).status_code == 400
             assert (
                 client.post(route, content=b"x" * 32769, headers={"content-type": "application/json"}).status_code
@@ -116,7 +116,7 @@ def test_invalid_appraisal_discards_entire_reply_once(
     assert len(calls) == 1
 
 
-def test_chat_hints_and_memory_keep_v5_validation(client_factory: Callable, completion: Callable[..., dict]) -> None:
+def test_chat_hints_and_memory_keep_v1_validation(client_factory: Callable, completion: Callable[..., dict]) -> None:
     body = fixture("request.chat.json")
     body["messages"][-1]["content"] = "Зови меня Аня."
     reply = fixture("response.chat.json")
@@ -127,7 +127,7 @@ def test_chat_hints_and_memory_keep_v5_validation(client_factory: Callable, comp
         {"key": "user.favorite_topic", "value": "Touch", "evidenceQuote": body["previousTouch"]["publishedText"]},
     ]
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
-        response = client.post("/v7/chat", json=body)
+        response = client.post("/v1/chat", json=body)
         assert response.status_code == 200 and "decision" not in response.json()
         assert response.json()["memoryCandidates"] == reply["memoryCandidates"][:1]
 
@@ -165,15 +165,15 @@ def test_safe_provider_failures(
         return httpx.Response(200 if failure == "malformed" else int(failure), content=b"{bad PRIVATE_CONTEXT")
 
     with TestClient(app_factory(upstream, assistants={"default": {"provider": provider}})) as client:
-        response = client.post(f"/v7/{operation}", json=fixture(f"request.{operation}.json"))
+        response = client.post(f"/v1/{operation}", json=fixture(f"request.{operation}.json"))
         assert response.status_code == status and response.json()["error"]["code"] == code
-        assert response.json()["version"] == 7 and "PRIVATE_CONTEXT" not in response.text
+        assert response.json()["version"] == 1 and "PRIVATE_CONTEXT" not in response.text
     assert len(calls) == 1 and "PRIVATE_CONTEXT" not in caplog.text
 
 
 @pytest.mark.parametrize("operation", ["touch", "chat"])
 def test_mandatory_context_and_caps(operation: str) -> None:
-    job = prepare_job(REQUESTS[f"/v7/{operation}"].model_validate(fixture(f"request.{operation}.json")))
+    job = prepare_job(REQUESTS[f"/v1/{operation}"].model_validate(fixture(f"request.{operation}.json")))
     mandatory = tuple(block for block in job.inference.blocks if block.required)
     policy = next(b for b in mandatory if b.key == "interaction_policy")
     assert (policy.source, policy.order, policy.priority) == ("desktop_character", 11, 1000)
@@ -207,11 +207,11 @@ def test_touch_allowlisted_proposals(
     with client_factory(
         lambda _: httpx.Response(200, json=completion({"text": "Touch reply", "appraisal": proposal}))
     ) as client:
-        result = client.post("/v7/touch", json=body)
+        result = client.post("/v1/touch", json=body)
         assert result.status_code == 200 and result.json()["appraisal"] == proposal
         body["requestId"] = "ad5c1bb6-a290-4857-900e-094ff9480257"
         body["effectPolicy"] = "suppressed"
-        result = client.post("/v7/touch", json=body)
+        result = client.post("/v1/touch", json=body)
         assert result.status_code == (200 if category == "neutral" and confidence == "clear" else 502)
 
 
@@ -225,7 +225,7 @@ def test_exact_byte_cap_openapi_and_missing_appraisal(
     raw = json.dumps(body).encode()
     raw += b" " * (32768 - len(raw))
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
-        route = f"/v7/{operation}"
+        route = f"/v1/{operation}"
         assert client.post(route, content=raw, headers={"content-type": "application/json"}).json() == expected
         assert set(client.get("/openapi.json").json()["paths"][route]["post"]["responses"]) == {
             "200",
@@ -252,7 +252,7 @@ def test_required_context_overflow_before_network(
         assistants={"default": {"provider": provider, "model": model}},
     )
     with TestClient(app) as client:
-        response = client.post(f"/v7/{operation}", json=fixture(f"request.{operation}.json"))
-        assert response.status_code == 503 and response.json()["version"] == 7
+        response = client.post(f"/v1/{operation}", json=fixture(f"request.{operation}.json"))
+        assert response.status_code == 503 and response.json()["version"] == 1
         with sqlite3.connect(app.state.completion_service.ledger.path) as db:
             assert db.execute("SELECT requests,reserved,confirmed,uncertain FROM days").fetchone() == (1, 0, 0, 0)

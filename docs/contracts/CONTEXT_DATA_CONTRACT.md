@@ -2,9 +2,7 @@
 
 Решение [#77](https://github.com/zyzycode/project_wisp/issues/77), 2026-10-17;
 implementation slices — [#78](https://github.com/zyzycode/project_wisp/issues/78)
-и [#79](https://github.com/zyzycode/project_wisp/issues/79). Lore реализован в #78, explicit summary/v5 — в #79. Текущие v1–v3 и planned
-[v4 knowledge](BACKEND_MEMORY_CONTRACT.md#6-mem-a03-planned-расширение-событий-и-шуток)
-не расширяются. Независимые TS/Python schemas и shared v5 fixtures поставляются с #79.
+и [#79](https://github.com/zyzycode/project_wisp/issues/79). Lore и explicit summary входят в единый v1.
 
 ## 1. Владельцы и доверие
 
@@ -73,30 +71,24 @@ completion, RAM replay cache старого процесса исчезает; �
 новые requests видят только новую revision. Уже доставленный ответ не отзывается,
 физическая отмена вычисления у provider не гарантируется.
 
-**Wire delta для lore отсутствует:** server локально дополняет chat v1/v2/v3
+**Wire delta для lore отсутствует:** server локально дополняет chat v1
 (и будущие явно реализованные chat endpoints). Touch/events не сканируют lore и
 сохраняют прежние deadlines/text-only формы. При отсутствии backend используется
 обычный desktop fallback; нового сетевого чтения/кеша на desktop нет.
 
-## 3. Summary: две явные операции v5
+## 3. Summary: две явные операции v1
 
 Локальный source/cache/trigger/invalidation — [Memory §12](../../frontend/docs/engine/MEMORY_ENGINE.md#12-ctx-a01-производная-summary).
-Version5 — отдельная ветка **на базе v3**, а не обещание superset v4. Это позволяет
-#79 не зависеть от MEM-I02/03; MEM-I01/#80 нужен для source provenance и suppression.
-Event/joke variants v4 здесь запрещены. Совместное
-включение v4 knowledge и summary потребует отдельного versioned gate, не downgrade.
+Summary — часть единого v1. Новые категории knowledge cards не входят в разрешённый wire.
+Main включает команду по `WISP_SUMMARY_ENABLED=true` при настроенном `WISP_BACKEND_URL`
+и исправной локальной persistence/cache. Генерация запускается явно; startup,
+chat admission, timer и события её автоматически не вызывают.
+Shared interlock и previousInitiative сохраняются.
 
-Main-конфигурация opt-in `WISP_BACKEND_API_VERSION=5`, `WISP_SUMMARY_ENABLED=true`
-и настроенный `WISP_BACKEND_URL`; defaults прежние.
-EventVersion3/interlock/previousInitiative60s сохраняются, touch1 неизменен. Summary
-команда доступна только при этом сочетании, исправной локальной persistence/cache
-и настроенном backend adapter. Нет probe/downgrade, автоматического enable или
-вызова генерации из chat admission, startup, timer либо event.
-
-### POST /v5/summary
+### POST /v1/summary
 
 Отдельный явный inference для ограниченного выбранного диапазона; не fake chat event.
-Exact request: version=5, requestId по v1, locale ru/en, stream=false и pairs.
+Exact request: version=1, requestId по v1, locale ru/en, stream=false и pairs.
 Pairs — 4–8 полных пар в хронологическом порядке, каждая exact
 `{userText, assistantText}`: 1–240 и 1–2000 UTF-16 соответственно. Все тексты вместе
 ≤8000 UTF-16, controls запрещены кроме newline/tab; пустые/пробельные строки
@@ -113,23 +105,22 @@ Backend строит собственные краткие инструкции:
 Provider response — exact JSON `{text}`: plain nonblank 1–1200 UTF-16, допустимы
 newline/tab, без других control characters и неизвестных полей. Невалидный результат
 целиком →502 invalid_model_response, без частичного кеширования. Backend самостоятельно
-формирует HTTP200 `{version:5, requestId, text}`. Response ≤16KiB; desktop независимо
+формирует HTTP200 `{version:1, requestId, text}`. Response ≤16KiB; desktop независимо
 проверяет exact shape/limits/ID/version до source revalidation и локального commit.
 Полнота/истинность пересказа не доказаны форматной проверкой.
 
-### POST /v5/chat
+### POST /v1/chat
 
-Request/response — точные v3 chat формы с version5 и единственным новым optional
-request field `summary: {text}` (text — те же 1–1200 UTF-16). Null/пустой object,
+Полный chat-контракт описан в [AI Events §10](AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v1); optional request field `summary: {text}` (text — те же 1–1200 UTF-16). Null/пустой object,
 добавочные поля и новые v4 episode kinds запрещены. Summary не внутри memory;
 её отдельный text cap не увеличивает прежние ≤2400 memory/32KiB total. Success:
-прежние text/optional decision/scalar memoryCandidates, без summary output/candidates.
+text/appraisal и optional decision/scalar memoryCandidates, без summary output/candidates.
 PreviousInitiative, независимая scalar extraction и validation остаются прежними.
 Local source IDs/revisions/generation и cache metadata не передаются серверу.
 
 Desktop передаёт summary только при source-valid cache и лексическом совпадении хотя
 бы одного Unicode token текущего user text (NFC/lowercase, длина 2–64) с summary text.
-Выбор один, без индекса/полного scan; отсутствие match → обычный v5 chat без summary.
+Выбор один, без индекса/полного scan; отсутствие match → обычный v1 chat без summary.
 При inclusion covered source IDs исключаются из recalled dialogue episodes; последние
 три volatile пары никогда не входили в source диапазон. Если summary не отправлена,
 обычный разрешённый recall сохраняется. Suppression применяется независимо от summary.
@@ -156,7 +147,7 @@ Gemini preflight может передать весь диапазон исто�
 предел — один generation inference с этими caps за одно подтверждённое действие, дополнительно
 локальный frequency guard из Memory §12. Это не новая серверная billing/quota система.
 
-Обе v5 routes используют [v1 errors/access/ledger](BACKEND_API_CONTRACT.md#3-http-и-ошибки):
+Обе v1 routes используют [v1 errors/access/ledger](BACKEND_API_CONTRACT.md#3-http-и-ошибки):
 400/413 до admission, envelope5/unsupported_version для wrong version; 409 для
 in-progress/conflicting ID; остальные 502/503/504 по общей таблице. Доступ — прежний
 closed-network без application auth; 401/403 стороннего gateway не success, без retry
@@ -174,7 +165,7 @@ stream/task, late usage settles once; local generation guards запрещают
 повторной генерации нет. Обычный chat/fallback/FSM/input остаются доступны.
 
 Разрешённая новая передача: выбранные 4–8 source pairs для summary inference и одна
-selected summary для v5 chat; остальная БД не отправляется. Backend освобождает
+selected summary для v1 chat; остальная БД не отправляется. Backend освобождает
 request RAM после terminal, не хранит историю/summary durable и не пишет payload в
 logs/APM. RAM replay response ≤10min может содержать summary; ledger retention и
 provider-specific restrictions — [v1 §6](BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление).
@@ -185,7 +176,7 @@ provider сохраняются, summary не разрешает реальны�
 ## 5. Общие fixtures и rollout
 
 #79 содержит независимые TS DTO/guards и Python schemas и единый
-corpus `docs/contracts/fixtures/desktop-backend-v5/`; старые fixtures не меняются.
+corpus `docs/contracts/fixtures/desktop-backend-v1/summary/`.
 Corpus покрывает summary request/success/error, chat с summary/без неё/previousInitiative,
 Unicode/control/exact caps/byte escaping, unknown fields, wrong version/ID,
 v4 category rejection. Обе стороны читают те же JSON, не копии.
@@ -200,7 +191,7 @@ output reserve/equality/overflow, mandatory priority, adversarial sources, от�
 facts/state writes, shared interlock/replay/timeout/outage/malformed/disconnect и
 once-only usage на Groq и Gemini mocks. Live качество/цену эти тесты не доказывают.
 
-Обе стороны проверяют corpus перед включением v5; несовместимый сервер
+Обе стороны проверяют corpus перед включением v1; несовместимый сервер
 даёт обычный safe failure, не перевод в другую версию. #78 и #79 независимы по
 runtime, но первый перенёсший upstream код выполняет общий license/source gate
-[Context/Prompt Engine](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#перенос-ctx-a01-и-лицензионная-граница).
+[Context/Prompt Engine](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#алгоритмы-lore-и-summary).

@@ -5,9 +5,10 @@ import httpx
 import pytest
 from pydantic import ValidationError
 from tests.helpers import CONTRACT_FIXTURES
-from wisp_backend.api.schemas.events import EventAwareChatRequest, EventRequest
+from wisp_backend.api.schemas.events import EventRequest
+from wisp_backend.api.schemas.interaction import InteractionChatRequest as EventAwareChatRequest
 
-FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v3"
+FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v1/events"
 
 
 def fixture(name):
@@ -89,7 +90,7 @@ def test_previous_initiative_optional_but_not_null_and_exact_limits():
         {"text": "ok", "decision": {"behavior": "respond", "confidence": 1}},
         {"text": "ok", "memoryCandidates": []},
         {"text": "ok", "requestId": "model-owned"},
-        {"text": "ok", "version": 3},
+        {"text": "ok", "version": 1},
         {"text": "ok", "state": {"friendship": 1000}},
         {"text": "😀" * 121},
         {"text": " " + "a" * 240},
@@ -111,14 +112,14 @@ def test_event_model_extra_fields_fail_with_usage_preserved(app_factory, complet
     app = app_factory(upstream)
     with TestClient(app) as client:
         body = fixture("request.game.json")
-        response = client.post("/v3/events", json=body)
+        response = client.post("/v1/events", json=body)
         assert response.status_code == 502
         assert response.json() == {
-            "version": 3,
+            "version": 1,
             "requestId": body["requestId"],
             "error": {"code": "invalid_model_response"},
         }
-        replay = client.post("/v3/events", json=body)
+        replay = client.post("/v1/events", json=body)
         assert replay.content == response.content
         with sqlite3.connect(app.state.completion_service.ledger.path) as db:
             assert db.execute("SELECT requests,reserved,confirmed,uncertain FROM days").fetchone() == (1, 0, 5, 0)
@@ -127,17 +128,6 @@ def test_event_model_extra_fields_fail_with_usage_preserved(app_factory, complet
 
 def test_event_reply_utf16_boundary(client_factory, completion):
     with client_factory(lambda _: httpx.Response(200, json=completion({"text": "😀" * 120}))) as client:
-        response = client.post("/v3/events", json=fixture("request.game.json"))
+        response = client.post("/v1/events", json=fixture("request.game.json"))
         assert response.status_code == 200
         assert response.json()["text"] == "😀" * 120
-
-
-def test_old_routes_reject_new_fields(client_factory, body):
-    previous = fixture("request.chat.json")["previousInitiative"]
-    memory = fixture("request.game.json")["memory"]
-    with client_factory(lambda _: pytest.fail("old version accepted v3 fields")) as client:
-        assert client.post("/v1/chat", json={**body, "previousInitiative": previous}).status_code == 400
-        response = client.post(
-            "/v2/chat", json={**body, "version": 2, "memory": memory, "previousInitiative": previous}
-        )
-        assert response.status_code == 400 and response.json()["version"] == 2

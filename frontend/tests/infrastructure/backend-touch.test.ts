@@ -1,13 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
-import { projectTouchRequest, parseTouchResponse } from '../../src/infrastructure/ai/backend-touch-validation';
+import { projectInteractionTouch as projectTouchRequest, parseInteractionTouchResponse } from '../../src/infrastructure/ai/backend-interaction-validation';
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
 import { providerRequest } from './backend-ai-fixture';
-import type { BackendTouchRequest } from '../../src/application/ports/backend-touch-contract';
+import type { BackendInteractionTouchRequest } from '../../src/application/ports/backend-interaction-contract';
 
-const wire = JSON.parse(readFileSync('../docs/contracts/fixtures/desktop-backend-v1/request.touch.json', 'utf8')) as BackendTouchRequest;
-const request = () => ({ requestId: wire.requestId, event: { type: 'user_touch' as const, variant: 'stroke' as const, occurredAt: '2026-10-08T00:00:00.000Z' },
+const parseTouchResponse = (value: unknown, id: string) => parseInteractionTouchResponse(value, id, 'suppressed');
+
+const wire = JSON.parse(readFileSync('../docs/contracts/fixtures/desktop-backend-v1/request.touch.json', 'utf8')) as BackendInteractionTouchRequest;
+const request = () => ({ interaction: { card: wire.card, effectPolicy: wire.effectPolicy }, requestId: wire.requestId, event: { type: 'user_touch' as const, variant: 'touch' as const, occurredAt: '2026-10-08T00:00:00.000Z' },
   characterSnapshot: wire.character, memoryContext: emptyMemoryContext(), locale: wire.locale });
 function fixture(fetcher: typeof fetch) {
 
@@ -23,10 +25,10 @@ it('matches shared fixture and sends no dialogue or memory', () => {
 it('uses v1 touch without local quotas even when autonomous events are disabled', async () => {
   const fetcher = vi.fn<typeof fetch>(async (url, init) => {
     expect(String(url)).toBe('https://example.com/v1/touch'); expect(JSON.parse(String(init?.body))).toEqual(wire);
-    return new Response(JSON.stringify({ version: 1, requestId: wire.requestId, text: 'Приятно!' }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ version: 1, requestId: wire.requestId, text: 'Приятно!', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'Content-Type': 'application/json' } });
   });
   const f = fixture(fetcher);
-  await expect(f.provider.generateEvent(request())).resolves.toEqual({ requestId: wire.requestId, replyText: 'Приятно!' });
+  await expect(f.provider.generateEvent(request())).resolves.toEqual({ requestId: wire.requestId, replyText: 'Приятно!', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } });
   for (let i = 0; i < 105; i++) await f.provider.generateEvent(request());
   expect(fetcher).toHaveBeenCalledTimes(106);
 });
@@ -54,5 +56,5 @@ it('times out without retry or accepting a late response', async () => {
   const f = fixture(fetcher), pending = f.provider.generateEvent(request());
   const rejected = expect(pending).rejects.toThrow(); await vi.advanceTimersByTimeAsync(12000); await rejected;
   resolve(new Response(JSON.stringify({ version: 1, requestId: wire.requestId, text: 'Late' }), { headers: { 'Content-Type': 'application/json' } }));
-  expect(fetcher).toHaveBeenCalledTimes(1); await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
+  await vi.advanceTimersByTimeAsync(0); expect(fetcher).toHaveBeenCalledTimes(1); await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
 });

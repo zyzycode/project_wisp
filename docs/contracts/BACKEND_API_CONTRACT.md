@@ -1,18 +1,18 @@
 # Desktop ↔ Backend v1: wire-контракт
 
-Канонический внешний API. Не зависит от Domain, Electron, локальных Application DTO или выбранного серверного языка. Полные формы полей и enum — [backend-ai-contract.ts](../../frontend/src/application/ports/backend-ai-contract.ts): файл самодостаточен, без импортов. Изменение локальных типов персонажа не меняет wire автоматически; преобразование принадлежит desktop adapter. Клиентский lifecycle и ограничения частоты — в [AI Provider](../../frontend/docs/engine/AI_PROVIDER_CONTRACT.md#desktop--backend-v1).
+Канонический внешний API. Не зависит от Domain, Electron, локальных Application DTO или выбранного серверного языка. Полные формы полей и enum — [backend-interaction-contract.ts](../../frontend/src/application/ports/backend-interaction-contract.ts) и связанные wire-компоненты. Изменение локальных типов персонажа не меняет wire автоматически; преобразование принадлежит desktop adapter. Клиентский lifecycle и ограничения частоты — в [AI Provider](../../frontend/docs/engine/AI_PROVIDER_CONTRACT.md#desktop--backend-v1).
 
 ## 1. Транспорт и владение
 
-- `POST /v1/chat`, JSON UTF-8; request `Content-Type: application/json`, `Accept: application/json`, JSON responses `Content-Type: application/json`. Успех — HTTP 200. Только `stream: false`; SSE, tools и файлы не входят в v1.
+- `POST /v1/chat`, `/v1/touch`, `/v1/events`, `/v1/summary`, `/v1/observation`; `GET /health` без inference. JSON UTF-8; request `Content-Type: application/json`, `Accept: application/json`, JSON responses `Content-Type: application/json`. Успех — HTTP 200. Только `stream: false`; SSE, tools и файлы не входят в v1.
 - Удалённый backend — HTTPS; HTTP допустим только loopback при разработке. Base URL — доверенная конфигурация Main. Desktop не следует redirect, не принимает URL от Renderer/модели.
 - Первая версия без авторизации, cookies и login UI. LLM credential остаётся на backend; requestId/IP/installation ID не подтверждают личность пользователя.
 - Backend формирует system prompt, выбирает модель, проверяет вход и модельный вывод. Пользовательские сообщения и character — недоверенные данные, не системные инструкции. Модель не исполняет команды, не выбирает URL/инструменты и не меняет сохранённое состояние desktop.
-- Отправляются только текущий ограниченный диалог и character projection. Экран, окна, курсор, файлы, memories и credentials не входят в запрос. Server dialogue state не требуется: каждый запрос содержит свой контекст. История не пишется в application logs; ошибки не раскрывают prompts, stack traces или provider internals.
+- Каждый endpoint передаёт только свою bounded projection. Chat включает выбранную память, card/effectPolicy и optional summary/previousInitiative/previousTouch; touch — character/card/effectPolicy; events — character/memory/event; summary — выбранные пары; observation — разрешённые appName/windowTitle и character. Скриншоты, файлы, координаты и credentials не передаются. Server dialogue state не требуется: каждый запрос содержит свой контекст. История не пишется в application logs; ошибки не раскрывают prompts, stack traces или provider internals.
 
 ## 2. Поля и валидация
 
-`version` строго 1; `requestId` — UUID v4, созданный desktop для нового обращения. Backend возвращает тот же ID. Локальные conversationId/generation/streamId не отправляются. `event.type` только `user_message`; `locale` только `ru`/`en`.
+`version` строго 1; `requestId` — UUID v4, созданный desktop для нового обращения. Backend возвращает тот же ID. Локальные conversationId/generation/streamId не отправляются. Для chat `event.type` только `user_message`; `locale` только `ru`/`en`.
 
 `messages`: 1–7 записей, до трёх полных пар истории и последнее user message, порядок `user, assistant, …, user`. `role` только user/assistant; content после trim непустой, user ≤240, assistant ≤2000 UTF-16 code units. System/developer/tool roles запрещены. Данные example не заменяют реальную character projection.
 
@@ -33,11 +33,11 @@
 
 Request body ≤32 KiB, response body ≤16 KiB после декодирования; превышение прекращает чтение. Неизвестные ключи/неверная форма отклоняются, в том числе произвольные needs keys; исключение для необязательных response hints описано ниже. Текст plain text, контролы кроме newline/tab запрещены. Длины строк считаются в UTF-16 code units на обеих сторонах; нормализация не делает out-of-range значение допустимым.
 
-Успех содержит version/requestId/text и optional decision. `text` после trim 1–2000 code units. `decision`: обязательные behavior и confidence, optional tone/mood; confidence finite `[0,1]`. Перечни behavior/tone/mood автономно определены wire-типами. Отсутствующий decision — корректный text-only success. Обязательного или optional поля quota в согласованной форме сейчас нет.
+Успех chat содержит version/requestId/text/appraisal и optional decision/memoryCandidates. Обязательные card/effectPolicy и appraisal определены в [AI Events §10](AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v1). `text` после trim 1–2000 code units. `decision`: обязательные behavior и confidence, optional tone/mood; confidence finite `[0,1]`. Перечни behavior/tone/mood автономно определены wire-типами. Отсутствующий decision — корректный success без decision. Обязательного или optional поля quota в согласованной форме сейчас нет.
 
 Модель предлагает одно semantic behavior; локальный Character проверяет актуальность, P0–P5, Needs, сон, quiet и cooldown. Confidence не даёт приоритет или право исполнения. Координаты, маршруты, клипы, длительности, изменение числовых traits/отношений, memory writes и команды ОС запрещены. Backend сам формирует envelope/requestId, не доверяет этим полям модельного вывода.
 
-Некорректный decision при валидном тексте backend удаляет целиком и возвращает text-only success; desktop также отбрасывает некорректный decision. Невалидный обязательный envelope/text/version/requestId делает ответ целиком невалидным. Эта деградация hints не разрешает дополнительные поля верхнего уровня.
+Некорректный decision при валидном тексте backend удаляет целиком и возвращает success без decision; desktop также отбрасывает некорректный decision. Невалидный обязательный envelope/text/version/requestId делает ответ целиком невалидным. Эта деградация hints не разрешает дополнительные поля верхнего уровня.
 
 ## 3. HTTP и ошибки
 
@@ -72,10 +72,10 @@ Success и error — альтернативы, не два ответа одно
 
 ## 5. Закрытая alpha: серверный admission, учёт и повторы
 
-Решение [#52](https://github.com/zyzycode/project_wisp/issues/52); текущая структура реализации — [архитектура backend](../../backend/docs/ARCHITECTURE.md). Wire v1, его типы и fixtures не меняются; quota/auth metadata не добавляются. Ниже — контракт реализованного общего runtime; перечень endpoints — в серверной архитектуре. Клиентские ограничения остаются независимыми.
+Решение [#52](https://github.com/zyzycode/project_wisp/issues/52); текущая структура реализации — [архитектура backend](../../backend/docs/ARCHITECTURE.md). Quota/auth metadata не добавляются. Ниже — контракт реализованного общего runtime; перечень endpoints — в серверной архитектуре. Клиентские ограничения остаются независимыми.
 
 
-Один admission, ledger и RAM replay cache обслуживают `POST /v1/chat`, `/v1/touch`, `/v2/chat`, `/v3/chat`, `/v3/events`, `/v5/chat`, `/v5/summary`, `/v6/observation`, `/v7/chat`, `/v7/touch`. Все обращения учитываются совместно; health не вызывает provider и не создаёт запись расхода. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
+Один admission, ledger и RAM replay cache обслуживают все пять POST endpoints. Все обращения учитываются совместно; health не вызывает provider и не создаёт запись расхода. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
 
 ### Доступ и топология
 
@@ -130,7 +130,7 @@ usage сохраняется uncertain-оценка; она не означае�
 
 ### Повтор requestId
 
-Digest включает method + path и SHA-256 точных принятых UTF-8 body bytes; перестановка ключей/пробелов считается другим body. Сначала полная wire validation, затем duplicate check. Один ID хранится в общем namespace всех endpoints 24 h от admission независимо от окончания UTC-суток. Тот же ID на другом endpoint всегда даёт `request_conflict`. Исторический body-only digest допустим для совместимости только на `/v1/chat`; его нельзя использовать для replay на touch/v2/v3, старые записи сохраняют TTL:
+Digest включает method + path и SHA-256 точных принятых UTF-8 body bytes; перестановка ключей/пробелов считается другим body. Сначала полная wire validation, затем duplicate check. Один ID хранится в общем namespace всех endpoints 24 h от admission независимо от окончания UTC-суток. Тот же ID на другом endpoint всегда даёт `request_conflict`. Body-only digest больше не принимается для HTTP replay; старые записи сохраняют TTL и дают conflict:
 
 | Состояние ID | Тот же body | Другой body |
 |---|---|---|
@@ -143,7 +143,7 @@ Terminal cache — до 10 min, максимум 100 ответов (по 16 KiB
 
 ### Deadline и cancellation
 
-Общий серверный deadline — 10 s от входа в chat endpoint любой версии или `/v1/touch`, включая body/admission/upstream; body должен завершиться за 2 s, иначе 400 `invalid_request`, upstream не вызывается. Для `/v3/events` действуют более короткие [2.5 s / 0.5 s](AI_EVENTS_CONTRACT.md#5-явный-wire-v3-и-данные). Upstream получает остаток общего deadline; connect/pool timeout не выше 3 s и остатка. Исчерпание общего deadline после приёма body → 504 `upstream_timeout`; byte caps проверяются при чтении, не после полной загрузки.
+Общий серверный deadline — 10 s от входа в chat endpoint любой версии или `/v1/touch`, включая body/admission/upstream; body должен завершиться за 2 s, иначе 400 `invalid_request`, upstream не вызывается. Для `/v1/events` действуют более короткие [2.5 s / 0.5 s](AI_EVENTS_CONTRACT.md#5-явный-wire-v1-и-данные). Upstream получает остаток общего deadline; connect/pool timeout не выше 3 s и остатка. Исчерпание общего deadline после приёма body → 504 `upstream_timeout`; byte caps проверяются при чтении, не после полной загрузки.
 
 Disconnect/shutdown отменяет upstream task и закрывает HTTP response stream, terminal ledger settlement выполняется независимо от доставки ответа клиенту. Физическая остановка вычисления/списания у provider не гарантируется. Late success не заменяет уже terminal timeout/cancel и не запускает второй вызов; достоверный usage может уточнить uncertain charge не более одного раза. Desktop сохраняет собственные 12 s transport/15 s runtime deadlines и generation guards.
 

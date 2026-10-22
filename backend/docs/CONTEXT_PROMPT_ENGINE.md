@@ -1,10 +1,10 @@
 # Context/Prompt Engine
 
-Документ описывает текущую реализацию, включая **v7 chat/touch**. Реестр маршрутов —
+Документ описывает текущую реализацию, включая **v1 chat/touch**. Реестр маршрутов —
 [api/endpoints.py](../wisp_backend/api/endpoints.py), wire-правила — в
 [API](../../docs/contracts/BACKEND_API_CONTRACT.md),
 [memory](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md),
-[events/v7](../../docs/contracts/AI_EVENTS_CONTRACT.md) и
+[events/v1](../../docs/contracts/AI_EVENTS_CONTRACT.md) и
 [context data](../../docs/contracts/CONTEXT_DATA_CONTRACT.md).
 
 ## Карта логики
@@ -13,10 +13,10 @@
 |---|---|
 | [api/dispatch.py](../wisp_backend/api/dispatch.py) | Преобразование проверенного HTTP-запроса во внутренний контекст и CompletionJob |
 | [completion/policies.py](../wisp_backend/completion/policies.py) | Тип контекста, builder, parser ответа, deadline и лимиты каждого сценария |
-| [prompts/context.py](../wisp_backend/completion/prompts/context.py) | Раздельные типы chat, touch, event, summary, observation и v7 interaction |
+| [prompts/context.py](../wisp_backend/completion/prompts/context.py) | Раздельные типы chat, touch, event, summary и observation |
 | [prompts/chat.py](../wisp_backend/completion/prompts/chat.py) | Инструкции диалога, поля ответа, история, память, summary и lore |
 | [prompts/character_guidance.py](../wisp_backend/completion/prompts/character_guidance.py) | Интерпретация личности, Needs, отношений и consent |
-| [prompts/interaction.py](../wisp_backend/completion/prompts/interaction.py) | Appraisal v7 и объяснение предыдущего касания |
+| [prompts/interaction.py](../wisp_backend/completion/prompts/interaction.py) | Appraisal v1 и объяснение предыдущего касания |
 | [prompts/blocks.py](../wisp_backend/completion/prompts/blocks.py) | Общие инструкции, атомарный character snapshot и синтетические примеры |
 | [prompts/style_examples.py](../wisp_backend/completion/prompts/style_examples.py) | Собственные RU/EN примеры желаемой речи |
 | [completion/context.py](../wisp_backend/completion/context.py) | Приоритеты, атомарный отбор блоков и порядок сообщений |
@@ -24,25 +24,22 @@
 | [completion/replies.py](../wisp_backend/completion/replies.py), [interaction_replies.py](../wisp_backend/completion/interaction_replies.py) | Семантическая проверка результата модели |
 
 Один запрос собирает контекст и выполняет не более одного generation inference.
-Модель одновременно предлагает текст, допустимые hints/facts и, для v7, appraisal.
+Модель одновременно предлагает текст, допустимые hints/facts и, для v1, appraisal.
 Backend не выполняет предложенные действия и не меняет состояние desktop.
 
 ## Типы сценариев и поля ответа
 
-Каждый сценарий получает свой dataclass. Chat v1 содержит сообщения и персонажа;
-v2 требует memory, v3 допускает previousInitiative, v5 — summary, v7 дополнительно
-требует interaction policy и допускает previousTouch. Summary принимает только
-пары источника; observation — только персонажа и appName/windowTitle; touch/event
-не получают произвольный chat-контекст. Policy отвергает несовместимый тип.
+Каждый сценарий получает свой dataclass. Chat содержит сообщения, персонажа,
+обязательные memory и interaction policy; optional previousInitiative, summary и previousTouch.
+Summary принимает только пары источника, observation — персонажа и appName/windowTitle.
+Touch/events имеют собственный ограниченный контекст. Policy отвергает несовместимый тип.
 
 Диалог представлен типизированными парами user/assistant с последней user-репликой.
 Character, memory и card — уже проверенные API снимки, которые builders только
 сериализуют; вложенные HTTP-схемы не дублируются в completion.
 
-V7 явно выбирает контракт `text + required appraisal + optional decision/memoryCandidates`.
-Правила памяти общие с v2/v3/v5; изменение формулировки legacy prompt не может
-убрать appraisal через строковую замену. Touch v7 требует только text/appraisal;
-legacy touch, events, observation и summary сохраняют собственные text-only parsers.
+v1 явно выбирает контракт `text + required appraisal + optional decision/memoryCandidates`.
+Touch требует text/appraisal; events, observation и summary имеют text-only parsers.
 
 ## Блоки и доверие
 
@@ -54,16 +51,16 @@ priority отбора и order сериализации. Больший priority
 |---|---|---|---|
 | Server instructions | Всегда | 1000 / 0 | Все сценарии |
 | Character profile/state | Всегда, кроме summary generation | 1000 / 10 | Chat, touch, events, observation |
-| Interaction policy/card | Всегда в v7 | 1000 / 11 | Chat/touch v7 |
-| Memory projection | Всегда в memory-сценарии, включая пустую | 1000 / 20 | Chat v2/v3/v5/v7, events |
-| Author lore | Дополнительно | 40 / 25 | Chat v1/v2/v3/v5/v7 |
+| Interaction policy/card | Всегда в v1 | 1000 / 11 | Chat/touch v1 |
+| Memory projection | Всегда в memory-сценарии, включая пустую | 1000 / 20 | Chat v1, events |
+| Author lore | Дополнительно | 40 / 25 | Chat v1 |
 | Synthetic examples | Дополнительно | 10 / 30 | Chat, touch, events |
-| Previous initiative | Дополнительно | 200 / 40 | Chat v3/v5/v7 |
-| Previous touch | Обязателен при наличии | 1000 / 41 | Chat v7 |
-| Summary | Дополнительно | 60 / 45 | Chat v5/v7 |
+| Previous initiative | Дополнительно | 200 / 40 | Chat v1 |
+| Previous touch | Обязателен при наличии | 1000 / 41 | Chat v1 |
+| Summary | Дополнительно | 60 / 45 | Chat v1 |
 | History pairs | Дополнительно | 100 / 50+ | Chat; сначала выбираются новые пары |
 | Current user/event/observation | Всегда | 1000 / 100 | Соответствующий сценарий |
-| Summary source pairs | Весь диапазон обязателен | 1000 / 10 | Только `/v5/summary`, без character |
+| Summary source pairs | Весь диапазон обязателен | 1000 / 10 | Только `/v1/summary`, без character |
 
 Только server instructions могут иметь роль system; конструктор запрещает её
 другим источникам. JSON-снимки идут как user data, реальные assistant turns
@@ -98,8 +95,8 @@ traits — 0..1; романтическое выражение требует в
 
 Потолки — локальная политика Wisp, не максимальное окно провайдера:
 16384 для chat/touch/events/observation, 8192 для summary generation.
-Output reserve = min(server setting, scenario cap): chat до 4096, v7 touch/events/
-observation до 1024, summary до 512; legacy touch использует server cap до 4096.
+Output reserve = min(server setting, scenario cap): chat до 4096, v1 touch/events/
+observation до 1024, summary до 512.
 Input allowance = выбранный потолок − output reserve; wire byte/UTF-16 caps независимы.
 
 ### Gemini: модельный подсчёт
@@ -164,16 +161,16 @@ locale, NFC/lowercase и Unicode token boundaries. Отбор: priority DESC →
 содержит только `lore_catalogue_unavailable`. После изменения revision нужен restart.
 Touch/events/observation не активируют lore.
 
-`/v5/summary` реализован как отдельный явный сценарий: полные хронологические пары,
+`/v1/summary` реализован как отдельный явный сценарий: полные хронологические пары,
 один inference, без прежней summary, lore, memory или дополнительного character.
 Диапазон передаётся атомарно; его нельзя урезать ради бюджета. Desktop проверяет
-происхождение, актуальность и владеет локальным кешем. Chat v5/v7 использует summary
+происхождение, актуальность и владеет локальным кешем. Chat v1 использует summary
 как дополнительный контекст ниже текущих фактов, предыдущей инициативы и истории.
 Полные границы — [Context data](../../docs/contracts/CONTEXT_DATA_CONTRACT.md).
 
 ## OBS-A02: untrusted observation
 
-`/v6/observation` использует отдельные инструкции и три обязательных блока:
+`/v1/observation` использует отдельные инструкции и три обязательных блока:
 server instructions, character snapshot и JSON appName/windowTitle под role=user.
 Нет памяти, lore, истории, summary или примеров. Caption — недоверенные метаданные,
 не доказательство занятия/намерения пользователя. Нельзя цитировать личный caption,
@@ -184,9 +181,9 @@ Output cap 1024, server deadline 2.5 s, body deadline 0.5 s. Метаданны�
 в ledger/logs; ответ может находиться в ограниченном RAM-кеше до 10 минут.
 Каноническая граница — [Events §9](../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary).
 
-## V7: appraisal и предыдущая реакция
+## v1: appraisal и предыдущая реакция
 
-Оба v7 endpoint реализованы. Chat поддерживает `eligible` appraisal текущей реплики:
+Chat и touch возвращают appraisal. Chat поддерживает `eligible` appraisal текущей реплики:
 supportive/playful/boundary/hostile/neutral, intensity low/moderate и confidence
 clear/uncertain. Suppressed строго требует neutral/low/clear. Touch — только low,
 не hostile. Нет числовых deltas или нескольких оценок на одну реплику.
@@ -201,7 +198,7 @@ PreviousTouch — обязательный при наличии атомарн�
 Для вопроса «почему» используются именно эти данные. Rejected/suppressed не означает
 принятый эффект; без trace нельзя утверждать, что касание помнится. Этот контекст
 не является пользовательским фактом, разрешением или evidence для memoryCandidates.
-Полный контракт — [Events §10](../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v7).
+Полный контракт — [Events §10](../../docs/contracts/AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v1).
 
 ## Проверка и ограничения
 

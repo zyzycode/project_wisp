@@ -6,9 +6,12 @@ import { CharacterStateService } from '../../src/application/services/character-
 import { createCharacterSnapshot, shyDreamGirlPreset } from '../../src/domain/character';
 import { projectCharacterMemory, restoreCharacterMemory } from '../../src/application/services/character-memory-snapshot';
 
+function component(value: unknown) { if (!value || typeof value !== 'object') throw new Error('Expected fixture'); return Object.fromEntries(Object.entries(value).filter(([key]) => !["card", "effectPolicy", "appraisal", "memory"].includes(key))); }
+
+
 it('projects exactly the shared backend request fixture and accepts both shared response outcomes', () => {
-  expect(projectBackendRequest(providerRequest())).toEqual(wire);
-  expect(parseBackendSuccess(fixture('response.success.json'), wire.requestId)).toMatchObject({ text: 'Привет! Чем займёмся?' });
+  expect(projectBackendRequest(providerRequest())).toEqual(component(wire));
+  expect(parseBackendSuccess(component(fixture('response.success.json')), wire.requestId)).toMatchObject({ text: 'Привет! Чем займёмся?' });
   expect(parseBackendError(fixture('response.error.json'), wire.requestId, 503)).toMatchObject({ error: { code: 'upstream_unavailable' } });
 });
 it('copies only allowed fields, preserves self concept, defaults locale, optional boredom absence and last three pairs', () => {
@@ -76,7 +79,7 @@ it('accepts inclusive bounds and rejects invalid booleans, IDs, trait ranges and
 it.each([undefined, null, {}, { behavior: 'unknown', confidence: 1 }, { behavior: 'respond', confidence: 1.1 }, { behavior: 'respond', confidence: 1, coordinates: [1, 2] }])('keeps valid text while discarding invalid/absent decision %j', decision => {
   expect(parseBackendSuccess({ version: 1, requestId: wire.requestId, text: 'hello', decision }, wire.requestId)).toEqual({ version: 1, requestId: wire.requestId, text: 'hello' });
 });
-it.each([{ version: 2 }, { requestId: 'wrong' }, { extra: 1 }, { text: '' }, { text: 'x'.repeat(2001) }, { text: '\u0000' }])('rejects malformed success envelope %j', patch => {
+it.each([{ version: 7 }, { requestId: 'wrong' }, { extra: 1 }, { text: '' }, { text: 'x'.repeat(2001) }, { text: '\u0000' }])('rejects malformed success envelope %j', patch => {
   expect(() => parseBackendSuccess({ version: 1, requestId: wire.requestId, text: 'hello', ...patch }, wire.requestId)).toThrow();
 });
 it('validates error correlation, shape and HTTP/code pair while ignoring malformed 429 retry hints', () => {

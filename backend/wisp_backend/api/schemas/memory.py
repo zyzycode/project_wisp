@@ -1,23 +1,12 @@
-"""Version 2 selected-memory input and HTTP envelopes."""
+"""Selected-memory fields of the unified chat and event contract."""
 
 import re
 from calendar import monthrange
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field, model_validator
-from wisp_backend.api.schemas.chat import ChatRequest
-from wisp_backend.api.schemas.common import ErrorResponse, RequestId
-from wisp_backend.completion.replies import MemoryFact, MemoryModelReply
+from wisp_backend.completion.replies import MemoryFact
 from wisp_backend.validation import Contract, text_type
-
-
-def version_two(value: object) -> int:
-    if type(value) is not int or value != 2:
-        raise ValueError("Expected integer version 2")
-    return value
-
-
-VersionTwo = Annotated[Literal[2], BeforeValidator(version_two)]
 
 
 def calendar_utc(value: object) -> str:
@@ -79,18 +68,3 @@ class MemoryContext(Contract):
         if memory_text_units(self.model_dump()) > 2400:
             raise ValueError("Memory text budget exceeded")
         return self
-
-
-class MemoryRequest(ChatRequest):
-    model_config = {"json_schema_extra": {}}
-    version: VersionTwo
-    memory: MemoryContext
-
-
-class MemoryResponse(MemoryModelReply):
-    version: VersionTwo
-    requestId: RequestId
-
-
-class MemoryErrorResponse(ErrorResponse):
-    version: VersionTwo

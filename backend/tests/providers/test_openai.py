@@ -21,26 +21,19 @@ PROFILE = {"default": {"provider": "openai", "temperature": 0.4}}
 @pytest.mark.parametrize(
     "route,folder,request_name,response_name,cap",
     [
-        ("/v1/chat", "v1", "request.valid", "response.success", 4096),
-        ("/v1/touch", "v1", "request.touch", "response.success", 4096),
-        ("/v2/chat", "v2", "request.valid", "response.success", 4096),
-        ("/v3/chat", "v3", "request.chat", "response.chat.success", 4096),
-        ("/v3/events", "v3", "request.game", "response.event.success", 1024),
-        ("/v3/events", "v3", "request.social", "response.event.success", 1024),
-        ("/v5/chat", "v5", "request.chat", "response.chat.success", 4096),
-        ("/v5/summary", "v5", "request.summary", "response.summary.success", 512),
-        ("/v6/observation", "v6", "request.valid", "response.success", 1024),
-        ("/v7/chat", "v7", "request.chat", "response.chat", 4096),
-        ("/v7/touch", "v7", "request.touch", "response.touch", 1024),
+        ("/v1/chat", "interaction", "request.chat", "response.chat", 4096),
+        ("/v1/touch", "interaction", "request.touch", "response.touch", 1024),
+        ("/v1/events", "events", "request.game", "response.event.success", 1024),
+        ("/v1/events", "events", "request.social", "response.event.success", 1024),
+        ("/v1/summary", "summary", "request.summary", "response.summary.success", 512),
+        ("/v1/observation", "observation", "request.valid", "response.success", 1024),
     ],
 )
 def test_routes_translate_and_account(app_factory, completion, model, route, folder, request_name, response_name, cap):
-    fixtures = CONTRACT_FIXTURES / f"desktop-backend-{folder}"
+    fixtures = CONTRACT_FIXTURES / "desktop-backend-v1" / folder
     body = json.loads((fixtures / f"{request_name}.json").read_text())
     expected = json.loads((fixtures / f"{response_name}.json").read_text())
     reply = {key: value for key, value in expected.items() if key not in {"version", "requestId"}}
-    if route == "/v1/touch":
-        reply = {"text": reply["text"]}
     calls = []
 
     def handler(request):
@@ -125,8 +118,8 @@ def test_failures_are_safe_and_not_retried(app_factory, body, failure, status, c
 
 
 @pytest.mark.parametrize("kind", ["refusal", "length", "content_filter", "tools", "bad-text", "bad-envelope"])
-def test_invalid_output_retains_known_usage(completion, kind):
-    data = completion()
+def test_invalid_output_retains_known_usage(chat_completion, kind):
+    data = chat_completion()
     choice = data["choices"][0]
     if kind == "refusal":
         choice["message"]["refusal"] = "private refusal"
@@ -162,9 +155,9 @@ def test_invalid_output_retains_known_usage(completion, kind):
         {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 6},
     ],
 )
-def test_unknown_usage_remains_uncertain(app_factory, body, completion, usage):
+def test_unknown_usage_remains_uncertain(app_factory, body, chat_completion, usage):
     async def run():
-        app = app_factory(lambda _: httpx.Response(200, json=completion(usage=usage)), assistants=PROFILE)
+        app = app_factory(lambda _: httpx.Response(200, json=chat_completion(usage=usage)), assistants=PROFILE)
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
                 assert (await client.post("/v1/chat", json=body)).status_code == 200

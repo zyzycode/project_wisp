@@ -10,22 +10,19 @@
 node scripts/wisp.mjs dev
 ```
 
-Совместный launcher запускает встроенный backend и desktop с API v1 и выключенными сетевыми инициативами. Текущий сервер поддерживает chat/touch; v2/v3 и часть серверных safeguards отсутствуют: [актуальные gaps](../../backend/docs/README.md#фактическая-реализация). В этом режиме доступны локальная жизнь, persistent storage/reset, v1-диалог и проверка отключения сети; сетевое воспоминание после restart и AI-инициативы так не проверить.
+Совместный launcher запускает встроенный backend и desktop с единым API v1. Chat включает память, карточку и appraisal; touch, summary и observation используют тот же префикс. Сетевые инициативы выключены по умолчанию. Фактические возможности и ограничения — в [backend README](../../backend/docs/README.md#поддерживаемые-сценарии).
 
-Для локального Mock использовать `node scripts/wisp.mjs dev:frontend` без `WISP_BACKEND_URL`. Для сетевых сценариев памяти нужен отдельно проверенный совместимый v2/v3 backend; текущая структура описана в [архитектуре backend](../../backend/docs/ARCHITECTURE.md), документация не подтверждает работающий endpoint.
-
-Только после запуска совместимого v3 сервера на указанном адресе:
+Для локального Mock использовать `node scripts/wisp.mjs dev:frontend` без `WISP_BACKEND_URL`. Для отдельного backend и сетевых инициатив:
 
 ```powershell
 $env:WISP_BACKEND_URL = "http://127.0.0.1:8000"
-$env:WISP_BACKEND_API_VERSION = "3"
 $env:WISP_AI_EVENTS_ENABLED = "true"
 node scripts/wisp.mjs dev:frontend
 ```
 
-Для v2 задать version `2` и events `false`: память в диалоге доступна, инициативы выключены. Изменение конфигурации требует перезапуска Main. LLM-ключ задаётся только серверу. Удалённый endpoint требует HTTPS base URL без endpoint path/query/credentials и подтверждённых оператором условий доступа и обработки данных. Development loopback не является конфигурацией packaged-клиента.
+Выбора версии API нет. `WISP_AI_EVENTS_ENABLED=false` отключает инициативы, сохраняя память в диалоге. Изменение конфигурации требует перезапуска Main. LLM-ключ задаётся только серверу. Удалённый endpoint требует HTTPS base URL без endpoint path/query/credentials и подтверждённых оператором условий доступа и обработки данных. Development loopback не является конфигурацией packaged-клиента.
 
-Сценарии 2–4 в части ответов по сохранённой памяти требуют совместимого memory-capable режима; полный сетевой прогон 2–5 выполнять с v2/v3, сценарий 6 — с v3/events. В сценарии 7 проверять только возможности выбранной версии; отсутствие ещё не реализованной серверной quota нельзя отмечать как успешную проверку. Недоступный сценарий отмечать NOT RUN с причиной.
+Сценарии 2–5 проверяют память и сетевые ответы; сценарий 6 требует включённых events. Недоступный сценарий отмечать NOT RUN с причиной.
 
 Проверить dev и отдельно уже предоставленный portable: записать commit, Windows/Electron версии, userData, размер артефакта и версии desktop/backend. Подготовка portable — отдельный packaging scope; `npm run build` запрещён инженерными правилами.
 

@@ -332,7 +332,7 @@ immutable snapshot, ordered subscription, policy replacement/pause и idempotent
 | Infrastructure → Application | capability/reason, policy generation, increasing sample revision, Main request-start time; available: opaque appKey/foreground episode/source token, appName/title, локальная категория |
 | Application → existing Domain behavior | Только fresh/age/dwell и eligibility inputs; без строк/native metadata/сетевых решений |
 | Main → Renderer | Safe status/settings, только explicit preview, отдельная observationSpeech; typed validated IPC |
-| Application → Infrastructure AI → backend | Только [v6 projection](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary); local tokens/revisions не передаются |
+| Application → Infrastructure AI → backend | Только [v1 observation projection](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary); local tokens/revisions не передаются |
 
 Unavailable без старых данных; reasons: disabled, paused, unsupported, initializing,
 excluded, permission_denied, bridge_failed, stale. Malformed envelope, непроверенная
@@ -437,10 +437,10 @@ pause/revoke без автозапуска и capture port/capability fallback.
 Сеть в эксперименте off; outage не вызывает fallback upload. Для remote analysis
 **до передачи** отдельный architect утверждает оба DTO, endpoint/version/fixtures,
 content/byte limits, auth/access, provider/model/retention/deletion и цену вызова.
-Consent §11 разрешает только metadata v6, не capture/upload pixels. Desktop валидирует/минимизирует
+Consent §11 разрешает только metadata observation v1, не capture/upload pixels. Desktop валидирует/минимизирует
 подтверждённый payload, отменяет request и отбрасывает late result. Backend независимо
 проверяет schema/size/access/deadline, даёт bounded semantic-only response без raw
 OCR/tools, не сохраняет pixels/text и не логирует payload. Неизвестный endpoint,
 outage, expired auth, malformed response, timeout/cancel → нет реакции/ретраев/очереди.
 Local delete не означает удаление уже переданного provider content. Без принятого
-wire/data policy remote experiment blocked; существующие v1–v3 не расширяются.
+wire/data policy remote experiment blocked; существующий API v1 не расширяется.

@@ -5,8 +5,8 @@ from copy import deepcopy
 import pytest
 from pydantic import ValidationError
 from wisp_backend.api.boundary import CompletionBoundary
-from wisp_backend.api.schemas.chat import ChatRequest
 from wisp_backend.api.schemas.common import ErrorDetail
+from wisp_backend.api.schemas.interaction import InteractionChatRequest as ChatRequest
 from wisp_backend.completion.replies import ModelReply
 
 NUMBERS = [
@@ -53,7 +53,7 @@ def test_booleans(body, path):
             ChatRequest.model_validate(body)
 
 
-@pytest.mark.parametrize("path,limit", [("personality.presetId", 128), ("personality.aiSelfConcept", 500)])
+@pytest.mark.parametrize("path,limit", [("personality.aiSelfConcept", 500)])
 def test_character_text_limits(body, path, limit):
     put(body, path, "a" * limit)
     ChatRequest.model_validate(body)
@@ -123,7 +123,7 @@ def test_optional_boredom_preserves_absence(body):
 @pytest.mark.parametrize(
     "extra,code",
     [
-        ({"version": 2}, "unsupported_version"),
+        ({"version": 7}, "unsupported_version"),
         ({"version": True}, "invalid_request"),
         ({"version": 1.0}, "invalid_request"),
         ({"stream": True}, "invalid_request"),
@@ -147,7 +147,7 @@ def test_invalid_id_is_null(client_factory, body, request_id):
         assert response.json()["requestId"] is None
 
 
-@pytest.mark.parametrize("content", [b"{", b'{"version":1,"version":2}', b'{"version":NaN}', b"\xff", b"[]"])
+@pytest.mark.parametrize("content", [b"{", b'{"version":1,"version":1}', b'{"version":NaN}', b"\xff", b"[]"])
 def test_invalid_json(client_factory, content):
     with client_factory(lambda _: pytest.fail("Invalid request reached provider")) as client:
         response = client.post("/v1/chat", content=content, headers={"content-type": "application/json"})
@@ -183,11 +183,11 @@ def test_chunked_limit_stops_reading():
     asyncio.run(run())
 
 
-def test_exact_byte_limit(client_factory, body, completion):
+def test_exact_byte_limit(client_factory, body, chat_completion):
     import httpx
 
     raw = json.dumps(body).encode()
-    with client_factory(lambda _: httpx.Response(200, json=completion())) as client:
+    with client_factory(lambda _: httpx.Response(200, json=chat_completion())) as client:
         raw += b" " * (32768 - len(raw))
         assert client.post("/v1/chat", content=raw, headers={"content-type": "application/json"}).status_code == 200
         assert (

@@ -9,7 +9,7 @@
 | Общие инварианты, роли и verification | [AGENTS.md](../AGENTS.md) |
 | Desktop: движки, сценарии, Windows, локальные ADR и архив | [Frontend docs](../frontend/docs/README.md), [desktop-правила](../frontend/AGENTS.md) |
 | Backend: runtime, setup, API gaps и поставки | [Backend docs](../backend/docs/README.md), [backend-правила](../backend/AGENTS.md) |
-| Desktop ↔ backend: wire v1/v2/v3 и fixtures | [Общие контракты](contracts/README.md) |
+| Desktop ↔ backend: wire v1 и fixtures | [Общие контракты](contracts/README.md) |
 | Продуктовые решения и следующие этапы | [Vision и roadmap](PRODUCT_VISION_AND_ROADMAP.md) |
 | Следующее расширение памяти событий и общих шуток | [#65 (MEM-A03)](https://github.com/zyzycode/project_wisp/issues/65); канонический контракт — [Memory §10](../frontend/docs/engine/MEMORY_ENGINE.md#10-mem-a03-важные-события-и-общие-шутки-planned) |
 | AI-реакции на приложение и заголовок; отдельный эксперимент экрана | [#84 (OBS-A02)](https://github.com/zyzycode/project_wisp/issues/84); канонический контракт — [Perception §11](../frontend/docs/engine/PERCEPTION_ENGINE.md#11-obs-a02-активное-приложение-и-заголовок) |

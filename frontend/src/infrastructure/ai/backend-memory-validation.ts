@@ -1,8 +1,8 @@
-import type { BackendMemoryCandidate, BackendMemoryContext, BackendMemoryRequest, BackendMemoryResponse, BackendMemoryErrorResponse } from '../../application/ports/backend-memory-contract';
+import type { BackendMemoryCandidate, BackendMemoryContext, BackendMemoryRequest, BackendMemoryResponse } from '../../application/ports/backend-memory-contract';
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
 import { exactRecord, enumValue, plainText } from '../../shared/dialogue-ipc-validation';
 import { finiteRange, projectBackendRequest } from './backend-request-projection';
-import { parseBackendSuccess, parseBackendError } from './backend-response-validation';
+import { parseBackendSuccess } from './backend-response-validation';
 
 function array(value: unknown, max: number): readonly unknown[] {
   if (!Array.isArray(value) || value.length > max) throw new TypeError('Invalid memory array'); return value;
@@ -54,7 +54,7 @@ export function parseBackendMemory(value: unknown): BackendMemoryContext {
 export function projectBackendMemoryRequest(request: AIProviderRequest): BackendMemoryRequest {
   const base = projectBackendRequest(request);
   const memory = parseBackendMemory(request.memoryContext ?? { facts: [], episodes: [], characterPreferences: [] });
-  let result: BackendMemoryRequest = { ...base, version: 2, memory };
+  let result: BackendMemoryRequest = { ...base, memory };
   while (new TextEncoder().encode(JSON.stringify(result)).byteLength > 32 * 1024 && result.memory.episodes.length) {
     result = { ...result, memory: { ...result.memory, episodes: result.memory.episodes.slice(0, -1) } };
   }
@@ -79,13 +79,9 @@ function candidates(value: unknown, userText: string): readonly BackendMemoryCan
 }
 export function parseBackendMemorySuccess(value: unknown, requestId: string, userText: string): BackendMemoryResponse {
   const r = exactRecord(value, ['version', 'requestId', 'text'], ['decision', 'memoryCandidates']);
-  if (r.version !== 2) throw new TypeError('Invalid memory version');
+  if (r.version !== 1) throw new TypeError('Invalid memory version');
   const base = parseBackendSuccess({ version: 1, requestId: r.requestId, text: r.text, ...(r.decision === undefined ? {} : { decision: r.decision }) }, requestId);
   const memoryCandidates = candidates(r.memoryCandidates, userText);
-  return { ...base, version: 2, ...(memoryCandidates === undefined ? {} : { memoryCandidates }) };
+  return { ...base, ...(memoryCandidates === undefined ? {} : { memoryCandidates }) };
 }
-export function parseBackendMemoryError(value: unknown, requestId: string, status: number): BackendMemoryErrorResponse {
-  const r = exactRecord(value, ['version', 'requestId', 'error']);
-  if (r.version !== 2) throw new TypeError('Invalid memory error version');
-  return { ...parseBackendError({ ...r, version: 1 }, requestId, status), version: 2 };
-}
+export { parseBackendError as parseBackendMemoryError } from './backend-response-validation';

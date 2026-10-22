@@ -5,10 +5,10 @@ import httpx
 import pytest
 from pydantic import ValidationError
 from tests.helpers import CONTRACT_FIXTURES
-from wisp_backend.api.schemas.memory import MemoryRequest
+from wisp_backend.api.schemas.interaction import InteractionChatRequest as MemoryRequest
 from wisp_backend.completion.replies import MemoryModelReply
 
-FIXTURE = CONTRACT_FIXTURES / "desktop-backend-v2/request.valid.json"
+FIXTURE = CONTRACT_FIXTURES / "desktop-backend-v1/memory/request.valid.json"
 
 
 @pytest.fixture
@@ -135,7 +135,7 @@ def test_dialogue_episode_text_and_caps(memory_body):
 @pytest.mark.parametrize(
     "kind", ["wrong_quote", "duplicate", "unknown", "wrong_value", "extra", "null", "too_many", "non_list"]
 )
-def test_candidate_degradation_keeps_text_decision_usage(client_factory, memory_body, completion, kind):
+def test_candidate_degradation_keeps_text_decision_usage(client_factory, memory_body, chat_completion, kind):
     quote = memory_body["messages"][-1]["content"]
     valid = {"key": "user.cursor_game", "value": "like", "evidenceQuote": quote}
     candidates = [valid]
@@ -166,11 +166,11 @@ def test_candidate_degradation_keeps_text_decision_usage(client_factory, memory_
     def upstream(request):
         calls.append(request)
         return httpx.Response(
-            200, json=completion(reply, usage={"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3})
+            200, json=chat_completion(reply, usage={"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3})
         )
 
     with client_factory(upstream) as client:
-        response = client.post("/v2/chat", json=memory_body)
+        response = client.post("/v1/chat", json=memory_body)
         assert response.status_code == 200
         payload = response.json()
         assert payload["text"] == "Works" and payload["decision"] == reply["decision"]
@@ -178,7 +178,7 @@ def test_candidate_degradation_keeps_text_decision_usage(client_factory, memory_
             assert "memoryCandidates" not in payload
         else:
             assert payload["memoryCandidates"] == expected
-        replay = client.post("/v2/chat", json=memory_body)
+        replay = client.post("/v1/chat", json=memory_body)
         assert replay.json() == payload
     assert len(calls) == 1
 
@@ -199,14 +199,14 @@ def test_duplicate_invalid_element_also_removes_valid_same_key():
     assert [item.key for item in reply.memoryCandidates] == ["user.reply_style"]
 
 
-def test_unknown_root_and_invalid_text_remain_fatal(client_factory, memory_body, completion):
+def test_unknown_root_and_invalid_text_remain_fatal(client_factory, memory_body, chat_completion):
     for reply in [
         {"text": "ok", "numericState": {"friendship": 900}},
         {"text": "", "memoryCandidates": []},
         {"text": "😀" * 1001},
         {"text": "ok", "requestId": "model-owned"},
     ]:
-        with client_factory(lambda _, reply=reply: httpx.Response(200, json=completion(reply))) as client:
-            response = client.post("/v2/chat", json=memory_body)
+        with client_factory(lambda _, reply=reply: httpx.Response(200, json=chat_completion(reply))) as client:
+            response = client.post("/v1/chat", json=memory_body)
             assert response.status_code == 502
-            assert response.json()["version"] == 2
+            assert response.json()["version"] == 1

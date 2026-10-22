@@ -58,7 +58,7 @@ test('backend port and interpreter are explicit; frontend uses the same endpoint
   assert.equal(backend.command, 'custom-python');
   assert.equal(backend.args.at(-1), '8001');
   assert.equal(frontend.env.WISP_BACKEND_URL, 'http://127.0.0.1:8001');
-  assert.equal(frontend.env.WISP_BACKEND_API_VERSION, '1');
+  assert.equal(frontend.env.WISP_BACKEND_API_VERSION, undefined);
   assert.equal(frontend.env.WISP_AI_EVENTS_ENABLED, 'false');
 });
 

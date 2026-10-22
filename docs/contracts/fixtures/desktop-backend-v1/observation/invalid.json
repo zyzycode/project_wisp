@@ -1,0 +1,4476 @@
+[
+  {
+    "name": "request-version-6",
+    "kind": "request",
+    "value": {
+      "version": 6,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-version-2",
+    "kind": "request",
+    "value": {
+      "version": 2,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-version-3",
+    "kind": "request",
+    "value": {
+      "version": 3,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-version-4",
+    "kind": "request",
+    "value": {
+      "version": 4,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-version-5",
+    "kind": "request",
+    "value": {
+      "version": 5,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-version-7",
+    "kind": "request",
+    "value": {
+      "version": 7,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-version-true",
+    "kind": "request",
+    "value": {
+      "version": true,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-version-6",
+    "kind": "request",
+    "value": {
+      "version": "6",
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-version-none",
+    "kind": "request",
+    "value": {
+      "version": null,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-missing-version",
+    "kind": "request",
+    "value": {
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-missing-requestId",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-missing-stream",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-missing-locale",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-missing-character",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-missing-observation",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      }
+    }
+  },
+  {
+    "name": "request-forbidden-event",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "event": []
+    }
+  },
+  {
+    "name": "request-forbidden-messages",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "messages": []
+    }
+  },
+  {
+    "name": "request-forbidden-memory",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "memory": []
+    }
+  },
+  {
+    "name": "request-forbidden-lore",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "lore": []
+    }
+  },
+  {
+    "name": "request-forbidden-summary",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "summary": []
+    }
+  },
+  {
+    "name": "request-forbidden-previousInitiative",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "previousInitiative": []
+    }
+  },
+  {
+    "name": "request-forbidden-executablePath",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "executablePath": []
+    }
+  },
+  {
+    "name": "request-forbidden-pid",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "pid": []
+    }
+  },
+  {
+    "name": "request-forbidden-appKey",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "appKey": []
+    }
+  },
+  {
+    "name": "request-forbidden-occurredAt",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      },
+      "occurredAt": []
+    }
+  },
+  {
+    "name": "appName-invalid-0",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-1",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": " ",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-2",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": " Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-3",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code ",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-4",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": null,
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-5",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": 123,
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-6",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-7",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-8",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "x\n",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "appName-invalid-9",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a\t",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-invalid-0",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": " title"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-invalid-1",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "title "
+      }
+    }
+  },
+  {
+    "name": "windowTitle-invalid-2",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": null
+      }
+    }
+  },
+  {
+    "name": "windowTitle-invalid-3",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": 123
+      }
+    }
+  },
+  {
+    "name": "windowTitle-invalid-4",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-invalid-5",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U0000",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a\u0000b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U0000",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a\u0000b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U000D",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a\rb",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U000D",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a\rb"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U000A",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a\nb",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U000A",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a\nb"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U0009",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a\tb",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U0009",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a\tb"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U001F",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a\u001fb",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U001F",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a\u001fb"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U007F",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "ab",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U007F",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "ab"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U0085",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "ab",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U0085",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "ab"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U009F",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "ab",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U009F",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "ab"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U061C",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a؜b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U061C",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a؜b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U200E",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a‎b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U200E",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a‎b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U200F",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a‏b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U200F",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a‏b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U202A",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a‪b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U202A",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a‪b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U202B",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a‫b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U202B",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a‫b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U202C",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a‬b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U202C",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a‬b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U202D",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a‭b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U202D",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a‭b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U202E",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a‮b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U202E",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a‮b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U2066",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a⁦b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U2066",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a⁦b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U2067",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a⁧b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U2067",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a⁧b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U2068",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a⁨b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U2068",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a⁨b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-U2069",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a⁩b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-U2069",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a⁩b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-UD800",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a\ud800b",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-UD800",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a\ud800b"
+      }
+    }
+  },
+  {
+    "name": "appName-forbidden-UDFFF",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "a\udfffb",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "windowTitle-forbidden-UDFFF",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "a\udfffb"
+      }
+    }
+  },
+  {
+    "name": "metadata-missing-appName",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "metadata-missing-windowTitle",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code"
+      }
+    }
+  },
+  {
+    "name": "metadata-shape-87",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": null
+    }
+  },
+  {
+    "name": "metadata-shape-88",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": []
+    }
+  },
+  {
+    "name": "metadata-shape-89",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "ok",
+        "pid": 42
+      }
+    }
+  },
+  {
+    "name": "request-stream-True",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": true,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-stream-0",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": 0,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-requestId-bad",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "bad",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-locale-fr",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "fr",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "character-extra",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious",
+        "executablePath": "C:\\private.exe"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "character-boolean-number",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": true,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    }
+  },
+  {
+    "name": "request-byte-overflow",
+    "kind": "request",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "stream": false,
+      "locale": "ru",
+      "character": {
+        "needs": {
+          "energy": 80,
+          "attention": 50,
+          "play": 60,
+          "comfort": 80,
+          "boredom": 10
+        },
+        "relationship": {
+          "friendship": 100,
+          "love": 0,
+          "loveUnlocked": false
+        },
+        "personality": {
+          "presetId": "default",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
+          "traits": {
+            "shyness": 0.4,
+            "playfulness": 0.6,
+            "sensitivity": 0.5,
+            "boldness": 0.4
+          }
+        },
+        "intimacy": {
+          "flirtiness": 0,
+          "romanticCharge": 0,
+          "userConsentEnabled": false
+        },
+        "synthesizedTone": "curious"
+      },
+      "observation": {
+        "appName": "Code",
+        "windowTitle": "Synthetic notes — editor"
+      }
+    },
+    "raw": "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 {\"version\": 1,\"requestId\":\"02d80270-1a72-47c9-a713-335b872ad24b\",\"stream\":false,\"locale\":\"ru\",\"character\":{\"needs\":{\"energy\":80,\"attention\":50,\"play\":60,\"comfort\":80,\"boredom\":10},\"relationship\":{\"friendship\":100,\"love\":0,\"loveUnlocked\":false},\"personality\":{\"presetId\":\"default\",\"aiSelfConcept\":\"\\u042f Wisp, \\u0442\\u0432\\u043e\\u0439 \\u043a\\u043e\\u043c\\u043f\\u0430\\u043d\\u044c\\u043e\\u043d.\",\"traits\":{\"shyness\":0.4,\"playfulness\":0.6,\"sensitivity\":0.5,\"boldness\":0.4}},\"intimacy\":{\"flirtiness\":0,\"romanticCharge\":0,\"userConsentEnabled\":false},\"synthesizedTone\":\"curious\"},\"observation\":{\"appName\":\"Code\",\"windowTitle\":\"Synthetic notes \\u2014 editor\"}}"
+  },
+  {
+    "name": "response-missing-version",
+    "kind": "response",
+    "value": {
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?"
+    }
+  },
+  {
+    "name": "response-missing-requestId",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "text": "Может, сделать небольшую паузу?"
+    }
+  },
+  {
+    "name": "response-missing-text",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b"
+    }
+  },
+  {
+    "name": "response-forbidden-decision",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?",
+      "decision": []
+    }
+  },
+  {
+    "name": "response-forbidden-memoryCandidates",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?",
+      "memoryCandidates": []
+    }
+  },
+  {
+    "name": "response-forbidden-tools",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?",
+      "tools": []
+    }
+  },
+  {
+    "name": "response-forbidden-actions",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?",
+      "actions": []
+    }
+  },
+  {
+    "name": "response-forbidden-deltas",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?",
+      "deltas": []
+    }
+  },
+  {
+    "name": "response-forbidden-state",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?",
+      "state": []
+    }
+  },
+  {
+    "name": "response-forbidden-observation",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?",
+      "observation": []
+    }
+  },
+  {
+    "name": "response-text-0",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": ""
+    }
+  },
+  {
+    "name": "response-text-1",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": " "
+    }
+  },
+  {
+    "name": "response-text-2",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "name": "response-text-3",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+    }
+  },
+  {
+    "name": "response-text-4",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "bad\r"
+    }
+  },
+  {
+    "name": "response-text-5",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "bad\u0000"
+    }
+  },
+  {
+    "name": "response-text-6",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "bad\ud800"
+    }
+  },
+  {
+    "name": "response-text-7",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": null
+    }
+  },
+  {
+    "name": "response-text-8",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": 42
+    }
+  },
+  {
+    "name": "response-version-5",
+    "kind": "response",
+    "value": {
+      "version": 5,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?"
+    }
+  },
+  {
+    "name": "response-version-7",
+    "kind": "response",
+    "value": {
+      "version": 7,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?"
+    }
+  },
+  {
+    "name": "response-version-True",
+    "kind": "response",
+    "value": {
+      "version": true,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?"
+    }
+  },
+  {
+    "name": "response-version-6",
+    "kind": "response",
+    "value": {
+      "version": "6",
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?"
+    }
+  },
+  {
+    "name": "response-version-None",
+    "kind": "response",
+    "value": {
+      "version": null,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?"
+    }
+  },
+  {
+    "name": "response-wrong-id",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "00000000-0000-4000-8000-000000000001",
+      "text": "Может, сделать небольшую паузу?"
+    }
+  },
+  {
+    "name": "response-byte-overflow",
+    "kind": "response",
+    "value": {
+      "version": 1,
+      "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+      "text": "Может, сделать небольшую паузу?"
+    },
+    "raw": "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 {\"version\": 1,\"requestId\":\"02d80270-1a72-47c9-a713-335b872ad24b\",\"text\":\"\\u041c\\u043e\\u0436\\u0435\\u0442, \\u0441\\u0434\\u0435\\u043b\\u0430\\u0442\\u044c \\u043d\\u0435\\u0431\\u043e\\u043b\\u044c\\u0448\\u0443\\u044e \\u043f\\u0430\\u0443\\u0437\\u0443?\"}"
+  }
+]

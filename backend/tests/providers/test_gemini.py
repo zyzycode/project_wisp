@@ -19,11 +19,11 @@ RESERVATION = PROFILES["gemini"].reservation
     "route,fixture,cap",
     [
         ("/v1/chat", "desktop-backend-v1/request.valid.json", 4096),
-        ("/v1/touch", "desktop-backend-v1/request.touch.json", 4096),
-        ("/v2/chat", "desktop-backend-v2/request.valid.json", 4096),
-        ("/v3/chat", "desktop-backend-v3/request.chat.json", 4096),
-        ("/v3/events", "desktop-backend-v3/request.game.json", 1024),
-        ("/v3/events", "desktop-backend-v3/request.social.json", 1024),
+        ("/v1/touch", "desktop-backend-v1/request.touch.json", 1024),
+        ("/v1/chat", "desktop-backend-v1/memory/request.valid.json", 4096),
+        ("/v1/chat", "desktop-backend-v1/events/request.chat.json", 4096),
+        ("/v1/events", "desktop-backend-v1/events/request.game.json", 1024),
+        ("/v1/events", "desktop-backend-v1/events/request.social.json", 1024),
     ],
 )
 def test_all_routes_translate_and_account(app_factory, route, fixture, cap):
@@ -48,14 +48,35 @@ def test_all_routes_translate_and_account(app_factory, route, fixture, cap):
             "thinkingConfig": {"thinkingLevel": "minimal"},
         }
         assert "tools" not in payload and "safetySettings" not in payload
-        return httpx.Response(200, json=gemini_completion())
+        return httpx.Response(
+            200,
+            json=gemini_completion(
+                {
+                    "text": "Hello",
+                    **(
+                        {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                        if route != "/v1/events"
+                        else {}
+                    ),
+                }
+            ),
+        )
 
     app = app_factory(handler, assistants=PROFILE)
     with TestClient(app) as client:
         upstream = app.state.completion_service.provider.client
         response = client.post(route, json=body)
         assert response.status_code == 200, response.text
-        assert response.json() == {"version": body["version"], "requestId": body["requestId"], "text": "Hello"}
+        assert response.json() == {
+            "version": body["version"],
+            "requestId": body["requestId"],
+            "text": "Hello",
+            **(
+                {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                if route != "/v1/events"
+                else {}
+            ),
+        }
         assert client.post(route, json=body).json() == response.json()
         assert len(calls) == 1
         with sqlite3.connect(app.state.completion_service.ledger.path) as db:

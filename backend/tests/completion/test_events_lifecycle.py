@@ -11,7 +11,7 @@ from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.schemas.events import EventRequest
 from wisp_backend.completion.contracts import ProviderResult
 
-FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v3"
+FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v1/events"
 
 
 def fixture(name):
@@ -26,7 +26,17 @@ def test_all_endpoints_share_accounting_and_id_namespace(app_factory, body, comp
             calls.append(request)
             return httpx.Response(
                 200,
-                json=completion({"text": "ok"}, usage={"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3}),
+                json=completion(
+                    {
+                        "text": "ok",
+                        **(
+                            {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                            if b"interaction_policy" in request.content
+                            else {}
+                        ),
+                    },
+                    usage={"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
+                ),
             )
 
         app = app_factory(upstream)
@@ -35,13 +45,13 @@ def test_all_endpoints_share_accounting_and_id_namespace(app_factory, body, comp
         candidates = [
             ("/v1/chat", {**body, "requestId": request_id}),
             ("/v1/touch", {**touch_body(body), "requestId": request_id}),
-            ("/v2/chat", {**body, "version": 2, "requestId": request_id, "memory": game["memory"]}),
-            ("/v3/chat", {**fixture("request.chat.json"), "requestId": request_id}),
+            ("/v1/chat", {**body, "version": 1, "requestId": request_id, "memory": game["memory"]}),
+            ("/v1/chat", {**fixture("request.chat.json"), "requestId": request_id}),
         ]
         async with app.router.lifespan_context(app):
             ledger = app.state.completion_service.ledger
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                first = await client.post("/v3/events", json=game)
+                first = await client.post("/v1/events", json=game)
                 assert first.status_code == 200
                 for route, candidate in candidates:
                     conflict = await client.post(route, json=candidate)
@@ -50,10 +60,10 @@ def test_all_endpoints_share_accounting_and_id_namespace(app_factory, body, comp
                     assert conflict.json()["version"] == candidate["version"]
                     next_response = await client.post(route, json={**candidate, "requestId": str(uuid4())})
                     assert next_response.status_code == 200
-                replay = await client.post("/v3/events", json=game)
+                replay = await client.post("/v1/events", json=game)
                 assert replay.content == first.content
                 changed = await client.post(
-                    "/v3/events", json={**fixture("request.social.json"), "requestId": request_id}
+                    "/v1/events", json={**fixture("request.social.json"), "requestId": request_id}
                 )
                 assert changed.status_code == 409
             with sqlite3.connect(ledger.path) as db:
@@ -102,7 +112,7 @@ def test_event_disconnect_shutdown_releases_capacity(app_factory, shutdown):
             scope = {
                 "type": "http",
                 "asgi": {"version": "3.0"},
-                "path": "/v3/events",
+                "path": "/v1/events",
                 "method": "POST",
                 "headers": [(b"content-type", b"application/json")],
                 "query_string": b"",
@@ -148,7 +158,7 @@ def test_event_short_deadline_with_late_usage_never_replays_success(app_factory,
             service.provider = LateProvider()
             request = EventRequest.model_validate(fixture("request.game.json"))
             first = await service.complete(prepare_job(request), "event-digest", asyncio.get_running_loop().time())
-            assert first.status == 504 and json.loads(first.body)["version"] == 3
+            assert first.status == 504 and json.loads(first.body)["version"] == 1
             assert entered.is_set(), "deadline expired before provider dispatch"
             release.set()
             while service.background:
@@ -197,10 +207,10 @@ def test_event_body_deadline_is_shorter_than_chat(monkeypatch):
             )
             return sent
 
-        event = await request("/v3/events", (FIXTURES / "request.game.json").read_bytes())
+        event = await request("/v1/events", (FIXTURES / "request.game.json").read_bytes())
         assert event[0]["status"] == 400
-        assert json.loads(event[1]["body"]) == {"version": 3, "requestId": None, "error": {"code": "invalid_request"}}
-        chat = await request("/v3/chat", (FIXTURES / "request.chat.json").read_bytes())
+        assert json.loads(event[1]["body"]) == {"version": 1, "requestId": None, "error": {"code": "invalid_request"}}
+        chat = await request("/v1/chat", (FIXTURES / "request.chat.json").read_bytes())
         assert chat[0]["status"] == 200
 
     asyncio.run(run())
@@ -238,7 +248,7 @@ def test_cached_commit_cannot_replay_success_after_event_deadline(app_factory, c
     asyncio.run(run())
 
 
-def test_v3_inflight_blocks_duplicate_ids_but_not_other_requests(app_factory, body, completion):
+def test_v1_inflight_blocks_duplicate_ids_but_not_other_requests(app_factory, body, completion):
     async def run():
         entered, release = asyncio.Event(), asyncio.Event()
         calls = []
@@ -247,28 +257,40 @@ def test_v3_inflight_blocks_duplicate_ids_but_not_other_requests(app_factory, bo
             calls.append(request)
             entered.set()
             await release.wait()
-            return httpx.Response(200, json=completion())
+            return httpx.Response(
+                200,
+                json=completion(
+                    {
+                        "text": "Привет!",
+                        **(
+                            {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                            if b"interaction_policy" in request.content
+                            else {}
+                        ),
+                    }
+                ),
+            )
 
         app = app_factory(upstream)
         game = fixture("request.game.json")
         candidates = [
             ("/v1/chat", body),
             ("/v1/touch", touch_body(body)),
-            ("/v2/chat", {**body, "version": 2, "memory": game["memory"]}),
-            ("/v3/chat", fixture("request.chat.json")),
-            ("/v3/events", game),
+            ("/v1/chat", {**body, "version": 1, "memory": game["memory"]}),
+            ("/v1/chat", fixture("request.chat.json")),
+            ("/v1/events", game),
         ]
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                first = asyncio.create_task(client.post("/v3/events", json=game))
+                first = asyncio.create_task(client.post("/v1/events", json=game))
                 await entered.wait()
                 pending = []
                 try:
-                    duplicate = await client.post("/v3/events", json=game)
+                    duplicate = await client.post("/v1/events", json=game)
                     assert duplicate.json()["error"]["code"] == "request_in_progress"
                     for path, request in candidates:
                         conflict = await client.post(path, json={**request, "requestId": game["requestId"]})
-                        expected = "request_in_progress" if path == "/v3/events" else "request_conflict"
+                        expected = "request_in_progress" if path == "/v1/events" else "request_conflict"
                         assert conflict.status_code == 409
                         assert conflict.json()["error"]["code"] == expected
                         pending.append(

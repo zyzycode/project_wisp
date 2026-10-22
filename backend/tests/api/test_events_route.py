@@ -4,7 +4,7 @@ import httpx
 import pytest
 from tests.helpers import CONTRACT_FIXTURES
 
-FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v3"
+FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v1/events"
 
 
 def fixture(name):
@@ -14,12 +14,12 @@ def fixture(name):
 @pytest.mark.parametrize(
     "route,request_file,response_file,status",
     [
-        ("/v3/events", "request.game.json", "response.event.success.json", 200),
-        ("/v3/events", "request.game.json", "response.error.json", 503),
-        ("/v3/chat", "request.chat.json", "response.chat.success.json", 200),
+        ("/v1/events", "request.game.json", "response.event.success.json", 200),
+        ("/v1/events", "request.game.json", "response.error.json", 503),
+        ("/v1/chat", "request.chat.json", "response.chat.success.json", 200),
     ],
 )
-def test_v3_shared_fixtures_http(client_factory, completion, route, request_file, response_file, status):
+def test_v1_shared_fixtures_http(client_factory, completion, route, request_file, response_file, status):
     expected = fixture(response_file)
     reply = {key: value for key, value in expected.items() if key not in ("version", "requestId")}
     with client_factory(lambda _: httpx.Response(status, json=completion(reply))) as client:
@@ -33,53 +33,50 @@ def test_v3_shared_fixtures_http(client_factory, completion, route, request_file
 def test_social_fixture_text_only(client_factory, completion):
     request = fixture("request.social.json")
     with client_factory(lambda _: httpx.Response(200, json=completion({"text": "РџСЂРёРІРµС‚!"}))) as client:
-        response = client.post("/v3/events", json=request)
+        response = client.post("/v1/events", json=request)
         assert response.status_code == 200
-        assert response.json() == {"version": 3, "requestId": request["requestId"], "text": "РџСЂРёРІРµС‚!"}
+        assert response.json() == {"version": 1, "requestId": request["requestId"], "text": "РџСЂРёРІРµС‚!"}
 
 
-@pytest.mark.parametrize(
-    "name,expected",
-    [
-        ("request.chat.json", "7c92911cdd2c4222a3cae0da584339d769ddf7a24fee3ed6d2fff996b5f3f436"),
-        ("request.game.json", "89eb918ca1e74531f657d7ce3b3c48b4cfd15c0c9a9ad74cf3fd00e732f54edb"),
-        ("request.social.json", "cdb0cdecfca87aa41476f33249c75e5af80946bbada773204d6388362ccf1248"),
-        ("response.chat.success.json", "45202cd07690a0693cbf0ee95e85236de2a3f2cd9c4bf971de3c1c984345aafb"),
-        ("response.error.json", "769c71b89bcaedfc067296dbb6f8bcf92075405dfd2240b115f5ec905550a020"),
-        ("response.event.success.json", "84b2ac018d31fa9c7d84c86f8ca1b0456a6f0a92d49bd839565ff1b59c66f8d8"),
-    ],
-)
-def test_shared_v3_fixture_git_content(name, expected):
-    import hashlib
-
-    assert hashlib.sha256((FIXTURES / name).read_text(encoding="utf-8").encode("utf-8")).hexdigest() == expected
-
-
-@pytest.mark.parametrize("request_name,route", [("request.game.json", "/v3/events"), ("request.chat.json", "/v3/chat")])
-def test_v3_boundary_errors_and_exact_byte_cap(client_factory, completion, request_name, route):
+@pytest.mark.parametrize("request_name,route", [("request.game.json", "/v1/events"), ("request.chat.json", "/v1/chat")])
+def test_v1_boundary_errors_and_exact_byte_cap(client_factory, completion, request_name, route):
     body = fixture(request_name)
     with client_factory(lambda _: pytest.fail("invalid input reached provider")) as client:
-        for version in [1, 2, 4]:
+        for version in [2, 3, 4, 5, 6, 7]:
             response = client.post(route, json={**body, "version": version})
             assert response.status_code == 400
             assert response.json() == {
-                "version": 3,
+                "version": 1,
                 "requestId": body["requestId"],
                 "error": {"code": "unsupported_version"},
             }
         for version in [True, 3.0, "3", None]:
             response = client.post(route, json={**body, "version": version})
             assert response.status_code == 400
-            assert response.json()["version"] == 3
+            assert response.json()["version"] == 1
             assert response.json()["error"]["code"] == "invalid_request"
         for content, status in [(b"{", 400), (b"x" * 32769, 413)]:
             response = client.post(route, content=content, headers={"content-type": "application/json"})
             assert response.status_code == status
-            assert response.json()["version"] == 3
+            assert response.json()["version"] == 1
             assert response.json()["requestId"] is None
     raw = json.dumps(body).encode()
     raw += b" " * (32768 - len(raw))
-    with client_factory(lambda _: httpx.Response(200, json=completion())) as client:
+    with client_factory(
+        lambda _: httpx.Response(
+            200,
+            json=completion(
+                {
+                    "text": "Привет!",
+                    **(
+                        {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                        if route == "/v1/chat"
+                        else {}
+                    ),
+                }
+            ),
+        )
+    ) as client:
         assert client.post(route, content=raw, headers={"content-type": "application/json"}).status_code == 200
         assert client.post(route, content=raw + b" ", headers={"content-type": "application/json"}).status_code == 413
 
@@ -106,11 +103,11 @@ def test_event_prompt_output_cap_and_authoritative_outcome(client_factory, compl
         return httpx.Response(200, json=completion({"text": "РќР° СЌС‚РѕС‚ СЂР°Р· РїСЂРѕРјР°С…РЅСѓР»Р°СЃСЊ."}))
 
     with client_factory(upstream) as client:
-        assert client.post("/v3/events", json=body).status_code == 200
+        assert client.post("/v1/events", json=body).status_code == 200
     assert len(calls) == 1
 
 
-def test_chat_bridge_preserves_ai_provenance_and_only_current_user_evidence(client_factory, completion):
+def test_chat_bridge_preserves_ai_provenance_and_only_current_user_evidence(client_factory, chat_completion):
     body = fixture("request.chat.json")
     calls = []
 
@@ -129,7 +126,7 @@ def test_chat_bridge_preserves_ai_provenance_and_only_current_user_evidence(clie
         assert "never evidence for a memory candidate" in messages[0]["content"]
         return httpx.Response(
             200,
-            json=completion(
+            json=chat_completion(
                 {
                     "text": "РҐРѕСЂРѕС€Рѕ.",
                     "memoryCandidates": [
@@ -145,22 +142,22 @@ def test_chat_bridge_preserves_ai_provenance_and_only_current_user_evidence(clie
         )
 
     with client_factory(upstream) as client:
-        response = client.post("/v3/chat", json=body)
+        response = client.post("/v1/chat", json=body)
         assert response.status_code == 200
         # Structural/source validation only; desktop recognizer still owns acceptance.
         assert [candidate["key"] for candidate in response.json()["memoryCandidates"]] == ["user.reply_style"]
     assert len(calls) == 1
 
 
-def test_event_and_initiative_content_never_persist_or_log(app_factory, completion, caplog):
+def test_event_and_initiative_content_never_persist_or_log(app_factory, chat_completion, caplog):
     from fastapi.testclient import TestClient
 
     marker = "SYNTHETIC_V3_PRIVATE_TEXT_MARKER"
     body = fixture("request.chat.json")
     body["previousInitiative"]["text"] = marker
-    app = app_factory(lambda _: httpx.Response(200, json=completion({"text": marker})))
+    app = app_factory(lambda _: httpx.Response(200, json=chat_completion({"text": marker})))
     with TestClient(app) as client:
-        assert client.post("/v3/chat", json=body).status_code == 200
+        assert client.post("/v1/chat", json=body).status_code == 200
         path = app.state.completion_service.ledger.path
     for candidate in path.parent.glob(path.name + "*"):
         content = candidate.read_bytes()
@@ -169,29 +166,7 @@ def test_event_and_initiative_content_never_persist_or_log(app_factory, completi
     assert marker not in caplog.text
 
 
-def test_v3_openapi_keeps_old_shapes(client_factory):
-    with client_factory(lambda _: pytest.fail("schema lookup reached provider")) as client:
-        spec = client.get("/openapi.json").json()
-        for route in ["/v3/events", "/v3/chat"]:
-            assert set(spec["paths"][route]["post"]["responses"]) == {
-                "200",
-                "400",
-                "409",
-                "413",
-                "429",
-                "502",
-                "503",
-                "504",
-            }
-        schemas = spec["components"]["schemas"]
-        assert set(schemas["EventResponse"]["properties"]) == {"version", "requestId", "text"}
-        assert "messages" not in schemas["EventRequest"]["properties"]
-        assert "previousInitiative" in schemas["EventAwareChatRequest"]["properties"]
-        assert "previousInitiative" not in schemas["MemoryRequest"]["properties"]
-        assert "memory" not in schemas["ChatRequest"]["properties"]
-
-
-@pytest.mark.parametrize("path,request_file", [("/v3/events", "request.game.json"), ("/v3/chat", "request.chat.json")])
+@pytest.mark.parametrize("path,request_file", [("/v1/events", "request.game.json"), ("/v1/chat", "request.chat.json")])
 @pytest.mark.parametrize(
     "failure,expected",
     [
@@ -200,7 +175,7 @@ def test_v3_openapi_keeps_old_shapes(client_factory):
         (httpx.Response(200, content=b"{invalid-provider-json"), 502),
     ],
 )
-def test_v3_transport_errors_keep_safe_versioned_envelope(client_factory, path, request_file, failure, expected):
+def test_v1_transport_errors_keep_safe_versioned_envelope(client_factory, path, request_file, failure, expected):
     calls = []
 
     def upstream(request):
@@ -212,6 +187,6 @@ def test_v3_transport_errors_keep_safe_versioned_envelope(client_factory, path, 
     with client_factory(upstream) as client:
         response = client.post(path, json=fixture(request_file))
         assert response.status_code == expected
-        assert response.json()["version"] == 3
+        assert response.json()["version"] == 1
         assert "private" not in response.text
         assert len(calls) == 1

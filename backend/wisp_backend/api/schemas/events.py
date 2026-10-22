@@ -1,21 +1,12 @@
-"""Explicit v3 events and follow-up chat schemas, independent of local runtime."""
+"""Explicit v1 events and follow-up chat schemas, independent of local runtime."""
 
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field
-from wisp_backend.api.schemas.common import CharacterContext, ErrorResponse, RequestId, false_only
-from wisp_backend.api.schemas.memory import MemoryContext, MemoryRequest, MemoryResponse, Timestamp
+from wisp_backend.api.schemas.common import CharacterContext, RequestId, Version, false_only
+from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
 from wisp_backend.completion.replies import EventModelReply
-from wisp_backend.validation import Contract, omittable, text_type
-
-
-def version_three(value: object) -> int:
-    if type(value) is not int or value != 3:
-        raise ValueError("Expected integer version 3")
-    return value
-
-
-VersionThree = Annotated[Literal[3], BeforeValidator(version_three)]
+from wisp_backend.validation import Contract, text_type
 
 
 class CursorGameCompleted(Contract):
@@ -31,7 +22,7 @@ class SocialBidStarted(Contract):
 
 
 class EventRequest(Contract):
-    version: VersionThree
+    version: Version
     requestId: RequestId
     event: Annotated[CursorGameCompleted | SocialBidStarted, Field(discriminator="type")]
     stream: Annotated[Literal[False], BeforeValidator(false_only)]
@@ -41,7 +32,7 @@ class EventRequest(Contract):
 
 
 class EventResponse(EventModelReply):
-    version: VersionThree
+    version: Version
     requestId: RequestId
 
 
@@ -49,16 +40,3 @@ class PreviousInitiative(Contract):
     kind: Literal["cursor_game", "social_bid"]
     text: text_type(240)
     createdAt: Timestamp
-
-
-class EventAwareChatRequest(MemoryRequest):
-    version: VersionThree
-    previousInitiative: PreviousInitiative = omittable()
-
-
-class EventAwareChatResponse(MemoryResponse):
-    version: VersionThree
-
-
-class EventErrorResponse(ErrorResponse):
-    version: VersionThree

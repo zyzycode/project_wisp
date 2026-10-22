@@ -5,33 +5,45 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 from tests.helpers import CONTRACT_FIXTURES, touch_body
-from wisp_backend.completion.prompts.touch import TOUCH_DESCRIPTIONS
 
 
-def test_shared_touch_fixture(client_factory, completion):
+def test_shared_touch_fixture(client_factory, chat_completion):
     fixture = CONTRACT_FIXTURES / "desktop-backend-v1/request.touch.json"
-    with client_factory(lambda _: httpx.Response(200, json=completion({"text": "Щекотно!"}))) as client:
+    with client_factory(lambda _: httpx.Response(200, json=chat_completion({"text": "Щекотно!"}))) as client:
         response = client.post("/v1/touch", json=json.loads(fixture.read_text(encoding="utf-8")))
         assert response.status_code == 200
 
 
-@pytest.mark.parametrize("variant", list(TOUCH_DESCRIPTIONS))
-def test_touch_prompt_and_text_only_response(client_factory, body, completion, variant):
+@pytest.mark.parametrize("variant", ["touch"])
+def test_touch_prompt_and_text_only_response(client_factory, body, chat_completion, variant):
     calls = []
 
     def upstream(request):
         calls.append(request)
         messages = json.loads(request.content)["messages"]
-        assert len(messages) == 4
-        assert "at most 240" in messages[0]["content"]
-        assert TOUCH_DESCRIPTIONS[variant] in messages[-1]["content"]
+        assert len(messages) == 5
+        assert "240 UTF-16" in messages[0]["content"]
+        assert '"variant":"touch"' in messages[-1]["content"]
         assert body["messages"][-1]["content"] not in messages[1]["content"]
-        return httpx.Response(200, json=completion({"text": "Хи-хи, щекотно!"}))
+        return httpx.Response(
+            200,
+            json=chat_completion(
+                {
+                    "text": "Хи-хи, щекотно!",
+                    "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
+                }
+            ),
+        )
 
     with client_factory(upstream) as client:
         response = client.post("/v1/touch", json=touch_body(body, variant))
         assert response.status_code == 200
-        assert response.json() == {"version": 1, "requestId": body["requestId"], "text": "Хи-хи, щекотно!"}
+        assert response.json() == {
+            "version": 1,
+            "requestId": body["requestId"],
+            "text": "Хи-хи, щекотно!",
+            "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
+        }
         assert len(calls) == 1
 
 
@@ -54,8 +66,8 @@ def test_invalid_touch_never_calls_provider(client_factory, body, event):
 @pytest.mark.parametrize(
     "reply", [{"text": "x" * 241}, {"text": ""}, {"text": "OK", "decision": {"behavior": "respond", "confidence": 1}}]
 )
-def test_touch_rejects_invalid_model_reply(client_factory, body, completion, reply):
-    with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
+def test_touch_rejects_invalid_model_reply(client_factory, body, chat_completion, reply):
+    with client_factory(lambda _: httpx.Response(200, json=chat_completion(reply))) as client:
         response = client.post("/v1/touch", json=touch_body(body))
         assert response.status_code == 502
         assert response.json()["error"]["code"] == "invalid_model_response"

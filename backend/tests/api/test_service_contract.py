@@ -15,9 +15,9 @@ FIXTURES = CONTRACT_FIXTURES
 ROUTES = [
     ("/v1/chat", "desktop-backend-v1/request.valid.json"),
     ("/v1/touch", "desktop-backend-v1/request.touch.json"),
-    ("/v2/chat", "desktop-backend-v2/request.valid.json"),
-    ("/v3/chat", "desktop-backend-v3/request.chat.json"),
-    ("/v3/events", "desktop-backend-v3/request.game.json"),
+    ("/v1/chat", "desktop-backend-v1/memory/request.valid.json"),
+    ("/v1/chat", "desktop-backend-v1/events/request.chat.json"),
+    ("/v1/events", "desktop-backend-v1/events/request.game.json"),
 ]
 
 
@@ -30,7 +30,10 @@ def test_service_validates_accounts_and_replays(
     result_kind: str,
 ) -> None:
     body = json.loads((FIXTURES / fixture).read_text(encoding="utf-8"))
-    result = ProviderResult('{"text":"Hello"}', Usage(5, 2, 7))
+    reply = {"text": "Hello"}
+    if route != "/v1/events":
+        reply["appraisal"] = {"category": "neutral", "intensity": "low", "confidence": "clear"}
+    result = ProviderResult(json.dumps(reply), Usage(5, 2, 7))
     expected_status, expected_error = 200, None
     if result_kind in {"invalid_reply", "invalid_json"}:
         result = ProviderResult('{"text":""}' if result_kind == "invalid_reply" else "{", result.usage)
@@ -56,7 +59,7 @@ def test_service_validates_accounts_and_replays(
         service.provider = provider
         response = client.post(route, json=body)
         expected: dict[str, object] = {"version": body["version"], "requestId": body["requestId"]}
-        expected.update({"text": "Hello"} if expected_error is None else {"error": {"code": expected_error}})
+        expected.update(reply if expected_error is None else {"error": {"code": expected_error}})
         assert response.status_code == expected_status
         assert response.json() == expected
         replay = client.post(route, json=body)

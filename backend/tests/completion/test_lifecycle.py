@@ -64,7 +64,11 @@ def test_provider_swap_and_total_deadline(app_factory, body):
     class OtherProvider:
         async def complete(self, request, timeout):
             assert request.blocks
-            return ProviderResult(json.dumps({"text": "Other"}))
+            return ProviderResult(
+                json.dumps(
+                    {"text": "Other", "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
+                )
+            )
 
     app = app_factory(lambda _: pytest.fail("Wrong provider"))
     with TestClient(app) as client:

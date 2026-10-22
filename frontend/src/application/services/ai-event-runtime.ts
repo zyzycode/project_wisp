@@ -24,7 +24,7 @@ interface Options {
   readonly random?: () => number;
   readonly autonomousEnabled?: boolean;
 }
-/** Causal speech owner; v7 touch commits bounded Character effects and a volatile trace atomically. No event queue. */
+/** Causal speech owner; v1 touch commits bounded Character effects and a volatile trace atomically. No event queue. */
 export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObserver {
   private epoch = 0;
   private disposed = false;

@@ -14,9 +14,14 @@ from wisp_backend.completion.context import (
     select_context,
     select_context_async,
 )
-from wisp_backend.completion.prompts.chat import MEMORY_SYSTEM_PROMPT, SYSTEM_PROMPT, build_chat_blocks
-from wisp_backend.completion.prompts.context import DialogueTurn, MemoryChatContext, TouchContext
-from wisp_backend.completion.prompts.touch import build_touch_blocks
+from wisp_backend.completion.prompts.chat import CHAT_SYSTEM_PROMPT, build_chat_blocks
+from wisp_backend.completion.prompts.context import (
+    DialogueTurn,
+    InteractionChatContext,
+    InteractionContext,
+    InteractionTouchContext,
+)
+from wisp_backend.completion.prompts.interaction import build_interaction_touch_blocks
 from wisp_backend.completion.replies import Decision
 from wisp_backend.providers.context_budget import estimate_input
 
@@ -86,11 +91,12 @@ def test_data_blocks_cannot_use_system_role(source: ContextSource) -> None:
 def test_fact_correction_and_current_state_survive_old_history_and_examples() -> None:
     character = {"personality": {"aiSelfConcept": "I am Wisp"}, "synthesizedTone": "sleepy"}
     memory = {"facts": [{"key": "user.display_name", "value": "New"}], "episodes": [], "characterPreferences": []}
-    context = MemoryChatContext(
+    context = InteractionChatContext(
         "en",
         character,
         messages=(DialogueTurn("user", "Old"), DialogueTurn("assistant", "Old"), DialogueTurn("user", "Call me New")),
         memory=memory,
+        interaction=InteractionContext({}, "suppressed"),
     )
     blocks = build_chat_blocks(context)
     required = tuple(item for item in blocks if item.required)
@@ -108,17 +114,16 @@ def test_fact_correction_and_current_state_survive_old_history_and_examples() ->
 def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> None:
     schema = Decision.model_json_schema()
     assert set(schema["required"]) == {"behavior", "confidence"}
-    assert "requires behavior and numeric confidence (0..1)" in MEMORY_SYSTEM_PROMPT
+    assert "requires behavior and numeric confidence (0..1)" in CHAT_SYSTEM_PROMPT
     for field in ("behavior", "tone", "mood"):
-        described = MEMORY_SYSTEM_PROMPT.split(f"Allowed {field}: ", 1)[1].split(".", 1)[0].split(", ")
+        described = CHAT_SYSTEM_PROMPT.split(f"Allowed {field}: ", 1)[1].split(".", 1)[0].split(", ")
         assert described == schema["properties"][field]["enum"]
         for value in described:
             assert Decision.model_validate({"behavior": "respond", "confidence": 0.5, field: value})
-    assert "flustered" not in MEMORY_SYSTEM_PROMPT
-    assert "Allowed behavior:" not in SYSTEM_PROMPT
-    touch = build_touch_blocks(TouchContext("en", {}, touch_variant="touch"))
+    assert "flustered" not in CHAT_SYSTEM_PROMPT
+    touch = build_interaction_touch_blocks(InteractionTouchContext("en", {}, InteractionContext({}, "suppressed")))
     assert "Allowed behavior:" not in touch[0].messages[0].content
-    assert "No decision or memory fields" in touch[0].messages[0].content
+    assert "markdown, decision or memoryCandidates" in touch[0].messages[0].content
 
 
 def test_async_counts_preserve_selection_order_history_suffix_and_equality() -> None:

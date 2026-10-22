@@ -74,3 +74,13 @@ def env_values(monkeypatch):
     values = {}
     monkeypatch.setattr("wisp_backend.config.loader.dotenv_values", lambda _: values)
     return values
+
+
+@pytest.fixture
+def chat_completion(completion):
+    def factory(reply=None, **extra):
+        value = {"text": "Привет!"} if reply is None else dict(reply)
+        value.setdefault("appraisal", {"category": "neutral", "intensity": "low", "confidence": "clear"})
+        return completion(value, **extra)
+
+    return factory

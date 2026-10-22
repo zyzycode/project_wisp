@@ -30,18 +30,7 @@ def read_request(line: bytes) -> tuple[str, str, bytes]:
     method, path, body = value["method"], value["path"], value["body"]
     if (
         method != "POST"
-        or path
-        not in {
-            "/v1/chat",
-            "/v2/chat",
-            "/v3/events",
-            "/v3/chat",
-            "/v5/summary",
-            "/v5/chat",
-            "/v6/observation",
-            "/v7/touch",
-            "/v7/chat",
-        }
+        or path not in {"/v1/chat", "/v1/events", "/v1/summary", "/v1/observation", "/v1/touch"}
         or not isinstance(body, str)
     ):
         raise ValueError("Invalid bridge request")
@@ -73,16 +62,14 @@ def main() -> None:
             raise ValueError("Invalid provider messages")
         messages.extend(cast(list[dict[str, str]], raw_messages))
         text = {
-            "/v7/touch": "Ой, лёгкое касание.",
-            "/v7/chat": "Я отреагировала на твоё лёгкое касание.",
-            "/v6/observation": "Может, сделать небольшую паузу?",
-            "/v5/summary": "Пользователь обсуждал космос.",
-            "/v5/chat": "Продолжим.",
-            "/v3/events": "Мне нравится игра с курсором",
-            "/v3/chat": "Давай ещё поиграем.",
-        }.get(route, "Помню нашу игру, Мария.")
+            "/v1/touch": "Ой, лёгкое касание.",
+            "/v1/chat": "Я отреагировала на твоё лёгкое касание.",
+            "/v1/observation": "Может, сделать небольшую паузу?",
+            "/v1/summary": "Пользователь обсуждал космос.",
+            "/v1/events": "Мне нравится игра с курсором",
+        }[route]
         reply: dict[str, object] = {"text": text}
-        if route in {"/v7/touch", "/v7/chat"}:
+        if route in {"/v1/touch", "/v1/chat"}:
             reply["appraisal"] = {"category": "neutral", "intensity": "low", "confidence": "clear"}
         return httpx.Response(
             200,

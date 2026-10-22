@@ -15,7 +15,7 @@ export type AICompanionEvent =
   | { readonly type: 'social_bid_started'; readonly occurredAt: string };
 
 export interface AIEventProviderRequest {
-  /** Only user_touch in explicit v7 mode; v3 events remain text-only. */
+  /** Only user_touch carries appraisal; autonomous events remain text-only. */
   readonly interaction?: { readonly card: CharacterCardReference; readonly effectPolicy: 'eligible' | 'suppressed' };
   readonly requestId: string;
   readonly event: AICompanionEvent;

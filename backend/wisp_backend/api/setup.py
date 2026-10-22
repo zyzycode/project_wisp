@@ -8,7 +8,7 @@ from starlette.responses import Response
 from wisp_backend.api.boundary import CompletionBoundary
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.api.responses import error_response
-from wisp_backend.api.routes import chat, events, health, interaction, memory, observation, summary, touch
+from wisp_backend.api.routes import events, health, interaction, observation, summary
 from wisp_backend.errors import ServiceError
 
 
@@ -34,9 +34,6 @@ def install_api(app: FastAPI) -> None:
 
     for router in (
         health.router,
-        chat.router,
-        touch.router,
-        memory.router,
         events.router,
         summary.router,
         observation.router,

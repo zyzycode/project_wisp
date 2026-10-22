@@ -25,7 +25,7 @@
       "loveUnlocked": false
     },
     "personality": {
-      "presetId": "default",
+      "presetId": "shyDreamGirl",
       "aiSelfConcept": "Я Wisp, твой компаньон.",
       "traits": {
         "shyness": 0.4,
@@ -40,5 +40,15 @@
       "userConsentEnabled": false
     },
     "synthesizedTone": "curious"
+  },
+  "card": {
+    "id": "shyDreamGirl",
+    "revision": 1
+  },
+  "effectPolicy": "suppressed",
+  "memory": {
+    "facts": [],
+    "episodes": [],
+    "characterPreferences": []
   }
 }

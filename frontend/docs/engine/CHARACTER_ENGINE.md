@@ -167,7 +167,7 @@ Learned preference пока одна: `activity.cursor_game`. Новый **persi
 
 Формула чистого Domain reducer: target=+100 для like, −100 для dislike; `nextValue = clamp(oldValue + clamp((target−oldValue)*0.05, −2, 2), −100, 100)`. Новый key начинается с value0/samples0; `samples=min(samples+1,1000)`, `confidence=samples/(samples+6)`. Поэтому одна реплика даёт максимум2 пункта и confidence≈0.143, а уверенный интерес (≥0.5) требует минимум6 разнесённых во времени сообщений. Existing generic `trackPreference` не использовать без этой отдельной evidence policy; user command «стань игривой» не sample.
 
-Preferences/axes сохраняются существующим snapshot v1; transient gates не сохраняются, не создают SQLite migration и не воспроизводят события при restore. Checkpoint crash window остаётся как у другой динамики: неподтверждённое последнее изменение может потеряться, но не догоняется двойным replay. Для v2 контекста learned preference показывается только при confidence≥0.5; текущий ответ и локальные решения сохраняют author identity/consent/priority gates. Более богатое обучение по исходам игр и выбор инициатив — #58/#59, без повторного начисления существующих play effects.
+Preferences/axes сохраняются существующим snapshot v1; transient gates не сохраняются, не создают SQLite migration и не воспроизводят события при restore. Checkpoint crash window остаётся как у другой динамики: неподтверждённое последнее изменение может потеряться, но не догоняется двойным replay. Для сетевого memory-контекста learned preference показывается только при confidence≥0.5; текущий ответ и локальные решения сохраняют author identity/consent/priority gates. Более богатое обучение по исходам игр и выбор инициатив — #58/#59, без повторного начисления существующих play effects.
 
 Реализованный local consumer learned preference — [P17-A04 §6](../../../docs/contracts/AI_EVENTS_CONTRACT.md#6-learned-preference-влияет-на-локальный-выбор-59): #59 добавляет небольшой bias existing cursor notice chance только для уже допустимого зрелого game candidate. #57 отвечает за formation/persistence/caps; #59 — за применение к поведению.
 
@@ -197,7 +197,7 @@ Source дедуплицируется **до** проверки gate: пропу
 
 **Persistence и сеть.** Два user facts и два preference tracks используют существующие schema v1/snapshot v1, без migration или нового store. Restore читает tracks, не переучивает по последнему факту; unknown legacy tracks не становятся candidates. Full reset очищает facts/history/tracks и transient gates, поздние callbacks не возвращают их; checkpoint crash window прежний. При недоступной памяти новые samples запрещены, уже восстановленное локальное поведение продолжает работать offline.
 
-Новые структурированные keys **local-only**: расширяется локальный recognizer/evidence port, но `MemoryFactKey`/`AIProviderMemoryContext` для provider и wire v1–v3 остаются прежними allowlists. Перед сетью локальные facts исключаются до лимита пяти facts, новые tracks не проецируются; исходные dialogue строки подчиняются прежней политике передачи разговоров. Recognized новые fact-пары исключаются из recalled dialogue episodes, как старые registry-пары, чтобы correction не возвращалась устаревшим воспоминанием. Расширение сетевого контекста требует отдельного контракта обеих сторон; CHAR-A01 его не разрешает.
+Новые структурированные keys **local-only**: расширяется локальный recognizer/evidence port, но `MemoryFactKey`/`AIProviderMemoryContext` для provider и wire v1 остаются прежними allowlists. Перед сетью локальные facts исключаются до лимита пяти facts, новые tracks не проецируются; исходные dialogue строки подчиняются прежней политике передачи разговоров. Recognized новые fact-пары исключаются из recalled dialogue episodes, как старые registry-пары, чтобы correction не возвращалась устаревшим воспоминанием. Расширение сетевого контекста требует отдельного контракта обеих сторон; CHAR-A01 его не разрешает.
 
 **Контролируемая приёмка реализации.** Для каждого нового key независимо создать две чистые истории: шесть новых persisted like против шести dislike через 300000 ms, начиная на первой eligibility; время, ID-порядок, типы dialogue stimuli и все остальные входы одинаковы. Получаются value +12/−12, samples 6, confidence 0.5, multipliers 1.012/0.988. Различается только содержание явного утверждения, не количества общения/награды.
 
@@ -222,7 +222,7 @@ provider switch, checkpoint, разговор и learning revision не меня
 checkpoints восстанавливаются поверх установленной карточки по Memory §4; редактора нет.
 [CharacterCardReference](../../src/application/ports/interaction-appraisal.ts) — ссылка,
 не вторая карточка. aiSelfConcept целиком ≤500 UTF-16, overflow отклоняется до сети,
-не молча обрезается. Backend получает reference только в v7, projection прежнего
+не молча обрезается. Backend получает reference в v1, projection
 CharacterSnapshot и общие инструкции шкал; отдельного provider-specific характера нет.
 
 Раздельны: immutable identity; быстрые Needs/tone (§2/8); отношения (§3/7);
@@ -233,7 +233,7 @@ friendship/love не проценты; traits — 0..1. Ответы разны�
 ### Факт, proposal и порядок
 
 Один обычный клик означает только `touch`. Случайные stroke/ruffle/poke не описывают
-фактический ввод и в v7 запрещены. Double/right click и drag не становятся новым touch
+фактический ввод и в API запрещены. Double/right click и drag не становятся новым touch
 request; выбор иных жестов вне scope. Domain получает факт ввода сразу, до AI.
 В #89 click/double_click/right_click заменяют прежний click reward базой: attention −2, energy −0.2;
 остальные deltas нулевые. В #90 admission user_message заменяет старый chat reward

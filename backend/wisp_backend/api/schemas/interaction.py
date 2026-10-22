@@ -1,29 +1,22 @@
-"""Independent exact v7 wire forms, extending only the v5 chat capabilities."""
+"""Canonical v1 chat and touch wire forms with semantic appraisal."""
 
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, field_validator, model_validator
-from wisp_backend.api.schemas.common import ErrorResponse, RequestId
-from wisp_backend.api.schemas.memory import Timestamp
-from wisp_backend.api.schemas.summary import SummaryChatRequest
-from wisp_backend.api.schemas.touch import TouchEvent, TouchRequest
+from wisp_backend.api.schemas.chat import ChatFields
+from wisp_backend.api.schemas.common import RequestId, Version
+from wisp_backend.api.schemas.events import PreviousInitiative
+from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
+from wisp_backend.api.schemas.touch import TouchEvent, TouchFields
 from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply, TouchAppraisal
+from wisp_backend.completion.replies import SummaryModelReply
 from wisp_backend.validation import Contract, omittable, text_type, trim_text
-
-
-def version_seven(value: object) -> int:
-    if type(value) is not int or value != 7:
-        raise ValueError("Expected integer version 7")
-    return value
 
 
 def revision_one(value: object) -> int:
     if type(value) is not int or value != 1:
         raise ValueError("Expected integer revision 1")
     return value
-
-
-VersionSeven = Annotated[Literal[7], BeforeValidator(version_seven)]
 
 
 class CharacterCard(Contract):
@@ -70,8 +63,8 @@ class PreviousTouch(Contract):
         return self
 
 
-class InteractionTouchRequest(TouchRequest, InteractionPolicy):
-    version: VersionSeven
+class InteractionTouchRequest(TouchFields, InteractionPolicy):
+    version: Version
     event: ActualTouch
 
     @model_validator(mode="after")
@@ -81,8 +74,11 @@ class InteractionTouchRequest(TouchRequest, InteractionPolicy):
         return self
 
 
-class InteractionChatRequest(SummaryChatRequest, InteractionPolicy):
-    version: VersionSeven
+class InteractionChatRequest(ChatFields, InteractionPolicy):
+    version: Version
+    memory: MemoryContext
+    previousInitiative: PreviousInitiative = omittable()
+    summary: SummaryModelReply = omittable()
     previousTouch: PreviousTouch = omittable()
 
     @model_validator(mode="after")
@@ -93,14 +89,10 @@ class InteractionChatRequest(SummaryChatRequest, InteractionPolicy):
 
 
 class InteractionTouchResponse(InteractionTouchReply):
-    version: VersionSeven
+    version: Version
     requestId: RequestId
 
 
 class InteractionChatResponse(InteractionChatReply):
-    version: VersionSeven
+    version: Version
     requestId: RequestId
-
-
-class InteractionErrorResponse(ErrorResponse):
-    version: VersionSeven

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+  "stream": false,
+  "locale": "ru",
+  "character": {
+    "needs": {
+      "energy": 80,
+      "attention": 50,
+      "play": 60,
+      "comfort": 80,
+      "boredom": 10
+    },
+    "relationship": {
+      "friendship": 100,
+      "love": 0,
+      "loveUnlocked": false
+    },
+    "personality": {
+      "presetId": "shyDreamGirl",
+      "aiSelfConcept": "Я Wisp, твой компаньон.",
+      "traits": {
+        "shyness": 0.4,
+        "playfulness": 0.6,
+        "sensitivity": 0.5,
+        "boldness": 0.4
+      }
+    },
+    "intimacy": {
+      "flirtiness": 0,
+      "romanticCharge": 0,
+      "userConsentEnabled": false
+    },
+    "synthesizedTone": "curious"
+  },
+  "card": {
+    "id": "shyDreamGirl",
+    "revision": 1
+  },
+  "effectPolicy": "eligible",
+  "event": {
+    "type": "user_touch",
+    "variant": "touch"
+  }
+}

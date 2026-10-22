@@ -8,7 +8,8 @@ import pytest
 from tests.helpers import CONTRACT_FIXTURES
 from wisp_backend.accounting.contracts import Usage
 from wisp_backend.api.dispatch import prepare_job
-from wisp_backend.api.schemas.summary import SummaryChatRequest, SummaryRequest
+from wisp_backend.api.schemas.interaction import InteractionChatRequest as SummaryChatRequest
+from wisp_backend.api.schemas.summary import SummaryRequest
 from wisp_backend.completion.context import ContextBlock, ContextOverflow, render_messages, select_context
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.providers.context_budget import estimate_input
@@ -16,7 +17,7 @@ from wisp_backend.providers.groq import GroqProvider
 
 
 def fixture(name, model):
-    return model.model_validate(json.loads((CONTRACT_FIXTURES / "desktop-backend-v5" / name).read_bytes()))
+    return model.model_validate(json.loads((CONTRACT_FIXTURES / "desktop-backend-v1/summary" / name).read_bytes()))
 
 
 def test_summary_all_pairs_atomic_chronological_required_and_exact_budget():

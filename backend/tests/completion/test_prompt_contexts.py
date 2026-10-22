@@ -8,25 +8,19 @@ from wisp_backend.api.dispatch import prepare_context, prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.completion.policies import POLICIES
 from wisp_backend.completion.prompts.context import (
-    ChatContext,
     DialogueTurn,
     InteractionChatContext,
-    MemoryChatContext,
+    InteractionContext,
     ObservationContext,
     SummaryContext,
 )
 
 REQUEST_FIXTURES = {
-    "/v1/chat": "desktop-backend-v1/request.valid.json",
-    "/v1/touch": "desktop-backend-v1/request.touch.json",
-    "/v2/chat": "desktop-backend-v2/request.valid.json",
-    "/v3/events": "desktop-backend-v3/request.game.json",
-    "/v3/chat": "desktop-backend-v3/request.chat.json",
-    "/v5/chat": "desktop-backend-v5/request.chat-summary.json",
-    "/v5/summary": "desktop-backend-v5/request.summary.json",
-    "/v6/observation": "desktop-backend-v6/request.valid.json",
-    "/v7/chat": "desktop-backend-v7/request.chat.json",
-    "/v7/touch": "desktop-backend-v7/request.touch.json",
+    "/v1/chat": "desktop-backend-v1/interaction/request.chat.json",
+    "/v1/touch": "desktop-backend-v1/interaction/request.touch.json",
+    "/v1/events": "desktop-backend-v1/events/request.game.json",
+    "/v1/summary": "desktop-backend-v1/summary/request.summary.json",
+    "/v1/observation": "desktop-backend-v1/observation/request.valid.json",
 }
 
 
@@ -50,13 +44,18 @@ def test_observation_and_summary_cannot_receive_chat_payloads() -> None:
         SummaryContext("ru", (), character={})
 
 
-def test_chat_variants_require_memory_and_interaction_policy() -> None:
+def test_chat_requires_memory_and_interaction_policy() -> None:
     messages = (DialogueTurn("user", "Hello"),)
     with pytest.raises(TypeError):
-        MemoryChatContext("en", {}, messages=messages)
+        InteractionChatContext("en", {}, messages=messages, interaction=InteractionContext({}, "suppressed"))
     with pytest.raises(TypeError):
         InteractionChatContext("en", {}, messages=messages, memory={})
-    assert MemoryChatContext("en", {}, messages=messages, memory={}).memory == {}
+    assert (
+        InteractionChatContext(
+            "en", {}, messages=messages, memory={}, interaction=InteractionContext({}, "suppressed")
+        ).memory
+        == {}
+    )
 
 
 @pytest.mark.parametrize(
@@ -70,4 +69,4 @@ def test_chat_variants_require_memory_and_interaction_policy() -> None:
 )
 def test_internal_chat_requires_alternating_pairs_and_current_user(messages: tuple[DialogueTurn, ...]) -> None:
     with pytest.raises(ValueError):
-        ChatContext("en", {}, messages=messages)
+        InteractionChatContext("en", {}, messages=messages, memory={}, interaction=InteractionContext({}, "suppressed"))

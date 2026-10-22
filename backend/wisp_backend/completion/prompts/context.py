@@ -40,8 +40,13 @@ class CharacterPromptContext:
 
 
 @dataclass(frozen=True, kw_only=True)
-class ChatContext(CharacterPromptContext):
+class InteractionChatContext(CharacterPromptContext):
     messages: tuple[DialogueTurn, ...]
+    memory: Snapshot
+    interaction: InteractionContext
+    previous_initiative: Snapshot | None = None
+    summary: str | None = None
+    previous_touch: Snapshot | None = None
     lore: LoreCatalogue | None = None
 
     def __post_init__(self) -> None:
@@ -50,32 +55,6 @@ class ChatContext(CharacterPromptContext):
         for index, turn in enumerate(self.messages):
             if turn.role != ("user" if index % 2 == 0 else "assistant"):
                 raise ValueError("Chat dialogue roles must alternate from user")
-
-
-@dataclass(frozen=True, kw_only=True)
-class MemoryChatContext(ChatContext):
-    memory: Snapshot
-
-
-@dataclass(frozen=True, kw_only=True)
-class EventChatContext(MemoryChatContext):
-    previous_initiative: Snapshot | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class SummaryChatContext(EventChatContext):
-    summary: str | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class InteractionChatContext(SummaryChatContext):
-    interaction: InteractionContext
-    previous_touch: Snapshot | None = None
-
-
-@dataclass(frozen=True)
-class TouchContext(CharacterPromptContext):
-    touch_variant: Literal["stroke", "touch", "ruffle", "poke"]
 
 
 @dataclass(frozen=True)
@@ -102,5 +81,5 @@ class SummaryContext:
 
 
 PromptContext: TypeAlias = (
-    ChatContext | TouchContext | InteractionTouchContext | EventContext | ObservationContext | SummaryContext
+    InteractionChatContext | InteractionTouchContext | EventContext | ObservationContext | SummaryContext
 )

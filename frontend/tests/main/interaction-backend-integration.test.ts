@@ -7,10 +7,10 @@ import { TouchReactionContext } from '../../src/application/services/touch-react
 import { AIEventRuntime } from '../../src/application/services/ai-event-runtime';
 import { DialogueRuntime } from '../../src/application/services/dialogue-loop.service';
 
-it('carries actual touch through Python/provider and published trace into v7 follow-up', async () => {
+it('carries actual touch through Python/provider and published trace into v1 follow-up', async () => {
   const backend = await backendIntegrationFixture(); let now = 0, sequence = 0;
   const character = new CharacterStateService({ now: () => 0, monotonicNow: () => now });
-  const provider = new ExternalAIProviderClient({ baseUrl: 'http://127.0.0.1:8765', development: true, apiVersion: 7, now: () => now, fetch: backend.fetch });
+  const provider = new ExternalAIProviderClient({ baseUrl: 'http://127.0.0.1:8765', development: true, now: () => now, fetch: backend.fetch });
   const scheduler = { setTimeout, clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>) };
   const trace = new TouchReactionContext(character, () => now);
   let dialogue: DialogueRuntime | undefined;
@@ -24,11 +24,11 @@ it('carries actual touch through Python/provider and published trace into v7 fol
     chat.replaceStream('s'); now = 30000; events.touch(character.beginTouch(++sequence));
     await vi.waitFor(() => expect(events.getSpeech()).not.toBeNull(), { timeout: 8000 });
     const previous = trace.get(); expect(previous).toMatchObject({ action: 'touch', effect: 'neutral', reason: 'neutral' });
-    expect(backend.requests[0]).toMatchObject({ path: '/v7/touch', body: { event: { type: 'user_touch', variant: 'touch' }, effectPolicy: 'eligible' } });
+    expect(backend.requests[0]).toMatchObject({ path: '/v1/touch', body: { event: { type: 'user_touch', variant: 'touch' }, effectPolicy: 'eligible' } });
     chat.receive({ type: 'send', sequence: 1, streamId: 's', conversationId: chat.getPresentation().conversationId, text: 'Почему ты так отреагировала?' });
     await vi.waitFor(() => expect(chat.getPresentation().turn.phase).toBe('completed'), { timeout: 8000 });
     expect(chat.getPresentation().turn).toMatchObject({ outcome: { kind: 'success' } });
-    expect(backend.requests[1]).toMatchObject({ path: '/v7/chat', body: { effectPolicy: 'eligible', previousTouch: previous } });
+    expect(backend.requests[1]).toMatchObject({ path: '/v1/chat', body: { effectPolicy: 'eligible', previousTouch: previous } });
     expect(backend.responses[1]?.upstreamCalls).toBe(2);
     expect(backend.responses[1]?.upstreamMessages.some(m => m.content.includes(previous!.publishedText))).toBe(true);
     expect(character.getState().relationship.friendship).toBe(0); // neutral appraisal and bounded user base never add relationship reward
