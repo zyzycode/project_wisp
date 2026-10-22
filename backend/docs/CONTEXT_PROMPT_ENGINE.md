@@ -200,6 +200,39 @@ priority20/order1; examples остаются user-data priority10/order30. Ср�
 Результат печатается только по явному запуску команды; это synthetic report,
 который можно перенаправить в локальный файл. Production logging не подключается.
 
+Из корня репозитория перейти в `backend/` и запустить:
+```sh
+.venv/bin/python -m wisp_backend.prompt_inspect --scene tired --locale ru --provider groq
+.venv/bin/python -m wisp_backend.prompt_inspect --scene long_context --locale en --provider gemini
+.venv/bin/python -m wisp_backend.prompt_inspect --scene touch_followup --locale ru --budget-case overflow
+```
+На Windows используется `.venv/Scripts/python.exe`; при активированном окружении — `python`.
+`--help` перечисляет закрытые scene/provider/model/settings; `--budget-case required_only`
+проверяет точное равенство обязательному ядру, `overflow` — бюджет на единицу меньше.
+Это диагностические бюджеты, production ceilings и reserve не меняются.
+Команда не принимает пользовательский текст или путь к файлу и не читает stdin.
+Она использует [встроенный corpus](../wisp_backend/prompt_inspection/scenes.json),
+поэтому работает из другого cwd при доступном Python package, без каталога tests.
+
+[Исходный baseline](../tests/fixtures/prompt_inspection/baseline.json) содержит 84
+полных synthetic результата: 14 одинаковых сцен на RU/EN для Groq, Gemini и OpenAI.
+Зафиксированы payload/messages, selected keys, причины, бюджеты, настройки, хеши
+и commit исходников перед изменением prompt resources. Этот файл не перегенерируется
+при последующем изменении промптов; current reports сравниваются с ним отдельно.
+Regression test `tests/completion/test_prompt_inspect.py` проверяет payload,
+message hashes, структуру, неизменность budget selection и отсутствие HTTP/logs.
+`source_digests` позволяет отличить смену ресурсов от смены formatter/selector.
+Standalone block estimates включают своё framing и **не суммируются** в итоговый count.
+Для Gemini результат — только offline estimate, возможны отличия production отбора
+с настоящим countTokens. Точное число токенов и billing здесь не измеряются.
+
+В каждом report есть `live_comparison`: before/after responses и шесть оценок
+оставлены `NOT RUN`. При отдельно разрешённой ручной оценке 0 означает явное
+нарушение критерия, 1 — частичное соответствие, 2 — соответствие; для каждого
+балла записывается конкретное наблюдение. State/границы проверяются по текущему
+снимку, memory — по переданным фактам/поправке, appraisal — по текущему действию.
+Не выдавать синтетические mock-реплики или размер запроса за результат этой оценки.
+
 Путь сборки — реальные endpoint preparation/CompletionJob/policy/builder,
 единственный selector и реальный provider formatter. Допустим optional trace sink
 в существующем алгоритме; независимый «упрощённый builder» запрещён. Трасса содержит

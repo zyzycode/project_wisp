@@ -45,6 +45,23 @@ class ContextOverflow(ValueError):
         super().__init__("Required context exceeds the inference budget")
 
 
+@dataclass(frozen=True)
+class SelectionDecision:
+    """Optional in-memory diagnostics; never contains prompt text or logs it."""
+
+    key: str
+    included: bool
+    reason: str
+    candidate_size: int | None
+
+
+def _record(
+    trace: list[SelectionDecision] | None, block: ContextBlock, included: bool, reason: str, size: int | None
+) -> None:
+    if trace is not None:
+        trace.append(SelectionDecision(block.key, included, reason, size))
+
+
 def render_messages(blocks: tuple[ContextBlock, ...]) -> list[dict[str, str]]:
     return [
         {"role": message.role, "content": message.content}
@@ -54,34 +71,58 @@ def render_messages(blocks: tuple[ContextBlock, ...]) -> list[dict[str, str]]:
 
 
 def _selection_steps(
-    blocks: tuple[ContextBlock, ...], input_budget: int, *, full_first: bool = False
+    blocks: tuple[ContextBlock, ...],
+    input_budget: int,
+    *,
+    full_first: bool = False,
+    trace: list[SelectionDecision] | None = None,
 ) -> Generator[tuple[ContextBlock, ...], int, tuple[ContextBlock, ...]]:
     """One selection algorithm for local estimates and asynchronous model counts."""
-    if full_first and (yield blocks) <= input_budget:
-        return tuple(sorted(blocks, key=lambda item: (item.order, item.key)))
+    if full_first:
+        full_size = yield blocks
+        if full_size <= input_budget:
+            for block in blocks:
+                _record(trace, block, True, "required" if block.required else "full_context_fits", full_size)
+            return tuple(sorted(blocks, key=lambda item: (item.order, item.key)))
     selected = tuple(block for block in blocks if block.required)
-    if (yield selected) > input_budget:
+    required_size = yield selected
+    if required_size > input_budget:
+        for block in blocks:
+            _record(
+                trace, block, False, "required_overflow" if block.required else "not_evaluated_overflow", required_size
+            )
         raise ContextOverflow()
+    for block in selected:
+        _record(trace, block, True, "required", required_size)
     history_full = False
     optional = sorted(
         (block for block in blocks if not block.required), key=lambda item: (-item.priority, -item.order, item.key)
     )
     for block in optional:
         if history_full and block.source == "dialogue":
+            _record(trace, block, False, "history_suffix", None)
             continue
         candidate = (*selected, block)
-        if (yield candidate) <= input_budget:
+        candidate_size = yield candidate
+        if candidate_size <= input_budget:
             selected = candidate
-        elif block.source == "dialogue":
-            history_full = True
+            _record(trace, block, True, "selected" if block.messages else "empty_optional", candidate_size)
+        else:
+            _record(trace, block, False, "budget", candidate_size)
+            if block.source == "dialogue":
+                history_full = True
     return tuple(sorted(selected, key=lambda item: (item.order, item.key)))
 
 
 def select_context(
-    blocks: tuple[ContextBlock, ...], input_budget: int, estimate: Callable[[tuple[ContextBlock, ...]], int]
+    blocks: tuple[ContextBlock, ...],
+    input_budget: int,
+    estimate: Callable[[tuple[ContextBlock, ...]], int],
+    *,
+    trace: list[SelectionDecision] | None = None,
 ) -> tuple[ContextBlock, ...]:
     """Local selection: preserve mandatory blocks and a contiguous history suffix."""
-    steps = _selection_steps(blocks, input_budget)
+    steps = _selection_steps(blocks, input_budget, trace=trace)
     candidate = next(steps)
     while True:
         size = estimate(candidate)
@@ -92,7 +133,11 @@ def select_context(
 
 
 async def select_context_async(
-    blocks: tuple[ContextBlock, ...], input_budget: int, count: Callable[[tuple[ContextBlock, ...]], Awaitable[int]]
+    blocks: tuple[ContextBlock, ...],
+    input_budget: int,
+    count: Callable[[tuple[ContextBlock, ...]], Awaitable[int]],
+    *,
+    trace: list[SelectionDecision] | None = None,
 ) -> tuple[ContextBlock, ...]:
     """Count complete candidate payloads; do not add counts of individual blocks.
 
@@ -100,7 +145,7 @@ async def select_context_async(
     optional-block-count + 2 calls. Memoization lives only for this selection.
     """
     counts: dict[tuple[ContextBlock, ...], int] = {}
-    steps = _selection_steps(blocks, input_budget, full_first=True)
+    steps = _selection_steps(blocks, input_budget, full_first=True, trace=trace)
     candidate = next(steps)
     while True:
         canonical = tuple(sorted(candidate, key=lambda item: (item.order, item.key)))
