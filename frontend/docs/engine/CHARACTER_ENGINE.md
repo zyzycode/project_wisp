@@ -235,6 +235,35 @@ CharacterSnapshot и общие инструкции шкал; отдельно�
 friendship/love не проценты; traits — 0..1. Ответы разных моделей и людей не обязаны
 совпадать, но не могут менять эту семантику или выдавать consent из текста.
 
+### Проекция состояния для промпта
+
+Для CTX-I07 Domain Character предоставляет чистую производную текущего
+`CharacterSnapshot` в существующем `character-snapshot.ts`; она не меняет snapshot,
+FSM, числа, persistence или IPC. Application/Infrastructure получают результат
+в момент построения запроса, не из кеша предыдущей реакции. Нового модуля движка нет.
+
+| Значение | Domain-правило |
+|---|---|
+| pace=gentle | energy≤20 или comfort≥80; иначе normal, как приоритет sleepy tone |
+| trust=guarded/familiar/close | friendship<400 / 400≤friendship<500 / friendship≥500 |
+| attention=high | attention≥90; иначе ordinary, существующая граница выраженного дефицита контакта |
+| play=high | play≥70; иначе ordinary, существующая граница playful tone |
+| romanceAllowed | существующий `canExpressFlirt`: все текущие consent/state gates §7 |
+
+Эти bands нужны только для уместности речи: high attention не будит персонажа,
+high play не запускает игру, close не создаёт consent. Комбинация gentle/high
+attention/high play сохраняет все три признака; спокойный темп ограничивает
+игривую речь, но не стирает потребность в компании. `ordinary` не означает нулевую
+потребность. Boredom и traits остаются описательными полями исходного snapshot.
+
+Использовать существующие Domain thresholds; допустимо вынести их в экспортируемые
+константы существующих файлов и сузить вход `canExpressFlirt` до нужного structural
+Pick без изменения функции. Не копировать числовые правила в Infrastructure/Python.
+Обязательная wire-проекция и strict validation — [API §2.1](../../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
+Backend выбирает объяснения/примеры по готовым значениям; обязательные инструкции
+не содержат второго набора числовых consent/Needs thresholds. Текущий локальный
+stale signature и повторная проверка перед commit остаются независимыми.
+
 ### Факт, proposal и порядок
 
 Один обычный клик означает только `touch`. Случайные stroke/ruffle/poke не описывают

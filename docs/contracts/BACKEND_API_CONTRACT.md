@@ -41,6 +41,40 @@ Request body ≤32 KiB, response body ≤16 KiB после декодирова�
 
 Некорректный decision при валидном тексте backend удаляет целиком и возвращает success без decision; desktop также отбрасывает некорректный decision. Невалидный обязательный envelope/text/requestId делает ответ целиком невалидным. Эта деградация hints не разрешает дополнительные поля верхнего уровня.
 
+### 2.1. Проекция expression
+
+Согласованная целевая форма для условного отбора промптов: обязательное поле
+`character.expression` во всех character-bearing запросах (`chat`, `touch`,
+`events`, `observation`); summary character не передаёт. Вводится совместно на
+обеих сторонах в CTX-I07, без новой версии, optional fallback или старого wire.
+До этого шага baseline и ресурсная миграция не меняют текущие payloads.
+
+| Поле expression | Допустимые значения / смысл |
+|---|---|
+| `pace` | `gentle` / `normal`: текущая необходимость спокойной короткой речи |
+| `trust` | `guarded` / `familiar` / `close`: степень текущего знакомства |
+| `attention` | `high` / `ordinary`: выраженный дефицит контакта |
+| `play` | `high` / `ordinary`: выраженный дефицит стимуляции |
+| `romanceAllowed` | strict boolean: разрешено ли сейчас романтическое выражение |
+
+Это bounded производная существующих данных, не новые пользовательские сведения.
+Её вычисляет [Domain Character](../../frontend/docs/engine/CHARACTER_ENGINE.md#проекция-состояния-для-промпта)
+из того же snapshot перед сериализацией; Infrastructure лишь валидирует и
+отображает независимый wire type. Raw needs/traits и identity сохраняются.
+Missing/null/unknown field/enum/boolean coercion → 400 invalid_request до admission;
+на desktop невозможность получить корректную проекцию отклоняется до HTTP.
+Сервер не пересчитывает пороги по числам и не исправляет несовпадения самостоятельно.
+Согласованность чисел и проекции проверяется shared fixtures и desktop tests;
+это описание клиента, не доказательство аутентичности или полномочие исполнить эффект.
+
+Обязательные инструкции трактуют romanceAllowed=false как запрет романтического
+выражения; true не является обязанностью романтического ответа и не заменяет
+локальную повторную проверку consent/state перед эффектом. Предыдущие сообщения,
+trace и примеры не повышают это разрешение. Deadline/cancellation/idempotency,
+ошибки §3, body caps и данные/retention §6 остаются прежними; projection входит
+в тот же body digest и освобождается вместе с текущим запросом. Offline/failure
+не останавливает локальный runtime и не включает автоматические повторы.
+
 ## 3. HTTP и ошибки
 
 Ошибка содержит requestId/error; точная форма — `BackendAIErrorResponse`. requestId=null только когда входной ID не прочитан/невалиден. HTTP status и error.code должны соответствовать таблице; неожиданный status, HTML, пустое тело или несовместимая пара — transport/protocol failure у desktop, без принятия model decision.

@@ -87,9 +87,158 @@ traits — 0..1; романтическое выражение требует в
 Точные правила находятся в character_guidance.py и
 [Character Engine](../../frontend/docs/engine/CHARACTER_ENGINE.md).
 
+После внедрения проекции `character.expression` сервер использует готовые semantic
+значения из [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
+Числовые пороги исчезают из серверных инструкций и selector; их единственный
+владелец — Domain Character. До этого шага ресурсная миграция сохраняет текущий
+текст буквально. `romanceAllowed` ограничивает речь, не разрешает эффект или действие.
+
 Примеры RU/EN иллюстрируют робкое приветствие, дружеский интерес, усталость и
 просьбу о дистанции. Они уступают текущему состоянию, могут целиком исчезнуть
 из бюджета и не должны превращаться в повторяемую заученную фразу.
+
+## Проверяемые ресурсы промптов
+
+Целевая поставка состоит из одного server-owned JSON-пакета в `completion/prompts/`.
+Это обычный tracked файл, поставляемый вместе с Python-пакетом; внешний путь, URL,
+request-поле выбора пресета, env override и горячая перезагрузка не поддерживаются.
+Автор меняет ресурс, запускает validation и baseline comparison, затем перезапускает
+backend. Один проверенный immutable snapshot живёт до shutdown; запрос не читает диск.
+Отсутствующий, повреждённый, слишком большой или невалидный пакет останавливает
+startup до provider lifecycle/admission; наружу только `prompt_resources_unavailable`,
+без содержимого, пути, exception dump или частично загруженных ресурсов. Silent
+fallback на встроенные копии текста запрещён. Обновление работающего файла не меняет
+активный snapshot. Диагностика принимает тот же установленный пакет.
+
+| Состав | Владелец и изменение |
+|---|---|
+| Формат JSON-ответа, enum, appraisal/evidence, trust/consent/no-guilt, разрешённые эффекты | Неотключаемые code-owned правила; ресурс не задаёт роль, mandatory, priority или budget |
+| Авторская identity, reference/revision | Только desktop preset; ресурс не содержит копии aiSelfConcept/биографии |
+| Словесное пояснение шкал и стиля, scenario introductions | Проверяемые текстовые фрагменты; fixed composition в коде удерживает обязательные ограничения |
+| RU/EN synthetic examples | Данные стиля в пакете; не история, факты или инструкции |
+| State, memory, history, lore, summary, previousTouch | Отдельные untrusted входы прежних владельцев; никогда не template variables в system |
+
+Минимальная схема: `format=1`, непустой `revision` (≤64 ASCII identifier chars),
+закрытый набор именованных текстовых фрагментов и конечный каталог примеров RU/EN.
+Формат ресурса не является wire-version. Файл ≤64 KiB UTF-8; неизвестные ключи,
+дубли JSON keys/entry IDs, неверные типы, null, неподдерживаемый format, отсутствующий
+обязательный fragment/locale/scenario, пустой или whitespace-only fragment запрещены.
+Валидный fragment не trim-ится: ведущие/замыкающие пробелы и newlines сохраняются.
+Текст fragment ≤12000 UTF-16; один example ≤1200 UTF-16 суммарного текста;
+≤32 examples, ≤2 alternatives на example. Контролы кроме newline/tab запрещены.
+Каждый example имеет стабильный ID, locale, scenario и текстовые поля нынешнего
+формата (`state`, `user`/`situation`, `alternatives` либо `wisp`). Метаданные ID/условий
+не сериализуются в payload. Empty optional list допустим и не создаёт пустой блок.
+
+Allowlist `texts`: `chat_intro`, `touch_intro`, `event_intro`, `expression`, `gentle`,
+`company`, `play`, `trust`, `variation`; все девять обязательны. Scenario introductions
+заканчиваются до правил JSON/длины ответа. Character fragments содержат только
+пояснения манеры речи, не утверждения о шкалах/authority или consent-пороги:
+«Adapt phrasing naturally…», «favors short, gentle…», «high attention permits a soft
+bid for company», «High play/boredom invites light curiosity or play», «Low trust
+allows polite distance; high trust allows warmer familiarity», «Answer the actual
+message/contact; vary wording and initiative». Остальные ограничения и соединительные
+знаки остаются в fixed composition. Required example fields фиксируются loader-схемой,
+не самим пакетом. `CHARACTER_GUIDANCE`/scenario prose делятся по границе смысла:
+неотключаемые запреты остаются в коде, редактируемые пояснения — в ресурсах.
+На первом шаге их конкатенация и serialization должны воспроизвести исходный текст,
+whitespace, порядок и состав блоков **побайтно**; метаданные диагностики исключаются
+из этого сравнения. Динамические enum по-прежнему берутся из Python validators.
+Неиспользуемые константы и запасные копии удаляются. Нет eval, regex predicates,
+macros, шаблонизатора, импорта Python или интерполяции пользовательских данных.
+
+## Условный выбор guidance и примеров
+
+Этот шаг применяется после неизменяющей поведение миграции ресурсов и внедрения
+`expression`. Selector получает только locale, scenario, готовую expression,
+boolean userConsentEnabled и реальный event kind/outcome. Он не анализирует слова
+пользователя, историю/summary/previousTouch для consent и не вычисляет числовые bands.
+Для каждой записи пакет задаёт только ID заранее объявленного в коде predicate;
+неизвестный predicate — ошибка загрузки. Каталог не задаёт собственные пороги.
+
+| Example predicate | Все условия включения |
+|---|---|
+| `chat_guarded` | chat; pace=normal; trust=guarded; consent=false |
+| `chat_playful_close` | chat; pace=normal; trust=close; play=high; consent=false |
+| `chat_tired_company` | chat; pace=gentle; attention=high; consent=false |
+| `touch_familiar` | touch; pace=normal; trust=familiar или close; consent=false |
+| `touch_gentle` | touch; pace=gentle; consent=false |
+| `event_missed` | event; cursor_game_completed с фактическим outcome=missed |
+
+Сначала exact locale/scenario, затем predicate. Примеры в этой таблице взаимно
+исключаются внутри сценария; выбирается максимум один. No-match (включая иное
+сочетание state/consent или успешную игру) означает отсутствие examples, без
+подстановки нерелевантного примера. Текст существующих примеров сохраняется;
+правка авторского голоса не является частью отбора.
+
+Редактируемые guidance: gentle → короткая спокойная речь; company → мягкое предложение
+компании; play → лёгкая игра; guarded/close → соответствующая степень знакомства.
+Выбор по одноимённым expression-полям; play подавляется при gentle, company может
+сосуществовать с gentle. Trust=familiar не требует trust guidance. Максимум три
+guidance: gentle, company, play, trust в этом фиксированном порядке; разные ID
+не дублируют один текст. Из прежнего текста выделяются подходящие пояснения без
+добавления новой personality, consent-политики или обязательной реплики.
+
+Обязательное system-ядро содержит неизменяемые правила формата/доверия/шкал,
+приоритет текущей identity/state, запрет романтики при romanceAllowed=false,
+no-guilt и все прежние appraisal/memory/effect ограничения. Выбранные explanations
+становятся отдельными optional блоками source=server_instructions, role=system,
+priority20/order1; examples остаются user-data priority10/order30. Среди guidance
+использовать устойчивые ключи с указанным порядком. Никакие данные пользователя
+не получают system role. Общий budget selector и его history/lore/summary приоритеты
+не меняются; mandatory overflow по-прежнему завершает запрос безопасной ошибкой.
+При малом бюджете можно убрать все guidance/examples, но не обязательное ядро.
+Каждый следующий запрос собирается из свежего snapshot; selection не кешируется
+между запросами и не влияет на локальное применение appraisal или consent.
+
+## Синтетический просмотр и сравнение
+
+Локальная команда `python -m wisp_backend.prompt_inspect` работает только с ID
+встроенных явно синтетических fixtures и allowlisted provider/model settings.
+Нет ввода текста, stdin/file payload, чтения ledger/checkpoint/env secrets, HTTP,
+публичного route, вызовов countTokens/generation или журналирования prompts.
+Результат печатается только по явному запуску команды; это synthetic report,
+который можно перенаправить в локальный файл. Production logging не подключается.
+
+Путь сборки — реальные endpoint preparation/CompletionJob/policy/builder,
+единственный selector и реальный provider formatter. Допустим optional trace sink
+в существующем алгоритме; независимый «упрощённый builder» запрещён. Трасса содержит
+все кандидаты и пропуски: key/source/role/mandatory/priority/order, include/exclude
+reason (`no_match`, `empty`, `budget`, `history_suffix` либо выбранный predicate),
+UTF-8/UTF-16 size, финальные messages/payload, input allowance/output reserve и
+ошибку mandatory overflow. После введения predicates показывать также причины
+невключения записей каталога, которые не стали ContextBlock.
+
+Сравнимый local estimate: существующий `estimate_input` на полном payload;
+не сумма отдельных блоков. Это byte-based estimate с framing margin, **не**
+tokenizer/provider count и не billing usage. Для Gemini offline preview применяет
+этот же оценщик только для анализа: он не обещает тот же отбор, что реальный
+countTokens, и явно маркируется `offline_estimate`. Production Gemini unchanged.
+Mock exact-count отдельно проверяет production flow без сети.
+
+Baseline фиксирует ID сцены, locale, полные синтетические входы, source commit,
+builder/source digest, resource revision/hash (до миграции — digest исходных
+констант), provider/model/output settings, выбранные keys и SHA-256/messages/payload
+с размерами. Начальный baseline остаётся доступен после внедрения отбора.
+Сравнение миграции требует равенства messages/payload/выбора/budgets; сравнение
+условного отбора отдельно перечисляет намеренные изменения и причины, используя
+те же исходные тексты/state и метод оценки. Новая expression-проекция добавляется
+к сцене детерминированно, исходные значения для «улучшения» результата не меняются.
+
+Одинаковые RU/EN сцены: приветствия guarded/close, похвала, усталость с высокой
+attention/play, просьба о дистанции, touch и следующий why-question с trace,
+исправление факта, длинные history/lore/summary, инструкция-подмена. Дополнительно
+проверяются no-match, пустые optional списки, budget equality/mandatory overflow,
+смена state и consent, successful/missed event. Входы снабжаются явной synthetic
+маркировкой и не копируются из реальных журналов.
+
+Рубрика живых ответов (RU/EN, шкала 0–2 с пояснением): узнаваемость character,
+связность, отсутствие повторов, соответствие state/границам, корректность памяти,
+уместность appraisal. Нарушение consent/evidence/формата — отдельный hard failure,
+не компенсируется средним баллом. Таблица before/after содержит scene/model/settings,
+ответы и оценки; без отдельного разрешения модели/числа вызовов/бюджета значения
+остаются `NOT RUN`. Mock tests доказывают сборку и lifecycle, сокращение байтов
+не доказывает улучшение живой речи. Новых generation calls не появляется.
 
 ## Бюджет и ошибка
 
