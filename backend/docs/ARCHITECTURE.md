@@ -40,7 +40,8 @@ Backend — отдельный процесс с HTTP API, одним AI-про�
 ### OpenAI
 
 `WISP_AI_PROVIDER=openai` выбирает серверный `OPENAI_API_KEY`, официальный endpoint
-`https://api.openai.com/v1/` и `gpt-4.1-mini`. При переключении с Gemini очистить
+`https://api.openai.com/v1/` и по умолчанию `gpt-4.1-mini`. Для тестов качества
+можно явно выбрать `WISP_AI_MODEL=gpt-6-astra`. При переключении с Gemini очистить
 `WISP_AI_MODEL`, `WISP_AI_BASE_URL` и `WISP_AI_THINKING_LEVEL`, чтобы применились
 профильные значения. Все настройки перечислены в [.env.example](../.env.example).
 
@@ -50,10 +51,17 @@ JSON mode, `store=false`, без tools/files/batch. Это расширение 
 Refusal, незавершённый вывод и tool calls считаются `invalid_model_response`;
 достоверный usage сохраняется даже при отклонении текста.
 
+Для GPT-6 Astra сервер задаёт `reasoning_effort=low`; `WISP_AI_TEMPERATURE` должен
+быть пустым, иначе startup отклоняет конфигурацию. Настройка `WISP_AI_THINKING_LEVEL`
+остаётся только для Gemini. Совместимость параметров — по [OpenAI migration guide](https://developers.openai.com/api/docs/guides/latest-model).
+Reasoning входит в `completion_tokens` и общий output cap; deadlines и лимиты
+сценариев сохраняются. Более мощная модель может завершиться timeout/length;
+mock-тесты подтверждают протокол, но не качество и задержку живой модели.
+
 Preflight оценивает полный JSON payload: UTF-8 bytes + 256 + 64 × число сообщений.
 Это локальная консервативная оценка, а не точный tokenizer; отдельного count HTTP нет.
 Локальный ceiling — 16384 вместе с output cap; reservation неизвестного usage —
-1047576 по [контекстному окну модели](https://developers.openai.com/api/docs/models/gpt-4.1-mini).
+1050000 для обоих OpenAI-профилей по максимальному [контекстному окну Astra](https://developers.openai.com/api/docs/models/gpt-6-astra).
 Retention и удаление определены в [API §6](../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление).
 
 ## Сценарии и prompt engineering

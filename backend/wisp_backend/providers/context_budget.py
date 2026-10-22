@@ -8,6 +8,7 @@ from typing import Any
 # Kept separate from usage reservations, wire caps, and operator configuration.
 CONTEXT_WINDOWS = {
     ("openai", "gpt-4.1-mini"): 16_384,
+    ("openai", "gpt-6-astra"): 16_384,
     ("groq", "openai/gpt-oss-20b"): 16_384,
     ("gemini", "gemini-3.5-flash-lite"): 16_384,
     ("gemini", "gemini-3.8-flash"): 16_384,

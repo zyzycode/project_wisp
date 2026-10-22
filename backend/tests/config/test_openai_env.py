@@ -29,3 +29,17 @@ def test_incompatible_openai_options_fail_before_dispatch(env_values, field, val
     env_values[f"WISP_AI_{field}"] = value
     with pytest.raises(ValueError):
         load_settings()
+
+
+def test_astra_model_is_selected_explicitly(env_values):
+    env_values.update(WISP_AI_PROVIDER="openai", OPENAI_API_KEY="test-key", WISP_AI_MODEL="gpt-6-astra")
+    settings = load_settings()
+    assert settings.assistants["default"].model == "gpt-6-astra"
+    assert settings.profile.reservation == 1_050_000
+
+
+def test_astra_rejects_temperature_before_dispatch(env_values):
+    env_values.update(WISP_AI_PROVIDER="openai", OPENAI_API_KEY="test-key",
+                      WISP_AI_MODEL="gpt-6-astra", WISP_AI_TEMPERATURE="0.4")
+    with pytest.raises(ValueError, match="temperature"):
+        load_settings()

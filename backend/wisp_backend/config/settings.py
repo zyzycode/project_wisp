@@ -83,6 +83,8 @@ class Settings(BaseModel):
         for profile in self.assistants.values():
             if profile.provider != self.provider or profile.model not in self.profile.models:
                 raise ValueError("Unsupported model reservation profile")
+            if profile.model == "gpt-6-astra" and profile.temperature is not None:
+                raise ValueError("temperature is not supported for GPT-6 Astra")
             if profile.thinking_level is not None:
                 if profile.provider != "gemini":
                     raise ValueError("thinking_level is supported only for Gemini")

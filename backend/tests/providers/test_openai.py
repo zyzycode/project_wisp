@@ -19,6 +19,7 @@ from wisp_backend.providers.openai import OpenAIProvider
 PROFILE = {"default": {"provider": "openai", "temperature": 0.4}}
 
 
+@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-6-astra"])
 @pytest.mark.parametrize("route,folder,request_name,response_name,cap", [
     ("/v1/chat", "v1", "request.valid", "response.success", 4096),
     ("/v1/touch", "v1", "request.touch", "response.success", 4096),
@@ -32,7 +33,7 @@ PROFILE = {"default": {"provider": "openai", "temperature": 0.4}}
     ("/v7/chat", "v7", "request.chat", "response.chat", 4096),
     ("/v7/touch", "v7", "request.touch", "response.touch", 1024),
 ])
-def test_routes_translate_and_account(app_factory, completion, route, folder, request_name, response_name, cap):
+def test_routes_translate_and_account(app_factory, completion, model, route, folder, request_name, response_name, cap):
     fixtures = CONTRACT_FIXTURES / f"desktop-backend-{folder}"
     body = json.loads((fixtures / f"{request_name}.json").read_text())
     expected = json.loads((fixtures / f"{response_name}.json").read_text())
@@ -47,18 +48,26 @@ def test_routes_translate_and_account(app_factory, completion, route, folder, re
         assert request.headers["authorization"] == "Bearer test-key"
         assert "x-goog-api-key" not in request.headers
         payload = json.loads(request.content)
-        assert payload["model"] == "gpt-4.1-mini"
+        assert payload["model"] == model
         assert payload["store"] is False and payload["stream"] is False
         assert payload["response_format"] == {"type": "json_object"}
         assert payload["max_completion_tokens"] == cap
-        assert payload["temperature"] == 0.4
+        if model == "gpt-6-astra":
+            assert payload["reasoning_effort"] == "low"
+            assert "temperature" not in payload
+        else:
+            assert payload["temperature"] == 0.4
+            assert "reasoning_effort" not in payload
         assert payload["messages"][0]["role"] == "system"
         assert "json" in json.dumps(payload["messages"]).lower()
         assert "tools" not in payload and "thinking_level" not in payload
         return httpx.Response(200, json=completion(reply))
 
     async def run():
-        app = app_factory(handler, assistants=PROFILE)
+        profile = {"provider": "openai", "model": model}
+        if model == "gpt-4.1-mini":
+            profile["temperature"] = 0.4
+        app = app_factory(handler, assistants={"default": profile})
         async with app.router.lifespan_context(app):
             upstream = app.state.completion_service.provider.client
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:

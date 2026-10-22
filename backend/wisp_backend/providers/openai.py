@@ -14,7 +14,9 @@ class OpenAIProvider(HTTPProvider):
             "model": settings.model, "messages": messages, "stream": False, "store": False,
             "max_completion_tokens": output_cap, "response_format": {"type": "json_object"},
         }
-        if settings.temperature is not None:
+        if settings.model == "gpt-6-astra":
+            payload["reasoning_effort"] = "low"
+        elif settings.temperature is not None:
             payload["temperature"] = settings.temperature
         return "chat/completions", payload
 
