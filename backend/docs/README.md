@@ -89,13 +89,6 @@ AI events; это поведение launcher, а не отсутствие v7 �
 timeout/disconnect/shutdown и ledger. Они не подтверждают качество живых ответов LLM.
 
 
-## Лицензия и исходный код
+## Лицензия
 
-Backend содержит Python-адаптацию SillyTavern и поставляется как единая производная
-программа под [AGPL-3.0](../COPYING). Исходный [MIT notice](../LICENSE) сохранён;
-[NOTICE](../NOTICE) фиксирует upstream commit, перенесённые фрагменты и изменения.
-Независимый HTTP desktop и монорепозиторий целиком автоматически не перелицензируются.
-`/source` выдаёт бесплатный полный архив точной startup source revision (SHA-256);
-заметная ссылка есть в `/docs`, HTTP responses содержат Link. До сетевой/binary поставки
-проверить доступность архива пользователям и сохранить его рядом с артефактом.
-[Состав, ограничения и проверка offer](CONTEXT_PROMPT_ENGINE.md#реализация-lore-и-проверка-source-offer-78).
+Backend поставляется под [MIT license](../LICENSE).

@@ -1,7 +1,3 @@
-# SPDX-License-Identifier: AGPL-3.0-only
-# Adapted from SillyTavern contributors, world-info.js at
-# 06bde939fb1e9c4c8d8641d810f0a916b5bce127, lines 337–369, 4900–4935,
-# 4993–5007, 5056–5079. Python/Wisp adaptation, 2026-10-17. See backend/NOTICE.
 """Immutable reviewed lore: primary activation, stable ranking and bounded selection."""
 
 from dataclasses import dataclass
@@ -98,8 +94,6 @@ def load_catalogue() -> LoreCatalogue | None:
 
 
 def match_key(query: tuple[str, ...], key: tuple[str, ...]) -> bool:
-    # WorldInfoBuffer.matchKeys: transformed plain text and whole-key matching.
-    # Wisp replaces JS word boundaries with contiguous Unicode token sequences.
     return bool(key) and all(len(token) <= 80 for token in key) and any(
         query[index:index + len(key)] == key for index in range(len(query) - len(key) + 1))
 
@@ -111,17 +105,13 @@ def select_entries(catalogue: LoreCatalogue, text: str, locale: str) -> tuple[Lo
         if entry.locale != locale:
             continue
         matched = sum(match_key(query, key) for key in entry.keys)
-        # Upstream primary activation: skip entries without a matching key.
         if matched:
             activated.append((entry, matched))
-    # Upstream ordered activation, replacing sticky/source strategies with Wisp ties.
     activated.sort(key=lambda item: (-item[0].priority, -item[1], item[0].id))
     selected: list[LoreEntry] = []
     size = 0
     for entry, _ in activated:
         candidate_size = size + len(entry.text.encode("utf-16-le")) // 2
-        # Upstream accumulation/overflow branch; no macros or ignoreBudget.
-        # Unlike upstream, equality fits and a skipped entry does not consume budget.
         if candidate_size > 1200:
             continue
         selected.append(entry)

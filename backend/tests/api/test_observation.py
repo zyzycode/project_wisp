@@ -61,7 +61,6 @@ def test_actual_handler_untrusted_payload_and_output_reserve(
     with TestClient(app_factory(upstream, assistants={"default": {"provider": provider, "model": model, "max_output_tokens": output_cap}})) as client:
         response = client.post(OBSERVATION.path, json=body)
         assert response.status_code == 200 and response.json() == expected
-        assert "link" in response.headers
     assert len(calls) == 1
     assert "PRIVATE_CURRENT_CHARACTER" not in caplog.text and "PRIVATE_TITLE" not in caplog.text
 

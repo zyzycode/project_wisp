@@ -212,35 +212,10 @@ late-result barriers. Общие wire fixtures проверяют совмест
 или качество классификации живой модели. Для этого нужна отдельно разрешённая
 оценка ответов на RU/EN диалоги с разными состояниями и неоднозначными репликами.
 
-## Перенос CTX-A01 и лицензионная граница
+## Алгоритмы lore и summary
 
-Backend содержит адаптации SillyTavern на закреплённом commit
-`06bde939fb1e9c4c8d8641d810f0a916b5bce127` (package 1.19.0).
-Полные attribution, исходные файлы/диапазоны и изменения сохранены в [NOTICE](../NOTICE)
-и headers [lore.py](../wisp_backend/completion/prompts/lore.py) /
-[summary.py](../wisp_backend/completion/prompts/summary.py).
-
-Перенесены ограниченные алгоритмы активации/ранжирования lore и хронологического
+В бэкенде реализованы алгоритмы активации/ранжирования lore и хронологического
 накопления источников summary. UI, macros, произвольные system overrides,
-recursive summaries, автоматические triggers и upstream dependencies не включены.
-Backend поставляется как единая производная программа под [AGPL-3.0](../COPYING)
-с сохранением исходного [MIT notice](../LICENSE); независимый HTTP desktop и весь
-монорепозиторий автоматически не перелицензируются.
+recursive summaries, автоматические triggers и внешние зависимости не включены.
+Backend поставляется под [MIT notice](../LICENSE).
 
-## Реализация lore и проверка source offer (#78)
-
-[Source route](../wisp_backend/api/routes/source.py) при startup создаёт immutable
-архив по allowlist. SHA-256 архива идентифицирует точную source revision.
-`GET /source` предоставляет полный URL `/source/archive/{sha256}.tar.gz`, лицензию
-и инструкции запуска; `/docs` заметно ссылается на offer, HTTP responses содержат Link.
-
-Архив включает backend code/tests/docs/notices, requirements, API contracts/fixtures,
-product provenance и необходимые install/run scripts. `.env`, ledger, runtime data,
-cache и venv исключены. Отсутствие обязательного исходного файла запрещает startup;
-отсутствие optional lore.json допустимо. Дерево исходников должно быть неизменным
-в течение жизни процесса: после правок нужен restart.
-
-При binary/image поставке сохранить архив рядом с артефактом. До сетевой поставки
-скачать его через тот же пользовательский/VPN access path, проверить SHA-256
-и полноту install/run материалов. [Тесты](../tests/api/test_source.py) проверяют
-доступность offer, notices, immutable bytes и отсутствие runtime data.

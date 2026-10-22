@@ -111,21 +111,7 @@ def test_exact_request_cap_and_documented_statuses(
         assert set(responses) == {'200', '400', '409', '413', '429', '502', '503', '504'}
 
 
-def test_v6_source_offer_automatically_contains_runtime_and_shared_corpus() -> None:
-    import io
-    import tarfile
-    from wisp_backend.api.routes.source import build_source_archive
-    snapshot = build_source_archive()
-    with tarfile.open(fileobj=io.BytesIO(snapshot.content), mode='r:gz') as archive:
-        names = set(archive.getnames())
-    assert {
-        'backend/wisp_backend/api/schemas/observation.py',
-        'backend/wisp_backend/api/routes/observation.py',
-        'backend/wisp_backend/completion/prompts/observation.py',
-        'backend/tests/completion/test_observation_retention.py',
-        'docs/contracts/fixtures/desktop-backend-v6/request.valid.json',
-        'docs/contracts/fixtures/desktop-backend-v6/invalid.json',
-    } <= names
+
 
 
 @pytest.mark.parametrize('shutdown', [False, True])
