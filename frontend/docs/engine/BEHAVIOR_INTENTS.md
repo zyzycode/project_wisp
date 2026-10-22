@@ -80,7 +80,7 @@ Provider hints не обходят cooldown/no-spam/sleep/quiet; unknown hints �
 
 ## Архитектурные границы
 
-AUTO-A09 сохраняет kinds: calm→idle, Explore→wander, игра/bounded cursor interest/nonverbal SocialBid — Activities внутри play. Quiet — устойчивый user/settings mode, не поза и не выключение Needs clock.
+Канонические kinds: calm→idle, Explore→wander, игра/bounded cursor interest/nonverbal SocialBid — Activities внутри play. Quiet — устойчивый user/settings mode, не поза и не выключение Needs clock.
 
 Provider source не P1; допустимый provider выше local по [Autonomy §12](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием). Request/admission/start/terminal/ownership — отдельный [behavior-admission-port.ts](../../src/application/ports/behavior-admission-port.ts), без расширения provider DTO и asset/target fields BehaviorIntent. Reason — диагностика, не transport pose/gait/ownership/family.
 

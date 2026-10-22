@@ -56,13 +56,14 @@ stateDiagram-v2
 
 P2 sleep срабатывает после P0 physics/P1 input. Direct drag (P1) прерывает сон через `drag -> land -> settle`, без ожидания `wake_up`. Внутренние respond/think/play/timer idle/wander сами не будят. Если после wake условие sleep ещё истинно, новый sleep допустим после приоритетного взаимодействия. Пороги и прямой click/wake заданы FSM выше.
 
-### 2.2. Устойчивый quiet (AUTO-A09)
+<a id="22-устойчивый-quiet-auto-a09"></a>
+## 2.2. Устойчивый тихий режим (Quiet Mode)
 
 Quiet — session mode Brain/Character gating context, default false. Включается user/settings `quiet`, выключается явной `SetQuietModeDTO`; idle/wake/completion/reply/Activity/provider его не выключают. Это не sleep/menu pause/autonomy disabled; sleep/wake пороги действуют, wake сохраняет quiet.
 
 Разрешены P0/P1/P2, calm, безопасное ненавязчивое Explore/Rest. Подавлены unsolicited SocialBid, cursor gesture/approach, шумная play/Zoomies, talking behavior; gaze-only остаётся reflex. Прямые user play/chat проходят current gates, не обходят critical state и не снимают quiet. Ответ на direct chat доступен в dialogue presentation, unsolicited talking/gesture не обязателен.
 
-Enable отменяет несовместимые active/deferred runs без восстановления. Disable создаёт одну fresh opportunity без очереди; budget/cooldowns сохраняются. Renderer reload получает mode из полного Brain snapshot; Main restart сбрасывает session mode, persistence вне AUTO-A09. [Команда/bridge/DTO](../../src/shared/ipc-contracts.ts), [budget/priority](AUTONOMY_ENGINE.md).
+Enable отменяет несовместимые active/deferred runs без восстановления. Disable создаёт одну fresh opportunity без очереди; budget/cooldowns сохраняются. Renderer reload получает mode из полного Brain snapshot; Main restart сбрасывает session mode, долговременная персистентность тихого режима не предусмотрена (сессионное состояние). [Команда/bridge/DTO](../../src/shared/ipc-contracts.ts), [budget/priority](AUTONOMY_ENGINE.md).
 
 ## 3. Relationship (Система отношений)
 
@@ -72,7 +73,7 @@ Enable отменяет несовместимые active/deferred runs без �
 
 Friendship растёт от регулярного контакта/dialogue/pet/совместного времени. Love unlock требует **`friendship >= 400` и `userConsentEnabled`**, без накрутки spam clicks. No-guilt: отсутствие пользователя не уменьшает friendship/love и не вызывает укоряющих реплик; offline decay запрещён.
 
-`loveUnlocked` — историческая защёлка: указанный gate относится к переходу false → true. Отзыв consent не обязан стирать прошлую разблокировку или накопленное love; положительный love delta без текущего consent запрещён. Restore `loveUnlocked=true` при `userConsentEnabled=false` допустим и не является новым unlock/consent. Романтическое выражение всегда заново проверяет текущие условия §7; provider/extraction не меняют consent. Несоответствие существующего reducer переходному gate исправляется в #57 с отдельной регрессией; memory restore не вводит ложный cross-field запрет исторического состояния.
+`loveUnlocked` — историческая защёлка: указанный gate относится к переходу false → true. Отзыв consent не обязан стирать прошлую разблокировку или накопленное love; положительный love delta без текущего consent запрещён. Restore `loveUnlocked=true` при `userConsentEnabled=false` допустим и не является новым unlock/consent. Романтическое выражение всегда заново проверяет текущие условия §7; provider/extraction не меняют consent. Несоответствие существующего reducer переходному gate исправляется с отдельной регрессионной проверкой; memory restore не вводит ложный cross-field запрет исторического состояния.
 
 ## 4. Personality (Оси личности)
 
@@ -137,9 +138,10 @@ stateDiagram-v2
 4. `play >= 70` при достаточной энергии → `playful`.
 5. Иначе `neutral`/`curious`.
 
-### 8.1. GAME-A01: характер локальной игровой речи
+<a id="81-game-a01-характер-локальной-игровой-речи"></a>
+## 8.1. Характер локальной игровой речи
 
-Целевой контракт #70 для отдельной реализации GAME-I01; текущий runtime ещё использует outcome+locale. Чистая функция в существующем Domain Character выбирает semantic line key, Application локализует его и ведёт speech lifecycle по [UI §6.1.1](UI_SPEC.md#611-cursor-game-v1-presentation). Это расширение Character, не новый движок. Main передаёт immutable `CharacterSnapshot` существующего Character service в момент первого допустимого attempt/outcome; Renderer получает только готовый текст. Повтор snapshot/tick не пересчитывает уже выбранную реплику.
+Спецификация локальной игровой речи персонажа; базовый runtime использует сопоставление outcome+locale. Чистая функция в существующем Domain Character выбирает semantic line key, Application локализует его и ведёт speech lifecycle по [UI §6.1.1](UI_SPEC.md#611-cursor-game-v1-presentation). Это расширение Character, не новый движок. Main передаёт immutable `CharacterSnapshot` существующего Character service в момент первого допустимого attempt/outcome; Renderer получает только готовый текст. Повтор snapshot/tick не пересчитывает уже выбранную реплику.
 
 **Разрешённые входы.** Реальная стадия `attempt` либо зафиксированный `caught/missed/lost_target/cancelled` из [Activity §17](ACTIVITY_ENGINE.md#17-cursor-game-v1); текущие `needs.energy/comfort` в `[0,100]`; `personality.traits.shyness/playfulness/boldness` в `[0,1]`; boolean `hadConfirmedCatchBeforeRun` по правилу ниже. Shyness вычислена существующей формулой §4, не выводится из текста. Время/run/generation управляют Application lifecycle, locale ru/en — только каталогом. Никаких LLM scores, dialogue summary, lore, заголовков окон, пользовательских команд «стань смелее», raw geometry или inference участия пользователя.
 
@@ -155,7 +157,8 @@ Wiring read/observer, run snapshot и selector — **prerequisite будущей
 
 [preferences.ts](../../src/domain/character/preferences.ts): `value` `-100..100` — отношение к теме, `confidence` `0.0..1.0` — уверенность, `samples` — число тематических dialogues/events. Опыт, эмпатия и привязанность могут мягко сближать интересы с пользователем.
 
-### P15-A02: скорость и доказательства адаптации (#57)
+<a id="p15-a02-скорость-и-доказательства-адаптации-57"></a>
+### Скорость и доказательства адаптации
 
 LLM не назначает axes, affinity, relationship deltas или consent. Явный user fact и текущая роль — разные данные: `user.cursor_game=like` описывает пользователя, не немедленную любовь Wisp к игре. Источник learning — [проверенное сохранённое утверждение](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), а источники обычных axes effects — реальные принятые user interaction/завершённая Activity. Model reply, recall, загрузка истории, timeout/fallback и повтор результата не создают дополнительный experience reward.
 
@@ -167,13 +170,14 @@ Learned preference пока одна: `activity.cursor_game`. Новый **persi
 
 Формула чистого Domain reducer: target=+100 для like, −100 для dislike; `nextValue = clamp(oldValue + clamp((target−oldValue)*0.05, −2, 2), −100, 100)`. Новый key начинается с value0/samples0; `samples=min(samples+1,1000)`, `confidence=samples/(samples+6)`. Поэтому одна реплика даёт максимум2 пункта и confidence≈0.143, а уверенный интерес (≥0.5) требует минимум6 разнесённых во времени сообщений. Existing generic `trackPreference` не использовать без этой отдельной evidence policy; user command «стань игривой» не sample.
 
-Preferences/axes сохраняются существующим snapshot v1; transient gates не сохраняются, не создают SQLite migration и не воспроизводят события при restore. Checkpoint crash window остаётся как у другой динамики: неподтверждённое последнее изменение может потеряться, но не догоняется двойным replay. Для сетевого memory-контекста learned preference показывается только при confidence≥0.5; текущий ответ и локальные решения сохраняют author identity/consent/priority gates. Более богатое обучение по исходам игр и выбор инициатив — #58/#59, без повторного начисления существующих play effects.
+Preferences/axes сохраняются существующим snapshot v1; transient gates не сохраняются, не создают SQLite migration и не воспроизводят события при restore. Checkpoint crash window остаётся как у другой динамики: неподтверждённое последнее изменение может потеряться, но не догоняется двойным replay. Для сетевого memory-контекста learned preference показывается только при confidence≥0.5; текущий ответ и локальные решения сохраняют author identity/consent/priority gates. Обучение по исходам игр и выбор инициатив выполняются без повторного начисления существующих play effects.
 
-Реализованный local consumer learned preference — [P17-A04 §6](../../../docs/contracts/AI_EVENTS_CONTRACT.md#6-learned-preference-влияет-на-локальный-выбор-59): #59 добавляет небольшой bias existing cursor notice chance только для уже допустимого зрелого game candidate. #57 отвечает за formation/persistence/caps; #59 — за применение к поведению.
+Реализованный локальный потребитель learned preference описан в [AI Events §6](../../../docs/contracts/AI_EVENTS_CONTRACT.md#6-learned-preference-влияет-на-локальный-выбор-59): добавляется небольшой bias к шансу cursor notice только для уже допустимого зрелого игрового кандидата.
 
-### 9.1. CHAR-A01: следующий локальный набор предпочтений
+<a id="91-char-a01-следующий-локальный-набор-предпочтений"></a>
+### 9.1. Расширенный локальный набор предпочтений
 
-**Целевой контракт, runtime ещё не реализован.** Решение и требования реализации — в [#66 (CHAR-A01)](https://github.com/zyzycode/project_wisp/issues/66). Существующая `activity.cursor_game` сохраняет reducer и consumer выше. Добавляются ровно два ключа; произвольные темы, новая модель отношений, обучение от inferred knowledge/игровых исходов не входят в этот slice.
+**Спецификация предпочтений характера.** Существующая `activity.cursor_game` сохраняет reducer и consumer выше. Добавляются ровно два ключа; произвольные темы, новая модель отношений, обучение от inferred knowledge/игровых исходов не входят в этот slice.
 
 
 | Character key | Persisted user fact | Local consumer | Полная принимаемая фраза RU / EN |
@@ -191,13 +195,13 @@ Preferences/axes сохраняются существующим snapshot v1; tr
 
 Source дедуплицируется **до** проверки gate: пропущенный в cooldown source нельзя повторить после окончания окна. Один source может обновить лишь один key; источник не получает новый reward через другой callback/key. Существующие bounded cache и generation/terminal owner работают совместно: eviction не возрождает retired callback. Порядок принятых persisted turns сериализован существующей history queue; нет старых retry, startup replay или повторного sample из fact read. Failure записи даёт ноль, без rollback показанного reply и без learning retry.
 
-**Влияние на выбор.** Character отдаёт только validated value/confidence двух ключей во внутренний `CharacterAutonomySnapshot`; Application/Main не вычисляют bias. В [локальном Utility](AUTONOMY_ENGINE.md#7-scoring-и-arbitration) для соответствующего eligible семейства умножить прежний положительный вес `w0` на `m = 1 + 0.20*(value/100)*confidence`. При отсутствии ключа, non-finite/out-of-range value/confidence или confidence <0.5: `m=1`. Итог `w=w0*m`; multiplier ∈[0.8,1.2], нулевой/запрещённый вес остаётся нулём. Это cap **веса**, не изменение вероятности на 20 процентных пунктов; вероятность остаётся `w/sum(w)`. Для остальных семейств `m=1`; cursor notice bias из #59 сюда не переносится и второй раз не применяется.
+**Влияние на выбор.** Character отдаёт только validated value/confidence двух ключей во внутренний `CharacterAutonomySnapshot`; Application/Main не вычисляют bias. В [локальном Utility](AUTONOMY_ENGINE.md#7-scoring-и-arbitration) для соответствующего eligible семейства умножить прежний положительный вес `w0` на `m = 1 + 0.20*(value/100)*confidence`. При отсутствии ключа, non-finite/out-of-range value/confidence или confidence <0.5: `m=1`. Итог `w=w0*m`; multiplier ∈[0.8,1.2], нулевой/запрещённый вес остаётся нулём. Это cap **веса**, не изменение вероятности на 20 процентных пунктов; вероятность остаётся `w/sum(w)`. Для остальных семейств `m=1`; cursor notice bias сюда не переносится и второй раз не применяется.
 
 Порядок каталогов, один существующий RNG draw, relative-bucket выбор calm pose, cooldown/repetition и lifecycle сохраняются. Trace содержит baseline, multiplier и итоговый вес с новой tuning version, без source IDs/текста. Bias не создаёт candidate, не включает отключённое исследование, не меняет route/speed/outcome, не прерывает active peer Activity. P0–P3, quiet/menu, sleep/wake, consent, environment и общий initiative budget проверяются до/независимо от bias. Preference callback не вызывает `applyStimulus`: никаких дополнительных Needs/axes/friendship/love/game effects; обычный user dialogue сохраняет ровно свой существующий effect.
 
 **Persistence и сеть.** Два user facts и два preference tracks используют существующие schema v1/snapshot v1, без migration или нового store. Restore читает tracks, не переучивает по последнему факту; unknown legacy tracks не становятся candidates. Full reset очищает facts/history/tracks и transient gates, поздние callbacks не возвращают их; checkpoint crash window прежний. При недоступной памяти новые samples запрещены, уже восстановленное локальное поведение продолжает работать offline.
 
-Новые структурированные keys **local-only**: расширяется локальный recognizer/evidence port, но `MemoryFactKey`/`AIProviderMemoryContext` для provider и wire v1 остаются прежними allowlists. Перед сетью локальные facts исключаются до лимита пяти facts, новые tracks не проецируются; исходные dialogue строки подчиняются прежней политике передачи разговоров. Recognized новые fact-пары исключаются из recalled dialogue episodes, как старые registry-пары, чтобы correction не возвращалась устаревшим воспоминанием. Расширение сетевого контекста требует отдельного контракта обеих сторон; CHAR-A01 его не разрешает.
+Новые структурированные keys **local-only**: расширяется локальный recognizer/evidence port, но `MemoryFactKey`/`AIProviderMemoryContext` для provider и wire v1 остаются прежними allowlists. Перед сетью локальные facts исключаются до лимита пяти facts, новые tracks не проецируются; исходные dialogue строки подчиняются прежней политике передачи разговоров. Recognized новые fact-пары исключаются из recalled dialogue episodes, как старые registry-пары, чтобы correction не возвращалась устаревшим воспоминанием. Расширение сетевого контекста требует отдельного контракта обеих сторон; локальное расширение предпочтений его не разрешает.
 
 **Контролируемая приёмка реализации.** Для каждого нового key независимо создать две чистые истории: шесть новых persisted like против шести dislike через 300000 ms, начиная на первой eligibility; время, ID-порядок, типы dialogue stimuli и все остальные входы одинаковы. Получаются value +12/−12, samples 6, confidence 0.5, multipliers 1.012/0.988. Различается только содержание явного утверждения, не количества общения/награды.
 
@@ -212,9 +216,10 @@ Source дедуплицируется **до** проверки gate: пропу
 
 Сценарии — критерии будущих tests, не заявление, что этот gate исполнил runtime проверки.
 
-## 9.1. INTERACTION-A01: общая карточка и локальная оценка (#87)
+<a id="91-interaction-a01-общая-карточка-и-локальная-оценка-87"></a>
+## 9.2. Семантическое взаимодействие: общая карточка и локальная оценка
 
-Целевой контракт #88–#90, а не описание уже поставленного runtime. Единственный авторский
+Спецификация семантической оценки взаимодействий. Единственный авторский
 source общей карточки — [personality-presets.ts](../../src/domain/character/personality-presets.ts):
 `shyDreamGirl`, revision `1`. Все пользователи получают одинаковые aiSelfConcept, base,
 soft/hard limits и plasticity. Правка авторской identity требует повышения revision;
@@ -235,8 +240,8 @@ friendship/love не проценты; traits — 0..1. Ответы разны�
 Один обычный клик означает только `touch`. Случайные stroke/ruffle/poke не описывают
 фактический ввод и в API запрещены. Double/right click и drag не становятся новым touch
 request; выбор иных жестов вне scope. Domain получает факт ввода сразу, до AI.
-В #89 click/double_click/right_click заменяют прежний click reward базой: attention −2, energy −0.2;
-остальные deltas нулевые. В #90 admission user_message заменяет старый chat reward
+Для click/double_click/right_click базовые значения: attention −2, energy −0.2;
+остальные deltas нулевые. При admission user_message заменяет старый chat reward
 базой attention −4; остальные deltas нулевые. Эти базы работают и offline, но
 ограничены общим 10s monotonic gate touch/chat: первая допустима сразу, повтор внутри
 окна имеет нулевые числовые deltas. Ввод, wake, речь и запросы gate не блокирует.
@@ -276,7 +281,7 @@ marks (base/appraisal), а не бесконечный ID set. Старый/по
 callbacks обязаны сохранить исходную generation. Restart не replay-ит interactions.
 Provider_response сохраняет
 behavior candidate, но **нулевые** Needs/relationship/intimacy/axes effects во всех modes;
-в #89 исправляется нынешняя нормализация provider_response в chat_message. #90 не
+нормализация provider_response отделена от chat_message. Оценка не
 начисляет old chat deltas поверх новой базы. Медленная adaptation остаётся отдельным
 5-minute gate §9: максимум один реальный user stimulus; proposal/reply не второй sample.
 
@@ -303,11 +308,12 @@ fallback без claim о принятой оценке. При touch offline/tim
 
 [types.ts](../../src/domain/character/types.ts), [character-snapshot.ts](../../src/domain/character/character-snapshot.ts): `needs`, `relationship`, `personality` (preset/axes), `intimacy`, `preferences`, `lastUpdated` (последний пересчёт).
 
-## 11. AUTO-A09: последствия и восстановление
+<a id="11-auto-a09-последствия-и-восстановление"></a>
+## 11. Последствия и восстановление после активности
 
 Play effect требует подтверждённой semantic play phase [Activity](ACTIVITY_ENGINE.md#16-auto-a09-единый-outcome-и-ownership). Request/admission/rejected play не уменьшают дефициты до Character gate; physical facts/direct pet stimuli сохраняются независимо от Activity.
 
-Направления effects, once-only, clamp `[0,100]` обязательны. Deltas — начальный versioned tuning #46, не новые шкалы/пороги; неуказанные deltas нулевые.
+Направления effects, once-only, clamp `[0,100]` обязательны. Deltas — начальный versioned tuning, не новые шкалы/пороги; неуказанные deltas нулевые.
 
 | Подтверждённый факт | Начальные deltas |
 |---|---|
@@ -321,7 +327,7 @@ Play effect требует подтверждённой semantic play phase [Act
 
 Существующие play personality deltas — только за подтверждённую игру. Solitary play/cursor presence не доказывают социального участия. User input во время SocialBid даёт обычный stimulus, без второго reward за answered outcome. Cancel/failure до play phase не начисляет effect; пропорциональная оплата шагов/новый resource timer вне slice.
 
-Reducer #46 обрабатывает metadata `system_event.activityOutcome`, `dragRunId/heldMs`, `landingOutcome`; это не новые public intent kinds.
+Reducer обрабатывает metadata `system_event.activityOutcome`, `dragRunId/heldMs`, `landingOutcome`; это не новые public intent kinds.
 
 Единственный Needs clock — Brain/CharacterStateService. Semantic/stable sleep использует `sleepy` metabolism; approach/prepare/calm/quiet не включают его принудительно. Сам tone sleepy не доказывает сон. Defaults [metabolism.ts](../../src/domain/character/metabolism.ts): sleep energy →82, rate 0.3/hour; comfort →12, rate 0.32/hour. Nap 12 секунд не обязан восстановить energy полностью. Full sleep достигает wake threshold за конечное время; ускорение — только versioned tuning с временным сценарием, не скрытая поправка ради теста.
 

@@ -10,7 +10,7 @@ Brain владеет semantic `AnimationIntent`, Activity phase/Needs/authoritat
 
 Renderer не парсит provider DTO, не считает Needs/Activity/authoritative position, не импортирует Electron/Node/platform APIs. DOM/canvas/resources остаются локальны; Main/Application/Domain/Shared получают plain serializable DTO.
 
-### #43: общая геометрия окна и визуального root
+### Общая геометрия окна и визуального root
 
 [PetPresentationLayoutDTO](../../src/shared/ipc-contracts.ts) — статическая конфигурация; один экземпляр и pure projection в [pet-presentation-layout.ts](../../src/shared/pet-presentation-layout.ts) принадлежат Render и напрямую потребляются Main/Renderer. Shared-модуль без Renderer/DOM/React/Electron/Domain imports; новый IPC/runtime layout service/DOM measurement для Main не нужны.
 
@@ -59,7 +59,7 @@ publication. Семантическая эмоция имеет приорите
 направление body art нормализуется Skin до вычисления gaze geometry. Геометрия
 использует фактический frame pivot/anchor, не только размеры контейнера.
 
-Spine/Live2D, placeholders, dependencies/adapter IDs вне AUTO-A08/AUTO-I10; требуют отдельных Dependency/Implementation Gate и готовых rig assets.
+Spine/Live2D, placeholders, внешние зависимости и адаптеры требуют отдельных согласований зависимостей и готовых rig assets.
 
 ## 1. Manifest & Asset Metadata
 

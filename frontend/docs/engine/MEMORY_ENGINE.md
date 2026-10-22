@@ -1,6 +1,6 @@
 # Контракт движка памяти
 
-Статус: архитектурные решения [P15-A01 / #21](https://github.com/zyzycode/project_wisp/issues/21) и [P15-A02 / #55](https://github.com/zyzycode/project_wisp/issues/55), 2026-09-18. §1–8 — базовая persistence и lifecycle; §9 — явные знания и recall; §10–12 — planned расширения. [Выбор драйвера](../adr/ADR-016-local-memory-sqlite.md#decision).
+Статус: принятые архитектурные решения (базовая persistence, lifecycle, явные знания и recall; расширения). §1–8 — базовая persistence и lifecycle; §9 — явные знания и recall; §10–13 — расширения памяти и контекста. [Выбор драйвера](../adr/ADR-016-local-memory-sqlite.md#decision).
 
 
 
@@ -31,7 +31,7 @@
 | `started_at` | `TEXT` | not null; время user-сообщения первой сохранённой пары |
 | `ended_at` | `TEXT` | nullable; штатное закрытие либо время следующего запуска |
 
-Перед первой новой записью закрыть незавершённые сессии; `ended_at = max(started_at, suppliedNow)` защищает от отката часов. Нет пустых сессий после неуспешной записи пары. Summary и автоматическая сегментация не требуются MVP; #55 использует пары исходных сообщений без новой таблицы.
+Перед первой новой записью закрыть незавершённые сессии; `ended_at = max(started_at, suppliedNow)` защищает от отката часов. Нет пустых сессий после неуспешной записи пары. Summary и автоматическая сегментация не требуются MVP; Хранилище использует пары исходных сообщений без новой таблицы.
 
 ### `messages`
 
@@ -66,7 +66,7 @@
 
 Upsert по key сохраняет исходные id/created_at, заменяет value/confidence/source, выставляет supplied updated_at. Application передаёт candidate id и timestamps; Infrastructure не генерирует время/семантику. Последняя принятая операция побеждает, часы не разрешают конфликт; updated_at нормализуется не ниже created_at. `removeByKey` идемпотентен. `list` сортирует по fact_key с BINARY collation.
 
-#8 принимает только уже проверенные явные факты и существующий source_message_id; null допустим лишь для доверенного локального ввода вне разговора. Confidence — уверенность нормализации, не разрешение домысливать. Извлечение, inferred facts, evidence/history, определения ключей и автоматический вызов upsert из диалога — #55/#56. Этот gate не вводит extraction.
+Хранилище принимает только уже проверенные явные факты и существующий source_message_id; null допустим лишь для доверенного локального ввода вне разговора. Confidence — уверенность нормализации, не разрешение домысливать. Извлечение, inferred facts, evidence/history, определения ключей и автоматический вызов upsert из диалога вынесены за рамки базового хранилища.
 
 ### `game_episodes`
 
@@ -83,7 +83,7 @@ Upsert по key сохраняет исходные id/created_at, заменя�
 
 Источник — [CursorGameResult](../../src/application/ports/cursor-game-contract.ts) из единственного terminal callback Activity. Сохранять только `playCompleted=true`, включая cancelled/lost_target **после** подтверждённой play phase; до неё записи нет. Не превращать cancelled в caught и не выводить исход из UI/реплики/анимации. Application конвертирует явное atMs через согласованную Main clock mapping в UTC; монотонное время не трактовать как epoch.
 
-Составной ключ защищает от повторного terminal, перезапуска и повторного использования activityRunId. Идентичный повтор — no-op; отличный payload того же ключа — `conflict`, первая запись сохраняется. `IGameEpisodeRepository.append` — единственный необходимый порт; recall/list появится вместе с его потребителем в #55. Ошибка сохранения не отменяет уже применённый play effect и не повторяет его.
+Составной ключ защищает от повторного terminal, перезапуска и повторного использования activityRunId. Идентичный повтор — no-op; отличный payload того же ключа — `conflict`, первая запись сохраняется. `IGameEpisodeRepository.append` — единственный необходимый порт; recall/list подключается вместе с его потребителем. Ошибка сохранения не отменяет уже применённый play effect и не повторяет его.
 
 ### `character_state`
 
@@ -109,7 +109,7 @@ Upsert по key сохраняет исходные id/created_at, заменя�
 
 MVP хранит подтверждённые сообщения, текущие факты, игровые эпизоды и один checkpoint до явного полного reset. Нет TTL/автоудаления истории по лимиту AI context; при заполнении диска — §4. Локальные записи не экспортируются в telemetry; логи содержат код операции/ошибки без текста, snapshot, SQL и пути.
 
-Обобщённые `memories`, summary, FTS/vector tables, ranking/expiry и их порты из прежнего черновика **не входят в schema v1**: актуальных use cases до #55 нет. Игровой эпизод уже имеет реальный потребитель записи в #7. Будущий recall читает исходные записи через Application ports; index является производным, с устойчивой ссылкой на источник, обновлением/удалением и перестроением. Потеря индекса не означает потерю памяти. Формат и миграция индекса — отдельный gate, пустые providers/adapters не создавать.
+Обобщённые `memories`, summary, FTS/vector tables, ranking/expiry и их порты из прежнего черновика **не входят в schema v1**: актуальных use cases на этом этапе нет. Игровой эпизод имеет реальный потребитель записи. Будущий recall читает исходные записи через Application ports; index является производным, с устойчивой ссылкой на источник, обновлением/удалением и перестроением. Потеря индекса не означает потерю памяти. Формат и миграция индекса — отдельный gate, пустые providers/adapters не создавать.
 
 ## 3. Connection, операции и ошибки
 
@@ -150,11 +150,11 @@ Corrupt SQLite/NOTADB, неуспешная migration, future schema, read-only/
 
 Базовый persistent dialogue context подключается к локальному Mock; network v1 сохраняет три volatile завершённые пары из [AI contract](AI_PROVIDER_CONTRACT.md#контекст-reset-и-lifecycle). Наличие history/facts/game/state в SQLite не расширяет wire v1. Явные знания и bounded recall для memory-capable режима описаны в §9, сетевые данные — в [Memory wire contract](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md).
 
-Dialogue reset/reload очищает runtime context по AI contract, **не удаляет БД**. Persistent hydration Mock выполняется один раз на Main startup; после dialogue reset старые сообщения не подмешиваются снова в текущую conversation. Новые завершённые turn продолжают сохраняться в storage session этого запуска. При read/write failure #7 продолжает с bounded runtime context, status/diagnostic не выдаёт volatile данные за сохранённые. В базовом режиме этого раздела facts/эпизоды/summaries не участвуют в context; расширенный подбор описан в §9. Storage и recall не влияют на Character напрямую.
+Dialogue reset/reload очищает runtime context по AI contract, **не удаляет БД**. Persistent hydration Mock выполняется один раз на Main startup; после dialogue reset старые сообщения не подмешиваются снова в текущую conversation. Новые завершённые turn продолжают сохраняться в storage session этого запуска. При read/write failure система продолжает работу с bounded runtime context, status/diagnostic не выдаёт volatile данные за сохранённые. В базовом режиме этого раздела facts/эпизоды/summaries не участвуют в context; расширенный подбор описан в §9. Storage и recall не влияют на Character напрямую.
 
 ## 6. Полный reset и защита от поздних записей
 
-Полный memory reset — отдельный `ClearMemoryUseCase`; `DialogueCommandDTO.type=reset` остаётся reset разговора. Целевые [ClearMemoryCommandDTO/ResultDTO](../../src/shared/ipc-contracts.ts) связываются с typed `window.wispAPI.clearMemory` в #8 атомарно с Main handler, Preload и exact-shape validation. Пока это типы, а не объявленный работающий bridge. Статус отдаётся через typed window.wispAPI.getMemoryStatus() без аргументов. Sender проверяется как у dialogue; streamId/requestId non-empty до 128 units, sequence positive safe integer с отдельным счётчиком на Brain stream, неизвестные поля запрещены. Malformed/untrusted input отклоняется до use case; неверный stream или устаревшая sequence возвращает failed/stale. Внутренние invalid_data/conflict проецируются в io_error, без payload ошибки. Нового Settings UI в #8 нет.
+Полный memory reset — отдельный `ClearMemoryUseCase`; `DialogueCommandDTO.type=reset` остаётся reset разговора. Целевые [ClearMemoryCommandDTO/ResultDTO](../../src/shared/ipc-contracts.ts) связываются с typed `window.wispAPI.clearMemory` атомарно с Main handler, Preload и exact-shape validation. Пока это типы, а не объявленный работающий bridge. Статус отдаётся через typed window.wispAPI.getMemoryStatus() без аргументов. Sender проверяется как у dialogue; streamId/requestId non-empty до 128 units, sequence positive safe integer с отдельным счётчиком на Brain stream, неизвестные поля запрещены. Malformed/untrusted input отклоняется до use case; неверный stream или устаревшая sequence возвращает failed/stale. Внутренние invalid_data/conflict проецируются в io_error, без payload ошибки. Отдельного Settings UI для сброса нет.
 
 1. Application закрывает admission persistence-producing turns/games/checkpoints, отменяет активные owners/диалог логически; повышает memory generation. Каждый async callback хранит generation начала и проверяет её **после каждого await и перед side effect**; текущую generation нельзя присваивать старому result задним числом.
 2. `IClearMemoryStore.clearUserMemory(nextContext)` — барьер в той же worker queue. Более ранние writes закончатся до него и будут удалены; последующие со старой generation отклоняются как `stale`. Worker принимает новую generation до транзакции и не откатывает её при SQL rollback. Параллельные reset сериализуются; идентичный повтор streamId/sequence/requestId присоединяется к текущему результату, не удаляет новую память второй раз. Последние 100 receipts хранятся в Main; после eviction high-water sequence всё равно отклоняет старую команду как stale. Повтор использует ту же тройку, новая пользовательская команда — новый requestId и sequence; replacement stream инвалидирует старые команды.
@@ -166,21 +166,22 @@ Reset удаляет логическую локальную память, не 
 
 ## 7. Нецели и gates
 
-Базовые persistence/history и расширенный recall разделены в §5 и §9; адаптация принадлежит Character. Embeddings/vector DB, FTS, cloud sync, server memory, многопрофильность и graphic assets остаются вне MVP. Исторические последствия зафиксированы в связанных Issues #6–#8 и #56/#57.
+Базовые persistence/history и расширенный recall разделены в §5 и §9; адаптация принадлежит Character. Embeddings/vector DB, FTS, cloud sync, server memory, многопрофильность и graphic assets остаются вне MVP. Архитектурные границы зафиксированы в спецификациях соответствующих модулей.
 
 
 
 ## 8. Integration scope и платформенная приёмка
 
-До Ready #6 требуется отдельное разрешение `package.json`/`package-lock.json` для [одобренных exact versions](../adr/ADR-016-local-memory-sqlite.md#dependency-review), `vite.config.ts` для bundled worker entry и externalization driver/Node builtins. Исходник/transport worker — `frontend/src/infrastructure/`, output — существующий `dist-electron/`. В electron-builder проверить `files`, упаковку runtime JS/native binary, `asarUnpack` и packaged worker path; менять при необходимости только существующую секцию `package.json`. Новый packager, ORM, rebuild tooling, scripts и расширение targets этим разрешением не предусмотрены.
+Для интеграции требуется отдельное согласование `package.json`/`package-lock.json` для [одобренных exact versions](../adr/ADR-016-local-memory-sqlite.md#dependency-review), `vite.config.ts` для bundled worker entry и externalization driver/Node builtins. Исходник/transport worker — `frontend/src/infrastructure/`, output — существующий `dist-electron/`. В electron-builder проверить `files`, упаковку runtime JS/native binary, `asarUnpack` и packaged worker path; менять при необходимости только существующую секцию `package.json`. Новый packager, ORM, rebuild tooling, scripts и расширение targets этим разрешением не предусмотрены.
 
 Windows-first gate: Electron 43.4.1, win32-x64, загрузка addon из worker в dev и предоставленном packaged portable, `sqlite_version() = 3.53.4`. Проверить userData с пробелами/кириллицей, offline startup/restart, миграции/reset; при DB lock на 5 s drag/input/Brain ticks продолжаются, очередь bounded. Зафиксировать actual версии, artifact и размер поставки. Подготовка artifact — отдельный packaging scope; `npm run build` запрещён.
 
 Host Node/Vitest и более новые `@types/node` не доказывают совместимость с Electron runtime. Linux Wayland/X11 и macOS сохраняют тот же контракт и graceful native-load/capability fallback из §4; непроверенные платформы отмечать NOT RUN. На машине пользователя не скачивать и не собирать addon автоматически; наличие arm64 prebuild не расширяет текущую Windows x64 цель.
 
-## 9. P15-A02: явные знания и простой recall
+<a id="9-p15-a02-явные-знания-и-простой-recall"></a>
+## 9. Явные знания и простой recall
 
-Типы — [memory-knowledge.interface.ts](../../src/application/ports/memory-knowledge.interface.ts). Application разделяет source validation, repository writes, recall selection и provider-context projection. Новой SQLite migration нет: `user_facts`, `messages`, `game_episodes` и snapshot v1 достаточны. Additive `IGameEpisodeReader` в #56 читает 1–20 эпизодов, newest-first по приватному SQLite rowid; writer/его семантика #6/#7 сохраняются.
+Типы — [memory-knowledge.interface.ts](../../src/application/ports/memory-knowledge.interface.ts). Application разделяет source validation, repository writes, recall selection и provider-context projection. Новой SQLite migration нет: `user_facts`, `messages`, `game_episodes` и snapshot v1 достаточны. Additive `IGameEpisodeReader` читает 1–20 эпизодов, newest-first по приватному SQLite rowid; семантика записи сохраняется.
 
 ### Что сохраняется и откуда известно
 
@@ -188,7 +189,7 @@ Host Node/Vitest и более новые `@types/node` не доказываю�
 |---|---|
 | Явный факт | Буквальное утверждение пользователя из registry ниже; source — ID сохранённой user-реплики, не ответ модели |
 | Исправление | Новое подтверждённое значение того же key; последняя принятая операция заменяет value/source, сохраняет fact id/createdAt; старое утверждение остаётся в исходной истории |
-| Эпизод | Завершённая пара исходного диалога либо реальный terminal курсорной игры из #7; не сгенерированное summary |
+| Эпизод | Завершённая пара исходного диалога либо реальный terminal курсорной игры; не сгенерированное summary |
 | Пожелание | «Отвечай кратко» действует в текущем диалоге; только явно устойчивый вариант registry становится user preference, не приказом изменить Character axes |
 | Временная роль | «Сегодня будь пиратом», цитата, гипотеза, пересказ чужой речи; текущий dialogue context без persistent fact и adaptation evidence |
 
@@ -216,7 +217,7 @@ LLM может предложить до трёх кандидатов в том
 
 ### Подбор контекста
 
-В memory-capable режиме #56 один admission собирает context с общим **200 ms** бюджетом чтения в пределах dialogue deadline. `facts.list(100)`, `history.getRecent(100)`, `gameReader.getRecent(20)`; нет полного scan всей БД/ожидания больше budget. Ошибка/таймаут любого read даёт пустой memory context на этот turn и безопасную storage diagnostic; поздний read не меняет уже отправленное и не пишет данные. Между turn нет polling/summary/LLM background jobs. Character snapshot и текущие три volatile пары доступны независимо от storage.
+В memory-capable режиме один admission собирает context с общим **200 ms** бюджетом чтения в пределах dialogue deadline. `facts.list(100)`, `history.getRecent(100)`, `gameReader.getRecent(20)`; нет полного scan всей БД/ожидания больше budget. Ошибка/таймаут любого read даёт пустой memory context на этот turn и безопасную storage diagnostic; поздний read не меняет уже отправленное и не пишет данные. Между turn нет polling/summary/LLM background jobs. Character snapshot и текущие три volatile пары доступны независимо от storage.
 
 - **Always include:** актуальное авторское ядро/needs/отношения из CharacterSnapshot и все найденные пять registry facts с валидным источником/значением; неизвестные keys не передавать. Facts не зависят от совпадения вопроса. Character learned `activity.cursor_game` включается отдельно при confidence ≥0.5; user preference не выдаётся за вкус персонажа.
 - Кандидаты dialogue: только полные соседние user→assistant пары одной session из последних 100 сообщений; исключить IDs текущего volatile context. Пару с любой распознаваемой registry-фразой исключить целиком: актуальные structured facts — единственный источник этих значений, старое исправленное значение не возвращается через episode. Также не подбирать пары с явным префиксом `Забудь`/`Forget`/`Сегодня будь`/`Today act as`.
@@ -231,11 +232,12 @@ LLM может предложить до трёх кандидатов в том
 
 Provider DTO получает memoryContext по умолчанию; сетевой payload — [BACKEND_MEMORY_CONTRACT](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). Единый `/v1/chat` отправляет bounded memory вместе с карточкой и effectPolicy; смены модели или второго запроса при ошибке нет. После restart recall вновь читает сохранённое; после dialogue reset в новой conversation structured facts/релевантные episodes доступны по следующему явному user send, но не подмешиваются без запроса. Полный memory reset очищает источники по §6 и защищает поздние callbacks.
 
-Исправление заменяет current fact, но не стирает исходный transcript. Команда забывания отдельного факта/редактирование истории не вводится: не обещать такого удаления в ответе LLM; полноценный full reset остаётся #8. `removeByKey` остаётся низкоуровневым портом для доверенного use case, не публичной семантикой «забыть навсегда». Retention server/cache/provider и отсутствие server-delete endpoint — [backend §6](../../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление), с явным составом памяти из отдельного контракта.
+Исправление заменяет current fact, но не стирает исходный transcript. Команда забывания отдельного факта/редактирование истории не вводится: не обещать такого удаления в ответе LLM; полноценный full reset выполняется через ClearMemoryUseCase. `removeByKey` остаётся низкоуровневым портом для доверенного use case, не публичной семантикой «забыть навсегда». Retention server/cache/provider и отсутствие server-delete endpoint — [backend §6](../../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление), с явным составом памяти из отдельного контракта.
 
-## 10. MEM-A03: важные события и общие шутки (planned)
+<a id="10-mem-a03-важные-события-и-общие-шутки-planned"></a>
+## 10. Важные события и общие шутки (planned)
 
-Решение [#65](https://github.com/zyzycode/project_wisp/issues/65). Этот раздел — следующая реализация поверх §9, **не описание работающего MVP**. Локальная schema2 не расширяет wire allowlist из пяти facts. Передача новых категорий потребует отдельного завершённого slice в едином API v1. Character snapshot не меняется; записи ниже не дают adaptation evidence, consent или числовых rewards.
+Этот раздел описывает плановое расширение поверх §9. Локальная schema2 не расширяет wire allowlist из пяти facts. Передача новых категорий потребует отдельного завершённого slice в едином API v1. Character snapshot не меняется; записи ниже не дают adaptation evidence, consent или числовых rewards.
 
 
 ### 10.1. Допустимые знания и evidence
@@ -292,9 +294,10 @@ Score — число совпавших различных query tokens в label
 
 Эти fixtures проверяют selected context, а не точную недетерминированную фразу LLM. Приёмка long-history набора: 100% включение ожидаемого item для пяти фиксированных уникальных query/labels после 1000 пар, 0 withdrawn/deleted/старых revisions, ≤96 payloads/turn. Embeddings рассматриваются новым gate только после измеренных lexical misses на сохранённом наборе; текущая цена — отсутствие синонимов и bounded fan-out.
 
-## 12. CTX-A01: производная summary
+<a id="12-ctx-a01-производная-summary"></a>
+## 12. Производная summary
 
-Решение [#77](https://github.com/zyzycode/project_wisp/issues/77), реализовано в #79;
+Спецификация производного summary разговоров;
 передача/доверие/budgets — [Context data](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md).
 Summary — неподтверждённый пересказ, не knowledge item, transcript, факт или adaptation.
 Application владеет selection/generation/revalidation; Infrastructure — локальным cache
@@ -303,7 +306,7 @@ Application владеет selection/generation/revalidation; Infrastructure —
 
 ### 12.1. Источники и явный trigger
 
-Зависимость #79 — MEM-I01/#80: durable признак допустимого successful source и suppression
+Durable признак допустимого successful source и suppression:
 из §10; без них нельзя после restart доказать, что persisted pair не fallback.
 Schema1 → summary недоступна, обычная память/chat работают. Расширение wire memory не требуется.
 Исходники — только соседние completed user→assistant пары одной сохранённой session,
@@ -375,9 +378,10 @@ generatorVersion должны совпасть. Missing/changed/suppressed/timeo
 Удаление полного memory/cache не удаляет уже переданные backend/provider копии;
 retention — общий contract. Ошибки/отсутствие cache никогда не блокируют FSM/input/chat.
 
-## 13. INTERACTION-A01: краткий след касания (#87)
+<a id="13-interaction-a01-краткий-след-касания-87"></a>
+## 13. Краткий след касания
 
-Целевой #89: Main/Application хранит **один** [PreviousTouchReaction](../../src/application/ports/interaction-appraisal.ts)
+Main/Application хранит **один** [PreviousTouchReaction](../../src/application/ports/interaction-appraisal.ts)
 в RAM, до 10 минут по monotonic clock от публикации. Только действительно опубликованный
 touch text и фактический action=touch, UTC occurredAt, AI proposal (untrusted), принятое
 решение/reason и pre-base energy≤30=tired / otherwise rested, comfort≥80=overloaded /

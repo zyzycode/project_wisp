@@ -64,7 +64,7 @@ Runner принимает `nowMs`, не создаёт timers; выпускае�
 
 Только объявленное условие: `nowMs >= phaseEndsAtMs` для bounded animation/pose; authoritative Motion/Application target/result; explicit delay elapsed; guard outcome; bounded timeout. Application задаёт стабильный sequence для causal event/deadline одной transaction; Runner лишь сравнивает переданное monotonic time со start/deadline.
 
-Skin completion, visual FSM, RAF, `BodyEventDTO` не завершают steps. Legacy `animation_completed`/`state_entered`, external animation request IDs/timeouts — migration debt до AUTO-I08; после AUTO-A08 каждая semantic visual phase имеет Brain duration/deadline. Skin completion/repeat/truncation/fallback не меняет timeline.
+Skin completion, visual FSM, RAF, `BodyEventDTO` не завершают steps. Каждая semantic visual phase имеет Brain duration/deadline. Обратный handshake завершения анимации упразднён; Skin completion/repeat/truncation/fallback не меняет timeline.
 
 Step completion атомарно переходит к target и выпускает следующий request; terminal завершает run ровно один раз.
 
@@ -122,7 +122,7 @@ Brain/Runner — чистые `frontend/src/domain/behavior/`, [общая из�
 
 Проверять §3–12: выбор внутри resolved intent, один active run, invalid-definition rejection, stale-event no-op, cancel без resume, hard cooldown/positive repetition, детерминизм при одинаковых inputs/RNG, отсутствие semantic/physics/visual-priority решений Activity.
 
-### AUTO-I06: Explore и Rest Spot
+### Семантика Explore и Rest Spot
 
 `rest-spot-planner.ts`/`explore-planner.ts` разделяют bounded target/route/action history. External candidates только из fresh Application snapshot. До scoring — reachable same-support walk/traverse или проверенная directed arc; screen approach/grab/climb/rebound сохраняется в Explore. Нельзя пересекать параболой внутренность наблюдаемого окна; изменение target geometry в полёте отменяет arc → обычные fall/land.
 
@@ -134,9 +134,10 @@ Nap: prepare 1200 ms → settle 1500 ms → sleep 12000 ms → wake 1500 ms → 
 
 Sleep phase/stable sleep использует существующий `sleepy` metabolism CharacterStateService; approach/prepare — нет. Новый needs timer запрещён.
 
-## 16. AUTO-A09: единый outcome и ownership
+<a id="16-auto-a09-единый-outcome-и-ownership"></a>
+## 16. Единый outcome и ownership
 
-Target [ActivityOutcomeFeedback](../../src/application/ports/shimeji-feedback-port.ts)/[OwnedActivityRun](../../src/application/ports/behavior-admission-port.ts) подключаются #46/#50 вокруг существующего Runner; Domain не импортирует Application. Effective rank хранится рядом с run в Brain по причине/источнику запуска: одинаковый kind не уравнивает user/local/provider. [Admission/deadlines](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
+Компоненты [ActivityOutcomeFeedback](../../src/application/ports/shimeji-feedback-port.ts) и [OwnedActivityRun](../../src/application/ports/behavior-admission-port.ts) оборачивают Runner; Domain не импортирует Application. Effective rank хранится рядом с run в Brain по причине/источнику запуска: одинаковый kind не уравнивает user/local/provider. [Admission/deadlines](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием).
 
 Request/admission/started/terminal — разные факты. User `play` проходит Character gate **до** игрового эффекта. Rejected/no compatible Activity не создаёт play stimulus/history/full cooldown; accepted/deferred не означает execution, start budget/history фиксируются только при started.
 
@@ -151,7 +152,7 @@ Terminal snapshot содержит family/outcome/executedMs/participation/playC
 | Cancel/failure до выполненной игровой фазы | `null`, без полного эффекта; реальный Motion feedback сохраняется. |
 | calm/rest/cursor gaze/SocialBid без игры | `null`; только история, cooldown/budget и обычный метаболизм. |
 
-Explore completed — конец route/action chain, не просто arrival. Deltas меняет Character reducer, mapper Needs не мутирует. В #46 `IActivityOutcomeStimulusMapper` атомарно заменяет старого consumer без второго handler. Legacy `swat_cursor_completed` сначала нормализуется в тот же completed-play key `activityRunId`, затем отдельная emission удаляется.
+Explore completed — конец route/action chain, не просто arrival. Deltas меняет Character reducer, mapper Needs не мутирует. `IActivityOutcomeStimulusMapper` обрабатывает завершение без дублирующих обработчиков. Событие `swat_cursor_completed` нормализуется в completed-play key `activityRunId`.
 
 Dedupe по **eventId и run+effect semantic key**: новый eventId не повторяет эффект. Foreign/terminal run и прошлая generation игнорируются; bounded terminal ledger принадлежит Brain generation.
 
@@ -181,7 +182,7 @@ Terminal transaction: run/locomotion cleanup → once-only feedback → history/
 
 `CursorGameResult.playCompleted=true` только после всей attempt-фазы, независимо от caught/missed; chase/notice/time exhaustion до attempt не дают reward. `executedMs` — фактическое время semantic run, не provider wait. Result мапится в существующий ActivityOutcome и once-only stimulus (§16) по `activityRunId`; новый путь не дублирует `swat_cursor_completed`. Cancel после завершённой попытки сохраняет флаг; награда и изменения Needs принадлежат Character. Исход не создаёт дополнительный relationship bonus и не записывает автоматически устойчивое предпочтение пользователя.
 
-Локальные реплики, конечный ru/en каталог и приёмка GAME-A01 определены в [UI §6.1.1](UI_SPEC.md#611-cursor-game-v1-presentation), character/experience selection — в [Character §8.1](CHARACTER_ENGINE.md#81-game-a01-характер-локальной-игровой-речи). Одна attempt-реплика и максимум одна outcome-реплика на run; quiet/отмена скрывают речь. Renderer отображает projection, не определяет исход/текст; raw game geometry в UI не отправляется. Новый selector не меняет физические исходы, rewards и animation intents выше.
+Локальные реплики, конечный ru/en каталог и каталог реплик определены в [UI §6.1.1](UI_SPEC.md#611-cursor-game-v1-presentation), character/experience selection — в [Character §8.1](CHARACTER_ENGINE.md#81-game-a01-характер-локальной-игровой-речи). Одна attempt-реплика и максимум одна outcome-реплика на run; quiet/отмена скрывают речь. Renderer отображает projection, не определяет исход/текст; raw game geometry в UI не отправляется. Новый selector не меняет физические исходы, rewards и animation intents выше.
 
 Visual phases используют готовые intent/assets: notice/look_around, walk, cursor_play, happy_reaction, confused_reaction, settle. Новые спрайты и новые public visual kinds не требуются; Render/Animation сохраняют выбор clip и fallback. Отдельные авторские catch/miss sheets могут появиться позже через SPRITE_REQUESTS, а физический успех от них не зависит.
 

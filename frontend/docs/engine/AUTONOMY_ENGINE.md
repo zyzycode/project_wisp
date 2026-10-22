@@ -71,12 +71,12 @@ eligible(c) = catalog(c)
 
 ## 7. Scoring и arbitration
 
-Каноническая локальная политика — weighted Utility [AUTO-I12](https://github.com/zyzycode/project_wisp/issues/47), реализованная как `AUTO-I12-v2` в [local-activity-policy.ts](../../src/domain/behavior/local-activity-policy.ts). Решение [#66 (CHAR-A01)](https://github.com/zyzycode/project_wisp/issues/66) разрешает прежнее расхождение этой секции с работающим weighted selector; max/clamp-to-one arbitration больше не требуется.
+Каноническая локальная политика — взвешенная полезность (weighted Utility), реализованная в [local-activity-policy.ts](../../src/domain/behavior/local-activity-policy.ts); используется взвешенный селектор действий.
 
 
 Для eligible семейства baseline `w0 = need × personality × repetition`; для ineligible `w0=0`. Факторы — конечные неотрицательные versioned функции Needs, Character traits/relationship и затухающей истории. Environment/quiet/cooldown служат gates. Вес не probability и не обрезается до 1: нормализация выполняется суммой весов. Единственный выбор — по накопленным весам в стабильном порядке calm, Explore, Rest, play, SocialBid, используя один явный RNG draw `[0,1)`. На точной правой границе выигрывает предыдущее положительное ведро; zero-weight rows не выигрывают. Relative position внутри calm bucket переиспользуется для semantic pose без дополнительного draw.
 
-Целевой CHAR-A01 добавляет только multiplier по [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений) к Explore/SocialBid; остальные baseline weights и gates сохраняются. Новая tuning version отличает это расширение от `AUTO-I12-v2`. Ни LLM, ни Renderer не задают numerical weights.
+Расширение предпочтений характера добавляет multiplier по [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений) к Explore/SocialBid; остальные базовые веса и гейты сохраняются. Ни LLM, ни Renderer не задают numerical weights.
 
 При нулевой сумме/пустом наборе — safe `idle` через обычный Character gate. Результат — максимум один resolved intent. P0–P3 не участвуют в score; P5 не P4 fallback, запускается лишь после общего safety order. Legacy candidate resolver не становится вторым одновременно работающим P4 selector.
 
@@ -102,9 +102,10 @@ Application исполняет одну decision transaction одновреме�
 
 Повторяемость weights/bucket boundaries/fallback при одинаковом RNG; один resolved/sequence; P0–P3 вне Utility; peer P4 не прерывается pulse; нет копий sleep/quiet thresholds; offline/present provider candidates проходят общую boundary; trace не меняет outcome/контракты; render/animation/physics ticks не создают скрытую cadence.
 
-## 12. AUTO-A09: admission и владение AI-занятием
+<a id="12-auto-a09-admission-и-владение-ai-занятием"></a>
+## 12. Admission и владение AI-занятием
 
-Целевое дополнение [#45](https://github.com/zyzycode/project_wisp/issues/45); подключение runtime — #50.
+Спецификация admission и владения занятиями, инициированными AI.
 Канонические типы: [`behavior-admission-port.ts`](../../src/application/ports/behavior-admission-port.ts).
 Это boundary существующего Brain, а не новый scheduler, provider protocol или Domain dependency на Application.
 Domain получает нормализованные значения; provider IDs и generation проверяет Application.
@@ -183,14 +184,15 @@ Terminal transaction применяет feedback/history/cleanup и создаё
 а не очередь намерений; при снятии blocker используется свежий snapshot.
 
 Provider thinking/offline/timeout не останавливает autonomy cadence или Needs.
-Thinking — только dialogue presentation, не idle owner. Single-flight из #44 сохраняется:
+Thinking — только dialogue presentation, не idle owner. Принцип single-flight сохраняется:
 timeout/reset retires result, но до settlement реального promise busy остаётся true.
 Reset/reload/dispose инвалидируют generation и её offer/run; поздний result не допускается.
 Periodic provider polling и параллельные запросы этим контрактом не вводятся.
 
-Сетевые события и request/token budget определены в [AI Provider](AI_PROVIDER_CONTRACT.md#desktop--backend-v1). InitiativeBudget ограничивает навязчивость локальных действий и не заменяет бюджет backend; без opt-in cursor episodes и SocialBid модель не вызывают. Явно включённый [P17-A04 events](../../../docs/contracts/AI_EVENTS_CONTRACT.md) добавляет только bounded event speech после отдельных causal gates, не provider-owned Activity; локальная selection/runner не ждёт ответа.
+Сетевые события и request/token budget определены в [AI Provider](AI_PROVIDER_CONTRACT.md#desktop--backend-v1). InitiativeBudget ограничивает навязчивость локальных действий и не заменяет бюджет backend; без opt-in cursor episodes и SocialBid модель не вызывают. Явно включённый режим событий ([AI Events](../../../docs/contracts/AI_EVENTS_CONTRACT.md)) добавляет только bounded event speech после отдельных causal gates, не provider-owned Activity; локальная selection/runner не ждёт ответа.
 
-## 13. AUTO-A09: локальная жизнь и ненавязчивость
+<a id="13-auto-a09-локальная-жизнь-и-ненавязчивость"></a>
+## 13. Локальная жизнь и ненавязчивость
 
 Utility использует существующие Needs/history/environment/personality, без новых шкал.
 `boredom` и openness усиливают Explore; play и playfulness — допустимую игру;
@@ -234,10 +236,10 @@ SocialBid доступен без cursor event: заметить пользов�
 При quiet/menu/disable сохраняются budget/cooldown и сбрасываются pending initiatives/dwell.
 Resume допускает один свежий выбор, не накопленные приветствия.
 
-## 14. Обязательные инварианты и tuning AUTO-A09
+## 14. Обязательные инварианты и tuning автономности
 
 Порядок источников, once-only, конечность deadlines/budget, отсутствие resume/очереди и единые owners
-обязательны. Числа ниже — начальный **versioned tuning** для #46–#50; изменения требуют
+обязательны. Числа ниже — начальный **versioned tuning** автономности и инициативы; изменения требуют
 детерминированных сценариев, но не нового public kind/threshold. Не заявляют OS smoke.
 
 | Параметр | Начальное значение |

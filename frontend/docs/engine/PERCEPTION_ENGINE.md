@@ -148,7 +148,7 @@ Look-at остаётся gaze. Swat/avoid — local P3 Activity decisions и н�
 
 ### 6.1. Cursor game v1: ограниченное преследование
 
-Расширение существующего `cursor_interest` (#48): stationary Observe Cursor сохраняет gaze/gesture; игра внутри `play` требует freshness/dwell, Character gates, cooldown и общий initiative budget. Fatigue может оставить только gaze; P2/AI ownership запрещают новую local Activity. Внешний AI API для samples не вызывается. Никаких global hooks для захвата мыши, перемещения/блокировки системного курсора или кликов за пользователя.
+Расширение существующего `cursor_interest`: stationary Observe Cursor сохраняет gaze/gesture; игра внутри `play` требует freshness/dwell, Character gates, cooldown и общий initiative budget. Fatigue может оставить только gaze; P2/AI ownership запрещают новую local Activity. Внешний AI API для samples не вызывается. Никаких global hooks для захвата мыши, перемещения/блокировки системного курсора или кликов за пользователя.
 
 Допуск игры использует существующий fatigue gate Observe Cursor (`energy >35`, tone не sleepy), без отдельного требования friendship≥100 или play≥50. Friendship/Needs влияют на вероятность заметить курсор; начальное состояние нового персонажа не исключает игру. Локальный calm с idle/look-around допускает P3 reaction; user/provider-owned Activity защищена. Пока свежий достижимый курсор накапливает swat dwell, не запускать конкурирующий Observe Cursor и не расходовать его cooldown. После dwell и notice выбирать игру без второго случайного veto. Проверка: [startup scenarios](../../tests/main/cursor-game-startup.test.ts) с реальными defaults и 10-Hz samples.
 
@@ -170,13 +170,14 @@ Perception сообщает `isValidSupport`, Motion решает support_lost/p
 
 ## 8. Environment IPC boundary
 
-[ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — standalone serializable DTO без Domain imports; Main mapper: `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`. AUTO-A07 добавляет target `side`; developer подключает mapper/stream вместе с реализацией. Здесь зафиксирован screen-only runtime на момент gate, не подтверждение готовности внешних опор.
+[ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — standalone serializable DTO без Domain imports; Main mapper: `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`. Поддержка внешних окон добавляет target `side`; mapper/stream подключаются платформенным адаптером.
 
 ## 9. Изоляция и проверяемые свойства
 
 Pure updates по explicit inputs/constraints; freshness по monotonic `nowMs`, не `Date.now()`; missing/stale не продолжают dwell; flipX ровно один раз. Adapter отдаёт normalized immutable snapshot. Body считает только local gaze freshness, semantic freshness/proximity — Brain по Main receive time. Gaze не запускает Activity, proximity не resolved behavior, support transition — Motion.
 
-## 10. Внешние окна — целевой контракт AUTO-A07
+<a id="10-внешние-окна--целевой-контракт-auto-a07"></a>
+## 10. Внешние окна и обнаружение поверхностей
 
 Target implementation contract, не утверждение runtime readiness. [ExternalWindowSurfacesPort](../../src/application/ports/external-window-surfaces.port.ts) отделён от Electron-aware `IPlatformAdapter`. Infrastructure отдаёт полный набор, Application выбирает currentSurface для Motion; Renderer опору не выбирает.
 
@@ -222,17 +223,17 @@ Visibility не гарантирует отсутствие occlusion. Любо�
 
 Private native lifetime→opaque token; edge IDs производны только от token. Move/resize сохраняют ID; destroy/пропуск в полной выборке/minimize/hide/filter-out/bridge restart навсегда удаляют token. Возвращённое окно получает новый.
 
-HWND reuse между poll требует lifecycle create/destroy через `SetWinEventHook` + message loop. Потеря непрерывности сбрасывает identity epoch; poll-only HWND identity запрещена. Callbacks только инвалидируют/инициируют sample, не задают geometry. Реализация tracking вне AUTO-A07.
+HWND reuse между poll требует lifecycle create/destroy через `SetWinEventHook` + message loop. Потеря непрерывности сбрасывает identity epoch; poll-only HWND identity запрещена. Callbacks только инвалидируют/инициируют sample, не задают geometry. Реализация tracking вынесена в платформенный адаптер.
 
 Полная выборка ≤10 Hz, один in-flight, без catch-up queue. Invalidation может сразу снять опору, положительная geometry — только из complete sample. TTL: `0 <= nowMs - capturedAtMs <= 300` ms; stale не используется даже при hung helper, recovery требует нового sample. Request budget 250 ms; negative age/partial-corrupt response/sequence gap/topology change во время выборки инвалидируют её.
 
-Windows frame source: `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)` physical pixels; `GetWindowRect` не эквивалентен (DPI virtualization/invisible resize borders). Frame пересекает **ровно один** physical display; spanning исключён. AUTO-V01 допускает body окна за внешним краем desktop, если edge полностью внутри workArea; bounds сохраняются без clipping.
+Windows frame source: `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)` physical pixels; `GetWindowRect` не эквивалентен (DPI virtualization/invisible resize borders). Frame пересекает **ровно один** physical display; spanning исключён. Спецификация допускает body окна за внешним краем desktop, если edge полностью внутри workArea; bounds сохраняются без clipping.
 
 Windows Infrastructure ровно один раз применяет `screen.screenToDipRect(null, rect)`; нельзя делить global x/y на scaleFactor или брать display Wisp вместо display frame. Edge целиком в workArea своего display, clipping с ложной кромкой запрещён. Разные окна могут иметь разный DPI; глобальные DIP согласованы со ScreenBoundsDto. Перед commit Application выбирает bounds того же display и проверяет root/insets.
 
 `display-added/removed/metrics-changed` инвалидируют все external supports и previous follow baseline до нового full sample. Ошибка normalization → unavailable.
 
-### macOS observer (#95)
+### macOS observer
 
 Один постоянный `/usr/bin/osascript -l JavaScript` helper с фиксированным bundled JXA source, Foundation/CoreGraphics и AppKit; без npm-зависимостей, компиляции, Xcode/CLT, AX/System Events и Apple Events к чужим приложениям. [JXA bridge](https://developer.apple.com/library/archive/releasenotes/InterapplicationCommunication/RN-JavaScriptForAutomation/Articles/OSX10-10.html) вызывает `CGWindowListCopyWindowInfo(onScreenOnly | excludeDesktopElements, 0)`. [Apple о metadata/permissions](https://developer.apple.com/videos/play/wwdc2019/701/): bounds/ID/PID доступны без Screen Recording; разрешения не запрашивать, изображения не получать, window/owner names и sharing state не читать и не требовать.
 Helper передаёт только opaque tokens, bounds и доступные edges; native IDs/PID/layer/alpha остаются внутри него. Окна regular applications (`NSRunningApplication.activationPolicy`) с layer=0, alpha=1, valid bounds — кандидаты; Wisp PID family и helper исключены. Invisible/minimized/другие Spaces не попадают в on-screen sample. Все остальные видимые non-desktop окна с alpha>0, включая panels/menu/translucent, остаются occluders; z-order — порядок front-to-back API, перекрытая кромка удаляется целиком. Неизвестная нужная geometry/повреждённая запись инвалидирует sample. Metadata не различает все sheet/dialog/custom-shape роли: layer-0 окно regular app трактуется по bounding rectangle, pixel-perfect/AX role filtering не обещаются.
@@ -273,10 +274,10 @@ Bounded newline JSON: token/physical geometry, без handles/PID. До публ
 - [Add-Type 5.1](https://github.com/MicrosoftDocs/PowerShell-Docs/blob/main/reference/5.1/Microsoft.PowerShell.Utility/Add-Type.md): вызовы native Windows API из C#.
 - [PowerShell support lifecycle](https://learn.microsoft.com/en-us/powershell/scripting/install/powershell-support-lifecycle): обслуживание Windows PowerShell как компонента ОС.
 
-## 11. OBS-A02: активное приложение и заголовок
+<a id="11-obs-a02-активное-приложение-и-заголовок"></a>
+## 11. Наблюдение за активным приложением (Active Application & Window Title)
 
-[#84](https://github.com/zyzycode/project_wisp/issues/84) заменяет local-only/fixed-speech
-решение #67; реализация #81: [runtime](../../src/application/services/observation-runtime.ts),
+Реализация: [runtime](../../src/application/services/observation-runtime.ts),
 [Windows observer](../../src/infrastructure/platform/active-application-observer.ts). Native Windows smoke остаётся отдельной приёмкой. Geometry/cursor
 contracts и запрет чтения titles в §10 сохраняются. Наблюдение не доказывает внимание,
 удовольствие, занятие или предпочтение пользователя.
@@ -292,7 +293,7 @@ contracts и запрет чтения titles в §10 сохраняются. Н
 но не отзывает уже отправленные данные». Действует [provider data policy](../../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление).
 Старый local-only consent не разрешает сеть: нужен новый opt-in.
 
-**#81 policy RAM-only:** нового config/persistence subsystem нет. Restart очищает
+**Политика хранения в RAM-only:** нового config/persistence subsystem нет. Restart очищает
 consent/allowlist; требуется заново разрешить приложения и включить наблюдение.
 Reload/lock/suspend/helper failure приостанавливают сессию до explicit resume.
 Main-owned picker выбирает executable; Infrastructure хранит canonical absolute path
@@ -320,7 +321,7 @@ Domain не получает appName/title. Строки всегда untrusted 
 
 ### 11.2. Порт, platform adapter и lifecycle
 
-Contracts-first #81 объявляет `ActiveApplicationObservationPort` в
+Спецификация объявляет `ActiveApplicationObservationPort` в
 `frontend/src/application/ports/active-application-observation.port.ts` и отдельный
 semantic observation-provider port. Consumer — Application; Infrastructure даёт cached
 immutable snapshot, ordered subscription, policy replacement/pause и idempotent dispose.
@@ -398,15 +399,15 @@ invalidation; immutable request snapshot до terminal/cancel (runtime≤3500ms)
 metrics/crash payloads, extraction/recall. GC strings не обещают secure erasure.
 Backend replay/provider deletion — [AI Events §9](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary).
 
-API источники сохранены из #67: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow),
+API источники: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow),
 [GetWindowTextW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowtextw),
 [QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew).
 Access denied → fallback без elevation. Dependency Review §10 сохраняется: 0 новых
 packages/transitives/toolchains, существующий системный bridge; geometry helper без правок.
 
-## 12. OBS-A01: отдельный эксперимент содержимого экрана
+## 12. Экспериментальный анализ содержимого экрана
 
-План будущей OBS-X01, не разрешение захвата/анализа текущего рабочего стола.
+План будущего отдельного эксперимента; не является разрешением захвата/анализа текущего рабочего стола.
 Первый эксперимент offline: готовые предоставленные человеком синтетические
 fixtures без персональных экранов, ручные labels `editor`, `other`, `unknown`.
 Агенты не генерируют/нарезают изображения. Без fixtures возможен только дизайн

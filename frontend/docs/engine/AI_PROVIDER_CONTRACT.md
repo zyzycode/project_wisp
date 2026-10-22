@@ -18,11 +18,11 @@ Application владеет портом, сборкой `AIProviderRequest` и `
 
 `AIProviderRequest` сериализуем, без React/DOM/Electron handles/Node/SDK objects. `text` санитизируется на Application/Domain boundary; snapshot создаёт доменная фабрика, provider его не мутирует. `recentContext` ограничивает Application, не полный SQLite dump без отдельного memory contract. Tokens/model names/API keys/endpoints/auth/billing в DTO запрещены.
 
-P15-A02 объявляет optional `memoryContext`/response `memoryCandidates` в semantic порте для явного memory-capable режима #56. Правила source validation/recall — [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), wire — [Backend v1](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). Mock не требует памяти; внешний v1 adapter всегда передаёт memory projection и проверяет кандидаты. Model candidates не входят в Character mapper: запись выполняется отдельно после подтверждённого сохранения текущей user/assistant пары.
+Опциональный контекст памяти (`memoryContext`) и кандидаты на сохранение (`memoryCandidates`) объявляются в семантическом порте для явного memory-capable режима. Правила source validation/recall — [Memory §9](MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall), wire — [Backend v1](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md). Mock не требует памяти; внешний v1 adapter всегда передаёт memory projection и проверяет кандидаты. Model candidates не входят в Character mapper: запись выполняется отдельно после подтверждённого сохранения текущей user/assistant пары.
 
-P17-A04 объявляет optional `previousInitiative` для внешнего v1 адаптера: одна опубликованная AI-фраза в RAM≤60s/current generation, чтобы следующий user send имел контекст. Это не user message/долговременная память; она передаётся отдельным полем актуального chat. Отдельные event provider, жизненный цикл/прерывание, wire и speech — [AI_EVENTS_CONTRACT](../../../docs/contracts/AI_EVENTS_CONTRACT.md). User chat использует прежний semantic IAIProvider; v1 generateEvent имеет text-only result без Character commands; touch v1 отдельно расширен в INTERACTION-A01.
+Опциональное поле `previousInitiative` для внешнего v1 адаптера передаёт одну опубликованную AI-фразу (в RAM≤60s / current generation), чтобы следующий ввод пользователя сохранял контекст. Это не сообщение пользователя и не долговременная память; оно передаётся отдельным полем актуального чата. Отдельные event provider, жизненный цикл/прерывание, wire и speech описаны в [AI_EVENTS_CONTRACT](../../../docs/contracts/AI_EVENTS_CONTRACT.md). Пользовательский чат использует прежний семантический IAIProvider; метод v1 generateEvent возвращает text-only результат без команд персонажа; взаимодействие touch v1 расширено семантической оценкой касания.
 
-### Канонический CharacterSnapshot — P17-A03 (#27)
+### Канонический CharacterSnapshot
 
 `CharacterStateService.getSnapshot()` → Domain [createCharacterSnapshot](../../src/domain/character/character-snapshot.ts) → `AIProviderRequest.characterSnapshot`. Mapper/provider не дублируют projection/tone synthesis.
 
@@ -46,11 +46,11 @@ P17-A04 объявляет optional `previousInitiative` для внешнего
 
 Фабрика копирует needs/relationship и создаёт новые personality/traits/intimacy; известные поля — числа/строки/boolean, без mutable ссылок на `CharacterState`/`PersonalityPreset`/`AxisValue`. Alias не вводит deep-readonly/runtime freeze; явно переданный dialogue service snapshot обязан соблюдать тот же ownership и повторно не клонируется.
 
-Это контракт **валидного** Domain state: `Needs` имеет открытый индекс, фабрика shallow-copy и не валидирует traits ranges. Для будущих untrusted inputs Application обязан валидировать известные поля/finite/ranges и исключать произвольные вложения; assertion/`JSON.stringify` недостаточны. Изменение Needs/реализация validator вне P17-A03.
+Это контракт **валидного** Domain state: `Needs` имеет открытый индекс, фабрика shallow-copy и не валидирует traits ranges. Для будущих untrusted inputs Application обязан валидировать известные поля/finite/ranges и исключать произвольные вложения; assertion/`JSON.stringify` недостаточны. Изменение структуры Needs и реализация внешних валидаторов являются отдельной ответственностью.
 
-## Dialogue runtime и IPC — P17-A02 (#19)
+## Dialogue runtime и IPC
 
-Runtime перенесён в Main/Application в P17-I01 (#44). DTO: [ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — `DialogueCommandDTO`, `DialogueCommandReceiptDTO`, `DialoguePresentationDTO`, `BrainStateDTO`, `WispApiBridge`.
+Runtime размещён в Main/Application. DTO: [ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — `DialogueCommandDTO`, `DialogueCommandReceiptDTO`, `DialoguePresentationDTO`, `BrainStateDTO`, `WispApiBridge`.
 
 ### Единственный владелец и композиция
 
@@ -95,7 +95,7 @@ UI блокирует resend до receipt, затем `canSubmit` берёт и�
 
 `submissionMessage` — необязательное локализованное сообщение Application, plain text после trim 1–240 UTF-16 units, без controls кроме newline/tab; допустимо только при `canSubmit=false`. Runtime не публикует notices о квотах: локальных лимитов запросов нет. При in-flight/idle-unbound/disposed поле отсутствует.
 
-После сотой фактической отправки runtime публикует notice вместе с `canSubmit=false`, даже если пользователь не пытается отправить 101-ю команду. Полученный сотый reply и его completed turn сохраняются; notice не заменяет reply/error, не становится SpeechBubble, history item, provider context или Character stimulus. Renderer показывает notice отдельно рядом с вводом. Cooldown expiry убирает notice и публикует snapshot; session cap сохраняется через dialogue reset/reload до Main restart. Validator/publisher/Renderer должны принять optional поле атомарно в #54, без нового IPC канала.
+После сотой фактической отправки runtime публикует notice вместе с `canSubmit=false`, даже если пользователь не пытается отправить 101-ю команду. Полученный сотый reply и его completed turn сохраняются; notice не заменяет reply/error, не становится SpeechBubble, history item, provider context или Character stimulus. Renderer показывает notice отдельно рядом с вводом. Cooldown expiry убирает notice и публикует snapshot; session cap сохраняется через dialogue reset/reload до Main restart. Validator, publisher и Renderer принимают это optional-поле согласованно, без нового IPC канала.
 
 ### Deadline, fallback и физически незавершённые вызовы
 
@@ -111,7 +111,7 @@ Deadline **15 000 ms от admission**, включая `getStatus()`/`generateRes
 | Deadline истёк | completed/fallback с reason=timeout; thinking немедленно завершён, поздний результат игнорируется. |
 | Не удалось сформировать безопасный fallback | error с локальным сообщением; thinking завершён, provider behavior и context не коммитятся. |
 
-Fallback — локальный deterministic catalog, без второго provider call. Валидная provider fallback-реплика отображается, но behavior/mood hints не применяются. Только success создаёт `provider_response`/candidate через Character; по INTERACTION-A01 этот stimulus имеет нулевой числовой reward. Transport error — локальная UI-ошибка без Character reaction.
+Fallback — локальный deterministic catalog, без второго provider call. Валидная provider fallback-реплика отображается, но behavior/mood hints не применяются. Только success создаёт `provider_response`/candidate через Character; при оценке взаимодействия этот stimulus имеет нулевой числовой reward. Transport error — локальная UI-ошибка без Character reaction.
 
 Terminal/reset/dispose освобождают только thinking Activity своего requestId, не чужую Activity/forced Motion. Текущие gates определяют reply/idle; `thinking_loop` не ждёт Skin completion.
 
@@ -120,7 +120,7 @@ Cancellation API нет. Timeout/reset отменяют запрос **логи�
 ### Контекст, reset и lifecycle
 
 - Volatile context — последние **три завершённые пары** user/reply (шесть сообщений); request получает копию, current userMessage отдельно. Пара добавляется атомарно после success/показанного fallback; error/reset/cancel не добавляют половину. User ≤240, reply ≤2000.
-- P15-A01: [Memory §5](MEMORY_ENGINE.md#5-история-подбор-и-ai-context) задаёт будущую persistent hydration только локального Mock в #7; для network provider сохраняется volatile policy этой секции до #55/#56. Лимит хранения не равен лимиту отправляемого context. Полный memory reset отдельный от dialogue reset, его generation barrier — [Memory §6](MEMORY_ENGINE.md#6-полный-reset-и-защита-от-поздних-записей).
+- Persistent hydration: [Memory §5](MEMORY_ENGINE.md#5-история-подбор-и-ai-context) задаёт долговременную гидратацию только локального Mock; для сетевого провайдера сохраняется volatile policy этой секции до явного подключения персистентности памяти. Лимит хранения не равен лимиту отправляемого context. Полный memory reset отдельный от dialogue reset, его generation barrier — [Memory §6](MEMORY_ENGINE.md#6-полный-reset-и-защита-от-поздних-записей).
 - Reset допустим при thinking: новая conversationId/generation, пустой context, turn=idle, отмена deadline. Needs/relationship и уже применённый user_message не откатываются; execution guard ждёт settlement.
 - Reload/replacement webContents меняет stream и сбрасывает conversation/context как reset. Старые commands/receipts/results не переносятся. React remount только переподписывается, не сбрасывает Main.
 - Window close/shutdown → dispose: invalid generation, cleanup timers/subscriptions, остановка UI publication. Guard принадлежит Main lifecycle и переживает пересоздание окна; новый запрос ждёт settlement. App restart → idle.
@@ -128,7 +128,7 @@ Cancellation API нет. Timeout/reset отменяют запрос **логи�
 
 ### Implementation consequences и проверка
 
-Provider creation из DesktopPet и recentContext из useDialogueLoop принадлежат Main/Application; hook — только typed command + snapshot UI wrapper. Exact validators/handler/DTO/lifecycle используют существующий Brain publisher; raw provider result через IPC не передавать. Network adapter, streaming, provider settings и persistence вне P17-A02.
+Provider creation из DesktopPet и recentContext из useDialogueLoop принадлежат Main/Application; hook — только typed command + snapshot UI wrapper. Exact validators/handler/DTO/lifecycle используют существующий Brain publisher; raw provider result через IPC не передавать. Network adapter, streaming, provider settings и persistence вынесены за пределы базового runtime диалога.
 
 Fake scheduler/deferred provider регрессии: duplicate/resend; timeout обеих await стадий; late success/rejection после reset/reload/dispose; result ровно на deadline; malformed/requestId; bounded whole pairs; оба receipt/snapshot порядка; guard release; отсутствие Renderer provider imports/direct animation dispatch; once-only terminal commit и сохранение forced Motion. Developer: typecheck + npm test.
 
@@ -165,6 +165,7 @@ Application нормализует `AIProviderFallbackReason`: `empty_input`, `m
 
 Infrastructure adapter, создаваемый Main, для backend API v1 ниже. Адаптер преобразует transport DTO в `AIProviderResponse`, валидирует недоверенный ответ и скрывает transport/provider internals от Application и Renderer. Backend владеет своими вызовами LLM; семантический порт не даёт доступа к серверной БД. Существующие single-flight, fallback и защита от поздних результатов сохраняются. Прямой LLM-адаптер допускается общей архитектурой, но не реализуется как автоматический обход backend или его квоты.
 
+<a id="desktop--backend-v1"></a>
 ## Desktop ↔ backend v1
 
 Внешний протокол вынесен в самостоятельный [BACKEND_API_CONTRACT.md](../../../docs/contracts/BACKEND_API_CONTRACT.md): транспорт, диапазоны, HTTP-статусы и общие JSON fixtures. [Wire types](../../src/application/ports/backend-ai-contract.ts) не имеют импортов/алиасов из Domain или IAIProvider. Backend использует их независимо от внутренней модели desktop; adapter явно преобразует canonical CharacterSnapshot и provider DTO. Этот раздел владеет только клиентским lifecycle и policy.
@@ -185,7 +186,7 @@ Wire-valid `decision.mood = playful` не имеет точного соотве
 | Reset, reload, dispose | Ноль; инвалидируют generation и результат. |
 | Cursor sample/dwell, старт/поимка/промах/конец игры | Сырые cursor samples не отправляются; только явно включённый post-game event описан отдельно. |
 | Autonomy pulse, idle, Needs, sleep/wake, pet/drag, Motion/Skin/frame | Ноль. |
-| Собственная социальная инициатива | Локальная; необязательная речь v1 — [P17-A04](../../../docs/contracts/AI_EVENTS_CONTRACT.md), без ожидания сети в Activity. |
+| Собственная социальная инициатива | Локальная; необязательная речь v1 — [AI Events](../../../docs/contracts/AI_EVENTS_CONTRACT.md), без ожидания сети в Activity. |
 
 Нет polling, автоматического приветствия при запуске, фонового summary или второго LLM-вызова на fallback. Будущие сетевые события не маскируются под синтетическое пользовательское сообщение.
 
@@ -220,17 +221,11 @@ Desktop реализует policy, exact validators/projection и aborting adapt
 
 `AIProviderResponse → ProviderResponseIntentMapper → BehaviorIntent`: Application нормализует hints/unknown values в safe fallback; финальное решение принимает `CharacterEngine`.
 
-## ARCHITECT RESULT — P17-A03 (#27)
+<a id="interaction-a01-interpretation-и-commit"></a>
+<a id="interaction-a01-interpretation-и-commit-87"></a>
+## Семантическая интерпретация взаимодействия (Touch & Interaction)
 
-Принято: canonical snapshot/alias без code delta; фабрика и ownership сохраняются. Обязательные implementation consequences и ограничения validator — в разделе «Канонический CharacterSnapshot». Provider/services/network/dependencies не менялись; sprites: none. На момент решения проверены types/factory/alias/request, ссылки/diff/450 строк; docs-only без typecheck/npm test, следующий gate — reviewer.
-
-## ARCHITECT RESULT — P17-A02 (#19)
-
-Принято: один Main/Application runtime, bounded volatile context, single-flight и единый Brain stream. Объявлены target command/receipt/presentation/bridge; обязательные injection/lifecycle/order/deadline/fallback/reset/cutover — в разделе «Dialogue runtime и IPC». На момент architect gate runtime ещё не мигрирован (последующее P17-I01 описано выше). В рамках P17-A02 зависимости, сетевые интеграции, persistence, backend и settings не менялись; sprites: none. Typecheck/ссылки/лимит/diff прошли, tests — при реализации. Gate: reviewer контрактов → app-developer.
-
-## INTERACTION-A01: interpretation и commit (#87)
-
-Целевые #89/#90 используют optional semantic `interaction` request/`appraisal` response
+Используется optional semantic `interaction` request / `appraisal` response
 в [IAIProvider](../../src/application/ports/ai-provider.interface.ts) и
 [IAIEventProvider](../../src/application/ports/ai-event-provider.interface.ts).
 Это расширение существующих consumers, не новый AI engine. Runtime принимает appraisal

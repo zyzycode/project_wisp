@@ -1,9 +1,10 @@
 # Архитектура Animation Engine
 
-`AnimationIntent` — semantic visual request после behavior decision, без sprites/frames/texture sizes/platform APIs. Каталог/типы — [animation-intent.ts](../../src/domain/animation/animation-intent.ts) (`AnimationIntentKind`, `AnimationPriority`); FSM — [animation-state-machine.ts](../../src/domain/animation/animation-state-machine.ts) (`AnimationStateMachine`, `ANIMATION_STATES`). Ownership/timeline/IPC — здесь и в UI_SPEC; legacy lifecycle мигрирует AUTO-I07/AUTO-I08.
+`AnimationIntent` — semantic visual request после behavior decision, без sprites/frames/texture sizes/platform APIs. Каталог/типы — [animation-intent.ts](../../src/domain/animation/animation-intent.ts) (`AnimationIntentKind`, `AnimationPriority`); FSM — [animation-state-machine.ts](../../src/domain/animation/animation-state-machine.ts) (`AnimationStateMachine`, `ANIMATION_STATES`). Ownership/timeline/IPC — здесь и в UI_SPEC; устаревший completion handshake полностью упразднён.
 
 <a id="поток-ответственности"></a>
 
+<a id="1-поток-ответственности-brain--body--skin"></a>
 ## 1. Поток ответственности Brain → Body → Skin
 
 Mapper → candidate BehaviorIntent → Character → resolved intent → Behavior Brain (Activity-backed) → Runner → Brain timeline/AnimationIntent → BrainStateDTO → Body Controller → BodyVisualState → ISkinEngine/SpriteSkinAdapter → Resolver/AnimationPlayer/ICharacterRenderer.
@@ -148,6 +149,6 @@ episode и не пересчитывает уже пройденную фазу.
 Визуальная оценка ритма на Windows остаётся отдельной проверкой; эта связь
 cadence со скоростью не доказывает отсутствие скольжения в живом движении.
 
-## 6. Superseded contract
+## 6. Упразднённый контракт (Animation completion handshake)
 
-[AUTO-A06](https://github.com/zyzycode/project_wisp/issues/31) superseded решением AUTO-A08 для animation-completion handshake. Удалить AnimationLifecycleResultDTO/terminal outcomes/animationRequestId/notifyAnimationLifecycleResult/pending-animation/watchdog целиком; compatibility period/parallel protocol запрещены. Exact BrainStateDTO/BodyEventDTO, order/atomic migration — [UI §6](UI_SPEC.md#6-brain--body-ipc).
+Прежний механизм animation-completion handshake полностью упразднён. `AnimationLifecycleResultDTO`, terminal outcomes, `animationRequestId`, `notifyAnimationLifecycleResult`, `pending-animation` и watchdog удалены из архитектуры. `BrainStateDTO` и `BodyEventDTO` работают без обратного ожидания завершения анимации Renderer-ом ([UI §6](UI_SPEC.md#6-brain--body-ipc)).

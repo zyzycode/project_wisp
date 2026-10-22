@@ -48,6 +48,7 @@ flowchart LR
 
 Общие Electron/security правила — [frontend/AGENTS.md](../../AGENTS.md#3-безопасность-electron-и-ipc). Renderer не получает файлы, SQLite, system prompts, API-ключи или полный memory snapshot. User actions идут semantic DTO через `window.wispAPI`, без прямой мутации engines.
 
+<a id="6-brain--body-ipc"></a>
 ## 6. Brain → Body IPC
 
 `BrainStateDTO` — единственный полный Main → Renderer state stream; `BodyEventDTO` — ограниченный input/observation stream обратно. Типы: [ipc-contracts.ts](../../src/shared/ipc-contracts.ts). Shared не импортирует Domain, React, DOM/canvas, Electron или Skin. Target declarations сами не включают runtime-каналы; cutover — §6.6.
@@ -103,11 +104,11 @@ Body создаёт один `gestureId` на gesture (trimmed non-empty, до 1
 
 Форма `CursorGamePresentationDTO` объявлена в shared. Обязательное поле `BrainStateDTO.cursorGame: CursorGamePresentationDTO | null` подключено в publisher, validators, preload, UI и fixtures. Отдельного канала/game command не требуется: cursor — существующий Body observation, игра выбирается локально. `null` — нет текущей игры/её terminal presentation; outcome=null пока исход не определён. Run ID и speech ID непустые до 128 символов, текст plain ≤240 code units, времена finite nonnegative, `expiresAtMs > startedAtMs`.
 
-Application локализует semantic line key чистого Character selector по [Character §8.1](CHARACTER_ENGINE.md#81-game-a01-характер-локальной-игровой-речи), владеет сроком 2000 ms от создания реплики и публикует expiry/null через существующий scheduler. GAME-A01/#70 задаёт целевое расширение для GAME-I01; текущий selector outcome+locale ещё не реализует character/experience inputs. Outcome speech заменяет attempt speech. При terminal допускается держать outcome projection до expiry; новый run заменяет старую projection. Cancel/reset/reload/dispose/quiet очищают projection сразу. Late timer старого run/speech не очищает новую реплику. Renderer не запускает игру, не вычисляет caught и не возвращает speech completion в Brain.
+Application локализует semantic line key чистого Character selector по [Character §8.1](CHARACTER_ENGINE.md#81-game-a01-характер-локальной-игровой-речи), владеет сроком 2000 ms от создания реплики и публикует expiry/null через существующий scheduler. Каталог реплик расширяет игровую речь; базовый селектор outcome+locale сопоставляет реплики исходу игры. Outcome speech заменяет attempt speech. При terminal допускается держать outcome projection до expiry; новый run заменяет старую projection. Cancel/reset/reload/dispose/quiet очищают projection сразу. Late timer старого run/speech не очищает новую реплику. Renderer не запускает игру, не вычисляет caught и не возвращает speech completion в Brain.
 
 При accepted user send скрыть game speech; пока dialogue thinking и 5000 ms после terminal dialogue commit новую игровую реплику не создавать (историю диалога не стирать). Срок считает Main по injected monotonic time; reset снимает этот speech guard. Затем новая game speech может заменить уже показанную dialogue bubble, не переигрывая старый ответ при expiry. Пропущенные фразы не ставятся в очередь. Reload/snapshot не продлевает expiry и не проигрывает speech повторно; dedupe по streamId + speech.id. Существующие visual intents/Skin остаются независимы от речи. Обязательны fixtures отсутствующей/невалидной projection, смены run, expiry, dialogue priority и once-only отображения.
 
-**GAME-A01: конечный каталог ru/en.** В каждой ячейке RU / EN; стадии и физические исходы берутся только из Activity. `attempt` не обещает catch; `missed` признаёт промах, `lost_target` — потерю курсора без догадки о причине. Обращение к курсору не утверждает присутствие/участие человека. Нет насмешки над пользователем, упрёка, требования ответа или романтического содержания.
+**Каталог игровой речи ru/en.** В каждой ячейке RU / EN; стадии и физические исходы берутся только из Activity. `attempt` не обещает catch; `missed` признаёт промах, `lost_target` — потерю курсора без догадки о причине. Обращение к курсору не утверждает присутствие/участие человека. Нет насмешки над пользователем, упрёка, требования ответа или романтического содержания.
 
 | Стадия | subdued | reserved | playful | neutral |
 |---|---|---|---|---|
@@ -120,7 +121,7 @@ Application локализует semantic line key чистого Character sele
 
 Не более одной attempt- и одной outcome-реплики на run; первый зафиксированный outcome в reaction уже разрешает речь, terminal не дублирует её. Character/locale/evidence changes не переиздают speech; skipped из-за dialogue/quiet/cancel считается consumed, без catch-up. Сохранить вышеуказанные TTL/dedupe/generation guards, включая invalidation до публикации. Изменение tone/опыта никогда не меняет исход, физику, Activity длительность или animation intent. API v1 может добавить отдельный post-game комментарий по [AI Events §§3–4](../../../docs/contracts/AI_EVENTS_CONTRACT.md#3-causal-deadlines-quiet-и-игнорирование); локальный selector не ждёт SQLite/сеть/LLM и работает при eventsEnabled=false, offline или ошибке provider. Поздний AI reply не возобновляет игру и не меняет local projection.
 
-**Конечная приёмка GAME-I01.** В первых четырёх строках actual outcome=missed, locale=ru; остальные входы одинаковы. Значения — `(energy, comfort, shyness, playfulness, boldness)`; authority уже разрешила игру, речь не решает admission.
+**Таблица проверки игровой речи.** В первых четырёх строках actual outcome=missed, locale=ru; остальные входы одинаковы. Значения — `(energy, comfort, shyness, playfulness, boldness)`; authority уже разрешила игру, речь не решает admission.
 
 | Вход/сценарий | Обязательный результат |
 |---|---|
@@ -135,9 +136,9 @@ Application локализует semantic line key чистого Character sele
 | Accepted send, thinking, terminal dialogue+5000ms; quiet, cancel, reset, reload, dispose | Скрытие/пропуск без очереди; на точном expiry2000ms speech=null; stale run/timer/ack/read не меняет новый run/generation. Memory reset убирает historical qualifier и текущую speech. |
 | Duplicate reaction/terminal/snapshot; новый run; events и observation API v1; backend offline/timeout | Once-only streamId+speech.id и max2/run; priority dialogue+guard → game → initiative → observation; local outcome сразу, поздняя сеть не возобновляет игру. |
 
-P17-A04 добавляет optional `BrainStateDTO.initiativeSpeech` для bounded AI-фразы (absent/null — нет речи), независимо от game outcome/Dialogue turn. Lifetime/priority/current generation — [AI Events §4](../../../docs/contracts/AI_EVENTS_CONTRACT.md#4-речь-связь-со-следующим-диалогом-и-память). Publisher/validator/Renderer подключаются в #59 атомарно; UI не инициирует event calls и не сообщает факт прочтения/проигрывания. Existing immediate game speech выше инициативы и не задерживается ради сети.
+Опциональное поле `BrainStateDTO.initiativeSpeech` передаёт ограниченную AI-фразу (absent/null — нет речи) независимо от исхода игры или очереди диалога. Время жизни, приоритет и поколение описаны в [AI Events §4](../../../docs/contracts/AI_EVENTS_CONTRACT.md#4-речь-связь-со-следующим-диалогом-и-память). Publisher, validator и Renderer обрабатывают поле согласованно; UI не инициирует event calls и не сообщает факт прочтения/проигрывания. Existing immediate game speech выше инициативы и не задерживается ради сети.
 
-OBS-A02/#81 реализует optional `BrainStateDTO.observationSpeech`; absent/null — нет речи.
+Опциональное поле `BrainStateDTO.observationSpeech` передаёт речь от наблюдения за активным приложением (absent/null — нет речи).
 Types/publisher/validator/consumer подключены атомарно. Exact speech object:
 `id` trimmed1–128, `text` plain1–240 UTF-16 units, finite nonnegative `startedAtMs`,
 `expiresAtMs > startedAtMs`, lifetime≤2000ms; Main times, dedupe streamId+id.
@@ -202,35 +203,33 @@ Body проверяет immutable episode payload; Main — trusted current `web
 
 Валидный event остаётся input/observation. Brain принимает свои решения, не ждёт Body, не считает отсутствие event failure и не принимает visual outcome.
 
-### 6.6. Атомарная миграция с legacy protocol
+### 6.6. Отказ от animation-completion handshake
 
-[AUTO-A06 #31](https://github.com/zyzycode/project_wisp/issues/31) superseded для animation-completion handshake. AUTO-I07 — единый runtime cutover, без compatibility bridge/feature flag:
+Обратный animation-completion handshake полностью упразднён; используется единый runtime протокол без compatibility bridge:
 
-1. Shared exact validators/mappers + `wisp:brain-state`/`wisp:body-event` + точечные Preload methods; в том же change-set Main publisher/Renderer consumer переходят с `PetPresentationStateDTO` на полный Brain state.
-2. Удалить `AnimationLifecycleOutcomeDTO`, `AnimationLifecycleResultDTO`, `PetPresentationStateDTO.animationRequestId`, `notifyAnimationLifecycleResult`, lifecycle channel/handler, pending request/context и `ANIMATION_LIFECYCLE_WATCHDOG_MS`.
+1. Shared exact validators/mappers + `wisp:brain-state`/`wisp:body-event` + точечные Preload methods; Main publisher и Renderer consumer используют единый Brain state.
+2. `AnimationLifecycleOutcomeDTO`, `AnimationLifecycleResultDTO`, `PetPresentationStateDTO.animationRequestId`, `notifyAnimationLifecycleResult`, lifecycle channel/handler, pending request/context и `ANIMATION_LIFECYCLE_WATCHDOG_MS` удалены.
 3. Без dual publish/subscribe, DTO adapter и Renderer-to-Main terminal outcomes. Первый snapshot после reload полностью восстанавливает Body/Skin.
-4. AUTO-I09 одновременно переводит input producers на Body events и удаляет specialized drag/interaction/menu channels; до этого они только transitional input, не presentation/lifecycle protocol.
+4. Input producers переводятся на унифицированные Body events с отказом от устаревших каналов drag/interaction/menu.
 5. Отдельные typed sleep/wake, autonomy setting, system/window commands сохраняются; generic IPC не расширять.
 
-Соседство target/legacy типов в shared до implementation merge не означает dual runtime protocol: переключение publishers/channels/consumers атомарно.
+### 6.7. Зоны ответственности модулей runtime
 
-### 6.7. Последствия для Phase 14 slices
-
-| Задача | Обязательное последствие |
+| Подсистема | Зона ответственности |
 |---|---|
-| [AUTO-I07 #39](https://github.com/zyzycode/project_wisp/issues/39) | Exact DTO/validators/channels, удаление legacy handshake (§6.6). |
-| [AUTO-I08 #41](https://github.com/zyzycode/project_wisp/issues/41) | ActivityRunner/Needs/stimuli — Main-monotonic loop, без Skin completion. |
-| [AUTO-I09 #40](https://github.com/zyzycode/project_wisp/issues/40) | Body Controller/input migration; DesktopPet — composition root. |
-| [AUTO-I10 #42](https://github.com/zyzycode/project_wisp/issues/42) | Renderer-local ISkinEngine/SpriteSkinAdapter, revision-based render update. |
-| [AUTO-I02 #33](https://github.com/zyzycode/project_wisp/issues/33) | Local gaze сразу; semantic eligibility — только Brain по cursor refresh до 10 Hz. |
-| [AUTO-I03 #34](https://github.com/zyzycode/project_wisp/issues/34) | Explore route/phase/history — Brain; клип не задерживает routine. |
-| [AUTO-I04 #35](https://github.com/zyzycode/project_wisp/issues/35) | Climb/jump — Brain Activity + Motion route; Body/Skin отображают. |
-| [AUTO-I05 #36](https://github.com/zyzycode/project_wisp/issues/36) | Geometry — Infrastructure/Main normalization, без native handles/platform types в Body/Skin. |
-| [AUTO-I06 #37](https://github.com/zyzycode/project_wisp/issues/37) | Explore/Rest arbitration/route/sleep kind — Brain; fallback не меняет outcome. |
+| Body IPC & Channels | Exact DTO/validators/channels, отсутствие legacy handshake (§6.6). |
+| Activity Runner | ActivityRunner/Needs/stimuli — цикл по монотонному времени, без Skin completion. |
+| Body Controller | Body Controller и миграция ввода; DesktopPet — composition root. |
+| Renderer Skin | Renderer-local ISkinEngine/SpriteSkinAdapter, revision-based render update. |
+| Gaze & Cursor | Local gaze сразу; semantic eligibility — только Brain по cursor refresh до 10 Hz. |
+| Route & Navigation | Explore route/phase/history — Brain; клип не задерживает routine. |
+| Climb & Jump | Climb/jump — Brain Activity + Motion route; Body/Skin отображают. |
+| Screen Geometry | Geometry — нормализация в Infrastructure/Main, без native handles/platform types в Body/Skin. |
+| Route Arbitration | Explore/Rest arbitration/route/sleep kind — Brain; fallback не меняет outcome. |
 
-## AUTO-A09: quiet command и presentation
+## Quiet command и presentation
 
-[SetQuietModeDTO, AutonomyModeDTO, QuietModeBridge, QuietModeBrainStateDTO](../../src/shared/ipc-contracts.ts) — target #49. При реализации `setQuietMode` становится обязательным в `WispApiBridge`, `autonomy.quiet` — в полном `BrainStateDTO`; временные interfaces сворачиваются в том же change-set. До #49 declarations не означают runtime capability.
+[SetQuietModeDTO, AutonomyModeDTO, QuietModeBridge, QuietModeBrainStateDTO](../../src/shared/ipc-contracts.ts): метод `setQuietMode` обязателен в `WispApiBridge`, а поле `autonomy.quiet` — в полном `BrainStateDTO`.
 
 Один Main invoke `wisp:set-quiet-mode` через typed Preload: trusted sender, exact `{ enabled: boolean }` без coercion/extra keys, применение в Brain transaction. Response — authoritative mode; UI читает quiet из ordered snapshot, включая первый/reload. Отдельных mode-event очередей/renderer-owned state нет; повтор boolean идемпотентен, без новой opportunity; invalid payload не мутирует state.
 

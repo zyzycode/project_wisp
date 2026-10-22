@@ -114,7 +114,8 @@ AND abs(y - maxY) <= ε
 - **Потолок/кромка окна (`hanging_ceiling` / crawl)**: $y = y_{\text{support}}, \quad x(t+\Delta t) = x(t) + v_{\text{crawl}} \cdot \Delta t$.
 - **Валидация опоры**: при $x \notin [x_{\min}, x_{\max}]$ опоры, удалении окна или невалидности флага `isValidSupport` немедленно инициируется отрыв: `beginAirborne(..., cause: 'support_lost')`.
 
-### 7.1. Lifecycle внешней опоры — целевой AUTO-A07
+<a id="71-lifecycle-внешней-опоры--целевой-auto-a07"></a>
+### 7.1. Жизненный цикл внешней опоры (External Window Surface)
 
 [Perception §10](PERCEPTION_ENGINE.md#10-внешние-окна--целевой-контракт-auto-a07) владеет filtering/identity/capability/TTL/DIP. Domain получает выбранный normalized `ExternalWindowSurface`, не выбирает/не tracks native windows. `window_side → climbing_wall`; `window_top → hanging_ceiling` (название не означает нижнюю грань).
 
@@ -137,7 +138,7 @@ Application хранит previous accepted snapshot и передаёт с Main 
 
 Отрыв начинается с последней принятой root/current locomotion velocity, без наследования window velocity/poll impulse. `support_lost` — один раз attached→airborne, без повторов stale/unavailable. Screen floor — последующий physics fallback, не мгновенная новая опора. Drag отменяет attachment приоритетно, без дополнительного support_lost в том же step.
 
-### 7.1.1 Падение вслед за опускающимся окном (#95)
+### 7.1.1 Падение вслед за опускающимся окном
 
 Правило действует одинаково на Windows и macOS, только для `window_top`; `window_side` сохраняет прежнюю кинематику. Любое положительное изменение нормализованного `supportY` от последнего принятого attachment запускает отрыв: порога скорости, debounce и переноса вниз нет. Одновременный горизонтальный сдвиг/resize также не переносит root при отрыве. Повтор того же snapshot не создаёт новых событий. Activity отменяется штатным forced-motion путём; Animation получает airborne/fall и один landed, поза стояния без контакта не удерживается.
 
@@ -147,7 +148,7 @@ Application хранит previous accepted snapshot и передаёт с Main 
 
 Выбирается первый контакт по u среди оставшихся tops и screen floor; равенство между tops разрешается ID, с floor — в пользу floor. При window landing принимается именно проверенная live surface, обнуляется скорость, закрывается эпизод и выдаётся ровно один landed по существующим порогам impact severity, без дублирующего floor landed. Landing не зависит от наличия новой observation в этом step. Непрерывное медленное опускание может повторить цикл отрыв→контакт при следующем сдвиге; после остановки окна гравитация доводит питомца до его актуальной top, если она под ним. Если окно ушло вбок/исчезло/стало недоступно, остаётся физическое падение на остальные кандидаты или floor.
 
-### 7.2 Traversal и направленные прыжки (AUTO-I04)
+### 7.2 Traversal и направленные прыжки
 
 Screen wall вверх → верхний предел → Ninja Rebound к центру (`jump -> fall -> land`), не ceiling. Вниз → плавный floor contact → walk/idle.
 
@@ -180,7 +181,7 @@ $$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_
    Диапазон native clamp по каждой оси — `[bounds.min - offset, bounds.max - offset]`: ограничивается contact root, а прозрачный origin может выйти за экран ([Render geometry](RENDER_ENGINE.md)).
 4. `BrowserWindow.setPosition` — только при изменении integer coordinates, без параллельных владельцев позиции.
 
-### #43: wander в пределах текущей опоры
+### Wander в пределах текущей опоры
 
 [WanderTargetPlanner](../../src/application/ports/wander-target-planner.ts) — вызов pure Domain function, не требование класса/DI/new IPC. Application передаёт реальные screenBounds/currentSurface/root/insets/config/PRNG, не синтезирует screen bounds из window_top и не считает walking range. Domain использует собственные structural types, без Application imports.
 
@@ -200,7 +201,7 @@ $$x_{\text{native}} = \text{round}(\text{clamp}(x_{\text{root}} - \text{offset}_
 
 ## 10. Граница IPC (Typed IPC Boundary)
 
-[ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — leaf без OS descriptors/renderer classes/Electron refs. `BodyEventDTO`: `drag_started` / `drag_moved` / `drag_ended` несут общий порядок, gestureId/pointer ID/screen coordinates; Main принимает gesture после valid start, отбрасывает stale/foreign. Specialized drag methods до AUTO-I09 — transitional input, не второй presentation protocol.
+[ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — leaf без OS descriptors/renderer classes/Electron refs. `BodyEventDTO`: `drag_started` / `drag_moved` / `drag_ended` несут общий порядок, gestureId/pointer ID/screen coordinates; Main принимает gesture после valid start, отбрасывает stale/foreign. События drag нормализованы в общие Body events без специализированных параллельных протоколов.
 
 BrainStateDTO.motion содержит dragged/airborne/grounded, root/velocity, forced/voluntary authority. Exact shape/order/cadence — [UI §6](UI_SPEC.md#6-brain--body-ipc).
 
@@ -208,7 +209,7 @@ BrainStateDTO.motion содержит dragged/airborne/grounded, root/velocity, 
 
 MotionEngine/SurfaceKinematics не зависят от Electron/DOM/Node timers/FS. Одинаковые snapshot/constraints дают одинаковые position/events независимо от Renderer FPS; native window имеет единственный commit path через adapter.
 
-### AUTO-I06: arrival на выбранную внешнюю опору
+### Семантика arrival на выбранную внешнюю опору
 
 `TraversalAction.targetSurface` normalized. Brain проверяет reachability до scoring; Motion — identity/geometry/freshness/display bounds перед запуском и каждый step. Target change отменяет arc → fall/land; исходное окно после отрыва не attachment.
 
