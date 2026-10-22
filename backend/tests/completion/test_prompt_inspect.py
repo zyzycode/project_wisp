@@ -42,7 +42,7 @@ def test_synthetic_states_preserve_the_canonical_public_author_identity() -> Non
                 assert scene["body"]["card"]["revision"] == source["card_revision"]
 
 
-def test_full_synthetic_baseline_is_reproducible_without_network_or_logging(
+def test_full_synthetic_corpus_preserves_data_and_budgets_while_selecting_resources(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     async def forbidden(*args: object, **kwargs: object) -> None:
@@ -57,7 +57,33 @@ def test_full_synthetic_baseline_is_reproducible_without_network_or_logging(
     async def run() -> None:
         for expected in baseline["reports"]:
             report = await inspect_scene(expected["scene_id"], expected["locale"], expected["settings"]["provider"])
-            assert {key: report[key] for key in baseline["comparison_fields"]} == expected
+            assert report["settings"] == expected["settings"]
+            for key in ("context_window", "output_reserve", "input_allowance"):
+                assert report["budget"][key] == expected["budget"][key]
+            original_blocks = {block["key"]: block for block in expected["blocks"]}
+            current_blocks = {block["key"]: block for block in report["blocks"]}
+            assert set(original_blocks) - set(current_blocks) <= {"examples"}
+            for key, original in original_blocks.items():
+                if key not in {"instructions", "character_profile_state", "examples"}:
+                    assert current_blocks[key]["messages_sha256"] == original["messages_sha256"]
+            prefix = "Untrusted character_context JSON:\n"
+            old_character = json.loads(
+                next(item["content"] for item in expected["messages"] if item["content"].startswith(prefix)).split(
+                    "\n", 1
+                )[1]
+            )
+            new_character = json.loads(
+                next(item["content"] for item in report["messages"] if item["content"].startswith(prefix)).split(
+                    "\n", 1
+                )[1]
+            )
+            del new_character["expression"]
+            assert new_character == old_character
+            assert (
+                len([item for item in report["resource_selection"] if item["kind"] == "example" and item["included"]])
+                <= 1
+            )
+            assert len([key for key in report["selected_keys"] if key.startswith("guidance_")]) <= 3
             assert report["measurement"]["provider_count"] == "NOT RUN"
             assert report["live_comparison"]["status"] == "NOT RUN"
             assert "SYNTHETIC_SECRET_MUST_NOT_APPEAR" not in json.dumps(report)

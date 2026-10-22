@@ -1,6 +1,7 @@
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
-import type { BackendAIRequest, BackendCharacterContext } from '../../application/ports/backend-ai-contract';
-import { enumValue, plainText } from '../../shared/dialogue-ipc-validation';
+import type { BackendAIRequest, BackendCharacterContext, BackendCharacterExpression } from '../../application/ports/backend-ai-contract';
+import { projectCharacterExpression } from '../../domain/character/character-snapshot';
+import { enumValue, exactRecord, plainText } from '../../shared/dialogue-ipc-validation';
 
 export function finiteRange(value: unknown, max: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max) throw new TypeError('Invalid backend range');
@@ -15,10 +16,21 @@ export function backendRequestId(value: unknown): string {
   return value;
 }
 
+export function parseBackendExpression(value: unknown): BackendCharacterExpression {
+  const expression = exactRecord(value, ['pace', 'trust', 'attention', 'play', 'romanceAllowed']);
+  return {
+    pace: enumValue(expression.pace, ['gentle', 'normal']),
+    trust: enumValue(expression.trust, ['guarded', 'familiar', 'close']),
+    attention: enumValue(expression.attention, ['high', 'ordinary']),
+    play: enumValue(expression.play, ['high', 'ordinary']),
+    romanceAllowed: boolean(expression.romanceAllowed),
+  };
+}
+
 export function projectBackendRequest(request: AIProviderRequest): BackendAIRequest {
   const s = request.characterSnapshot;
   // Copy only allowed primitives. Arbitrary local Needs keys never cross the wire.
-  const character: BackendCharacterContext = {
+  const character: Omit<BackendCharacterContext, 'expression'> = {
     needs: { energy: finiteRange(s.needs.energy, 100), attention: finiteRange(s.needs.attention, 100),
       play: finiteRange(s.needs.play, 100), comfort: finiteRange(s.needs.comfort, 100),
       ...(s.needs.boredom === undefined ? {} : { boredom: finiteRange(s.needs.boredom, 100) }) },
@@ -37,5 +49,6 @@ export function projectBackendRequest(request: AIProviderRequest): BackendAIRequ
   });
   messages.push({ role: 'user', content: plainText(request.userMessage.text, 240, true) });
   return { requestId: backendRequestId(request.requestId), event: { type: 'user_message' }, messages,
-    stream: false, locale: request.locale === 'en' ? 'en' : 'ru', character };
+    stream: false, locale: request.locale === 'en' ? 'en' : 'ru',
+    character: { ...character, expression: parseBackendExpression(projectCharacterExpression(character)) } };
 }

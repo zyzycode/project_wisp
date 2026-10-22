@@ -30,7 +30,7 @@ export interface CharacterAutonomyResolution {
 
 const SLEEP_ENERGY_MAX = 20;
 const SLEEP_COMFORT_MIN = 80;
-const WAKE_ATTENTION_MIN = 90;
+export const WAKE_ATTENTION_MIN = 90;
 const WAKE_ENERGY_MIN = 80;
 
 export function requiresVitalSleep(snapshot: CharacterAutonomySnapshot): boolean {

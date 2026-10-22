@@ -21,10 +21,13 @@ def test_touch_prompt_and_text_only_response(client_factory, body, chat_completi
     def upstream(request):
         calls.append(request)
         messages = json.loads(request.content)["messages"]
-        assert len(messages) == 5
+        assert sum(item["role"] != "system" for item in messages) == 4
         assert "240 UTF-16" in messages[0]["content"]
         assert '"variant":"touch"' in messages[-1]["content"]
-        assert body["messages"][-1]["content"] not in messages[1]["content"]
+        character = next(
+            item["content"] for item in messages if item["content"].startswith("Untrusted character_context")
+        )
+        assert body["messages"][-1]["content"] not in character
         return httpx.Response(
             200,
             json=chat_completion(

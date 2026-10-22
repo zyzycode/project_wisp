@@ -105,6 +105,15 @@ export interface CharacterSnapshot {
   synthesizedTone: SynthesizedEmotionalTone;
 }
 
+/** Derived presentation cues, computed for a request without extending local state. */
+export interface CharacterExpression {
+  readonly pace: 'gentle' | 'normal';
+  readonly trust: 'guarded' | 'familiar' | 'close';
+  readonly attention: 'high' | 'ordinary';
+  readonly play: 'high' | 'ordinary';
+  readonly romanceAllowed: boolean;
+}
+
 export type StimulusType =
   | 'user_message'
   | 'user_click'

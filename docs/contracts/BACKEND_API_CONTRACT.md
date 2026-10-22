@@ -43,11 +43,10 @@ Request body ≤32 KiB, response body ≤16 KiB после декодирова�
 
 ### 2.1. Проекция expression
 
-Согласованная целевая форма для условного отбора промптов: обязательное поле
+Для условного отбора промптов требуется поле
 `character.expression` во всех character-bearing запросах (`chat`, `touch`,
-`events`, `observation`); summary character не передаёт. Вводится совместно на
-обеих сторонах в CTX-I07, без новой версии, optional fallback или старого wire.
-До этого шага baseline и ресурсная миграция не меняют текущие payloads.
+`events`, `observation`); summary character не передаёт. Валидируется обеими
+сторонами, без новой версии, optional fallback или старого wire.
 
 | Поле expression | Допустимые значения / смысл |
 |---|---|

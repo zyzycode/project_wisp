@@ -14,8 +14,14 @@ export const DEFAULT_INTIMACY_THRESHOLDS = {
   LOVE_UNLOCK_FRIENDSHIP_THRESHOLD: 400,
 } as const satisfies IntimacyThresholds;
 
+type FlirtState = {
+  readonly needs: Pick<CharacterState['needs'], 'energy' | 'comfort'>;
+  readonly relationship: Pick<CharacterState['relationship'], 'friendship' | 'loveUnlocked'>;
+  readonly intimacy: Pick<CharacterState['intimacy'], 'userConsentEnabled'>;
+};
+
 export function canExpressFlirt(
-  state: CharacterState,
+  state: FlirtState,
   thresholds: IntimacyThresholds = DEFAULT_INTIMACY_THRESHOLDS
 ): boolean {
   return (

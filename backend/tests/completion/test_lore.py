@@ -8,7 +8,12 @@ import pytest
 from tests.completion.test_context_budget import cost
 from wisp_backend.completion.context import ContextMessage, ContextOverflow, select_context
 from wisp_backend.completion.prompts.chat import build_chat_blocks
-from wisp_backend.completion.prompts.context import DialogueTurn, InteractionChatContext, InteractionContext
+from wisp_backend.completion.prompts.context import (
+    DialogueTurn,
+    ExpressionContext,
+    InteractionChatContext,
+    InteractionContext,
+)
 from wisp_backend.completion.prompts.lore import load_catalogue, lore_block, parse_catalogue, select_entries
 
 
@@ -142,6 +147,8 @@ def test_lore_is_atomic_optional_context_below_facts_state_and_recent_history() 
             DialogueTurn("user", "castle correction"),
         ),
         memory={"facts": ["new fact"]},
+        expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
+        user_consent_enabled=False,
         interaction=InteractionContext({}, "suppressed"),
         lore=source,
     )

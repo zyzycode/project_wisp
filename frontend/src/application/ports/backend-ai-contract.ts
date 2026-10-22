@@ -19,6 +19,14 @@ export interface BackendAIMessage {
   readonly content: string;
 }
 
+export interface BackendCharacterExpression {
+  readonly pace: 'gentle' | 'normal';
+  readonly trust: 'guarded' | 'familiar' | 'close';
+  readonly attention: 'high' | 'ordinary';
+  readonly play: 'high' | 'ordinary';
+  readonly romanceAllowed: boolean;
+}
+
 /** Wire fields are defined independently of the local character model. */
 export interface BackendCharacterContext {
   /** Each value is finite and in [0, 100]. */
@@ -55,6 +63,7 @@ export interface BackendCharacterContext {
     readonly userConsentEnabled: boolean;
   };
   readonly synthesizedTone: BackendCharacterTone;
+  readonly expression: BackendCharacterExpression;
 }
 
 export interface BackendAIRequest {

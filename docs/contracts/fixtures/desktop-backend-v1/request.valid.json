@@ -39,7 +39,14 @@
       "romanticCharge": 0,
       "userConsentEnabled": false
     },
-    "synthesizedTone": "curious"
+    "synthesizedTone": "curious",
+    "expression": {
+      "pace": "gentle",
+      "trust": "guarded",
+      "attention": "ordinary",
+      "play": "ordinary",
+      "romanceAllowed": false
+    }
   },
   "card": {
     "id": "shyDreamGirl",

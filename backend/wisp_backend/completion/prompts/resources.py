@@ -13,6 +13,9 @@ RESOURCE_PATH = Path(__file__).with_name("prompt_resources.json")
 RESOURCE_BYTE_LIMIT = 64 * 1024
 Locale = Literal["ru", "en"]
 Scenario = Literal["chat", "touch", "event"]
+Predicate = Literal[
+    "chat_guarded", "chat_playful_close", "chat_tired_company", "touch_familiar", "touch_gentle", "event_missed"
+]
 ExampleValue = str | tuple[str, ...]
 
 
@@ -21,6 +24,7 @@ class StyleExample:
     id: str
     locale: Locale
     scenario: Scenario
+    predicate: Predicate
     fields: tuple[tuple[str, ExampleValue], ...]
 
     def payload(self) -> dict[str, str | list[str]]:
@@ -34,9 +38,6 @@ class PromptResources:
     texts: PromptTexts
     examples: tuple[StyleExample, ...]
 
-    def example_payloads(self, locale: Locale, scenario: Scenario) -> list[dict[str, str | list[str]]]:
-        return [entry.payload() for entry in self.examples if entry.locale == locale and entry.scenario == scenario]
-
 
 class PromptResourceError(RuntimeError):
     def __init__(self) -> None:
@@ -49,9 +50,15 @@ def parse_resources(raw: bytes) -> PromptResources:
         raise ValueError("Resource byte limit")
     document = ResourceDocument.model_validate(decode_json(raw.decode("utf-8")))
     identifiers: set[str] = set()
+    predicates: set[tuple[Locale, Scenario, Predicate]] = set()
     examples = []
     locales: tuple[Locale, ...] = ("ru", "en")
     scenarios: tuple[Scenario, ...] = ("chat", "touch", "event")
+    if (
+        sum(len(getattr(getattr(document.examples, locale), scenario)) for locale in locales for scenario in scenarios)
+        > 32
+    ):
+        raise ValueError("Example count limit")
     for locale in locales:
         catalogue = getattr(document.examples, locale)
         for scenario in scenarios:
@@ -59,9 +66,13 @@ def parse_resources(raw: bytes) -> PromptResources:
                 if entry.id in identifiers:
                     raise ValueError("Duplicate example ID")
                 identifiers.add(entry.id)
+                predicate_key = (locale, scenario, entry.predicate)
+                if predicate_key in predicates:
+                    raise ValueError("Duplicate example predicate")
+                predicates.add(predicate_key)
                 fields = tuple(
                     (key, tuple(value) if isinstance(value, list) else value)
-                    for key, value in entry.model_dump(exclude={"id"}).items()
+                    for key, value in entry.model_dump(exclude={"id", "predicate"}).items()
                 )
                 size = sum(
                     len(text.encode("utf-16-le")) // 2
@@ -70,9 +81,7 @@ def parse_resources(raw: bytes) -> PromptResources:
                 )
                 if size > 1200:
                     raise ValueError("Example text limit")
-                examples.append(StyleExample(entry.id, locale, scenario, fields))
-    if len(examples) > 32:
-        raise ValueError("Example count limit")
+                examples.append(StyleExample(entry.id, locale, scenario, entry.predicate, fields))
     return PromptResources(document.revision, hashlib.sha256(raw).hexdigest(), document.texts, tuple(examples))
 
 

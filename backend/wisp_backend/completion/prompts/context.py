@@ -6,7 +6,7 @@ by prompt builders have explicit types. Required scenario inputs cannot be
 omitted from their constructors.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
 from wisp_backend.completion.prompts.lore import LoreCatalogue
@@ -34,9 +34,20 @@ class InteractionContext:
 
 
 @dataclass(frozen=True)
+class ExpressionContext:
+    pace: Literal["gentle", "normal"]
+    trust: Literal["guarded", "familiar", "close"]
+    attention: Literal["high", "ordinary"]
+    play: Literal["high", "ordinary"]
+    romance_allowed: bool
+
+
+@dataclass(frozen=True)
 class CharacterPromptContext:
     locale: Locale
     character: Snapshot
+    expression: ExpressionContext = field(kw_only=True)
+    user_consent_enabled: bool = field(kw_only=True)
 
 
 @dataclass(frozen=True, kw_only=True)

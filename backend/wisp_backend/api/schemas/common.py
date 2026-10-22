@@ -77,12 +77,21 @@ class Intimacy(Contract):
     userConsentEnabled: StrictBool
 
 
+class Expression(Contract):
+    pace: Literal["gentle", "normal"]
+    trust: Literal["guarded", "familiar", "close"]
+    attention: Literal["high", "ordinary"]
+    play: Literal["high", "ordinary"]
+    romanceAllowed: StrictBool
+
+
 class CharacterContext(Contract):
     needs: Needs
     relationship: Relationship
     personality: Personality
     intimacy: Intimacy
     synthesizedTone: CharacterTone
+    expression: Expression
 
 
 class Event(Contract):

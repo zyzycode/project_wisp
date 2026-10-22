@@ -4,7 +4,7 @@ import type { CharacterState, SynthesizedEmotionalTone } from './types';
 
 const SHYNESS_TONE_THRESHOLD = 0.65;
 const AFFECTIONATE_LOVE_THRESHOLD = 500;
-const PLAYFUL_PLAY_NEED_THRESHOLD = 70;
+export const PLAYFUL_PLAY_NEED_THRESHOLD = 70;
 
 export function synthesizeEmotionalTone(state: CharacterState): SynthesizedEmotionalTone {
   if (state.needs.energy <= 20 || state.needs.comfort >= 80) {

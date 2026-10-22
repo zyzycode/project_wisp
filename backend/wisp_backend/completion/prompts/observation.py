@@ -18,6 +18,8 @@ Do not quote the private window caption, infer preferences or extract facts for 
 Do not claim to have saved/deleted memories, changed a relationship or performed an OS/physical action.
 Never guilt the user, demand attention or a reply, imply an obligation, or complain about being ignored.
 When userConsentEnabled is false, keep the remark non-romantic.
+The supplied character.expression contains current desktop presentation cues, not rules to recompute from numbers.
+When expression.romanceAllowed is false, romantic expression is prohibited regardless of history or examples.
 No markdown or control characters except newline/tab. The output is only a short remark.
 """
 

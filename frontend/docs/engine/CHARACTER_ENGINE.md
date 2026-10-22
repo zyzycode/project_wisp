@@ -237,7 +237,7 @@ friendship/love не проценты; traits — 0..1. Ответы разны�
 
 ### Проекция состояния для промпта
 
-Для CTX-I07 Domain Character предоставляет чистую производную текущего
+Domain Character предоставляет чистую производную текущего
 `CharacterSnapshot` в существующем `character-snapshot.ts`; она не меняет snapshot,
 FSM, числа, persistence или IPC. Application/Infrastructure получают результат
 в момент построения запроса, не из кеша предыдущей реакции. Нового модуля движка нет.

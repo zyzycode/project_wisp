@@ -120,7 +120,7 @@ async def run():
 asyncio.run(run())
 """,
     )
-    assert result.stdout == "wisp-prompts-1\n" and result.stderr == ""
+    assert result.stdout == "wisp-prompts-2\n" and result.stderr == ""
     restarted = run_copy(
         tmp_path,
         """

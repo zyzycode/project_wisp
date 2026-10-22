@@ -6,7 +6,7 @@ from typing import Literal
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.completion.prompts.character_guidance import character_guidance
 from wisp_backend.completion.prompts.context import CharacterPromptContext, Snapshot
-from wisp_backend.completion.prompts.resources import get_prompt_resources
+from wisp_backend.completion.prompts.selection import select_prompt_resources
 
 CONTEXT_RULES = """
 Synthetic style examples illustrate phrasing only: they are never evidence of user facts,
@@ -65,7 +65,9 @@ def common_blocks(
                 (ContextMessage("user", "Untrusted memory_context JSON:\n" + json.dumps(memory, ensure_ascii=False)),),
             )
         )
-    examples = get_prompt_resources().example_payloads(context.locale, mode)
+    selection = select_prompt_resources(context, mode)
+    blocks.extend(selection.guidance)
+    examples = [entry.payload() for entry in selection.examples]
     if not examples:
         return blocks
     blocks.append(

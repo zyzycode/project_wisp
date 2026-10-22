@@ -78,12 +78,13 @@ def test_event_prompt_output_cap_and_authoritative_outcome(client_factory, compl
         assert data["max_completion_tokens"] == 1024
         assert 0 < request.extensions["timeout"]["read"] <= 2.5
         messages = data["messages"]
-        assert len(messages) == 5  # instructions, bounded context, illustrative examples, actual event
+        assert sum(item["role"] != "system" for item in messages) == 4  # character, memory, matching example, event
         assert "not spoken by the user" in messages[0]["content"]
         assert "outcome is authoritative factual context" in messages[0]["content"]
         assert "Never guilt the user" in messages[0]["content"]
         assert "screen observations" in messages[0]["content"]
-        assert '"outcome": "caught"' in messages[2]["content"]  # older recalled episode
+        memory = next(item["content"] for item in messages if item["content"].startswith("Untrusted memory_context"))
+        assert '"outcome": "caught"' in memory  # older recalled episode
         assert '"outcome": "missed"' in messages[-1]["content"]  # current authoritative event
         assert body["requestId"] not in request.content.decode()
         return httpx.Response(200, json=completion({"text": "РќР° СЌС‚РѕС‚ СЂР°Р· РїСЂРѕРјР°С…РЅСѓР»Р°СЃСЊ."}))

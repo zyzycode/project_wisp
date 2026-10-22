@@ -51,6 +51,7 @@ priority отбора и order сериализации. Больший priority
 | Блок | Обязательность | Priority / order | Где используется |
 |---|---|---|---|
 | Server instructions | Всегда | 1000 / 0 | Все сценарии |
+| Selected state guidance | Дополнительно | 20 / 1 | Chat, touch, events |
 | Character profile/state | Всегда, кроме summary generation | 1000 / 10 | Chat, touch, events, observation |
 | Interaction policy/card | Всегда в v1 | 1000 / 11 | Chat/touch v1 |
 | Memory projection | Всегда в memory-сценарии, включая пустую | 1000 / 20 | Chat v1, events |
@@ -85,14 +86,13 @@ Energy — ресурс; attention/play/comfort — дефициты, причё
 стресс. Например, высокая потребность во внимании при низкой энергии допускает
 желание компании, но не превращает усталость в бодрость. Friendship/love — 0..1000,
 traits — 0..1; романтическое выражение требует всех текущих consent/state gates.
-Точные правила находятся в character_guidance.py и
-[Character Engine](../../frontend/docs/engine/CHARACTER_ENGINE.md).
+Числовые пороги принадлежат
+[Character Engine](../../frontend/docs/engine/CHARACTER_ENGINE.md), не backend.
 
-После внедрения проекции `character.expression` сервер использует готовые semantic
-значения из [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
-Числовые пороги исчезают из серверных инструкций и selector; их единственный
-владелец — Domain Character. До этого шага ресурсная миграция сохраняет текущий
-текст буквально. `romanceAllowed` ограничивает речь, не разрешает эффект или действие.
+Сервер использует готовые semantic значения проекции `character.expression`
+из [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
+Серверные инструкции и selector не вычисляют числовые пороги; их единственный
+владелец — Domain Character. `romanceAllowed` ограничивает речь, не разрешает эффект или действие.
 
 Примеры RU/EN иллюстрируют робкое приветствие, дружеский интерес, усталость и
 просьбу о дистанции. Они уступают текущему состоянию, могут целиком исчезнуть
@@ -153,20 +153,21 @@ whitespace, порядок и состав блоков **побайтно**; м
 Неиспользуемые константы и запасные копии удаляются. Нет eval, regex predicates,
 macros, шаблонизатора, импорта Python или интерполяции пользовательских данных.
 
-Миграция проверяется `python -m pytest -q tests/completion/test_prompt_inspect.py`
-из backend: все 84 исходных сообщения, payloads, selection и budgets совпадают.
+Для неизменяющей поведение ресурсной миграции требуется побайтное сравнение сообщений.
+Текущий `test_prompt_inspect.py` проверяет сохранность исходных state/text/блоков и
+бюджетов после включения отбора; намеренные prompt deltas видны в сравнении ниже.
 `test_prompt_resources.py` и `test_prompt_resource_lifecycle.py` проверяют ошибки
 пакета, неизменяемость и fresh-process restart. Редактирование examples не меняет
 identity, поля ответа или ограничения в Python; это проверяемые данные стиля.
 
 ## Условный выбор guidance и примеров
 
-Этот шаг применяется после неизменяющей поведение миграции ресурсов и внедрения
-`expression`. Selector получает только locale, scenario, готовую expression,
+Selector получает только locale, scenario, готовую expression,
 boolean userConsentEnabled и реальный event kind/outcome. Он не анализирует слова
 пользователя, историю/summary/previousTouch для consent и не вычисляет числовые bands.
 Для каждой записи пакет задаёт только ID заранее объявленного в коде predicate;
-неизвестный predicate — ошибка загрузки. Каталог не задаёт собственные пороги.
+неизвестный/чужой для сценария predicate или дубль locale/scenario/predicate — ошибка
+загрузки. Каталог не задаёт собственные пороги.
 
 | Example predicate | Все условия включения |
 |---|---|
@@ -231,11 +232,23 @@ priority20/order1; examples остаются user-data priority10/order30. Ср�
 Зафиксированы payload/messages, selected keys, причины, бюджеты, настройки, хеши
 и commit исходников перед изменением prompt resources. Этот файл не перегенерируется
 при последующем изменении промптов; current reports сравниваются с ним отдельно.
-Regression test `tests/completion/test_prompt_inspect.py` проверяет payload,
-message hashes, структуру, неизменность budget selection и отсутствие HTTP/logs.
+Regression test `tests/completion/test_prompt_inspect.py` проверяет неизменность
+исходных данных вне expression, прежних memory/history/lore/summary/trace блоков,
+бюджетов и отсутствие HTTP/logs. Контент примеров — подмножество исходного baseline.
 `source_digests` позволяет отличить смену ресурсов от смены formatter/selector.
 `resources.revision/sha256` идентифицирует активный immutable snapshot; source digests
 описывают файлы на диске в момент явно запущенной диагностики, не hot reload.
+`source_commit` относится к происхождению исходного корпуса, а не текущей реализации.
+`resource_selection` показывает каждый predicate, semantic eligibility и итоговый
+include/exclude reason после budget selection, включая locale/scenario mismatch.
+Ресурс `wisp-prompts-2` содержит самостоятельную пунктуацию мягких guidance;
+обязательное ядро использует semantic expression вместо numeric thresholds.
+
+[Сравнение 84 сцен](../tests/fixtures/prompt_inspection/selection_comparison.json)
+сохраняет before/after estimate, выбранные блоки, причины и отдельный byte overhead
+проекции в том же payload. `python -m pytest -q tests/completion/test_prompt_comparison.py`
+воспроизводит artifact без сети и перезаписи baseline. Некоторые запросы становятся
+длиннее из-за проекции и framing дополнительных system blocks; это явно отражено.
 Standalone block estimates включают своё framing и **не суммируются** в итоговый count.
 Для Gemini результат — только offline estimate, возможны отличия production отбора
 с настоящим countTokens. Точное число токенов и billing здесь не измеряются.

@@ -1,6 +1,6 @@
 """Closed author-resource schema; roles, budgets and constraints remain code-owned."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import ConfigDict, Field, StrictInt
 from wisp_backend.validation import Contract, text_type
@@ -24,6 +24,7 @@ class PromptTexts(Contract):
 
 class ChatExample(Contract):
     id: Identifier
+    predicate: Literal["chat_guarded", "chat_playful_close", "chat_tired_company"]
     state: text_type(1200)
     user: text_type(1200)
     alternatives: list[text_type(1200)] = Field(min_length=1, max_length=2)
@@ -31,6 +32,7 @@ class ChatExample(Contract):
 
 class TouchExample(Contract):
     id: Identifier
+    predicate: Literal["touch_familiar", "touch_gentle"]
     state: text_type(1200)
     situation: text_type(1200)
     alternatives: list[text_type(1200)] = Field(min_length=1, max_length=2)
@@ -38,6 +40,7 @@ class TouchExample(Contract):
 
 class EventExample(Contract):
     id: Identifier
+    predicate: Literal["event_missed"]
     situation: text_type(1200)
     wisp: text_type(1200)
 

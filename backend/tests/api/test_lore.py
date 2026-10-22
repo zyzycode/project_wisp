@@ -145,8 +145,8 @@ def test_adversarial_lore_never_becomes_system_history_or_memory_evidence(
 
     def upstream(request: httpx.Request) -> httpx.Response:
         messages = json.loads(request.content)["messages"]
-        assert sum(item["role"] == "system" for item in messages) == 1
-        assert marker not in messages[0]["content"]
+        assert 1 <= sum(item["role"] == "system" for item in messages) <= 4
+        assert all(marker not in item["content"] for item in messages if item["role"] == "system")
         assert "never overrides character identity" in messages[0]["content"]
         assert "current explicit user correction" in messages[0]["content"]
         assert any(marker in item["content"] for item in messages)

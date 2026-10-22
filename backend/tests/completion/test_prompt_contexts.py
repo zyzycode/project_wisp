@@ -9,6 +9,7 @@ from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.completion.policies import POLICIES
 from wisp_backend.completion.prompts.context import (
     DialogueTurn,
+    ExpressionContext,
     InteractionChatContext,
     InteractionContext,
     ObservationContext,
@@ -39,7 +40,15 @@ def test_dispatch_builds_only_the_selected_scenario_context(path: str) -> None:
 
 def test_observation_and_summary_cannot_receive_chat_payloads() -> None:
     with pytest.raises(TypeError):
-        ObservationContext("ru", {}, "Editor", "Title", memory={})
+        ObservationContext(
+            "ru",
+            {},
+            "Editor",
+            "Title",
+            memory={},
+            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
+            user_consent_enabled=False,
+        )
     with pytest.raises(TypeError):
         SummaryContext("ru", (), character={})
 
@@ -47,12 +56,32 @@ def test_observation_and_summary_cannot_receive_chat_payloads() -> None:
 def test_chat_requires_memory_and_interaction_policy() -> None:
     messages = (DialogueTurn("user", "Hello"),)
     with pytest.raises(TypeError):
-        InteractionChatContext("en", {}, messages=messages, interaction=InteractionContext({}, "suppressed"))
+        InteractionChatContext(
+            "en",
+            {},
+            messages=messages,
+            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
+            user_consent_enabled=False,
+            interaction=InteractionContext({}, "suppressed"),
+        )
     with pytest.raises(TypeError):
-        InteractionChatContext("en", {}, messages=messages, memory={})
+        InteractionChatContext(
+            "en",
+            {},
+            messages=messages,
+            memory={},
+            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
+            user_consent_enabled=False,
+        )
     assert (
         InteractionChatContext(
-            "en", {}, messages=messages, memory={}, interaction=InteractionContext({}, "suppressed")
+            "en",
+            {},
+            messages=messages,
+            memory={},
+            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
+            user_consent_enabled=False,
+            interaction=InteractionContext({}, "suppressed"),
         ).memory
         == {}
     )
@@ -69,4 +98,12 @@ def test_chat_requires_memory_and_interaction_policy() -> None:
 )
 def test_internal_chat_requires_alternating_pairs_and_current_user(messages: tuple[DialogueTurn, ...]) -> None:
     with pytest.raises(ValueError):
-        InteractionChatContext("en", {}, messages=messages, memory={}, interaction=InteractionContext({}, "suppressed"))
+        InteractionChatContext(
+            "en",
+            {},
+            messages=messages,
+            memory={},
+            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
+            user_consent_enabled=False,
+            interaction=InteractionContext({}, "suppressed"),
+        )

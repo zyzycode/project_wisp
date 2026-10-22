@@ -14,7 +14,10 @@ def test_server_owns_prompt_model_and_envelope(client_factory, body, chat_comple
         assert payload["response_format"] == {"type": "json_object"}
         assert payload["messages"][0]["role"] == "system"
         assert "Russian" in payload["messages"][0]["content"]
-        assert "boredom" not in payload["messages"][1]["content"]
+        character = next(
+            item["content"] for item in payload["messages"] if item["content"].startswith("Untrusted character_context")
+        )
+        assert "boredom" not in character
         assert payload["messages"][-1] == body["messages"][-1]
         assert body["requestId"] not in request.content.decode()
         return httpx.Response(

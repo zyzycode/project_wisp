@@ -1,0 +1,2442 @@
+{
+  "requests": [
+    {
+      "name": "chat-expression-missing",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious"
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-null",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": null
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-unknown",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false,
+            "other": "value"
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-invalid-pace",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "fast",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-invalid-trust",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "trusted",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-invalid-attention",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "low",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-invalid-play",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "low",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-boolean-string",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": "false"
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-boolean-number",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": 0
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "chat-expression-missing-field",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_message"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Привет!"
+          }
+        ],
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "memory": {
+          "facts": [],
+          "episodes": [],
+          "characterPreferences": []
+        }
+      }
+    },
+    {
+      "name": "touch-expression-missing",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious"
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-null",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": null
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-unknown",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false,
+            "other": "value"
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-invalid-pace",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "fast",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-invalid-trust",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "trusted",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-invalid-attention",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "low",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-invalid-play",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "low",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-boolean-string",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": "false"
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-boolean-number",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": 0
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "touch-expression-missing-field",
+      "endpoint": "/v1/touch",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "event": {
+          "type": "user_touch",
+          "variant": "touch"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed"
+      }
+    },
+    {
+      "name": "events-expression-missing",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious"
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-null",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": null
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-unknown",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false,
+            "other": "value"
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-invalid-pace",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "fast",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-invalid-trust",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "trusted",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-invalid-attention",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "low",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-invalid-play",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "low",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-boolean-string",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": "false"
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-boolean-number",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": 0
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "events-expression-missing-field",
+      "endpoint": "/v1/events",
+      "value": {
+        "requestId": "fc3c3c08-940d-4dfe-8a72-86c0c0d1f0a8",
+        "event": {
+          "type": "cursor_game_completed",
+          "outcome": "caught",
+          "executedMs": 1900,
+          "occurredAt": "2026-09-18T08:30:00.000Z"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "observation-expression-missing",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious"
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-null",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": null
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-unknown",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false,
+            "other": "value"
+          }
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-invalid-pace",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "fast",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-invalid-trust",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "trusted",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-invalid-attention",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "low",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-invalid-play",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "low",
+            "romanceAllowed": false
+          }
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-boolean-string",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": "false"
+          }
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-boolean-number",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": 0
+          }
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    },
+    {
+      "name": "observation-expression-missing-field",
+      "endpoint": "/v1/observation",
+      "value": {
+        "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "default",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "observation": {
+          "appName": "Code",
+          "windowTitle": "Synthetic notes — editor"
+        }
+      }
+    }
+  ]
+}

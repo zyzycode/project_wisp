@@ -35,7 +35,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -84,7 +91,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -133,7 +147,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "other",
@@ -181,7 +202,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -229,7 +257,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -277,7 +312,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -325,7 +367,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -372,7 +421,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -420,7 +476,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -468,7 +531,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -519,7 +589,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -622,7 +699,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -725,7 +809,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -827,7 +918,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -929,7 +1027,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -1031,7 +1136,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -1133,7 +1245,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -1234,7 +1353,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -1336,7 +1462,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -1438,7 +1571,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -1537,7 +1677,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -1585,7 +1732,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -1634,7 +1788,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "card": {
           "id": "shyDreamGirl",
@@ -1686,7 +1847,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "messages": [
           {
@@ -1761,7 +1929,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -1863,7 +2038,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -1965,7 +2147,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -2068,7 +2257,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -2157,7 +2353,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -2259,7 +2462,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [
@@ -2361,7 +2571,14 @@
             "romanticCharge": 0,
             "userConsentEnabled": false
           },
-          "synthesizedTone": "curious"
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
         },
         "memory": {
           "facts": [

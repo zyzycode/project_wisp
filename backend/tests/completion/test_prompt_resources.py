@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 from pydantic import ValidationError
-from wisp_backend.completion.prompts import blocks
-from wisp_backend.completion.prompts.context import InteractionContext, InteractionTouchContext
+from wisp_backend.completion.prompts import blocks, selection
+from wisp_backend.completion.prompts.context import ExpressionContext, InteractionContext, InteractionTouchContext
 from wisp_backend.completion.prompts.resources import RESOURCE_PATH, get_prompt_resources, parse_resources
 from wisp_backend.prompt_inspection.report import inspect_scene
 
@@ -102,10 +102,12 @@ def test_resources_preserve_whitespace_and_are_deeply_immutable() -> None:
         parsed.texts.chat_intro = "changed"
     with pytest.raises(FrozenInstanceError):
         parsed.examples[0].fields = ()
-    payloads = parsed.example_payloads("ru", "chat")
+    payloads = [entry.payload() for entry in parsed.examples if entry.locale == "ru" and entry.scenario == "chat"]
     original = deepcopy(payloads)
     payloads[0]["alternatives"][0] = "changed"
-    assert parsed.example_payloads("ru", "chat") == original
+    assert [
+        entry.payload() for entry in parsed.examples if entry.locale == "ru" and entry.scenario == "chat"
+    ] == original
     assert "id" not in payloads[0]
 
 
@@ -113,8 +115,14 @@ def test_empty_example_list_produces_no_optional_block(monkeypatch: pytest.Monke
     raw = document()
     raw["examples"]["en"]["touch"] = []
     parsed = parse_resources(encode(raw))
-    monkeypatch.setattr(blocks, "get_prompt_resources", lambda: parsed)
-    context = InteractionTouchContext("en", {}, InteractionContext({}, "suppressed"))
+    monkeypatch.setattr(selection, "get_prompt_resources", lambda: parsed)
+    context = InteractionTouchContext(
+        "en",
+        {},
+        InteractionContext({}, "suppressed"),
+        expression=ExpressionContext("gentle", "guarded", "ordinary", "ordinary", False),
+        user_consent_enabled=False,
+    )
     assert "examples" not in {block.key for block in blocks.common_blocks(context, "Fixed rules", "touch")}
 
 
