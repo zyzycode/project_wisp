@@ -1,32 +1,29 @@
 """One-worker durable admission using SQLAlchemy ORM outside the event loop."""
 
 import asyncio
-from pathlib import Path
 import threading
 import time
+from pathlib import Path
 from typing import Callable, ParamSpec, TypeVar
 
 from sqlalchemy import delete, select
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
-from wisp_backend.accounting.contracts import Admission, RESERVATION, Usage
+from wisp_backend.accounting.contracts import RESERVATION, Admission, Usage
+from wisp_backend.accounting.models import DailyUsage, LedgerEntry, LedgerMeta
 from wisp_backend.accounting.policy import ID_TTL, plan_settlement
 from wisp_backend.accounting.replay import ReplayCache
-from wisp_backend.accounting.models import DailyUsage, LedgerEntry, LedgerMeta
 from wisp_backend.accounting.storage import create_ledger_engine, initialize_schema, ledger_session
 from wisp_backend.errors import ServiceError
 from wisp_backend.outcomes import MAX_RESPONSE_BYTES, Outcome
-
 
 OperationArgs = ParamSpec("OperationArgs")
 OperationResult = TypeVar("OperationResult")
 
 
 class SQLiteLedger:
-    def __init__(self, path: Path, clock: Callable[[], float],
-                 reservation: int = RESERVATION) -> None:
+    def __init__(self, path: Path, clock: Callable[[], float], reservation: int = RESERVATION) -> None:
         self.path, self.clock = path, clock
         self.reservation = reservation
         self.lock = threading.Lock()
@@ -36,8 +33,9 @@ class SQLiteLedger:
         self.db: Connection
 
     @classmethod
-    async def open(cls, path: Path,
-                   clock: Callable[[], float] = time.time, *, reservation: int = RESERVATION) -> "SQLiteLedger":
+    async def open(
+        cls, path: Path, clock: Callable[[], float] = time.time, *, reservation: int = RESERVATION
+    ) -> "SQLiteLedger":
         if type(reservation) is not int or reservation <= 0:
             raise ValueError("Invalid model reservation")
         ledger = cls(path, clock, reservation)
@@ -48,8 +46,12 @@ class SQLiteLedger:
             raise
         return ledger
 
-    async def _run(self, operation: Callable[OperationArgs, OperationResult],
-                   *args: OperationArgs.args, **kwargs: OperationArgs.kwargs) -> OperationResult:
+    async def _run(
+        self,
+        operation: Callable[OperationArgs, OperationResult],
+        *args: OperationArgs.args,
+        **kwargs: OperationArgs.kwargs,
+    ) -> OperationResult:
         def guarded() -> OperationResult:
             with self.lock:
                 if self.failed:
@@ -59,6 +61,7 @@ class SQLiteLedger:
                 except (SQLAlchemyError, OSError):
                     self.failed = True
                     raise ServiceError("upstream_unavailable") from None
+
         return await asyncio.to_thread(guarded)
 
     def _initialize(self) -> None:
@@ -111,18 +114,38 @@ class SQLiteLedger:
                 day = DailyUsage(bucket=bucket)
                 session.add(day)
                 session.flush()  # Populate counter defaults before incrementing.
-            session.add(LedgerEntry(id=request_id, digest=digest, admitted=now,
-                                    bucket=bucket, state="flight", reservation=self.reservation))
+            session.add(
+                LedgerEntry(
+                    id=request_id,
+                    digest=digest,
+                    admitted=now,
+                    bucket=bucket,
+                    state="flight",
+                    reservation=self.reservation,
+                )
+            )
             day.requests += 1
             day.reserved += self.reservation
         return Admission()
 
-    async def settle(self, request_id: str, usage: Usage | None, outcome: Outcome | None,
-                     deadline: float | None = None, cancelled: threading.Event | None = None) -> None:
+    async def settle(
+        self,
+        request_id: str,
+        usage: Usage | None,
+        outcome: Outcome | None,
+        deadline: float | None = None,
+        cancelled: threading.Event | None = None,
+    ) -> None:
         await self._run(self._terminal, request_id, usage, outcome, deadline, cancelled)
 
-    def _terminal(self, request_id: str, usage: Usage | None, outcome: Outcome | None,
-                  deadline: float | None, cancelled: threading.Event | None) -> None:
+    def _terminal(
+        self,
+        request_id: str,
+        usage: Usage | None,
+        outcome: Outcome | None,
+        deadline: float | None,
+        cancelled: threading.Event | None,
+    ) -> None:
         with ledger_session(self.db) as session:
             cacheable = self._settle(session, request_id, usage, outcome)
             now = self._now(session)
@@ -166,9 +189,10 @@ class SQLiteLedger:
             with self.lock:
                 self.cache.clear()
                 try:
-                    if hasattr(self, 'db'):
+                    if hasattr(self, "db"):
                         self.db.close()
                 finally:
                     if self.engine is not None:
                         self.engine.dispose()
+
         await asyncio.to_thread(close)

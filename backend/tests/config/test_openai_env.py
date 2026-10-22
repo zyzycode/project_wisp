@@ -1,13 +1,17 @@
 """OpenAI credentials and model selection are server-owned and isolated."""
 
 import pytest
-
 from wisp_backend.config.loader import load_settings
 
 
 def test_openai_environment_selects_own_key_and_defaults(env_values, monkeypatch):
-    env_values.update(WISP_AI_PROVIDER="openai", OPENAI_API_KEY="file-key",
-                      GEMINI_API_KEY="google-key", GROQ_API_KEY="groq-key", token_api="legacy-key")
+    env_values.update(
+        WISP_AI_PROVIDER="openai",
+        OPENAI_API_KEY="file-key",
+        GEMINI_API_KEY="google-key",
+        GROQ_API_KEY="groq-key",
+        token_api="legacy-key",
+    )
     monkeypatch.setenv("OPENAI_API_KEY", " process-key ")
     settings = load_settings()
     assert settings.api_key.get_secret_value() == "process-key"
@@ -17,8 +21,13 @@ def test_openai_environment_selects_own_key_and_defaults(env_values, monkeypatch
 
 @pytest.mark.parametrize("key", [None, "", " "])
 def test_openai_never_uses_another_provider_key(env_values, key):
-    env_values.update(WISP_AI_PROVIDER="openai", OPENAI_API_KEY=key,
-                      GEMINI_API_KEY="google-key", GROQ_API_KEY="groq-key", token_api="legacy-key")
+    env_values.update(
+        WISP_AI_PROVIDER="openai",
+        OPENAI_API_KEY=key,
+        GEMINI_API_KEY="google-key",
+        GROQ_API_KEY="groq-key",
+        token_api="legacy-key",
+    )
     with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
         load_settings()
 
@@ -39,7 +48,8 @@ def test_astra_model_is_selected_explicitly(env_values):
 
 
 def test_astra_rejects_temperature_before_dispatch(env_values):
-    env_values.update(WISP_AI_PROVIDER="openai", OPENAI_API_KEY="test-key",
-                      WISP_AI_MODEL="gpt-6-astra", WISP_AI_TEMPERATURE="0.4")
+    env_values.update(
+        WISP_AI_PROVIDER="openai", OPENAI_API_KEY="test-key", WISP_AI_MODEL="gpt-6-astra", WISP_AI_TEMPERATURE="0.4"
+    )
     with pytest.raises(ValueError, match="temperature"):
         load_settings()

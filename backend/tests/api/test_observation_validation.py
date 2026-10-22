@@ -1,16 +1,14 @@
 """Shared v6 corpus and strict metadata boundary, without provider calls."""
 
-from copy import deepcopy
 import json
+from copy import deepcopy
 from typing import Any
 
-from pydantic import ValidationError
 import pytest
-
+from pydantic import ValidationError
 from tests.helpers import CONTRACT_FIXTURES
-from wisp_backend.api.schemas.observation import ObservationRequest, ObservationResponse, ObservationErrorResponse
+from wisp_backend.api.schemas.observation import ObservationErrorResponse, ObservationRequest, ObservationResponse
 from wisp_backend.outcomes import MAX_RESPONSE_BYTES
-
 
 FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v6"
 
@@ -26,8 +24,12 @@ def test_shared_valid_request(name: str) -> None:
 
 
 def test_shared_success_and_error() -> None:
-    assert ObservationResponse.model_validate(fixture("response.success.json")).model_dump() == fixture("response.success.json")
-    assert ObservationErrorResponse.model_validate(fixture("response.error.json")).model_dump(exclude_unset=True) == fixture("response.error.json")
+    assert ObservationResponse.model_validate(fixture("response.success.json")).model_dump() == fixture(
+        "response.success.json"
+    )
+    assert ObservationErrorResponse.model_validate(fixture("response.error.json")).model_dump(
+        exclude_unset=True
+    ) == fixture("response.error.json")
 
 
 @pytest.mark.parametrize("case", fixture("invalid.json"), ids=lambda case: case["name"])
@@ -46,7 +48,9 @@ def test_shared_invalid(case: dict[str, Any]) -> None:
         schema.model_validate(case["value"])
 
 
-@pytest.mark.parametrize("app_name,title", [("😀" * 40, "😀" * 80), ("é", ""), ("编辑器", "合成文档"), ("a\u200db", "a\u0301")])
+@pytest.mark.parametrize(
+    "app_name,title", [("😀" * 40, "😀" * 80), ("é", ""), ("编辑器", "合成文档"), ("a\u200db", "a\u0301")]
+)
 def test_valid_unicode_exact_caps_are_preserved(app_name: str, title: str) -> None:
     request = fixture("request.valid.json")
     request["observation"] = {"appName": app_name, "windowTitle": title}

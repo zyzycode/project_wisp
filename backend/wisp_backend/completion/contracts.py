@@ -25,6 +25,7 @@ class ProviderResult:
 
 class ReplyEncoder(Protocol):
     """The caller owns semantic validation and its delivery envelope."""
+
     def success(self, text: str) -> Outcome: ...
     def failure(self, code: ErrorCode, retry_after_ms: int | None = None) -> Outcome: ...
 

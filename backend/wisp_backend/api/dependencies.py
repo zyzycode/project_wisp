@@ -1,5 +1,4 @@
 from fastapi import Request
-
 from wisp_backend.completion.service import CompletionService
 
 

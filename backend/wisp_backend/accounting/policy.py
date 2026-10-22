@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from wisp_backend.accounting.contracts import Usage
 
-
 ID_TTL = 86_400
 
 

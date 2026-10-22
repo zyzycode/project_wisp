@@ -18,8 +18,14 @@ class MemoryLedger:
         self.admissions += 1
         return Admission(self.replay)
 
-    async def settle(self, request_id: str, usage: Usage | None, outcome: Outcome | None,
-                     deadline: float | None = None, cancelled: Event | None = None) -> None:
+    async def settle(
+        self,
+        request_id: str,
+        usage: Usage | None,
+        outcome: Outcome | None,
+        deadline: float | None = None,
+        cancelled: Event | None = None,
+    ) -> None:
         self.settlements.append((usage, outcome))
 
     async def maintain(self) -> None:

@@ -6,7 +6,6 @@ from typing import Protocol
 
 from wisp_backend.outcomes import Outcome
 
-
 RESERVATION = 131_072  # Legacy on-disk reservation, also the Groq default.
 
 
@@ -34,7 +33,14 @@ class Admission:
 
 class Ledger(Protocol):
     async def admit(self, request_id: str, digest: str, legacy_digest: str | None = None) -> Admission: ...
-    async def settle(self, request_id: str, usage: Usage | None, outcome: Outcome | None,
-                     deadline: float | None = None, cancelled: Event | None = None) -> None: ...
+
+    async def settle(
+        self,
+        request_id: str,
+        usage: Usage | None,
+        outcome: Outcome | None,
+        deadline: float | None = None,
+        cancelled: Event | None = None,
+    ) -> None: ...
     async def maintain(self) -> None: ...
     async def close(self) -> None: ...

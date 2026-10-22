@@ -1,14 +1,13 @@
 """Shared strict value validation, independent of transport and scenarios."""
 
-from typing import Annotated
 import unicodedata
+from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from pydantic.fields import FieldInfo
 
-
 # ECMAScript trim whitespace, matching the desktop transport boundary.
-TRIM_CHARACTERS = '\t\n\x0b\x0c\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'
+TRIM_CHARACTERS = "\t\n\x0b\x0c\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 
 
 def trim_text(value: str) -> str:
@@ -30,8 +29,11 @@ def validate_text(value: str, limit: int) -> str:
 
 
 def text_type(limit: int) -> object:
-    return Annotated[str, AfterValidator(lambda value: validate_text(value, limit)),
-                     Field(description=f"Nonblank plain text, at most {limit} UTF-16 code units; no controls except newline/tab.")]
+    return Annotated[
+        str,
+        AfterValidator(lambda value: validate_text(value, limit)),
+        Field(description=f"Nonblank plain text, at most {limit} UTF-16 code units; no controls except newline/tab."),
+    ]
 
 
 class Contract(BaseModel):

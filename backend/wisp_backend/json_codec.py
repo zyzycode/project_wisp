@@ -3,7 +3,6 @@
 import json
 from typing import NoReturn, TypeAlias, cast
 
-
 JSONValue: TypeAlias = str | int | float | bool | None | list["JSONValue"] | dict[str, "JSONValue"]
 
 

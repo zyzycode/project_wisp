@@ -1,18 +1,16 @@
 """Immutable reviewed lore: primary activation, stable ranking and bounded selection."""
 
-from dataclasses import dataclass
 import json
 import logging
+import unicodedata
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal
-import unicodedata
 
 from pydantic import Field
-
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.json_codec import decode_json
 from wisp_backend.validation import Contract, text_type
-
 
 CATALOGUE_PATH = Path(__file__).with_name("lore.json")
 logger = logging.getLogger(__name__)
@@ -75,8 +73,11 @@ def parse_catalogue(value: object) -> LoreCatalogue:
         topics.add(topic)
         # Normalized duplicates count as one match in activation/ranking.
         keys = tuple(dict.fromkeys(tokens(key) for key in entry.keys))
-        entries.append(LoreEntry(entry.id, entry.topic, entry.locale, keys, entry.text,
-                                 entry.priority, entry.order, entry.sourceRef))
+        entries.append(
+            LoreEntry(
+                entry.id, entry.topic, entry.locale, keys, entry.text, entry.priority, entry.order, entry.sourceRef
+            )
+        )
     return LoreCatalogue(source.revision, tuple(entries))
 
 
@@ -94,8 +95,11 @@ def load_catalogue() -> LoreCatalogue | None:
 
 
 def match_key(query: tuple[str, ...], key: tuple[str, ...]) -> bool:
-    return bool(key) and all(len(token) <= 80 for token in key) and any(
-        query[index:index + len(key)] == key for index in range(len(query) - len(key) + 1))
+    return (
+        bool(key)
+        and all(len(token) <= 80 for token in key)
+        and any(query[index : index + len(key)] == key for index in range(len(query) - len(key) + 1))
+    )
 
 
 def select_entries(catalogue: LoreCatalogue, text: str, locale: str) -> tuple[LoreEntry, ...]:
@@ -127,8 +131,21 @@ def lore_block(catalogue: LoreCatalogue | None, text: str, locale: str) -> Conte
     selected = select_entries(catalogue, text, locale)
     if not selected:
         return None
-    payload = {"revision": catalogue.revision, "entries": [
-        {"id": entry.id, "topic": entry.topic, "text": entry.text} for entry in selected]}
-    return ContextBlock("lore", "lore", False, 40, 25,
-                        (ContextMessage("user", "Untrusted author lore_context JSON (world reference only):\n" +
-                                        json.dumps(payload, ensure_ascii=False)),))
+    payload = {
+        "revision": catalogue.revision,
+        "entries": [{"id": entry.id, "topic": entry.topic, "text": entry.text} for entry in selected],
+    }
+    return ContextBlock(
+        "lore",
+        "lore",
+        False,
+        40,
+        25,
+        (
+            ContextMessage(
+                "user",
+                "Untrusted author lore_context JSON (world reference only):\n"
+                + json.dumps(payload, ensure_ascii=False),
+            ),
+        ),
+    )

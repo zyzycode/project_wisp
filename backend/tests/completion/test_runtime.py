@@ -4,16 +4,17 @@ import asyncio
 from pathlib import Path
 
 import httpx
-from pydantic import SecretStr
 import pytest
-
+import wisp_backend.runtime as runtime
+from pydantic import SecretStr
 from tests.doubles import MemoryLedger
 from wisp_backend.config.settings import Settings
 from wisp_backend.errors import ServiceError
-import wisp_backend.runtime as runtime
 
 
-def test_failed_provider_construction_closes_client_and_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_failed_provider_construction_closes_client_and_database(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = httpx.AsyncClient(transport=httpx.MockTransport(lambda _: pytest.fail("Unexpected network")))
     settings = Settings(api_key=SecretStr("test-key"), ledger_path=tmp_path / "startup.sqlite")
 
@@ -30,6 +31,7 @@ def test_failed_provider_construction_closes_client_and_database(tmp_path: Path,
         assert client.is_closed
         # A live SQLite connection prevents this move on Windows.
         settings.ledger_path.rename(tmp_path / "closed.sqlite")
+
     asyncio.run(run())
 
 

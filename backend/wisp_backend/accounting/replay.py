@@ -1,11 +1,10 @@
 """Bounded volatile reply snapshots, published only after durable settlement."""
 
+import time
 from collections import OrderedDict
 from threading import Event
-import time
 
 from wisp_backend.outcomes import Outcome
-
 
 CACHE_TTL = 600
 CACHE_CAPACITY = 100
@@ -13,6 +12,7 @@ CACHE_CAPACITY = 100
 
 class ReplayCache:
     """All calls are serialized by the owning ledger's lock."""
+
     def __init__(self) -> None:
         self._entries: OrderedDict[str, tuple[float, Outcome, Event | None]] = OrderedDict()
 
@@ -29,8 +29,9 @@ class ReplayCache:
             return None
         return outcome
 
-    def publish(self, request_id: str, outcome: Outcome, now: float,
-                deadline: float | None, cancelled: Event | None) -> None:
+    def publish(
+        self, request_id: str, outcome: Outcome, now: float, deadline: float | None, cancelled: Event | None
+    ) -> None:
         if deadline is not None and time.monotonic() >= deadline:
             return
         if cancelled is not None and cancelled.is_set():

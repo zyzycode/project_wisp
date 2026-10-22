@@ -1,14 +1,14 @@
 """Connection, operation-scoped ORM sessions and schema initialization for SQLite."""
+
+import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-import sqlite3
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Connection, Engine, URL
+from sqlalchemy.engine import URL, Connection, Engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import ConnectionPoolEntry, NullPool
-
 from wisp_backend.accounting.models import Base
 
 
@@ -33,7 +33,9 @@ def create_ledger_engine(path: Path) -> Engine:
     engine = create_engine(
         URL.create("sqlite+pysqlite", database=str(path)),
         connect_args={"timeout": 0.25, "check_same_thread": False},
-        poolclass=NullPool, echo=False, hide_parameters=True,
+        poolclass=NullPool,
+        echo=False,
+        hide_parameters=True,
     )
     event.listen(engine, "connect", _configure_connection)
     event.listen(engine, "begin", _begin)

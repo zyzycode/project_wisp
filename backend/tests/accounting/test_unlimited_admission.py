@@ -1,12 +1,11 @@
 """Accounting must not enforce the removed local request or token quotas."""
 
 import asyncio
+import sqlite3
 from contextlib import closing
 from pathlib import Path
-import sqlite3
 
 import pytest
-
 from tests.helpers import Clock
 from wisp_backend.accounting.contracts import Admission
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
@@ -41,7 +40,10 @@ def test_requests_exceed_all_former_quotas_and_survive_restart(tmp_path: Path, p
                 await ledger.admit("0", "digest")
             with closing(sqlite3.connect(path)) as db:
                 assert db.execute("SELECT requests,reserved,uncertain FROM days").fetchone() == (
-                    106, reservation, 105 * reservation)
+                    106,
+                    reservation,
+                    105 * reservation,
+                )
         finally:
             await ledger.close()
 

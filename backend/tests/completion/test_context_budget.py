@@ -1,23 +1,27 @@
 """Selection invariants and trust boundaries, without transport or a tokenizer."""
 
-from dataclasses import replace
 import asyncio
 import json
+from dataclasses import replace
 
 import pytest
-
-from wisp_backend.completion.context import ContextBlock, ContextMessage, ContextOverflow, ContextSource, render_messages, select_context
-from wisp_backend.completion.prompts.chat import build_chat_blocks
+from wisp_backend.completion.context import (
+    ContextBlock,
+    ContextMessage,
+    ContextOverflow,
+    ContextSource,
+    render_messages,
+    select_context,
+    select_context_async,
+)
+from wisp_backend.completion.prompts.chat import MEMORY_SYSTEM_PROMPT, SYSTEM_PROMPT, build_chat_blocks
 from wisp_backend.completion.prompts.context import DialogueTurn, MemoryChatContext, TouchContext
-from wisp_backend.completion.prompts.chat import MEMORY_SYSTEM_PROMPT, SYSTEM_PROMPT
 from wisp_backend.completion.prompts.touch import build_touch_blocks
 from wisp_backend.completion.replies import Decision
 from wisp_backend.providers.context_budget import estimate_input
-from wisp_backend.completion.context import select_context_async
 
 
-def block(key: str, content: str, *, required: bool = False, priority: int = 100,
-          order: int = 0) -> ContextBlock:
+def block(key: str, content: str, *, required: bool = False, priority: int = 100, order: int = 0) -> ContextBlock:
     return ContextBlock(key, "dialogue", required, priority, order, (ContextMessage("user", content),))
 
 
@@ -27,7 +31,7 @@ def cost(blocks: tuple[ContextBlock, ...]) -> int:
 
 
 def test_exact_boundary_and_required_overflow_never_slice_unicode() -> None:
-    required = (block("current", "😀漢字\n\"\\é", required=True),)
+    required = (block("current", '😀漢字\n"\\é', required=True),)
     boundary = cost(required)
     assert select_context(required, boundary, cost) == required
     with pytest.raises(ContextOverflow, match="Required context"):
@@ -71,7 +75,9 @@ def test_omitting_optional_context_is_valid() -> None:
     assert select_context((optional, current), cost((current,)), cost) == (current,)
 
 
-@pytest.mark.parametrize("source", ["desktop_character", "desktop_memory", "server_examples", "previous_ai", "dialogue", "desktop_event"])
+@pytest.mark.parametrize(
+    "source", ["desktop_character", "desktop_memory", "server_examples", "previous_ai", "dialogue", "desktop_event"]
+)
 def test_data_blocks_cannot_use_system_role(source: ContextSource) -> None:
     with pytest.raises(ValueError, match="Only server instructions"):
         replace(block("untrusted", "payload"), source=source, messages=(ContextMessage("system", "payload"),))
@@ -80,8 +86,12 @@ def test_data_blocks_cannot_use_system_role(source: ContextSource) -> None:
 def test_fact_correction_and_current_state_survive_old_history_and_examples() -> None:
     character = {"personality": {"aiSelfConcept": "I am Wisp"}, "synthesizedTone": "sleepy"}
     memory = {"facts": [{"key": "user.display_name", "value": "New"}], "episodes": [], "characterPreferences": []}
-    context = MemoryChatContext("en", character, messages=(DialogueTurn("user", "Old"),
-                                DialogueTurn("assistant", "Old"), DialogueTurn("user", "Call me New")), memory=memory)
+    context = MemoryChatContext(
+        "en",
+        character,
+        messages=(DialogueTurn("user", "Old"), DialogueTurn("assistant", "Old"), DialogueTurn("user", "Call me New")),
+        memory=memory,
+    )
     blocks = build_chat_blocks(context)
     required = tuple(item for item in blocks if item.required)
     selected = select_context(blocks, cost(required), cost)
@@ -112,20 +122,27 @@ def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> 
 
 
 def test_async_counts_preserve_selection_order_history_suffix_and_equality() -> None:
-    blocks = (block("required", "Текущая реплика", required=True, order=100),
-              block("old", "a", order=50), block("middle", "x" * 1000, order=52),
-              block("new", "Последняя пара", order=54),
-              replace(block("examples", "пример", priority=10), source="server_examples"))
+    blocks = (
+        block("required", "Текущая реплика", required=True, order=100),
+        block("old", "a", order=50),
+        block("middle", "x" * 1000, order=52),
+        block("new", "Последняя пара", order=54),
+        replace(block("examples", "пример", priority=10), source="server_examples"),
+    )
+
     async def run() -> None:
         for budget in (cost(blocks), cost(blocks) - 1, cost((blocks[0], blocks[3], blocks[4])), cost((blocks[0],))):
             calls = []
+
             async def count(candidate: tuple[ContextBlock, ...]) -> int:
                 calls.append(candidate)
                 return cost(candidate)
+
             assert await select_context_async(blocks, budget, count) == select_context(blocks, budget, cost)
             assert len(calls) == len(set(calls)) <= 6
             if budget == cost(blocks):
                 assert len(calls) == 1
         with pytest.raises(ContextOverflow):
             await select_context_async(blocks, cost((blocks[0],)) - 1, count)
+
     asyncio.run(run())

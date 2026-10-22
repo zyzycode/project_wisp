@@ -3,9 +3,7 @@
 import json
 
 import httpx
-
 from tests.helpers import CONTRACT_FIXTURES
-
 
 FIXTURES = CONTRACT_FIXTURES / "desktop-backend-v1"
 

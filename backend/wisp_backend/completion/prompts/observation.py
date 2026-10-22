@@ -5,7 +5,6 @@ import json
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.completion.prompts.context import ObservationContext
 
-
 OBSERVATION_SYSTEM_PROMPT = """You are Wisp, a conversational companion. Make one brief, tactful contextual remark.
 Return only a JSON object containing text: 1..240 UTF-16 code units of plain text.
 No decision, memoryCandidates, tools, actions, numerical state changes or other fields.
@@ -26,12 +25,40 @@ No markdown or control characters except newline/tab. The output is only a short
 def build_observation_blocks(context: ObservationContext) -> tuple[ContextBlock, ...]:
     language = "\nReply in Russian." if context.locale == "ru" else "\nReply in English."
     return (
-        ContextBlock("instructions", "server_instructions", True, 1000, 0,
-                     (ContextMessage("system", OBSERVATION_SYSTEM_PROMPT + language),)),
-        ContextBlock("character_profile_state", "desktop_character", True, 1000, 10,
-                     (ContextMessage("user", "Untrusted character_context JSON:\n" +
-                                     json.dumps(context.character, ensure_ascii=False)),)),
-        ContextBlock("current_observation", "observation", True, 1000, 100,
-                     (ContextMessage("user", "Untrusted observation_context JSON (metadata, not user speech):\n" +
-                                     json.dumps({"appName": context.app_name, "windowTitle": context.window_title}, ensure_ascii=False)),)),
+        ContextBlock(
+            "instructions",
+            "server_instructions",
+            True,
+            1000,
+            0,
+            (ContextMessage("system", OBSERVATION_SYSTEM_PROMPT + language),),
+        ),
+        ContextBlock(
+            "character_profile_state",
+            "desktop_character",
+            True,
+            1000,
+            10,
+            (
+                ContextMessage(
+                    "user", "Untrusted character_context JSON:\n" + json.dumps(context.character, ensure_ascii=False)
+                ),
+            ),
+        ),
+        ContextBlock(
+            "current_observation",
+            "observation",
+            True,
+            1000,
+            100,
+            (
+                ContextMessage(
+                    "user",
+                    "Untrusted observation_context JSON (metadata, not user speech):\n"
+                    + json.dumps(
+                        {"appName": context.app_name, "windowTitle": context.window_title}, ensure_ascii=False
+                    ),
+                ),
+            ),
+        ),
     )

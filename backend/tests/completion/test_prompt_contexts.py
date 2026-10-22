@@ -3,15 +3,18 @@
 import json
 
 import pytest
-
 from tests.helpers import CONTRACT_FIXTURES
 from wisp_backend.api.dispatch import prepare_context, prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.completion.policies import POLICIES
 from wisp_backend.completion.prompts.context import (
-    ChatContext, DialogueTurn, InteractionChatContext, MemoryChatContext, ObservationContext, SummaryContext,
+    ChatContext,
+    DialogueTurn,
+    InteractionChatContext,
+    MemoryChatContext,
+    ObservationContext,
+    SummaryContext,
 )
-
 
 REQUEST_FIXTURES = {
     "/v1/chat": "desktop-backend-v1/request.valid.json",
@@ -56,9 +59,15 @@ def test_chat_variants_require_memory_and_interaction_policy() -> None:
     assert MemoryChatContext("en", {}, messages=messages, memory={}).memory == {}
 
 
-@pytest.mark.parametrize("messages", [(), (DialogueTurn("assistant", "Hi"),),
-                                     (DialogueTurn("user", "Hi"), DialogueTurn("assistant", "Hi")),
-                                     (DialogueTurn("user", "Hi"),) * 3])
+@pytest.mark.parametrize(
+    "messages",
+    [
+        (),
+        (DialogueTurn("assistant", "Hi"),),
+        (DialogueTurn("user", "Hi"), DialogueTurn("assistant", "Hi")),
+        (DialogueTurn("user", "Hi"),) * 3,
+    ],
+)
 def test_internal_chat_requires_alternating_pairs_and_current_user(messages: tuple[DialogueTurn, ...]) -> None:
     with pytest.raises(ValueError):
         ChatContext("en", {}, messages=messages)

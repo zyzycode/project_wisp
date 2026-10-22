@@ -13,7 +13,15 @@ def test_public_schema(client_factory, body):
         touch = spec["paths"]["/v1/touch"]["post"]
         assert set(touch["responses"]) == set(operation["responses"])
         schemas = spec["components"]["schemas"]
-        assert set(schemas["ChatRequest"]["required"]) == {"version", "requestId", "event", "messages", "stream", "locale", "character"}
+        assert set(schemas["ChatRequest"]["required"]) == {
+            "version",
+            "requestId",
+            "event",
+            "messages",
+            "stream",
+            "locale",
+            "character",
+        }
         assert schemas["ChatRequest"]["additionalProperties"] is False
         assert schemas["ChatRequest"]["examples"][0] == body
         assert "default" not in schemas["Needs"]["properties"]["boredom"]

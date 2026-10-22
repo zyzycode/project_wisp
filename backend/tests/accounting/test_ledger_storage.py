@@ -1,20 +1,18 @@
 """Storage compatibility and transaction guarantees independent of the SQL adapter."""
 
 import asyncio
+import sqlite3
 from contextlib import closing
 from pathlib import Path
-import sqlite3
 
 import pytest
+import wisp_backend.accounting.sqlite_ledger as ledger_module
 from sqlalchemy import event
 from sqlalchemy.engine import Connection, Engine
-
 from wisp_backend.accounting.contracts import RESERVATION, Usage
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
-import wisp_backend.accounting.sqlite_ledger as ledger_module
 from wisp_backend.errors import ServiceError
 from wisp_backend.outcomes import Outcome
-
 
 NOW = 1_800_000_000.0
 
@@ -24,7 +22,8 @@ def test_existing_typeless_counters_survive_open_correction_and_restart(tmp_path
     huge = 10**100
     bucket = int(NOW // 86_400)
     with closing(sqlite3.connect(path)) as db, db:
-        db.executescript('''
+        db.executescript(
+            """
             CREATE TABLE meta (key TEXT PRIMARY KEY, value REAL NOT NULL);
             CREATE TABLE days (bucket INTEGER PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0,
                 reserved INTEGER NOT NULL DEFAULT 0, confirmed NOT NULL DEFAULT 0,
@@ -33,11 +32,11 @@ def test_existing_typeless_counters_survive_open_correction_and_restart(tmp_path
             CREATE TABLE entries (id TEXT PRIMARY KEY, digest TEXT NOT NULL, admitted REAL NOT NULL,
                 bucket INTEGER NOT NULL, state TEXT NOT NULL, corrected INTEGER NOT NULL DEFAULT 0,
                 reservation INTEGER NOT NULL DEFAULT 131072);
-        ''')
+        """
+        )
         db.executemany("INSERT INTO meta VALUES (?, ?)", [("clock", NOW), ("halt", 1)])
         db.execute("INSERT INTO days VALUES (?,1,0,?,?,?,0)", (bucket, str(huge), RESERVATION, str(huge)))
-        db.execute("INSERT INTO entries VALUES ('old','digest',?,?,'uncertain',0,?)",
-                   (NOW, bucket, RESERVATION))
+        db.execute("INSERT INTO entries VALUES ('old','digest',?,?,'uncertain',0,?)", (NOW, bucket, RESERVATION))
 
     async def run() -> None:
         for index in range(2):
@@ -56,7 +55,10 @@ def test_existing_typeless_counters_survive_open_correction_and_restart(tmp_path
         row = db.execute("SELECT requests,reserved,confirmed,uncertain,prompt,completion FROM days").fetchone()
         assert tuple(map(int, row)) == (3, 0, huge + 7, 0, huge + 5, 2)
         assert db.execute("SELECT state,corrected,reservation FROM entries WHERE id='old'").fetchone() == (
-            "confirmed", 1, RESERVATION)
+            "confirmed",
+            1,
+            RESERVATION,
+        )
         assert db.execute("SELECT value FROM meta WHERE key='halt'").fetchone()[0] == 1
 
 
@@ -67,8 +69,10 @@ def test_connection_safeguards_and_fresh_counter_types(tmp_path: Path) -> None:
 
         def read_pragmas() -> tuple[object, ...]:
             with ledger.db.begin():
-                return tuple(ledger.db.exec_driver_sql(f"PRAGMA {name}").scalar_one()
-                             for name in ("secure_delete", "journal_mode", "synchronous"))
+                return tuple(
+                    ledger.db.exec_driver_sql(f"PRAGMA {name}").scalar_one()
+                    for name in ("secure_delete", "journal_mode", "synchronous")
+                )
 
         try:
             assert await ledger._run(read_pragmas) == (1, "delete", 2)
@@ -79,7 +83,10 @@ def test_connection_safeguards_and_fresh_counter_types(tmp_path: Path) -> None:
             column_types = {row[1]: row[2] for row in db.execute("PRAGMA table_info(days)")}
             assert [column_types[name] for name in ("confirmed", "prompt", "completion")] == ["", "", ""]
             assert db.execute("SELECT typeof(confirmed),typeof(prompt),typeof(completion) FROM days").fetchone() == (
-                "integer", "integer", "integer")
+                "integer",
+                "integer",
+                "integer",
+            )
 
     asyncio.run(run())
 
@@ -123,10 +130,12 @@ def test_failed_settlement_rolls_back_usage_and_does_not_publish_cache(tmp_path:
         try:
             await ledger.admit("one", "digest")
             with closing(sqlite3.connect(path)) as db, db:
-                db.execute('''CREATE TRIGGER fail_settlement BEFORE UPDATE OF confirmed ON days
-                    BEGIN SELECT RAISE(ABORT, 'synthetic storage failure'); END''')
+                db.execute(
+                    """CREATE TRIGGER fail_settlement BEFORE UPDATE OF confirmed ON days
+                    BEGIN SELECT RAISE(ABORT, 'synthetic storage failure'); END"""
+                )
             with pytest.raises(ServiceError, match="upstream_unavailable"):
-                await ledger.settle("one", Usage(RESERVATION, 1, RESERVATION + 1), Outcome(200, b'{}'))
+                await ledger.settle("one", Usage(RESERVATION, 1, RESERVATION + 1), Outcome(200, b"{}"))
             assert "one" not in ledger.cache
             with closing(sqlite3.connect(path)) as db, db:
                 assert db.execute("SELECT reserved,confirmed,uncertain FROM days").fetchone() == (RESERVATION, 0, 0)

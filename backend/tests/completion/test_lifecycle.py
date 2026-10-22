@@ -2,11 +2,10 @@ import asyncio
 import json
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 import httpx
-from pydantic import SecretStr
 import pytest
-
+from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from tests.helpers import TrackedStream
 from wisp_backend.api.dependencies import get_completion_service
 from wisp_backend.application import create_app
@@ -18,6 +17,7 @@ from wisp_backend.config.settings import Settings
 def test_client_shutdown(app_factory, monkeypatch):
     def load_env():
         pytest.fail("Explicit settings must bypass environment")
+
     monkeypatch.setattr("wisp_backend.application.load_settings", load_env)
     app = app_factory(lambda _: httpx.Response(200))
     with TestClient(app):
@@ -44,10 +44,14 @@ def test_startup_loads_settings_once(tmp_path: Path, monkeypatch: pytest.MonkeyP
         assert app.state.completion_service.ledger.path == settings.ledger_path
 
 
-@pytest.mark.parametrize("chunks,error,status", [
-    ([b'{'], None, 502), ([b''], httpx.ReadTimeout("private"), 504),
-    ([b'a' * (256 * 1024 + 1), b'not-read'], None, 502),
-])
+@pytest.mark.parametrize(
+    "chunks,error,status",
+    [
+        ([b"{"], None, 502),
+        ([b""], httpx.ReadTimeout("private"), 504),
+        ([b"a" * (256 * 1024 + 1), b"not-read"], None, 502),
+    ],
+)
 def test_response_closed_and_read_bounded(client_factory, body, chunks, error, status):
     stream = TrackedStream(chunks, error)
     with client_factory(lambda _: httpx.Response(200, stream=stream)) as client:
@@ -60,7 +64,7 @@ def test_provider_swap_and_total_deadline(app_factory, body):
     class OtherProvider:
         async def complete(self, request, timeout):
             assert request.blocks
-            return ProviderResult(json.dumps({'text': "Other"}))
+            return ProviderResult(json.dumps({"text": "Other"}))
 
     app = app_factory(lambda _: pytest.fail("Wrong provider"))
     with TestClient(app) as client:
@@ -70,16 +74,19 @@ def test_provider_swap_and_total_deadline(app_factory, body):
 
         class SlowProvider:
             cancelled = False
+
             async def complete(self, request, timeout):
                 try:
                     await asyncio.sleep(10)
                 finally:
                     self.cancelled = True
+
         from uuid import uuid4
+
         body["requestId"] = str(uuid4())
         slow = SlowProvider()
         service.provider = slow
-        service.deadline = .01
+        service.deadline = 0.01
         response = client.post("/v1/chat", json=body)
         assert response.status_code == 504
         assert slow.cancelled

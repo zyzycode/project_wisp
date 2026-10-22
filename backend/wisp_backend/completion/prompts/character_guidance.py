@@ -4,7 +4,6 @@ from typing import get_args
 
 from wisp_backend.completion.replies import Behavior, Mood, Tone
 
-
 CHARACTER_GUIDANCE = """
 Identity is the supplied personality.aiSelfConcept, not a new persona to invent.
 Express that stable identity through the CURRENT snapshot; history, lore and examples

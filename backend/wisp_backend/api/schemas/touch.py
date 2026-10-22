@@ -3,7 +3,6 @@
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator
-
 from wisp_backend.api.schemas.common import CharacterContext, RequestId, Version, false_only
 from wisp_backend.completion.replies import TouchModelReply
 from wisp_backend.validation import Contract

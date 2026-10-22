@@ -11,7 +11,6 @@ from typing import Literal, TypeAlias
 
 from wisp_backend.completion.prompts.lore import LoreCatalogue
 
-
 Locale: TypeAlias = Literal["ru", "en"]
 Snapshot: TypeAlias = dict[str, object]
 

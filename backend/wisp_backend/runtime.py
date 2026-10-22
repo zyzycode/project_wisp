@@ -1,12 +1,11 @@
 """Own startup and shutdown of the ledger, maintenance, HTTP client and execution."""
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
-import logging
 
 import httpx
-
 from wisp_backend.accounting.contracts import Ledger
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
 from wisp_backend.completion.service import CompletionService
@@ -14,7 +13,6 @@ from wisp_backend.config.settings import Settings
 from wisp_backend.errors import ServiceError
 from wisp_backend.providers.client import create_client
 from wisp_backend.providers.factory import create_provider
-
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +34,9 @@ async def stop_maintenance(task: asyncio.Task[None]) -> None:
 
 
 @asynccontextmanager
-async def open_runtime(settings: Settings, transport: httpx.AsyncBaseTransport | None = None) -> AsyncIterator[CompletionService]:
+async def open_runtime(
+    settings: Settings, transport: httpx.AsyncBaseTransport | None = None
+) -> AsyncIterator[CompletionService]:
     async with AsyncExitStack() as resources:
         ledger = await SQLiteLedger.open(settings.ledger_path, reservation=settings.profile.reservation)
         resources.push_async_callback(ledger.close)

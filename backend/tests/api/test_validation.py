@@ -1,23 +1,28 @@
 import asyncio
-from copy import deepcopy
 import json
+from copy import deepcopy
 
-from pydantic import ValidationError
 import pytest
-
+from pydantic import ValidationError
 from wisp_backend.api.boundary import CompletionBoundary
 from wisp_backend.api.schemas.chat import ChatRequest
 from wisp_backend.api.schemas.common import ErrorDetail
 from wisp_backend.completion.replies import ModelReply
 
-
 NUMBERS = [
-    ("needs.energy", 100), ("needs.attention", 100), ("needs.play", 100),
-    ("needs.comfort", 100), ("needs.boredom", 100),
-    ("relationship.friendship", 1000), ("relationship.love", 1000),
-    ("personality.traits.shyness", 1), ("personality.traits.playfulness", 1),
-    ("personality.traits.sensitivity", 1), ("personality.traits.boldness", 1),
-    ("intimacy.flirtiness", 100), ("intimacy.romanticCharge", 100),
+    ("needs.energy", 100),
+    ("needs.attention", 100),
+    ("needs.play", 100),
+    ("needs.comfort", 100),
+    ("needs.boredom", 100),
+    ("relationship.friendship", 1000),
+    ("relationship.love", 1000),
+    ("personality.traits.shyness", 1),
+    ("personality.traits.playfulness", 1),
+    ("personality.traits.sensitivity", 1),
+    ("personality.traits.boldness", 1),
+    ("intimacy.flirtiness", 100),
+    ("intimacy.romanticCharge", 100),
 ]
 
 
@@ -34,7 +39,7 @@ def test_numeric_inclusive_ranges_and_types(body, path, maximum):
     for value in [0, maximum, maximum / 2]:
         put(body, path, value)
         ChatRequest.model_validate(body)
-    for value in [-.01, maximum + .01, "0", None, True, float("nan"), float("inf")]:
+    for value in [-0.01, maximum + 0.01, "0", None, True, float("nan"), float("inf")]:
         put(body, path, value)
         with pytest.raises(ValidationError):
             ChatRequest.model_validate(body)
@@ -60,15 +65,24 @@ def test_character_text_limits(body, path, limit):
 
 def test_history_order_and_utf16(body):
     for count in [1, 3, 5, 7]:
-        body["messages"] = [{"role": "user" if index % 2 == 0 else "assistant",
-                            "content": "😀" * (120 if index % 2 == 0 else 1000)} for index in range(count)]
+        body["messages"] = [
+            {"role": "user" if index % 2 == 0 else "assistant", "content": "😀" * (120 if index % 2 == 0 else 1000)}
+            for index in range(count)
+        ]
         ChatRequest.model_validate(body)
-    variants = [[], [{"role": "assistant", "content": "hi"}],
+    variants = [
+        [],
+        [{"role": "assistant", "content": "hi"}],
         [{"role": "user", "content": "hi"}] * 3,
         [{"role": "system", "content": "hi"}],
         [{"role": "user", "content": "😀" * 121}],
         [{"role": "user", "content": " " + "x" * 240}],
-        [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "x" * 2001}, {"role": "user", "content": "hi"}]]
+        [
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "x" * 2001},
+            {"role": "user", "content": "hi"},
+        ],
+    ]
     for messages in variants:
         body["messages"] = messages
         with pytest.raises(ValidationError):
@@ -106,10 +120,18 @@ def test_optional_boredom_preserves_absence(body):
     assert ChatRequest.model_validate(body).character.needs.boredom == 0
 
 
-@pytest.mark.parametrize("extra,code", [({"version": 2}, "unsupported_version"),
-    ({"version": True}, "invalid_request"), ({"version": 1.0}, "invalid_request"),
-    ({"stream": True}, "invalid_request"), ({"stream": 0}, "invalid_request"),
-    ({"locale": "de"}, "invalid_request"), ({"quota": {}}, "invalid_request")])
+@pytest.mark.parametrize(
+    "extra,code",
+    [
+        ({"version": 2}, "unsupported_version"),
+        ({"version": True}, "invalid_request"),
+        ({"version": 1.0}, "invalid_request"),
+        ({"stream": True}, "invalid_request"),
+        ({"stream": 0}, "invalid_request"),
+        ({"locale": "de"}, "invalid_request"),
+        ({"quota": {}}, "invalid_request"),
+    ],
+)
 def test_wire_errors_preserve_id(client_factory, body, extra, code):
     with client_factory(lambda _: pytest.fail("Invalid request reached provider")) as client:
         response = client.post("/v1/chat", json={**body, **extra})
@@ -125,7 +147,7 @@ def test_invalid_id_is_null(client_factory, body, request_id):
         assert response.json()["requestId"] is None
 
 
-@pytest.mark.parametrize("content", [b'{', b'{"version":1,"version":2}', b'{"version":NaN}', b'\xff', b'[]'])
+@pytest.mark.parametrize("content", [b"{", b'{"version":1,"version":2}', b'{"version":NaN}', b"\xff", b"[]"])
 def test_invalid_json(client_factory, content):
     with client_factory(lambda _: pytest.fail("Invalid request reached provider")) as client:
         response = client.post("/v1/chat", content=content, headers={"content-type": "application/json"})
@@ -137,29 +159,40 @@ def test_chunked_limit_stops_reading():
     async def run():
         count = 0
         sent = []
+
         async def receive():
             nonlocal count
             count += 1
             return {"type": "http.request", "body": b"x" * 16385, "more_body": True}
+
         async def send(message):
             sent.append(message)
+
         async def downstream(scope, receive, send):
             pytest.fail("Oversized body reached downstream")
-        await CompletionBoundary(downstream)({"type": "http", "method": "POST", "path": "/v1/chat",
-            "headers": [(b"content-type", b"application/json")]}, receive, send)
+
+        await CompletionBoundary(downstream)(
+            {"type": "http", "method": "POST", "path": "/v1/chat", "headers": [(b"content-type", b"application/json")]},
+            receive,
+            send,
+        )
         assert count == 2
         assert sent[0]["status"] == 413
         assert json.loads(sent[1]["body"])["error"]["code"] == "payload_too_large"
+
     asyncio.run(run())
 
 
 def test_exact_byte_limit(client_factory, body, completion):
     import httpx
+
     raw = json.dumps(body).encode()
     with client_factory(lambda _: httpx.Response(200, json=completion())) as client:
         raw += b" " * (32768 - len(raw))
         assert client.post("/v1/chat", content=raw, headers={"content-type": "application/json"}).status_code == 200
-        assert client.post("/v1/chat", content=raw + b" ", headers={"content-type": "application/json"}).status_code == 413
+        assert (
+            client.post("/v1/chat", content=raw + b" ", headers={"content-type": "application/json"}).status_code == 413
+        )
 
 
 def test_retry_hint_bounds():

@@ -1,15 +1,14 @@
 """ORM unit-of-work guarantees at the existing SQLite boundary."""
 
 import asyncio
+import sqlite3
 from contextlib import closing
 from pathlib import Path
-import sqlite3
 
 import pytest
 from sqlalchemy import event, inspect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
 from wisp_backend.accounting.contracts import RESERVATION, Usage
 from wisp_backend.accounting.models import DailyUsage, LedgerEntry
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
@@ -84,14 +83,16 @@ def test_commit_failure_never_publishes_replay(tmp_path: Path) -> None:
 
 
 def test_recovery_failure_rolls_back_previously_flushed_entries(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     path = tmp_path / "recovery.sqlite"
     settle = SQLiteLedger._settle
     calls = 0
 
-    def fail_second(self: SQLiteLedger, session: Session, request_id: str,
-                    usage: Usage | None, outcome: Outcome | None) -> bool:
+    def fail_second(
+        self: SQLiteLedger, session: Session, request_id: str, usage: Usage | None, outcome: Outcome | None
+    ) -> bool:
         nonlocal calls
         calls += 1
         if calls == 2:

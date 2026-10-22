@@ -3,9 +3,8 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
 import httpx
-
+from fastapi import FastAPI
 from wisp_backend.api.setup import install_api
 from wisp_backend.completion.prompts.lore import load_catalogue
 from wisp_backend.config.loader import load_settings

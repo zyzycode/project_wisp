@@ -1,14 +1,12 @@
 """Isolated v6 foreground metadata; no transcript, memory or native identifiers."""
 
-from typing import Annotated, Literal
 import unicodedata
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BeforeValidator
-
 from wisp_backend.api.schemas.common import CharacterContext, ErrorResponse, RequestId, false_only
 from wisp_backend.completion.replies import EventModelReply
 from wisp_backend.validation import Contract, trim_text
-
 
 BIDI_CONTROLS = frozenset("\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
 

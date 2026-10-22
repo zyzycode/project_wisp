@@ -1,8 +1,8 @@
 """Admission, bounded provider lifetime and independent terminal settlement."""
 
 import asyncio
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
 from threading import Event
 from typing import Any, TypeVar
 
@@ -11,7 +11,6 @@ from wisp_backend.completion.contracts import CompletionJob, ProviderResult, Rep
 from wisp_backend.completion.ports import Provider
 from wisp_backend.errors import ErrorCode, ServiceError
 from wisp_backend.outcomes import Outcome
-
 
 TaskResult = TypeVar("TaskResult")
 logger = logging.getLogger(__name__)
@@ -25,6 +24,7 @@ class _RequestState:
     flag also reaches the SQLite thread, preventing a late commit from caching
     a response after the caller has timed out or disconnected.
     """
+
     request_id: str
     encoder: ReplyEncoder
     deadline: float
@@ -54,8 +54,9 @@ class CompletionService:
         self.requests: set[asyncio.Task[Any]] = set()
         self.background: set[asyncio.Task[Any]] = set()
 
-    async def complete(self, job: CompletionJob, digest: str, started: float,
-                       legacy_digest: str | None = None) -> Outcome:
+    async def complete(
+        self, job: CompletionJob, digest: str, started: float, legacy_digest: str | None = None
+    ) -> Outcome:
         """Admit once, generate and settle under the original HTTP deadline.
 
         ``started`` is monotonic time captured before reading the request body.
@@ -83,8 +84,9 @@ class CompletionService:
             state.publication_cancelled.set()
             # Cancellation can race a committed admission on the SQLite worker.
             if state.admission_task and not state.admitted:
-                self._track_background(asyncio.create_task(
-                    self._settle_abandoned_admission(state.admission_task, state.request_id)))
+                self._track_background(
+                    asyncio.create_task(self._settle_abandoned_admission(state.admission_task, state.request_id))
+                )
         except ServiceError as error:
             state.fail(error.code, error.retry_after_ms)
         finally:
@@ -101,8 +103,9 @@ class CompletionService:
         state.admission_task = asyncio.create_task(self.ledger.admit(state.request_id, digest, legacy_digest))
         done, _ = await asyncio.wait({state.admission_task}, timeout=state.remaining())
         if not done:
-            self._track_background(asyncio.create_task(
-                self._settle_abandoned_admission(state.admission_task, state.request_id)))
+            self._track_background(
+                asyncio.create_task(self._settle_abandoned_admission(state.admission_task, state.request_id))
+            )
             state.admission_task = None  # Background cleanup now owns this admission.
             raise ServiceError("upstream_timeout")
         admission = state.admission_task.result()
@@ -143,8 +146,11 @@ class CompletionService:
         if not state.admitted:
             return
         usage = state.result.usage if isinstance(state.result, ProviderResult) else None
-        settlement = self._track_background(asyncio.create_task(self.ledger.settle(
-            state.request_id, usage, state.outcome, state.deadline, state.publication_cancelled)))
+        settlement = self._track_background(
+            asyncio.create_task(
+                self.ledger.settle(state.request_id, usage, state.outcome, state.deadline, state.publication_cancelled)
+            )
+        )
         try:
             if state.cancelled:
                 await asyncio.shield(settlement)
@@ -162,8 +168,9 @@ class CompletionService:
             raise
         finally:
             if state.provider_task and state.result is None:
-                self._track_background(asyncio.create_task(
-                    self._settle_late_usage(state.provider_task, state.request_id, settlement)))
+                self._track_background(
+                    asyncio.create_task(self._settle_late_usage(state.provider_task, state.request_id, settlement))
+                )
 
     def _track_background(self, task: asyncio.Task[TaskResult]) -> asyncio.Task[TaskResult]:
         self.background.add(task)
@@ -177,8 +184,9 @@ class CompletionService:
         task.add_done_callback(finished)
         return task
 
-    async def _settle_late_usage(self, task: asyncio.Task[ProviderResult], request_id: str,
-                               settlement: asyncio.Task[None]) -> None:
+    async def _settle_late_usage(
+        self, task: asyncio.Task[ProviderResult], request_id: str, settlement: asyncio.Task[None]
+    ) -> None:
         try:
             await asyncio.shield(settlement)
             result = await task

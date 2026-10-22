@@ -1,5 +1,4 @@
 import pytest
-
 from wisp_backend.accounting.contracts import Usage
 from wisp_backend.accounting.policy import plan_settlement
 

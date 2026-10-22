@@ -5,12 +5,10 @@ import hashlib
 from typing import Literal
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
-
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.api.responses import error_response
 from wisp_backend.api.schemas.common import read_request_id
 from wisp_backend.json_codec import decode_json
-
 
 MAX_REQUEST_BYTES = 32 * 1024
 
@@ -28,7 +26,10 @@ class CompletionBoundary:
         scope.setdefault("state", {})["wire_version"] = version
         headers = dict(scope["headers"])
         content_type = headers.get(b"content-type", b"").decode("latin-1").lower()
-        if content_type.split(";", 1)[0].strip() != "application/json" or headers.get(b"content-encoding", b"identity") != b"identity":
+        if (
+            content_type.split(";", 1)[0].strip() != "application/json"
+            or headers.get(b"content-encoding", b"identity") != b"identity"
+        ):
             return await error_response("invalid_request", version=version)(scope, receive, send)
         chunks = bytearray()
 
@@ -43,6 +44,7 @@ class CompletionBoundary:
                 chunks.extend(chunk)
                 if not message.get("more_body", False):
                     return None
+
         try:
             body_deadline = started + endpoint.body_timeout
             error = await asyncio.wait_for(read(), max(0, body_deadline - asyncio.get_running_loop().time()))
@@ -59,11 +61,12 @@ class CompletionBoundary:
         except (ValueError, UnicodeError, RecursionError):
             return await error_response("invalid_request", version=version)(scope, receive, send)
         request_id = read_request_id(data)
-        namespace = scope['method'] + ' ' + scope['path']
-        digest = namespace + ':' + hashlib.sha256(namespace.encode() + b'\0' + chunks).hexdigest()
+        namespace = scope["method"] + " " + scope["path"]
+        digest = namespace + ":" + hashlib.sha256(namespace.encode() + b"\0" + chunks).hexdigest()
         legacy_digest = hashlib.sha256(chunks).hexdigest() if endpoint.legacy_digest else None
-        scope.setdefault('state', {}).update(request_id=request_id, started=started,
-                                            digest=digest, legacy_digest=legacy_digest)
+        scope.setdefault("state", {}).update(
+            request_id=request_id, started=started, digest=digest, legacy_digest=legacy_digest
+        )
         if isinstance(data, dict) and "version" in data and type(data["version"]) is int and data["version"] != version:
             return await error_response("unsupported_version", request_id, version=version)(scope, receive, send)
         delivered = asyncio.Event()

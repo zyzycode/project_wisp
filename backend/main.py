@@ -1,8 +1,8 @@
 """ASGI entry point: python main.py or uvicorn main:app."""
 
-import uvicorn
 from pathlib import Path
 
+import uvicorn
 from wisp_backend.application import create_app
 
 app = create_app()

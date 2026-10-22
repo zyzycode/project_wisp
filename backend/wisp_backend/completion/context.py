@@ -4,9 +4,20 @@ from collections.abc import Awaitable, Callable, Generator
 from dataclasses import dataclass
 from typing import Literal
 
-
-ContextSource = Literal["server_instructions", "desktop_character", "desktop_memory",
-                        "server_examples", "desktop_event", "desktop_interaction", "previous_ai", "dialogue", "lore", "summary", "summary_sources", "observation"]
+ContextSource = Literal[
+    "server_instructions",
+    "desktop_character",
+    "desktop_memory",
+    "server_examples",
+    "desktop_event",
+    "desktop_interaction",
+    "previous_ai",
+    "dialogue",
+    "lore",
+    "summary",
+    "summary_sources",
+    "observation",
+]
 
 
 @dataclass(frozen=True)
@@ -35,12 +46,16 @@ class ContextOverflow(ValueError):
 
 
 def render_messages(blocks: tuple[ContextBlock, ...]) -> list[dict[str, str]]:
-    return [{"role": message.role, "content": message.content}
-            for block in sorted(blocks, key=lambda item: (item.order, item.key)) for message in block.messages]
+    return [
+        {"role": message.role, "content": message.content}
+        for block in sorted(blocks, key=lambda item: (item.order, item.key))
+        for message in block.messages
+    ]
 
 
-def _selection_steps(blocks: tuple[ContextBlock, ...], input_budget: int, *,
-                     full_first: bool = False) -> Generator[tuple[ContextBlock, ...], int, tuple[ContextBlock, ...]]:
+def _selection_steps(
+    blocks: tuple[ContextBlock, ...], input_budget: int, *, full_first: bool = False
+) -> Generator[tuple[ContextBlock, ...], int, tuple[ContextBlock, ...]]:
     """One selection algorithm for local estimates and asynchronous model counts."""
     if full_first and (yield blocks) <= input_budget:
         return tuple(sorted(blocks, key=lambda item: (item.order, item.key)))
@@ -48,8 +63,9 @@ def _selection_steps(blocks: tuple[ContextBlock, ...], input_budget: int, *,
     if (yield selected) > input_budget:
         raise ContextOverflow()
     history_full = False
-    optional = sorted((block for block in blocks if not block.required),
-                      key=lambda item: (-item.priority, -item.order, item.key))
+    optional = sorted(
+        (block for block in blocks if not block.required), key=lambda item: (-item.priority, -item.order, item.key)
+    )
     for block in optional:
         if history_full and block.source == "dialogue":
             continue
@@ -61,8 +77,9 @@ def _selection_steps(blocks: tuple[ContextBlock, ...], input_budget: int, *,
     return tuple(sorted(selected, key=lambda item: (item.order, item.key)))
 
 
-def select_context(blocks: tuple[ContextBlock, ...], input_budget: int,
-                   estimate: Callable[[tuple[ContextBlock, ...]], int]) -> tuple[ContextBlock, ...]:
+def select_context(
+    blocks: tuple[ContextBlock, ...], input_budget: int, estimate: Callable[[tuple[ContextBlock, ...]], int]
+) -> tuple[ContextBlock, ...]:
     """Local selection: preserve mandatory blocks and a contiguous history suffix."""
     steps = _selection_steps(blocks, input_budget)
     candidate = next(steps)
@@ -74,8 +91,9 @@ def select_context(blocks: tuple[ContextBlock, ...], input_budget: int,
             return done.value
 
 
-async def select_context_async(blocks: tuple[ContextBlock, ...], input_budget: int,
-                               count: Callable[[tuple[ContextBlock, ...]], Awaitable[int]]) -> tuple[ContextBlock, ...]:
+async def select_context_async(
+    blocks: tuple[ContextBlock, ...], input_budget: int, count: Callable[[tuple[ContextBlock, ...]], Awaitable[int]]
+) -> tuple[ContextBlock, ...]:
     """Count complete candidate payloads; do not add counts of individual blocks.
 
     Most bounded requests fit in one count call. Otherwise there are at most

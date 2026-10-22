@@ -1,7 +1,5 @@
 from fastapi import APIRouter
-
 from wisp_backend.api.schemas.common import HealthResponse
-
 
 router = APIRouter(tags=["health"])
 

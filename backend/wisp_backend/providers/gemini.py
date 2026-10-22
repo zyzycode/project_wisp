@@ -3,21 +3,23 @@
 from typing import Any
 
 import httpx
-
 from wisp_backend.accounting.contracts import Usage
 from wisp_backend.completion.context import ContextBlock, render_messages, select_context_async
 from wisp_backend.completion.contracts import InferenceRequest
+from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.errors import ServiceError
 from wisp_backend.json_codec import decode_json
-from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.providers.http_provider import HTTPProvider
 
 
 class GeminiProvider(HTTPProvider):
-    def request(self, messages: list[dict[str, str]], settings: AssistantSettings,
-                output_cap: int) -> tuple[str, dict[str, Any]]:
+    def request(
+        self, messages: list[dict[str, str]], settings: AssistantSettings, output_cap: int
+    ) -> tuple[str, dict[str, Any]]:
         generation: dict[str, Any] = {
-            "responseMimeType": "application/json", "maxOutputTokens": output_cap, "candidateCount": 1,
+            "responseMimeType": "application/json",
+            "maxOutputTokens": output_cap,
+            "candidateCount": 1,
             "thinkingConfig": {"thinkingLevel": settings.effective_thinking_level},
         }
         if settings.temperature is not None:
@@ -33,18 +35,21 @@ class GeminiProvider(HTTPProvider):
             else:
                 contents.append({"role": role, "parts": [part]})
         payload: dict[str, Any] = {
-            "systemInstruction": {"parts": [{"text": message["content"]} for message in messages
-                                             if message["role"] == "system"]},
+            "systemInstruction": {
+                "parts": [{"text": message["content"]} for message in messages if message["role"] == "system"]
+            },
             "contents": contents,
             "generationConfig": generation,
         }
         return f"models/{settings.model}:generateContent", payload
 
-    async def select_blocks(self, request: InferenceRequest, cap: int, allowance: int,
-                            deadline: float) -> tuple[ContextBlock, ...]:
+    async def select_blocks(
+        self, request: InferenceRequest, cap: int, allowance: int, deadline: float
+    ) -> tuple[ContextBlock, ...]:
         async def count(blocks: tuple[ContextBlock, ...]) -> int:
             _, payload = self.request(render_messages(blocks), self.settings, cap)
             return await self.count_tokens(payload, deadline)
+
         return await select_context_async(request.blocks, allowance, count)
 
     async def count_tokens(self, payload: dict[str, Any], deadline: float) -> int:
@@ -54,8 +59,11 @@ class GeminiProvider(HTTPProvider):
         Nothing is cached beyond one context selection or persisted in the ledger.
         """
         remaining = self.remaining(deadline)
-        timeout = httpx.Timeout(remaining, connect=min(3, remaining, self.client.timeout.connect),
-                                pool=min(3, remaining, self.client.timeout.pool))
+        timeout = httpx.Timeout(
+            remaining,
+            connect=min(3, remaining, self.client.timeout.connect),
+            pool=min(3, remaining, self.client.timeout.pool),
+        )
         model = f"models/{self.settings.model}"
         body = {"generateContentRequest": {"model": model, **payload}}
         try:
@@ -83,8 +91,12 @@ class GeminiProvider(HTTPProvider):
         metadata = data.get("usageMetadata")
         if not isinstance(metadata, dict):
             return None
-        parts = [metadata.get("promptTokenCount"), metadata.get("candidatesTokenCount"),
-                 metadata.get("thoughtsTokenCount", 0), metadata.get("totalTokenCount")]
+        parts = [
+            metadata.get("promptTokenCount"),
+            metadata.get("candidatesTokenCount"),
+            metadata.get("thoughtsTokenCount", 0),
+            metadata.get("totalTokenCount"),
+        ]
         if any(type(part) is not int or part < 0 for part in parts):
             return None
         prompt, candidates, thoughts, total = parts

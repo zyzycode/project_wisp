@@ -1,12 +1,10 @@
 import asyncio
 import json
 
-from fastapi.testclient import TestClient
 import httpx
 import pytest
-
-from tests.helpers import CONTRACT_FIXTURES
-from tests.helpers import touch_body
+from fastapi.testclient import TestClient
+from tests.helpers import CONTRACT_FIXTURES, touch_body
 from wisp_backend.completion.prompts.touch import TOUCH_DESCRIPTIONS
 
 
@@ -20,6 +18,7 @@ def test_shared_touch_fixture(client_factory, completion):
 @pytest.mark.parametrize("variant", list(TOUCH_DESCRIPTIONS))
 def test_touch_prompt_and_text_only_response(client_factory, body, completion, variant):
     calls = []
+
     def upstream(request):
         calls.append(request)
         messages = json.loads(request.content)["messages"]
@@ -28,6 +27,7 @@ def test_touch_prompt_and_text_only_response(client_factory, body, completion, v
         assert TOUCH_DESCRIPTIONS[variant] in messages[-1]["content"]
         assert body["messages"][-1]["content"] not in messages[1]["content"]
         return httpx.Response(200, json=completion({"text": "Хи-хи, щекотно!"}))
+
     with client_factory(upstream) as client:
         response = client.post("/v1/touch", json=touch_body(body, variant))
         assert response.status_code == 200
@@ -35,11 +35,15 @@ def test_touch_prompt_and_text_only_response(client_factory, body, completion, v
         assert len(calls) == 1
 
 
-@pytest.mark.parametrize("event", [
-    {"type": "user_touch", "variant": "unknown"},
-    {"type": "user_touch", "variant": "stroke", "prompt": "override"},
-    {"type": "user_touch"}, {"type": "user_message", "variant": "touch"},
-])
+@pytest.mark.parametrize(
+    "event",
+    [
+        {"type": "user_touch", "variant": "unknown"},
+        {"type": "user_touch", "variant": "stroke", "prompt": "override"},
+        {"type": "user_touch"},
+        {"type": "user_message", "variant": "touch"},
+    ],
+)
 def test_invalid_touch_never_calls_provider(client_factory, body, event):
     with client_factory(lambda _: pytest.fail("No provider call expected")) as client:
         response = client.post("/v1/touch", json=touch_body(body) | {"event": event})
@@ -47,7 +51,9 @@ def test_invalid_touch_never_calls_provider(client_factory, body, event):
         assert response.json()["requestId"] == body["requestId"]
 
 
-@pytest.mark.parametrize("reply", [{"text": "x" * 241}, {"text": ""}, {"text": "OK", "decision": {"behavior": "respond", "confidence": 1}}])
+@pytest.mark.parametrize(
+    "reply", [{"text": "x" * 241}, {"text": ""}, {"text": "OK", "decision": {"behavior": "respond", "confidence": 1}}]
+)
 def test_touch_rejects_invalid_model_reply(client_factory, body, completion, reply):
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
         response = client.post("/v1/touch", json=touch_body(body))
@@ -71,18 +77,20 @@ def test_touch_boundary_rejects_oversized_body(client_factory):
 
 def test_touch_deadline_cancels_provider(app_factory, body):
     cancelled = []
+
     class SlowProvider:
         async def complete(self, request, timeout):
             try:
                 await asyncio.sleep(10)
             finally:
                 cancelled.append(True)
+
     app = app_factory(lambda _: pytest.fail("No HTTP call expected"))
     with TestClient(app) as client:
         service = app.state.completion_service
         service.provider = SlowProvider()
         # Leave room for durable admission; the provider itself remains blocked.
-        service.deadline = .1
+        service.deadline = 0.1
         response = client.post("/v1/touch", json=touch_body(body))
         assert response.status_code == 504
     # Lifespan shutdown drains independently scheduled cancellation/settlement.

@@ -3,7 +3,6 @@
 import json
 from typing import Any
 
-
 # A local safety ceiling below supported context windows, not the vendor maximum.
 # Kept separate from usage reservations, wire caps, and operator configuration.
 CONTEXT_WINDOWS = {

@@ -4,12 +4,10 @@ import asyncio
 import sqlite3
 
 import pytest
-
 from wisp_backend.accounting.contracts import RESERVATION, Usage
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
 from wisp_backend.config.profiles import PROFILES
 from wisp_backend.errors import ServiceError
-
 
 GEMINI = PROFILES["gemini"].reservation
 
@@ -34,6 +32,7 @@ def test_crash_switch_and_late_correction_use_original_reservation(tmp_path, fir
         with sqlite3.connect(path) as db:
             assert db.execute("SELECT requests,reserved,confirmed,uncertain FROM days").fetchone() == (2, 0, 7, second)
             assert db.execute("SELECT reservation FROM entries ORDER BY id").fetchall() == [(second,), (first,)]
+
     asyncio.run(run())
 
 
@@ -48,4 +47,5 @@ def test_gemini_large_usage_and_restart_do_not_block_admission(tmp_path):
         ledger = await SQLiteLedger.open(path)
         await ledger.admit("three", "other")
         await ledger.close()
+
     asyncio.run(run())

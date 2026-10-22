@@ -1,12 +1,12 @@
 """ORM models mapped to the existing ledger schema; never cross the storage port."""
+
 from collections.abc import Callable
 from typing import Any
 
-from sqlalchemy import Integer, REAL, Text, text
+from sqlalchemy import REAL, Integer, Text, text
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import UserDefinedType
-
 from wisp_backend.accounting.contracts import RESERVATION
 
 
@@ -17,6 +17,7 @@ class ExactTokenCount(UserDefinedType[int]):
     These columns deliberately retain the legacy empty declared type; arithmetic
     is performed in Python and only the final exact value is bound to SQLite.
     """
+
     cache_ok = True
 
     def get_col_spec(self, **kw: Any) -> str:

@@ -1,17 +1,15 @@
 """Resolve startup configuration sources without mutating the process environment."""
 
-from collections.abc import Mapping
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 from dotenv import dotenv_values
 from pydantic import SecretStr
-
 from wisp_backend.config.profiles import get_profile
 from wisp_backend.config.settings import Settings
-
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 ASSISTANT_FIELDS = (

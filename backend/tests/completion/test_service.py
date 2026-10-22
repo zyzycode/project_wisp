@@ -3,11 +3,10 @@
 import asyncio
 
 import pytest
-
 from tests.doubles import MemoryLedger, StubProvider
 from wisp_backend.accounting.contracts import Usage
-from wisp_backend.completion.contracts import CompletionJob, InferenceRequest, ProviderResult
 from wisp_backend.completion.context import ContextBlock, ContextMessage
+from wisp_backend.completion.contracts import CompletionJob, InferenceRequest, ProviderResult
 from wisp_backend.completion.service import CompletionService
 from wisp_backend.errors import ErrorCode, ServiceError
 from wisp_backend.outcomes import Outcome
@@ -37,6 +36,7 @@ def test_replay_skips_inference_and_settlement() -> None:
         assert result is ledger.replay
         assert provider.calls == 0 and ledger.settlements == []
         await service.close()
+
     asyncio.run(run())
 
 
@@ -49,6 +49,7 @@ def test_encoder_failure_keeps_paid_usage() -> None:
         assert result.body == b"invalid_model_response"
         assert ledger.settlements == [(usage, result)]
         await service.close()
+
     asyncio.run(run())
 
 
@@ -61,6 +62,7 @@ def test_closed_service_does_not_admit_or_dispatch() -> None:
         result = await service.complete(job(), "digest", asyncio.get_running_loop().time())
         assert result.body == b"upstream_unavailable"
         assert ledger.admissions == provider.calls == 0
+
     asyncio.run(run())
 
 
@@ -74,6 +76,7 @@ def test_background_failure_reports_no_exception_details(caplog: pytest.LogCaptu
         result = await service.complete(job(), "digest", asyncio.get_running_loop().time())
         assert result.body == b"upstream_unavailable"
         await service.close()
+
     asyncio.run(run())
     assert "completion_background_failed" in caplog.text
     assert "PRIVATE_BACKEND_PAYLOAD" not in caplog.text

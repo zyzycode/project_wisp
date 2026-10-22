@@ -5,7 +5,6 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.responses import Response
-
 from wisp_backend.api.boundary import CompletionBoundary
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.api.responses import error_response
@@ -18,15 +17,31 @@ def install_api(app: FastAPI) -> None:
 
     @app.exception_handler(ServiceError)
     async def service_error(request: Request, error: ServiceError) -> Response:
-        return error_response(error.code, getattr(request.state, "request_id", None), error.retry_after_ms,
-                              getattr(request.state, "wire_version", 1))
+        return error_response(
+            error.code,
+            getattr(request.state, "request_id", None),
+            error.retry_after_ms,
+            getattr(request.state, "wire_version", 1),
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, error: RequestValidationError) -> Response:
-        return error_response("invalid_request", getattr(request.state, "request_id", None),
-                              version=getattr(request.state, "wire_version", 1))
+        return error_response(
+            "invalid_request",
+            getattr(request.state, "request_id", None),
+            version=getattr(request.state, "wire_version", 1),
+        )
 
-    for router in (health.router, chat.router, touch.router, memory.router, events.router, summary.router, observation.router, interaction.router):
+    for router in (
+        health.router,
+        chat.router,
+        touch.router,
+        memory.router,
+        events.router,
+        summary.router,
+        observation.router,
+        interaction.router,
+    ):
         app.include_router(router)
 
     default_openapi = app.openapi

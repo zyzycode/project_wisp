@@ -14,16 +14,25 @@ class ProviderProfile:
 
 PROFILES = {
     "openai": ProviderProfile(
-        "https://api.openai.com/v1/", "OPENAI_API_KEY", "gpt-4.1-mini",
-        ("gpt-4.1-mini", "gpt-6-astra"), 1_050_000,
+        "https://api.openai.com/v1/",
+        "OPENAI_API_KEY",
+        "gpt-4.1-mini",
+        ("gpt-4.1-mini", "gpt-6-astra"),
+        1_050_000,
     ),
     "groq": ProviderProfile(
-        "https://api.groq.com/openai/v1/", "GROQ_API_KEY", "openai/gpt-oss-20b",
-        ("openai/gpt-oss-20b",), 131_072,
+        "https://api.groq.com/openai/v1/",
+        "GROQ_API_KEY",
+        "openai/gpt-oss-20b",
+        ("openai/gpt-oss-20b",),
+        131_072,
     ),
     "gemini": ProviderProfile(
-        "https://generativelanguage.googleapis.com/v1beta/", "GEMINI_API_KEY", "gemini-3.5-flash-lite",
-        ("gemini-3.5-flash-lite", "gemini-3.8-flash"), 1_114_112,
+        "https://generativelanguage.googleapis.com/v1beta/",
+        "GEMINI_API_KEY",
+        "gemini-3.5-flash-lite",
+        ("gemini-3.5-flash-lite", "gemini-3.8-flash"),
+        1_114_112,
     ),
 }
 

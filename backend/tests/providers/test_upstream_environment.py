@@ -1,14 +1,13 @@
 """Exercise real HTTP routing with inherited, unreachable proxy settings."""
 
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import socket
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 
+import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
-import pytest
-
 from wisp_backend.application import create_app
 from wisp_backend.config.settings import Settings
 
@@ -18,16 +17,23 @@ def test_inherited_proxy_is_explicit(monkeypatch, body, trust_env, status, tmp_p
     class ProviderHandler(BaseHTTPRequestHandler):
         def do_POST(self):
             self.rfile.read(int(self.headers["Content-Length"]))
-            response = json.dumps({"choices": [{
-                "finish_reason": "stop", "message": {"content": '{"text":"42"}'},
-            }]}).encode()
+            response = json.dumps(
+                {
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {"content": '{"text":"42"}'},
+                        }
+                    ]
+                }
+            ).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(response)))
             self.end_headers()
             self.wfile.write(response)
 
-        def log_message(self, format, *args):
+        def log_message(self, message_format: str, *args: object) -> None:
             pass
 
     # Reserve an unused port without listening: a connection to the proxy fails.
@@ -42,10 +48,12 @@ def test_inherited_proxy_is_explicit(monkeypatch, body, trust_env, status, tmp_p
             thread = Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:
-                settings = Settings(api_key=SecretStr("test-key"),
-                                    ledger_path=tmp_path / "ledger.sqlite",
-                                    upstream_trust_env=trust_env,
-                                    base_url=f"http://127.0.0.1:{server.server_port}/openai/v1/")
+                settings = Settings(
+                    api_key=SecretStr("test-key"),
+                    ledger_path=tmp_path / "ledger.sqlite",
+                    upstream_trust_env=trust_env,
+                    base_url=f"http://127.0.0.1:{server.server_port}/openai/v1/",
+                )
                 with TestClient(create_app(settings=settings)) as client:
                     response = client.post("/v1/chat", json=body)
                     assert response.status_code == status

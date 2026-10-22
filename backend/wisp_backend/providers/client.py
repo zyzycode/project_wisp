@@ -1,12 +1,12 @@
 """Construction of the shared upstream HTTP client."""
 
 import httpx
-
 from wisp_backend.config.settings import Settings
 
 
 def create_client(
-    settings: Settings, transport: httpx.AsyncBaseTransport | None = None,
+    settings: Settings,
+    transport: httpx.AsyncBaseTransport | None = None,
 ) -> httpx.AsyncClient:
     key = settings.api_key.get_secret_value()
     headers = {"x-goog-api-key": key} if settings.provider == "gemini" else {"Authorization": f"Bearer {key}"}

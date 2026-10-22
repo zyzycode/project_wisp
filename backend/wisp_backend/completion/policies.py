@@ -6,20 +6,34 @@ from enum import Enum
 from typing import Generic, TypeVar
 
 from wisp_backend.completion.context import ContextBlock
+from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply
 from wisp_backend.completion.prompts.chat import build_chat_blocks
 from wisp_backend.completion.prompts.context import (
-    ChatContext, EventChatContext, EventContext, InteractionChatContext, InteractionTouchContext,
-    MemoryChatContext, ObservationContext, PromptContext, SummaryChatContext, SummaryContext, TouchContext,
+    ChatContext,
+    EventChatContext,
+    EventContext,
+    InteractionChatContext,
+    InteractionTouchContext,
+    MemoryChatContext,
+    ObservationContext,
+    PromptContext,
+    SummaryChatContext,
+    SummaryContext,
+    TouchContext,
 )
 from wisp_backend.completion.prompts.events import build_event_blocks
+from wisp_backend.completion.prompts.interaction import build_interaction_chat_blocks, build_interaction_touch_blocks
 from wisp_backend.completion.prompts.observation import build_observation_blocks
 from wisp_backend.completion.prompts.summary import build_summary_blocks
 from wisp_backend.completion.prompts.touch import build_touch_blocks
 from wisp_backend.completion.replies import (
-    CompletionReply, SummaryModelReply, EventModelReply, MemoryModelReply, ModelReply, TouchModelReply,
+    CompletionReply,
+    EventModelReply,
+    MemoryModelReply,
+    ModelReply,
+    SummaryModelReply,
+    TouchModelReply,
 )
-from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply
-from wisp_backend.completion.prompts.interaction import build_interaction_chat_blocks, build_interaction_touch_blocks
 from wisp_backend.json_codec import decode_json
 
 
@@ -55,18 +69,43 @@ class CompletionPolicy(Generic[ContextInput]):
         return self.block_builder(context)
 
     def parse_reply(self, text: str, evidence_quote: str | None, effect_policy: str | None = None) -> CompletionReply:
-        return self.reply_type.model_validate(decode_json(text), context={"evidence_quote": evidence_quote, "effect_policy": effect_policy})
+        return self.reply_type.model_validate(
+            decode_json(text), context={"evidence_quote": evidence_quote, "effect_policy": effect_policy}
+        )
 
 
 POLICIES = {
-    Scenario.INTERACTION_TOUCH: CompletionPolicy(InteractionTouchContext, build_interaction_touch_blocks, InteractionTouchReply, max_output_tokens=1024, context_window=16384),
-    Scenario.INTERACTION_CHAT: CompletionPolicy(InteractionChatContext, build_interaction_chat_blocks, InteractionChatReply, max_output_tokens=4096, context_window=16384),
-    Scenario.OBSERVATION: CompletionPolicy(ObservationContext, build_observation_blocks, EventModelReply, timeout=2.5, max_output_tokens=1024, context_window=16384),
-    Scenario.SUMMARY: CompletionPolicy(SummaryContext, build_summary_blocks, SummaryModelReply, max_output_tokens=512, context_window=8192),
+    Scenario.INTERACTION_TOUCH: CompletionPolicy(
+        InteractionTouchContext,
+        build_interaction_touch_blocks,
+        InteractionTouchReply,
+        max_output_tokens=1024,
+        context_window=16384,
+    ),
+    Scenario.INTERACTION_CHAT: CompletionPolicy(
+        InteractionChatContext,
+        build_interaction_chat_blocks,
+        InteractionChatReply,
+        max_output_tokens=4096,
+        context_window=16384,
+    ),
+    Scenario.OBSERVATION: CompletionPolicy(
+        ObservationContext,
+        build_observation_blocks,
+        EventModelReply,
+        timeout=2.5,
+        max_output_tokens=1024,
+        context_window=16384,
+    ),
+    Scenario.SUMMARY: CompletionPolicy(
+        SummaryContext, build_summary_blocks, SummaryModelReply, max_output_tokens=512, context_window=8192
+    ),
     Scenario.SUMMARY_CHAT: CompletionPolicy(SummaryChatContext, build_chat_blocks, MemoryModelReply),
     Scenario.CHAT: CompletionPolicy(ChatContext, build_chat_blocks, ModelReply),
     Scenario.MEMORY_CHAT: CompletionPolicy(MemoryChatContext, build_chat_blocks, MemoryModelReply),
     Scenario.EVENT_CHAT: CompletionPolicy(EventChatContext, build_chat_blocks, MemoryModelReply),
     Scenario.TOUCH: CompletionPolicy(TouchContext, build_touch_blocks, TouchModelReply),
-    Scenario.EVENT: CompletionPolicy(EventContext, build_event_blocks, EventModelReply, timeout=2.5, max_output_tokens=1024),
+    Scenario.EVENT: CompletionPolicy(
+        EventContext, build_event_blocks, EventModelReply, timeout=2.5, max_output_tokens=1024
+    ),
 }

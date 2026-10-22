@@ -6,7 +6,6 @@ from typing import Any, Literal
 from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
-
 from wisp_backend.config.profiles import PROFILES, ProviderProfile, get_profile
 
 
@@ -41,7 +40,8 @@ class Settings(BaseModel):
 
     api_key: SecretStr
     assistants: dict[str, AssistantSettings] = Field(
-        default_factory=lambda: {"default": AssistantSettings()}, min_length=1,
+        default_factory=lambda: {"default": AssistantSettings()},
+        min_length=1,
     )
     base_url: str = "https://api.groq.com/openai/v1/"
     request_timeout: float = Field(default=10, gt=0, le=10)
