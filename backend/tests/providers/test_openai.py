@@ -17,7 +17,7 @@ from wisp_backend.providers.openai import OpenAIProvider
 PROFILE = {"default": {"provider": "openai", "temperature": 0.4}}
 
 
-@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-6-astra"])
+@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-6-astra", "gpt-6-sol"])
 @pytest.mark.parametrize(
     "route,folder,request_name,response_name,cap",
     [
@@ -48,6 +48,9 @@ def test_routes_translate_and_account(app_factory, completion, model, route, fol
         assert payload["max_completion_tokens"] == cap
         if model == "gpt-6-astra":
             assert payload["reasoning_effort"] == "low"
+            assert "temperature" not in payload
+        elif model == "gpt-6-sol":
+            assert payload["reasoning_effort"] == "none"
             assert "temperature" not in payload
         else:
             assert payload["temperature"] == 0.4

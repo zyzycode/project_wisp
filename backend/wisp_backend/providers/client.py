@@ -19,6 +19,9 @@ def create_client(
             pool=settings.pool_timeout,
         ),
         transport=transport,
+        # Keep the lifecycle-owned connection across normal pauses between turns.
+        # This changes idle retention only, not request deadlines or retry policy.
+        limits=httpx.Limits(keepalive_expiry=60),
         follow_redirects=False,
         trust_env=settings.upstream_trust_env,
     )

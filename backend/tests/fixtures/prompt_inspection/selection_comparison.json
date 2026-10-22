@@ -22,10 +22,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11374,
-      "after_estimate": 11027,
-      "estimate_delta": -347,
+      "after_estimate": 11113,
+      "estimate_delta": -261,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -491,
+      "prompt_and_selection_estimate_delta": -405,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -210,7 +210,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -276,10 +276,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11360,
-      "after_estimate": 10994,
-      "estimate_delta": -366,
+      "after_estimate": 11080,
+      "estimate_delta": -280,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -510,
+      "prompt_and_selection_estimate_delta": -424,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -464,7 +464,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -530,10 +530,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11382,
-      "after_estimate": 11035,
-      "estimate_delta": -347,
+      "after_estimate": 11121,
+      "estimate_delta": -261,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -491,
+      "prompt_and_selection_estimate_delta": -405,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -718,7 +718,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -784,10 +784,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11102,
-      "after_estimate": 10934,
-      "estimate_delta": -168,
+      "after_estimate": 11020,
+      "estimate_delta": -82,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -312,
+      "prompt_and_selection_estimate_delta": -226,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -972,7 +972,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -1038,10 +1038,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11088,
-      "after_estimate": 10901,
-      "estimate_delta": -187,
+      "after_estimate": 10987,
+      "estimate_delta": -101,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -331,
+      "prompt_and_selection_estimate_delta": -245,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -1226,7 +1226,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -1292,10 +1292,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11110,
-      "after_estimate": 10942,
-      "estimate_delta": -168,
+      "after_estimate": 11028,
+      "estimate_delta": -82,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -312,
+      "prompt_and_selection_estimate_delta": -226,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -1480,7 +1480,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -1546,10 +1546,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11399,
-      "after_estimate": 11209,
-      "estimate_delta": -190,
+      "after_estimate": 11295,
+      "estimate_delta": -104,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -328,
+      "prompt_and_selection_estimate_delta": -242,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -1735,7 +1735,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -1807,10 +1807,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11385,
-      "after_estimate": 11157,
-      "estimate_delta": -228,
+      "after_estimate": 11243,
+      "estimate_delta": -142,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -366,
+      "prompt_and_selection_estimate_delta": -280,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -1996,7 +1996,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -2068,10 +2068,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11407,
-      "after_estimate": 11217,
-      "estimate_delta": -190,
+      "after_estimate": 11303,
+      "estimate_delta": -104,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -328,
+      "prompt_and_selection_estimate_delta": -242,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -2257,7 +2257,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -2329,10 +2329,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11110,
-      "after_estimate": 11088,
-      "estimate_delta": -22,
+      "after_estimate": 11174,
+      "estimate_delta": 64,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -160,
+      "prompt_and_selection_estimate_delta": -74,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -2518,7 +2518,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -2590,10 +2590,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11096,
-      "after_estimate": 11036,
-      "estimate_delta": -60,
+      "after_estimate": 11122,
+      "estimate_delta": 26,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -198,
+      "prompt_and_selection_estimate_delta": -112,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -2779,7 +2779,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -2851,10 +2851,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11118,
-      "after_estimate": 11096,
-      "estimate_delta": -22,
+      "after_estimate": 11182,
+      "estimate_delta": 64,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -160,
+      "prompt_and_selection_estimate_delta": -74,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -3040,7 +3040,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -3112,10 +3112,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11427,
-      "after_estimate": 11237,
-      "estimate_delta": -190,
+      "after_estimate": 11323,
+      "estimate_delta": -104,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -328,
+      "prompt_and_selection_estimate_delta": -242,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -3301,7 +3301,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -3373,10 +3373,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11413,
-      "after_estimate": 11185,
-      "estimate_delta": -228,
+      "after_estimate": 11271,
+      "estimate_delta": -142,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -366,
+      "prompt_and_selection_estimate_delta": -280,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -3562,7 +3562,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -3634,10 +3634,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11435,
-      "after_estimate": 11245,
-      "estimate_delta": -190,
+      "after_estimate": 11331,
+      "estimate_delta": -104,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -328,
+      "prompt_and_selection_estimate_delta": -242,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -3823,7 +3823,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -3895,10 +3895,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11126,
-      "after_estimate": 11104,
-      "estimate_delta": -22,
+      "after_estimate": 11190,
+      "estimate_delta": 64,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -160,
+      "prompt_and_selection_estimate_delta": -74,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -4084,7 +4084,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -4156,10 +4156,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11112,
-      "after_estimate": 11052,
-      "estimate_delta": -60,
+      "after_estimate": 11138,
+      "estimate_delta": 26,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -198,
+      "prompt_and_selection_estimate_delta": -112,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -4345,7 +4345,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -4417,10 +4417,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11134,
-      "after_estimate": 11112,
-      "estimate_delta": -22,
+      "after_estimate": 11198,
+      "estimate_delta": 64,
       "projection_utf8_payload_bytes": 138,
-      "prompt_and_selection_estimate_delta": -160,
+      "prompt_and_selection_estimate_delta": -74,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -4606,7 +4606,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_2_play",
@@ -4678,10 +4678,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11382,
-      "after_estimate": 11351,
-      "estimate_delta": -31,
+      "after_estimate": 11437,
+      "estimate_delta": 55,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": -171,
+      "prompt_and_selection_estimate_delta": -85,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -4868,7 +4868,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -4946,10 +4946,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11368,
-      "after_estimate": 11280,
-      "estimate_delta": -88,
+      "after_estimate": 11366,
+      "estimate_delta": -2,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": -228,
+      "prompt_and_selection_estimate_delta": -142,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -5136,7 +5136,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -5214,10 +5214,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11390,
-      "after_estimate": 11359,
-      "estimate_delta": -31,
+      "after_estimate": 11445,
+      "estimate_delta": 55,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": -171,
+      "prompt_and_selection_estimate_delta": -85,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -5404,7 +5404,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -5482,10 +5482,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11103,
-      "after_estimate": 11255,
-      "estimate_delta": 152,
+      "after_estimate": 11341,
+      "estimate_delta": 238,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 12,
+      "prompt_and_selection_estimate_delta": 98,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -5672,7 +5672,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -5750,10 +5750,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11089,
-      "after_estimate": 11184,
-      "estimate_delta": 95,
+      "after_estimate": 11270,
+      "estimate_delta": 181,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": -45,
+      "prompt_and_selection_estimate_delta": 41,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -5940,7 +5940,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -6018,10 +6018,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11111,
-      "after_estimate": 11263,
-      "estimate_delta": 152,
+      "after_estimate": 11349,
+      "estimate_delta": 238,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 12,
+      "prompt_and_selection_estimate_delta": 98,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -6208,7 +6208,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -6286,10 +6286,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11408,
-      "after_estimate": 11373,
-      "estimate_delta": -35,
+      "after_estimate": 11459,
+      "estimate_delta": 51,
       "projection_utf8_payload_bytes": 136,
-      "prompt_and_selection_estimate_delta": -171,
+      "prompt_and_selection_estimate_delta": -85,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -6476,7 +6476,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -6554,10 +6554,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11394,
-      "after_estimate": 11302,
-      "estimate_delta": -92,
+      "after_estimate": 11388,
+      "estimate_delta": -6,
       "projection_utf8_payload_bytes": 136,
-      "prompt_and_selection_estimate_delta": -228,
+      "prompt_and_selection_estimate_delta": -142,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -6744,7 +6744,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -6822,10 +6822,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11416,
-      "after_estimate": 11381,
-      "estimate_delta": -35,
+      "after_estimate": 11467,
+      "estimate_delta": 51,
       "projection_utf8_payload_bytes": 136,
-      "prompt_and_selection_estimate_delta": -171,
+      "prompt_and_selection_estimate_delta": -85,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -7012,7 +7012,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -7090,10 +7090,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11122,
-      "after_estimate": 11270,
-      "estimate_delta": 148,
+      "after_estimate": 11356,
+      "estimate_delta": 234,
       "projection_utf8_payload_bytes": 136,
-      "prompt_and_selection_estimate_delta": 12,
+      "prompt_and_selection_estimate_delta": 98,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -7280,7 +7280,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -7358,10 +7358,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11108,
-      "after_estimate": 11199,
-      "estimate_delta": 91,
+      "after_estimate": 11285,
+      "estimate_delta": 177,
       "projection_utf8_payload_bytes": 136,
-      "prompt_and_selection_estimate_delta": -45,
+      "prompt_and_selection_estimate_delta": 41,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -7548,7 +7548,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -7626,10 +7626,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11130,
-      "after_estimate": 11278,
-      "estimate_delta": 148,
+      "after_estimate": 11364,
+      "estimate_delta": 234,
       "projection_utf8_payload_bytes": 136,
-      "prompt_and_selection_estimate_delta": 12,
+      "prompt_and_selection_estimate_delta": 98,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -7816,7 +7816,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -7894,10 +7894,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11419,
-      "after_estimate": 10804,
-      "estimate_delta": -615,
+      "after_estimate": 10890,
+      "estimate_delta": -529,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -759,
+      "prompt_and_selection_estimate_delta": -673,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -8082,7 +8082,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -8148,10 +8148,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11405,
-      "after_estimate": 10769,
-      "estimate_delta": -636,
+      "after_estimate": 10855,
+      "estimate_delta": -550,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -780,
+      "prompt_and_selection_estimate_delta": -694,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -8336,7 +8336,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -8402,10 +8402,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11427,
-      "after_estimate": 10812,
-      "estimate_delta": -615,
+      "after_estimate": 10898,
+      "estimate_delta": -529,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -759,
+      "prompt_and_selection_estimate_delta": -673,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -8590,7 +8590,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -8656,10 +8656,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11125,
-      "after_estimate": 10775,
-      "estimate_delta": -350,
+      "after_estimate": 10861,
+      "estimate_delta": -264,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -494,
+      "prompt_and_selection_estimate_delta": -408,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -8844,7 +8844,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -8910,10 +8910,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11111,
-      "after_estimate": 10740,
-      "estimate_delta": -371,
+      "after_estimate": 10826,
+      "estimate_delta": -285,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -515,
+      "prompt_and_selection_estimate_delta": -429,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -9098,7 +9098,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -9164,10 +9164,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11133,
-      "after_estimate": 10783,
-      "estimate_delta": -350,
+      "after_estimate": 10869,
+      "estimate_delta": -264,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -494,
+      "prompt_and_selection_estimate_delta": -408,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -9352,7 +9352,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -9418,10 +9418,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 6794,
-      "after_estimate": 7046,
-      "estimate_delta": 252,
+      "after_estimate": 7132,
+      "estimate_delta": 338,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 112,
+      "prompt_and_selection_estimate_delta": 198,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -9606,7 +9606,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 4035
+          "utf8_bytes": 4119
         },
         {
           "key": "guidance_0_gentle",
@@ -9678,10 +9678,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 6797,
-      "after_estimate": 6992,
-      "estimate_delta": 195,
+      "after_estimate": 7078,
+      "estimate_delta": 281,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 55,
+      "prompt_and_selection_estimate_delta": 141,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -9866,7 +9866,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 4035
+          "utf8_bytes": 4119
         },
         {
           "key": "guidance_0_gentle",
@@ -9938,10 +9938,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 6802,
-      "after_estimate": 7054,
-      "estimate_delta": 252,
+      "after_estimate": 7140,
+      "estimate_delta": 338,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 112,
+      "prompt_and_selection_estimate_delta": 198,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -10126,7 +10126,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 4035
+          "utf8_bytes": 4119
         },
         {
           "key": "guidance_0_gentle",
@@ -10198,10 +10198,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 6633,
-      "after_estimate": 6971,
-      "estimate_delta": 338,
+      "after_estimate": 7057,
+      "estimate_delta": 424,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 198,
+      "prompt_and_selection_estimate_delta": 284,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -10386,7 +10386,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 4035
+          "utf8_bytes": 4119
         },
         {
           "key": "guidance_0_gentle",
@@ -10458,10 +10458,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 6636,
-      "after_estimate": 6917,
-      "estimate_delta": 281,
+      "after_estimate": 7003,
+      "estimate_delta": 367,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 141,
+      "prompt_and_selection_estimate_delta": 227,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -10646,7 +10646,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 4035
+          "utf8_bytes": 4119
         },
         {
           "key": "guidance_0_gentle",
@@ -10718,10 +10718,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 6641,
-      "after_estimate": 6979,
-      "estimate_delta": 338,
+      "after_estimate": 7065,
+      "estimate_delta": 424,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 198,
+      "prompt_and_selection_estimate_delta": 284,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -10906,7 +10906,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 4035
+          "utf8_bytes": 4119
         },
         {
           "key": "guidance_0_gentle",
@@ -10978,10 +10978,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11906,
-      "after_estimate": 11875,
-      "estimate_delta": -31,
+      "after_estimate": 11961,
+      "estimate_delta": 55,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": -171,
+      "prompt_and_selection_estimate_delta": -85,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -11170,7 +11170,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -11254,10 +11254,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11875,
-      "after_estimate": 11787,
-      "estimate_delta": -88,
+      "after_estimate": 11873,
+      "estimate_delta": -2,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": -228,
+      "prompt_and_selection_estimate_delta": -142,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -11446,7 +11446,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -11530,10 +11530,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11914,
-      "after_estimate": 11883,
-      "estimate_delta": -31,
+      "after_estimate": 11969,
+      "estimate_delta": 55,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": -171,
+      "prompt_and_selection_estimate_delta": -85,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -11722,7 +11722,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -11806,10 +11806,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11605,
-      "after_estimate": 11757,
-      "estimate_delta": 152,
+      "after_estimate": 11843,
+      "estimate_delta": 238,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 12,
+      "prompt_and_selection_estimate_delta": 98,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -11998,7 +11998,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -12082,10 +12082,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11574,
-      "after_estimate": 11669,
-      "estimate_delta": 95,
+      "after_estimate": 11755,
+      "estimate_delta": 181,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": -45,
+      "prompt_and_selection_estimate_delta": 41,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -12274,7 +12274,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -12358,10 +12358,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11613,
-      "after_estimate": 11765,
-      "estimate_delta": 152,
+      "after_estimate": 11851,
+      "estimate_delta": 238,
       "projection_utf8_payload_bytes": 140,
-      "prompt_and_selection_estimate_delta": 12,
+      "prompt_and_selection_estimate_delta": 98,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -12550,7 +12550,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_0_gentle",
@@ -12634,10 +12634,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11685,
-      "after_estimate": 11338,
-      "estimate_delta": -347,
+      "after_estimate": 11424,
+      "estimate_delta": -261,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -491,
+      "prompt_and_selection_estimate_delta": -405,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -12824,7 +12824,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -12896,10 +12896,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11685,
-      "after_estimate": 11319,
-      "estimate_delta": -366,
+      "after_estimate": 11405,
+      "estimate_delta": -280,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -510,
+      "prompt_and_selection_estimate_delta": -424,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -13086,7 +13086,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -13158,10 +13158,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11693,
-      "after_estimate": 11346,
-      "estimate_delta": -347,
+      "after_estimate": 11432,
+      "estimate_delta": -261,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -491,
+      "prompt_and_selection_estimate_delta": -405,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -13348,7 +13348,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -13420,10 +13420,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11380,
-      "after_estimate": 11212,
-      "estimate_delta": -168,
+      "after_estimate": 11298,
+      "estimate_delta": -82,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -312,
+      "prompt_and_selection_estimate_delta": -226,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -13610,7 +13610,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -13682,10 +13682,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11380,
-      "after_estimate": 11193,
-      "estimate_delta": -187,
+      "after_estimate": 11279,
+      "estimate_delta": -101,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -331,
+      "prompt_and_selection_estimate_delta": -245,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -13872,7 +13872,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -13944,10 +13944,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11388,
-      "after_estimate": 11220,
-      "estimate_delta": -168,
+      "after_estimate": 11306,
+      "estimate_delta": -82,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -312,
+      "prompt_and_selection_estimate_delta": -226,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -14134,7 +14134,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -14206,10 +14206,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11861,
-      "after_estimate": 12104,
-      "estimate_delta": 243,
+      "after_estimate": 12190,
+      "estimate_delta": 329,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": 99,
+      "prompt_and_selection_estimate_delta": 185,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -14398,7 +14398,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8704
+          "utf8_bytes": 8788
         },
         {
           "key": "guidance_3_trust",
@@ -14500,10 +14500,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11813,
-      "after_estimate": 12037,
-      "estimate_delta": 224,
+      "after_estimate": 12123,
+      "estimate_delta": 310,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": 80,
+      "prompt_and_selection_estimate_delta": 166,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -14692,7 +14692,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8704
+          "utf8_bytes": 8788
         },
         {
           "key": "guidance_3_trust",
@@ -14794,10 +14794,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11869,
-      "after_estimate": 12112,
-      "estimate_delta": 243,
+      "after_estimate": 12198,
+      "estimate_delta": 329,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": 99,
+      "prompt_and_selection_estimate_delta": 185,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -14986,7 +14986,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8704
+          "utf8_bytes": 8788
         },
         {
           "key": "guidance_3_trust",
@@ -15088,10 +15088,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11752,
-      "after_estimate": 11995,
-      "estimate_delta": 243,
+      "after_estimate": 12081,
+      "estimate_delta": 329,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": 99,
+      "prompt_and_selection_estimate_delta": 185,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -15280,7 +15280,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8704
+          "utf8_bytes": 8788
         },
         {
           "key": "guidance_3_trust",
@@ -15382,10 +15382,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11704,
-      "after_estimate": 12231,
-      "estimate_delta": 527,
+      "after_estimate": 12014,
+      "estimate_delta": 310,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": 383,
+      "prompt_and_selection_estimate_delta": 166,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -15403,7 +15403,6 @@
         "interaction_policy",
         "memory",
         "lore",
-        "examples",
         "previous_initiative",
         "summary",
         "current_user"
@@ -15513,8 +15512,8 @@
           "key": "en-chat-1",
           "kind": "example",
           "predicate": "chat_guarded",
-          "included": true,
-          "reason": "matched",
+          "included": false,
+          "reason": "budget",
           "block_key": "examples",
           "eligible": true,
           "semantic_reason": "matched"
@@ -15575,7 +15574,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8704
+          "utf8_bytes": 8788
         },
         {
           "key": "guidance_3_trust",
@@ -15609,8 +15608,8 @@
         },
         {
           "key": "examples",
-          "selected": true,
-          "reason": "selected",
+          "selected": false,
+          "reason": "budget",
           "utf8_bytes": 212
         },
         {
@@ -15677,10 +15676,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11760,
-      "after_estimate": 12003,
-      "estimate_delta": 243,
+      "after_estimate": 12089,
+      "estimate_delta": 329,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": 99,
+      "prompt_and_selection_estimate_delta": 185,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -15869,7 +15868,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8704
+          "utf8_bytes": 8788
         },
         {
           "key": "guidance_3_trust",
@@ -15971,10 +15970,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11505,
-      "after_estimate": 11158,
-      "estimate_delta": -347,
+      "after_estimate": 11244,
+      "estimate_delta": -261,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -491,
+      "prompt_and_selection_estimate_delta": -405,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -16159,7 +16158,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -16225,10 +16224,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11491,
-      "after_estimate": 11125,
-      "estimate_delta": -366,
+      "after_estimate": 11211,
+      "estimate_delta": -280,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -510,
+      "prompt_and_selection_estimate_delta": -424,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -16413,7 +16412,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -16479,10 +16478,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11513,
-      "after_estimate": 11166,
-      "estimate_delta": -347,
+      "after_estimate": 11252,
+      "estimate_delta": -261,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -491,
+      "prompt_and_selection_estimate_delta": -405,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -16667,7 +16666,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -16733,10 +16732,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11172,
-      "after_estimate": 11004,
-      "estimate_delta": -168,
+      "after_estimate": 11090,
+      "estimate_delta": -82,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -312,
+      "prompt_and_selection_estimate_delta": -226,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -16921,7 +16920,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -16987,10 +16986,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11158,
-      "after_estimate": 10971,
-      "estimate_delta": -187,
+      "after_estimate": 11057,
+      "estimate_delta": -101,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -331,
+      "prompt_and_selection_estimate_delta": -245,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -17175,7 +17174,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -17241,10 +17240,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11180,
-      "after_estimate": 11012,
-      "estimate_delta": -168,
+      "after_estimate": 11098,
+      "estimate_delta": -82,
       "projection_utf8_payload_bytes": 144,
-      "prompt_and_selection_estimate_delta": -312,
+      "prompt_and_selection_estimate_delta": -226,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -17429,7 +17428,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "guidance_3_trust",
@@ -17495,10 +17494,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11388,
-      "after_estimate": 10470,
-      "estimate_delta": -918,
+      "after_estimate": 10556,
+      "estimate_delta": -832,
       "projection_utf8_payload_bytes": 145,
-      "prompt_and_selection_estimate_delta": -1063,
+      "prompt_and_selection_estimate_delta": -977,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -17681,7 +17680,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "character_profile_state",
@@ -17735,10 +17734,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11374,
-      "after_estimate": 10473,
-      "estimate_delta": -901,
+      "after_estimate": 10559,
+      "estimate_delta": -815,
       "projection_utf8_payload_bytes": 145,
-      "prompt_and_selection_estimate_delta": -1046,
+      "prompt_and_selection_estimate_delta": -960,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -17921,7 +17920,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "character_profile_state",
@@ -17975,10 +17974,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11396,
-      "after_estimate": 10478,
-      "estimate_delta": -918,
+      "after_estimate": 10564,
+      "estimate_delta": -832,
       "projection_utf8_payload_bytes": 145,
-      "prompt_and_selection_estimate_delta": -1063,
+      "prompt_and_selection_estimate_delta": -977,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -18161,7 +18160,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "character_profile_state",
@@ -18215,10 +18214,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11106,
-      "after_estimate": 10453,
-      "estimate_delta": -653,
+      "after_estimate": 10539,
+      "estimate_delta": -567,
       "projection_utf8_payload_bytes": 145,
-      "prompt_and_selection_estimate_delta": -798,
+      "prompt_and_selection_estimate_delta": -712,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -18401,7 +18400,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "character_profile_state",
@@ -18455,10 +18454,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11092,
-      "after_estimate": 10456,
-      "estimate_delta": -636,
+      "after_estimate": 10542,
+      "estimate_delta": -550,
       "projection_utf8_payload_bytes": 145,
-      "prompt_and_selection_estimate_delta": -781,
+      "prompt_and_selection_estimate_delta": -695,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -18641,7 +18640,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "character_profile_state",
@@ -18695,10 +18694,10 @@
         "romanceAllowed": false
       },
       "before_estimate": 11114,
-      "after_estimate": 10461,
-      "estimate_delta": -653,
+      "after_estimate": 10547,
+      "estimate_delta": -567,
       "projection_utf8_payload_bytes": 145,
-      "prompt_and_selection_estimate_delta": -798,
+      "prompt_and_selection_estimate_delta": -712,
       "before_selected_keys": [
         "instructions",
         "character_profile_state",
@@ -18881,7 +18880,7 @@
           "key": "instructions",
           "selected": true,
           "reason": "required",
-          "utf8_bytes": 8125
+          "utf8_bytes": 8209
         },
         {
           "key": "character_profile_state",

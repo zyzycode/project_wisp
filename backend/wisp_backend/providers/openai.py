@@ -21,6 +21,10 @@ class OpenAIProvider(HTTPProvider):
         }
         if settings.model == "gpt-6-astra":
             payload["reasoning_effort"] = "low"
+        elif settings.model == "gpt-6-sol":
+            payload["reasoning_effort"] = "none"
+            if settings.temperature is not None:
+                payload["temperature"] = settings.temperature
         elif settings.temperature is not None:
             payload["temperature"] = settings.temperature
         return "chat/completions", payload

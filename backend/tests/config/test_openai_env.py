@@ -40,10 +40,11 @@ def test_incompatible_openai_options_fail_before_dispatch(env_values, field, val
         load_settings()
 
 
-def test_astra_model_is_selected_explicitly(env_values):
-    env_values.update(WISP_AI_PROVIDER="openai", OPENAI_API_KEY="test-key", WISP_AI_MODEL="gpt-6-astra")
+@pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6-sol"])
+def test_reasoning_model_is_selected_explicitly(env_values, model):
+    env_values.update(WISP_AI_PROVIDER="openai", OPENAI_API_KEY="test-key", WISP_AI_MODEL=model)
     settings = load_settings()
-    assert settings.assistants["default"].model == "gpt-6-astra"
+    assert settings.assistants["default"].model == model
     assert settings.profile.reservation == 1_050_000
 
 

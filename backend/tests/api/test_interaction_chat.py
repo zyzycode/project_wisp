@@ -12,9 +12,25 @@ from fastapi.testclient import TestClient
 from tests.api.test_interaction_validation import fixture
 from tests.helpers import gemini_completion
 from wisp_backend.api.dispatch import prepare_job
-from wisp_backend.api.schemas.interaction import InteractionChatRequest, InteractionChatResponse
+from wisp_backend.api.schemas.interaction import (
+    InteractionChatRequest,
+    InteractionChatResponse,
+    InteractionTouchRequest,
+)
 
 CASES = fixture("chat.eligible.json")
+
+
+@pytest.mark.parametrize("kind,schema", [("chat", InteractionChatRequest), ("touch", InteractionTouchRequest)])
+@pytest.mark.parametrize("policy", ["suppressed", "eligible"])
+def test_current_policy_is_explicit_in_server_instructions(kind, schema, policy):
+    body = fixture(f"request.{kind}.json")
+    body["effectPolicy"] = policy
+    blocks = prepare_job(schema.model_validate(body)).inference.blocks
+    system = next(block for block in blocks if block.key == "instructions").messages[0].content
+    assert f"For this request, effectPolicy is {policy}." in system
+    forced = 'Return appraisal exactly as {"category":"neutral","intensity":"low","confidence":"clear"}.'
+    assert (forced in system) == (policy == "suppressed")
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case["name"])

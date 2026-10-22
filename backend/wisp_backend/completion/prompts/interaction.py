@@ -20,6 +20,17 @@ Uncertainty is allowed; do not invent user intent. Distress, criticism, refusal 
 """
 
 
+def current_policy_instruction(context: InteractionChatContext | InteractionTouchContext) -> str:
+    """Compile only the validated policy enum into server-owned instructions."""
+    if context.interaction.effect_policy == "suppressed":
+        return (
+            "\nFor this request, effectPolicy is suppressed. "
+            'Return appraisal exactly as {"category":"neutral","intensity":"low","confidence":"clear"}. '
+            "Still answer the user naturally; this restriction is only on appraisal, not the reply tone.\n"
+        )
+    return "\nFor this request, effectPolicy is eligible. Classify only the current interaction.\n"
+
+
 def interaction_blocks(context: InteractionChatContext | InteractionTouchContext) -> list[ContextBlock]:
     blocks = [
         ContextBlock(
@@ -70,6 +81,7 @@ The action is a touch, never stroke, ruffle or poke. It is not user speech or pr
 For touch, intensity MUST be low and category MUST NOT be hostile. Current tiredness, overload and consent matter.
 """
         + APPRAISAL_RULES
+        + current_policy_instruction(context)
     )
     blocks = common_blocks(context, system, "touch") + interaction_blocks(context)
     blocks.append(
@@ -114,4 +126,5 @@ Rejected/suppressed effects were not accepted; uncertain means the cause was not
 If no trace is supplied do not claim to remember a touch. Current user text remains the only candidate evidence.
 """
     )
+    instructions += current_policy_instruction(context)
     return (*build_chat_blocks(context, additional_instructions=instructions), *interaction_blocks(context))
