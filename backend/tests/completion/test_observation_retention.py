@@ -112,7 +112,6 @@ def test_response_stream_closed_on_observation_deadline(
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
                 result = await client.post(OBSERVATION.path, json=fixture("request.valid.json"))
                 assert entered.is_set() and result.status_code == 504
-                assert result.json()["version"] == 1
                 await asyncio.wait_for(closed.wait(), 1)
         assert calls == 1
 

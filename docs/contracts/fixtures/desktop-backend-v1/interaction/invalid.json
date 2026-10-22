@@ -1,108 +1,9 @@
 {
   "requests": [
     {
-      "name": "touch-version",
-      "endpoint": "/v1/touch",
-      "value": {
-        "version": 6,
-        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
-        "stream": false,
-        "locale": "ru",
-        "character": {
-          "needs": {
-            "energy": 80,
-            "attention": 50,
-            "play": 60,
-            "comfort": 80,
-            "boredom": 10
-          },
-          "relationship": {
-            "friendship": 100,
-            "love": 0,
-            "loveUnlocked": false
-          },
-          "personality": {
-            "presetId": "shyDreamGirl",
-            "aiSelfConcept": "Я Wisp, твой компаньон.",
-            "traits": {
-              "shyness": 0.4,
-              "playfulness": 0.6,
-              "sensitivity": 0.5,
-              "boldness": 0.4
-            }
-          },
-          "intimacy": {
-            "flirtiness": 0,
-            "romanticCharge": 0,
-            "userConsentEnabled": false
-          },
-          "synthesizedTone": "curious"
-        },
-        "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
-        },
-        "effectPolicy": "eligible",
-        "event": {
-          "type": "user_touch",
-          "variant": "touch"
-        }
-      }
-    },
-    {
-      "name": "touch-bool-version",
-      "endpoint": "/v1/touch",
-      "value": {
-        "version": true,
-        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
-        "stream": false,
-        "locale": "ru",
-        "character": {
-          "needs": {
-            "energy": 80,
-            "attention": 50,
-            "play": 60,
-            "comfort": 80,
-            "boredom": 10
-          },
-          "relationship": {
-            "friendship": 100,
-            "love": 0,
-            "loveUnlocked": false
-          },
-          "personality": {
-            "presetId": "shyDreamGirl",
-            "aiSelfConcept": "Я Wisp, твой компаньон.",
-            "traits": {
-              "shyness": 0.4,
-              "playfulness": 0.6,
-              "sensitivity": 0.5,
-              "boldness": 0.4
-            }
-          },
-          "intimacy": {
-            "flirtiness": 0,
-            "romanticCharge": 0,
-            "userConsentEnabled": false
-          },
-          "synthesizedTone": "curious"
-        },
-        "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
-        },
-        "effectPolicy": "eligible",
-        "event": {
-          "type": "user_touch",
-          "variant": "touch"
-        }
-      }
-    },
-    {
       "name": "touch-unknown-root",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -152,7 +53,6 @@
       "name": "touch-unknown-card",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -202,7 +102,6 @@
       "name": "touch-card-id",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -251,7 +150,6 @@
       "name": "touch-card-revision",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -300,7 +198,6 @@
       "name": "touch-card-bool-revision",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -349,7 +246,6 @@
       "name": "touch-card-mismatch",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -398,7 +294,6 @@
       "name": "touch-missing-policy",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -446,7 +341,6 @@
       "name": "touch-bad-policy",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -495,7 +389,6 @@
       "name": "touch-stream",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": true,
         "locale": "ru",
@@ -544,7 +437,6 @@
       "name": "touch-invalid-uuid",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "invalid",
         "stream": false,
         "locale": "ru",
@@ -590,216 +482,9 @@
       }
     },
     {
-      "name": "chat-version",
-      "endpoint": "/v1/chat",
-      "value": {
-        "version": 6,
-        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
-        "event": {
-          "type": "user_message"
-        },
-        "stream": false,
-        "locale": "ru",
-        "character": {
-          "needs": {
-            "energy": 80,
-            "attention": 50,
-            "play": 60,
-            "comfort": 80,
-            "boredom": 10
-          },
-          "relationship": {
-            "friendship": 100,
-            "love": 0,
-            "loveUnlocked": false
-          },
-          "personality": {
-            "presetId": "shyDreamGirl",
-            "aiSelfConcept": "Я Wisp, твой компаньон.",
-            "traits": {
-              "shyness": 0.4,
-              "playfulness": 0.6,
-              "sensitivity": 0.5,
-              "boldness": 0.4
-            }
-          },
-          "intimacy": {
-            "flirtiness": 0,
-            "romanticCharge": 0,
-            "userConsentEnabled": false
-          },
-          "synthesizedTone": "curious"
-        },
-        "memory": {
-          "facts": [
-            {
-              "key": "user.display_name",
-              "value": "Аня"
-            },
-            {
-              "key": "user.reply_style",
-              "value": "brief"
-            }
-          ],
-          "episodes": [
-            {
-              "kind": "cursor_game",
-              "outcome": "caught",
-              "executedMs": 1900,
-              "occurredAt": "2026-09-18T08:30:00.000Z"
-            }
-          ],
-          "characterPreferences": [
-            {
-              "key": "activity.cursor_game",
-              "value": 12,
-              "confidence": 0.5
-            }
-          ]
-        },
-        "messages": [
-          {
-            "role": "user",
-            "content": "Почему ты так отреагировала?"
-          }
-        ],
-        "previousInitiative": {
-          "kind": "social_bid",
-          "text": "Хочешь поговорить о музыке?",
-          "createdAt": "2026-09-18T09:00:01.000Z"
-        },
-        "summary": {
-          "text": "Пользователь обсуждал космос."
-        },
-        "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
-        },
-        "effectPolicy": "suppressed",
-        "previousTouch": {
-          "action": "touch",
-          "occurredAt": "2026-10-17T08:30:00.000Z",
-          "publishedText": "Мне приятно это лёгкое касание.",
-          "appraisal": {
-            "category": "supportive",
-            "intensity": "low",
-            "confidence": "clear"
-          },
-          "effect": "accepted",
-          "reason": "applied",
-          "energyBand": "rested",
-          "comfortBand": "calm"
-        }
-      }
-    },
-    {
-      "name": "chat-bool-version",
-      "endpoint": "/v1/chat",
-      "value": {
-        "version": true,
-        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
-        "event": {
-          "type": "user_message"
-        },
-        "stream": false,
-        "locale": "ru",
-        "character": {
-          "needs": {
-            "energy": 80,
-            "attention": 50,
-            "play": 60,
-            "comfort": 80,
-            "boredom": 10
-          },
-          "relationship": {
-            "friendship": 100,
-            "love": 0,
-            "loveUnlocked": false
-          },
-          "personality": {
-            "presetId": "shyDreamGirl",
-            "aiSelfConcept": "Я Wisp, твой компаньон.",
-            "traits": {
-              "shyness": 0.4,
-              "playfulness": 0.6,
-              "sensitivity": 0.5,
-              "boldness": 0.4
-            }
-          },
-          "intimacy": {
-            "flirtiness": 0,
-            "romanticCharge": 0,
-            "userConsentEnabled": false
-          },
-          "synthesizedTone": "curious"
-        },
-        "memory": {
-          "facts": [
-            {
-              "key": "user.display_name",
-              "value": "Аня"
-            },
-            {
-              "key": "user.reply_style",
-              "value": "brief"
-            }
-          ],
-          "episodes": [
-            {
-              "kind": "cursor_game",
-              "outcome": "caught",
-              "executedMs": 1900,
-              "occurredAt": "2026-09-18T08:30:00.000Z"
-            }
-          ],
-          "characterPreferences": [
-            {
-              "key": "activity.cursor_game",
-              "value": 12,
-              "confidence": 0.5
-            }
-          ]
-        },
-        "messages": [
-          {
-            "role": "user",
-            "content": "Почему ты так отреагировала?"
-          }
-        ],
-        "previousInitiative": {
-          "kind": "social_bid",
-          "text": "Хочешь поговорить о музыке?",
-          "createdAt": "2026-09-18T09:00:01.000Z"
-        },
-        "summary": {
-          "text": "Пользователь обсуждал космос."
-        },
-        "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
-        },
-        "effectPolicy": "suppressed",
-        "previousTouch": {
-          "action": "touch",
-          "occurredAt": "2026-10-17T08:30:00.000Z",
-          "publishedText": "Мне приятно это лёгкое касание.",
-          "appraisal": {
-            "category": "supportive",
-            "intensity": "low",
-            "confidence": "clear"
-          },
-          "effect": "accepted",
-          "reason": "applied",
-          "energyBand": "rested",
-          "comfortBand": "calm"
-        }
-      }
-    },
-    {
       "name": "chat-unknown-root",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -903,7 +588,6 @@
       "name": "chat-unknown-card",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -1007,7 +691,6 @@
       "name": "chat-card-id",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -1110,7 +793,6 @@
       "name": "chat-card-revision",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -1213,7 +895,6 @@
       "name": "chat-card-bool-revision",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -1316,7 +997,6 @@
       "name": "chat-card-mismatch",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -1419,7 +1099,6 @@
       "name": "chat-missing-policy",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -1521,7 +1200,6 @@
       "name": "chat-bad-policy",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -1624,7 +1302,6 @@
       "name": "chat-stream",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -1727,7 +1404,6 @@
       "name": "chat-invalid-uuid",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "invalid",
         "event": {
           "type": "user_message"
@@ -1830,7 +1506,6 @@
       "name": "random-gesture",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -1879,7 +1554,6 @@
       "name": "memory",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -1929,7 +1603,6 @@
       "name": "event-extra",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "stream": false,
         "locale": "ru",
@@ -1979,7 +1652,6 @@
       "name": "missing-memory",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -2055,7 +1727,6 @@
       "name": "trace-pair",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -2158,7 +1829,6 @@
       "name": "trace-date",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -2261,7 +1931,6 @@
       "name": "trace-extra",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -2365,7 +2034,6 @@
       "name": "trace-null",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -2455,7 +2123,6 @@
       "name": "trace-untrimmed",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -2558,7 +2225,6 @@
       "name": "trace-overflow",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -2661,7 +2327,6 @@
       "name": "trace-control",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "event": {
           "type": "user_message"
@@ -2766,7 +2431,6 @@
       "name": "touch-missing-appraisal",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание."
       },
@@ -2776,7 +2440,6 @@
       "name": "touch-unknown-appraisal",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание.",
         "appraisal": {
@@ -2792,7 +2455,6 @@
       "name": "touch-bad-category",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание.",
         "appraisal": {
@@ -2807,7 +2469,6 @@
       "name": "touch-bad-intensity",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание.",
         "appraisal": {
@@ -2822,7 +2483,6 @@
       "name": "touch-bad-confidence",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание.",
         "appraisal": {
@@ -2837,7 +2497,6 @@
       "name": "touch-null-appraisal",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание.",
         "appraisal": null
@@ -2848,7 +2507,6 @@
       "name": "touch-empty-text",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": " ",
         "appraisal": {
@@ -2863,7 +2521,6 @@
       "name": "touch-unknown-root",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание.",
         "appraisal": {
@@ -2879,7 +2536,6 @@
       "name": "chat-missing-appraisal",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "decision": {
@@ -2895,7 +2551,6 @@
       "name": "chat-unknown-appraisal",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "appraisal": {
@@ -2917,7 +2572,6 @@
       "name": "chat-bad-category",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "appraisal": {
@@ -2938,7 +2592,6 @@
       "name": "chat-bad-intensity",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "appraisal": {
@@ -2959,7 +2612,6 @@
       "name": "chat-bad-confidence",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "appraisal": {
@@ -2980,7 +2632,6 @@
       "name": "chat-null-appraisal",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "appraisal": null,
@@ -2997,7 +2648,6 @@
       "name": "chat-empty-text",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": " ",
         "appraisal": {
@@ -3018,7 +2668,6 @@
       "name": "chat-unknown-root",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "appraisal": {
@@ -3040,7 +2689,6 @@
       "name": "hostile-touch",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание.",
         "appraisal": {
@@ -3055,7 +2703,6 @@
       "name": "moderate-touch",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Мне приятно это лёгкое касание.",
         "appraisal": {
@@ -3070,7 +2717,6 @@
       "name": "touch-overflow",
       "endpoint": "/v1/touch",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         "appraisal": {
@@ -3085,7 +2731,6 @@
       "name": "suppressed-positive",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "appraisal": {
@@ -3106,7 +2751,6 @@
       "name": "suppressed-uncertain",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "Ты слегка коснулся меня, и мне было приятно.",
         "appraisal": {
@@ -3127,7 +2771,6 @@
       "name": "chat-overflow",
       "endpoint": "/v1/chat",
       "value": {
-        "version": 1,
         "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
         "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         "appraisal": {

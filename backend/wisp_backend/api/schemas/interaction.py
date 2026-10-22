@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, field_validator, model_validator
 from wisp_backend.api.schemas.chat import ChatFields
-from wisp_backend.api.schemas.common import RequestId, Version
+from wisp_backend.api.schemas.common import RequestId
 from wisp_backend.api.schemas.events import PreviousInitiative
 from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
 from wisp_backend.api.schemas.touch import TouchEvent, TouchFields
@@ -64,7 +64,6 @@ class PreviousTouch(Contract):
 
 
 class InteractionTouchRequest(TouchFields, InteractionPolicy):
-    version: Version
     event: ActualTouch
 
     @model_validator(mode="after")
@@ -75,7 +74,6 @@ class InteractionTouchRequest(TouchFields, InteractionPolicy):
 
 
 class InteractionChatRequest(ChatFields, InteractionPolicy):
-    version: Version
     memory: MemoryContext
     previousInitiative: PreviousInitiative = omittable()
     summary: SummaryModelReply = omittable()
@@ -89,10 +87,8 @@ class InteractionChatRequest(ChatFields, InteractionPolicy):
 
 
 class InteractionTouchResponse(InteractionTouchReply):
-    version: Version
     requestId: RequestId
 
 
 class InteractionChatResponse(InteractionChatReply):
-    version: Version
     requestId: RequestId

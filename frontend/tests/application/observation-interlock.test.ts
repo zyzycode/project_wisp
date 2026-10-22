@@ -6,11 +6,11 @@ import { providerRequest } from '../infrastructure/backend-ai-fixture';
 import { DialogueRuntime } from '../../src/application/services/dialogue-loop.service';
 import { AIEventRuntime } from '../../src/application/services/ai-event-runtime';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
-const reply = (version: number, requestId: string, text: string) => new Response(JSON.stringify({ version, requestId, text, appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'Content-Type': 'application/json' } });
+const reply = (requestId: string, text: string) => new Response(JSON.stringify({ requestId, text, appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'Content-Type': 'application/json' } });
 function fixture() {
   const f = observationFixture(); let finish!: () => void;
-  const fetcher = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve(reply(6, providerRequest().requestId, 'late')); }))
-    .mockImplementation(async (_url, options) => { const body = JSON.parse(String(options?.body)) as { requestId: string }; return reply(1, body.requestId, 'User reply'); });
+  const fetcher = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve(reply(providerRequest().requestId, 'late')); }))
+    .mockImplementation(async (_url, options) => { const body = JSON.parse(String(options?.body)) as { requestId: string }; return reply(body.requestId, 'User reply'); });
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, now: Date.now, fetch: fetcher });
   f.canStartObservation.mockImplementation(() => provider.canStartObservation());
   f.generateObservation.mockImplementation((request, signal) => provider.generateObservation(request, signal));

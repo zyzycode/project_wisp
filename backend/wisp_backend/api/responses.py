@@ -11,7 +11,6 @@ from wisp_backend.outcomes import MAX_RESPONSE_BYTES, Outcome
 
 ERROR_STATUS = {
     "invalid_request": 400,
-    "unsupported_version": 400,
     "payload_too_large": 413,
     "request_conflict": 409,
     "request_in_progress": 409,
@@ -23,9 +22,9 @@ ERROR_STATUS = {
 }
 
 
-def failure(code: ErrorCode, request_id: str | None, retry_after_ms: int | None = None, version: int = 1) -> Outcome:
+def failure(code: ErrorCode, request_id: str | None, retry_after_ms: int | None = None) -> Outcome:
     detail = ErrorDetail(code=code, **({"retryAfterMs": retry_after_ms} if retry_after_ms is not None else {}))
-    body = ErrorResponse(version=version, requestId=request_id, error=detail).model_dump(exclude_none=True)
+    body = ErrorResponse(requestId=request_id, error=detail).model_dump(exclude_none=True)
     body["requestId"] = request_id
     return Outcome(ERROR_STATUS[code], JSONResponse(body).body)
 
@@ -34,16 +33,13 @@ def http_response(outcome: Outcome) -> Response:
     return Response(outcome.body, status_code=outcome.status, media_type="application/json")
 
 
-def error_response(
-    code: ErrorCode, request_id: str | None = None, retry_after_ms: int | None = None, version: int = 1
-) -> Response:
-    return http_response(failure(code, request_id, retry_after_ms, version))
+def error_response(code: ErrorCode, request_id: str | None = None, retry_after_ms: int | None = None) -> Response:
+    return http_response(failure(code, request_id, retry_after_ms))
 
 
 @dataclass(frozen=True)
 class WireReplyEncoder:
     request_id: str
-    version: int
     policy: CompletionPolicy
     response_type: type[BaseModel]
     evidence_quote: str | None = None
@@ -53,7 +49,7 @@ class WireReplyEncoder:
         try:
             reply = self.policy.parse_reply(text, self.evidence_quote, self.effect_policy)
             response = self.response_type.model_validate(
-                {"version": self.version, "requestId": self.request_id, **reply.model_dump(exclude_none=True)},
+                {"requestId": self.request_id, **reply.model_dump(exclude_none=True)},
                 context={"evidence_quote": self.evidence_quote, "effect_policy": self.effect_policy},
             )
             outcome = Outcome(200, JSONResponse(response.model_dump(exclude_none=True)).body)
@@ -64,4 +60,4 @@ class WireReplyEncoder:
         return outcome
 
     def failure(self, code: ErrorCode, retry_after_ms: int | None = None) -> Outcome:
-        return failure(code, self.request_id, retry_after_ms, self.version)
+        return failure(code, self.request_id, retry_after_ms)

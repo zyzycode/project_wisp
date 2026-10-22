@@ -37,7 +37,7 @@ def test_pending_replay_conflict_and_retention(
         entered, release = asyncio.Event(), asyncio.Event()
         calls = 0
         response = fixture(f"response.{operation}.json")
-        reply = {k: v for k, v in response.items() if k not in ("version", "requestId")}
+        reply = {k: v for k, v in response.items() if k not in ("requestId",)}
         reply["text"] = "PRIVATE_REPLY"
 
         async def upstream(request: httpx.Request) -> httpx.Response:
@@ -71,11 +71,6 @@ def test_pending_replay_conflict_and_retention(
                 assert result.status_code == 200
                 other = "chat" if operation == "touch" else "touch"
                 assert (await client.post(f"/v1/{other}", json=fixture(f"request.{other}.json"))).status_code == 409
-                old = {k: v for k, v in body.items() if k not in ("card", "effectPolicy", "previousTouch")}
-                old["version"] = 1 if operation == "touch" else 5
-                assert (await client.post(f'/v{old["version"]}/{operation}', json=old)).status_code == (
-                    400 if operation == "touch" else 404
-                )
                 clock.now += CACHE_TTL - 0.001
                 assert (await client.post(route, json=body)).content == result.content
                 clock.now += 0.001
@@ -204,7 +199,7 @@ def test_late_usage_settles_once_without_publishing(
             service.provider = LateProvider()
             body = REQUESTS[f"/v1/{operation}"].model_validate(fixture(f"request.{operation}.json"))
             first = await service.complete(prepare_job(body), "digest", asyncio.get_running_loop().time())
-            assert first.status == 504 and json.loads(first.body)["version"] == 1
+            assert first.status == 504
             release.set()
 
             async def drain() -> None:

@@ -21,7 +21,7 @@ def fixture(name):
 )
 def test_v1_shared_fixtures_http(client_factory, completion, route, request_file, response_file, status):
     expected = fixture(response_file)
-    reply = {key: value for key, value in expected.items() if key not in ("version", "requestId")}
+    reply = {key: value for key, value in expected.items() if key not in ("requestId",)}
     with client_factory(lambda _: httpx.Response(status, json=completion(reply))) as client:
         response = client.post(
             route, content=(FIXTURES / request_file).read_bytes(), headers={"content-type": "application/json"}
@@ -35,30 +35,16 @@ def test_social_fixture_text_only(client_factory, completion):
     with client_factory(lambda _: httpx.Response(200, json=completion({"text": "РџСЂРёРІРµС‚!"}))) as client:
         response = client.post("/v1/events", json=request)
         assert response.status_code == 200
-        assert response.json() == {"version": 1, "requestId": request["requestId"], "text": "РџСЂРёРІРµС‚!"}
+        assert response.json() == {"requestId": request["requestId"], "text": "РџСЂРёРІРµС‚!"}
 
 
 @pytest.mark.parametrize("request_name,route", [("request.game.json", "/v1/events"), ("request.chat.json", "/v1/chat")])
 def test_v1_boundary_errors_and_exact_byte_cap(client_factory, completion, request_name, route):
     body = fixture(request_name)
     with client_factory(lambda _: pytest.fail("invalid input reached provider")) as client:
-        for version in [2, 3, 4, 5, 6, 7]:
-            response = client.post(route, json={**body, "version": version})
-            assert response.status_code == 400
-            assert response.json() == {
-                "version": 1,
-                "requestId": body["requestId"],
-                "error": {"code": "unsupported_version"},
-            }
-        for version in [True, 3.0, "3", None]:
-            response = client.post(route, json={**body, "version": version})
-            assert response.status_code == 400
-            assert response.json()["version"] == 1
-            assert response.json()["error"]["code"] == "invalid_request"
         for content, status in [(b"{", 400), (b"x" * 32769, 413)]:
             response = client.post(route, content=content, headers={"content-type": "application/json"})
             assert response.status_code == status
-            assert response.json()["version"] == 1
             assert response.json()["requestId"] is None
     raw = json.dumps(body).encode()
     raw += b" " * (32768 - len(raw))
@@ -175,7 +161,7 @@ def test_event_and_initiative_content_never_persist_or_log(app_factory, chat_com
         (httpx.Response(200, content=b"{invalid-provider-json"), 502),
     ],
 )
-def test_v1_transport_errors_keep_safe_versioned_envelope(client_factory, path, request_file, failure, expected):
+def test_v1_transport_errors_keep_safe_error_envelope(client_factory, path, request_file, failure, expected):
     calls = []
 
     def upstream(request):
@@ -187,6 +173,5 @@ def test_v1_transport_errors_keep_safe_versioned_envelope(client_factory, path, 
     with client_factory(upstream) as client:
         response = client.post(path, json=fixture(request_file))
         assert response.status_code == expected
-        assert response.json()["version"] == 1
         assert "private" not in response.text
         assert len(calls) == 1

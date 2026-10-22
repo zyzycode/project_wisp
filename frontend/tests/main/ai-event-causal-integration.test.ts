@@ -148,8 +148,7 @@ it('carries a committed real game through v1 events and the next accepted chat w
     expect(f.bridge.responses[0]?.status).toBe(200);
     const line = f.events.getSpeech(); expect(line?.text).toBe('Мне нравится игра с курсором');
     expect(f.character.getState().relationship).toEqual(relationship);
-    expect(f.bridge.requests[0]).toMatchObject({ path: '/v1/events', body: { version: 1,
-      event: { type: 'cursor_game_completed', outcome: episode.outcome, executedMs: episode.executedMs, occurredAt: episode.endedAt },
+    expect(f.bridge.requests[0]).toMatchObject({ path: '/v1/events', body: { event: { type: 'cursor_game_completed', outcome: episode.outcome, executedMs: episode.executedMs, occurredAt: episode.endedAt },
       memory: { episodes: [{ kind: 'cursor_game', outcome: episode.outcome, executedMs: episode.executedMs, occurredAt: episode.endedAt }] } } });
     expect(f.bridge.requests[0]?.body).not.toHaveProperty('messages');
     expect(await f.repos.history.getRecent(10, { generation: 0 })).toEqual({ ok: true, value: [] });
@@ -158,7 +157,7 @@ it('carries a committed real game through v1 events and the next accepted chat w
     expect(f.send(1).status).toBe('accepted'); expect(f.send(2)).toMatchObject({ status: 'rejected', reason: 'busy' });
     await f.finishChat();
     expect(f.bridge.responses[1]?.status).toBe(200);
-    expect(f.bridge.requests[1]).toMatchObject({ path: '/v1/chat', body: { version: 1, messages: [{ role: 'user', content: 'да' }], previousInitiative: prior } });
+    expect(f.bridge.requests[1]).toMatchObject({ path: '/v1/chat', body: { messages: [{ role: 'user', content: 'да' }], previousInitiative: prior } });
     const previousBlock = f.bridge.responses[1]?.upstreamMessages.find(message => message.content.startsWith('Previous published AI initiative'));
     expect(JSON.parse(previousBlock?.content.split('\n').slice(1).join('\n') ?? 'null')).toEqual(prior);
     expect(f.dialogue.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Я отреагировала на твоё лёгкое касание.' });

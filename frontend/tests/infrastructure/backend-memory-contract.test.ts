@@ -37,7 +37,7 @@ it('counts all string values recursively, including registry keys and enum value
   expect(parseBackendMemory({ facts: [], episodes: [{ kind: 'cursor_game', outcome: 'caught', executedMs: 0, occurredAt: '0000-01-01T00:00:00.000Z' }], characterPreferences: [] }).episodes).toHaveLength(1);
 });
 it('drops malformed/duplicate/source-mismatched proposals while retaining valid text/decision', () => {
-  const base = { version: 1, requestId: request.requestId, text: 'Ответ', decision: { behavior: 'play', confidence: 1 } };
+  const base = { requestId: request.requestId, text: 'Ответ', decision: { behavior: 'play', confidence: 1 } };
   const candidate = { key: 'user.cursor_game', value: 'like', evidenceQuote: request.messages[0]!.content };
   for (const memoryCandidates of [[candidate, { key: 'user.cursor_game' }], [{ ...candidate, evidenceQuote: 'invented' }], [{ ...candidate, confidence: 1 }]]) {
     expect(parseBackendMemorySuccess({ ...base, memoryCandidates }, request.requestId, candidate.evidenceQuote)).toEqual({ ...base, memoryCandidates: [] });
@@ -61,8 +61,8 @@ it('does not probe/downgrade/retry an unavailable v1 endpoint', async () => {
   await expect(provider.generateResponse(semantic())).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/v1/chat');
 });
-it('rejects obsolete envelopes and drops fallback semantic proposals', () => {
-  expect(() => parseBackendMemorySuccess({ version: 7, requestId: request.requestId, text: 'no' }, request.requestId, '')).toThrow();
-  expect(() => parseBackendMemoryError({ version: 7, requestId: request.requestId, error: { code: 'upstream_unavailable' } }, request.requestId, 503)).toThrow();
+it('rejects unexpected envelope fields and drops fallback semantic proposals', () => {
+  expect(() => parseBackendMemorySuccess({ unexpected: true, requestId: request.requestId, text: 'no' }, request.requestId, '')).toThrow();
+  expect(() => parseBackendMemoryError({ unexpected: true, requestId: request.requestId, error: { code: 'upstream_unavailable' } }, request.requestId, 503)).toThrow();
   expect(parseProviderResponse({ requestId: 'r', status: 'fallback', reply: { text: 'Ответ' }, confidence: 0, memoryCandidates: [{ key: 'user.display_name', value: 'Bob', evidenceQuote: 'My name is Bob' }] }, 'r').memoryCandidates).toBeUndefined();
 });

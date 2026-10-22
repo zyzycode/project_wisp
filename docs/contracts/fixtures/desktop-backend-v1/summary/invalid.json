@@ -1,56 +1,27 @@
 [
   {
-    "name": "wrong-version",
-    "operation": "summary",
-    "request": {
-      "version": 4,
-      "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
-      "locale": "ru",
-      "stream": false,
-      "pairs": [
-        {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 0",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
-        },
-        {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 1",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
-        },
-        {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 2",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
-        },
-        {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 3",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
-        }
-      ]
-    }
-  },
-  {
     "name": "unknown-field",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "locale": "ru",
       "stream": false,
       "pairs": [
         {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 0",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+          "userText": "Космос 0",
+          "assistantText": "Мы обсуждали звёзды."
         },
         {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 1",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+          "userText": "Космос 1",
+          "assistantText": "Мы обсуждали звёзды."
         },
         {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 2",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+          "userText": "Космос 2",
+          "assistantText": "Мы обсуждали звёзды."
         },
         {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 3",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+          "userText": "Космос 3",
+          "assistantText": "Мы обсуждали звёзды."
         }
       ],
       "character": {}
@@ -60,7 +31,6 @@
     "name": "missing-pairs",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "locale": "ru",
       "stream": false,
@@ -71,7 +41,6 @@
     "name": "controls",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "locale": "ru",
       "stream": false,
@@ -99,7 +68,6 @@
     "name": "overflow-user",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "locale": "ru",
       "stream": false,
@@ -127,26 +95,25 @@
     "name": "wrong-id",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "not-uuid",
       "locale": "ru",
       "stream": false,
       "pairs": [
         {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 0",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+          "userText": "Космос 0",
+          "assistantText": "Мы обсуждали звёзды."
         },
         {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 1",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+          "userText": "Космос 1",
+          "assistantText": "Мы обсуждали звёзды."
         },
         {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 2",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+          "userText": "Космос 2",
+          "assistantText": "Мы обсуждали звёзды."
         },
         {
-          "userText": "\u041a\u043e\u0441\u043c\u043e\u0441 3",
-          "assistantText": "\u041c\u044b \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b\u0438 \u0437\u0432\u0451\u0437\u0434\u044b."
+          "userText": "Космос 3",
+          "assistantText": "Мы обсуждали звёзды."
         }
       ]
     }
@@ -155,7 +122,6 @@
     "name": "unknown-pair-field",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "locale": "ru",
       "stream": false,
@@ -187,7 +153,6 @@
     "name": "v4-kind",
     "operation": "chat",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "event": {
         "type": "user_message"
@@ -209,7 +174,7 @@
         },
         "personality": {
           "presetId": "default",
-          "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
           "traits": {
             "shyness": 0.4,
             "playfulness": 0.6,
@@ -228,7 +193,7 @@
         "facts": [
           {
             "key": "user.display_name",
-            "value": "\u0410\u043d\u044f"
+            "value": "Аня"
           },
           {
             "key": "user.reply_style",
@@ -252,12 +217,12 @@
       "messages": [
         {
           "role": "user",
-          "content": "\u0414\u0430, \u0434\u0430\u0432\u0430\u0439."
+          "content": "Да, давай."
         }
       ],
       "previousInitiative": {
         "kind": "social_bid",
-        "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+        "text": "Хочешь поговорить о музыке?",
         "createdAt": "2026-09-18T09:00:01.000Z"
       }
     }
@@ -266,7 +231,6 @@
     "name": "null-summary",
     "operation": "chat",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "event": {
         "type": "user_message"
@@ -288,7 +252,7 @@
         },
         "personality": {
           "presetId": "default",
-          "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
           "traits": {
             "shyness": 0.4,
             "playfulness": 0.6,
@@ -307,7 +271,7 @@
         "facts": [
           {
             "key": "user.display_name",
-            "value": "\u0410\u043d\u044f"
+            "value": "Аня"
           },
           {
             "key": "user.reply_style",
@@ -333,12 +297,12 @@
       "messages": [
         {
           "role": "user",
-          "content": "\u0414\u0430, \u0434\u0430\u0432\u0430\u0439."
+          "content": "Да, давай."
         }
       ],
       "previousInitiative": {
         "kind": "social_bid",
-        "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+        "text": "Хочешь поговорить о музыке?",
         "createdAt": "2026-09-18T09:00:01.000Z"
       },
       "summary": null
@@ -348,7 +312,6 @@
     "name": "summary-extra",
     "operation": "chat",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "event": {
         "type": "user_message"
@@ -370,7 +333,7 @@
         },
         "personality": {
           "presetId": "default",
-          "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+          "aiSelfConcept": "Я Wisp, твой компаньон.",
           "traits": {
             "shyness": 0.4,
             "playfulness": 0.6,
@@ -389,7 +352,7 @@
         "facts": [
           {
             "key": "user.display_name",
-            "value": "\u0410\u043d\u044f"
+            "value": "Аня"
           },
           {
             "key": "user.reply_style",
@@ -415,12 +378,12 @@
       "messages": [
         {
           "role": "user",
-          "content": "\u0414\u0430, \u0434\u0430\u0432\u0430\u0439."
+          "content": "Да, давай."
         }
       ],
       "previousInitiative": {
         "kind": "social_bid",
-        "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+        "text": "Хочешь поговорить о музыке?",
         "createdAt": "2026-09-18T09:00:01.000Z"
       },
       "summary": {
@@ -433,7 +396,6 @@
     "name": "carriage-return",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "locale": "ru",
       "stream": false,
@@ -461,25 +423,24 @@
     "name": "c1-control",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "locale": "ru",
       "stream": false,
       "pairs": [
         {
-          "userText": "bad\u0085",
+          "userText": "bad",
           "assistantText": "ok"
         },
         {
-          "userText": "bad\u0085",
+          "userText": "bad",
           "assistantText": "ok"
         },
         {
-          "userText": "bad\u0085",
+          "userText": "bad",
           "assistantText": "ok"
         },
         {
-          "userText": "bad\u0085",
+          "userText": "bad",
           "assistantText": "ok"
         }
       ]
@@ -489,7 +450,6 @@
     "name": "unpaired-surrogate",
     "operation": "summary",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
       "locale": "ru",
       "stream": false,

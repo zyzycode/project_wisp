@@ -19,31 +19,22 @@ from wisp_backend.api.schemas.interaction import InteractionChatRequest as ChatR
 from wisp_backend.completion.contracts import ProviderResult
 from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input
 
-CHATS = [(1, "request.valid.json")]
 
-
-def request_body(version: int, fixture: str) -> dict[str, Any]:
-    body = json.loads(
-        (
-            CONTRACT_FIXTURES / ("desktop-backend-v1" if version == 1 else "desktop-backend-v1/events") / fixture
-        ).read_bytes()
-    )
+def request_body(fixture: str = "request.valid.json") -> dict[str, Any]:
+    body = json.loads((CONTRACT_FIXTURES / "desktop-backend-v1" / fixture).read_bytes())
     body["locale"] = "en"
     body["messages"] = [{"role": "user", "content": "Tell me about the desktop"}]
     return body
 
 
 @pytest.mark.parametrize("provider,model", list(CONTEXT_WINDOWS))
-@pytest.mark.parametrize("version,fixture", CHATS)
 def test_chat_handlers_use_reviewed_lore_with_output_reserve(
     app_factory: Callable[..., FastAPI],
     chat_completion: Callable[..., dict[str, Any]],
     provider: str,
     model: str,
-    version: int,
-    fixture: str,
 ) -> None:
-    body = request_body(version, fixture)
+    body = request_body()
     calls = []
 
     def upstream(request: httpx.Request) -> httpx.Response:
@@ -85,10 +76,9 @@ def test_chat_handlers_use_reviewed_lore_with_output_reserve(
         return httpx.Response(200, json=reply)
 
     with TestClient(app_factory(upstream, assistants={"default": {"provider": provider, "model": model}})) as client:
-        response = client.post(f"/v{version}/chat", json=body)
+        response = client.post("/v1/chat", json=body)
         assert response.status_code == 200
         assert response.json() == {
-            "version": version,
             "requestId": body["requestId"],
             "text": "Hello",
             "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
@@ -121,7 +111,7 @@ def test_only_current_user_activates_lore_and_touch_events_do_not_scan(
         )
 
     with client_factory(upstream) as client:
-        body = request_body(3, "request.chat.json")
+        body = request_body("events/request.chat.json")
         body["messages"] = [
             {"role": "user", "content": "desktop"},
             {"role": "assistant", "content": "desktop"},
@@ -173,7 +163,7 @@ def test_adversarial_lore_never_becomes_system_history_or_memory_evidence(
         )
 
     with client_factory(upstream) as client:
-        result = client.post("/v1/chat", json=request_body(3, "request.chat.json"))
+        result = client.post("/v1/chat", json=request_body("events/request.chat.json"))
         assert result.status_code == 200 and not result.json().get("memoryCandidates")
     assert marker not in caplog.text
 
@@ -195,7 +185,7 @@ def test_revision_delete_and_invalid_replacement_apply_only_after_restart(
         return httpx.Response(200, json=chat_completion())
 
     def send(client: TestClient) -> None:
-        body = request_body(1, "request.valid.json")
+        body = request_body()
         body["requestId"] = str(uuid4())
         assert client.post("/v1/chat", json=body).status_code == 200
 
@@ -239,9 +229,7 @@ def test_shutdown_cancels_lore_completion_and_late_result_cannot_publish(
         async with app.router.lifespan_context(app):
             service = app.state.completion_service
             service.provider = LateProvider()
-            job = prepare_job(
-                ChatRequest.model_validate(request_body(1, "request.valid.json")), app.state.lore_catalogue
-            )
+            job = prepare_job(ChatRequest.model_validate(request_body()), app.state.lore_catalogue)
             pending = asyncio.create_task(service.complete(job, "lore-request", asyncio.get_running_loop().time()))
             await entered.wait()
             closing = asyncio.create_task(service.close())

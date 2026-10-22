@@ -80,12 +80,11 @@ def test_v1_replay_and_cross_endpoint_namespace_settle_once(
             service = app.state.completion_service
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
                 first = await client.post("/v1/summary", json=summary)
-                assert first.status_code == 200 and first.json()["version"] == 1
+                assert first.status_code == 200
                 for route, candidate in candidates:
                     conflict = await client.post(route, json={**candidate, "requestId": summary["requestId"]})
                     assert conflict.status_code == 409
                     assert conflict.json()["error"]["code"] == "request_conflict"
-                    assert conflict.json()["version"] == candidate["version"]
                     assert (await client.post(route, json={**candidate, "requestId": str(uuid4())})).status_code == 200
                 assert (await client.post("/v1/summary", json=summary)).content == first.content
                 changed = {**summary, "locale": "en"}
@@ -251,7 +250,7 @@ def test_summary_late_usage_refines_once_without_replaying_success(
             service.provider = LateProvider()
             request = SummaryRequest.model_validate(fixture("request.summary.json"))
             first = await service.complete(prepare_job(request), "summary-digest", asyncio.get_running_loop().time())
-            assert first.status == 504 and json.loads(first.body)["version"] == 1
+            assert first.status == 504
             assert entered.is_set()
             release.set()
 
@@ -339,6 +338,6 @@ def test_slow_v1_body_never_enters_completion(route: str, monkeypatch: pytest.Mo
             send,
         )
         assert sent[0]["status"] == 400
-        assert json.loads(sent[1]["body"]) == {"version": 1, "requestId": None, "error": {"code": "invalid_request"}}
+        assert json.loads(sent[1]["body"]) == {"requestId": None, "error": {"code": "invalid_request"}}
 
     asyncio.run(run())

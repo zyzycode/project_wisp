@@ -52,7 +52,7 @@ it('enforces exact UTF-16 source and output caps, Unicode controls and encoded r
   expect(() => parseSummaryRequest({ ...summaryWire, pairs: Array.from({ length: 4 }, () => ({ userText: 'x', assistantText: 'x'.repeat(2001) })) })).toThrow();
   expect(() => parseSummaryRequest({ ...summaryWire, pairs: [...summaryWire.pairs, ...summaryWire.pairs, summaryWire.pairs[0]] })).toThrow();
   expect(() => parseSummaryRequest({ ...summaryWire, pairs: Array.from({ length: 4 }, () => ({ userText: 'x', assistantText: '\ud800'.repeat(1999) })) })).toThrow();
-  const response = { version: 1, requestId: summaryWire.requestId, text: '😀'.repeat(600) };
+  const response = { requestId: summaryWire.requestId, text: '😀'.repeat(600) };
   expect(parseSummaryResponse(response, summaryWire.requestId).text).toHaveLength(1200);
   expect(() => parseSummaryResponse({ ...response, text: response.text + 'x' }, summaryWire.requestId)).toThrow();
   expect(parseSummaryResponse({ ...response, text: 'line\nnext\tword' }, summaryWire.requestId).text).toContain('\n');
@@ -70,16 +70,16 @@ it('sends only selected pairs on explicit summary and uses the v1 chat endpoint 
   expect(String(fetcher.mock.calls[1]?.[0])).toBe('https://example.com/api/v1/chat');
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
-it('keeps event version3 and touch version1 under a version5 chat deployment', async () => {
-  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ version: 1, requestId: summaryWire.requestId, text: 'Привет' })).mockResolvedValueOnce(json({ version: 1, requestId: summaryWire.requestId, text: 'Мур', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }));
+it('keeps event and touch projections distinct on the shared transport', async () => {
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ requestId: summaryWire.requestId, text: 'Привет' })).mockResolvedValueOnce(json({ requestId: summaryWire.requestId, text: 'Мур', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }));
   const provider = client(fetcher); await provider.generateEvent(eventInput()); await provider.generateEvent(eventInput(true));
   expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/api/v1/events');
-  expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({ version: 1, event: { type: 'social_bid_started' } });
+  expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({ event: { type: 'social_bid_started' } });
   expect(String(fetcher.mock.calls[1]?.[0])).toBe('https://example.com/api/v1/touch');
-  expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toMatchObject({ version: 1, event: { type: 'user_touch', variant: 'touch' } });
+  expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toMatchObject({ event: { type: 'user_touch', variant: 'touch' } });
 });
-it.each([{ version: 7 }, { requestId: 'wrong-id' }, { text: '' }, { text: ' ' }, { text: 'bad\u0000' }, { text: 'x'.repeat(1201) }, { decision: {} }, { sources: [] }])('rejects malformed summary response %j without retry', async extra => {
-  const fetcher = vi.fn<typeof fetch>(async () => json({ version: 1, requestId: summaryWire.requestId, text: 'text', ...extra }));
+it.each([{ requestId: 'wrong-id' }, { text: '' }, { text: ' ' }, { text: 'bad\u0000' }, { text: 'x'.repeat(1201) }, { decision: {} }, { sources: [] }])('rejects malformed summary response %j without retry', async extra => {
+  const fetcher = vi.fn<typeof fetch>(async () => json({ requestId: summaryWire.requestId, text: 'text', ...extra }));
   const provider = client(fetcher); await expect(provider.generateSummary(summaryInput, new AbortController().signal)).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(1); expect(await provider.getStatus()).toEqual({ kind: 'ready' });
 });
@@ -125,10 +125,10 @@ it('uses one shared slot across summary, chat and events without background admi
   resolve(json(fixture('response.chat.success.json'))); await chat;
   const event = provider.generateEvent(eventInput());
   await expect(provider.generateSummary(summaryInput, new AbortController().signal)).rejects.toThrow();
-  resolve(json({ version: 1, requestId: summaryWire.requestId, text: 'Привет' })); await event; expect(fetcher).toHaveBeenCalledTimes(3);
+  resolve(json({ requestId: summaryWire.requestId, text: 'Привет' })); await event; expect(fetcher).toHaveBeenCalledTimes(3);
 });
-it.each([{ version: 7 }, { requestId: 'wrong-id' }, { text: 'bad\u0000' }, { summary: { text: 'forged' } }, { text: 'x'.repeat(2001) }])('rejects malformed v1 chat output %j without downgrading', async extra => {
-  const fetcher = vi.fn<typeof fetch>(async () => json({ version: 1, requestId: chatWire.requestId, text: 'Ответ', ...extra }));
+it.each([{ requestId: 'wrong-id' }, { text: 'bad\u0000' }, { summary: { text: 'forged' } }, { text: 'x'.repeat(2001) }])('rejects malformed v1 chat output %j without downgrading', async extra => {
+  const fetcher = vi.fn<typeof fetch>(async () => json({ requestId: chatWire.requestId, text: 'Ответ', ...extra }));
   await expect(client(fetcher).generateResponse(chatInput())).rejects.toThrow(); expect(fetcher).toHaveBeenCalledTimes(1);
 });
 it('late aborted summary cannot free the slot belonging to a newer chat', async () => {
@@ -161,7 +161,7 @@ it('restores ordinary recall when valid Unicode context makes summary exceed the
   const restored = { ...memory, episodes: [{ kind: 'dialogue' as const, userText: 'covered source restored', assistantText: 'original source', occurredAt: '2026-10-17T00:00:00.000Z' }] };
   const recall = vi.fn<ILocalMemoryRecall['recall']>().mockResolvedValueOnce({ ok: true, value: memory }).mockResolvedValueOnce({ ok: true, value: restored });
   const summary: ISummaryRuntime = { preview: vi.fn(), confirm: vi.fn(), deleteSummary: vi.fn(), capture: vi.fn(async () => ({ text: summaryText, excludedMessageIds: ['covered-user', 'covered-assistant'], generation: 0 })), isCurrent: () => true, interrupt: vi.fn(), invalidate: vi.fn(), reset: vi.fn(), dispose: vi.fn() };
-  const fetcher = vi.fn<typeof fetch>(async (_input, init) => { const body = JSON.parse(String(init?.body)); return json({ version: 1, requestId: body.requestId, text: 'Ответ' }); });
+  const fetcher = vi.fn<typeof fetch>(async (_input, init) => { const body = JSON.parse(String(init?.body)); return json({ requestId: body.requestId, text: 'Ответ' }); });
   let id = 0;
   const runtime = new DialogueRuntime({ interactionEnabled: true, provider: client(fetcher), summary,
     events: { interruptForUser: async () => undefined, invalidate: vi.fn(), getPreviousTouch: () => previousTouch, takePreviousInitiative: () => previousInitiative },

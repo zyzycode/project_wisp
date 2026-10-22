@@ -7,12 +7,12 @@ export function projectTouchRequest(request: AIEventProviderRequest): BackendTou
   const event = exactRecord(request.event, ['type', 'variant', 'occurredAt']);
   const base = projectBackendRequest({ requestId: request.requestId, characterSnapshot: request.characterSnapshot,
     locale: request.locale, recentContext: [], userMessage: { id: '', text: 'projection', createdAt: '' } });
-  return { version: 1, requestId: base.requestId, stream: false, locale: base.locale, character: base.character,
+  return { requestId: base.requestId, stream: false, locale: base.locale, character: base.character,
     event: { type: enumValue(event.type, ['user_touch']), variant: enumValue(event.variant, ['stroke', 'touch', 'ruffle', 'poke']) } };
 }
 
 export function parseTouchResponse(value: unknown, requestId: string) {
-  const response = exactRecord(value, ['version', 'requestId', 'text']);
-  if (response.version !== 1 || response.requestId !== requestId) throw new TypeError('Invalid touch envelope');
+  const response = exactRecord(value, ['requestId', 'text']);
+  if (response.requestId !== requestId) throw new TypeError('Invalid touch envelope');
   return { requestId, replyText: plainText(response.text, 240, true) };
 }

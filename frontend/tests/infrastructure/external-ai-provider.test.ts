@@ -21,7 +21,7 @@ it('does no network work in getStatus and sends exactly one bounded JSON request
   expect(JSON.parse(String(fetcher.mock.calls[0]![1]!.body))).toEqual(wire);
 });
 it.each([{}, { decision: { behavior: 'play', confidence: 0.7, mood: 'playful', tone: 'playful' } }, { decision: { behavior: 'delete_files', confidence: 1 } }])('maps text only and wire-only playful mood without inventing curious: %j', patch => {
-  const f = setup(vi.fn(async () => json({ version: 1, requestId: wire.requestId, text: 'ok', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, ...patch })));
+  const f = setup(vi.fn(async () => json({ requestId: wire.requestId, text: 'ok', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, ...patch })));
   return expect(f.provider.generateResponse(providerRequest())).resolves.toMatchObject({ status: 'ok', reply: { text: 'ok' }, suggestedBehavior: patch.decision?.behavior === 'play' ? 'play' : 'respond' }).then(async () => {
     const second = await f.provider.generateResponse(providerRequest()); expect(second.suggestedMood).toBeUndefined();
   });
@@ -53,7 +53,7 @@ it('keeps maximum valid multibyte context within the wire byte limit', async () 
   expect(new TextEncoder().encode(String(fetcher.mock.calls[0]![1]!.body)).byteLength).toBeLessThanOrEqual(32 * 1024);
 });
 it.each([['rate_limited', 429, 'provider_unavailable'], ['budget_exhausted', 429, 'provider_unavailable'], ['upstream_unavailable', 503, 'provider_unavailable'], ['upstream_timeout', 504, 'timeout'], ['invalid_model_response', 502, 'unexpected_error'], ['invalid_request', 400, 'unexpected_error']])('maps %s without retries or blocking the next request', async (code, status, reason) => {
-  const f = setup(vi.fn(async () => json({ version: 1, requestId: wire.requestId, error: { code } }, status)));
+  const f = setup(vi.fn(async () => json({ requestId: wire.requestId, error: { code } }, status)));
   await expect(f.provider.generateResponse(providerRequest())).resolves.toMatchObject({ status: 'fallback', diagnostics: { fallbackReason: reason } });
   expect(f.fetcher).toHaveBeenCalledTimes(1);
   await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
@@ -61,7 +61,7 @@ it.each([['rate_limited', 429, 'provider_unavailable'], ['budget_exhausted', 429
   expect(f.fetcher).toHaveBeenCalledTimes(2);
 });
 it.each([12_345, -1, 'bad', undefined])('does not impose a local delay from retry hint %s', async retryAfterMs => {
-  const f = setup(vi.fn(async () => json({ version: 1, requestId: wire.requestId, error: { code: 'rate_limited', retryAfterMs } }, 429)));
+  const f = setup(vi.fn(async () => json({ requestId: wire.requestId, error: { code: 'rate_limited', retryAfterMs } }, 429)));
   await f.provider.generateResponse(providerRequest());
   await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
   await f.provider.generateResponse(providerRequest()); expect(f.fetcher).toHaveBeenCalledTimes(2);
@@ -72,7 +72,7 @@ it('maps network outage to local fallback without retries or leaking errors', as
   expect(result.diagnostics?.fallbackReason).toBe('provider_unavailable'); expect(JSON.stringify(result)).not.toContain('secret');
   await vi.advanceTimersByTimeAsync(120_000); expect(f.fetcher).toHaveBeenCalledTimes(1);
 });
-it.each([() => new Response('<html>bad</html>', { status: 500 }), () => json({ version: 7, requestId: wire.requestId, text: 'bad', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), () => json({ version: 1, requestId: 'wrong', text: 'bad', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), () => json({ version: 1, requestId: wire.requestId, error: { code: 'rate_limited' } }, 503), () => new Response('{', { headers: { 'Content-Type': 'application/json' } })])('rejects malformed protocol instead of accepting any model hints', async response => {
+it.each([() => new Response('<html>bad</html>', { status: 500 }), () => json({ unexpected: true, requestId: wire.requestId, text: 'bad', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), () => json({ requestId: 'wrong', text: 'bad', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), () => json({ requestId: wire.requestId, error: { code: 'rate_limited' } }, 503), () => new Response('{', { headers: { 'Content-Type': 'application/json' } })])('rejects malformed protocol instead of accepting any model hints', async response => {
   const f = setup(vi.fn(async () => response()));
   await expect(f.provider.generateResponse(providerRequest())).rejects.toThrow();
   await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' }); expect(f.fetcher).toHaveBeenCalledTimes(1);

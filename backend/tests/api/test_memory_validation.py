@@ -209,4 +209,3 @@ def test_unknown_root_and_invalid_text_remain_fatal(client_factory, memory_body,
         with client_factory(lambda _, reply=reply: httpx.Response(200, json=chat_completion(reply))) as client:
             response = client.post("/v1/chat", json=memory_body)
             assert response.status_code == 502
-            assert response.json()["version"] == 1

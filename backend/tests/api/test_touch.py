@@ -39,7 +39,6 @@ def test_touch_prompt_and_text_only_response(client_factory, body, chat_completi
         response = client.post("/v1/touch", json=touch_body(body, variant))
         assert response.status_code == 200
         assert response.json() == {
-            "version": 1,
             "requestId": body["requestId"],
             "text": "Хи-хи, щекотно!",
             "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},

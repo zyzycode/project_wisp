@@ -58,7 +58,7 @@ def test_service_validates_accounts_and_replays(
         service = app.state.completion_service
         service.provider = provider
         response = client.post(route, json=body)
-        expected: dict[str, object] = {"version": body["version"], "requestId": body["requestId"]}
+        expected: dict[str, object] = {"requestId": body["requestId"]}
         expected.update(reply if expected_error is None else {"error": {"code": expected_error}})
         assert response.status_code == expected_status
         assert response.json() == expected

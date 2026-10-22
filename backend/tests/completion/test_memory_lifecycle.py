@@ -90,13 +90,13 @@ def test_memory_timeout_late_result_never_replays_success(app_factory):
             service.deadline = 0.2
             request = MemoryRequest.model_validate(json.loads(FIXTURE.read_bytes()))
             first = await service.complete(prepare_job(request), "v1-digest", asyncio.get_running_loop().time())
-            assert first.status == 504 and json.loads(first.body)["version"] == 1
+            assert first.status == 504
             assert entered.is_set(), "deadline expired before provider dispatch"
             release.set()
             while service.background:
                 await asyncio.sleep(0)
             repeat = await service.complete(prepare_job(request), "v1-digest", asyncio.get_running_loop().time())
-            assert repeat.status == 409 and json.loads(repeat.body)["version"] == 1
+            assert repeat.status == 409
             with sqlite3.connect(service.ledger.path) as db:
                 assert db.execute("SELECT requests,confirmed,uncertain,reserved FROM days").fetchone() == (1, 5, 0, 0)
 
@@ -126,6 +126,6 @@ def test_memory_body_deadline_uses_v1_error(monkeypatch):
             send,
         )
         assert sent[0]["status"] == 400
-        assert json.loads(sent[1]["body"]) == {"version": 1, "requestId": None, "error": {"code": "invalid_request"}}
+        assert json.loads(sent[1]["body"]) == {"requestId": None, "error": {"code": "invalid_request"}}
 
     asyncio.run(run())

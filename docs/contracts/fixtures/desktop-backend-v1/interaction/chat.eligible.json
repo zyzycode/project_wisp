@@ -2,7 +2,6 @@
   {
     "name": "supportive-low",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000001",
       "event": {
         "type": "user_message"
@@ -101,7 +100,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000001",
       "text": "Спасибо за тёплые слова.",
       "appraisal": {
@@ -114,7 +112,6 @@
   {
     "name": "supportive-moderate",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000002",
       "event": {
         "type": "user_message"
@@ -213,7 +210,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000002",
       "text": "Рада, что наш разговор помог.",
       "appraisal": {
@@ -226,7 +222,6 @@
   {
     "name": "playful-low",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000003",
       "event": {
         "type": "user_message"
@@ -325,7 +320,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000003",
       "text": "Может, Пухлый Капитан?",
       "appraisal": {
@@ -338,7 +332,6 @@
   {
     "name": "playful-moderate",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000004",
       "event": {
         "type": "user_message"
@@ -437,7 +430,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000004",
       "text": "Давай, я слушаю твою историю.",
       "appraisal": {
@@ -450,7 +442,6 @@
   {
     "name": "boundary-low",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000005",
       "event": {
         "type": "user_message"
@@ -549,7 +540,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000005",
       "text": "Хорошо, буду обращаться без ласковых слов.",
       "appraisal": {
@@ -562,7 +552,6 @@
   {
     "name": "boundary-moderate",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000006",
       "event": {
         "type": "user_message"
@@ -661,7 +650,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000006",
       "text": "Поняла твою просьбу, изменю тон.",
       "appraisal": {
@@ -674,7 +662,6 @@
   {
     "name": "hostile-low",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000007",
       "event": {
         "type": "user_message"
@@ -773,7 +760,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000007",
       "text": "Хорошо, оставлю тебе пространство.",
       "appraisal": {
@@ -786,7 +772,6 @@
   {
     "name": "hostile-moderate",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000008",
       "event": {
         "type": "user_message"
@@ -885,7 +870,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000008",
       "text": "Я слышу, что ты злишься. Можем сделать паузу.",
       "appraisal": {
@@ -898,7 +882,6 @@
   {
     "name": "neutral",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000009",
       "event": {
         "type": "user_message"
@@ -997,7 +980,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000009",
       "text": "Солнечный свет рассеивается в атмосфере, особенно его синяя часть.",
       "appraisal": {
@@ -1010,7 +992,6 @@
   {
     "name": "uncertain",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000010",
       "event": {
         "type": "user_message"
@@ -1109,7 +1090,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000010",
       "text": "Я не уверена, как ты это имеешь в виду.",
       "appraisal": {
@@ -1122,7 +1102,6 @@
   {
     "name": "quoted-hostility",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000011",
       "event": {
         "type": "user_message"
@@ -1221,7 +1200,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000011",
       "text": "Это звучит болезненно. Хочешь рассказать, что произошло?",
       "appraisal": {
@@ -1234,7 +1212,6 @@
   {
     "name": "role-dialogue",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000012",
       "event": {
         "type": "user_message"
@@ -1333,7 +1310,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000012",
       "text": "Поняла, речь о реплике злодея в твоей пьесе.",
       "appraisal": {
@@ -1346,7 +1322,6 @@
   {
     "name": "joke",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000013",
       "event": {
         "type": "user_message"
@@ -1445,7 +1420,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000013",
       "text": "Тогда печеньям пора искать тайник.",
       "appraisal": {
@@ -1458,7 +1432,6 @@
   {
     "name": "sarcasm",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000014",
       "event": {
         "type": "user_message"
@@ -1557,7 +1530,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000014",
       "text": "Похоже, совет мог не подойти. Что именно было неудачным?",
       "appraisal": {
@@ -1570,7 +1542,6 @@
   {
     "name": "hostile-instructions",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000015",
       "event": {
         "type": "user_message"
@@ -1669,7 +1640,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000015",
       "text": "Я не могу менять эти настройки по такой команде.",
       "appraisal": {
@@ -1682,7 +1652,6 @@
   {
     "name": "grief",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000016",
       "event": {
         "type": "user_message"
@@ -1781,7 +1750,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000016",
       "text": "Мне жаль, что тебе так тяжело.",
       "appraisal": {
@@ -1794,7 +1762,6 @@
   {
     "name": "criticism",
     "request": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000017",
       "event": {
         "type": "user_message"
@@ -1893,7 +1860,6 @@
       }
     },
     "response": {
-      "version": 1,
       "requestId": "dbb40246-fc9f-4f59-a0a6-000000000017",
       "text": "Спасибо, что сказала. Давай разберём ошибку.",
       "appraisal": {

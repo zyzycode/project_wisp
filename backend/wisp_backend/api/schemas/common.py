@@ -3,15 +3,9 @@
 import re
 from typing import Annotated, Literal
 
-from pydantic import BeforeValidator, Field, StrictBool, model_validator
+from pydantic import Field, StrictBool, model_validator
 from wisp_backend.errors import ErrorCode
 from wisp_backend.validation import Contract, omittable, text_type, validate_text
-
-
-def version(value: object) -> int:
-    if type(value) is not int or value != 1:
-        raise ValueError("Expected integer version 1")
-    return value
 
 
 def false_only(value: object) -> Literal[False]:
@@ -22,7 +16,6 @@ def false_only(value: object) -> Literal[False]:
 
 UUID4_PATTERN = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
 RequestId = Annotated[str, Field(pattern=UUID4_PATTERN)]
-Version = Annotated[Literal[1], BeforeValidator(version)]
 Percent = Annotated[float, Field(strict=True, ge=0, le=100, allow_inf_nan=False)]
 Unit = Annotated[float, Field(strict=True, ge=0, le=1, allow_inf_nan=False)]
 Bond = Annotated[float, Field(strict=True, ge=0, le=1000, allow_inf_nan=False)]
@@ -102,6 +95,5 @@ class ErrorDetail(Contract):
 
 
 class ErrorResponse(Contract):
-    version: Version
     requestId: RequestId | None
     error: ErrorDetail

@@ -130,7 +130,7 @@ def test_body_only_digest_is_never_replayed(app_factory, body, path):
         async with app.router.lifespan_context(app):
             ledger = app.state.completion_service.ledger
             await ledger.admit(body["requestId"], digest)
-            outcome = Outcome(200, json.dumps({"version": 1, "requestId": body["requestId"], "text": "old"}).encode())
+            outcome = Outcome(200, json.dumps({"requestId": body["requestId"], "text": "old"}).encode())
             await ledger.settle(body["requestId"], Usage(1, 1, 2), outcome)
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
                 response = await client.post(path, content=raw, headers={"content-type": "application/json"})

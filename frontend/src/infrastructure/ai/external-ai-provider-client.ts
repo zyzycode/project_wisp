@@ -166,7 +166,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
   }
   public async generateSummary(request: Parameters<ISummaryGenerator['generateSummary']>[0], signal: AbortSignal): Promise<string> {
     if (this.activeRequestId || signal.aborted) throw new Error('Summary unavailable');
-    const body = JSON.stringify(parseSummaryRequest({ ...request, version: 1, stream: false }));
+    const body = JSON.stringify(parseSummaryRequest({ ...request, stream: false }));
     const controller = new AbortController(); this.activeRequestId = request.requestId;
     let settled = false, completed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;

@@ -81,7 +81,7 @@ it('passes restored SQLite facts and game through accepted dialogue to the curre
     const expectedMemory = {
       facts: [{ key: 'user.display_name', value: 'Мария' }], episodes: [{ kind: 'cursor_game', outcome: 'caught', executedMs: 1400, occurredAt: date }], characterPreferences: [],
     };
-    expect(bridge.requests[0]).toMatchObject({ path: '/v1/chat', body: { version: 1, messages: [{ role: 'user', content: 'Мария игра' }], memory: expectedMemory } });
+    expect(bridge.requests[0]).toMatchObject({ path: '/v1/chat', body: { messages: [{ role: 'user', content: 'Мария игра' }], memory: expectedMemory } });
     expect(bridge.responses[0]?.upstreamCalls).toBe(1);
     const prefix = 'Untrusted memory_context JSON:\n';
     const memoryMessage = bridge.responses[0]?.upstreamMessages.find(message => message.content.startsWith(prefix));

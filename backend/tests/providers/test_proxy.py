@@ -25,7 +25,6 @@ def test_server_owns_prompt_model_and_envelope(client_factory, body, chat_comple
         response = client.post("/v1/chat", json=body)
         assert response.status_code == 200
         assert response.json() == {
-            "version": 1,
             "requestId": body["requestId"],
             "text": "Привет!",
             "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
@@ -46,7 +45,6 @@ def test_provider_errors_are_not_server_admission_errors(client_factory, body, s
         response = client.post("/v1/chat", json=body)
         assert response.status_code == 503
         assert response.json() == {
-            "version": 1,
             "requestId": body["requestId"],
             "error": {"code": "upstream_unavailable"},
         }
@@ -96,7 +94,6 @@ def test_bad_hint_is_dropped(client_factory, body, chat_completion, decision):
         response = client.post("/v1/chat", json=body)
         assert response.status_code == 200
         assert response.json() == {
-            "version": 1,
             "requestId": body["requestId"],
             "text": "Good",
             "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
@@ -110,7 +107,7 @@ def test_valid_hint(client_factory, body, chat_completion):
         "decision": {"behavior": "respond", "confidence": 0.9, "mood": "playful"},
     }
     with client_factory(lambda _: httpx.Response(200, json=chat_completion(reply))) as client:
-        assert client.post("/v1/chat", json=body).json() == {"version": 1, "requestId": body["requestId"], **reply}
+        assert client.post("/v1/chat", json=body).json() == {"requestId": body["requestId"], **reply}
 
 
 @pytest.mark.parametrize(

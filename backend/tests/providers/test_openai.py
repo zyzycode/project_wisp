@@ -33,7 +33,7 @@ def test_routes_translate_and_account(app_factory, completion, model, route, fol
     fixtures = CONTRACT_FIXTURES / "desktop-backend-v1" / folder
     body = json.loads((fixtures / f"{request_name}.json").read_text())
     expected = json.loads((fixtures / f"{response_name}.json").read_text())
-    reply = {key: value for key, value in expected.items() if key not in {"version", "requestId"}}
+    reply = {key: value for key, value in expected.items() if key not in {"requestId"}}
     calls = []
 
     def handler(request):

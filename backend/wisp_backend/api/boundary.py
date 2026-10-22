@@ -22,15 +22,13 @@ class CompletionBoundary:
             return await self.app(scope, receive, send)
         started = asyncio.get_running_loop().time()
         endpoint = ENDPOINTS[scope["path"]]
-        version = endpoint.version
-        scope.setdefault("state", {})["wire_version"] = version
         headers = dict(scope["headers"])
         content_type = headers.get(b"content-type", b"").decode("latin-1").lower()
         if (
             content_type.split(";", 1)[0].strip() != "application/json"
             or headers.get(b"content-encoding", b"identity") != b"identity"
         ):
-            return await error_response("invalid_request", version=version)(scope, receive, send)
+            return await error_response("invalid_request")(scope, receive, send)
         chunks = bytearray()
 
         async def read() -> Literal["disconnected", "payload_too_large"] | None:
@@ -55,17 +53,15 @@ class CompletionBoundary:
         if error == "disconnected":
             return
         if error:
-            return await error_response(error, version=version)(scope, receive, send)
+            return await error_response(error)(scope, receive, send)
         try:
             data = decode_json(chunks.decode("utf-8"))
         except (ValueError, UnicodeError, RecursionError):
-            return await error_response("invalid_request", version=version)(scope, receive, send)
+            return await error_response("invalid_request")(scope, receive, send)
         request_id = read_request_id(data)
         namespace = scope["method"] + " " + scope["path"]
         digest = namespace + ":" + hashlib.sha256(namespace.encode() + b"\0" + chunks).hexdigest()
         scope.setdefault("state", {}).update(request_id=request_id, started=started, digest=digest)
-        if isinstance(data, dict) and "version" in data and type(data["version"]) is int and data["version"] != version:
-            return await error_response("unsupported_version", request_id, version=version)(scope, receive, send)
         delivered = asyncio.Event()
 
         async def replay() -> Message:

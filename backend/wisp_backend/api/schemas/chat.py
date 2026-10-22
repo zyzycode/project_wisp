@@ -1,14 +1,13 @@
-"""Version 1 chat request and response envelopes."""
+"""Chat request fields."""
 
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field, field_validator
-from wisp_backend.api.schemas.common import CharacterContext, Event, Message, RequestId, Version, false_only
+from wisp_backend.api.schemas.common import CharacterContext, Event, Message, RequestId, false_only
 from wisp_backend.validation import Contract
 
 
 class ChatFields(Contract):
-    version: Version
     requestId: RequestId
     event: Event
     messages: list[Message] = Field(min_length=1, max_length=7)

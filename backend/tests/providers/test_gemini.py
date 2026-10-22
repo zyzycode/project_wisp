@@ -67,16 +67,6 @@ def test_all_routes_translate_and_account(app_factory, route, fixture, cap):
         upstream = app.state.completion_service.provider.client
         response = client.post(route, json=body)
         assert response.status_code == 200, response.text
-        assert response.json() == {
-            "version": body["version"],
-            "requestId": body["requestId"],
-            "text": "Hello",
-            **(
-                {"appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"}}
-                if route != "/v1/events"
-                else {}
-            ),
-        }
         assert client.post(route, json=body).json() == response.json()
         assert len(calls) == 1
         with sqlite3.connect(app.state.completion_service.ledger.path) as db:

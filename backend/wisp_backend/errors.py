@@ -4,7 +4,6 @@ from typing import Literal
 
 ErrorCode = Literal[
     "invalid_request",
-    "unsupported_version",
     "payload_too_large",
     "request_conflict",
     "request_in_progress",

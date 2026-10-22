@@ -10,7 +10,7 @@ function setup(fetcher?: typeof fetch) {
     const parsed: unknown = JSON.parse(String(init?.body));
     if (!parsed || typeof parsed !== 'object' || !('requestId' in parsed) || typeof parsed.requestId !== 'string') throw new TypeError();
     requests.push(parsed.requestId);
-    return new Response(JSON.stringify({ version: 1, requestId: parsed.requestId, text: 'Привет!', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, decision: { behavior: 'play', confidence: 1 } }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ requestId: parsed.requestId, text: 'Привет!', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, decision: { behavior: 'play', confidence: 1 } }), { headers: { 'Content-Type': 'application/json' } });
   }));
 
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.example', development: false, now: Date.now, fetch: transport });
@@ -52,8 +52,8 @@ it('allows an immediate new user request after server failure without automatic 
   const f = setup(async (_url, init) => {
     const body: { requestId: string } = JSON.parse(String(init?.body));
     return new Response(JSON.stringify(fail
-      ? { version: 1, requestId: body.requestId, error: { code: 'upstream_unavailable' } }
-      : { version: 1, requestId: body.requestId, text: 'Снова работаю', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }),
+      ? { requestId: body.requestId, error: { code: 'upstream_unavailable' } }
+      : { requestId: body.requestId, text: 'Снова работаю', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }),
       { status: fail ? 503 : 200, headers: { 'Content-Type': 'application/json' } });
   });
   f.runtime.receive(f.command(1)); await flush();
@@ -76,7 +76,7 @@ it.each(['reset', 'reload', 'dispose'])('ignores successful late transport outpu
   if (action === 'dispose') f.runtime.dispose();
   expect(f.runtime.getPresentation().canSubmit).toBe(false);
   const publishes = f.publish.mock.calls.length;
-  resolve(new Response(JSON.stringify({ version: 1, requestId, text: 'late', decision: { behavior: 'play', confidence: 1 } }), { headers: { 'Content-Type': 'application/json' } }));
+  resolve(new Response(JSON.stringify({ requestId, text: 'late', decision: { behavior: 'play', confidence: 1 } }), { headers: { 'Content-Type': 'application/json' } }));
   await flush(); expect(f.offerIntent).not.toHaveBeenCalled(); expect(f.applyStimulus).toHaveBeenCalledTimes(1);
   expect(f.runtime.getPresentation().turn.phase).toBe('idle');
   if (action === 'dispose') expect(f.publish).toHaveBeenCalledTimes(publishes);

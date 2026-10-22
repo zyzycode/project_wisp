@@ -47,7 +47,7 @@ it.each(['offline', '401', '403', '404', '502', '503', '504', 'content-type', 'i
 });
 it('bounds public timeout by3s but retains draining slot until actual fetch settlement', async () => {
   let resolve!: (response: Response) => void;
-  const fetcher = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(yes => { resolve = yes; })).mockImplementation(async () => json({ version: 1, requestId: providerRequest().requestId, text: 'Chat reply', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }));
+  const fetcher = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(yes => { resolve = yes; })).mockImplementation(async () => json({ requestId: providerRequest().requestId, text: 'Chat reply', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }));
   const provider = client(fetcher), controller = new AbortController();
   const pending = provider.generateObservation(input, controller.signal); const rejection = expect(pending).rejects.toThrow();
   controller.abort(); await flush(); expect(await provider.getStatus()).toEqual({ kind: 'thinking', activeRequestId: wire.requestId });
@@ -67,5 +67,5 @@ it('does not start observation while chat owns the client', async () => {
   let resolve!: (response: Response) => void; const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
   const provider = client(fetcher), pending = provider.generateResponse(providerRequest());
   await expect(provider.generateObservation(input, new AbortController().signal)).rejects.toThrow(); expect(fetcher).toHaveBeenCalledTimes(1);
-  resolve(json({ version: 1, requestId: providerRequest().requestId, text: 'reply', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } })); await pending;
+  resolve(json({ requestId: providerRequest().requestId, text: 'reply', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } })); await pending;
 });

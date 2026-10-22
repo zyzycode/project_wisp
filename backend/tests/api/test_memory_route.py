@@ -15,7 +15,7 @@ def memory_body():
 @pytest.mark.parametrize("status,filename", [(200, "response.success.json"), (503, "response.error.json")])
 def test_memory_fixture_http(client_factory, chat_completion, status, filename):
     expected = json.loads((FIXTURES / filename).read_bytes())
-    reply = {key: value for key, value in expected.items() if key not in ("version", "requestId")}
+    reply = {key: value for key, value in expected.items() if key not in ("requestId",)}
     with client_factory(lambda _: httpx.Response(status, json=chat_completion(reply))) as client:
         response = client.post(
             "/v1/chat",
@@ -61,17 +61,11 @@ def test_one_call_separate_untrusted_memory_and_no_persistence(app_factory, memo
     assert marker not in caplog.text
 
 
-def test_memory_boundary_error_versions_and_caps(client_factory, memory_body):
+def test_memory_boundary_errors_and_caps(client_factory, memory_body):
     with client_factory(lambda _: pytest.fail("invalid input reached provider")) as client:
         for raw, status in [(b"{", 400), (b"x" * 32769, 413), (b"[]", 400)]:
             response = client.post("/v1/chat", content=raw, headers={"content-type": "application/json"})
             assert response.status_code == status
-            assert response.json()["version"] == 1
-        for version in [True, 2.0, "2"]:
-            response = client.post("/v1/chat", json={**memory_body, "version": version})
-            assert response.status_code == 400
-            assert response.json()["version"] == 1
-            assert response.json()["error"]["code"] == "invalid_request"
         response = client.post("/v1/chat", json={**memory_body, "requestId": "bad"})
         assert response.json()["requestId"] is None
         response = client.post("/v1/chat", json={k: v for k, v in memory_body.items() if k != "memory"})
@@ -85,7 +79,7 @@ def test_memory_exact_byte_cap(client_factory, memory_body, chat_completion):
         response = client.post("/v1/chat", content=raw, headers={"content-type": "application/json"})
         assert response.status_code == 200
         oversized = client.post("/v1/chat", content=raw + b" ", headers={"content-type": "application/json"})
-        assert oversized.status_code == 413 and oversized.json()["version"] == 1
+        assert oversized.status_code == 413
 
 
 def test_trimmed_source_and_invalid_decision_preserve_valid_candidate(client_factory, memory_body, chat_completion):
@@ -121,7 +115,6 @@ def test_v1_safe_transport_and_model_errors(client_factory, memory_body, failure
     with client_factory(upstream) as client:
         response = client.post("/v1/chat", json=memory_body)
         assert response.status_code == expected
-        assert response.json()["version"] == 1
         assert "private" not in response.text
         assert len(calls) == 1
 
@@ -141,5 +134,4 @@ def test_empty_memory_uses_single_v1_call(client_factory, memory_body, chat_comp
     with client_factory(upstream) as client:
         response = client.post("/v1/chat", json=memory_body)
         assert response.status_code == 200
-        assert response.json()["version"] == 1
         assert len(calls) == 1

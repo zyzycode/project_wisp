@@ -3,7 +3,7 @@
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field, field_validator
-from wisp_backend.api.schemas.common import RequestId, Version, false_only
+from wisp_backend.api.schemas.common import RequestId, false_only
 from wisp_backend.completion.replies import SummaryModelReply
 from wisp_backend.validation import Contract, text_type
 
@@ -14,7 +14,6 @@ class SummaryPair(Contract):
 
 
 class SummaryRequest(Contract):
-    version: Version
     requestId: RequestId
     locale: Literal["ru", "en"]
     stream: Annotated[Literal[False], BeforeValidator(false_only)]
@@ -29,5 +28,4 @@ class SummaryRequest(Contract):
 
 
 class SummaryResponse(SummaryModelReply):
-    version: Version
     requestId: RequestId

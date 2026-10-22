@@ -3,7 +3,7 @@
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field
-from wisp_backend.api.schemas.common import CharacterContext, RequestId, Version, false_only
+from wisp_backend.api.schemas.common import CharacterContext, RequestId, false_only
 from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
 from wisp_backend.completion.replies import EventModelReply
 from wisp_backend.validation import Contract, text_type
@@ -22,7 +22,6 @@ class SocialBidStarted(Contract):
 
 
 class EventRequest(Contract):
-    version: Version
     requestId: RequestId
     event: Annotated[CursorGameCompleted | SocialBidStarted, Field(discriminator="type")]
     stream: Annotated[Literal[False], BeforeValidator(false_only)]
@@ -32,7 +31,6 @@ class EventRequest(Contract):
 
 
 class EventResponse(EventModelReply):
-    version: Version
     requestId: RequestId
 
 

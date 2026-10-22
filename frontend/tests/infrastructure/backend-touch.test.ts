@@ -25,7 +25,7 @@ it('matches shared fixture and sends no dialogue or memory', () => {
 it('uses v1 touch without local quotas even when autonomous events are disabled', async () => {
   const fetcher = vi.fn<typeof fetch>(async (url, init) => {
     expect(String(url)).toBe('https://example.com/v1/touch'); expect(JSON.parse(String(init?.body))).toEqual(wire);
-    return new Response(JSON.stringify({ version: 1, requestId: wire.requestId, text: 'Приятно!', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ requestId: wire.requestId, text: 'Приятно!', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'Content-Type': 'application/json' } });
   });
   const f = fixture(fetcher);
   await expect(f.provider.generateEvent(request())).resolves.toEqual({ requestId: wire.requestId, replyText: 'Приятно!', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } });
@@ -33,11 +33,11 @@ it('uses v1 touch without local quotas even when autonomous events are disabled'
   expect(fetcher).toHaveBeenCalledTimes(106);
 });
 it.each([401, 503])('keeps HTTP %s failures silent without a cooldown', async status => {
-  const f = fixture(async () => new Response(JSON.stringify({ version: 1, requestId: wire.requestId, error: { code: 'upstream_unavailable' } }), { status, headers: { 'Content-Type': 'application/json' } }));
+  const f = fixture(async () => new Response(JSON.stringify({ requestId: wire.requestId, error: { code: 'upstream_unavailable' } }), { status, headers: { 'Content-Type': 'application/json' } }));
   await expect(f.provider.generateEvent(request())).rejects.toThrow(); await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
 });
 it.each([{ text: '' }, { text: 'x'.repeat(241) }, { decision: {} }, { requestId: 'wrong' }])('rejects malformed text response %j', extra => {
-  expect(() => parseTouchResponse({ version: 1, requestId: wire.requestId, text: 'OK', ...extra }, wire.requestId)).toThrow();
+  expect(() => parseTouchResponse({ requestId: wire.requestId, text: 'OK', ...extra }, wire.requestId)).toThrow();
 });
 it('cancels touch and keeps the shared transport busy until cancellation settles', async () => {
   let release!: () => void;
@@ -55,6 +55,6 @@ it('times out without retry or accepting a late response', async () => {
   const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
   const f = fixture(fetcher), pending = f.provider.generateEvent(request());
   const rejected = expect(pending).rejects.toThrow(); await vi.advanceTimersByTimeAsync(12000); await rejected;
-  resolve(new Response(JSON.stringify({ version: 1, requestId: wire.requestId, text: 'Late' }), { headers: { 'Content-Type': 'application/json' } }));
+  resolve(new Response(JSON.stringify({ requestId: wire.requestId, text: 'Late' }), { headers: { 'Content-Type': 'application/json' } }));
   await vi.advanceTimersByTimeAsync(0); expect(fetcher).toHaveBeenCalledTimes(1); await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
 });

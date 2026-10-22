@@ -87,5 +87,5 @@ def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> C
         request_id=body.requestId,
         inference=InferenceRequest(policy.build_blocks(context), policy.max_output_tokens, policy.context_window),
         timeout=policy.timeout,
-        encoder=WireReplyEncoder(body.requestId, body.version, policy, endpoint.response_type, quote, effect_policy),
+        encoder=WireReplyEncoder(body.requestId, policy, endpoint.response_type, quote, effect_policy),
     )

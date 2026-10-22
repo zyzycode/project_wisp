@@ -25,7 +25,6 @@ export interface BackendInteractionPolicy {
 }
 
 export interface BackendInteractionTouchRequest extends BackendInteractionPolicy {
-  readonly version: 1;
   readonly requestId: string;
   readonly stream: false;
   readonly locale: 'ru' | 'en';
@@ -34,7 +33,6 @@ export interface BackendInteractionTouchRequest extends BackendInteractionPolicy
 }
 
 export interface BackendInteractionTouchResponse {
-  readonly version: 1;
   readonly requestId: string;
   readonly text: string;
   readonly appraisal: BackendInteractionAppraisal;
@@ -50,7 +48,6 @@ export type BackendInteractionChatResponse = BackendSummaryChatResponse & {
 };
 
 export interface BackendInteractionErrorResponse {
-  readonly version: 1;
   readonly requestId: string | null;
   readonly error: { readonly code: BackendAIErrorCode; readonly retryAfterMs?: number };
 }

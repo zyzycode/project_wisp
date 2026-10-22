@@ -90,7 +90,7 @@ def test_previous_initiative_optional_but_not_null_and_exact_limits():
         {"text": "ok", "decision": {"behavior": "respond", "confidence": 1}},
         {"text": "ok", "memoryCandidates": []},
         {"text": "ok", "requestId": "model-owned"},
-        {"text": "ok", "version": 1},
+        {"text": "ok", "extra": 1},
         {"text": "ok", "state": {"friendship": 1000}},
         {"text": "😀" * 121},
         {"text": " " + "a" * 240},
@@ -115,7 +115,6 @@ def test_event_model_extra_fields_fail_with_usage_preserved(app_factory, complet
         response = client.post("/v1/events", json=body)
         assert response.status_code == 502
         assert response.json() == {
-            "version": 1,
             "requestId": body["requestId"],
             "error": {"code": "invalid_model_response"},
         }

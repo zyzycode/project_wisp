@@ -88,7 +88,7 @@ Shared interlock и previousInitiative сохраняются.
 ### POST /v1/summary
 
 Отдельный явный inference для ограниченного выбранного диапазона; не fake chat event.
-Exact request: version=1, requestId по v1, locale ru/en, stream=false и pairs.
+Exact request: requestId по v1, locale ru/en, stream=false и pairs.
 Pairs — 4–8 полных пар в хронологическом порядке, каждая exact
 `{userText, assistantText}`: 1–240 и 1–2000 UTF-16 соответственно. Все тексты вместе
 ≤8000 UTF-16, controls запрещены кроме newline/tab; пустые/пробельные строки
@@ -105,8 +105,8 @@ Backend строит собственные краткие инструкции:
 Provider response — exact JSON `{text}`: plain nonblank 1–1200 UTF-16, допустимы
 newline/tab, без других control characters и неизвестных полей. Невалидный результат
 целиком →502 invalid_model_response, без частичного кеширования. Backend самостоятельно
-формирует HTTP200 `{version:1, requestId, text}`. Response ≤16KiB; desktop независимо
-проверяет exact shape/limits/ID/version до source revalidation и локального commit.
+формирует HTTP200 `{requestId, text}`. Response ≤16KiB; desktop независимо
+проверяет exact shape/limits/ID до source revalidation и локального commit.
 Полнота/истинность пересказа не доказаны форматной проверкой.
 
 ### POST /v1/chat
@@ -148,7 +148,7 @@ Gemini preflight может передать весь диапазон исто�
 локальный frequency guard из Memory §12. Это не новая серверная billing/quota система.
 
 Обе v1 routes используют [v1 errors/access/ledger](BACKEND_API_CONTRACT.md#3-http-и-ошибки):
-400/413 до admission, envelope5/unsupported_version для wrong version; 409 для
+400/413 до admission; 409 для
 in-progress/conflicting ID; остальные 502/503/504 по общей таблице. Доступ — прежний
 closed-network без application auth; 401/403 стороннего gateway не success, без retry
 или обхода доступа. Ledger/digest method+path+body и once-only settlement общие:
@@ -178,7 +178,7 @@ provider сохраняются, summary не разрешает реальны�
 #79 содержит независимые TS DTO/guards и Python schemas и единый
 corpus `docs/contracts/fixtures/desktop-backend-v1/summary/`.
 Corpus покрывает summary request/success/error, chat с summary/без неё/previousInitiative,
-Unicode/control/exact caps/byte escaping, unknown fields, wrong version/ID,
+Unicode/control/exact caps/byte escaping, unknown fields, wrong ID,
 v4 category rejection. Обе стороны читают те же JSON, не копии.
 
 Acceptance: source-valid → explicit generation → restart → matching chat;
@@ -186,12 +186,12 @@ Acceptance: source-valid → explicit generation → restart → matching chat;
 или scalar fact, withdraw/delete/suppression, full reset и late result не возвращают
 summary. Cache future/corrupt/write failure не объявляется source corruption.
 Schema1 fixture безопасно отключает summary; schema2 fixture проверяет source
-provenance и suppression, обязательную во всех версиях, как в #65. Проверить no-match, duplicate coverage,
+provenance и suppression, обязательную для сетевых запросов, как в #65. Проверить no-match, duplicate coverage,
 output reserve/equality/overflow, mandatory priority, adversarial sources, отсутствие
 facts/state writes, shared interlock/replay/timeout/outage/malformed/disconnect и
 once-only usage на Groq и Gemini mocks. Live качество/цену эти тесты не доказывают.
 
 Обе стороны проверяют corpus перед включением v1; несовместимый сервер
-даёт обычный safe failure, не перевод в другую версию. #78 и #79 независимы по
+даёт обычный safe failure, без повторного inference. #78 и #79 независимы по
 runtime, но первый перенёсший upstream код выполняет общий license/source gate
 [Context/Prompt Engine](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#алгоритмы-lore-и-summary).

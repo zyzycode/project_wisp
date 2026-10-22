@@ -15,7 +15,7 @@ def fixture(name: str) -> dict:
 def test_shared_success(client_factory, completion):
     request = fixture("request.valid.json")
     expected = fixture("response.success.json")
-    reply = {key: value for key, value in expected.items() if key not in {"version", "requestId"}}
+    reply = {key: value for key, value in expected.items() if key not in {"requestId"}}
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
         response = client.post("/v1/chat", json=request)
         assert response.status_code == 200

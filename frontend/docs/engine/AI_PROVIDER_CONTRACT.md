@@ -205,7 +205,7 @@ HTTP/code mapping определён только [wire-контрактом](..
 
 ### Implementation consequences и проверка
 
-Wire DTO и клиентская policy определяют подключение HTTP adapter через Main; поддерживаемые сервером версии и gaps перечислены в [серверном навигаторе](../../../backend/docs/README.md). Существующих DialogueCommandDTO, receipt unavailable и presentation fallback/error достаточно: новый IPC канал и передача transport/quota/auth в Renderer не нужны. canSubmit учитывает привязку runtime и выполняющийся turn, без квот, таймеров разблокировки и network polling. Draft сохраняется при rejection; server error после admission завершает turn безопасным сообщением.
+Wire DTO и клиентская policy определяют подключение HTTP adapter через Main; серверные возможности и ограничения перечислены в [серверном навигаторе](../../../backend/docs/README.md). Существующих DialogueCommandDTO, receipt unavailable и presentation fallback/error достаточно: новый IPC канал и передача transport/quota/auth в Renderer не нужны. canSubmit учитывает привязку runtime и выполняющийся turn, без квот, таймеров разблокировки и network polling. Draft сохраняется при rejection; server error после admission завершает turn безопасным сообщением.
 
 Desktop реализует policy, exact validators/projection и aborting adapter через Main DI; при отсутствии backend URL остаётся Mock. Backend реализует endpoint/schema, prompt mapping и validation model output; серверные admission/retention и последствия аудита определены в §5–6 wire-контракта. Локальных квот desktop и backend нет; закрытая alpha не добавляет auth в wire.
 

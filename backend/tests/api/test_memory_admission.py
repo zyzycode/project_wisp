@@ -15,9 +15,9 @@ def memory_body():
     return json.loads(FIXTURE.read_bytes())
 
 
-@pytest.mark.parametrize("first_version", [1, 2])
+@pytest.mark.parametrize("first_body", [1, 2])
 def test_mixed_endpoint_same_id_conflicts_and_new_ids_are_admitted(
-    app_factory, body, memory_body, chat_completion, first_version
+    app_factory, body, memory_body, chat_completion, first_body
 ):
     async def run():
         calls = []
@@ -31,21 +31,20 @@ def test_mixed_endpoint_same_id_conflicts_and_new_ids_are_admitted(
         app = app_factory(upstream)
         memory_body["requestId"] = body["requestId"]
         requests = {1: body, 2: memory_body}
-        second_version = 3 - first_version
+        second_body_index = 3 - first_body
         async with app.router.lifespan_context(app):
             ledger = app.state.completion_service.ledger
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                first = await client.post("/v1/chat", json=requests[first_version])
+                first = await client.post("/v1/chat", json=requests[first_body])
                 assert first.status_code == 200
-                conflict = await client.post("/v1/chat", json=requests[second_version])
+                conflict = await client.post("/v1/chat", json=requests[second_body_index])
                 assert conflict.status_code == 409
                 assert conflict.json()["error"]["code"] == "request_conflict"
-                assert conflict.json()["version"] == 1
                 next_response = await client.post(
-                    "/v1/chat", json={**requests[second_version], "requestId": str(uuid4())}
+                    "/v1/chat", json={**requests[second_body_index], "requestId": str(uuid4())}
                 )
                 assert next_response.status_code == 200
-                replay = await client.post("/v1/chat", json=requests[first_version])
+                replay = await client.post("/v1/chat", json=requests[first_body])
                 assert replay.content == first.content
             with sqlite3.connect(ledger.path) as db:
                 assert db.execute("SELECT requests,confirmed FROM days").fetchone() == (2, 4)
@@ -56,7 +55,7 @@ def test_mixed_endpoint_same_id_conflicts_and_new_ids_are_admitted(
     asyncio.run(run())
 
 
-def test_simultaneous_versions_share_id_namespace_without_concurrency_quota(
+def test_simultaneous_requests_share_id_namespace_without_concurrency_quota(
     app_factory, body, memory_body, chat_completion
 ):
     async def run():
@@ -108,7 +107,6 @@ def test_touch_and_v1_share_id_namespace(app_factory, body, memory_body, chat_co
                 assert (await client.post(first_path, json=first_body)).status_code == 200
                 conflict = await client.post(second_path, json=second_body)
                 assert conflict.status_code == 409
-                assert conflict.json()["version"] == second_body["version"]
                 next_response = await client.post(second_path, json={**second_body, "requestId": str(uuid4())})
                 assert next_response.status_code == 200
         assert len(calls) == 2

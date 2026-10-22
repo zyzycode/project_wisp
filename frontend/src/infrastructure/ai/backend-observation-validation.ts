@@ -2,7 +2,6 @@ import { summaryPlainText } from '../../shared/summary-text-validation';
 import type { ObservationProviderRequest } from '../../application/ports/observation-provider.interface';
 import { exactRecord, enumValue, plainText } from '../../shared/dialogue-ipc-validation';
 import { projectBackendRequest, backendRequestId, finiteRange } from './backend-request-projection';
-import { parseBackendError } from './backend-response-validation';
 export function observationMetadata(value: unknown, max: number, empty = false): string {
   if (typeof value !== 'string' || (!empty && !value.length) || value.length > max || value.trim() !== value
     || /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(value)
@@ -13,29 +12,25 @@ export function projectObservationRequest(request: ObservationProviderRequest) {
   const base = projectBackendRequest({ requestId: request.requestId, characterSnapshot: request.characterSnapshot, locale: request.locale,
     recentContext: [], userMessage: { id: '', text: 'projection', createdAt: '' } });
   const observation = exactRecord(request.observation, ['appName', 'windowTitle']);
-  const body = { version: 1 as const, requestId: backendRequestId(request.requestId), stream: false as const,
+  const body = { requestId: backendRequestId(request.requestId), stream: false as const,
     locale: enumValue(request.locale, ['ru', 'en']), character: base.character,
     observation: { appName: observationMetadata(observation.appName, 80), windowTitle: observationMetadata(observation.windowTitle, 160, true) } };
   if (new TextEncoder().encode(JSON.stringify(body)).byteLength > 32768) throw new TypeError('Observation request too large');
   return body;
 }
 export function parseObservationResponse(value: unknown, requestId: string): string {
-  const body = exactRecord(value, ['version', 'requestId', 'text']);
-  if (body.version !== 1 || body.requestId !== backendRequestId(requestId)) throw new TypeError('Invalid observation envelope');
+  const body = exactRecord(value, ['requestId', 'text']);
+  if (body.requestId !== backendRequestId(requestId)) throw new TypeError('Invalid observation envelope');
   const text = summaryPlainText(body.text, 240).trim();
   if (text.trim() !== text) throw new TypeError('Invalid observation text');
   return text;
 }
-export function parseObservationError(value: unknown, requestId: string, status: number): void {
-  const body = exactRecord(value, ['version', 'requestId', 'error']);
-  if (body.version !== 1) throw new TypeError('Invalid observation error');
-  parseBackendError({ ...body, version: 1 }, requestId, status);
-}
+export { parseBackendError as parseObservationError } from './backend-response-validation';
 
 /** Exact wire guard used at the adapter boundary and by the shared corpus. */
 export function parseObservationRequest(value: unknown) {
-  const r = exactRecord(value, ['version', 'requestId', 'stream', 'locale', 'character', 'observation']);
-  if (r.version !== 1 || r.stream !== false) throw new TypeError('Invalid observation request');
+  const r = exactRecord(value, ['requestId', 'stream', 'locale', 'character', 'observation']);
+  if (r.stream !== false) throw new TypeError('Invalid observation request');
   const c = exactRecord(r.character, ['needs', 'relationship', 'personality', 'intimacy', 'synthesizedTone']);
   const needs = exactRecord(c.needs, ['energy', 'attention', 'play', 'comfort'], ['boredom']);
   const relationship = exactRecord(c.relationship, ['friendship', 'love', 'loveUnlocked']);

@@ -63,13 +63,12 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
   return result;
 }
 export function parseInteractionTouchResponse(value: unknown, requestId: string, effectPolicy: BackendInteractionPolicy['effectPolicy']) {
-  const r = exactRecord(value, ['version', 'requestId', 'text', 'appraisal']);
-  if (r.version !== 1 || r.requestId !== requestId) throw new TypeError('Invalid interaction envelope');
+  const r = exactRecord(value, ['requestId', 'text', 'appraisal']);
+  if (r.requestId !== requestId) throw new TypeError('Invalid interaction envelope');
   return { requestId, replyText: text(r.text, 240), appraisal: parseInteractionAppraisal(r.appraisal, true, effectPolicy) };
 }
 export function parseInteractionChatResponse(value: unknown, requestId: string, userText: string, effectPolicy: BackendInteractionPolicy['effectPolicy']) {
-  const r = exactRecord(value, ['version', 'requestId', 'text', 'appraisal'], ['decision', 'memoryCandidates']);
-  if (r.version !== 1) throw new TypeError('Invalid interaction envelope');
+  const r = exactRecord(value, ['requestId', 'text', 'appraisal'], ['decision', 'memoryCandidates']);
   const appraisal = parseInteractionAppraisal(r.appraisal, false, effectPolicy);
   const { appraisal: _appraisal, ...base } = r;
   return { ...parseSummaryChatResponse({ ...base, text: text(r.text, 2000) }, requestId, userText), appraisal };

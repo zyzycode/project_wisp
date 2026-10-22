@@ -21,7 +21,6 @@ def install_api(app: FastAPI) -> None:
             error.code,
             getattr(request.state, "request_id", None),
             error.retry_after_ms,
-            getattr(request.state, "wire_version", 1),
         )
 
     @app.exception_handler(RequestValidationError)
@@ -29,7 +28,6 @@ def install_api(app: FastAPI) -> None:
         return error_response(
             "invalid_request",
             getattr(request.state, "request_id", None),
-            version=getattr(request.state, "wire_version", 1),
         )
 
     for router in (

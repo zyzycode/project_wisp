@@ -4,7 +4,7 @@ import unicodedata
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BeforeValidator
-from wisp_backend.api.schemas.common import CharacterContext, RequestId, Version, false_only
+from wisp_backend.api.schemas.common import CharacterContext, RequestId, false_only
 from wisp_backend.completion.replies import EventModelReply
 from wisp_backend.validation import Contract, trim_text
 
@@ -32,7 +32,6 @@ class Observation(Contract):
 
 
 class ObservationRequest(Contract):
-    version: Version
     requestId: RequestId
     stream: Annotated[Literal[False], BeforeValidator(false_only)]
     locale: Literal["ru", "en"]
@@ -41,5 +40,4 @@ class ObservationRequest(Contract):
 
 
 class ObservationResponse(EventModelReply):
-    version: Version
     requestId: RequestId

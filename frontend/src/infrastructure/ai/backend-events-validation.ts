@@ -19,7 +19,7 @@ export function projectEventRequest(request: AIEventProviderRequest): BackendEve
   const event = e.type === 'social_bid_started'
     ? (exactRecord(e, ['type', 'occurredAt']), { type: 'social_bid_started' as const, occurredAt })
     : (exactRecord(e, ['type', 'occurredAt', 'outcome', 'executedMs']), { type: enumValue(e.type, ['cursor_game_completed']), occurredAt, outcome: enumValue(e.outcome, ['caught', 'missed', 'lost_target']), executedMs: finiteRange(e.executedMs, 60000) });
-  return fit({ version: 1, requestId: base.requestId, event, stream: false, locale: base.locale, character: base.character, memory: base.memory });
+  return fit({ requestId: base.requestId, event, stream: false, locale: base.locale, character: base.character, memory: base.memory });
 }
 export function projectEventAwareChat(request: AIProviderRequest): BackendEventAwareChatRequest {
   const base = projectBackendMemoryRequest(request);
@@ -28,8 +28,8 @@ export function projectEventAwareChat(request: AIProviderRequest): BackendEventA
   return fit({ ...base, previousInitiative: { kind: enumValue(p.kind, ['cursor_game', 'social_bid']), text: plainText(p.text, 240, true), createdAt: utc(p.createdAt) } });
 }
 export function parseEventResponse(value: unknown, requestId: string) {
-  const r = exactRecord(value, ['version', 'requestId', 'text']);
-  if (r.version !== 1 || r.requestId !== requestId) throw new TypeError('Invalid event envelope');
+  const r = exactRecord(value, ['requestId', 'text']);
+  if (r.requestId !== requestId) throw new TypeError('Invalid event envelope');
   return { requestId, replyText: plainText(r.text, 240, true) };
 }
 export { parseBackendMemorySuccess as parseEventAwareChat } from './backend-memory-validation';

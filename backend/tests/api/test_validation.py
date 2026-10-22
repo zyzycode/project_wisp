@@ -123,9 +123,6 @@ def test_optional_boredom_preserves_absence(body):
 @pytest.mark.parametrize(
     "extra,code",
     [
-        ({"version": 7}, "unsupported_version"),
-        ({"version": True}, "invalid_request"),
-        ({"version": 1.0}, "invalid_request"),
         ({"stream": True}, "invalid_request"),
         ({"stream": 0}, "invalid_request"),
         ({"locale": "de"}, "invalid_request"),
@@ -136,7 +133,7 @@ def test_wire_errors_preserve_id(client_factory, body, extra, code):
     with client_factory(lambda _: pytest.fail("Invalid request reached provider")) as client:
         response = client.post("/v1/chat", json={**body, **extra})
         assert response.status_code == 400
-        assert response.json() == {"version": 1, "requestId": body["requestId"], "error": {"code": code}}
+        assert response.json() == {"requestId": body["requestId"], "error": {"code": code}}
 
 
 @pytest.mark.parametrize("request_id", [None, "bad", "02d80270-1a72-17c9-a713-335b872ad24b", 1])
@@ -147,7 +144,7 @@ def test_invalid_id_is_null(client_factory, body, request_id):
         assert response.json()["requestId"] is None
 
 
-@pytest.mark.parametrize("content", [b"{", b'{"version":1,"version":1}', b'{"version":NaN}', b"\xff", b"[]"])
+@pytest.mark.parametrize("content", [b"{", b'{"requestId":"a","requestId":"b"}', b'{"value":NaN}', b"\xff", b"[]"])
 def test_invalid_json(client_factory, content):
     with client_factory(lambda _: pytest.fail("Invalid request reached provider")) as client:
         response = client.post("/v1/chat", content=content, headers={"content-type": "application/json"})

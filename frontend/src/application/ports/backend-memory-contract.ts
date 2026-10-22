@@ -33,7 +33,6 @@ export interface BackendMemoryContext {
 }
 
 export interface BackendMemoryRequest {
-  readonly version: 1;
   readonly requestId: string;
   readonly event: { readonly type: 'user_message' };
   readonly messages: readonly BackendAIMessage[];
@@ -48,7 +47,6 @@ export interface BackendMemoryCandidate extends BackendMemoryFact {
 }
 
 export interface BackendMemoryResponse {
-  readonly version: 1;
   readonly requestId: string;
   readonly text: string;
   readonly decision?: {
@@ -61,7 +59,6 @@ export interface BackendMemoryResponse {
 }
 
 export interface BackendMemoryErrorResponse {
-  readonly version: 1;
   readonly requestId: string | null;
   readonly error: { readonly code: BackendAIErrorCode; readonly retryAfterMs?: number };
 }

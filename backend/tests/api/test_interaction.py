@@ -32,7 +32,7 @@ def test_complete_provider_path(
     body = fixture(f"request.{operation}.json")
     body["character"]["needs"].update(energy=energy, comfort=comfort)
     expected = fixture(f"response.{operation}.json")
-    reply = {key: value for key, value in expected.items() if key not in ("version", "requestId")}
+    reply = {key: value for key, value in expected.items() if key not in ("requestId",)}
     calls = []
 
     def upstream(request: httpx.Request) -> httpx.Response:
@@ -79,11 +79,10 @@ def test_invalid_requests_before_admission_and_strict_http(app_factory: Callable
         for case in fixture("invalid.json")["requests"]:
             response = client.post(case["endpoint"], json=case["value"])
             assert response.status_code == 400, case["name"]
-            assert response.json()["version"] == 1
             if case["name"].endswith("-invalid-uuid"):
                 assert response.json()["requestId"] is None
         for route in REQUESTS:
-            for raw in (b"{bad", b"\xff", b'{"version":1,"version":1}', b'{"x":NaN}'):
+            for raw in (b"{bad", b"\xff", b'{"requestId":"a","requestId":"b"}', b'{"x":NaN}'):
                 assert client.post(route, content=raw, headers={"content-type": "application/json"}).status_code == 400
             assert (
                 client.post(route, content=b"x" * 32769, headers={"content-type": "application/json"}).status_code
@@ -98,7 +97,7 @@ def test_invalid_appraisal_discards_entire_reply_once(
     app_factory: Callable[..., FastAPI], completion: Callable[..., dict], case: dict
 ) -> None:
     calls = []
-    reply = {key: value for key, value in case["value"].items() if key not in ("version", "requestId")}
+    reply = {key: value for key, value in case["value"].items() if key not in ("requestId",)}
 
     def upstream(request: httpx.Request) -> httpx.Response:
         calls.append(request)
@@ -120,7 +119,7 @@ def test_chat_hints_and_memory_keep_v1_validation(client_factory: Callable, comp
     body = fixture("request.chat.json")
     body["messages"][-1]["content"] = "Зови меня Аня."
     reply = fixture("response.chat.json")
-    reply = {k: v for k, v in reply.items() if k not in ("version", "requestId")}
+    reply = {k: v for k, v in reply.items() if k not in ("requestId",)}
     reply["decision"] = {"behavior": "system_command", "confidence": 1}
     reply["memoryCandidates"] = [
         {"key": "user.display_name", "value": "Аня", "evidenceQuote": body["messages"][-1]["content"]},
@@ -167,7 +166,7 @@ def test_safe_provider_failures(
     with TestClient(app_factory(upstream, assistants={"default": {"provider": provider}})) as client:
         response = client.post(f"/v1/{operation}", json=fixture(f"request.{operation}.json"))
         assert response.status_code == status and response.json()["error"]["code"] == code
-        assert response.json()["version"] == 1 and "PRIVATE_CONTEXT" not in response.text
+        assert "PRIVATE_CONTEXT" not in response.text
     assert len(calls) == 1 and "PRIVATE_CONTEXT" not in caplog.text
 
 
@@ -221,7 +220,7 @@ def test_exact_byte_cap_openapi_and_missing_appraisal(
 ) -> None:
     body = fixture(f"request.{operation}.json")
     expected = fixture(f"response.{operation}.json")
-    reply = {k: v for k, v in expected.items() if k not in ("version", "requestId")}
+    reply = {k: v for k, v in expected.items() if k not in ("requestId",)}
     raw = json.dumps(body).encode()
     raw += b" " * (32768 - len(raw))
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
@@ -253,6 +252,6 @@ def test_required_context_overflow_before_network(
     )
     with TestClient(app) as client:
         response = client.post(f"/v1/{operation}", json=fixture(f"request.{operation}.json"))
-        assert response.status_code == 503 and response.json()["version"] == 1
+        assert response.status_code == 503
         with sqlite3.connect(app.state.completion_service.ledger.path) as db:
             assert db.execute("SELECT requests,reserved,confirmed,uncertain FROM days").fetchone() == (1, 0, 0, 0)

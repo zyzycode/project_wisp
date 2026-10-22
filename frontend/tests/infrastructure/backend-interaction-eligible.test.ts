@@ -17,7 +17,7 @@ function input(value: BackendInteractionChatRequest = { ...wire, effectPolicy: '
 }
 const client = (fetcher: typeof fetch) => new ExternalAIProviderClient({ baseUrl: 'https://backend.example/api', development: false, now: () => 0, fetch: fetcher });
 function reply(appraisal: BackendInteractionAppraisal): BackendInteractionChatResponse {
-  return { version: 1, requestId: wire.requestId, text: 'Понимаю.', appraisal };
+  return { requestId: wire.requestId, text: 'Понимаю.', appraisal };
 }
 const appraisals: readonly BackendInteractionAppraisal[] = (['supportive', 'playful', 'boundary', 'hostile', 'neutral'] as const)
   .flatMap(category => (['low', 'moderate'] as const).flatMap(intensity => (['clear', 'uncertain'] as const).map(confidence => ({ category, intensity, confidence }))));
@@ -89,9 +89,4 @@ it.each(eligible)('shares the full eligible corpus case $name with the backend a
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://backend.example/api/v1/chat');
   expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(entry.request);
-});
-it.each([2, 3, 5, 6, 7] as const)('rejects obsolete response version %s without retry', async apiVersion => {
-  const fetcher = vi.fn<typeof fetch>(async () => json({ ...reply(neutral), version: apiVersion }));
-  await expect(client(fetcher).generateResponse(input())).rejects.toThrow();
-  expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toContain('/v1/chat');
 });

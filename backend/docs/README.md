@@ -2,7 +2,7 @@
 
 > [!IMPORTANT]
 > **Unified v1 Alpha:** backend и desktop используют один актуальный контракт.
-> JSON `version` строго `1`; старые маршруты и выбор версии удалены.
+> Wire-поля `version` и поддержки старых клиентов нет; desktop и backend обновляются совместно.
 > Маршруты: `POST /v1/chat`, `/v1/touch`, `/v1/events`, `/v1/observation`,
 > `/v1/summary` и `GET /health`. Chat/touch всегда возвращают appraisal.
 > Клиент и сервер обновляются совместно; обратной совместимости со старыми API нет.

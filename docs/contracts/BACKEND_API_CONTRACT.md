@@ -2,6 +2,8 @@
 
 Канонический внешний API. Не зависит от Domain, Electron, локальных Application DTO или выбранного серверного языка. Полные формы полей и enum — [backend-interaction-contract.ts](../../frontend/src/application/ports/backend-interaction-contract.ts) и связанные wire-компоненты. Изменение локальных типов персонажа не меняет wire автоматически; преобразование принадлежит desktop adapter. Клиентский lifecycle и ограничения частоты — в [AI Provider](../../frontend/docs/engine/AI_PROVIDER_CONTRACT.md#desktop--backend-v1).
 
+В Alpha клиент и сервер обновляются совместно. Поля `version`, согласования версий и поддержки прежних контрактов нет; `/v1` остаётся общим префиксом маршрутов.
+
 ## 1. Транспорт и владение
 
 - `POST /v1/chat`, `/v1/touch`, `/v1/events`, `/v1/summary`, `/v1/observation`; `GET /health` без inference. JSON UTF-8; request `Content-Type: application/json`, `Accept: application/json`, JSON responses `Content-Type: application/json`. Успех — HTTP 200. Только `stream: false`; SSE, tools и файлы не входят в v1.
@@ -12,7 +14,7 @@
 
 ## 2. Поля и валидация
 
-`version` строго 1; `requestId` — UUID v4, созданный desktop для нового обращения. Backend возвращает тот же ID. Локальные conversationId/generation/streamId не отправляются. Для chat `event.type` только `user_message`; `locale` только `ru`/`en`.
+`requestId` — UUID v4, созданный desktop для нового обращения. Backend возвращает тот же ID. Локальные conversationId/generation/streamId не отправляются. Для chat `event.type` только `user_message`; `locale` только `ru`/`en`.
 
 `messages`: 1–7 записей, до трёх полных пар истории и последнее user message, порядок `user, assistant, …, user`. `role` только user/assistant; content после trim непустой, user ≤240, assistant ≤2000 UTF-16 code units. System/developer/tool roles запрещены. Данные example не заменяют реальную character projection.
 
@@ -33,20 +35,19 @@
 
 Request body ≤32 KiB, response body ≤16 KiB после декодирования; превышение прекращает чтение. Неизвестные ключи/неверная форма отклоняются, в том числе произвольные needs keys; исключение для необязательных response hints описано ниже. Текст plain text, контролы кроме newline/tab запрещены. Длины строк считаются в UTF-16 code units на обеих сторонах; нормализация не делает out-of-range значение допустимым.
 
-Успех chat содержит version/requestId/text/appraisal и optional decision/memoryCandidates. Обязательные card/effectPolicy и appraisal определены в [AI Events §10](AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v1). `text` после trim 1–2000 code units. `decision`: обязательные behavior и confidence, optional tone/mood; confidence finite `[0,1]`. Перечни behavior/tone/mood автономно определены wire-типами. Отсутствующий decision — корректный success без decision. Обязательного или optional поля quota в согласованной форме сейчас нет.
+Успех chat содержит requestId/text/appraisal и optional decision/memoryCandidates. Обязательные card/effectPolicy и appraisal определены в [AI Events §10](AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v1). `text` после trim 1–2000 code units. `decision`: обязательные behavior и confidence, optional tone/mood; confidence finite `[0,1]`. Перечни behavior/tone/mood автономно определены wire-типами. Отсутствующий decision — корректный success без decision. Обязательного или optional поля quota в согласованной форме сейчас нет.
 
 Модель предлагает одно semantic behavior; локальный Character проверяет актуальность, P0–P5, Needs, сон, quiet и cooldown. Confidence не даёт приоритет или право исполнения. Координаты, маршруты, клипы, длительности, изменение числовых traits/отношений, memory writes и команды ОС запрещены. Backend сам формирует envelope/requestId, не доверяет этим полям модельного вывода.
 
-Некорректный decision при валидном тексте backend удаляет целиком и возвращает success без decision; desktop также отбрасывает некорректный decision. Невалидный обязательный envelope/text/version/requestId делает ответ целиком невалидным. Эта деградация hints не разрешает дополнительные поля верхнего уровня.
+Некорректный decision при валидном тексте backend удаляет целиком и возвращает success без decision; desktop также отбрасывает некорректный decision. Невалидный обязательный envelope/text/requestId делает ответ целиком невалидным. Эта деградация hints не разрешает дополнительные поля верхнего уровня.
 
 ## 3. HTTP и ошибки
 
-Ошибка содержит version/requestId/error; точная форма — `BackendAIErrorResponse`. requestId=null только когда входной ID не прочитан/невалиден. HTTP status и error.code должны соответствовать таблице; неожиданный status, HTML, пустое тело или несовместимая пара — transport/protocol failure у desktop, без принятия model decision.
+Ошибка содержит requestId/error; точная форма — `BackendAIErrorResponse`. requestId=null только когда входной ID не прочитан/невалиден. HTTP status и error.code должны соответствовать таблице; неожиданный status, HTML, пустое тело или несовместимая пара — transport/protocol failure у desktop, без принятия model decision.
 
 | HTTP | `error.code` | Значение |
 |---|---|---|
 | 400 | `invalid_request` | Невалидные JSON, поля, enums или диапазоны. |
-| 400 | `unsupported_version` | Версия API не поддерживается. |
 | 413 | `payload_too_large` | Размер payload превышает допустимый. |
 | 409 | `request_conflict` | Изменён body либо результат уже нельзя повторить; см. §5. |
 | 409 | `request_in_progress` | Этот ID с тем же body сейчас обрабатывается; см. §5. |
@@ -75,7 +76,7 @@ Success и error — альтернативы, не два ответа одно
 Решение [#52](https://github.com/zyzycode/project_wisp/issues/52); текущая структура реализации — [архитектура backend](../../backend/docs/ARCHITECTURE.md). Quota/auth metadata не добавляются. Ниже — контракт реализованного общего runtime; перечень endpoints — в серверной архитектуре. Клиентские ограничения остаются независимыми.
 
 
-Один admission, ledger и RAM replay cache обслуживают все пять POST endpoints. Все обращения учитываются совместно; health не вызывает provider и не создаёт запись расхода. Версия error envelope определяется endpoint, включая ошибки до parsing; v1/touch использует version1 и ту же таблицу §3. Полная валидация соответствующего wire выполняется до admission.
+Один admission, ledger и RAM replay cache обслуживают все пять POST endpoints. Все обращения учитываются совместно; health не вызывает provider и не создаёт запись расхода. Все endpoints используют общую форму ошибок и таблицу §3, включая ошибки до parsing. Полная валидация соответствующего wire выполняется до admission.
 
 ### Доступ и топология
 
@@ -143,7 +144,7 @@ Terminal cache — до 10 min, максимум 100 ответов (по 16 KiB
 
 ### Deadline и cancellation
 
-Общий серверный deadline — 10 s от входа в chat endpoint любой версии или `/v1/touch`, включая body/admission/upstream; body должен завершиться за 2 s, иначе 400 `invalid_request`, upstream не вызывается. Для `/v1/events` действуют более короткие [2.5 s / 0.5 s](AI_EVENTS_CONTRACT.md#5-явный-wire-v1-и-данные). Upstream получает остаток общего deadline; connect/pool timeout не выше 3 s и остатка. Исчерпание общего deadline после приёма body → 504 `upstream_timeout`; byte caps проверяются при чтении, не после полной загрузки.
+Общий серверный deadline — 10 s от входа в `/v1/chat` или `/v1/touch`, включая body/admission/upstream; body должен завершиться за 2 s, иначе 400 `invalid_request`, upstream не вызывается. Для `/v1/events` действуют более короткие [2.5 s / 0.5 s](AI_EVENTS_CONTRACT.md#5-явный-wire-v1-и-данные). Upstream получает остаток общего deadline; connect/pool timeout не выше 3 s и остатка. Исчерпание общего deadline после приёма body → 504 `upstream_timeout`; byte caps проверяются при чтении, не после полной загрузки.
 
 Disconnect/shutdown отменяет upstream task и закрывает HTTP response stream, terminal ledger settlement выполняется независимо от доставки ответа клиенту. Физическая остановка вычисления/списания у provider не гарантируется. Late success не заменяет уже terminal timeout/cancel и не запускает второй вызов; достоверный usage может уточнить uncertain charge не более одного раза. Desktop сохраняет собственные 12 s transport/15 s runtime deadlines и generation guards.
 

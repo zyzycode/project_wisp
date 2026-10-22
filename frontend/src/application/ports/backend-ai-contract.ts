@@ -19,7 +19,7 @@ export interface BackendAIMessage {
   readonly content: string;
 }
 
-/** Wire fields are versioned independently of the local character model. */
+/** Wire fields are defined independently of the local character model. */
 export interface BackendCharacterContext {
   /** Each value is finite and in [0, 100]. */
   readonly needs: {
@@ -58,7 +58,6 @@ export interface BackendCharacterContext {
 }
 
 export interface BackendAIRequest {
-  readonly version: 1;
   readonly requestId: string;
   readonly event: { readonly type: 'user_message' };
   readonly messages: readonly BackendAIMessage[];
@@ -76,7 +75,6 @@ export interface BackendAIDecision {
 }
 
 export interface BackendAIResponse {
-  readonly version: 1;
   readonly requestId: string;
   readonly text: string;
   readonly decision?: BackendAIDecision;
@@ -84,7 +82,6 @@ export interface BackendAIResponse {
 
 export type BackendAIErrorCode =
   | 'invalid_request'
-  | 'unsupported_version'
   | 'payload_too_large'
   | 'request_conflict'
   | 'request_in_progress'
@@ -95,7 +92,6 @@ export type BackendAIErrorCode =
   | 'invalid_model_response';
 
 export interface BackendAIErrorResponse {
-  readonly version: 1;
   readonly requestId: string | null;
   readonly error: {
     readonly code: BackendAIErrorCode;

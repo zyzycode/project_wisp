@@ -45,7 +45,7 @@ def test_all_endpoints_share_accounting_and_id_namespace(app_factory, body, comp
         candidates = [
             ("/v1/chat", {**body, "requestId": request_id}),
             ("/v1/touch", {**touch_body(body), "requestId": request_id}),
-            ("/v1/chat", {**body, "version": 1, "requestId": request_id, "memory": game["memory"]}),
+            ("/v1/chat", {**body, "requestId": request_id, "memory": game["memory"]}),
             ("/v1/chat", {**fixture("request.chat.json"), "requestId": request_id}),
         ]
         async with app.router.lifespan_context(app):
@@ -57,7 +57,6 @@ def test_all_endpoints_share_accounting_and_id_namespace(app_factory, body, comp
                     conflict = await client.post(route, json=candidate)
                     assert conflict.status_code == 409
                     assert conflict.json()["error"]["code"] == "request_conflict"
-                    assert conflict.json()["version"] == candidate["version"]
                     next_response = await client.post(route, json={**candidate, "requestId": str(uuid4())})
                     assert next_response.status_code == 200
                 replay = await client.post("/v1/events", json=game)
@@ -158,7 +157,7 @@ def test_event_short_deadline_with_late_usage_never_replays_success(app_factory,
             service.provider = LateProvider()
             request = EventRequest.model_validate(fixture("request.game.json"))
             first = await service.complete(prepare_job(request), "event-digest", asyncio.get_running_loop().time())
-            assert first.status == 504 and json.loads(first.body)["version"] == 1
+            assert first.status == 504
             assert entered.is_set(), "deadline expired before provider dispatch"
             release.set()
             while service.background:
@@ -209,7 +208,7 @@ def test_event_body_deadline_is_shorter_than_chat(monkeypatch):
 
         event = await request("/v1/events", (FIXTURES / "request.game.json").read_bytes())
         assert event[0]["status"] == 400
-        assert json.loads(event[1]["body"]) == {"version": 1, "requestId": None, "error": {"code": "invalid_request"}}
+        assert json.loads(event[1]["body"]) == {"requestId": None, "error": {"code": "invalid_request"}}
         chat = await request("/v1/chat", (FIXTURES / "request.chat.json").read_bytes())
         assert chat[0]["status"] == 200
 
@@ -276,7 +275,7 @@ def test_v1_inflight_blocks_duplicate_ids_but_not_other_requests(app_factory, bo
         candidates = [
             ("/v1/chat", body),
             ("/v1/touch", touch_body(body)),
-            ("/v1/chat", {**body, "version": 1, "memory": game["memory"]}),
+            ("/v1/chat", {**body, "memory": game["memory"]}),
             ("/v1/chat", fixture("request.chat.json")),
             ("/v1/events", game),
         ]

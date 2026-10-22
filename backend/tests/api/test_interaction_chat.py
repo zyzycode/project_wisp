@@ -51,7 +51,7 @@ def test_eligible_cases_through_real_route_and_provider(
 ) -> None:
     calls = []
     body = case["request"]
-    reply = {key: value for key, value in case["response"].items() if key not in ("version", "requestId")}
+    reply = {key: value for key, value in case["response"].items() if key not in ("requestId",)}
 
     def upstream(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.content)
@@ -96,7 +96,7 @@ def test_eligible_proposal_cannot_bypass_suppressed_policy(
     client_factory: Callable, completion: Callable[..., dict], case: dict[str, Any]
 ) -> None:
     body = {**case["request"], "effectPolicy": "suppressed"}
-    reply = {key: value for key, value in case["response"].items() if key not in ("version", "requestId")}
+    reply = {key: value for key, value in case["response"].items() if key not in ("requestId",)}
     with client_factory(lambda _: httpx.Response(200, json=completion(reply))) as client:
         result = client.post("/v1/chat", json=body)
         assert result.status_code == 502 and result.json()["error"]["code"] == "invalid_model_response"

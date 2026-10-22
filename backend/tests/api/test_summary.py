@@ -81,7 +81,7 @@ def test_shared_http_success(client_factory, completion, request_name, path, res
     expected = fixture(response_name)
     with client_factory(
         lambda _: httpx.Response(
-            200, json=completion({key: value for key, value in expected.items() if key not in ("version", "requestId")})
+            200, json=completion({key: value for key, value in expected.items() if key not in ("requestId",)})
         )
     ) as client:
         response = client.post(
@@ -143,13 +143,6 @@ def test_actual_summary_provider_source_only_and512_cap(app_factory, completion,
 def test_errors_byte_cap_and_no_downgrade(client_factory, completion, path, name):
     body = fixture(name)
     with client_factory(lambda _: pytest.fail("invalid reached upstream")) as client:
-        for version in [2, 3, 4, 5, 6, 7]:
-            response = client.post(path, json={**body, "version": version})
-            assert response.status_code == 400
-            assert response.json()["error"]["code"] == "unsupported_version"
-            assert response.json()["version"] == 1
-        for version in [True, 5.0, "5", None]:
-            assert client.post(path, json={**body, "version": version}).json()["error"]["code"] == "invalid_request"
         assert client.post(path, content=b"x" * 32769, headers={"content-type": "application/json"}).status_code == 413
     raw = json.dumps(body).encode()
     raw += b" " * (32768 - len(raw))
@@ -179,7 +172,6 @@ def test_provider_failure_keeps_safe_v1_envelope(client_factory, error, status):
     with client_factory(upstream) as client:
         response = client.post("/v1/summary", json=fixture("request.summary.json"))
         assert response.status_code == status
-        assert response.json()["version"] == 1
         assert "private" not in response.text
 
 

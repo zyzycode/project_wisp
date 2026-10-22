@@ -77,14 +77,14 @@ it('accepts inclusive bounds and rejects invalid booleans, IDs, trait ranges and
   expect(() => projectBackendRequest({ ...providerRequest(), recentContext: [{ role: 'user', text: 'hello', createdAt: '' }] })).toThrow();
 });
 it.each([undefined, null, {}, { behavior: 'unknown', confidence: 1 }, { behavior: 'respond', confidence: 1.1 }, { behavior: 'respond', confidence: 1, coordinates: [1, 2] }])('keeps valid text while discarding invalid/absent decision %j', decision => {
-  expect(parseBackendSuccess({ version: 1, requestId: wire.requestId, text: 'hello', decision }, wire.requestId)).toEqual({ version: 1, requestId: wire.requestId, text: 'hello' });
+  expect(parseBackendSuccess({ requestId: wire.requestId, text: 'hello', decision }, wire.requestId)).toEqual({ requestId: wire.requestId, text: 'hello' });
 });
-it.each([{ version: 7 }, { requestId: 'wrong' }, { extra: 1 }, { text: '' }, { text: 'x'.repeat(2001) }, { text: '\u0000' }])('rejects malformed success envelope %j', patch => {
-  expect(() => parseBackendSuccess({ version: 1, requestId: wire.requestId, text: 'hello', ...patch }, wire.requestId)).toThrow();
+it.each([{ requestId: 'wrong' }, { extra: 1 }, { text: '' }, { text: 'x'.repeat(2001) }, { text: '\u0000' }])('rejects malformed success envelope %j', patch => {
+  expect(() => parseBackendSuccess({ requestId: wire.requestId, text: 'hello', ...patch }, wire.requestId)).toThrow();
 });
 it('validates error correlation, shape and HTTP/code pair while ignoring malformed 429 retry hints', () => {
   expect(() => parseBackendError(fixture('response.error.json'), wire.requestId, 429)).toThrow();
-  expect(() => parseBackendError({ version: 1, requestId: null, error: { code: 'invalid_request' } }, wire.requestId, 400)).toThrow();
-  expect(() => parseBackendError({ version: 1, requestId: wire.requestId, error: { code: 'rate_limited', message: 'secret' } }, wire.requestId, 429)).toThrow();
-  expect(parseBackendError({ version: 1, requestId: wire.requestId, error: { code: 'rate_limited', retryAfterMs: -1 } }, wire.requestId, 429).error).toEqual({ code: 'rate_limited' });
+  expect(() => parseBackendError({ requestId: null, error: { code: 'invalid_request' } }, wire.requestId, 400)).toThrow();
+  expect(() => parseBackendError({ requestId: wire.requestId, error: { code: 'rate_limited', message: 'secret' } }, wire.requestId, 429)).toThrow();
+  expect(parseBackendError({ requestId: wire.requestId, error: { code: 'rate_limited', retryAfterMs: -1 } }, wire.requestId, 429).error).toEqual({ code: 'rate_limited' });
 });

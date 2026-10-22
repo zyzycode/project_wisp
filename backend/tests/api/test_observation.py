@@ -86,12 +86,8 @@ def test_all_shared_invalid_requests_rejected_before_admission(
             raw = case.get("raw", json.dumps(case["value"], ensure_ascii=True))
             response = client.post(OBSERVATION.path, content=raw, headers={"content-type": "application/json"})
             assert response.status_code == (413 if "raw" in case else 400), case["name"]
-            assert response.json()["version"] == 1
-            wrong_version = type(case["value"].get("version")) is int and case["value"]["version"] != 1
-            assert response.json()["error"]["code"] == (
-                "payload_too_large" if "raw" in case else "unsupported_version" if wrong_version else "invalid_request"
-            )
-        for raw in (b'{"version":1,"version":1}', b"\xff", b'{"x":NaN}', b"{broken"):
+            assert response.json()["error"]["code"] == ("payload_too_large" if "raw" in case else "invalid_request")
+        for raw in (b'{"requestId":"a","requestId":"b"}', b"\xff", b'{"x":NaN}', b"{broken"):
             assert (
                 client.post(OBSERVATION.path, content=raw, headers={"content-type": "application/json"}).status_code
                 == 400
@@ -113,7 +109,6 @@ def test_all_shared_invalid_requests_rejected_before_admission(
         {"decision": {"behavior": "sleep", "confidence": 1}},
         {"memoryCandidates": []},
         {"memoryCandidates": [{"key": "user.display_name", "value": "Fake", "evidenceQuote": "Fake"}]},
-        {"version": 1},
         {"requestId": "model-owned"},
         {"tools": []},
         {"actions": []},
@@ -217,5 +212,5 @@ def test_provider_failures_do_not_retry_or_expose_private_details(
     with TestClient(app_factory(upstream, assistants={"default": {"provider": provider}})) as client:
         response = client.post(OBSERVATION.path, json=fixture("request.hostile-title.json"))
         assert response.status_code == status and response.json()["error"]["code"] == code
-        assert response.json()["version"] == 1 and "PRIVATE_TITLE" not in response.text
+        assert "PRIVATE_TITLE" not in response.text
     assert len(calls) == 1 and "PRIVATE_TITLE" not in caplog.text

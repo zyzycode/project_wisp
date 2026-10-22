@@ -65,7 +65,7 @@ it('routes summary, events and observation through the shared v1 adapter', async
   const summary = parseSummaryRequest(fixture('request.summary.json', 'summary'));
   const observation = parseObservationRequest(fixture('request.valid.json', 'observation'));
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json(fixture('response.summary.success.json', 'summary')))
-    .mockResolvedValueOnce(json({ version: 1, requestId: touchWire.requestId, text: 'Привет' }))
+    .mockResolvedValueOnce(json({ requestId: touchWire.requestId, text: 'Привет' }))
     .mockResolvedValueOnce(json(fixture('response.success.json', 'observation')));
   const provider = client(fetcher);
   expect(provider.canIncludeSummary(chatInput())).toBe(true);
@@ -75,7 +75,7 @@ it('routes summary, events and observation through the shared v1 adapter', async
   expect(fetcher.mock.calls.map(call => String(call[0]))).toEqual(['https://example.com/api/v1/summary', 'https://example.com/api/v1/events', 'https://example.com/api/v1/observation']);
 });
 it.each([401, 403, 404, 502, 503])('does not retry or downgrade a failed v1 request, HTTP %s', async status => {
-  const fetcher = vi.fn<typeof fetch>(async () => json({ version: 1, requestId: touchWire.requestId, error: { code: status === 503 ? 'upstream_unavailable' : 'invalid_model_response' } }, status));
+  const fetcher = vi.fn<typeof fetch>(async () => json({ requestId: touchWire.requestId, error: { code: status === 503 ? 'upstream_unavailable' : 'invalid_model_response' } }, status));
   await expect(client(fetcher).generateEvent(touchInput())).rejects.toThrow();
   const provider = client(fetcher);
   if (status === 502 || status === 503) await expect(provider.generateResponse(chatInput())).resolves.toMatchObject({ status: 'fallback' });
@@ -85,7 +85,7 @@ it.each([401, 403, 404, 502, 503])('does not retry or downgrade a failed v1 requ
 });
 it.each(['touch', 'chat'] as const)('validates %s errors against request ID, HTTP status and envelope', kind => {
   const error = fixture('response.error.json') as Record<string, unknown>;
-  for (const extra of [{ version: 7 }, { requestId: null }, { requestId: 'wrong' }, { extra: true }]) {
+  for (const extra of [{ requestId: null }, { requestId: 'wrong' }, { extra: true }]) {
     expect(() => parseInteractionError({ ...error, ...extra }, kind === 'touch' ? touchWire.requestId : chatWire.requestId, 502)).toThrow();
   }
   expect(() => parseInteractionError(error, chatWire.requestId, 503)).toThrow();
@@ -184,7 +184,7 @@ it.each(['offline', 'malformed', 'timeout'] as const)('settles v1 chat %s withou
   let resolve!: (response: Response) => void;
   const fetcher = vi.fn<typeof fetch>(async () => {
     if (mode === 'offline') throw new TypeError('offline');
-    if (mode === 'malformed') return json({ version: 1, requestId: chatWire.requestId, text: 'Invalid without appraisal' });
+    if (mode === 'malformed') return json({ requestId: chatWire.requestId, text: 'Invalid without appraisal' });
     return new Promise(yes => { resolve = yes; });
   });
   const provider = client(fetcher), pending = provider.generateResponse(chatInput());
@@ -202,7 +202,7 @@ it.each(['offline', 'malformed', 'timeout'] as const)('settles v1 chat %s withou
   expect(await provider.getStatus()).toEqual({ kind: 'ready' });
 });
 it('preserves independent decision and memory candidate sanitization inside valid v1 appraisal', () => {
-  const response = { version: 1, requestId: chatWire.requestId, text: 'Ответ', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' },
+  const response = { requestId: chatWire.requestId, text: 'Ответ', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' },
     decision: { behavior: 'invented', confidence: 1 }, memoryCandidates: [{ key: 'user.display_name', value: 'Аня', evidenceQuote: 'not this user message' }] };
   const parsed = parseInteractionChatResponse(response, chatWire.requestId, 'Почему?', 'suppressed');
   expect(parsed).not.toHaveProperty('decision'); expect(parsed.memoryCandidates).toEqual([]); expect(parsed.text).toBe('Ответ');

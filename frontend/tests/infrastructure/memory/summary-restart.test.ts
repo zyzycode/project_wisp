@@ -34,7 +34,7 @@ it('generates explicitly, restarts, resolves exact sources after1000 pairs, and 
   // Reuse the persisted session directly only for the synthetic fixture; normal app creates a new session.
   for (let n = 11; n < 1011; n++) append(n);
   const restarted = new SummaryRuntime(options()); const capture = await restarted.capture('Космос'); expect(capture?.excludedMessageIds).toHaveLength(16);
-  await generator.generateResponse({ ...providerRequest(), summary: { text: capture!.text } }); expect(bridge.requests.at(-1)?.body).toMatchObject({ version: 1, summary: { text: 'Пользователь обсуждал космос.' } });
+  await generator.generateResponse({ ...providerRequest(), summary: { text: capture!.text } }); expect(bridge.requests.at(-1)?.body).toMatchObject({ summary: { text: 'Пользователь обсуждал космос.' } });
   expect(bridge.requests.filter(request => request.path === '/v1/summary')).toHaveLength(1);
   expect(bridge.responses.at(-1)?.upstreamMessages.some(message => message.content.includes('Unconfirmed older-dialogue summary:'))).toBe(true);
   generation++; expect(call('mutateMemoryItem', { kind: 'confirm', commandId: 'confirm', itemId: 'item', expectedRevision: 0, confirmed: true, content: { category: 'shared_joke', label: 'Космос', text: 'История', occurredOn: null }, source: { userMessageId: 'u0', assistantMessageId: 'a0' }, confirmedAt: date }).ok).toBe(true);

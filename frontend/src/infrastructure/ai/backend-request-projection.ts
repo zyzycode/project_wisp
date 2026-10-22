@@ -36,6 +36,6 @@ export function projectBackendRequest(request: AIProviderRequest): BackendAIRequ
       content: plainText(message.text, index % 2 === 0 ? 240 : 2000, true) };
   });
   messages.push({ role: 'user', content: plainText(request.userMessage.text, 240, true) });
-  return { version: 1, requestId: backendRequestId(request.requestId), event: { type: 'user_message' }, messages,
+  return { requestId: backendRequestId(request.requestId), event: { type: 'user_message' }, messages,
     stream: false, locale: request.locale === 'en' ? 'en' : 'ru', character };
 }

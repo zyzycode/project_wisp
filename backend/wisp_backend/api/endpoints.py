@@ -21,7 +21,6 @@ EVENT_BODY_TIMEOUT = 0.5
 @dataclass(frozen=True)
 class Endpoint:
     path: str
-    version: int
     scenario: Scenario
     request_type: type[BaseModel]
     response_type: type[BaseModel]
@@ -31,10 +30,10 @@ class Endpoint:
         return EVENT_BODY_TIMEOUT if self.scenario in (Scenario.EVENT, Scenario.OBSERVATION) else BODY_TIMEOUT
 
 
-CHAT = Endpoint("/v1/chat", 1, Scenario.INTERACTION_CHAT, InteractionChatRequest, InteractionChatResponse)
-TOUCH = Endpoint("/v1/touch", 1, Scenario.INTERACTION_TOUCH, InteractionTouchRequest, InteractionTouchResponse)
-EVENT = Endpoint("/v1/events", 1, Scenario.EVENT, EventRequest, EventResponse)
-SUMMARY = Endpoint("/v1/summary", 1, Scenario.SUMMARY, SummaryRequest, SummaryResponse)
-OBSERVATION = Endpoint("/v1/observation", 1, Scenario.OBSERVATION, ObservationRequest, ObservationResponse)
+CHAT = Endpoint("/v1/chat", Scenario.INTERACTION_CHAT, InteractionChatRequest, InteractionChatResponse)
+TOUCH = Endpoint("/v1/touch", Scenario.INTERACTION_TOUCH, InteractionTouchRequest, InteractionTouchResponse)
+EVENT = Endpoint("/v1/events", Scenario.EVENT, EventRequest, EventResponse)
+SUMMARY = Endpoint("/v1/summary", Scenario.SUMMARY, SummaryRequest, SummaryResponse)
+OBSERVATION = Endpoint("/v1/observation", Scenario.OBSERVATION, ObservationRequest, ObservationResponse)
 ENDPOINTS = {endpoint.path: endpoint for endpoint in (CHAT, TOUCH, EVENT, SUMMARY, OBSERVATION)}
 ENDPOINTS_BY_REQUEST = {endpoint.request_type: endpoint for endpoint in ENDPOINTS.values()}

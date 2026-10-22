@@ -78,9 +78,8 @@ function candidates(value: unknown, userText: string): readonly BackendMemoryCan
   });
 }
 export function parseBackendMemorySuccess(value: unknown, requestId: string, userText: string): BackendMemoryResponse {
-  const r = exactRecord(value, ['version', 'requestId', 'text'], ['decision', 'memoryCandidates']);
-  if (r.version !== 1) throw new TypeError('Invalid memory version');
-  const base = parseBackendSuccess({ version: 1, requestId: r.requestId, text: r.text, ...(r.decision === undefined ? {} : { decision: r.decision }) }, requestId);
+  const r = exactRecord(value, ['requestId', 'text'], ['decision', 'memoryCandidates']);
+  const base = parseBackendSuccess({ requestId: r.requestId, text: r.text, ...(r.decision === undefined ? {} : { decision: r.decision }) }, requestId);
   const memoryCandidates = candidates(r.memoryCandidates, userText);
   return { ...base, ...(memoryCandidates === undefined ? {} : { memoryCandidates }) };
 }

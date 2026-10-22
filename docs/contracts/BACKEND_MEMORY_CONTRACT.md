@@ -6,7 +6,7 @@
 
 ## 1. Версия и границы
 
-- Только `POST /v1/chat`, `version:1`, JSON UTF-8, `stream:false`, event `user_message`.
+- Только `POST /v1/chat`, JSON UTF-8, `stream:false`, event `user_message`.
 - Main подключает recall при настроенном backend и доступном локальном memory runtime.
 - Ошибки, размеры, deadlines, общий ledger и retention — [Backend API](BACKEND_API_CONTRACT.md).
 - Нет probe/downgrade/retry. Недоступность backend не останавливает локального персонажа.
@@ -29,7 +29,7 @@ Backend включает memory в отдельный **untrusted context** бл
 
 ## 3. Ответ и extraction
 
-Envelope version/requestId/text/optional decision соответствует v1; дополнительно optional `memoryCandidates`, массив0–3. Каждый кандидат — key/value из registry + evidenceQuote1–240 UTF-16 units. evidenceQuote должен побуквенно совпадать с trim последнего user content текущего запроса. Чужие источники, source IDs, confidence, числовые state deltas и операции удаления не входят в предложение.
+Envelope requestId/text/optional decision соответствует v1; дополнительно optional `memoryCandidates`, массив0–3. Каждый кандидат — key/value из registry + evidenceQuote1–240 UTF-16 units. evidenceQuote должен побуквенно совпадать с trim последнего user content текущего запроса. Чужие источники, source IDs, confidence, числовые state deltas и операции удаления не входят в предложение.
 
 Provider получает один запрос на ответ и предложения, без отдельного extraction/summary call. Backend контролирует envelope, структурно валидирует candidate fields/limits и source quote. Desktop независимо повторяет wire validation, затем применяет локальный recognizer из [Memory §9](../../frontend/docs/engine/MEMORY_ENGINE.md#9-p15-a02-явные-знания-и-простой-recall). Модель предлагает, но не решает, что записать; local recognizer может сохранить точную поддержанную форму и при отсутствии candidate.
 
@@ -47,7 +47,7 @@ Full local memory reset очищает источники и инвалидир�
 
 Обе стороны используют **одни и те же** JSON-файлы из [desktop-backend-v1](fixtures/desktop-backend-v1/memory): [request.valid](fixtures/desktop-backend-v1/memory/request.valid.json), [response.success](fixtures/desktop-backend-v1/memory/response.success.json), [response.error](fixtures/desktop-backend-v1/memory/response.error.json). Success/error — альтернативные HTTP200/503 outcomes.
 
-Проверить обе версии одновременно, mixed endpoint/requestId conflicts, byte/text caps, unknown fields, invalid hints/candidates/source quote, grounded correction, отсутствие model numeric writes, timeout/outage/disconnect, once-only usage и поздние callbacks после reset/dispose. Клиентские semantic tests дополнительно доказывают restart recall facts/game, отсутствие повторного extraction старой истории и сохранение completed reply при ошибке fact write.
+Проверить shared endpoint/requestId conflicts, byte/text caps, unknown fields, invalid hints/candidates/source quote, grounded correction, отсутствие model numeric writes, timeout/outage/disconnect, once-only usage и поздние callbacks после reset/dispose. Клиентские semantic tests дополнительно доказывают restart recall facts/game, отсутствие повторного extraction старой истории и сохранение completed reply при ошибке fact write.
 
 ## 6. MEM-A03: planned расширение событий и шуток
 

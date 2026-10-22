@@ -36,7 +36,7 @@ it('omits suppressed pairs from hydration, recall and unified network projection
     fetch: async (_url, init) => {
       const body: unknown = JSON.parse(String(init?.body)); bodies.push(body);
       if (!body || typeof body !== 'object' || !('requestId' in body)) throw new Error('missing request');
-      return new Response(JSON.stringify({ version: 1, appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, requestId: body.requestId, text: 'Северное сияние — незабываемая встреча' }), { headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, requestId: body.requestId, text: 'Северное сияние — незабываемая встреча' }), { headers: { 'content-type': 'application/json' } });
     } });
   const runtime = new DialogueRuntime({ interactionEnabled: true, provider, memory: { generation: f.generation, recall: f.recall, completed: turn => { void f.history.completed(turn); } },
     now: Date.now, timestamp: () => date, createId: randomUUID, scheduler: { setTimeout, clearTimeout: h => clearTimeout(h as ReturnType<typeof setTimeout>) },
@@ -84,7 +84,7 @@ it('aborts an in-flight chat on mutation and never republishes or persists its l
     applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: work => work(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('s'); runtime.receive({ type: 'send', sequence: 1, streamId: 's', conversationId: runtime.getPresentation().conversationId, text: 'old request' });
   await vi.waitFor(() => expect(signal).toBeDefined()); generation++; runtime.clearMemoryContext(); expect(signal?.aborted).toBe(true);
-  resolve(new Response(JSON.stringify({ version: 1, requestId: 'old', text: 'late secret', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'content-type': 'application/json' } }));
+  resolve(new Response(JSON.stringify({ requestId: 'old', text: 'late secret', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'content-type': 'application/json' } }));
   await vi.waitFor(() => expect(runtime.getPresentation().canSubmit).toBe(true));
   expect(runtime.getPresentation().turn.phase).toBe('idle'); expect(completed).not.toHaveBeenCalled(); runtime.dispose();
 });

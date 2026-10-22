@@ -22,11 +22,11 @@ it('matches all six common v1 fixtures without inventing a user message for even
   }
   expect(projectEventAwareChat({ ...providerRequest(), requestId: chat.requestId, characterSnapshot: chat.character, userMessage: { id: 'local', text: chat.messages.at(-1)!.content, createdAt: '' }, recentContext: [], memoryContext: chat.memory, previousInitiative: chat.previousInitiative })).toEqual(component(chat));
   expect(parseEventResponse(fixture('response.event.success.json'), game.requestId).replyText).toBeDefined();
-  expect(parseEventError(fixture('response.error.json'), game.requestId, 503).version).toBe(1);
+  expect(parseEventError(fixture('response.error.json'), game.requestId, 503).requestId).toBe(game.requestId);
   expect(parseEventAwareChat(component(fixture('response.chat.success.json')), chat.requestId, chat.messages.at(-1)!.content)).toEqual(component(fixture('response.chat.success.json')));
 });
-it.each([{ decision: null }, { memoryCandidates: [] }, { delta: 1 }, { text: '' }, { text: 'x'.repeat(241) }, { version: 1 }, { requestId: 'wrong' }])('strictly rejects event output extension/bounds %j', extra => {
-  expect(() => parseEventResponse({ version: 1, requestId: game.requestId, text: 'Привет', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, ...extra }, game.requestId)).toThrow();
+it.each([{ decision: null }, { memoryCandidates: [] }, { delta: 1 }, { text: '' }, { text: 'x'.repeat(241) }, { requestId: 'wrong' }])('strictly rejects event output extension/bounds %j', extra => {
+  expect(() => parseEventResponse({ requestId: game.requestId, text: 'Привет', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, ...extra }, game.requestId)).toThrow();
 });
 it('does not expose source IDs or allow forged game outcomes/duration', () => {
   const request = { requestId: game.requestId, event: game.event, characterSnapshot: game.character, memoryContext: game.memory, locale: game.locale };
@@ -41,7 +41,7 @@ it('hands the single HTTP slot to an accepted user only after aborted event fetc
       init?.signal?.addEventListener('abort', () => { cancelled = true; setTimeout(() => { active--; no(new Error('aborted')); }, 500); }, { once: true });
     });
     active--; const body: { requestId: string } = JSON.parse(String(init?.body));
-    return new Response(JSON.stringify({ version: 1, requestId: body.requestId, text: 'Ответ', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ requestId: body.requestId, text: 'Ответ', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), { headers: { 'Content-Type': 'application/json' } });
   });
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, now: Date.now, fetch: fetcher });
   let id = 0; const createId = () => `00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}`;
