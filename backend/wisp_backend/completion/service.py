@@ -1,7 +1,7 @@
 """Admission, bounded provider lifetime and independent terminal settlement."""
 
 import asyncio
-import logging
+import time
 from dataclasses import dataclass, field
 from threading import Event
 from typing import Any, TypeVar
@@ -10,10 +10,12 @@ from wisp_backend.accounting.contracts import Admission, Ledger
 from wisp_backend.completion.contracts import CompletionJob, ProviderResult, ReplyEncoder
 from wisp_backend.completion.ports import Provider
 from wisp_backend.errors import ErrorCode, ServiceError
+from wisp_backend.logging import get_logger
 from wisp_backend.outcomes import Outcome
 
 TaskResult = TypeVar("TaskResult")
-logger = logging.getLogger(__name__)
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -88,6 +90,7 @@ class CompletionService:
                     asyncio.create_task(self._settle_abandoned_admission(state.admission_task, state.request_id))
                 )
         except ServiceError as error:
+            logger.warning("completion_rejected", fields={"category": error.code, "outcome": "expected"})
             state.fail(error.code, error.retry_after_ms)
         finally:
             try:
@@ -120,10 +123,13 @@ class CompletionService:
         remaining = state.remaining()
         if remaining <= 0:
             raise ServiceError("upstream_timeout")
+        provider_started = time.monotonic()
+        logger.debug("provider_started")
         state.provider_task = asyncio.create_task(self.provider.complete(job.inference, remaining))
         done, _ = await asyncio.wait({state.provider_task}, timeout=max(0, state.remaining()))
         if not done or state.remaining() <= 0:
             raise ServiceError("upstream_timeout")
+        logger.debug("provider_finished", fields={"duration_ms": (time.monotonic() - provider_started) * 1000})
         # Retain usage even when semantic validation or wire serialization fails.
         state.result = state.provider_task.result()
         if not isinstance(state.result, ProviderResult):
@@ -179,7 +185,11 @@ class CompletionService:
             self.background.discard(done)
             if not done.cancelled():
                 if done.exception() is not None:
-                    logger.error("completion_background_failed")
+                    logger.error(
+                        "completion_background_failed", error=done.exception(), fields={"category": "unexpected"}
+                    )
+                else:
+                    logger.debug("completion_background_finished")
 
         task.add_done_callback(finished)
         return task

@@ -4,6 +4,12 @@ from pathlib import Path
 
 import uvicorn
 from wisp_backend.application import create_app
+from wisp_backend.config.loader import load_logging_settings
+from wisp_backend.logging_config import LoggingSettings
+from wisp_backend.logging_output import configure_logging
+
+configure_logging(LoggingSettings())
+configure_logging(load_logging_settings())
 
 app = create_app()
 
@@ -13,5 +19,7 @@ if __name__ == "__main__":
         host="127.0.0.1",
         port=8000,
         reload=True,
+        log_config=None,
+        access_log=False,
         reload_dirs=[str(Path(__file__).resolve().parent)],
     )

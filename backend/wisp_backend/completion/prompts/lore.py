@@ -1,7 +1,6 @@
 """Immutable reviewed lore: primary activation, stable ranking and bounded selection."""
 
 import json
-import logging
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,10 +9,12 @@ from typing import Annotated, Literal
 from pydantic import Field
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.json_codec import decode_json
+from wisp_backend.logging import get_logger
 from wisp_backend.validation import Contract, text_type
 
 CATALOGUE_PATH = Path(__file__).with_name("lore.json")
-logger = logging.getLogger(__name__)
+
+logger = get_logger(__name__)
 Identifier = Annotated[str, Field(pattern=r"^[a-z0-9-]{1,64}$")]
 Rank = Annotated[int, Field(ge=0, le=100)]
 

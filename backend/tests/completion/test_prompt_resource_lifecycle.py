@@ -68,7 +68,9 @@ asyncio.run(run())
 """,
     )
     assert result.stdout == "prompt_resources_unavailable\n"
-    assert result.stderr == ""
+    assert "application_failed" in result.stderr
+    assert "private-resource-text" not in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_snapshot_survives_file_edits_and_multiple_apps_until_process_restart(tmp_path: Path) -> None:
@@ -88,7 +90,9 @@ async def runtime(*args):
     assert get_prompt_resources.cache_info().currsize == 1
     yield object()
 application.open_runtime = runtime
-application.load_settings = lambda: object()
+from types import SimpleNamespace
+from wisp_backend.logging_config import LoggingSettings
+application.load_settings = lambda: SimpleNamespace(logging=LoggingSettings())
 async def run():
     app = application.create_app()
     async with app.router.lifespan_context(app):
@@ -120,7 +124,9 @@ async def run():
 asyncio.run(run())
 """,
     )
-    assert result.stdout == "wisp-prompts-2\n" and result.stderr == ""
+    assert result.stdout == "wisp-prompts-2\n"
+    assert result.stderr.count("application_started") == 3
+    assert "Synthetic updated intro" not in result.stderr
     restarted = run_copy(
         tmp_path,
         """

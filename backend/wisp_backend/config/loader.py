@@ -10,6 +10,7 @@ from dotenv import dotenv_values
 from pydantic import SecretStr
 from wisp_backend.config.profiles import get_profile
 from wisp_backend.config.settings import Settings
+from wisp_backend.logging_config import LoggingSettings, logging_settings
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 ASSISTANT_FIELDS = (
@@ -26,6 +27,11 @@ TIMEOUT_FIELDS = (
 )
 
 
+def load_logging_settings(env_file: Path = ENV_FILE) -> LoggingSettings:
+    """Validate output policy before other startup resources or credentials."""
+    return logging_settings({**dotenv_values(env_file), **os.environ})
+
+
 def load_settings(env_file: Path = ENV_FILE) -> Settings:
     """Apply process-over-file precedence, resolve legacy profiles, then validate.
 
@@ -36,6 +42,7 @@ def load_settings(env_file: Path = ENV_FILE) -> Settings:
     assistants = _assistant_profiles(values)
     provider = assistants["default"].get("provider", "groq")
     options: dict[str, Any] = {
+        "logging": logging_settings(values),
         "api_key": _provider_key(values, provider),
         "assistants": assistants,
         **_transport_options(values),

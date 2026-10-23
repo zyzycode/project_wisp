@@ -1,7 +1,6 @@
 """Own startup and shutdown of the ledger, maintenance, HTTP client and execution."""
 
 import asyncio
-import logging
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 
@@ -11,21 +10,24 @@ from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
 from wisp_backend.completion.service import CompletionService
 from wisp_backend.config.settings import Settings
 from wisp_backend.errors import ServiceError
+from wisp_backend.logging import get_logger, log_context
 from wisp_backend.providers.client import create_client
 from wisp_backend.providers.factory import create_provider
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def maintain_ledger(ledger: Ledger, interval: float = 60) -> None:
     while True:
         await asyncio.sleep(interval)
-        try:
-            await ledger.maintain()
-        except ServiceError:
-            # Storage failure latches the adapter closed. No payload or exception details.
-            logger.error("ledger_maintenance_failed")
-            return
+        with log_context(operation="maintenance"):
+            try:
+                logger.debug("maintenance_started")
+                await ledger.maintain()
+                logger.debug("maintenance_finished")
+            except ServiceError as error:
+                logger.error("ledger_maintenance_failed", error=error, fields={"category": error.code})
+                return
 
 
 async def stop_maintenance(task: asyncio.Task[None]) -> None:
