@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from tests.completion.test_prompt_selection import scene_context
 from wisp_backend.prompt_inspection.report import encoded, inspect_scene
 
 ROOT = Path(__file__).parents[1] / "fixtures/prompt_inspection"
@@ -24,15 +25,12 @@ def _replace_text(value: Any, original: str, replacement: str) -> Any:
 
 
 def comparison_record(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
-    prefix = "Untrusted character_context JSON:\n"
     character_message = next(
-        message["content"] for message in after["messages"] if message["content"].startswith(prefix)
+        message["content"] for message in after["messages"] if message["content"].startswith("[Current State & Mood]")
     )
-    character = json.loads(character_message.split("\n", 1)[1])
-    expression = character.pop("expression")
-    without_expression = _replace_text(
-        after["payload"], character_message, prefix + json.dumps(character, ensure_ascii=False)
-    )
+    expression = scene_context(after["scene_id"], after["locale"]).character["expression"]
+    reference = character_message.split("[Character card & supporting state]", 1)[1]
+    without_expression = _replace_text(after["payload"], character_message, reference)
     overhead = len(encoded(after["payload"])) - len(encoded(without_expression))
     before_size = before["budget"]["selected_estimate"]
     after_size = after["budget"]["selected_estimate"]
@@ -76,7 +74,7 @@ async def comparison_artifact() -> dict[str, Any]:
         "baseline_source_commit": baseline["source_commit"],
         "resources": resources,
         "method": "offline UTF-8 payload JSON bytes + 256 + 64 * message count; not tokenizer or billing",
-        "projection_note": "Projection bytes are measured in the same formatted payload with only character.expression removed; no HTTP or compatibility path.",
+        "projection_note": "Projection bytes are measured in the same formatted payload with the narrative state cues removed; no HTTP or compatibility path.",
         "quality": "NOT RUN; byte changes do not establish live response quality.",
         "records": records,
     }

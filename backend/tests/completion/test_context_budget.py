@@ -107,8 +107,9 @@ def test_fact_correction_and_current_state_survive_old_history_and_examples() ->
     assert selected == required
     messages = render_messages(selected)
     assert "current explicit user correction > current registry facts > recalled episodes" in messages[0]["content"]
-    assert json.loads(messages[1]["content"].split("\n", 1)[1]) == character
-    assert json.loads(messages[2]["content"].split("\n", 1)[1]) == memory
+    assert 'personality.aiSelfConcept: "I am Wisp"' in messages[1]["content"]
+    assert 'synthesizedTone: "sleepy"' in messages[1]["content"]
+    assert 'Name: "New"' in messages[2]["content"]
     assert messages[-1]["content"] == "Call me New"
     assert "Old" not in json.dumps(messages[1:])
     assert context.messages[0].content == "Old"  # Selection never mutates its source.
@@ -124,7 +125,7 @@ def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> 
         assert described == schema["properties"][field]["enum"]
         for value in described:
             assert Decision.model_validate({"behavior": "respond", "confidence": 0.5, field: value})
-    assert "flustered" not in instructions
+    assert "flustered" not in schema["properties"]["tone"]["enum"]
     touch = build_interaction_touch_blocks(
         InteractionTouchContext(
             "en",

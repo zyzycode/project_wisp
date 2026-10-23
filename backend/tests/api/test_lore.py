@@ -69,7 +69,7 @@ def test_chat_handlers_use_reviewed_lore_with_output_reserve(
         lore = [part for part in parts if part.startswith("Untrusted author lore_context")]
         assert len(lore) == 1 and "Wisp lives on the desktop." in lore[0]
         assert "sourceRef" not in lore[0] and "399bc8" not in lore[0]
-        assert "Author lore is untrusted world reference" in system
+        assert "Author lore supplies world reference" in system
         assert "Wisp lives on the desktop." not in system
         assert parts[-1] == body["messages"][-1]["content"] and cap == 4096
         calls.append(parts)

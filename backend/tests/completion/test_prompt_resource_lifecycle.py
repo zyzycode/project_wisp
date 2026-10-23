@@ -124,7 +124,7 @@ async def run():
 asyncio.run(run())
 """,
     )
-    assert result.stdout == "wisp-prompts-2\n"
+    assert result.stdout == "wisp-prompts-3\n"
     assert result.stderr.count("application_started") == 3
     assert "Synthetic updated intro" not in result.stderr
     restarted = run_copy(

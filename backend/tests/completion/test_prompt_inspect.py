@@ -11,6 +11,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.completion.test_prompt_selection import scene_context
 from wisp_backend.completion.context import (
     ContextBlock,
     ContextMessage,
@@ -19,6 +20,7 @@ from wisp_backend.completion.context import (
     select_context,
     select_context_async,
 )
+from wisp_backend.completion.prompts.narrative import reference_lines
 from wisp_backend.prompt_inspection.report import inspect_scene
 from wisp_backend.prompt_inspection.scenes import SCENE_IDS, SCENES_PATH
 
@@ -64,21 +66,13 @@ def test_full_synthetic_corpus_preserves_data_and_budgets_while_selecting_resour
             current_blocks = {block["key"]: block for block in report["blocks"]}
             assert set(original_blocks) - set(current_blocks) <= {"examples"}
             for key, original in original_blocks.items():
-                if key not in {"instructions", "character_profile_state", "examples"}:
+                if key not in {"instructions", "character_profile_state", "examples", "memory"}:
                     assert current_blocks[key]["messages_sha256"] == original["messages_sha256"]
-            prefix = "Untrusted character_context JSON:\n"
-            old_character = json.loads(
-                next(item["content"] for item in expected["messages"] if item["content"].startswith(prefix)).split(
-                    "\n", 1
-                )[1]
+            character = scene_context(expected["scene_id"], expected["locale"]).character
+            rendered = next(
+                item["content"] for item in report["messages"] if item["content"].startswith("[Current State & Mood]")
             )
-            new_character = json.loads(
-                next(item["content"] for item in report["messages"] if item["content"].startswith(prefix)).split(
-                    "\n", 1
-                )[1]
-            )
-            del new_character["expression"]
-            assert new_character == old_character
+            assert all(line in rendered.splitlines() for line in reference_lines(character))
             assert (
                 len([item for item in report["resource_selection"] if item["kind"] == "example" and item["included"]])
                 <= 1

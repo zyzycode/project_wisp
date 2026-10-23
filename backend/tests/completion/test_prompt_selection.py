@@ -4,7 +4,6 @@ import asyncio
 import itertools
 import json
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 from wisp_backend.api.dispatch import prepare_context
@@ -27,7 +26,7 @@ EXPECTED = {
     "correction": "chat_guarded",
     "long_context": "chat_guarded",
     "injection": "chat_guarded",
-    "no_match": None,
+    "no_match": "chat_familiar",
     "event_caught": None,
     "event_missed": "event_missed",
 }
@@ -113,7 +112,7 @@ def test_optional_resources_disappear_at_boundary_without_losing_constraints(pro
         "desktop alone owns",
     ):
         assert text in core
-    assert "Never guilt" in core
+    assert "without guilt" in core
     assert "friendship>=500" not in core and "comfort>=80" not in core
     assert not any(item["included"] for item in report["resource_selection"])
     assert any(item["reason"] == "budget" for item in report["resource_selection"])
@@ -132,17 +131,17 @@ def test_resource_predicates_are_closed_and_cannot_contain_expressions() -> None
         parse_resources(json.dumps(raw).encode())
 
 
-def test_selected_example_payloads_are_exact_subsets_of_the_original_baseline() -> None:
-    baseline_path = Path(__file__).parents[1] / "fixtures/prompt_inspection/baseline.json"
-    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-    originals = {}
-    for report in baseline["reports"]:
-        for message in report["messages"]:
-            if message["content"].startswith("Synthetic style examples"):
-                originals[(report["locale"], report["route"])] = json.loads(message["content"].split("\n", 1)[1])
+def test_selected_examples_render_as_bounded_dialogues() -> None:
+    from wisp_backend.completion.prompts.narrative import dialogue_examples
+
     for scene in EXPECTED:
         for locale in ("ru", "en"):
             route, _, _, _ = load_scene(scene, locale)
             mode = {"/v1/chat": "chat", "/v1/touch": "touch", "/v1/events": "event"}[route]
             selected = select_prompt_resources(scene_context(scene, locale), mode)
-            assert all(entry.payload() in originals[(locale, route)] for entry in selected.examples)
+            rendered = dialogue_examples(selected.examples)
+            for entry in selected.examples:
+                payload = entry.payload()
+                for reply in payload.get("alternatives", [payload.get("wisp")]):
+                    assert f"\nWisp: {reply}" in rendered
+                assert "<START>\nUser: " in rendered

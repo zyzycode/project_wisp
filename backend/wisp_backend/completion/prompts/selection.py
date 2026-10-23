@@ -35,6 +35,8 @@ def _matches(predicate: Predicate, context: CharacterPromptContext, mode: Scenar
         )
     if context.user_consent_enabled:
         return False
+    if predicate == "chat_familiar":
+        return mode == "chat" and expression.pace == "normal" and expression.trust == "familiar"
     if predicate == "chat_guarded":
         return mode == "chat" and expression.pace == "normal" and expression.trust == "guarded"
     if predicate == "chat_playful_close":

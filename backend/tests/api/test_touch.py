@@ -24,9 +24,7 @@ def test_touch_prompt_and_text_only_response(client_factory, body, chat_completi
         assert sum(item["role"] != "system" for item in messages) == 4
         assert "240 UTF-16" in messages[0]["content"]
         assert '"variant":"touch"' in messages[-1]["content"]
-        character = next(
-            item["content"] for item in messages if item["content"].startswith("Untrusted character_context")
-        )
+        character = next(item["content"] for item in messages if item["content"].startswith("[Current State & Mood]"))
         assert body["messages"][-1]["content"] not in character
         return httpx.Response(
             200,

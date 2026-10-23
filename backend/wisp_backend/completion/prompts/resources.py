@@ -14,7 +14,13 @@ RESOURCE_BYTE_LIMIT = 64 * 1024
 Locale = Literal["ru", "en"]
 Scenario = Literal["chat", "touch", "event"]
 Predicate = Literal[
-    "chat_guarded", "chat_playful_close", "chat_tired_company", "touch_familiar", "touch_gentle", "event_missed"
+    "chat_guarded",
+    "chat_playful_close",
+    "chat_tired_company",
+    "chat_familiar",
+    "touch_familiar",
+    "touch_gentle",
+    "event_missed",
 ]
 ExampleValue = str | tuple[str, ...]
 

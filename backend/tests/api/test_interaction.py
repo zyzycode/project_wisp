@@ -14,6 +14,7 @@ from tests.completion.test_context_budget import cost
 from tests.helpers import gemini_completion
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.completion.context import ContextMessage, ContextOverflow, select_context
+from wisp_backend.completion.prompts.narrative import reference_lines
 from wisp_backend.providers.context_budget import estimate_input
 
 
@@ -53,8 +54,8 @@ def test_complete_provider_path(
             assert data["generationConfig"]["maxOutputTokens"] == cap
         assert estimate_input(data, len(messages) + 1) + cap <= 16384
         assert "neutral" in system and "desktop owns all effects" in system
-        profile = next(m["content"] for m in messages if m["content"].startswith("Untrusted character_context"))
-        assert json.loads(profile.split("\n", 1)[1]) == body["character"]
+        profile = next(m["content"] for m in messages if m["content"].startswith("[Current State & Mood]"))
+        assert all(line in profile.splitlines() for line in reference_lines(body["character"]))
         policy = next(m["content"] for m in messages if m["content"].startswith("Untrusted interaction_policy"))
         assert json.loads(policy.split("\n", 1)[1]) == {"card": body["card"], "effectPolicy": body["effectPolicy"]}
         if operation == "chat":

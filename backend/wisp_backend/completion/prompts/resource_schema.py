@@ -24,7 +24,7 @@ class PromptTexts(Contract):
 
 class ChatExample(Contract):
     id: Identifier
-    predicate: Literal["chat_guarded", "chat_playful_close", "chat_tired_company"]
+    predicate: Literal["chat_guarded", "chat_playful_close", "chat_tired_company", "chat_familiar"]
     state: text_type(1200)
     user: text_type(1200)
     alternatives: list[text_type(1200)] = Field(min_length=1, max_length=2)

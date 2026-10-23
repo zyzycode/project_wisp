@@ -37,15 +37,13 @@ def test_one_call_separate_untrusted_memory_and_no_persistence(app_factory, memo
         calls.append(request)
         payload = json.loads(request.content)
         system, character = payload["messages"][:2]
-        memory = next(
-            item for item in payload["messages"] if item["content"].startswith("Untrusted memory_context JSON:")
-        )
+        memory = next(item for item in payload["messages"] if item["content"].startswith("[Known facts about User]"))
         assert system["role"] == "system"
         assert "current explicit user correction > current registry facts > recalled episodes" in system["content"]
         assert "Never claim a fact was" in system["content"]
         assert "saved or deleted durably" in system["content"]
         assert marker not in system["content"] and marker not in character["content"]
-        assert memory["role"] == "user" and memory["content"].startswith("Untrusted memory_context JSON:")
+        assert memory["role"] == "user" and memory["content"].startswith("[Known facts about User]")
         assert marker in memory["content"]
         assert memory_body["requestId"] not in request.content.decode()
         assert payload["messages"][-1]["content"] == memory_body["messages"][-1]["content"]
@@ -126,8 +124,7 @@ def test_empty_memory_uses_single_v1_call(client_factory, memory_body, chat_comp
     def upstream(request):
         calls.append(request)
         assert any(
-            item["content"].startswith("Untrusted memory_context JSON:")
-            for item in json.loads(request.content)["messages"]
+            item["content"].startswith("[Known facts about User]") for item in json.loads(request.content)["messages"]
         )
         return httpx.Response(200, json=chat_completion())
 
