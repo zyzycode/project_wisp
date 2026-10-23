@@ -5,7 +5,7 @@ import time
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from wisp_backend.logging import get_logger, log_context
-from wisp_backend.logging_fields import LABELS
+from wisp_backend.logging.fields import LABELS
 
 logger = get_logger(__name__)
 

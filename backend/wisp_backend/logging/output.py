@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from typing import TextIO
 
 from wisp_backend.logging import EventRecord
-from wisp_backend.logging_config import LEVELS, LoggingSettings
-from wisp_backend.logging_fields import TOKEN
+from wisp_backend.logging.config import LEVELS, LoggingSettings
+from wisp_backend.logging.fields import TOKEN
 
 
 class SafeFormatter(logging.Formatter):

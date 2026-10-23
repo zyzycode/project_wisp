@@ -41,7 +41,7 @@ WARNING — ожидаемый отказ; ERROR — сбой; CRITICAL — не
 Внешние request ID, headers и IP не попадают в журнал. HTTP использует только известный
 route или `other`, без query, body и адреса клиента.
 
-Схема в [logging_fields.py](../wisp_backend/logging_fields.py):
+Схема в [logging/fields.py](../wisp_backend/logging/fields.py):
 числа `duration_ms`, `count`, `status_code`
 от 0 до 1e12, конечные; closed enums `operation`, `outcome`, `method`, `route`, `category`.
 Неизвестные ключи, вложенные структуры, строки вне enum и объекты отбрасываются;

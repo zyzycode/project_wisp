@@ -5,8 +5,8 @@ from pathlib import Path
 import uvicorn
 from wisp_backend.application import create_app
 from wisp_backend.config.loader import load_logging_settings
-from wisp_backend.logging_config import LoggingSettings
-from wisp_backend.logging_output import configure_logging
+from wisp_backend.logging.config import LoggingSettings
+from wisp_backend.logging.output import configure_logging
 
 try:
     configure_logging(load_logging_settings())

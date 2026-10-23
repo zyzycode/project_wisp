@@ -10,7 +10,7 @@ from dotenv import dotenv_values
 from pydantic import SecretStr
 from wisp_backend.config.profiles import get_profile
 from wisp_backend.config.settings import Settings
-from wisp_backend.logging_config import LoggingSettings, logging_settings
+from wisp_backend.logging.config import LoggingSettings, logging_settings
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 ASSISTANT_FIELDS = (

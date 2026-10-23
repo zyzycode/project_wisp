@@ -9,7 +9,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
 
-from wisp_backend.logging_fields import TOKEN, safe_error, safe_fields
+from wisp_backend.logging.fields import TOKEN, safe_error, safe_fields
 
 _context: ContextVar[dict[str, Any]] = ContextVar("wisp_log_context", default={})
 

@@ -5,8 +5,8 @@ import logging
 
 import pytest
 from wisp_backend.logging import get_logger, log_context
-from wisp_backend.logging_config import LoggingSettings
-from wisp_backend.logging_output import configure_logging
+from wisp_backend.logging.config import LoggingSettings
+from wisp_backend.logging.output import configure_logging
 
 
 def test_private_messages_fields_and_exceptions_are_never_rendered():
@@ -81,7 +81,7 @@ def test_levels_overrides_console_and_reinitialization():
 
 
 def test_config_rejects_invalid_values_without_echoing_them():
-    from wisp_backend.logging_config import logging_settings
+    from wisp_backend.logging.config import logging_settings
 
     for values in (
         {"WISP_LOG_LEVEL": "PRIVATE_MARKER"},

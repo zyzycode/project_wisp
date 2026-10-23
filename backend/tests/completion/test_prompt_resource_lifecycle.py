@@ -91,7 +91,7 @@ async def runtime(*args):
     yield object()
 application.open_runtime = runtime
 from types import SimpleNamespace
-from wisp_backend.logging_config import LoggingSettings
+from wisp_backend.logging.config import LoggingSettings
 application.load_settings = lambda: SimpleNamespace(logging=LoggingSettings())
 async def run():
     app = application.create_app()

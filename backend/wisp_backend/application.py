@@ -11,8 +11,8 @@ from wisp_backend.completion.prompts.resources import get_prompt_resources
 from wisp_backend.config.loader import load_logging_settings, load_settings
 from wisp_backend.config.settings import Settings
 from wisp_backend.logging import get_logger
-from wisp_backend.logging_config import LoggingSettings
-from wisp_backend.logging_output import configure_logging
+from wisp_backend.logging.config import LoggingSettings
+from wisp_backend.logging.output import configure_logging
 from wisp_backend.runtime import open_runtime
 
 

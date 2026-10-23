@@ -7,7 +7,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 from wisp_backend.config.profiles import PROFILES, ProviderProfile, get_profile
-from wisp_backend.logging_config import LoggingSettings
+from wisp_backend.logging.config import LoggingSettings
 
 
 class AssistantSettings(BaseModel):
