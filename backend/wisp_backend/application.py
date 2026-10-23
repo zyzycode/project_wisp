@@ -19,10 +19,11 @@ from wisp_backend.runtime import open_runtime
 def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        logs = configure_logging(LoggingSettings())
+        configured = False
         logger = get_logger(__name__)
         try:
-            logs = configure_logging(settings.logging if settings is not None else load_logging_settings())
+            configure_logging(settings.logging if settings is not None else load_logging_settings())
+            configured = True
             get_prompt_resources()
             config = settings if settings is not None else load_settings()
             logger.info("application_starting")
@@ -32,11 +33,12 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
                 logger.info("application_started")
                 yield
         except Exception as error:
+            if not configured:
+                configure_logging(LoggingSettings())
             logger.error("application_failed", error=error, fields={"category": "unexpected"})
             raise
         finally:
             logger.info("application_stopped")
-            logs.close()
 
     app = FastAPI(title="Wisp API", version="1.0.0", lifespan=lifespan)
     install_api(app)

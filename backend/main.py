@@ -8,8 +8,11 @@ from wisp_backend.config.loader import load_logging_settings
 from wisp_backend.logging_config import LoggingSettings
 from wisp_backend.logging_output import configure_logging
 
-configure_logging(LoggingSettings())
-configure_logging(load_logging_settings())
+try:
+    configure_logging(load_logging_settings())
+except ValueError:
+    configure_logging(LoggingSettings())
+    raise
 
 app = create_app()
 

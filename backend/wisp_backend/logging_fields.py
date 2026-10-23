@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 TOKEN = re.compile(r"[a-z][a-z0-9_.]{0,79}\Z")
-NUMBERS = {"duration_ms", "count", "status_code", "queue_depth", "dropped", "output_errors"}
+NUMBERS = {"duration_ms", "count", "status_code"}
 LABELS = {
     "operation": {"maintenance", "http", "completion", "provider", "settlement", "cancel"},
     "outcome": {"success", "failure", "cancelled", "expected", "unexpected", "no_response"},

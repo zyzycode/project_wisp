@@ -1,7 +1,7 @@
 # Backend logging
 
 Общий stdlib logging применяется к lifecycle, HTTP, completion и обслуживанию ledger.
-Настройка принадлежит одному runtime процесса; несколько приложений в одном процессе
+Настройка принадлежит процессу; несколько приложений в одном процессе
 не имеют независимых настроек. Зависимостей и постоянного хранения нет.
 
 ## Автору модуля
@@ -42,7 +42,7 @@ WARNING — ожидаемый отказ; ERROR — сбой; CRITICAL — не
 route или `other`, без query, body и адреса клиента.
 
 Схема в [logging_fields.py](../wisp_backend/logging_fields.py):
-числа `duration_ms`, `count`, `status_code`, `queue_depth`, `dropped`, `output_errors`
+числа `duration_ms`, `count`, `status_code`
 от 0 до 1e12, конечные; closed enums `operation`, `outcome`, `method`, `route`, `category`.
 Неизвестные ключи, вложенные структуры, строки вне enum и объекты отбрасываются;
 произвольный repr/str не вызывается. Глубина metadata — один уровень, объём ограничен
@@ -58,16 +58,15 @@ route или `other`, без query, body и адреса клиента.
 | WISP_LOG_FORMAT | console | console, json |
 | WISP_LOG_LEVEL | INFO | DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF |
 | WISP_LOG_OVERRIDES | {} | JSON object module → level, до 32 overrides |
-| WISP_LOG_QUEUE_CAPACITY | 1024 | 1–10000 записей |
-| WISP_LOG_SHUTDOWN_TIMEOUT | 0.2 | 0–2 секунды |
 
 Overrides наследуются дочерними logger по правилам stdlib. Для уже загруженных
 сторонних библиотек default WARNING, чтобы не включать SQL/transport chatter; override
 может включить DEBUG выбранному дереву библиотечных logger (текст остаётся скрытым). Неверная настройка
-останавливает startup безопасной ошибкой без echo значений. Bootstrap устанавливает
-безопасный handler до чтения runtime settings. После shutdown поздние library logs
-отбрасываются; стандартные Uvicorn final сообщения заменяет application_stopped.
-Повторная инициализация закрывает предыдущий sink и не умножает handlers.
+останавливает startup безопасной ошибкой без echo значений. Настройка выполняется перед
+чтением runtime settings; безопасный console fallback нужен только при ошибке настройки.
+Handler остаётся установленным после shutdown: поздние библиотечные события также
+проходят безопасное форматирование. Повторная настройка заменяет handler через stdlib
+`basicConfig(force=True)` и не дублирует вывод.
 При вызове CLI использовать `uvicorn main:app --no-access-log`: main устанавливает
 безопасную конфигурацию; штатный `python main.py` уже выключает access log.
 Сырые сообщения Uvicorn/HTTPX/httpcore и прочих библиотек заменяются `external_log`;
@@ -95,27 +94,22 @@ provider_started/provider_finished и http_finished имеют один correlat
 
 ## Вывод и ограничения
 
-Queue bounded; producer не ждёт stdout/stderr. При заполнении **новейшая запись любого
-уровня отбрасывается**; ERROR не гарантирован. Следующая успешно выведенная запись
-содержит logging_health с накопленными dropped/output_errors. Счётчики доступны также
-на LogRuntime. Неисправный sink не вызывает recursive logging или утечки текста ошибки.
-Shutdown ждёт не больше настроенного срока; остаток queue отбрасывается. Одну уже
-начатую системную запись нельзя отменить: daemon thread может оставаться до завершения
-процесса. Повторная конфигурация при таком stuck writer не создаёт новые threads:
-логирование остаётся выключенным до освобождения writer и следующей инициализации.
-Логи best effort, не audit trail. OFF выключает события, если override не включает их.
+Обычный stdlib `StreamHandler` синхронно пишет одну строку в stderr и выполняет flush.
+Нет очереди, фонового потока, overflow policy и отдельного shutdown-протокола.
+При нормальном stderr это простой путь с небольшими накладными расходами; медленный
+или зависший вывод может задержать обработку запроса. Поэтому не направлять stderr
+на медленный сетевой sink и не включать DEBUG глобально без необходимости.
 
-Форматирование, фильтрация и context отделены от sink. Новый вывод подключается
-централизованно через configure_logging(output=...), а не из бизнес-кода.
-Файлы, ротация, архивирование и внешняя доставка не реализованы и требуют отдельного
-согласования. Оператор внешнего сборщика stdout/stderr обязан соблюдать retention
-**не более 7 суток**; logger сам ничего не хранит на диске.
+При ошибке записи/форматирования запись теряется: стандартный аварийный вывод
+`logging.handleError` отключён, поскольку он может раскрыть исходные данные и текст
+ошибки. Повторных попыток и счётчиков доставки нет. Логи best effort, не audit trail.
+OFF выключает события, если override не включает их.
 
-## Проверки и benchmark
+Новый поток вывода передаётся централизованно через `configure_logging(output=...)`,
+а не из бизнес-кода. Файлы, ротация, архивирование и внешняя доставка не реализованы
+и требуют отдельного согласования. Оператор внешнего сборщика stderr обязан соблюдать
+retention **не более 7 суток**; logger сам ничего не хранит на диске.
 
-Из backend: `.venv/bin/python -m wisp_backend.logging_benchmark`.
-1000 синтетических операций, INFO finish и DEBUG start, JSON в StringIO, без HTTP/LLM;
-выводит producer µs/operation, bytes и потери отдельно для OFF/INFO/DEBUG.
-Это локальная стоимость логгера, не latency HTTP и не измерение дискового collector.
-При потерях увеличить bounded queue либо уменьшить уровень; при output_errors проверить
-доступность stdout/stderr; после stuck output перезапустить процесс.
+Проверки: `backend/.venv/bin/python -m pytest backend/tests/logging -q` из корня.
+Сохраняются проверки безопасных ошибок/полей, async context, форматов, уровней,
+повторной настройки, HTTP outcomes и startup. Реальные HTTP/LLM-вызовы не нужны.

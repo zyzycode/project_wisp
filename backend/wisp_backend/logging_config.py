@@ -16,8 +16,6 @@ class LoggingSettings(BaseModel):
     format: Literal["console", "json"] = "console"
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "OFF"] = "INFO"
     overrides: dict[str, str] = Field(default_factory=dict)
-    queue_capacity: int = Field(default=1024, ge=1, le=10000)
-    shutdown_timeout: float = Field(default=0.2, ge=0, le=2)
 
     @field_validator("overrides")
     @classmethod
@@ -35,8 +33,6 @@ def logging_settings(values: Mapping[str, Any]) -> LoggingSettings:
     for variable, field in (
         ("WISP_LOG_FORMAT", "format"),
         ("WISP_LOG_LEVEL", "level"),
-        ("WISP_LOG_QUEUE_CAPACITY", "queue_capacity"),
-        ("WISP_LOG_SHUTDOWN_TIMEOUT", "shutdown_timeout"),
         ("WISP_LOG_OVERRIDES", "overrides"),
     ):
         raw = values.get(variable)

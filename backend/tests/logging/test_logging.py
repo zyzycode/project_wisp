@@ -2,8 +2,6 @@ import asyncio
 import io
 import json
 import logging
-import threading
-import time
 
 import pytest
 from wisp_backend.logging import get_logger, log_context
@@ -13,19 +11,16 @@ from wisp_backend.logging_output import configure_logging
 
 def test_private_messages_fields_and_exceptions_are_never_rendered():
     output = io.StringIO()
-    runtime = configure_logging(LoggingSettings(format="json", level="DEBUG"), output)
+    configure_logging(LoggingSettings(format="json", level="DEBUG"), output)
+    logger = get_logger("wisp_backend.test_logging")
+    logger.info("operation_complete", fields={"duration_ms": 12, "prompt": "PRIVATE_MARKER"})
     try:
-        logger = get_logger("wisp_backend.test_logging")
-        logger.info("operation_complete", fields={"duration_ms": 12, "prompt": "PRIVATE_MARKER"})
-        try:
-            raise ValueError("PRIVATE_MARKER")
-        except ValueError:
-            logger.exception("operation_failed")
-        logging.getLogger("httpx").error(
-            "PRIVATE_MARKER %s", "PRIVATE_MARKER", extra={"wisp_event": {"secret": "PRIVATE_MARKER"}}
-        )
-    finally:
-        runtime.close()
+        raise ValueError("PRIVATE_MARKER")
+    except ValueError:
+        logger.exception("operation_failed")
+    logging.getLogger("httpx").error(
+        "PRIVATE_MARKER %s", "PRIVATE_MARKER", extra={"wisp_event": {"secret": "PRIVATE_MARKER"}}
+    )
     records = [json.loads(line) for line in output.getvalue().splitlines()]
     assert "PRIVATE_MARKER" not in output.getvalue()
     assert records[0]["fields"] == {"duration_ms": 12}
@@ -35,7 +30,7 @@ def test_private_messages_fields_and_exceptions_are_never_rendered():
 
 def test_context_isolation_cleanup_and_lazy_disabled_fields():
     output = io.StringIO()
-    runtime = configure_logging(LoggingSettings(format="json"), output)
+    configure_logging(LoggingSettings(format="json"), output)
     logger = get_logger("wisp_backend.test_logging")
 
     async def worker():
@@ -52,56 +47,33 @@ def test_context_isolation_cleanup_and_lazy_disabled_fields():
         logger.info("outside")
         logger.debug("disabled", fields=lambda: pytest.fail("evaluated disabled fields"))
 
-    try:
-        asyncio.run(scenario())
-    finally:
-        runtime.close()
+    asyncio.run(scenario())
     records = [json.loads(line) for line in output.getvalue().splitlines()]
     assert records[0]["context"]["correlation_id"] != records[1]["context"]["correlation_id"]
     assert records[0]["context"] == records[2]["context"]
     assert records[-1]["context"] == {}
 
 
-def test_slow_output_is_bounded_and_broken_output_is_contained():
-    release = threading.Event()
-
-    class Slow(io.StringIO):
-        def write(self, text):
-            release.wait(2)
-            return super().write(text)
-
-    runtime = configure_logging(LoggingSettings(queue_capacity=2, shutdown_timeout=0.02), Slow())
-    logger = get_logger("wisp_backend.test_logging")
-    started = time.monotonic()
-    for _ in range(100):
-        logger.info("operation_complete")
-    runtime.close()
-    assert time.monotonic() - started < 0.5
-    assert runtime.dropped > 0
-    release.set()
-    runtime.worker.join(0.5)
-
+def test_broken_output_does_not_expose_error_or_record(capsys):
     class Broken(io.StringIO):
         def write(self, text):
             raise OSError("PRIVATE_MARKER")
 
-    runtime = configure_logging(LoggingSettings(), Broken())
-    logger.error("operation_failed")
-    runtime.close()
-    assert runtime.output_errors == 1
+    configure_logging(LoggingSettings(), Broken())
+    get_logger("wisp_backend.test_logging").error("operation_failed")
+    assert "PRIVATE_MARKER" not in capsys.readouterr().err
 
 
 def test_levels_overrides_console_and_reinitialization():
     output = io.StringIO()
     settings = LoggingSettings(level="ERROR", overrides={"wisp_backend.example": "DEBUG"})
     first = configure_logging(settings, output)
-    second = configure_logging(settings, output)
-    assert first.closed
+    configure_logging(settings, output)
+    assert first not in logging.getLogger().handlers
     logger = get_logger("wisp_backend.example")
     for level in (10, 20, 30, 40, 50):
         logger.log(level, "sample_event", fields={"count": 10**1000, "duration_ms": float("inf")})
     get_logger("wisp_backend.other").info("filtered_event")
-    second.close()
     assert len(output.getvalue().splitlines()) == 5
     assert "filtered_event" not in output.getvalue()
     assert "\x1b" not in output.getvalue()
@@ -114,7 +86,7 @@ def test_config_rejects_invalid_values_without_echoing_them():
     for values in (
         {"WISP_LOG_LEVEL": "PRIVATE_MARKER"},
         {"WISP_LOG_OVERRIDES": "PRIVATE_MARKER"},
-        {"WISP_LOG_QUEUE_CAPACITY": "0"},
+        {"WISP_LOG_FORMAT": "PRIVATE_MARKER"},
     ):
         with pytest.raises(ValueError) as caught:
             logging_settings(values)
@@ -125,7 +97,7 @@ def test_http_correlation_safe_route_and_cancellation():
     from wisp_backend.api.logging import RequestLogging
 
     output = io.StringIO()
-    runtime = configure_logging(LoggingSettings(format="json", level="DEBUG"), output)
+    configure_logging(LoggingSettings(format="json", level="DEBUG"), output)
 
     async def app(scope, receive, send):
         get_logger("wisp_backend.example").info("nested_operation")
@@ -145,10 +117,7 @@ def test_http_correlation_safe_route_and_cancellation():
         with pytest.raises(asyncio.CancelledError):
             await middleware({"type": "http", "path": "/PRIVATE_MARKER", "method": "GET"}, receive, send)
 
-    try:
-        asyncio.run(run())
-    finally:
-        runtime.close()
+    asyncio.run(run())
     records = [json.loads(line) for line in output.getvalue().splitlines()]
     records = [record for record in records if record["event"] != "external_log"]
     assert len({record["context"]["correlation_id"] for record in records[:3]}) == 1
@@ -179,7 +148,7 @@ def test_startup_failure_is_safe_before_runtime_configuration(monkeypatch):
 
 def test_exception_chain_and_injection_are_bounded():
     output = io.StringIO()
-    runtime = configure_logging(LoggingSettings(format="json"), output)
+    configure_logging(LoggingSettings(format="json"), output)
     first = RuntimeError("PRIVATE_MARKER")
     second = ValueError("PRIVATE_MARKER")
     first.__cause__ = second
@@ -187,7 +156,6 @@ def test_exception_chain_and_injection_are_bounded():
     logger = get_logger("wisp_backend.example")
     logger.error("safe_event", error=first)
     logger.error("bad\nPRIVATE_MARKER", fields={"operation": "PRIVATE_MARKER", "nested": {"secret": "PRIVATE_MARKER"}})
-    runtime.close()
     records = [json.loads(line) for line in output.getvalue().splitlines()]
     assert len(records[0]["error"]["chain"]) == 2
     assert records[1]["event"] == "invalid_event"
@@ -223,7 +191,7 @@ def test_http_no_response_does_not_invent_status(disconnect):
     from wisp_backend.api.logging import RequestLogging
 
     output = io.StringIO()
-    runtime = configure_logging(LoggingSettings(format="json"), output)
+    configure_logging(LoggingSettings(format="json"), output)
 
     async def app(scope, receive, send):
         await receive()
@@ -235,7 +203,6 @@ def test_http_no_response_does_not_invent_status(disconnect):
         pytest.fail("No response expected")
 
     asyncio.run(RequestLogging(app)({"type": "http", "path": "/health", "method": "GET"}, receive, send))
-    runtime.close()
     record = json.loads(output.getvalue())
     assert "status_code" not in record["fields"]
     assert record["fields"]["outcome"] == ("cancelled" if disconnect else "no_response")
@@ -245,14 +212,12 @@ def test_external_levels_obey_global_off_and_parent_override():
     child = logging.getLogger("httpcore.connection")
     for level in ("OFF", "ERROR"):
         output = io.StringIO()
-        runtime = configure_logging(LoggingSettings(format="json", level=level), output)
+        configure_logging(LoggingSettings(format="json", level=level), output)
         child.warning("PRIVATE_MARKER")
-        runtime.close()
         assert output.getvalue() == ""
     output = io.StringIO()
-    runtime = configure_logging(LoggingSettings(format="json", level="OFF", overrides={"httpcore": "DEBUG"}), output)
+    configure_logging(LoggingSettings(format="json", level="OFF", overrides={"httpcore": "DEBUG"}), output)
     child.debug("PRIVATE_MARKER")
-    runtime.close()
     assert json.loads(output.getvalue())["event"] == "external_log"
     assert "PRIVATE_MARKER" not in output.getvalue()
 
