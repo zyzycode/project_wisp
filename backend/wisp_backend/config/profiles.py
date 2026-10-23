@@ -16,7 +16,7 @@ PROFILES = {
     "openai": ProviderProfile(
         "https://api.openai.com/v1/",
         "OPENAI_API_KEY",
-        "gpt-4.1-mini",
+        "gpt-6-sol",
         ("gpt-4.1-mini", "gpt-6-astra", "gpt-6-sol"),
         1_050_000,
     ),

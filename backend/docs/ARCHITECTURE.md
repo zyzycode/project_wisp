@@ -50,9 +50,9 @@ Backend — отдельный процесс с HTTP API, одним AI-про�
 ### OpenAI
 
 `WISP_AI_PROVIDER=openai` выбирает серверный `OPENAI_API_KEY`, официальный endpoint
-`https://api.openai.com/v1/` и по умолчанию `gpt-4.1-mini`. Для тестов качества
-можно явно выбрать `WISP_AI_MODEL=gpt-6-astra`; для коротких интерактивных ответов —
-`WISP_AI_MODEL=gpt-6-sol`. При переключении с Gemini очистить
+`https://api.openai.com/v1/` и по умолчанию `gpt-6-sol` — основную модель Wisp
+для OpenAI. Альтернативы выбираются явно: `WISP_AI_MODEL=gpt-4.1-mini` или
+`WISP_AI_MODEL=gpt-6-astra`. При переключении с Gemini очистить
 `WISP_AI_MODEL`, `WISP_AI_BASE_URL` и `WISP_AI_THINKING_LEVEL`, чтобы применились
 профильные значения. Все настройки перечислены в [.env.example](../.env.example).
 

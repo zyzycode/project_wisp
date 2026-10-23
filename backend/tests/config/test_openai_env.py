@@ -16,7 +16,7 @@ def test_openai_environment_selects_own_key_and_defaults(env_values, monkeypatch
     settings = load_settings()
     assert settings.api_key.get_secret_value() == "process-key"
     assert settings.base_url == "https://api.openai.com/v1/"
-    assert settings.assistants["default"].model == "gpt-4.1-mini"
+    assert settings.assistants["default"].model == "gpt-6-sol"
 
 
 @pytest.mark.parametrize("key", [None, "", " "])
