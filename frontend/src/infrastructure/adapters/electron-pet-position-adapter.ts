@@ -18,6 +18,12 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
+function roundNativeCoordinate(value: number): number {
+  const rounded = Math.round(value);
+  // Math.round([-0.5, 0)) produces -0, which Electron's native int converter rejects.
+  return rounded === 0 ? 0 : rounded;
+}
+
 export function rootToNativePosition(
   rootPosition: Vector2Dto,
   bounds: ScreenBoundsDto,
@@ -25,8 +31,8 @@ export function rootToNativePosition(
 ): NativeWindowPosition {
   return {
     // Screen bounds constrain the contact root, not the transparent window origin.
-    x: Math.round(clamp(rootPosition.x - pivotOffset.x, bounds.x - pivotOffset.x, bounds.x + bounds.width - pivotOffset.x)),
-    y: Math.round(clamp(rootPosition.y - pivotOffset.y, bounds.y - pivotOffset.y, bounds.y + bounds.height - pivotOffset.y)),
+    x: roundNativeCoordinate(clamp(rootPosition.x - pivotOffset.x, bounds.x - pivotOffset.x, bounds.x + bounds.width - pivotOffset.x)),
+    y: roundNativeCoordinate(clamp(rootPosition.y - pivotOffset.y, bounds.y - pivotOffset.y, bounds.y + bounds.height - pivotOffset.y)),
   };
 }
 

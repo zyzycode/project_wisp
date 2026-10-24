@@ -8,6 +8,18 @@ import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../s
 import { calculateRootCollisionRange, DEFAULT_MOTION_CONSTRAINTS } from '../../src/domain/behavior/motion-engine';
 
 describe('Infrastructure: ElectronPetPositionAdapter', () => {
+  it.each([-0.5, -0.25, -0, 0, 0.25])('normalizes rounded zero native coordinates from %s', offset => {
+    const pivotOffset = { x: 140, y: 233.625 };
+    const position = rootToNativePosition(
+      { x: pivotOffset.x + offset, y: pivotOffset.y + offset },
+      { id: 'primary', x: 0, y: 0, width: 1920, height: 1080 },
+      pivotOffset
+    );
+
+    expect(position.x).toBe(0);
+    expect(position.y).toBe(0);
+  });
+
   it.each([
     { id: 'primary', x: 0, y: 0, width: 1440, height: 900 },
     { id: 'left', x: -1440, y: -200, width: 1440, height: 900 },
