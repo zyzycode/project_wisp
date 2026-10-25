@@ -367,6 +367,16 @@ export type DialogueTurnPresentationDTO =
       readonly message: string;
     };
 
+/** Gate #122 target: #123 adds this local result to DialogueTurnPresentationDTO.
+ * It has no provider result, fallback, confirmable memory source or topic claim.
+ */
+export interface QuietSupportAcknowledgementDTO {
+  readonly phase: 'completed';
+  readonly requestId: string;
+  readonly replyText: string;
+  readonly outcome: { readonly kind: 'local'; readonly reason: 'quiet_support' };
+}
+
 export interface DialoguePresentationDTO {
   readonly conversationId: string;
   /** False while outstanding/retired calls or admission policy prevent another send. */

@@ -94,9 +94,8 @@ traits — 0..1; романтическое выражение требует в
 Серверные инструкции и selector не вычисляют числовые пороги; их единственный
 владелец — Domain Character. `romanceAllowed` ограничивает речь, не разрешает эффект или действие.
 
-Примеры RU/EN иллюстрируют робкое приветствие, дружеский интерес, усталость и
-просьбу о дистанции. Они уступают текущему состоянию, могут целиком исчезнуть
-из бюджета и не должны превращаться в повторяемую заученную фразу.
+Целевой профиль #122/rollout #123 — [Character §6](../../frontend/docs/engine/CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122), `curiousStubbornGirl/2`. До rollout действует `shyDreamGirl/1`. Backend guidance и ресурс expression интерпретируют card/state без требования reserve/quiet pride/shy core. Examples сохраняются побайтно: робость допустима как ситуативная сцена, но пример не устанавливает core/хобби/биографию и уступает текущей card. Смена profile требует новой resource revision; `guarded` означает знакомство, не робость. Примеры уступают текущему состоянию, могут исчезнуть из бюджета и не являются обязательной фразой. Ошибки допустимы в безобидном разговоре, не в consent/evidence/фактах действий; поправка признаётся без реткона и квоты ошибок.
+Quiet-support ACK/gate принадлежит desktop [Character §6.1](../../frontend/docs/engine/CHARACTER_ENGINE.md#61-тихая-поддержка-после-явной-реплики), без новых response fields/LLM classifier. Для иных формулировок guidance допускает короткое признание неудачной поддержки без очередной шутки/допроса; полнота распознавания не гарантируется.
 
 ## Проверяемые ресурсы промптов
 
@@ -303,6 +302,12 @@ attention/play, просьба о дистанции, touch и следующи�
 не доказывает улучшение живой речи. Новых generation calls не появляется.
 
 ## Бюджет и ошибка
+
+### Сравнение смены identity (#122 → #123)
+
+Архивы #99–101/#117 (`baseline.json`, `selection_comparison.json` и historical source hashes) immutable. До runtime/resource edits #123 фиксирует **отдельный** before через существующий inspector: текущая целостная shyDreamGirl/1 на source commit/hashes/settings; восемь synthetic RU/EN сцен #108 добавляются в тот же corpus/SCENE_IDS, с парным before/after profile variant. Хеш старой карточки в frozen corpus проверяется по pinned историческому source, не по новому live preset. Новый профиль проверяется отдельно по live source hash; отсутствие старой identity в live-файле не повод переписать архив. Никакого второго authored runtime source или независимого builder.
+Profile delta явно ограничен card id/revision/aiSelfConcept, соответствующими axes/derived traits/tone/expression, identity-зависимыми строками guidance/resource expression и resource revision/hash. Каждый изменённый key/text/path и before/after hash перечисляется в новом сравнении; blanket ignore system instructions запрещён. Examples, lore/history tuning и изменения #118–121 исключены из delta и остаются побайтно прежними. Если конкретный пример нельзя подчинить новой card/state без противоречия, зафиксировать его key как blocker для отдельной #121, не менять молча в #123. Вне allowlist равны user history/state (кроме profile-derived значений), memory, consent, events, model/settings и budget policy. Byte/selection differences из-за изменённой длины identity фиксируются с trace, не скрываются и не компенсируются изменением лимитов/истории. Freeze #116/#117 продолжает защищать все остальные блоки; #110 без dialogueTopic не становится поводом их изменить.
+Документация #122 не пересоздаёт baseline и не меняет runtime. Offline сравнение подтверждает projection/boundaries, не качество речи; ответы/шесть оценок живых моделей остаются `NOT RUN` без отдельного разрешения provider/model/числа вызовов/бюджета. Сцены 5–7 дополнительно проверяются lifecycle-тестами silence/admission/late callback, а не только текстом ACK.
 
 Потолки — локальная политика Wisp, не максимальное окно провайдера:
 16384 для chat/touch/events/observation, 8192 для summary generation.

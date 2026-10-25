@@ -4,6 +4,18 @@ import type { IAIProvider } from './ai-provider.interface';
 import type { CharacterSnapshot, CharacterStimulus } from '../../domain/character';
 import type { ProviderBehaviorOffer, BehaviorAdmissionReceipt, BehaviorTurnContext } from './behavior-admission-port';
 
+/** Gate #122 target: Main-session ownership; never persisted or sent to a provider.
+ * Dialogue reset/stream replacement does not release this gate. Admission and late
+ * publication share isActive(); explicit user dialogue resumes before its turn.
+ */
+export interface IQuietSupportRuntime {
+  isActive(): boolean;
+  enter(): void;
+  resumeForUserDialogue(): void;
+  resetMemory(): void;
+  dispose(): void;
+}
+
 /** All effects are injected by Main; provider execution belongs to one app lifecycle. */
 export interface DialogueRuntimeOptions {
   readonly provider: IAIProvider;

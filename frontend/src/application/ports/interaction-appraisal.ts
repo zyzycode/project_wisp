@@ -4,6 +4,12 @@ export interface CharacterCardReference {
   readonly revision: 1;
 }
 
+/** Gate #122 target only; #123 atomically replaces the active revision-1 contract. */
+export interface CharacterCardReferenceRevision2 {
+  readonly id: 'curiousStubbornGirl';
+  readonly revision: 2;
+}
+
 /** A proposal about this interaction, never a user fact or numeric write. */
 export interface InteractionAppraisal {
   readonly category: 'supportive' | 'playful' | 'boundary' | 'hostile' | 'neutral';

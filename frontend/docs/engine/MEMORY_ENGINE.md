@@ -93,7 +93,7 @@ Upsert по key сохраняет исходные id/created_at, заменя�
 | `snapshot_json` | `TEXT` | not null; конверт `{ snapshotVersion, state }` |
 | `updated_at` | `TEXT` | not null; время checkpoint |
 
-Форма v1 задана в `CharacterMemoryStateV1`, версия envelope независима от schema. Сохраняются Needs, Relationship, Intimacy, current axes и preferences. Только presetId, без копии base/soft/hard limits, plasticity, displayName/self-concept. Нет FSM/Activity/Motion, окон, stream/request IDs, pending provider, quiet, cooldowns или lastUpdated системных часов. Адаптер проверяет JSON/envelope, Application мигрирует state, Domain проверяет значения относительно установленного preset (§4).
+Формы v1/v2 заданы в [character-memory-snapshot.ts](../../src/application/ports/character-memory-snapshot.ts), версия envelope независима от schema; v2 добавляет cardRevision=2 при presetId=curiousStubbornGirl. Сохраняются Needs, Relationship, Intimacy, current axes и preferences. Без копии base/soft/hard limits, plasticity, displayName/self-concept. Нет FSM/Activity/Motion, окон, stream/request IDs, pending provider, quiet/quietSupport, cooldowns или lastUpdated системных часов. Адаптер проверяет JSON/envelope, Application мигрирует state, Domain проверяет значения относительно установленного preset (§4).
 
 ### `schema_migrations`
 
@@ -132,11 +132,13 @@ Infrastructure сериализует **все** repo operations/reset/shutdown 
 
 ### Restore snapshot
 
-Application мигрирует только известные старые snapshot versions последовательными чистыми функциями; v1 — первая версия, legacy full CharacterState не угадывать. Валидация exact-shape, finite/ranges и Domain invariants предшествует применению. Числа вне hard caps, неизвестные axis/поля, несовпавший presetId, некорректные preference samples/consent gates отклоняют весь snapshot, без частичного clamp ради принятия.
+Application мигрирует только известные версии чистыми функциями. До #123 действует v1; rollout [Character §6](CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122) вводит envelope v2 без SQLite DDL migration. Единственный legacy input — exact v1/presetId=shyDreamGirl: shape, finite/ranges, preferences и Domain invariants сначала проверяются по неизменным revision1 caps, не по новым defaults. Legacy validator descriptor хранит только необходимые старые caps, не вторую активную identity. Unknown version/id/revision, лишние поля или invalid state не угадывать/не clamp.
 
-Из актуального immutable preset создаётся новый state; восстанавливаются только разрешённые динамические поля. Runtime timers/cooldowns/Activity/quiet/FSM строятся заново; tone пересчитывает Character. Нет offline metabolism/relationship decay за закрытое приложение, lastUpdated устанавливается текущим clock. Успешный restore не применяет повторно stimuli, game effects или provider hints.
+V1→v2 сохраняет Needs, Relationship, Intimacy (включая consent/loveUnlocked) и **все** валидные preferences с value/confidence/samples; заменяет presetId/cardRevision и только currentAxes на base новой карточки. Накопленный offset axes не переносится: это динамика прежнего архетипа без отдельного доказательства намерения пользователя; перенос мог бы восстановить shy core вопреки смене identity. Подтверждённые пользовательские знания/предпочтения не являются этим offset. Messages, facts, episodes, items, receipts, topic и summary rows не переписываются/не переизвлекаются; consent не создаётся заново. Новая карточка не получает унаследованных authored hobbies.
 
-Пустой snapshot → defaults с последующим обычным checkpoint. Corrupt/unsupported snapshot → defaults и соответствующий characterRestore в MemoryStatusDTO; исходная строка сохраняется, её автоматическое перезаписывание запрещено до успешного явного reset или поддерживающей версии. Остальные валидные таблицы доступны, поэтому это отдельная ошибка restore, не ложное объявление всей БД повреждённой.
+V2 принимает только curiousStubbornGirl/cardRevision=2 и восстанавливает currentAxes относительно её caps. Из immutable preset создаётся state; накладываются только разрешённые dynamic поля. Runtime timers/cooldowns/Activity/quiet/quietSupport/FSM строятся заново, tone пересчитывает Character; lastUpdated=current clock, без offline decay/replay stimuli. Успешная чистая миграция идемпотентна: штатный checkpoint атомарно сохраняет v2, последующие restore не сбрасывают его axes. Migration оставляет checkpoint dirty: saved signature новой projection устанавливается только после успешного save, не сразу после restore. До подтверждённого checkpoint на диске остаётся целый v1; при crash migration повторяется без двойных effects. Запись v2 не поддерживает downgrade к старому клиенту.
+
+Пустой snapshot → defaults и обычный checkpoint. Corrupt/unsupported snapshot → defaults и characterRestore status; исходная строка остаётся неперезаписываемой до успешного явного reset или поддерживающей версии. Остальные валидные таблицы доступны; ошибка restore не объявляет всю БД повреждённой. Migration/write failure сохраняет действующую деградацию memory lifecycle; локальный runtime работает, ложного сохранения нет.
 
 ### Ошибка БД/capability
 

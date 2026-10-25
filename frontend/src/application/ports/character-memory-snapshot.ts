@@ -38,3 +38,15 @@ export type CharacterMemorySnapshotV1 = {
   readonly state: CharacterMemoryStateV1;
   readonly updatedAt: string;
 };
+
+/** Gate #122 target; v1 remains the only runtime writer until #123. */
+export type CharacterMemoryStateV2 = Omit<CharacterMemoryStateV1, 'presetId'> & {
+  readonly presetId: 'curiousStubbornGirl';
+  readonly cardRevision: 2;
+};
+
+export type CharacterMemorySnapshotV2 = {
+  readonly snapshotVersion: 2;
+  readonly state: CharacterMemoryStateV2;
+  readonly updatedAt: string;
+};

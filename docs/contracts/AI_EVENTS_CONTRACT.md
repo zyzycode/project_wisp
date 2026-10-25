@@ -216,6 +216,7 @@ Main включает interaction capability для настроенного в�
 v1 touch request — exact requestId/stream/locale/character/event/card/effectPolicy.
 Character и UUIDv4/locale/stream:false как v1; event строго user_touch/variant:touch.
 Card exact id=shyDreamGirl/revision=1; id обязан совпадать с character.personality.presetId.
+Gate #122 задаёт атомарный rollout #123: после него exact id=curiousStubbornGirl/revision=2, без поддержки пары old+new. Неактивный target объявлен отдельно в TS; текущие Python schemas/guards остаются revision1 до rollout. Content/reference/mappers/chat/touch/shared fixtures меняются совместно; card revision не wire version. Источник и восстановление — [Character §6/9.2](../../frontend/docs/engine/CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122), [Memory §4](../../frontend/docs/engine/MEMORY_ENGINE.md#restore-snapshot).
 Неизвестная revision/card →400 invalid_request до inference, не молчаливый другой profile.
 EffectPolicy eligible/suppressed — решение desktop о доступности numerical effect,
 не server authority. Никаких времени касания/координат/истории/memory/local IDs в touch.

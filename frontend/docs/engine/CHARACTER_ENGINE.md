@@ -89,15 +89,39 @@ $$\text{shyness} = \text{sensitivity} \times 0.45 + (1 - \text{boldness}) \times
 
 [types.ts](../../src/domain/character/types.ts), [personality-plasticity.ts](../../src/domain/character/personality-plasticity.ts): `AxisValue` содержит `base` (identity), `current`, `softMin/softMax` (комфорт), `hardMin/hardMax` (абсолютные пределы), `plasticity` (скорость/глубина адаптации).
 
-Soft lock допускает лишь краткий выход при сильных стимулах. Hard lock сохраняет identity: застенчивая Wisp не становится вульгарной/агрессивной даже при максимальных отношениях.
+Soft lock допускает лишь краткий выход при сильных стимулах. Hard lock сохраняет identity; рост отношений не отменяет границы и не превращает самостоятельность в агрессию.
 
-## 6. Стартовый архетип: Shy Dream Girl
+## 6. Авторский профиль Wisp (revision 2, gate #122)
 
-Нежная застенчивая аниме-девушка, медленно привязывается и сохраняет смущение при близости. [personality-presets.ts](../../src/domain/character/personality-presets.ts).
+Целевой preset `curiousStubbornGirl`, card revision `2`; до атомарного rollout #123 runtime использует `shyDreamGirl/1`. Единственный authored source остаётся [personality-presets.ts](../../src/domain/character/personality-presets.ts), без копии личности в backend/lore/resources. Смысл профиля согласован в [#108](https://github.com/zyzycode/project_wisp/issues/108#issuecomment-6403891113): обычная девушка 21 года, глуповатая, упрямая, инициативная и любопытная к человеку. Есть ситуативное мнение, возможны реальные бытовые/безобидные фактические промахи с признанием поправки. Нет закреплённых хобби, любимых вещей, придуманной биографии или обязательного смущения. Возраст не создаёт consent.
 
-### Динамика раскрытия:
+Ошибки возможны, но не обязательны: нет квоты ложных ответов, реткона «я специально», подделки evidence или фактов исполненных действий. Достоверные сведения о пользователе, consent, source of truth памяти и правила действий имеют приоритет. Своя позиция не разрешает давление, жестокость, бесконечный спор или продолжение после «стоп». Новые занятия, повторная инициативная отправка и долговременное обучение стилю поддержки не вводятся.
 
-Начало — деликатность, короткие ответы, созерцание издалека; дружба — сближение, игры/поддразнивание/инициатива; любовь — доверие, забота и тонкий флирт через румянец, паузы, отвод взгляда.
+Числа — инженерное отображение этого характера на существующие оси, не новые вкусы. При создании `current=base`; plasticity каждой оси остаётся как в revision1 (§5/9), формулы/дельты learning, Needs, Utility и tempo не меняются:
+
+| Ось | base | soft min–max | hard min–max | Причина |
+|---|---|---|---|---|
+| openness | 0.68 | 0.45–0.85 | 0.25–0.95 | Интерес к человеку/новому без назначения хобби |
+| extraversion | 0.60 | 0.45–0.78 | 0.20–0.90 | Инициатива внутри прежних budgets |
+| agreeableness | 0.62 | 0.50–0.85 | 0.35–0.98 | Своё мнение при сохранении эмпатии/границ |
+| sensitivity | 0.58 | 0.40–0.72 | 0.25–0.90 | Отклик без постоянной ранимости |
+| playfulness | 0.62 | 0.40–0.80 | 0.20–0.95 | Бытовая игривость без требования шутить |
+| boldness | 0.55 | 0.40–0.75 | 0.20–0.90 | Прямота/упрямство без агрессии |
+| independence | 0.68 | 0.45–0.88 | 0.25–0.98 | Спокойное собственное занятие без вины |
+
+Критерий mapping: стартовая shyness=0.4985, ниже прежнего порога 0.65; даже край soft-области даёт ≤0.644. Формула §4 и приоритет tone §8 остаются общими, `shy` допустим как ситуативное состояние, а не обязательный core. `guarded` означает мало знакомства, а не приказ быть робкой; `close` не романтика. `expression`/tone не содержат скрытого второго архетипа; локальные нейтральные каталоги остаются допустимыми, реализация planned selector §8.1 не prerequisite этого профиля. Проверять узнаваемость на восьми сценах #108 отдельно от offline сборки.
+
+### 6.1. Тихая поддержка после явной реплики
+
+Application/Main владеет session latch `quietSupport`, default false, отдельно от ручного quiet (§2.2). Это bounded реакция на явный текст, не LLM-классификация эмоций/неудачной шутки. После реально опубликованного successful ordinary dialogue reply текущей conversation принимается полный direct user text «мне от этого не легче» / “that doesn't make me feel better”. Нормализация только NFC, trim, lowercase, `’`→`'`, удаление конечных `. ! ?` и пробелов; точное равенство одной из двух строк. Цитаты/добавочные слова/история/summary/fallback/автономная реплика не являются trigger. Предыдущий reply не доказывает, что был шуткой; общий «стоп» остаётся boundary, не распознавателем поддержки.
+
+На accepted send, до async recall/provider, latch включается и инвалидирует queued/in-flight unsolicited speech; один локальный ACK публикуется по текущим dialogue identity/generation guards: новый speech key `support_quiet_ack`, RU «Поняла. Я рядом.», EN “I understand. I'm here.” Нет provider call, appraisal, suggestion, extraction, topic attempt или нового memory evidence. ACK — [QuietSupportAcknowledgementDTO](../../src/shared/ipc-contracts.ts), outcome `local/quiet_support`: strict parser запрещает memorySource/interestThread/extra keys для этого outcome, Renderer показывает обычную реплику без error/fallback warning. Пара сохраняется обычным history path с `memoryConfirmable=false`, её source исключён из подтверждения memory items/topic; extraction не запускается. Ввод пользователя не штрафуется и не считается hostile; обычный once-only user stimulus допустим, synthetic provider stimulus запрещён. Rejected/stale/busy command и duplicate sequence не включают latch и не переиздают ACK.
+
+Support cue без явного `replyToInterestThread` обрабатывается до 200ms topic admission: `lastOffered` очищается, но confirmed topic не закрывается/не резервируется и попытка не расходуется. При явном `replyToInterestThread` сохраняется существующий topic path; цитата ответа по выбранной теме не является support trigger. После local ACK eligibility предыдущего successful reply потребляется, чтобы повтор cue считался следующим user continuation, а не повторным ACK. History persistence асинхронна и не задерживает ACK; failure не повторяет публикацию. В одной Main transaction enter/invalidate/generation guards предшествуют ACK, все поздние autonomous callbacks повторяют gate перед commit.
+
+Latch подавляет новые/поздние SocialBid, cursor approach/игровые приглашения, unsolicited game/event/observation speech и follow-up инициативы; отменяет несовместимый текущий run через существующие lifecycle hooks. До recall, transport и commit все эти пути проверяют latch как quiet-compatible gate. Разрешены P0/P1/P2, sleep/wake, спокойные Rest/Explore, ненавязчивое собственное занятие. Нет нового таймера, очереди, budget refill, увеличения Need deficit или ручного quiet toggle. Прямое user play/touch проходит свои текущие gates и не снимает latch; пассивный курсор/AFK-return/restore/provider/tick тоже не снимают.
+
+Следующий принятый user chat send сначала снимает latch, затем проходит обычный dialogue pipeline; он может снова включить latch только при новом eligible previous reply. Dialogue reset/detach/replaceStream и Renderer reload сохраняют latch в Main session; eligibility прошлого reply очищается, старый ACK не восстанавливается. Full memory reset, Main restart и dispose очищают latch/eligibility и инвалидируют pending ACK; manual quiet сохраняет свой lifecycle. Late results не снимают/не обходят latch. Порт [IQuietSupportRuntime](../../src/application/ports/dialogue-runtime.ts) — локальный, без wire/IPC/SQLite поля. Неизвестные парафразы остаются обычным диалогом с инструкцией бережной поддержки: полнота NLP-распознавания здесь не заявляется.
 
 ## 7. Intimacy & Romantic Charge
 
@@ -221,7 +245,7 @@ Source дедуплицируется **до** проверки gate: пропу
 
 Спецификация семантической оценки взаимодействий. Единственный авторский
 source общей карточки — [personality-presets.ts](../../src/domain/character/personality-presets.ts):
-`shyDreamGirl`, revision `1`. Все пользователи получают одинаковые aiSelfConcept, base,
+`curiousStubbornGirl`, revision `2` после rollout §6; до него `shyDreamGirl/1`. Все пользователи получают одинаковые aiSelfConcept, base,
 soft/hard limits и plasticity. Правка авторской identity требует повышения revision;
 provider switch, checkpoint, разговор и learning revision не меняют. Старые динамические
 checkpoints восстанавливаются поверх установленной карточки по Memory §4; редактора нет.
