@@ -166,7 +166,7 @@ LLM не назначает axes, affinity, relationship deltas или consent. 
 
 В eligible event применяются только уже определённые локальные направления `interactionDeltas`; raw delta каждой оси ограничен ±0.004 до умножения на plasticity, axis weight не выше1. Далее существующие soft resistance0.35 и hardMin/hardMax; base/limits/plasticity неизменны. `provider_response` не даёт axes delta: user send уже является опытом общения. Направления вне списка текущих реальных stimuli не выводятся из текста. Это максимум12 adaptations/час активного времени; фактическое изменение дополнительно ограничено plasticity/soft locks. Никакого offline catch-up.
 
-Learned preference пока одна: `activity.cursor_game`. Новый **persisted** явный like/dislike из текущего user turn может дать один preference sample; failed write, повтор sourceMessageId, старый generation, startup replay и temporary role — ноль. Собственный отдельный learning gate также300000 ms со startup/reset задержкой; допускается не более одного sample на source и окно. Generation/current-turn admission и once-only terminal ownership остаются обязательны, bounded дедуп-кэш не разрешает принимать retired callbacks после eviction.
+Learned preferences: `activity.cursor_game`, `activity.explore`, `activity.social_bid` (§9.1). Новый **persisted** явный like/dislike из текущего user turn может дать один preference sample; failed write, повтор sourceMessageId, старый generation, startup replay и temporary role — ноль. Общий для всех ключей learning gate — 300000 ms со startup/reset задержкой; допускается не более одного sample на source и окно. Generation/current-turn admission и once-only terminal ownership остаются обязательны, bounded дедуп-кэш не разрешает принимать retired callbacks после eviction.
 
 Формула чистого Domain reducer: target=+100 для like, −100 для dislike; `nextValue = clamp(oldValue + clamp((target−oldValue)*0.05, −2, 2), −100, 100)`. Новый key начинается с value0/samples0; `samples=min(samples+1,1000)`, `confidence=samples/(samples+6)`. Поэтому одна реплика даёт максимум2 пункта и confidence≈0.143, а уверенный интерес (≥0.5) требует минимум6 разнесённых во времени сообщений. Existing generic `trackPreference` не использовать без этой отдельной evidence policy; user command «стань игривой» не sample.
 
@@ -177,7 +177,7 @@ Preferences/axes сохраняются существующим snapshot v1; tr
 <a id="91-char-a01-следующий-локальный-набор-предпочтений"></a>
 ### 9.1. Расширенный локальный набор предпочтений
 
-**Спецификация предпочтений характера.** Существующая `activity.cursor_game` сохраняет reducer и consumer выше. Добавляются ровно два ключа; произвольные темы, новая модель отношений, обучение от inferred knowledge/игровых исходов не входят в этот slice.
+**Реализованные локальные предпочтения характера.** Существующая `activity.cursor_game` сохраняет reducer и consumer выше. Поддерживаются ещё ровно два ключа; произвольные темы, новая модель отношений, обучение от inferred knowledge/игровых исходов не входят в этот slice.
 
 
 | Character key | Persisted user fact | Local consumer | Полная принимаемая фраза RU / EN |
@@ -214,7 +214,7 @@ Source дедуплицируется **до** проверки gate: пропу
 | Одна реплика; пять samples; cooldown/spam; смена key; role/model/failed write; late callback после reset/dispose/eviction | До шести samples bias отсутствует; общий cap, source once-only и отсутствие ложного learning сохраняются. |
 | quiet, critical sleep, menu, exhausted budget, disabled Explore; current consent=false; game terminal повторён | Запрещённый family не воскресает даже при +100/confidence=1; P2 и существующий cursor consumer сохраняются. Нет нового consent/relationship/game effect; обычный once-only outcome неизменен. |
 
-Сценарии — критерии будущих tests, не заявление, что этот gate исполнил runtime проверки.
+Сценарии проверяются в [local-activity-preference](../../tests/domain/local-activity-preference.test.ts), [Main projection](../../tests/main/local-activity-preference.test.ts) и [memory restart](../../tests/application/memory-restart.test.ts). Trace использует tuning version `CHAR-I03-v1`.
 
 <a id="91-interaction-a01-общая-карточка-и-локальная-оценка-87"></a>
 ## 9.2. Семантическое взаимодействие: общая карточка и локальная оценка

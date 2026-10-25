@@ -1,9 +1,13 @@
 /** Local knowledge/recall boundary. Rules: MEMORY_ENGINE §9, P15_A02_RESULT. */
 import type { GameEpisode, MemoryOperationContext, MemoryResult } from './memory-repository.interface';
+import type { LearnedPreferenceKey } from '../../domain/character/preferences';
 
 export type MemoryFactKey =
   | 'user.display_name' | 'user.preferred_address' | 'user.favorite_topic'
   | 'user.reply_style' | 'user.cursor_game';
+
+/** Additional structured facts stay local; provider/wire allowlists use MemoryFactKey. */
+export type LocalMemoryFactKey = MemoryFactKey | 'user.explore' | 'user.social_bid';
 
 /** Untrusted semantic proposal. Only the current user message can be evidence. */
 export interface MemoryFactCandidate {
@@ -60,7 +64,7 @@ export interface IGameEpisodeReader {
 /** No text/LLM deltas reach the Character learning boundary. */
 export interface VerifiedPreferenceEvidence {
   readonly sourceMessageId: string;
-  readonly key: 'activity.cursor_game';
+  readonly key: LearnedPreferenceKey;
   readonly disposition: 'like' | 'dislike';
 }
 

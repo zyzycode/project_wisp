@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { recognizeMemoryFact, parseMemoryCandidates } from '../../src/application/services/memory-fact-registry';
+import { recognizeMemoryFact, parseMemoryCandidates, parseMemoryFact } from '../../src/application/services/memory-fact-registry';
 import { MemoryKnowledge } from '../../src/application/services/memory-knowledge';
 import { MemoryHistory } from '../../src/application/services/memory-history';
 import type { MemoryResult, UserFact } from '../../src/application/ports/memory-repository.interface';
@@ -9,15 +9,27 @@ it.each([
   ['Называй меня Анна-Мария', 'user.preferred_address', 'Анна-Мария'], ['Моя любимая тема — Космос 2026', 'user.favorite_topic', 'Космос 2026'],
   ['Я предпочитаю короткие ответы', 'user.reply_style', 'brief'], ['Always give detailed replies.', 'user.reply_style', 'detailed'],
   ['Мне не нравится игра с курсором.', 'user.cursor_game', 'dislike'], ['I like the cursor game', 'user.cursor_game', 'like'],
+  ['Мне нравятся твои прогулки', 'user.explore', 'like'], ['Мне не нравятся твои прогулки.', 'user.explore', 'dislike'],
+  ['Remember: I like your walks.', 'user.explore', 'like'], ['I dislike your walks', 'user.explore', 'dislike'],
+  ['Запомни: Мне нравятся твои инициативы общения.', 'user.social_bid', 'like'], ['Мне не нравятся твои инициативы общения', 'user.social_bid', 'dislike'],
+  ['I like your social initiatives', 'user.social_bid', 'like'], ['Correction: I dislike your social initiatives.', 'user.social_bid', 'dislike'],
 ])('recognizes a complete explicit statement %s', (text, key, value) => { expect(recognizeMemoryFact(text)).toEqual({ key, value }); });
 it.each(['Сегодня будь пиратом', 'Отвечай кратко', '"Меня зовут Аня"', 'Он сказал: Меня зовут Аня', 'Меня зовут не Аня', 'My name is Bob if you ask', 'My name is Bob. I like cats', "My favorite topic is 'secrets'", 'Я люблю игру', 'Меня зовут ' + 'а'.repeat(81), 'Remember: Remember: My name is Bob'])('does not turn temporary/quoted/conditional text into facts: %s', text => { expect(recognizeMemoryFact(text)).toBeUndefined(); });
+it.each(['ты любишь гулять', 'я люблю гулять', 'сегодня гуляй чаще', 'будь общительной', 'наверное, мне нравятся твои прогулки',
+  '"Мне нравятся твои прогулки"', 'Если мне нравятся твои прогулки', 'Мне нравятся твои прогулки. Мне нравятся твои инициативы общения',
+  'Друг любит твои инициативы общения', 'I might like your walks', 'Today act as a social girl', '', 'Спасибо за игру',
+])('does not infer local preference from ambiguous/role/activity text: %s', text => { expect(recognizeMemoryFact(text)).toBeUndefined(); });
+it.each(['user.explore', 'user.social_bid'])('keeps %s outside provider proposals and the wire fact allowlist', key => {
+  expect(() => parseMemoryFact({ key, value: 'like' })).toThrow();
+  expect(parseMemoryCandidates([{ key, value: 'like', evidenceQuote: 'Invented preference' }], 'Invented preference')).toEqual([]);
+});
 it('drops every duplicate candidate key even if its sibling is malformed; validates the literal source', () => {
   const candidate = { key: 'user.display_name', value: 'Аня', evidenceQuote: 'Меня зовут Аня' };
   expect(parseMemoryCandidates([candidate, { key: candidate.key }], candidate.evidenceQuote)).toEqual([]);
   expect(parseMemoryCandidates([candidate], 'My name is Bob')).toEqual([]);
 });
 const date = '2026-09-18T00:00:00.000Z';
-const turn = { user: { id: 'u', text: 'Мне нравится игра с курсором', createdAt: date }, assistant: { id: 'a', text: 'Хорошо', createdAt: date }, memoryGeneration: 0 };
+const turn = { user: { id: 'u', text: 'Мне нравятся твои прогулки', createdAt: date }, assistant: { id: 'a', text: 'Хорошо', createdAt: date }, memoryGeneration: 0 };
 function fixture() {
   let current = true;
   const upsert = vi.fn(async (fact: UserFact): Promise<MemoryResult<UserFact>> => ({ ok: true, value: fact }));
@@ -28,13 +40,18 @@ function fixture() {
     onPersisted: (turn, context) => knowledge.persisted(turn, context) });
   return { knowledge, history, upsert, appendTurn, onFailure, observe, stop: () => { current = false; } };
 }
-it('waits for append acknowledgement, writes without a model candidate, emits verified evidence once', async () => {
+it.each([
+  ['Мне нравится игра с курсором', 'activity.cursor_game'],
+  ['Мне нравятся твои прогулки', 'activity.explore'],
+  ['Мне нравятся твои инициативы общения', 'activity.social_bid'],
+])('waits for append acknowledgement and emits verified evidence once: %s', async (text, key) => {
+  const persisted = { ...turn, user: { ...turn.user, text } };
   const f = fixture(); let ack!: (value: MemoryResult<void>) => void;
   f.appendTurn.mockImplementationOnce(() => new Promise(resolve => { ack = resolve; }));
-  const saving = f.history.completed(turn); await Promise.resolve(); expect(f.upsert).not.toHaveBeenCalled();
-  ack({ ok: true, value: undefined }); await saving; await f.history.completed(turn);
+  const saving = f.history.completed(persisted); await Promise.resolve(); expect(f.upsert).not.toHaveBeenCalled();
+  ack({ ok: true, value: undefined }); await saving; await f.history.completed(persisted);
   expect(f.upsert).toHaveBeenCalledTimes(1); expect(f.upsert).toHaveBeenCalledWith(expect.objectContaining({ sourceMessageId: 'u', confidence: 1 }), { generation: 0 });
-  expect(f.observe).toHaveBeenCalledExactlyOnceWith({ sourceMessageId: 'u', key: 'activity.cursor_game', disposition: 'like' });
+  expect(f.observe).toHaveBeenCalledExactlyOnceWith({ sourceMessageId: 'u', key, disposition: 'like' });
 });
 it('does not extract after a failed append', async () => { const f = fixture(); f.appendTurn.mockResolvedValue({ ok: false, code: 'storage_full' }); await f.history.completed(turn); expect(f.upsert).not.toHaveBeenCalled(); });
 it('reports a failed fact write without rejecting completed history or emitting learning', async () => { const f = fixture(); f.upsert.mockResolvedValue({ ok: false, code: 'storage_full' }); await expect(f.history.completed(turn)).resolves.toBeUndefined(); expect(f.onFailure).toHaveBeenCalledWith('storage_full'); expect(f.observe).not.toHaveBeenCalled(); });

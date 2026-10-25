@@ -8,7 +8,10 @@ import {
 } from '../behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../behavior/behavior-intent';
 import { selectLocalActivity, type LocalSelectionContext, type LocalSelectionTrace } from '../behavior/local-activity-policy';
-import type { Needs, PreferenceTrack, Relationship, SynthesizedEmotionalTone } from './types';
+import type { CharacterState, Needs, PreferenceTrack, Relationship, SynthesizedEmotionalTone } from './types';
+import { createCharacterSnapshot } from './character-snapshot';
+import { validatedLocalPreference, type LearnedPreference } from './preferences';
+import { validatedCursorGamePreference } from '../behavior/cursor-observe-policy';
 
 export type SemanticSleepState = 'awake' | 'sleeping';
 
@@ -16,9 +19,22 @@ export interface CharacterAutonomySnapshot {
   readonly needs: Needs;
   /** P17-A04 local choice projection; numeric authority remains Character. */
   readonly learnedCursorGamePreference?: Readonly<Pick<PreferenceTrack, 'value' | 'confidence'>>;
+  readonly learnedExplorePreference?: LearnedPreference;
+  readonly learnedSocialBidPreference?: LearnedPreference;
   readonly localTraits?: { readonly openness: number; readonly playfulness: number; readonly independence: number; readonly extraversion: number };
   readonly synthesizedTone: SynthesizedEmotionalTone;
   readonly relationship?: Readonly<Pick<Relationship, 'friendship'>>;
+}
+
+/** Internal local projection; provider and IPC snapshots do not gain preference keys. */
+export function createCharacterAutonomySnapshot(state: CharacterState): CharacterAutonomySnapshot {
+  const axes = state.personality.axes;
+  return { ...createCharacterSnapshot(state),
+    learnedCursorGamePreference: validatedCursorGamePreference(state.preferences['activity.cursor_game']),
+    learnedExplorePreference: validatedLocalPreference(state.preferences['activity.explore']),
+    learnedSocialBidPreference: validatedLocalPreference(state.preferences['activity.social_bid']),
+    localTraits: { openness: axes.openness.current, playfulness: axes.playfulness.current,
+      independence: axes.independence.current, extraversion: axes.extraversion.current } };
 }
 
 export interface CharacterAutonomyResolution {

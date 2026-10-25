@@ -38,12 +38,12 @@ import { CharacterInteractionUseCase } from '../application/services/character-i
 import { AppLogger, LogBuffer } from '../infrastructure/logging';
 import { isDebugMode } from '../shared/debug-mode';
 import { performance } from 'node:perf_hooks';
+import { createCharacterAutonomySnapshot } from '../domain/character/autonomy-character-engine';
 import {
   DEFAULT_MOTION_CONSTRAINTS,
   clampRootPosition,
   MotionEngine,
   SurfaceKinematics,
-  validatedCursorGamePreference,
   type MotionState,
   type SurfaceKinematicsState,
 } from '../domain/behavior';
@@ -288,15 +288,7 @@ function initializeAutonomyComposition(): void {
     scheduler: createMainAutonomyScheduler(),
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
-    getCharacterSnapshot: () => {
-      const state = defaultCharacterStateService.getState();
-      const axes = state.personality.axes;
-      return { ...defaultCharacterStateService.getSnapshot(),
-        learnedCursorGamePreference: validatedCursorGamePreference(state.preferences['activity.cursor_game']),
-        localTraits: {
-        openness: axes.openness.current, playfulness: axes.playfulness.current,
-        independence: axes.independence.current, extraversion: axes.extraversion.current } };
-    },
+    getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState()),
     onActivityStarted: () => aiEventRuntime?.activityStarted(),
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
     onAIInvalidated: () => { if (!processingTouchInput || !aiEventRuntime?.isTouchPending()) aiEventRuntime?.invalidate(true, false); observationRuntime?.invalidate(); },

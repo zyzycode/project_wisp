@@ -24,8 +24,11 @@ export class MemoryKnowledge {
         confidence: 1, sourceMessageId: turn.user.id, createdAt: turn.user.createdAt, updatedAt: turn.user.createdAt }, context);
       if (!this.options.isCurrent(context.generation)) return;
       if (!result.ok) { this.options.onFailure(result.code); return; }
-      if (fact.key === 'user.cursor_game' && (fact.value === 'like' || fact.value === 'dislike')) {
-        this.options.preferenceLearning?.observe({ sourceMessageId: turn.user.id, key: 'activity.cursor_game', disposition: fact.value });
+      if ((fact.key === 'user.cursor_game' || fact.key === 'user.explore' || fact.key === 'user.social_bid')
+          && (fact.value === 'like' || fact.value === 'dislike')) {
+        const key = fact.key === 'user.cursor_game' ? 'activity.cursor_game'
+          : fact.key === 'user.explore' ? 'activity.explore' : 'activity.social_bid';
+        this.options.preferenceLearning?.observe({ sourceMessageId: turn.user.id, key, disposition: fact.value });
       }
     } catch { if (this.options.isCurrent(context.generation)) this.options.onFailure('unavailable'); }
   }

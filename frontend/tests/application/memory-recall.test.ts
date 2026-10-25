@@ -84,3 +84,24 @@ it('uses the current saved favorite topic for a social event without a second st
   expect(await f.recall.recall({ text: '', useFavoriteTopic: true, excludedMessageIds: [] }, { generation: 0 })).toMatchObject({ ok: true, value: { episodes: [{ userText: 'космос' }] } });
   expect(f.list).toHaveBeenCalledTimes(1); expect(f.getRecent).toHaveBeenCalledTimes(1);
 });
+it('filters local-only facts before the five-fact cap and excludes their corrected dialogue pairs', async () => {
+  const all = [
+    ['user.explore', 'like'], ['user.social_bid', 'dislike'], ['user.display_name', 'Аня'],
+    ['user.preferred_address', 'Анна'], ['user.favorite_topic', 'Космос'], ['user.reply_style', 'brief'], ['user.cursor_game', 'like'],
+  ];
+  const facts = all.map(([factKey, factValue], index) => ({ id: `fact-${index}`, factKey: factKey!, factValue: factValue!,
+    confidence: 1, sourceMessageId: `source-${index}`, createdAt: date, updatedAt: date }));
+  const f = fixture([
+    ...pair('old-explore', 'Мне нравятся твои прогулки'),
+    ...pair('new-explore', 'Исправление: Мне не нравятся твои прогулки'),
+    ...pair('old-social', 'I like your social initiatives'),
+    ...pair('new-social', 'Correction: I dislike your social initiatives'),
+    ...pair('ordinary', 'Посмотри на эти звёзды', 'Сегодня очень светло'),
+  ], facts);
+  const result = await f.recall.recall({ text: 'прогулки social initiatives звёзды', excludedMessageIds: [] }, { generation: 0 });
+  expect(result).toMatchObject({ ok: true, value: {
+    facts: all.slice(2).map(([key, value]) => ({ key, value })),
+    episodes: [{ userText: 'Посмотри на эти звёзды' }],
+    characterPreferences: [{ key: 'activity.cursor_game', value: 12, confidence: .5 }],
+  } });
+});

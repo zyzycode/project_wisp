@@ -13,6 +13,8 @@ import type { AIProviderContextMessage } from '../../src/application/ports/ai-pr
 import { scenario } from '../main/autonomy-scenario-fixture';
 import { calculateCursorNoticeChance } from '../../src/domain/behavior/cursor-observe-policy';
 import type { CharacterState } from '../../src/domain/character';
+import { createCharacterAutonomySnapshot } from '../../src/domain/character/autonomy-character-engine';
+import { selectLocalActivity } from '../../src/domain/behavior/local-activity-policy';
 
 function start(filename: string) {
   // Native test TS loader; no packaging/build script or Electron process is required.
@@ -92,3 +94,72 @@ it.each(['like', 'dislike'] as const)('keeps %s-driven eligible game selection a
     expect(selectedGame(run.character.getState())).toBe(disposition === 'like');
   } finally { await run.lifecycle.shutdown(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+it.each([
+  ['activity.explore', 'Мне нравятся твои прогулки', 'Мне не нравятся твои прогулки'],
+  ['activity.social_bid', 'Мне нравятся твои инициативы общения', 'Мне не нравятся твои инициативы общения'],
+] as const)('preserves paired persisted %s choices after restart and returns both to baseline after reset', async (key, like, dislike) => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'wisp-local-preferences-'));
+  const filenames = ['like.sqlite3', 'dislike.sqlite3'].map(file => path.join(directory, file));
+  let runs = filenames.map(start);
+  const initial = new CharacterStateService({ now: () => 0 }).getState();
+  // Control transient Needs/relationship for both histories, keeping the real authored axes.
+  const projection = (state: CharacterState) => createCharacterAutonomySnapshot({ ...state,
+    needs: { energy: 51, comfort: 0, attention: 80, play: 0, boredom: 24 }, relationship: { ...state.relationship, friendship: 100 } });
+  const selection = { nowMs: 0, canExplore: key === 'activity.explore', canSocial: key === 'activity.social_bid', canPlay: false, canRest: false, history: [] };
+  const baseline = selectLocalActivity(projection(initial), selection, 0).trace;
+  const draw = baseline[0]!.score / baseline.reduce((sum, row) => sum + row.score, 0);
+  const choose = (state: CharacterState) => selectLocalActivity(projection(state), selection, draw).intent.kind;
+  const target = key === 'activity.explore' ? 'wander' : 'play';
+  const fullBaseline = selectLocalActivity(projection(initial), { ...selection, canExplore: true, canSocial: true, canRest: true }, 0).trace;
+  const targetFamily = key === 'activity.explore' ? 'wander' : 'social_bid';
+  const mainDraw = fullBaseline.slice(0, fullBaseline.findIndex(row => row.kind === targetFamily)).reduce((sum, row) => sum + row.score, 0)
+    / fullBaseline.reduce((sum, row) => sum + row.score, 0);
+  const mainChoosesTarget = (state: CharacterState) => {
+    const controlled = projection(state);
+    const f = scenario({}, mainDraw, { ...state, needs: controlled.needs, relationship: { ...state.relationship, friendship: 100 } }, undefined, {}, true);
+    try { f.pulse(); return f.main.getActivityTimeline()?.activityId === (key === 'activity.explore' ? 'explore' : 'social_bid'); }
+    finally { f.main.dispose(); }
+  };
+  try {
+    for (const run of runs) await run.lifecycle.initialize();
+    const now = new Date().toISOString();
+    for (let sample = 1; sample <= 6; sample++) {
+      for (const [index, run] of runs.entries()) {
+        run.advance(300000);
+        await run.lifecycle.history.completed({ memoryGeneration: 0,
+          user: { id: `u-${sample}`, text: index === 0 ? like : dislike, createdAt: now },
+          assistant: { id: `a-${sample}`, text: 'Хорошо', createdAt: now } });
+      }
+    }
+    expect(runs.map(run => run.character.getState().preferences[key])).toEqual([
+      { value: 12, confidence: .5, samples: 6 }, { value: -12, confidence: .5, samples: 6 },
+    ]);
+    expect(runs.map(run => choose(run.character.getState()))).toEqual([target, 'idle']);
+    expect(runs.map(run => mainChoosesTarget(run.character.getState()))).toEqual([true, false]);
+    for (const run of runs) await run.lifecycle.shutdown();
+    runs = filenames.map(start);
+    for (const run of runs) await run.lifecycle.initialize();
+    expect(runs.map(run => run.character.getState().preferences[key])).toEqual([
+      { value: 12, confidence: .5, samples: 6 }, { value: -12, confidence: .5, samples: 6 },
+    ]);
+    expect(runs.map(run => choose(run.character.getState()))).toEqual([target, 'idle']);
+    expect(runs.map(run => mainChoosesTarget(run.character.getState()))).toEqual([true, false]);
+    for (const run of runs) {
+      expect(run.lifecycle.getStatus()).toEqual({ mode: 'persistent', characterRestore: 'restored' });
+      const before = run.character.getState().preferences;
+      await run.lifecycle.history.completed({ memoryGeneration: 0,
+        user: { id: 'early-after-restart', text: like, createdAt: now }, assistant: { id: 'early-reply', text: 'Хорошо', createdAt: now } });
+      expect(run.character.getState().preferences).toEqual(before);
+      expect(await run.lifecycle.reset()).toEqual({ ok: true, value: undefined });
+      expect(run.character.getState().preferences).toEqual({});
+      expect(await run.repos.facts.list(100, { generation: 1 })).toEqual({ ok: true, value: [] });
+      run.advance(299999);
+      await run.lifecycle.history.completed({ memoryGeneration: 1,
+        user: { id: 'early-after-reset', text: like, createdAt: now }, assistant: { id: 'reset-reply', text: 'Хорошо', createdAt: now } });
+      expect(run.character.getState().preferences).toEqual({});
+    }
+    expect(runs.map(run => choose(run.character.getState()))).toEqual([choose(initial), choose(initial)]);
+    expect(runs.map(run => mainChoosesTarget(run.character.getState()))).toEqual([mainChoosesTarget(initial), mainChoosesTarget(initial)]);
+  } finally { for (const run of runs) await run.lifecycle.shutdown(); rmSync(directory, { recursive: true, force: true }); }
+}, 15000);

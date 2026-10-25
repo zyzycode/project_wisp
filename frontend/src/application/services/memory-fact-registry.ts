@@ -1,4 +1,4 @@
-import type { MemoryFactCandidate, MemoryFactKey } from '../ports/memory-knowledge.interface';
+import type { LocalMemoryFactKey, MemoryFactCandidate, MemoryFactKey } from '../ports/memory-knowledge.interface';
 import { enumValue, exactRecord, plainText } from '../../shared/dialogue-ipc-validation';
 
 export const MEMORY_FACT_KEYS = ['user.display_name', 'user.preferred_address', 'user.favorite_topic', 'user.reply_style', 'user.cursor_game'] as const;
@@ -11,7 +11,7 @@ export function parseMemoryFact(value: unknown): { readonly key: MemoryFactKey; 
   return { key, value: text };
 }
 /** Deliberately narrow whole-message grammar. No model, inference or source rewriting. */
-export function recognizeMemoryFact(input: string): { readonly key: MemoryFactKey; readonly value: string } | undefined {
+export function recognizeMemoryFact(input: string): { readonly key: LocalMemoryFactKey; readonly value: string } | undefined {
   const text = input.trim().normalize('NFC').replace(/^(?:Запомни|Remember|Исправление|Correction): /iu, '').replace(/\.$/u, '');
   const captures: readonly [MemoryFactKey, RegExp][] = [
     ['user.display_name', /^(?:Меня зовут|My name is) ([\p{L} -]+)$/iu],
@@ -29,6 +29,10 @@ export function recognizeMemoryFact(input: string): { readonly key: MemoryFactKe
     ['user.reply_style', 'detailed', /^(?:Я предпочитаю подробные ответы|Всегда отвечай подробно|I prefer detailed replies|Always give detailed replies)$/iu],
     ['user.cursor_game', 'like', /^(?:Мне нравится игра с курсором|I like the cursor game)$/iu],
     ['user.cursor_game', 'dislike', /^(?:Мне не нравится игра с курсором|I dislike the cursor game)$/iu],
+    ['user.explore', 'like', /^(?:Мне нравятся твои прогулки|I like your walks)$/iu],
+    ['user.explore', 'dislike', /^(?:Мне не нравятся твои прогулки|I dislike your walks)$/iu],
+    ['user.social_bid', 'like', /^(?:Мне нравятся твои инициативы общения|I like your social initiatives)$/iu],
+    ['user.social_bid', 'dislike', /^(?:Мне не нравятся твои инициативы общения|I dislike your social initiatives)$/iu],
   ] as const) if (pattern.test(text)) return { key, value };
   return undefined;
 }

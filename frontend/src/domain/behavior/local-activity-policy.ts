@@ -1,4 +1,5 @@
 import type { CharacterAutonomySnapshot } from '../character/autonomy-character-engine';
+import { localPreferenceMultiplier } from '../character/preferences';
 import type { BehaviorIntent } from './behavior-intent';
 export interface LocalSelectionContext {
   readonly nowMs: number;
@@ -14,9 +15,11 @@ export interface LocalSelectionTrace {
   readonly eligible: boolean;
   readonly reason: string;
   readonly factors: { readonly need: number; readonly personality: number; readonly repetition: number };
+  readonly baselineScore: number;
+  readonly preferenceMultiplier: number;
   readonly score: number;
 }
-export const LOCAL_TUNING_VERSION = 'AUTO-I12-v2';
+export const LOCAL_TUNING_VERSION = 'CHAR-I03-v1';
 /** Pure weighted Utility after hard eligibility; history never bans the sole option. */
 export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context: LocalSelectionContext, random: number): {
   readonly intent: BehaviorIntent; readonly trace: readonly LocalSelectionTrace[];
@@ -35,8 +38,11 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
     const repeat = context.history.filter(entry => entry.kind === d.kind).reduce((sum, entry) =>
       sum + Math.pow(.5, Math.max(0, context.nowMs - entry.atMs) / 90000), 0);
     const factors = { need: d.need, personality: d.personality, repetition: Math.max(.15, 1 / (1 + repeat)) };
+    const baselineScore = d.eligible ? factors.need * factors.personality * factors.repetition : 0;
+    const preferenceMultiplier = localPreferenceMultiplier(d.kind === 'wander' ? snapshot.learnedExplorePreference
+      : d.kind === 'social_bid' ? snapshot.learnedSocialBidPreference : undefined);
     return { kind: d.kind, eligible: d.eligible, reason: d.eligible ? 'eligible' : 'state_environment_cooldown_or_mode',
-      factors, score: d.eligible ? factors.need * factors.personality * factors.repetition : 0 };
+      factors, baselineScore, preferenceMultiplier, score: baselineScore * preferenceMultiplier };
   });
   let remaining = Math.max(0, Math.min(.999999, Number.isFinite(random) ? random : 0)) * trace.reduce((sum, row) => sum + row.score, 0);
   let winner = trace[0]!;

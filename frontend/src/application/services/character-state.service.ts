@@ -2,7 +2,7 @@ import { applyInteractionProposal, interactionSignature, isNonzeroProposal } fro
 import type { InteractionAppraisal, PreviousTouchReaction, InteractionReceipt, TouchInteractionReceipt } from '../ports/interaction-appraisal';
 import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '../ports/memory-knowledge.interface';
 import { createAdaptationGate, type AdaptationGate } from '../../domain/character/adaptation-gate';
-import { learnVerifiedCursorPreference } from '../../domain/character/preferences';
+import { learnVerifiedPreference } from '../../domain/character/preferences';
 import {
   createCharacterSnapshot,
   processStimulusWithAdaptation,
@@ -174,11 +174,13 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   }
 
   public observe(evidence: VerifiedPreferenceEvidence): void {
-    if (evidence.key !== 'activity.cursor_game' || (evidence.disposition !== 'like' && evidence.disposition !== 'dislike') || !evidence.sourceMessageId.trim() || evidence.sourceMessageId.length > 128 || this.observedSources.has(evidence.sourceMessageId)) return;
+    if (!['activity.cursor_game', 'activity.explore', 'activity.social_bid'].includes(evidence.key)
+        || (evidence.disposition !== 'like' && evidence.disposition !== 'dislike') || !evidence.sourceMessageId.trim()
+        || evidence.sourceMessageId.length > 128 || this.observedSources.has(evidence.sourceMessageId)) return;
     // Defensive bounded cache; the persisted-turn owner also rejects retired callbacks before this port.
     this.observedSources.add(evidence.sourceMessageId);
     if (this.observedSources.size > 100) this.observedSources.delete(this.observedSources.values().next().value!);
-    const learned = learnVerifiedCursorPreference(this.state.preferences, evidence.disposition, this.preferenceGate, this.monotonicNow());
+    const learned = learnVerifiedPreference(this.state.preferences, evidence.key, evidence.disposition, this.preferenceGate, this.monotonicNow());
     this.state = { ...this.state, preferences: learned.preferences }; this.preferenceGate = learned.gate;
   }
   private resetTransientLearning(): void {

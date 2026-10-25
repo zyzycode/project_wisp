@@ -16,7 +16,7 @@ it('preserves historical love/latch but forbids positive growth after consent is
 import { createAdaptationGate, takeAdaptationOpportunity } from '../../src/domain/character/adaptation-gate';
 import { processStimulusWithAdaptation } from '../../src/domain/character/stimuli-reducer';
 import { adaptBoundedExperienceAxes } from '../../src/domain/character/personality-plasticity';
-import { learnVerifiedCursorPreference } from '../../src/domain/character/preferences';
+import { learnVerifiedPreference } from '../../src/domain/character/preferences';
 
 it('allows a consented transition without erasing the existing friendship/love rewards', () => {
   const state = new CharacterStateService().getState(); state.relationship.friendship = 399; state.intimacy.userConsentEnabled = true;
@@ -46,7 +46,7 @@ it('caps raw axis movement and weight before soft resistance and immutable hard 
 });
 it('keeps preference affinity/sample count bounded and derives confidence from samples', () => {
   const preferences = { 'activity.cursor_game': { value: 99, samples: 1000, confidence: 0.8 } };
-  const next = learnVerifiedCursorPreference(preferences, 'like', createAdaptationGate(0), 300000);
+  const next = learnVerifiedPreference(preferences, 'activity.cursor_game', 'like', createAdaptationGate(0), 300000);
   expect(next.preferences['activity.cursor_game']).toEqual({ value: 99.05, samples: 1000, confidence: 1000 / 1006 });
   expect(preferences['activity.cursor_game'].value).toBe(99);
 });

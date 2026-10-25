@@ -193,9 +193,9 @@ Host Node/Vitest и более новые `@types/node` не доказываю�
 | Пожелание | «Отвечай кратко» действует в текущем диалоге; только явно устойчивый вариант registry становится user preference, не приказом изменить Character axes |
 | Временная роль | «Сегодня будь пиратом», цитата, гипотеза, пересказ чужой речи; текущий dialogue context без persistent fact и adaptation evidence |
 
-В MVP registry конечный: пять scalar keys, один текущий value на key. `display_name`/`preferred_address` до 80 UTF-16 units, `favorite_topic` до 120; reply_style — `brief`/`detailed`, cursor_game — `like`/`dislike`. Извлечение не создаёт диагнозы, политические взгляды, credentials, обещания/напоминания или произвольные ключи. Такие сообщения могут остаться в истории по §2, но не превращаются в структурированные знания автоматически.
+Registry конечный: пять provider scalar keys и два локальных ключа (§9.1 Character), один текущий value на key. `display_name`/`preferred_address` до 80 UTF-16 units, `favorite_topic` до 120; reply_style — `brief`/`detailed`, cursor_game/explore/social_bid — `like`/`dislike`. Извлечение не создаёт диагнозы, политические взгляды, credentials, обещания/напоминания или произвольные ключи. Такие сообщения могут остаться в истории по §2, но не превращаются в структурированные знания автоматически.
 
-Эти пять ключей остаются текущей wire projection. Planned local-only registry для дополнительных вкусов задаёт [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений); он не расширяет сетевой allowlist. Независимое planned расширение событий/шуток — §10.
+Пять provider keys остаются текущей wire projection. Реализованный local-only registry для `user.explore`/`user.social_bid` задаёт [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений); он не расширяет сетевой allowlist. Локальные facts исключаются до ограничения пяти facts, распознанные пары исключаются из recalled episodes. Независимое расширение событий/шуток — §10.
 
 ### Source validation и registry
 

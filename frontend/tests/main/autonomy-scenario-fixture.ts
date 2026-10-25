@@ -3,14 +3,15 @@ import { MainAutonomyComposition, type MainAutonomyCompositionOptions } from '..
 import { CharacterStateService } from '../../src/application/services/character-state.service';
 import { CharacterInteractionUseCase } from '../../src/application/services/character-interaction.use-case';
 import { ShimejiStimulusMapper } from '../../src/application/services/shimeji-stimulus.mapper';
-import { validatedCursorGamePreference } from '../../src/domain/behavior/cursor-observe-policy';
+import { createCharacterAutonomySnapshot } from '../../src/domain/character/autonomy-character-engine';
 import type { Needs, CharacterState } from '../../src/domain/character';
 import type { ActivityOutcomeFeedback } from '../../src/application/ports/shimeji-feedback-port';
 import type { ProviderBehaviorOffer } from '../../src/application/ports/behavior-admission-port';
 import type { IPlatformAdapter } from '../../src/application/ports/platform-adapter.interface';
 export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialState?: CharacterState,
   cursorPosition?: Pick<IPlatformAdapter, 'getCursorScreenPosition'>,
-  hooks: Pick<MainAutonomyCompositionOptions, 'onCursorGameResult' | 'onActivityOutcome' | 'onActivityStarted' | 'onSocialBidStarted' | 'onAIInvalidated' | 'onUserContact'> = {}) {
+  hooks: Pick<MainAutonomyCompositionOptions, 'onCursorGameResult' | 'onActivityOutcome' | 'onActivityStarted' | 'onSocialBidStarted' | 'onAIInvalidated' | 'onUserContact'> = {},
+  useAuthoredTraits = false) {
   let now = 0; let id = 0; let nextTimer = 0; let root = { x: 400, y: 790 }; let target: typeof root | null = null;
   let movable = true; let supportValid = true; let random = randomUnit;
   const timers = new Map<number, { atMs: number; callback: () => void }>();
@@ -30,9 +31,8 @@ export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialSta
     setTimeout: (callback, delay) => { const key = ++nextTimer; timers.set(key, { callback, atMs: now + delay }); return key; },
     clearTimeout: key => { timers.delete(key as number); } },
     prng: { next: () => random }, prngMetadata: { algorithm: 'constant', seed: 1 },
-    getCharacterSnapshot: () => ({ ...character.getSnapshot(),
-      learnedCursorGamePreference: validatedCursorGamePreference(character.getState().preferences['activity.cursor_game']),
-      localTraits: { openness: .8, playfulness: .7, independence: .5, extraversion: .8 } }),
+    getCharacterSnapshot: () => ({ ...createCharacterAutonomySnapshot(character.getState()),
+      ...(useAuthoredTraits ? {} : { localTraits: { openness: .8, playfulness: .7, independence: .5, extraversion: .8 } }) }),
     tickNeeds: delta => { character.tickNeeds(delta, main.isSleepingForRecovery() ? 'sleepy' : undefined); },
     onActivityOutcome: event => { hooks.onActivityOutcome?.(event); outcomes.push(event); const stimulus = mapper.map(event, {
       createdAtIso: new Date(now).toISOString(), landingThresholds: { stumbleMaxSeverity: 10 } });

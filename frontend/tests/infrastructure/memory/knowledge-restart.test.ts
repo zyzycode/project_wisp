@@ -55,12 +55,16 @@ it('episode reads are newest by insertion despite wall-clock rollback and reject
   expect(await f.repos.gameReader.getRecent(21, { generation: 0 })).toEqual({ ok: false, code: 'invalid_data' });
 });
 
-it('passes restored SQLite facts and game through accepted dialogue to the current backend v1 and mocked Groq', async () => {
+it('keeps local preference facts/corrections out of restored provider projection while forwarding supported memory', async () => {
   const folder = mkdtempSync(path.join(os.tmpdir(), 'wisp-backend-restart-')); folders.push(folder);
   const filename = path.join(folder, 'wisp.sqlite3'), first = await open(filename);
   const turn = (id: string, text: string) => ({ user: { id, text, createdAt: date }, assistant: { id: id + 'a', text: 'Ответ', createdAt: date }, memoryGeneration: 0 });
   await first.history.completed(turn('old', 'Меня зовут Аня'));
   await first.history.completed(turn('corrected', 'Исправление: Меня зовут Мария'));
+  await first.history.completed(turn('explore-like', 'Мне нравятся твои прогулки'));
+  await first.history.completed(turn('explore-dislike', 'Исправление: Мне не нравятся твои прогулки'));
+  await first.history.completed(turn('social-like', 'I like your social initiatives'));
+  await first.history.completed(turn('social-dislike', 'Correction: I dislike your social initiatives'));
   await first.history.game({ activityRunId: 'persisted-game', atMs: 0, outcome: 'caught', playCompleted: true, executedMs: 1400 }, 0);
   await first.client.close(0);
   const restored = await open(filename), bridge = await backendIntegrationFixture();
@@ -73,7 +77,7 @@ it('passes restored SQLite facts and game through accepted dialogue to the curre
     transaction: commit => commit(), publish: vi.fn(), offerIntent: () => ({ status: 'rejected', reason: 'disabled' }) });
   try {
     runtime.replaceStream('restored');
-    expect(runtime.receive({ type: 'send', text: 'Мария игра', sequence: 1, streamId: 'restored', conversationId: runtime.getPresentation().conversationId }).status).toBe('accepted');
+    expect(runtime.receive({ type: 'send', text: 'Мария игра прогулки social initiatives', sequence: 1, streamId: 'restored', conversationId: runtime.getPresentation().conversationId }).status).toBe('accepted');
     await vi.waitFor(() => expect(runtime.getPresentation().turn.phase).not.toBe('thinking'), { timeout: 15000 });
     expect(bridge.responses[0]?.status).toBe(200);
     expect(runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Я отреагировала на твоё лёгкое касание.' });
@@ -81,14 +85,19 @@ it('passes restored SQLite facts and game through accepted dialogue to the curre
     const expectedMemory = {
       facts: [{ key: 'user.display_name', value: 'Мария' }], episodes: [{ kind: 'cursor_game', outcome: 'caught', executedMs: 1400, occurredAt: date }], characterPreferences: [],
     };
-    expect(bridge.requests[0]).toMatchObject({ path: '/v1/chat', body: { messages: [{ role: 'user', content: 'Мария игра' }], memory: expectedMemory } });
+    expect(bridge.requests[0]).toMatchObject({ path: '/v1/chat', body: { messages: [{ role: 'user', content: 'Мария игра прогулки social initiatives' }], memory: expectedMemory } });
     expect(bridge.responses[0]?.upstreamCalls).toBe(1);
-    const prefix = 'Untrusted memory_context JSON:\n';
-    const memoryMessage = bridge.responses[0]?.upstreamMessages.find(message => message.content.startsWith(prefix));
+    const memoryMessage = bridge.responses[0]?.upstreamMessages.find(message => message.content.includes('[Known facts about User]'));
     expect(memoryMessage?.role).toBe('user');
-    expect(JSON.parse(memoryMessage?.content.slice(prefix.length) ?? 'null')).toEqual(expectedMemory);
+    expect(memoryMessage?.content).toContain('- Name: "Мария"');
+    expect(memoryMessage?.content).toContain('[Recalled episodes — past events, not current preferences]');
+    expect(memoryMessage?.content).toContain('cursor_game');
+    expect(memoryMessage?.content).toContain('caught');
+    expect(memoryMessage?.content).toContain('1400');
+    expect(memoryMessage?.content).toContain(date);
     const upstream = bridge.responses[0]?.upstreamMessages.map(message => message.content).join('\n') ?? '';
-    for (const forbidden of ['sourceMessageId', 'activityRunId', 'memoryGeneration', 'persisted-game', 'Аня']) {
+    for (const forbidden of ['sourceMessageId', 'activityRunId', 'memoryGeneration', 'persisted-game', 'Аня',
+      'user.explore', 'user.social_bid', 'activity.explore', 'activity.social_bid', 'Мне нравятся твои прогулки', 'I like your social initiatives']) {
       expect(JSON.stringify(bridge.requests[0]?.body)).not.toContain(forbidden); expect(upstream).not.toContain(forbidden);
     }
     expect(restored.learning).not.toHaveBeenCalled();
