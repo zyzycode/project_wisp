@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -14,6 +15,8 @@ from wisp_backend.prompt_inspection.scenes import SCENE_IDS, SCENES_PATH
 FIXTURES = Path(__file__).parents[1] / "fixtures/prompt_inspection"
 INPUTS = FIXTURES / "issue117_inputs.json"
 BEFORE = FIXTURES / "issue117_before.json"
+AFTER = FIXTURES / "issue117_after.json"
+COMPARISON = FIXTURES / "issue117_comparison.json"
 ADDED_SCENES = {
     "multi_turn_banter",
     "touch_trace_unrelated",
@@ -113,6 +116,7 @@ def test_frozen_cases_use_real_inspector_and_explicit_settings_without_http(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     inputs = json.loads(INPUTS.read_text(encoding="utf-8"))
+    expected_reports = json.loads(AFTER.read_text(encoding="utf-8"))["reports"]
 
     async def forbidden(*args: object, **kwargs: object) -> None:
         pytest.fail("Synthetic comparison must never send provider/count HTTP")
@@ -121,8 +125,9 @@ def test_frozen_cases_use_real_inspector_and_explicit_settings_without_http(
     monkeypatch.setenv("OPENAI_API_KEY", "SYNTHETIC_SECRET_MUST_NOT_APPEAR")
 
     async def inspect_all() -> None:
-        for case in inputs["cases"]:
+        for case, expected in zip(inputs["cases"], expected_reports, strict=True):
             report = await inspect_scene(**case, **inputs["inspection_options"])
+            assert report == expected
             assert {key: report["settings"][key] for key in inputs["inspection_options"]} == inputs[
                 "inspection_options"
             ]
@@ -153,3 +158,117 @@ def test_frozen_cases_use_real_inspector_and_explicit_settings_without_http(
 
     asyncio.run(inspect_all())
     assert not caplog.records
+
+
+def comparison_rows(before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = []
+    for old, new in zip(before["reports"], after["reports"], strict=True):
+        row = {key: new[key] for key in ("scene_id", "locale", "route", "budget_case")}
+        row["status"] = {"before": old["status"], "after": new["status"]}
+        row["before_response"] = row["after_response"] = "NOT RUN"
+        for field in ("payload_utf8_bytes", "required_estimate", "selected_estimate", "input_allowance"):
+            previous = old[field] if field == "payload_utf8_bytes" else old["budget"][field]
+            current = new[field] if field == "payload_utf8_bytes" else new["budget"][field]
+            row[field] = {
+                "before": previous,
+                "after": current,
+                "delta": None if previous is None or current is None else current - previous,
+            }
+        row["output_reserve"] = new["budget"]["output_reserve"]
+        row["selected_keys"] = {"before": old["selected_keys"], "after": new["selected_keys"]}
+        row["selected_history"] = {
+            phase: [key for key in report["selected_keys"] if key.startswith("history_")]
+            for phase, report in (("before", old), ("after", new))
+        }
+        row["added_keys"] = [key for key in new["selected_keys"] if key not in old["selected_keys"]]
+        row["removed_keys"] = [key for key in old["selected_keys"] if key not in new["selected_keys"]]
+        row["blocks"] = [
+            {
+                "key": block["key"],
+                "required": block["required"],
+                "before_utf8_bytes": original["utf8_bytes"],
+                "after_utf8_bytes": block["utf8_bytes"],
+                "before_selected": original["decision"]["included"],
+                "after_selected": block["decision"]["included"],
+                "before_reason": original["decision"]["reason"],
+                "after_reason": block["decision"]["reason"],
+            }
+            for original, block in zip(old["blocks"], new["blocks"], strict=True)
+        ]
+        rows.append(row)
+    return rows
+
+
+def test_after_changes_only_instructions_and_consequent_budget_selection() -> None:
+    before = json.loads(BEFORE.read_text(encoding="utf-8"))
+    after = json.loads(AFTER.read_text(encoding="utf-8"))
+    assert after["phase"] == "after-issue116"
+    assert after["provenance"]["implementation_commit"] == "f8ca6147ede13ca864caac52b3b61dcbd64cf300"
+    assert after["provenance"]["baseline_commit"] == "6729aac903f881fd85f90c469c6abb226f83ca12"
+    assert after["before_sha256"] == hashlib.sha256(BEFORE.read_bytes()).hexdigest()
+    for key in ("inputs_sha256", "resources", "inspection_options", "live", "report_counts"):
+        assert after[key] == before[key]
+    assert set(before["source_digests"]) == set(after["source_digests"])
+    assert {
+        path for path in before["source_digests"] if before["source_digests"][path] != after["source_digests"][path]
+    } == {
+        "completion/prompts/chat.py",
+        "completion/prompts/interaction.py",
+    }
+    for old, new in zip(before["reports"], after["reports"], strict=True):
+        for key in ("scene_id", "locale", "route", "budget_case", "status", "settings", "resources", "live_comparison"):
+            assert old[key] == new[key]
+        assert new["source_digests"] == after["source_digests"]
+        assert new["budget"]["output_reserve"] == old["budget"]["output_reserve"]
+        assert new["budget"]["context_window"] == old["budget"]["context_window"]
+        if new["budget_case"] == "normal":
+            assert new["budget"]["input_allowance"] == old["budget"]["input_allowance"]
+        else:
+            assert new["budget"]["input_allowance"] == new["budget"]["required_estimate"] - (
+                new["budget_case"] == "overflow"
+            )
+        for original, block in zip(old["blocks"], new["blocks"], strict=True):
+            for key in ("key", "source", "required", "priority", "order", "roles"):
+                assert block[key] == original[key]
+            if block["key"] != "instructions":
+                assert {key: value for key, value in block.items() if key != "decision"} == {
+                    key: value for key, value in original.items() if key != "decision"
+                }
+        for original, selection in zip(old["resource_selection"], new["resource_selection"], strict=True):
+            assert {key: value for key, value in selection.items() if key not in ("included", "reason")} == {
+                key: value for key, value in original.items() if key not in ("included", "reason")
+            }
+        assert new["payload_sha256"] == digest(new["payload"])
+        assert new["messages_sha256"] == digest(new["messages"])
+        if new["payload"] is not None:
+            assert {key: value for key, value in new["payload"].items() if key != "messages"} == {
+                key: value for key, value in old["payload"].items() if key != "messages"
+            }
+
+
+def test_comparison_table_reproduces_archived_reports_without_quality_claims() -> None:
+    before = json.loads(BEFORE.read_text(encoding="utf-8"))
+    after = json.loads(AFTER.read_text(encoding="utf-8"))
+    comparison = json.loads(COMPARISON.read_text(encoding="utf-8"))
+    assert comparison["records"] == comparison_rows(before, after)
+    for name, path in (("before", BEFORE), ("after", AFTER), ("inputs", INPUTS)):
+        assert comparison[f"{name}_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert comparison["live"]["status"] == "NOT RUN"
+    assert comparison["live"]["provider_calls"] == 0
+    assert comparison["quality_verdict"] == "NOT RUN"
+    assert comparison["scores_0_to_2"] == before["reports"][0]["live_comparison"]["scores_0_to_2"]
+    assert comparison["hard_failures"] == "NOT RUN (consent, evidence, format)"
+    normal = [row for row in comparison["records"] if row["budget_case"] == "normal"]
+    for summary in comparison["normal_summary"]:
+        rows = [row for row in normal if row["route"] == summary["route"] and row["locale"] == summary["locale"]]
+        assert summary["case_count"] == len(rows)
+        for metric in ("payload_utf8_bytes", "required_estimate", "selected_estimate"):
+            old = [row[metric]["before"] for row in rows]
+            new = [row[metric]["after"] for row in rows]
+            assert summary[metric] == {
+                "before_total": sum(old),
+                "after_total": sum(new),
+                "delta_total": sum(new) - sum(old),
+                "before_range": [min(old), max(old)],
+                "after_range": [min(new), max(new)],
+            }
