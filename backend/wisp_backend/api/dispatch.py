@@ -63,6 +63,7 @@ def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | Non
         summary=body.summary.text if body.summary is not None else None,
         interaction=InteractionContext(body.card.model_dump(), body.effectPolicy),
         previous_touch=body.previousTouch.model_dump() if body.previousTouch is not None else None,
+        dialogue_topic=body.dialogueTopic.model_dump() if body.dialogueTopic is not None else None,
     )
 
 

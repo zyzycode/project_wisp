@@ -46,9 +46,9 @@ export class MemoryWorkerClient {
     if (this.state !== 'ready') return Promise.resolve(unavailable);
     let c: Command;
     try { c = command({ id: this.nextId++, operation, payload, generation }); } catch (error) { return Promise.resolve(failure(error)); }
-    const control = operation === 'clear' || operation === 'close' || operation === 'mutateMemoryItem';
+    const control = operation === 'clear' || operation === 'close' || operation === 'mutateMemoryItem' || operation === 'mutateInterestThread';
     const replacesCheckpoint = operation === 'saveSnapshot' && this.queue.some(p => p.command.operation === 'saveSnapshot' && p.command.generation === generation);
-    if ((control && this.queue.some(p => p.command.operation === operation)) || (!control && !replacesCheckpoint && this.queue.filter(p => p.command.operation !== 'clear' && p.command.operation !== 'close' && p.command.operation !== 'mutateMemoryItem').length >= 100)) return Promise.resolve({ ok: false, code: 'busy' });
+    if ((control && this.queue.some(p => p.command.operation === operation)) || (!control && !replacesCheckpoint && this.queue.filter(p => p.command.operation !== 'clear' && p.command.operation !== 'close' && p.command.operation !== 'mutateMemoryItem' && p.command.operation !== 'mutateInterestThread').length >= 100)) return Promise.resolve({ ok: false, code: 'busy' });
     return new Promise(resolve => {
       if (operation === 'saveSnapshot') {
         const previous = this.queue.findIndex(p => p.command.operation === 'saveSnapshot' && p.command.generation === generation);

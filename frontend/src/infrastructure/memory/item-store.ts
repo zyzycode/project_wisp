@@ -1,3 +1,4 @@
+import { InterestThreadStore } from './interest-thread-store';
 import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type { MemoryItem, MemoryItemMutation, MemoryItemPage, MemoryItemReceipt } from '../../application/ports/memory-items.interface';
@@ -35,6 +36,7 @@ export class MemoryItemStore {
       if (c.kind === 'confirm' && this.db.prepare('SELECT 1 FROM memory_mutation_receipts WHERE item_id = ? LIMIT 1').get(c.itemId)) throw new MemoryDataError('conflict');
       if (c.kind === 'confirm' ? current !== null : current === null || current.revision !== c.expectedRevision) throw new MemoryDataError('conflict');
       const revision = (current?.revision ?? 0) + 1;
+      if (current) new InterestThreadStore(this.db).invalidateCardSource(c.itemId);
       if (c.kind === 'confirm' || c.kind === 'update') {
         this.validateSource(c);
         this.db.prepare(`INSERT INTO memory_items (id, revision, status, category, label, text, occurred_on, confirmed_at, command_id, source_user_id, source_assistant_id)

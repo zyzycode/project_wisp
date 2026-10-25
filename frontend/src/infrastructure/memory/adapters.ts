@@ -1,3 +1,5 @@
+import type { IInterestThreadRepository } from '../../application/ports/interest-thread.interface';
+import { topicRead, topicReceipt, topicCapture } from './interest-thread-validation';
 import type { ISummarySourceReader } from '../../application/ports/summary';
 import { summarySnapshot } from './summary-source-reader';
 import { itemReceipt, itemPage } from './item-validation';
@@ -14,6 +16,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly interestThread: IInterestThreadRepository;
   readonly summarySources: ISummarySourceReader;
   readonly items: IMemoryItemsRepository;
   readonly history: IChatHistoryRepository;
@@ -30,6 +33,12 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    interestThread: {
+      read: c => call('readInterestThread', null, c, topicRead),
+      mutate: (command, c) => call('mutateInterestThread', command, c, topicReceipt),
+      claim: (command, c) => call('claimInterestThread', command, c, topicCapture),
+      captureReply: (command, c) => call('captureInterestThreadReply', command, c, topicCapture),
+    },
     summarySources: { recent: c => call('summaryRecent', null, c, summarySnapshot), exact: (sources, c) => call('summaryExact', sources, c, summarySnapshot) },
     items: {
       confirm: (command, c) => call('mutateMemoryItem', command, c, itemReceipt),

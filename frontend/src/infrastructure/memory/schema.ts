@@ -1,10 +1,11 @@
+import { INTEREST_THREAD_SCHEMA, INTEREST_THREAD_TABLES } from './interest-thread-schema';
 import { MEMORY_ITEMS_SCHEMA, MEMORY_ITEM_TABLES } from './item-schema';
 import type Database from 'better-sqlite3';
 import { MemoryDataError, record, timestamp } from './validation';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const migrationName = 'local_memory_v1';
-const migrationNames = [migrationName, 'confirmed_memory_items_v2'];
+const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3'];
 const schema = `
 CREATE TABLE conversation_sessions (id TEXT PRIMARY KEY NOT NULL, app_run_id TEXT NOT NULL UNIQUE, started_at TEXT NOT NULL, ended_at TEXT);
 CREATE TABLE messages (sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, conversation_session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE RESTRICT, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -27,6 +28,7 @@ export function initializeSchema(db: Database.Database, now: string): void {
     const names = tables.map(row => record(row).name);
     if (['conversation_sessions', 'messages', 'user_facts', 'game_episodes', 'character_state', 'schema_migrations'].some(name => !names.includes(name))) throw new MemoryDataError('corrupt');
     if (version >= 2 && MEMORY_ITEM_TABLES.some(name => !names.includes(name))) throw new MemoryDataError('corrupt');
+    if (version >= 3 && INTEREST_THREAD_TABLES.some(name => !names.includes(name))) throw new MemoryDataError('corrupt');
     const entries = db.prepare('SELECT version, name, applied_at FROM schema_migrations ORDER BY version').all();
     if (entries.length !== version) throw new MemoryDataError('corrupt');
     for (const [index, entry] of entries.entries()) {
@@ -50,6 +52,11 @@ export function initializeSchema(db: Database.Database, now: string): void {
     db.exec(MEMORY_ITEMS_SCHEMA);
     db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(2, migrationNames[1], now);
     db.pragma('user_version = 2');
+  }).immediate();
+  if (version < 3) db.transaction(() => {
+    db.exec(INTEREST_THREAD_SCHEMA);
+    db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(3, migrationNames[2], now);
+    db.pragma('user_version = 3');
   }).immediate();
   const foreignKeyErrors: unknown = db.pragma('foreign_key_check');
   if (!Array.isArray(foreignKeyErrors) || foreignKeyErrors.length !== 0) throw new MemoryDataError('corrupt');

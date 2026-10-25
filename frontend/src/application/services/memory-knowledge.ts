@@ -15,7 +15,7 @@ export class MemoryKnowledge {
   }) {}
   /** Called within the history queue, only after acknowledgement of both source messages. */
   async persisted(turn: CompletedDialogueMemoryTurn, context: MemoryOperationContext): Promise<void> {
-    if (!this.options.isCurrent(context.generation) || this.observed.has(turn.user.id)) return;
+    if (turn.interestThread || !this.options.isCurrent(context.generation) || this.observed.has(turn.user.id)) return;
     const fact = recognizeMemoryFact(turn.user.text); if (!fact) return;
     this.options.invalidateSummary?.();
     this.observed.add(turn.user.id);

@@ -53,3 +53,8 @@ export function parseMemoryCandidates(value: unknown, userText?: string): readon
     } catch { return []; }
   });
 }
+
+/** Topic evidence must not reuse a command whose facts/preferences may already be learned. */
+export function isInterestThreadSourceText(input: string): boolean {
+  return !recognizeMemoryFact(input) && !/^(?:забудь|forget|на время|временно|temporarily|pretend|представь|теперь ты|you are now)(?:\s|$|[:,.!?])/iu.test(input.trim());
+}

@@ -1,6 +1,6 @@
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
 import type { AIEventProviderRequest } from '../../application/ports/ai-event-provider.interface';
-import type { BackendInteractionAppraisal, BackendInteractionPolicy, BackendInteractionChatRequest, BackendInteractionTouchRequest, BackendPreviousTouchReaction } from '../../application/ports/backend-interaction-contract';
+import type { BackendDialogueTopic, BackendInteractionAppraisal, BackendInteractionPolicy, BackendInteractionChatRequest, BackendInteractionTouchRequest, BackendPreviousTouchReaction } from '../../application/ports/backend-interaction-contract';
 import { exactRecord, enumValue, plainText } from '../../shared/dialogue-ipc-validation';
 import { projectSummaryChat, parseSummaryChatResponse } from './backend-summary-validation';
 import { projectTouchRequest } from './backend-touch-validation';
@@ -42,6 +42,14 @@ export function parsePreviousTouch(value: unknown): BackendPreviousTouchReaction
     energyBand: enumValue(r.energyBand, ['tired', 'rested']), comfortBand: enumValue(r.comfortBand, ['overloaded', 'calm']) };
 }
 function bytes(value: unknown): number { return new TextEncoder().encode(JSON.stringify(value)).byteLength; }
+function parseDialogueTopic(value: unknown): BackendDialogueTopic {
+  const r = exactRecord(value, ['mode', 'text', 'statedAt']);
+  const quote = text(r.text, 160);
+  if (quote !== r.text) throw new TypeError('Invalid topic text');
+  if (typeof r.statedAt !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u.test(r.statedAt)
+      || !Number.isFinite(Date.parse(r.statedAt)) || new Date(r.statedAt).toISOString() !== r.statedAt) throw new TypeError('Invalid topic time');
+  return { mode: enumValue(r.mode, ['follow_up', 'reply']), text: quote, statedAt: r.statedAt };
+}
 export function projectInteractionTouch(request: AIEventProviderRequest): BackendInteractionTouchRequest {
   const base = projectTouchRequest(request);
   if (base.event.variant !== 'touch') throw new TypeError('Invalid factual touch');
@@ -60,6 +68,11 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
   if (bytes(result) > 32768 && result.summary !== undefined) { const { summary: _summary, ...withoutSummary } = result; result = withoutSummary; }
   while (bytes(result) > 32768 && result.memory.episodes.length) result = { ...result, memory: { ...result.memory, episodes: result.memory.episodes.slice(0, -1) } };
   if (bytes(result) > 32768) throw new TypeError('Request too large');
+  // Preserve the established baseline. A topic never evicts any existing context.
+  if (request.dialogueTopic !== undefined) {
+    const withTopic = { ...result, dialogueTopic: parseDialogueTopic(request.dialogueTopic) };
+    if (bytes(withTopic) <= 32768) return withTopic;
+  }
   return result;
 }
 export function parseInteractionTouchResponse(value: unknown, requestId: string, effectPolicy: BackendInteractionPolicy['effectPolicy']) {

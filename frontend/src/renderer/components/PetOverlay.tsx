@@ -63,6 +63,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
           canSubmit={model.dialogue.canSubmit}
           errorMessage={model.dialogue.error}
           submissionMessage={model.dialogue.submissionMessage}
+          replyTopic={model.dialogue.replyTopic}
+          cancelTopic={model.dialogue.cancelTopic}
           isOpen={model.dialogue.chatOpen}
           onSendMessage={model.dialogue.handleSendMessage}
           onClose={model.dialogue.closeChat}

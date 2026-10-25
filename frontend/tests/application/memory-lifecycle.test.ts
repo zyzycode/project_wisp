@@ -89,3 +89,15 @@ it('explicit trusted facts preserve their source and return stale after a reset'
   expect(await f.lifecycle.upsertFact(fact)).toEqual({ ok: true, value: fact }); expect(f.storage.facts.upsert).toHaveBeenCalledWith(fact, { generation: 0 });
   expect(await f.lifecycle.removeFact('name')).toEqual({ ok: true, value: undefined }); await f.lifecycle.shutdown();
 });
+it.each([false, true])('startup topic maintenance closes expiry before admission, first input cancels pending startup: %s', async abandon => {
+  const pending = deferred<Awaited<ReturnType<NonNullable<MemoryRepositories['interestThread']>['read']>>>();
+  const topic = { read: vi.fn(() => pending.promise), mutate: vi.fn<NonNullable<MemoryRepositories['interestThread']>['mutate']>(async command => ({ ok: true, value: { commandId: command.commandId, ref: { threadId: 't', revision: 2 }, outcome: 'closed' } })), claim: vi.fn(), captureReply: vi.fn() };
+  const f = fixture(); Object.assign(f.storage, { interestThread: topic }); const initialization = f.lifecycle.initialize();
+  for (let i = 0; i < 30; i++) await Promise.resolve();
+  expect(topic.read).toHaveBeenCalledTimes(1); expect(f.start).not.toHaveBeenCalled();
+  if (abandon) expect(f.lifecycle.admitInput()).toBe(true);
+  pending.resolve({ ok: true, value: { thread: { ref: { threadId: 't', revision: 1 }, state: 'unanswered', text: 'quote', source: { userMessageId: 'u', assistantMessageId: 'a' }, statedAt: '2026-09-01T00:00:00.000Z', confirmedAt: '2026-09-01T00:00:00.000Z', eligibleAt: '2026-09-02T00:00:00.000Z', expiresAt: '2026-09-08T00:00:00.000Z', attempt: null }, sourceValid: true } });
+  await initialization;
+  if (abandon) { expect(topic.mutate).not.toHaveBeenCalled(); expect(f.lifecycle.getStatus().mode).toBe('volatile'); } else { expect(topic.mutate).toHaveBeenCalledWith(expect.objectContaining({ kind: 'close', reason: 'expired' }), { generation: 1 }); expect(f.lifecycle.currentGeneration()).toBe(1); }
+  expect(f.start).toHaveBeenCalledTimes(1); await f.lifecycle.shutdown();
+});

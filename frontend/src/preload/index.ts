@@ -1,3 +1,4 @@
+import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
 import { parseObservationCommand, parseObservationSettings } from '../shared/observation-ipc-validation';
 import { parseSummaryCommand, parseSummaryConfirm, parseSummaryDeleteResult, parseSummaryPreviewResult, parseSummaryTextResult } from '../shared/summary-ipc-validation';
 import { parseMemoryCardCommand, parseMemoryCardListCommand, parseMemoryCardListResult, parseMemoryCardResult } from '../shared/memory-card-validation';
@@ -50,6 +51,10 @@ ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
   observationCommand: async command => parseObservationSettings(await ipcRenderer.invoke('wisp:observation-command', parseObservationCommand(command))),
+  interestThread: {
+    read: async command => parseInterestThreadReadResult(await ipcRenderer.invoke('wisp:read-interest-thread', parseInterestThreadRead(command))),
+    mutate: async command => parseInterestThreadMutationResult(await ipcRenderer.invoke('wisp:mutate-interest-thread', parseInterestThreadCommand(command))),
+  },
   summary: {
     preview: async command => parseSummaryPreviewResult(await ipcRenderer.invoke('wisp:summary-preview', parseSummaryCommand(command))),
     confirm: async command => parseSummaryTextResult(await ipcRenderer.invoke('wisp:summary-confirm', parseSummaryConfirm(command))),

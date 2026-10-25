@@ -7,6 +7,8 @@ export interface ChatInputProps {
   canSubmit: boolean;
   errorMessage?: string | null;
   submissionMessage?: string;
+  replyTopic?: string;
+  cancelTopic?: () => void;
   onClose: () => void;
   placeholder?: string;
 }
@@ -17,7 +19,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onClose,
   canSubmit,
   errorMessage,
-  submissionMessage,
+  submissionMessage, replyTopic, cancelTopic,
   placeholder = 'Напишите Wisp...',
 }) => {
   const [text, setText] = useState<string>('');
@@ -63,6 +65,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
+      {replyTopic && <div role="status">Ответ по теме: {replyTopic}<button type="button" onClick={cancelTopic}>Отменить выбор темы</button></div>}
       <form onSubmit={handleSubmit} className="chat-input-form">
         <input
           ref={inputRef}

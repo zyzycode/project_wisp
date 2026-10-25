@@ -24,7 +24,7 @@ interface Options {
   readonly hydrate: (messages: readonly AIProviderContextMessage[]) => void;
   readonly start: () => void;
   readonly pause: () => void;
-  readonly invalidateMemory?: () => void;
+  readonly invalidateMemory?: (admissionToken?: object) => void;
   readonly resetCommitted: () => void;
   readonly resume: () => void;
 }
@@ -71,6 +71,8 @@ export class MemoryLifecycle {
     }
     const context = this.options.localMock ? await this.history.hydrate() : [];
     if (this.phase !== 'initializing') return;
+    await this.maintainStartupTopic();
+    if (this.phase !== 'initializing') return;
     // Apply once, after every asynchronous startup dependency and before admission/ticks.
     candidate.lastUpdated = this.options.now();
     this.options.character.replaceRestoredState(candidate);
@@ -79,8 +81,25 @@ export class MemoryLifecycle {
       if (restore === 'restored') this.savedSignature = JSON.stringify(projectCharacterMemory(candidate, this.options.timestamp()).state);
       if (this.options.localMock) this.options.hydrate(context);
     }
+    if (this.phase !== 'initializing') return;
     this.start();
   }
+  private async maintainStartupTopic(): Promise<void> {
+    const repository = this.options.storage.interestThread;
+    if (!repository || !this.context()) return;
+    const generation = this.generation;
+    const result = await this.safe(() => repository.read({ generation }));
+    if (this.phase !== 'initializing' || this.generation !== generation || !this.storageReady) return;
+    if (!result.ok) { this.failure(result.code); return; }
+    const thread = result.value.thread;
+    if (!thread || thread.state !== 'unanswered' || (result.value.sourceValid && Date.parse(this.options.timestamp()) < Date.parse(thread.expiresAt))) return;
+    this.generation++; this.options.summary?.invalidate(); this.options.invalidateMemory?.();
+    const next = this.generation;
+    const closed = await this.safe(() => repository.mutate({ kind: 'close', commandId: this.options.createId(), expected: thread.ref, reason: result.value.sourceValid ? 'expired' : 'source_changed' }, { generation: next }));
+    if (this.phase !== 'initializing' || this.generation !== next || !this.storageReady) return;
+    if (!closed.ok) this.failure(closed.code);
+  }
+
   /** Returns synchronously: first human input abandons restore, never waits on storage. */
   admitInput(): boolean {
     if (this.phase === 'initializing') {
@@ -153,6 +172,23 @@ export class MemoryLifecycle {
     if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
     this.phase = 'running'; this.scheduleCheckpoint();
     return result;
+  }
+  async readInterestThread() {
+    const c = this.context(), repository = this.options.storage.interestThread;
+    if (!c || !repository || this.phase !== 'running') return { ok: false as const, code: 'unavailable' as const };
+    const result = await this.safe(() => repository.read(c));
+    return this.context()?.generation === c.generation ? result : { ok: false as const, code: 'stale' as const };
+  }
+  async mutateInterestThread(command: import('../ports/interest-thread.interface').InterestThreadMutation, admissionToken?: object) {
+    const repository = this.options.storage.interestThread;
+    if (!repository || !this.context() || this.phase !== 'running') return { ok: false as const, code: 'unavailable' as const };
+    this.phase = 'mutating'; this.generation++; this.stopTimer();
+    const generation = this.generation;
+    this.options.summary?.invalidate(); this.options.invalidateMemory?.(admissionToken);
+    const result = await this.safe(() => repository.mutate(command, { generation }));
+    if (this.phase !== 'mutating' || this.generation !== generation) return { ok: false as const, code: 'stale' as const };
+    if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
+    this.phase = 'running'; this.scheduleCheckpoint(); return result;
   }
   async reset(): Promise<MemoryResult<void>> {
     if (this.phase !== 'running' || !this.storageReady) return { ok: false, code: 'unavailable' };

@@ -36,3 +36,13 @@ it('validates card sender, arguments, inputs and results and removes optional ha
   expect(await listing({ sender: f.sender }, { streamId: 'stream', cursor: null, limit: 20 })).toMatchObject({ ok: true, items: [] });
   unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:mutate-memory-card'); expect(f.remove).toHaveBeenCalledWith('wisp:list-memory-cards');
 });
+it('checks sender, exact topic input and parsed output before exposing local commands', async () => {
+  const f = fixture(); const read = vi.fn(async () => ({ ok: true as const, generation: 0, value: null }));
+  const mutate = vi.fn(async () => ({ ok: false as const, generation: 0, code: 'unavailable' as const }));
+  const unregister = registerMemoryIpc({ register: (channel, handler) => f.handlers.set(channel, handler), remove: f.remove, getSender: () => f.sender, getStatus: () => ({ mode: 'persistent', characterRestore: 'restored' }), clear: new ClearMemoryUseCase(f.reset), interestThread: { read, mutate } });
+  const reading = f.handlers.get('wisp:read-interest-thread')!, mutating = f.handlers.get('wisp:mutate-interest-thread')!;
+  await expect(reading({ sender: {} }, { streamId: 'stream' })).rejects.toThrow('Untrusted');
+  await expect(mutating({ sender: f.sender }, { kind: 'confirm', confirmed: false })).rejects.toThrow(); expect(mutate).not.toHaveBeenCalled();
+  expect(await reading({ sender: f.sender }, { streamId: 'stream' })).toEqual({ ok: true, generation: 0, value: null });
+  unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:read-interest-thread'); expect(f.remove).toHaveBeenCalledWith('wisp:mutate-interest-thread');
+});

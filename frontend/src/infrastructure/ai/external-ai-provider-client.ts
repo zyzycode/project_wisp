@@ -62,6 +62,7 @@ async function readBoundedJson(response: Response, signal: AbortSignal): Promise
 }
 
 export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, ISummaryGenerator, IObservationProvider {
+  public readonly supportsDialogueTopic = true as const;
   private chatAbort: { id: string; controller: AbortController } | undefined;
   private eventAbort: { id: string; controller: AbortController } | undefined;
   private readonly urls: Readonly<Record<'chat' | 'touch' | 'events' | 'summary' | 'observation', URL>>;

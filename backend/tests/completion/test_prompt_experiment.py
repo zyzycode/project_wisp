@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 import pytest
 from wisp_backend.api.endpoints import ENDPOINTS
-from wisp_backend.prompt_inspection.report import digest, encoded, inspect_scene
+from wisp_backend.prompt_inspection.report import digest, encoded, inspect_scene, source_digests
 from wisp_backend.prompt_inspection.scenes import SCENE_IDS, SCENES_PATH
 
 FIXTURES = Path(__file__).parents[1] / "fixtures/prompt_inspection"
@@ -127,7 +127,15 @@ def test_frozen_cases_use_real_inspector_and_explicit_settings_without_http(
     async def inspect_all() -> None:
         for case, expected in zip(inputs["cases"], expected_reports, strict=True):
             report = await inspect_scene(**case, **inputs["inspection_options"])
-            assert report == expected
+            assert {key: value for key, value in report.items() if key != "source_digests"} == {
+                key: value for key, value in expected.items() if key != "source_digests"
+            }
+            current_hashes = source_digests()
+            source_root = Path(__file__).parents[2] / "wisp_backend"
+            assert current_hashes == {
+                path: hashlib.sha256((source_root / path).read_bytes()).hexdigest() for path in current_hashes
+            }
+            assert report["source_digests"] == current_hashes
             assert {key: report["settings"][key] for key in inputs["inspection_options"]} == inputs[
                 "inspection_options"
             ]

@@ -1,0 +1,1364 @@
+{
+  "requests": [
+    {
+      "name": "null",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": null
+      }
+    },
+    {
+      "name": "array",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": []
+      }
+    },
+    {
+      "name": "unknown-mode",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "reminder",
+          "text": "\u0421\u0435\u0433\u043e\u0434\u043d\u044f \u0441\u043e\u0431\u0435\u0441\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435.",
+          "statedAt": "2026-10-17T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "blank",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "follow_up",
+          "text": " ",
+          "statedAt": "2026-10-17T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "untrimmed",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "follow_up",
+          "text": " quote",
+          "statedAt": "2026-10-17T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "overflow",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "follow_up",
+          "text": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00a",
+          "statedAt": "2026-10-17T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "control",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "follow_up",
+          "text": "a\r",
+          "statedAt": "2026-10-17T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "surrogate",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "follow_up",
+          "text": "\ud800",
+          "statedAt": "2026-10-17T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "bad-date",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "follow_up",
+          "text": "\u0421\u0435\u0433\u043e\u0434\u043d\u044f \u0441\u043e\u0431\u0435\u0441\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435.",
+          "statedAt": "2026-02-30T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "non-utc",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "follow_up",
+          "text": "\u0421\u0435\u0433\u043e\u0434\u043d\u044f \u0441\u043e\u0431\u0435\u0441\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435.",
+          "statedAt": "2026-10-17T00:00:00+00:00"
+        }
+      }
+    },
+    {
+      "name": "local-id",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "follow_up",
+          "text": "\u0421\u0435\u0433\u043e\u0434\u043d\u044f \u0441\u043e\u0431\u0435\u0441\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435.",
+          "statedAt": "2026-10-17T00:00:00.000Z",
+          "id": "local"
+        }
+      }
+    },
+    {
+      "name": "missing-text",
+      "endpoint": "/v1/chat",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "shyDreamGirl",
+            "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "\u0410\u043d\u044f"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "\u041f\u043e\u0447\u0435\u043c\u0443 \u0442\u044b \u0442\u0430\u043a \u043e\u0442\u0440\u0435\u0430\u0433\u0438\u0440\u043e\u0432\u0430\u043b\u0430?"
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "\u0425\u043e\u0447\u0435\u0448\u044c \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u043e \u043c\u0443\u0437\u044b\u043a\u0435?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
+        },
+        "card": {
+          "id": "shyDreamGirl",
+          "revision": 1
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "\u041c\u043d\u0435 \u043f\u0440\u0438\u044f\u0442\u043d\u043e \u044d\u0442\u043e \u043b\u0451\u0433\u043a\u043e\u0435 \u043a\u0430\u0441\u0430\u043d\u0438\u0435.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "dialogueTopic": {
+          "mode": "reply",
+          "statedAt": "2026-10-17T00:00:00.000Z"
+        }
+      }
+    }
+  ]
+}

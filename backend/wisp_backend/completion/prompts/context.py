@@ -58,6 +58,7 @@ class InteractionChatContext(CharacterPromptContext):
     previous_initiative: Snapshot | None = None
     summary: str | None = None
     previous_touch: Snapshot | None = None
+    dialogue_topic: Snapshot | None = None
     lore: LoreCatalogue | None = None
 
     def __post_init__(self) -> None:

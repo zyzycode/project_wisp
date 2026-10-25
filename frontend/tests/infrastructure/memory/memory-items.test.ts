@@ -94,13 +94,13 @@ describe('explicit persisted memory cards', () => {
     expect(run(f.store, 'listMemoryItems', { cursor: null, limit: 21 }, 21)).toEqual({ ok: false, code: 'invalid_data' });
     expect(run(f.store, 'clear', null, 22).ok).toBe(true);
     for (const table of ['memory_items', 'memory_item_sources', 'memory_item_terms', 'memory_suppressed_pairs', 'memory_mutation_receipts', 'messages']) expect(raw(f.filename, `SELECT * FROM ${table}`)).toEqual([]);
-    expect(raw(f.filename, 'SELECT version FROM schema_migrations')).toEqual([{ version: 1 }, { version: 2 }]);
+    expect(raw(f.filename, 'SELECT version FROM schema_migrations')).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
   });
 });
 
 function downgradeFixture(filename: string): void {
   const db = new Database(filename); db.pragma('foreign_keys = OFF');
-  db.exec('DROP TABLE memory_item_terms; DROP TABLE memory_item_sources; DROP TABLE memory_items; DROP TABLE memory_suppressed_pairs; DROP TABLE memory_mutation_receipts; ALTER TABLE messages DROP COLUMN memory_confirmable; DELETE FROM schema_migrations WHERE version=2; PRAGMA user_version=1;'); db.close();
+  db.exec('DROP TABLE interest_thread; DROP TABLE interest_thread_receipts; DELETE FROM schema_migrations WHERE version=3; DROP TABLE memory_item_terms; DROP TABLE memory_item_sources; DROP TABLE memory_items; DROP TABLE memory_suppressed_pairs; DROP TABLE memory_mutation_receipts; ALTER TABLE messages DROP COLUMN memory_confirmable; DELETE FROM schema_migrations WHERE version=2; PRAGMA user_version=1;'); db.close();
 }
 it('migrates schema1 without modifying legacy transcript or inferring confirmation eligibility', () => {
   const f = fixture(); run(f.store, 'appendTurn', turn()); f.store.close(); downgradeFixture(f.filename);

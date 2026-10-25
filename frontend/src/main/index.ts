@@ -1,3 +1,6 @@
+import { InterestThreadCommands } from '../application/services/interest-thread-commands';
+import { InterestThreadDialogue } from '../application/services/interest-thread';
+import { DialogueAdmission } from '../application/services/dialogue-admission';
 import { TouchReactionContext } from '../application/services/touch-reaction-context';
 import type { TouchInteractionReceipt } from '../application/ports/interaction-appraisal';
 import { ObservationRuntime } from '../application/services/observation-runtime';
@@ -108,6 +111,12 @@ let summaryGenerating = false;
 let summaryStream: string | null = null;
 const localMock = !process.env.WISP_BACKEND_URL?.trim();
 const memoryCards = new MemoryCards(() => memoryRuntime, () => new Date().toISOString());
+const topicCommandAdmission = new DialogueAdmission(() => performance.now(), createMainAutonomyScheduler());
+const interestThreadCommands = new InterestThreadCommands({ runtime: () => memoryRuntime,
+  sourceText: command => dialogueRuntime?.confirmableSource(command.source, command.conversationId) ?? null,
+  timestamp: () => new Date().toISOString(), createId: randomUUID,
+  bounded: work => topicCommandAdmission.run(performance.now() + 200, () => work),
+});
 const clearMemory = new ClearMemoryUseCase(() => memoryRuntime?.reset() ?? Promise.resolve({ ok: false, code: 'unavailable' }));
 const platformAdapter = createPlatformAdapter();
 const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
@@ -137,7 +146,7 @@ const appLogger = new AppLogger({
 });
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryCards.replaceStream(id); return id; },
+  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); return id; },
   prepareSnapshot: () => {
     observationRuntime?.tick();
     aiEventRuntime?.tick();
@@ -261,7 +270,7 @@ function clearBrainStream(): void {
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
   summaryStream = null;
-  clearMemory.replaceStream(null); memoryCards.replaceStream(null);
+  clearMemory.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null);
   dialogueRuntime?.detachStream();
 }
 
@@ -362,7 +371,8 @@ function initializeAutonomyComposition(): void {
     dialogueRuntime = new DialogueRuntime({ observation: observationRuntime,
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
-      memory: { generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
+      memory: { ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
+          now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, notice: publishBrainState, isTurnCurrent: requestId => dialogueRuntime?.isTopicRequestCurrent(requestId) ?? false, onFailure: code => memoryRuntime?.failure(code), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) } : {}), generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
         completed: turn => { void memoryRuntime?.history.completed(turn); }, ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
       getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
@@ -579,7 +589,7 @@ function registerIpcHandlers(): void {
   });
   unregisterSummary = registerSummaryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
-  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, cards: memoryCards });
+  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, cards: memoryCards, interestThread: interestThreadCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
@@ -796,7 +806,7 @@ if (!gotTheLock) {
       scheduler: createMainAutonomyScheduler(), now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
-      pause: pauseCharacterRuntime, invalidateMemory: () => { dialogueRuntime?.clearMemoryContext(); aiEventRuntime?.invalidate(); },
+      pause: pauseCharacterRuntime, invalidateMemory: token => { dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
       resetCommitted: () => { dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });

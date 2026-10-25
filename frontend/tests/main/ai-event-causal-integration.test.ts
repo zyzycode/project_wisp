@@ -129,8 +129,13 @@ async function backendGameFixture(holdEvent = false) {
       expect(f.outcomes).toMatchObject([{ family: 'cursor_interest', outcome: 'completed', playCompleted: true }]);
       expect(gameWrite).toBeDefined(); await gameWrite; await flush();
     };
-    const send = (sequence: number, text = 'да') => dialogue!.receive({ type: 'send', text, sequence, streamId: 'game-stream', conversationId: dialogue!.getPresentation().conversationId });
-    const finishChat = async () => { await flush(); const result = chatCalls.mock.results.at(-1); expect(result?.type).toBe('return'); await result?.value; await flush(); await history!.whenSettled(); };
+    let acceptedChats = 0;
+    const send = (sequence: number, text = 'да') => {
+      const receipt = dialogue!.receive({ type: 'send', text, sequence, streamId: 'game-stream', conversationId: dialogue!.getPresentation().conversationId });
+      if (receipt.status === 'accepted') acceptedChats++;
+      return receipt;
+    };
+    const finishChat = async () => { await vi.waitFor(() => expect(chatCalls).toHaveBeenCalledTimes(acceptedChats), { timeout: 1000, interval: 1 }); const result = chatCalls.mock.results.at(-1); expect(result?.type).toBe('return'); await result?.value; await flush(); await history!.whenSettled(); };
     return { ...f, bridge, repos, events, dialogue, history, eventCalls, chatCalls, publication, failure, game, step, send, finishChat, eventArrived, release, close, timestamp: () => toTimestamp(f.now()) };
   } catch (error) { await close(); throw error; }
 }

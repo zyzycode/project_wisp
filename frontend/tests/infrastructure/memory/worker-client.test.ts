@@ -39,6 +39,30 @@ describe('memory worker transport', () => {
     expect((await Promise.all(requests)).every(r => r.ok)).toBe(true);
     expect((await reset).ok).toBe(true); await closed;
   });
+  it('reserves topic mutations under pressure and validates repository replies', async () => {
+    const { worker, client } = fixture();
+    const requests = Array.from({ length: 101 }, () => client.request('removeFact', 'key', 0));
+    const repos = createMemoryAdapters(client);
+    const command = { kind: 'delete' as const, commandId: 'delete', expected: { threadId: 'topic', revision: 1 } };
+    const mutation = repos.interestThread.mutate(command, { generation: 1 });
+    expect(await repos.interestThread.mutate(command, { generation: 1 })).toEqual({ ok: false, code: 'busy' });
+    for (let i = 0; i < 101; i++) worker.ack();
+    expect(worker.sent.at(-1)?.operation).toBe('mutateInterestThread');
+    worker.ack({ commandId: 'delete', ref: { threadId: 'topic', revision: 2 }, outcome: 'deleted' });
+    expect(await mutation).toMatchObject({ ok: true, value: { outcome: 'deleted' } });
+    await Promise.all(requests);
+    const read = repos.interestThread.read({ generation: 1 });
+    worker.ack({ thread: null, sourceValid: 'invalid' });
+    expect(await read).toEqual({ ok: false, code: 'unavailable' });
+    await client.close(1);
+  });
+  it('drops a late claim acknowledgment after disposal without allowing a new request', async () => {
+    const { worker, client } = fixture(); const repos = createMemoryAdapters(client);
+    const pending = repos.interestThread.claim({ expected: { threadId: 'topic', revision: 1 }, requestId: 'request', userMessageId: 'user', now: '2026-09-18T00:00:00.000Z' }, { generation: 0 });
+    await client.abort(); worker.ack(null);
+    expect(await pending).toEqual({ ok: false, code: 'unavailable' });
+    expect(await repos.interestThread.read({ generation: 0 })).toEqual({ ok: false, code: 'unavailable' });
+  });
   it('coalesces pending checkpoints and never reports replaced payload as committed', async () => {
     const { worker, client } = fixture();
     const first = client.request('removeFact', 'key', 0);
@@ -99,6 +123,7 @@ describe('memory worker transport', () => {
     try {
       expect(await client.ready).toEqual({ ok: true, value: undefined });
       const repos = createMemoryAdapters(client), c = { generation: 0 };
+      expect(await repos.interestThread.read(c)).toEqual({ ok: true, value: { thread: null, sourceValid: false } });
       expect(await repos.history.getRecent(20, c)).toEqual({ ok: true, value: [] });
       expect(await repos.facts.list(20, c)).toEqual({ ok: true, value: [] });
       expect(await repos.character.load(c)).toEqual({ ok: true, value: null });

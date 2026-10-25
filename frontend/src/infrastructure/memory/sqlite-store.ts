@@ -1,3 +1,4 @@
+import { InterestThreadStore } from './interest-thread-store';
 import { readSummarySources, summarySources } from './summary-source-reader';
 import { MemoryItemStore } from './item-store';
 import Database from 'better-sqlite3';
@@ -33,7 +34,7 @@ export class SqliteMemoryStore {
     try {
       const c = command(input);
       if (c.operation === 'close') { this.db.close(); this.unavailable = true; return { ok: true, value: undefined }; }
-      if ((c.operation === 'clear' || c.operation === 'mutateMemoryItem')) {
+      if ((c.operation === 'clear' || c.operation === 'mutateMemoryItem' || c.operation === 'mutateInterestThread')) {
         if (c.generation !== this.generation + 1) return { ok: false, code: 'stale' };
         // The barrier survives rollback: old callbacks never regain write access.
         this.generation = c.generation;
@@ -49,6 +50,10 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'readInterestThread': return new InterestThreadStore(this.db).read();
+      case 'mutateInterestThread': return new InterestThreadStore(this.db).mutate(c.payload);
+      case 'claimInterestThread': return new InterestThreadStore(this.db).capture(c.payload, c.generation, true);
+      case 'captureInterestThreadReply': return new InterestThreadStore(this.db).capture(c.payload, c.generation, false);
       case 'summaryRecent': return readSummarySources(this.db, null);
       case 'summaryExact': return readSummarySources(this.db, summarySources(c.payload));
       case 'mutateMemoryItem': return new MemoryItemStore(this.db).mutate(c.payload);
@@ -79,7 +84,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 1, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { this.db.exec('DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { this.db.exec('DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }
@@ -90,6 +95,8 @@ export class SqliteMemoryStore {
   private appendTurn(payload: unknown): void {
     const t = v.turn(payload);
     this.db.transaction(() => {
+      const topics = new InterestThreadStore(this.db);
+      if (topics.checkTurn(t) === 'replay') return;
       const existing = this.db.prepare(`SELECT ${sessionColumns} FROM conversation_sessions WHERE id = ? OR app_run_id = ?`).all(t.session.id, t.session.appRunId);
       const messages = this.db.prepare(`SELECT ${messageColumns} FROM messages WHERE id IN (?, ?) ORDER BY sequence`).all(t.user.id, t.assistant.id).map(v.message);
       if (existing.length > 1) throw new v.MemoryDataError('conflict');
@@ -110,6 +117,7 @@ export class SqliteMemoryStore {
       }
       const insert = this.db.prepare('INSERT INTO messages (id, conversation_session_id, role, content, created_at, memory_confirmable) VALUES (?, ?, ?, ?, ?, ?)');
       for (const m of [t.user, t.assistant]) insert.run(m.id, m.conversationSessionId, m.role, m.content, m.createdAt, t.memoryConfirmable === true ? 1 : 0);
+      topics.commitTurn(t);
     }).immediate();
   }
   private upsertFact(payload: unknown): unknown {

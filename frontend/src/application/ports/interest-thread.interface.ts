@@ -76,7 +76,7 @@ export interface IInterestThreadDialogue {
   /** Before an active Turn exists: bounded maintenance and scoped local refusal command. */
   admit(input: {
     readonly text: string; readonly replyTo?: InterestThreadRef; readonly lastOffered?: InterestThreadRef;
-    readonly deadlineMs: number;
+    readonly deadlineMs: number; readonly admissionToken?: object;
   }, context: MemoryOperationContext): Promise<MemoryResult<{
     readonly kind: 'continue' | 'closed'; readonly generation: number;
   }>>;

@@ -1,10 +1,13 @@
 import asyncio
 import json
+from collections.abc import Callable
+from types import SimpleNamespace
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 from tests.helpers import CONTRACT_FIXTURES, touch_body
+from wisp_backend.completion import service as service_module
 
 
 def test_shared_touch_fixture(client_factory, chat_completion):
@@ -87,23 +90,32 @@ def test_touch_boundary_rejects_oversized_body(client_factory):
         assert response.status_code == 413
 
 
-def test_touch_deadline_cancels_provider(app_factory, body):
+def test_touch_deadline_cancels_provider(app_factory: Callable, body: dict, monkeypatch: pytest.MonkeyPatch) -> None:
     cancelled = []
+    entered = asyncio.Event()
 
     class SlowProvider:
-        async def complete(self, request, timeout):
+        async def complete(self, request: object, timeout: float) -> None:
+            entered.set()
             try:
                 await asyncio.sleep(10)
             finally:
                 cancelled.append(True)
 
+    async def expire_provider_wait(tasks: set, *, timeout: float | None = None, **kwargs: object) -> tuple[set, set]:
+        if any(task.get_coro().__qualname__ == SlowProvider.complete.__qualname__ for task in tasks):
+            # Expire generation only after it starts; durable admission has its own deadline tests.
+            await asyncio.wait_for(entered.wait(), 2)
+            assert timeout is not None and 0 < timeout <= 10
+            return set(), set(tasks)
+        return await asyncio.wait(tasks, timeout=timeout, **kwargs)
+
+    monkeypatch.setattr(service_module, "asyncio", SimpleNamespace(**{**vars(asyncio), "wait": expire_provider_wait}))
     app = app_factory(lambda _: pytest.fail("No HTTP call expected"))
     with TestClient(app) as client:
         service = app.state.completion_service
         service.provider = SlowProvider()
-        # Leave room for durable admission; the provider itself remains blocked.
-        service.deadline = 0.1
         response = client.post("/v1/touch", json=touch_body(body))
         assert response.status_code == 504
     # Lifespan shutdown drains independently scheduled cancellation/settlement.
-    assert cancelled == [True]
+    assert entered.is_set() and cancelled == [True]

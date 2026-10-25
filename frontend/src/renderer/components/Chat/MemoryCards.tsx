@@ -1,9 +1,11 @@
+import { InterestThreadControls } from './InterestThreadControls';
 import { SummaryControls } from './SummaryControls';
 import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import type { BrainStateDTO, MemoryCardContentDTO, MemoryCardDTO, MemoryCardSourceDTO, WispApiBridge } from '../../../shared/ipc-contracts';
 import { getMemoryCardClient } from '../../memory-card-client';
 
-interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary'>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
+interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary' | 'interestThread'> & Partial<Pick<WispApiBridge, 'postDialogueCommand'>>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
+function supportsDialogue(bridge: Props['bridge']): bridge is Props['bridge'] & Pick<WispApiBridge, 'postDialogueCommand'> { return typeof bridge.postDialogueCommand === 'function'; }
 interface Draft extends MemoryCardContentDTO { readonly source: MemoryCardSourceDTO; readonly item?: MemoryCardDTO }
 export function MemoryCards({ bridge, snapshot }: Props) {
   const panelId = useId();
@@ -57,6 +59,7 @@ export function MemoryCards({ bridge, snapshot }: Props) {
       <button type="button" disabled={locked} onClick={() => { void client.list(); }}>Обновить список</button>
       {state.nextCursor !== null && <button type="button" disabled={locked} onClick={() => { void client.list(state.nextCursor); }}>Следующие 20</button>}
     </div>}
+    {bridge.interestThread && <InterestThreadControls bridge={bridge.interestThread} {...(supportsDialogue(bridge) ? { dialogueBridge: bridge } : {})} snapshot={snapshot} visible={open} />}
     {bridge.summary && <SummaryControls bridge={bridge.summary} snapshot={snapshot} visible={open} />}
   </section>;
 }

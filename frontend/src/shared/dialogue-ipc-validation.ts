@@ -1,3 +1,4 @@
+import { parseInterestThreadRef } from './interest-thread-validation';
 import type { DialogueCommandDTO, DialogueCommandReceiptDTO, DialoguePresentationDTO, DialogueFallbackReasonDTO, MemoryCardSourceDTO } from './ipc-contracts';
 
 export function exactRecord(value: unknown, keys: readonly string[], optional: readonly string[] = []): Record<string, unknown> {
@@ -23,12 +24,12 @@ export function enumValue<const T extends string>(value: unknown, values: readon
   if (typeof value !== 'string' || !values.includes(value as T)) throw new TypeError('Invalid dialogue enum'); return value as T;
 }
 export function parseDialogueCommand(value: unknown): DialogueCommandDTO {
-  const base = exactRecord(value, ['type', 'streamId', 'conversationId', 'sequence'], ['text']);
+  const base = exactRecord(value, ['type', 'streamId', 'conversationId', 'sequence'], ['text', 'replyToInterestThread']);
   const type = enumValue(base.type, ['send', 'reset']);
-  exactRecord(value, ['type', 'streamId', 'conversationId', 'sequence', ...(type === 'send' ? ['text'] : [])]);
+  exactRecord(value, ['type', 'streamId', 'conversationId', 'sequence', ...(type === 'send' ? ['text'] : [])], type === 'send' ? ['replyToInterestThread'] : []);
   if (!Number.isSafeInteger(base.sequence) || typeof base.sequence !== 'number' || base.sequence <= 0) throw new TypeError('Invalid sequence');
   const meta = { streamId: id(base.streamId), conversationId: id(base.conversationId), sequence: base.sequence };
-  return type === 'send' ? { ...meta, type, text: plainText(base.text, 240, true) } : { ...meta, type };
+  return type === 'send' ? { ...meta, type, text: plainText(base.text, 240, true), ...(Object.hasOwn(base, 'replyToInterestThread') ? { replyToInterestThread: parseInterestThreadRef(base.replyToInterestThread) } : {}) } : { ...meta, type };
 }
 export function parseDialogueReceipt(value: unknown): DialogueCommandReceiptDTO {
   const r = exactRecord(value, ['status'], ['conversationId', 'reason']);
@@ -42,7 +43,7 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
   if (r.canSubmit && Object.hasOwn(r, 'submissionMessage')) throw new TypeError('Available dialogue cannot have admission notice');
   const meta = { conversationId: id(r.conversationId), canSubmit: r.canSubmit,
     ...(Object.hasOwn(r, 'submissionMessage') ? { submissionMessage: plainText(r.submissionMessage, 240, true) } : {}) };
-  const t = exactRecord(r.turn, ['phase'], ['requestId', 'replyText', 'outcome', 'message', 'memorySource']);
+  const t = exactRecord(r.turn, ['phase'], ['requestId', 'replyText', 'outcome', 'message', 'memorySource', 'interestThread']);
   switch (t.phase) {
     case 'idle': exactRecord(t, ['phase']); return { ...meta, turn: { phase: 'idle' } };
     case 'thinking': exactRecord(t, ['phase', 'requestId']);
@@ -51,7 +52,7 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
     case 'error': exactRecord(t, ['phase', 'requestId', 'message']);
       return { ...meta, turn: { phase: 'error', requestId: id(t.requestId), message: plainText(t.message, 2000) } };
     case 'completed': {
-      exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome'], ['memorySource']);
+      exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome'], ['memorySource', 'interestThread']);
       const o = exactRecord(t.outcome, ['kind'], ['reason']);
       const kind = enumValue(o.kind, ['success', 'fallback']);
       exactRecord(o, kind === 'success' ? ['kind'] : ['kind', 'reason']);
@@ -63,7 +64,7 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
         memorySource = { userMessageId: id(source.userMessageId), assistantMessageId: id(source.assistantMessageId) };
         if (memorySource.userMessageId === memorySource.assistantMessageId) throw new TypeError('Invalid memory source');
       }
-      return { ...meta, turn: { phase: 'completed', ...(memorySource ? { memorySource } : {}), requestId: id(t.requestId), replyText: plainText(t.replyText, 2000), outcome } };
+      return { ...meta, turn: { phase: 'completed', ...(Object.hasOwn(t, 'interestThread') ? { interestThread: parseInterestThreadRef(t.interestThread) } : {}), ...(memorySource ? { memorySource } : {}), requestId: id(t.requestId), replyText: plainText(t.replyText, 2000), outcome } };
     }
     default: throw new TypeError('Invalid turn');
   }

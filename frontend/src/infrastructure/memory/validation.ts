@@ -1,3 +1,4 @@
+import { topicUse } from './interest-thread-validation';
 import type { CompletedChatTurn, ConversationSession, GameEpisode, JsonValue, PersistedCharacterStateSnapshot, PersistedChatMessage, UserFact } from '../../application/ports/memory-repository.interface';
 import { plainText } from '../../shared/dialogue-ipc-validation';
 
@@ -41,11 +42,11 @@ export function message(value: unknown): PersistedChatMessage {
 }
 export function turn(value: unknown): CompletedChatTurn {
   const raw = record(value);
-  const v = record(value, Object.hasOwn(raw, 'memoryConfirmable') ? ['session', 'user', 'assistant', 'memoryConfirmable'] : ['session', 'user', 'assistant']);
+  const v = record(value, ['session', 'user', 'assistant', ...(Object.hasOwn(raw, 'memoryConfirmable') ? ['memoryConfirmable'] : []), ...(Object.hasOwn(raw, 'interestThread') ? ['interestThread'] : [])]);
   if (v.memoryConfirmable !== undefined && typeof v.memoryConfirmable !== 'boolean') throw new MemoryDataError('invalid_data');
   const s = session(v.session), u = message(v.user), a = message(v.assistant);
   if (u.role !== 'user' || a.role !== 'assistant' || u.id === a.id || u.conversationSessionId !== s.id || a.conversationSessionId !== s.id || s.endedAt !== null) throw new MemoryDataError('invalid_data');
-  return { ...(v.memoryConfirmable === undefined ? {} : { memoryConfirmable: v.memoryConfirmable }), session: s, user: { ...u, role: 'user' }, assistant: { ...a, role: 'assistant' } };
+  return { ...(Object.hasOwn(raw, 'interestThread') ? { interestThread: topicUse(v.interestThread) } : {}), ...(v.memoryConfirmable === undefined ? {} : { memoryConfirmable: v.memoryConfirmable }), session: s, user: { ...u, role: 'user' }, assistant: { ...a, role: 'assistant' } };
 }
 export function fact(value: unknown): UserFact {
   const v = record(value, ['id', 'factKey', 'factValue', 'confidence', 'sourceMessageId', 'createdAt', 'updatedAt']);
