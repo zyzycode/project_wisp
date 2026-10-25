@@ -168,6 +168,38 @@ Windows — первая платформа приёмки. Источник г�
 
 Perception сообщает `isValidSupport`, Motion решает support_lost/physics; environment не создаёт intent.
 
+### 7.1. Системный idle и вероятное отсутствие (AFK-A01)
+
+[SystemIdlePort](../../src/application/ports/system-idle.port.ts) — optional capability `createSystemIdleSource()` [IPlatformAdapter](../../src/application/ports/platform-adapter.interface.ts), новый instance на lifecycle Main composition. Infrastructure читает только длительность без системного ввода; Main владеет sampling/lifecycle, существующий pure behavior module — классификацией по явным inputs. Это расширение Perception, без отдельного Domain engine, таймера или IPC. Pet input/cursor coordinates не заменяют системный idle: печать вне Wisp учитывается без чтения клавиш. Нет hooks/keylogger, active-app/title, clipboard, pixels, media detection, permission prompts или новых dependencies.
+
+После `app.whenReady()` platform adapter использует [Electron powerMonitor](https://www.electronjs.org/docs/latest/api/power-monitor): `getSystemIdleTime()` возвращает целые секунды; adapter ровно один раз переводит их в ms. `getSystemIdleState(60)` используется только для `locked/unknown`, не для нашей семантики active/away. Exception/invalid/unknown → `unavailable/read_failed`; locked или неактивная session → `inactive_session`. Available требует positive safe integer ms, кратный 1000; отсутствующая capability → unknown.
+
+**Ноль неоднозначен:** [Chromium idle state](https://github.com/chromium/chromium/blob/main/ui/base/idle/idle.cc) вычисляет active из того же счётчика; это не независимый support probe. Нулевой idle → `unavailable/unconfirmed`, без объявления ухода или return. Последний положительный sample допускается лишь как private continuity baseline до TTL; ноль не освежает его и не сохраняет наружу прежний away. Непрерывный ввод может привести к пропуску приветствия; гарантии определения физического человека нет.
+
+| Платформа | Capability / fallback |
+|---|---|
+| Windows, первая приёмка | Electron scalar для текущей interactive session. [GetLastInputInfo](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getlastinputinfo) не объединяет sessions; timestamp может быть немонотонным, synthetic input не отличим. Failure/zero обрабатываются выше. |
+| macOS | Electron scalar; [CoreGraphics any-input idle](https://developer.apple.com/documentation/coregraphics/cgeventsource/secondssincelasteventtype(_:eventtype:)) учитывает keyboard/mouse/tablet. Нет event taps/Accessibility/Screen Recording; unavailable без запроса разрешения. |
+| Linux X11 | Пробовать существующий Electron scalar; без XScreenSaver/доступного источника — unknown, не выводить поддержку из постоянного нуля. Native smoke отдельно. |
+| Linux Wayland / неизвестный display session | `unavailable/unsupported` без чтения idle. Различия compositor/protocol и неоднозначный zero не позволяют обещать current-session continuity; native bridge/DBus/portal не добавляются. |
+
+Main делает максимум один синхронный read за 1000 ms из существующего Brain tick, без backlog/catch-up; cache reads не являются samples. Ставит monotonic receive time, возрастающий sample sequence и lifecycle generation. Положительный sample свеж только при `0 <= age <= 2500 ms`; до каждого admission проверяется TTL. Повтор/меньшая sequence не обновляет состояние. Между samples gap >2500 ms, назад/неfinite clock, wall/monotonic delta divergence >1000 ms либо рост idle больше elapsed+1000 ms означают discontinuity: unknown, новый baseline, без return. Wall clock проверяется Main только как признак разрыва; thresholds не считаются по календарю.
+
+Начальное versioned tuning `AFK-A01-v1`: inactive enter 60000 / active reenter 30000 ms; away enter 300000 / away exit 240000 ms; свежий return idle <=5000 ms. Эти значения — осторожные стартовые настройки, не измеренное знание о присутствии. Два последовательных положительных sample >=300000 ms, разделённые >=1000 и <=2500 ms, подтверждают away. Unconfirmed zero обрывает эту пару. После unknown первый positive <=30000 даёт active, иначе inactive до подтверждения away.
+
+| Текущее состояние | Fresh positive sample / переход |
+|---|---|
+| `active` | idle >=60000 → inactive; иначе active |
+| `inactive` | idle <=30000 → active; подтверждённая пара >=300000 → probably_away; иначе inactive |
+| `probably_away` | idle <=30000 → active; 30000 < idle <240000 → inactive; иначе probably_away |
+| `unknown` | Нет достоверного текущего sample; обычный baseline, без away suppression/negative feedback. После unconfirmed в пределах TTL следующий positive применяет строку сохранённого состояния; после TTL/прочих invalidation начинает новый baseline. |
+
+Return вооружается только если в той же непрерывной generation уже наблюдались positive active и последующее подтверждение away. Startup/recovery с высоким idle может подавить инициативу, но не доказывает отсутствие при закрытом Wisp и не вооружает return. Прямой переход из вооружённого away к positive idle <=5000 даёт один кандидат; unconfirmed gap допустим лишь пока последний positive baseline свеж. Любой иной выход из away расходует latch без кандидата. Latch расходуется **до admission**, повтор low samples его не восстанавливает; новый return требует нового active→away episode. Семантика допуска — [Autonomy §13.1](AUTONOMY_ENGINE.md#131-системный-idle-и-одноразовый-return).
+
+Suspend/resume, lock/unlock и session deactivate/activate инвалидируют generation, samples, подтверждения и latch; resume/unlock сами не return. Suspend/inactive session приостанавливают чтение и unsolicited initiatives до resume/activate. Locked блокирует инициативы; bounded polling допустим для обнаружения unlocked без OS event, первый unlocked sample создаёт новый baseline. На Windows/macOS подключить lock/unlock, на macOS также session events; Electron не обещает эти события на Linux. Startup, disable/enable, reset/reload, read failure/unsupported, stale/discontinuity также обрывают continuity; quiet/menu сбрасывают armed return и его active history, sampling может продолжаться, но arming закрыт до выхода и нового active→away. Ни освобождение gates, ни callback старой generation не восстанавливают return. Main снимает subscription, прекращает sampling и освобождает port при dispose; поздние callbacks игнорируются, dispose idempotent.
+
+Retention: только RAM текущего app run — последний positive baseline/текущая проекция, counters, generation и один latch; без истории samples, persistence, learned preferences, relationship effects, backend/LLM context, IPC/Renderer, logs/telemetry/crash payloads. Reset/dispose удаляет их; budget/cooldown живут по Autonomy, их нельзя обнулить ради return. Native поддержка не выводится из моков: зафиксировать commit, OS/session, Electron и исход keyboard-only→idle→return, startup/zero/error, quiet/budget, lock/sleep/resume/dispose; недоступная ОС — NOT RUN. Upstream Chromium поясняет ограничения API, но не доказывает поведение установленного binary.
+
 ## 8. Environment IPC boundary
 
 [ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — standalone serializable DTO без Domain imports; Main mapper: `EnvironmentSnapshotDTO <-> EnvironmentSnapshot`. Поддержка внешних окон добавляет target `side`; mapper/stream подключаются платформенным адаптером.
@@ -293,16 +325,7 @@ contracts и запрет чтения titles в §10 сохраняются. Н
 но не отзывает уже отправленные данные». Действует [provider data policy](../../../docs/contracts/BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление).
 Старый local-only consent не разрешает сеть: нужен новый opt-in.
 
-**Политика хранения в RAM-only:** нового config/persistence subsystem нет. Restart очищает
-consent/allowlist; требуется заново разрешить приложения и включить наблюдение.
-Reload/lock/suspend/helper failure приостанавливают сессию до explicit resume.
-Main-owned picker выбирает executable; Infrastructure хранит canonical absolute path
-для case-insensitive Windows exact matching, без wildcard/substring/PID. Renderer
-получает случайный appKey и alias без path/native metadata; alias не источник appName.
-Локальная категория editor/other/unknown допустима для baseline §12, не gate AI-вызова.
-Статусы off/paused/available/unavailable; без backend — unavailable/backend_unavailable, helper не запускается.
-До active opt-in/при empty allowlist helper
-не запускается, metadata не читается и observation HTTP отсутствует.
+**Политика хранения в RAM-only:** нового config/persistence subsystem нет. Restart очищает consent/allowlist; требуется заново разрешить приложения и включить наблюдение. Reload/lock/suspend/helper failure приостанавливают сессию до explicit resume. Main-owned picker выбирает executable; Infrastructure хранит canonical absolute path для case-insensitive Windows exact matching, без wildcard/substring/PID. Renderer получает случайный appKey и alias без path/native metadata; alias не источник appName. Локальная категория editor/other/unknown допустима для baseline §12, не gate AI-вызова. Статусы off/paused/available/unavailable; без backend — unavailable/backend_unavailable, helper не запускается. До active opt-in/при empty allowlist helper не запускается, metadata не читается и observation HTTP отсутствует.
 
 Только foreground top-level окно. Wisp/helpers/devtools, shell/system/secure desktop,
 неизвестный процесс, отказ доступа и user exclusions блокируются **до чтения title**;
@@ -339,16 +362,7 @@ Unavailable без старых данных; reasons: disabled, paused, unsuppo
 excluded, permission_denied, bridge_failed, stale. Malformed envelope, непроверенная
 identity/title failure инвалидируют весь sample; fabricated title запрещён.
 
-Windows: отдельный opt-in read-only helper на принятом bridge §10, один process на
-сессию. Policy: ≤32 allow/deny entries, path≤1024 UTF-16, JSON stdin≤128KiB, без interpolation
-в script/arguments; overflow отклоняется без изменения policy. Никаких
-keyboard hooks/clipboard/UI Automation/document text. Helper сверяет foreground HWND
-и process identity до/после caption; mismatch → discard. Raw caption≤4096 UTF-16:
-большая длина/рост при чтении → unavailable, без partial read. Native identity внутри helper.
-Foreground episode меняется при наблюдаемой смене окна/потере источника; source token
-также меняется при изменении полного caption, даже если truncated title прежний.
-Межопросные изменения могут быть пропущены: sampled presence не журнал работы.
-Linux/macOS — unsupported без запроса screen/accessibility permission.
+Windows: отдельный opt-in read-only helper на принятом bridge §10, один process на сессию. Policy: ≤32 allow/deny entries, path≤1024 UTF-16, JSON stdin≤128KiB, без interpolation в script/arguments; overflow отклоняется без изменения policy. Никаких keyboard hooks/clipboard/UI Automation/document text. Helper сверяет foreground HWND и process identity до/после caption; mismatch → discard. Raw caption≤4096 UTF-16: большая длина/рост при чтении → unavailable, без partial read. Native identity внутри helper. Foreground episode меняется при наблюдаемой смене окна/потере источника; source token также меняется при изменении полного caption, даже если truncated title прежний. Межопросные изменения могут быть пропущены: sampled presence не журнал работы. Linux/macOS — unsupported без запроса screen/accessibility permission.
 
 Poll ≤1Hz, один in-flight без queue/catch-up, request budget500ms, startup≤10s.
 Exact response≤4KiB, increasing sample revision; capturedAt — Main request-start,
@@ -356,15 +370,7 @@ cache read не освежает timestamp. TTL `0 <= now - capturedAt <= 2500ms
 successful samples >1500ms сбрасывает dwell/source eligibility. Timeout/parse error
 останавливает helper, очищает sample; explicit resume, без auto-restart loop.
 
-Pause/off/policy change/lock/suspend/reset/reload/dispose повышают generation,
-отменяют read/HTTP, очищают sample/preview/dwell/speech, останавливают helper.
-Policy change запускает новую сессию только при сохранённом explicit active consent;
-reset/reload требуют resume, dispose терминален. Foreground/title change или stale
-также отменяют pending HTTP/speech, но ordinary polling может продолжаться.
-После каждого await и перед send/preview/publication: current generation/policy/stream,
-тот же appKey/episode/source token и свежий **последний** sample с revision не меньше
-захваченной. Новая revision того же token подтверждает freshness, но не продлевает
-общий deadline. Missing/stale/new token не позволяет старому результату ожить.
+Pause/off/policy change/lock/suspend/reset/reload/dispose повышают generation, отменяют read/HTTP, очищают sample/preview/dwell/speech, останавливают helper. Policy change запускает новую сессию только при сохранённом explicit active consent; reset/reload требуют resume, dispose терминален. Foreground/title change или stale также отменяют pending HTTP/speech, но ordinary polling может продолжаться. После каждого await и перед send/preview/publication: current generation/policy/stream, тот же appKey/episode/source token и свежий **последний** sample с revision не меньше захваченной. Новая revision того же token подтверждает freshness, но не продлевает общий deadline. Missing/stale/new token не позволяет старому результату ожить.
 
 ### 11.3. AI-реакция и приёмка
 
@@ -378,16 +384,7 @@ existing InitiativeBudget. При первом threshold занято/запре
 foreground episode и общий 10-min monotonic guard на app run. Error/cancel/malformed
 тоже расходуют попытку; pause/resume/policy change не сбрасывают guard. Poll не inference.
 
-Общий interlock, deadlines/caps/text-only — [AI Events §9](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary).
-Local FSM/Motion/input не ждут сервер. Offline/unsupported/error → нет observation
-реплики; фиксированная локальная фраза не заменяет AI. Нет Activity/Character writes,
-provider_response stimulus, usage facts или learned preferences.
-Speech lowest priority: user dialogue +5s guard → game → AI initiative → observation.
-Lifetime≤2s с Main expiry; invalidation снимает речь сразу. Без previousInitiative,
-transcript/session/memory/summary writes или follow-up slot.
-Fake-clock tests: samples 0..30s дают один call/budget.start; неизменный source не
-повторяется; title/foreground switch отменяет pending; pause/stale на threshold не
-отправляет; busy opportunity не копится, errors не дают retry/fixed speech.
+Общий interlock, deadlines/caps/text-only — [AI Events §9](../../../docs/contracts/AI_EVENTS_CONTRACT.md#9-observation-boundary). Local FSM/Motion/input не ждут сервер. Offline/unsupported/error → нет observation реплики; фиксированная локальная фраза не заменяет AI. Нет Activity/Character writes, provider_response stimulus, usage facts или learned preferences. Speech lowest priority: user dialogue +5s guard → game → AI initiative → observation. Lifetime≤2s с Main expiry; invalidation снимает речь сразу. Без previousInitiative, transcript/session/memory/summary writes или follow-up slot. Fake-clock tests: samples 0..30s дают один call/budget.start; неизменный source не повторяется; title/foreground switch отменяет pending; pause/stale на threshold не отправляет; busy opportunity не копится, errors не дают retry/fixed speech.
 
 ### 11.4. Retention и источники
 

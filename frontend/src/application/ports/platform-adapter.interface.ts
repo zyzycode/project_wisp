@@ -2,6 +2,7 @@
  * Application Port: Platform Adapter Interface
  * Defines platform-specific operations isolated from domain and application layers.
  */
+import type { SystemIdlePort } from './system-idle.port';
 
 export interface ScreenBounds {
   x: number;
@@ -17,6 +18,8 @@ export interface OverlayWindowOptions {
 }
 
 export interface IPlatformAdapter {
+  /** Absent capability is unknown; never infer user absence from pet input. */
+  createSystemIdleSource?(): SystemIdlePort;
   /** Current global DIP position; null if unsupported or unavailable. Read-only, no cursor hooks. */
   getCursorScreenPosition(): { readonly x: number; readonly y: number } | null;
   getPlatformName(): SupportedPlatform;

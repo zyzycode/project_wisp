@@ -226,7 +226,7 @@ SocialBid доступен без cursor event: заметить пользов�
 затем отдельное ожидание не дольше `socialWaitMaxMs`, повтор маршрута внутри эпизода запрещён.
 Реальный pet input завершает ожидание и проходит P1; отсутствие ответа не меняет relationship,
 не создаёт штрафа, текста упрёка или повторного требования. Сам жест не насыщает attention.
-Отсутствие pet input означает только отсутствие контакта; global user idle/return неизвестен.
+Отсутствие pet input означает только отсутствие контакта. Системный idle/return — отдельный сигнал [Perception §7.1](PERCEPTION_ENGINE.md#71-системный-idle-и-вероятное-отсутствие-afk-a01), без вывода AFK из этого ожидания.
 
 Общий `InitiativeBudgetSnapshot` расходуется один раз при старте unsolicited cursor gesture/approach
 или SocialBid, включая provider-инициативу. Gaze-only, спокойная одиночная игра и ручной P1 бесплатны.
@@ -235,6 +235,18 @@ SocialBid доступен без cursor event: заметить пользов�
 фиксированного окна; граница окна вычисляется по Main time, без interval timer и catch-up эпизодов.
 При quiet/menu/disable сохраняются budget/cooldown и сбрасываются pending initiatives/dwell.
 Resume допускает один свежий выбор, не накопленные приветствия.
+
+### 13.1. Системный idle и одноразовый return
+
+`active/inactive/unknown` сохраняют существующий baseline; inactive не означает недовольство/отказ. `probably_away` запрещает новые unsolicited SocialBid, cursor gesture/approach/game и event/observation инициативы через existing eligibility; отменяет уже активные unsolicited social/cursor episodes и их pending event/observation результаты без отрицательного feedback. Спокойные одиночные calm/Explore/Rest/play и gaze продолжаются. User P1, direct chat и touch ответ проходят свои обычные gates: away меняет unsolicited `allowed`, но не `touchAllowed`, отмена pending избирательна по причине. Away не quiet, не sleep и не настройка пользователя. Сигнал idle не передаётся provider.
+
+Return — максимум один **local P3** кандидат после provider P3, перед обычным local P3/P4; выше P0/P1/P2 не поднимается. Причина внешняя и свежая, поэтому допускается существующая safe boundary cursor reactions: пустой runner либо local calm с idle/look-around, без Motion/user/provider/deferred ownership. Другую активную Activity return не прерывает. Character sleep/critical/intimacy, quiet/menu/enabled, Activity cooldown и общий InitiativeBudget проверяются до отмены calm и снова перед start в той же transaction. Отказ/занятость/исчерпанный budget теряют кандидат, без safe-defer, retry, очереди или старта по cooldown expiry.
+
+Используется существующий `social_bid` Activity/Runner с теми же identity и notice→wave→bounded wait; для return rank `P3_reactive`, обычный Utility SocialBid остаётся P4. Отдельного SocialBid cooldown сейчас нет: `cooldownKey`/новую длительность не добавлять, общий minimum interval 30000 ms и ledger из §14 сохраняются; остальные применимые Activity cooldown не обходятся. Только stationary nonverbal вариант, без approach/LLM/нового kind/спрайта. Typed локальная пара `source: system` + `activityFamily: social_bid` зарезервирована за return; обычный Utility producer имеет `source: timer`. `reason` остаётся диагностикой. Existing Character gates разрешают этот системный play, но attention/friendship пороги выбора обычного Utility SocialBid не являются доказательством возвращения и не обязательны для return; общий intimacy/safety gate сохраняется.
+
+Return не вызывает `onSocialBidStarted` → `AIEventRuntime.socialStarted`, не открывает AI-event/followup/memory episode. Общий Activity lifecycle/terminal/cooldown остаётся единым. Один token списывается только при фактическом start, отмена его не возвращает. Параллельные cursor/return opportunities сворачиваются в одну transaction; return рассматривается первым, два episode за один tick запрещены. Повтор observed active не повод для второго отклика; дальнейшие инициативы требуют своих независимых причин и обычного budget.
+
+Quiet/menu/disable/reset/dispose и lifecycle из Perception теряют return, не создавая deferred greeting. Quiet/menu exit не переиспользует latch уже наблюдённого away; для нового return нужен новый непрерывный active→away episode. AFK invalidation не обнуляет существующие initiative ledger/cooldown. Обязательные fake-time сценарии: keyboard-only idle reset, threshold/hysteresis, startup с большим idle, zero/error/stale/out-of-order, gap/suspend/resume/clock jump, один return и busy drop, общий budget/cooldown, quiet/menu/critical/provider, late callback/reset/dispose, отсутствие AI-event на return.
 
 ## 14. Обязательные инварианты и tuning автономности
 
