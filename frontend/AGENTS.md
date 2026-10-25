@@ -8,7 +8,7 @@
 
 - Desktop-клиент с локальным автономным runtime: Electron + React + TypeScript, собственный FSM персонажа в `frontend/src/domain/character/`, отображение через React/SVG Renderer.
 - В целевой архитектуре допустимы серверы, серверные БД и, при обоснованной необходимости, микросервисы.
-- Приёмка в первую очередь на Windows. Linux (Ubuntu, Wayland/X11) и macOS — целевые платформы с capability fallback. Файловые пути собирать через `path.join`; соблюдать точный регистр файлов и импортов.
+- Целевые платформы — Windows, macOS и Linux (Ubuntu, Wayland/X11), с capability fallback. Файловые пути собирать через `path.join`; соблюдать точный регистр файлов и импортов.
 - ОС-специфика и `process.platform` — исключительно в `frontend/src/infrastructure/platform/` за `IPlatformAdapter`.
 
 ## 2. Архитектура и контракты

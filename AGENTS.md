@@ -10,7 +10,7 @@ Desktop (`frontend/`) и Python/FastAPI backend (`backend/`) имеют отде
 - Backend владеет серверными API, интеграциями, хранением и формированием AI-ответа; возвращает только разрешённые семантические DTO и не управляет локальным runtime.
 - Прямые импорты между runtime и перенос бизнес-решений в Renderer запрещены.
 
-Offline-first относится к локальному runtime персонажа и локальным данным desktop (SQLite/config files). Сетевые функции могут требовать подключения; недоступность backend не останавливает локальные FSM, Motion и ввод. Windows — первая платформа приёмки desktop; Linux и macOS сохраняются с capability fallback.
+Offline-first относится к локальному runtime персонажа и локальным данным desktop (SQLite/config files). Сетевые функции могут требовать подключения; недоступность backend не останавливает локальные FSM, Motion и ввод.
 
 ## 2. Архитектура и контракты
 
