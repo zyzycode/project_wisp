@@ -1,4 +1,4 @@
-"""Actual v1 handlers and existing Groq/Gemini adapters with synthetic MockTransport."""
+"""Actual v1 handlers and existing OpenAI/Gemini adapters with synthetic MockTransport."""
 
 import json
 import sqlite3
@@ -40,7 +40,7 @@ def test_actual_handler_untrusted_payload_and_output_reserve(
     def upstream(request: httpx.Request) -> httpx.Response:
         data = json.loads(request.content)
         calls.append(data)
-        if provider in {"groq", "openai"}:
+        if provider == "openai":
             messages = data["messages"]
             assert [message["role"] for message in messages] == ["system", "user", "user"]
             system, character, observation = [message["content"] for message in messages]
@@ -176,7 +176,7 @@ def test_observation_blocks_are_mandatory_atomic_and_cannot_be_system_data() -> 
     assert len(render_messages(blocks)) == 3
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize(
     "failure,status,code",
     [

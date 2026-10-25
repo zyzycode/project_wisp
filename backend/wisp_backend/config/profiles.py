@@ -20,13 +20,6 @@ PROFILES = {
         ("gpt-4.1-mini", "gpt-6-astra", "gpt-6-sol"),
         1_050_000,
     ),
-    "groq": ProviderProfile(
-        "https://api.groq.com/openai/v1/",
-        "GROQ_API_KEY",
-        "openai/gpt-oss-20b",
-        ("openai/gpt-oss-20b",),
-        131_072,
-    ),
     "gemini": ProviderProfile(
         "https://generativelanguage.googleapis.com/v1beta/",
         "GEMINI_API_KEY",

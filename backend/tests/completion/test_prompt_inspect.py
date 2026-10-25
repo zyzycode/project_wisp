@@ -51,14 +51,29 @@ def test_full_synthetic_corpus_preserves_data_and_budgets_while_selecting_resour
         pytest.fail("Offline inspection must not perform count or generation HTTP")
 
     monkeypatch.setattr(httpx.AsyncClient, "send", forbidden)
-    monkeypatch.setenv("GROQ_API_KEY", "SYNTHETIC_SECRET_MUST_NOT_APPEAR")
+    monkeypatch.setenv("OPENAI_API_KEY", "SYNTHETIC_SECRET_MUST_NOT_APPEAR")
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     assert baseline["synthetic"] is True
     assert len(baseline["reports"]) == len(SCENE_IDS) * 2 * 3
+    # Preserve the historical corpus, including the retired provider. Compare
+    # active providers with the model/settings captured then, not today's defaults.
+    active_reports = [
+        report for report in baseline["reports"] if report["settings"]["provider"] in {"openai", "gemini"}
+    ]
+    assert len(active_reports) == len(SCENE_IDS) * 2 * 2
 
     async def run() -> None:
-        for expected in baseline["reports"]:
-            report = await inspect_scene(expected["scene_id"], expected["locale"], expected["settings"]["provider"])
+        for expected in active_reports:
+            settings = expected["settings"]
+            report = await inspect_scene(
+                expected["scene_id"],
+                expected["locale"],
+                settings["provider"],
+                settings["model"],
+                max_output_tokens=settings["max_output_tokens"],
+                temperature=settings["temperature"],
+                thinking_level=settings["thinking_level"],
+            )
             assert report["settings"] == expected["settings"]
             for key in ("context_window", "output_reserve", "input_allowance"):
                 assert report["budget"][key] == expected["budget"][key]
@@ -88,7 +103,7 @@ def test_full_synthetic_corpus_preserves_data_and_budgets_while_selecting_resour
     assert not caplog.records
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini", "openai"])
+@pytest.mark.parametrize("provider", ["gemini", "openai"])
 def test_required_boundary_and_overflow_are_explained(provider: str) -> None:
     boundary = asyncio.run(inspect_scene("touch_followup", "ru", provider, budget_case="required_only"))
     assert boundary["status"] == "ok"
@@ -146,17 +161,16 @@ def test_trace_explains_history_suffix_and_empty_optionals_without_changing_sele
 
 
 def test_optional_absence_and_provider_formatting_are_visible() -> None:
-    groq = asyncio.run(inspect_scene("greeting_low_trust", "en", "groq"))
     gemini = asyncio.run(inspect_scene("greeting_low_trust", "en", "gemini"))
     openai = asyncio.run(inspect_scene("greeting_low_trust", "en", "openai"))
-    assert {entry["key"] for entry in groq["absent_optional"]} == {
+    assert {entry["key"] for entry in openai["absent_optional"]} == {
         "summary",
         "lore",
         "previous_initiative",
         "previous_touch",
         "history",
     }
-    assert groq["payload"]["messages"] == groq["messages"]
+    assert openai["payload"]["messages"] == openai["messages"]
     assert openai["payload"]["store"] is False
     assert gemini["payload"]["systemInstruction"]["parts"][0]["text"] == gemini["messages"][0]["content"]
     assert gemini["measurement"]["gemini_selection_is_estimated"] is True
@@ -183,7 +197,7 @@ def test_inspector_rejects_arbitrary_inputs(options: dict[str, object]) -> None:
 
 def test_command_works_outside_repository_without_test_fixtures(tmp_path: Path) -> None:
     backend = Path(__file__).resolve().parents[2]
-    env = {**os.environ, "PYTHONPATH": str(backend), "GROQ_API_KEY": "SYNTHETIC_SECRET_MUST_NOT_APPEAR"}
+    env = {**os.environ, "PYTHONPATH": str(backend), "OPENAI_API_KEY": "SYNTHETIC_SECRET_MUST_NOT_APPEAR"}
     completed = subprocess.run(
         [sys.executable, "-m", "wisp_backend.prompt_inspect", "--scene", "tired", "--locale", "ru"],
         cwd=tmp_path,
@@ -193,7 +207,10 @@ def test_command_works_outside_repository_without_test_fixtures(tmp_path: Path) 
         text=True,
         check=True,
     )
-    assert json.loads(completed.stdout)["synthetic"] is True
+    report = json.loads(completed.stdout)
+    assert report["synthetic"] is True
+    assert report["settings"]["provider"] == "openai"
+    assert report["settings"]["model"] == "gpt-6-sol"
     assert completed.stderr == ""
     assert "SYNTHETIC_SECRET_MUST_NOT_APPEAR" not in completed.stdout
     invalid = subprocess.run(

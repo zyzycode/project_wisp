@@ -26,9 +26,9 @@ Backend формирует AI-ответы и ведёт служебный уч
 | **Health** | `GET /health` | Healthcheck HTTP-сервера |
 
 
-Ответы — JSON без streaming. Один активный провайдер на процесс: Groq, Gemini или OpenAI;
+Ответы — JSON без streaming. Один активный провайдер на процесс: OpenAI (default, `gpt-6-sol`) или Gemini;
 не более одного generation inference на запрос. Gemini предварительно считает
-токены через официальный countTokens в пределах того же deadline; Groq и OpenAI сохраняют
+токены через официальный countTokens в пределах того же deadline; OpenAI сохраняет
 консервативную оценку. [Точность и ограничения](CONTEXT_PROMPT_ENGINE.md#бюджет-и-ошибка).
 Сервер не хранит диалоги и память
 на диске: SQLite содержит служебный учёт, кеш ответов — только RAM до 10 минут.
@@ -61,7 +61,7 @@ python3 -m venv .venv
 ```
 
 Создайте `backend/.env` по [.env.example](../.env.example), задайте `WISP_AI_PROVIDER`
-и соответствующий `GROQ_API_KEY`, `GEMINI_API_KEY` или `OPENAI_API_KEY`. Все параметры и подсказки —
+и соответствующий `OPENAI_API_KEY` или `GEMINI_API_KEY`. Без выбора провайдера используется OpenAI. Все параметры и подсказки —
 в шаблоне; process environment имеет приоритет. После изменений нужен перезапуск.
 Секреты не коммитятся. Состав зависимостей — в [requirements.txt](../requirements.txt).
 

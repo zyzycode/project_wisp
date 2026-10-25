@@ -40,7 +40,7 @@ def load_settings(env_file: Path = ENV_FILE) -> Settings:
     """
     values = {**dotenv_values(env_file), **os.environ}
     assistants = _assistant_profiles(values)
-    provider = assistants["default"].get("provider", "groq")
+    provider = assistants["default"].get("provider", "openai")
     options: dict[str, Any] = {
         "logging": logging_settings(values),
         "api_key": _provider_key(values, provider),
@@ -88,8 +88,6 @@ def _provider_key(values: Mapping[str, Any], provider: str) -> SecretStr:
     """A different provider's key is never a fallback for the selected provider."""
     profile = get_profile(provider)
     key = values.get(profile.key_env)
-    if provider == "groq":
-        key = key or values.get("token_api")
     if not key or not key.strip():
         raise RuntimeError(f"Set {profile.key_env} in backend .env")
     return SecretStr(key)

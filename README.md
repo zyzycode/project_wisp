@@ -21,7 +21,7 @@ python -m venv backend/.venv
 Copy-Item backend/.env.example backend/.env
 ```
 
-В локальном `backend/.env` задать `GROQ_API_KEY`. Секреты не коммитить. На Linux/macOS вместо Windows Python executable использовать `backend/.venv/bin/python`.
+В локальном `backend/.env` задать `OPENAI_API_KEY`: по умолчанию используется OpenAI. Для Gemini выбрать `WISP_AI_PROVIDER=gemini` и задать `GEMINI_API_KEY`. Секреты не коммитить. На Linux/macOS вместо Windows Python executable использовать `backend/.venv/bin/python`.
 
 ## Команды из корня
 

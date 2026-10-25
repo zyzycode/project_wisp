@@ -111,7 +111,7 @@ def test_long_unicode_history_is_trimmed_without_losing_current_facts_or_output_
     def upstream(request: httpx.Request) -> httpx.Response:
         data = json.loads(request.content)
         calls.append(data)
-        if provider in {"groq", "openai"}:
+        if provider == "openai":
             messages = data["messages"]
             output = data["max_completion_tokens"]
             content = "\n".join(item["content"] for item in messages)
@@ -194,7 +194,7 @@ def test_adversarial_context_is_data_and_examples_cannot_supply_candidate_eviden
     assert marker not in caplog.text
 
 
-@pytest.mark.parametrize("provider,model", [("groq", "openai/gpt-oss-20b"), ("gemini", "gemini-3.5-flash-lite")])
+@pytest.mark.parametrize("provider,model", [("openai", "gpt-6-sol"), ("gemini", "gemini-3.5-flash-lite")])
 @pytest.mark.parametrize("locale", ["ru", "en"])
 @pytest.mark.parametrize("route,fixture", [ROUTES[0], ROUTES[1]])
 @pytest.mark.parametrize(
@@ -258,7 +258,7 @@ def test_state_matrix_preserves_card_boundaries_and_budget_for_both_formatters(
     def upstream(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.content)
         calls.append(payload)
-        if provider in {"groq", "openai"}:
+        if provider == "openai":
             messages = payload["messages"]
             system = "\n".join(item["content"] for item in messages if item["role"] == "system")
             data = [item["content"] for item in messages if item["role"] != "system"]

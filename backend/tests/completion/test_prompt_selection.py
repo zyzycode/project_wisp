@@ -97,7 +97,7 @@ def test_guidance_has_fixed_order_bounds_and_only_compatible_examples() -> None:
     assert [entry.predicate for entry in select_prompt_resources(touch, "touch").examples] == ["touch_familiar"]
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini", "openai"])
+@pytest.mark.parametrize("provider", ["gemini", "openai"])
 def test_optional_resources_disappear_at_boundary_without_losing_constraints(provider: str) -> None:
     report = asyncio.run(inspect_scene("combined_needs", "ru", provider, budget_case="required_only"))
     assert all(block["required"] for block in report["blocks"] if block["key"] in report["selected_keys"])

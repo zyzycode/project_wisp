@@ -1,4 +1,4 @@
-"""Bounded JSONL test transport into the current app, with only Groq HTTP mocked."""
+"""Bounded JSONL test transport into the current app, with only OpenAI HTTP mocked."""
 
 import json
 import sys

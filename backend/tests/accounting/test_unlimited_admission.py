@@ -13,7 +13,7 @@ from wisp_backend.config.profiles import PROFILES
 from wisp_backend.errors import ServiceError
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini", "openai"])
+@pytest.mark.parametrize("provider", ["gemini", "openai"])
 def test_requests_exceed_all_former_quotas_and_survive_restart(tmp_path: Path, provider: str) -> None:
     async def run() -> None:
         path = tmp_path / "unlimited.sqlite"

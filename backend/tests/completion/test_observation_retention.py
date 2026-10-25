@@ -16,7 +16,7 @@ from wisp_backend.accounting.replay import CACHE_TTL
 from wisp_backend.api.endpoints import OBSERVATION
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 def test_response_ttl_restart_and_durable_records_never_store_metadata(
     app_factory: Callable[..., FastAPI],
     completion: Callable[..., dict],
@@ -31,7 +31,7 @@ def test_response_ttl_restart_and_durable_records_never_store_metadata(
             nonlocal calls
             calls += 1
             reply = {"text": "PRIVATE_GENERATED_REPLY"}
-            return httpx.Response(200, json=completion(reply) if provider == "groq" else gemini_completion(reply))
+            return httpx.Response(200, json=completion(reply) if provider == "openai" else gemini_completion(reply))
 
         app = app_factory(upstream, assistants={"default": {"provider": provider}})
         request = fixture("request.hostile-title.json")
@@ -76,7 +76,7 @@ def test_response_ttl_restart_and_durable_records_never_store_metadata(
     assert "PRIVATE_" not in caplog.text
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 def test_response_stream_closed_on_observation_deadline(
     app_factory: Callable[..., FastAPI],
     provider: str,

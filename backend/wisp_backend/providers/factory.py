@@ -4,10 +4,9 @@ import httpx
 from wisp_backend.completion.ports import Provider
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.providers.gemini import GeminiProvider
-from wisp_backend.providers.groq import GroqProvider
 from wisp_backend.providers.openai import OpenAIProvider
 
-FACTORIES = {"groq": GroqProvider, "gemini": GeminiProvider, "openai": OpenAIProvider}
+FACTORIES = {"gemini": GeminiProvider, "openai": OpenAIProvider}
 
 
 def create_provider(settings: AssistantSettings, client: httpx.AsyncClient) -> Provider:

@@ -60,7 +60,7 @@ def test_chat_output_contract_requires_appraisal() -> None:
     assert "required appraisal, optional decision, and optional memoryCandidates." in instructions
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case["name"])
 def test_eligible_cases_through_real_route_and_provider(
     app_factory: Callable[..., FastAPI], completion: Callable[..., dict], provider: str, case: dict[str, Any]
@@ -72,7 +72,7 @@ def test_eligible_cases_through_real_route_and_provider(
     def upstream(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.content)
         calls.append(payload)
-        if provider == "groq":
+        if provider == "openai":
             system = payload["messages"][0]["content"]
             messages = payload["messages"][1:]
             assert payload["max_completion_tokens"] == 4096
@@ -88,7 +88,7 @@ def test_eligible_cases_through_real_route_and_provider(
         for key in ("previousTouch", "previousInitiative"):
             text = body[key].get("text", body[key].get("publishedText"))
             assert any(text in m["content"] and m["role"] == "user" for m in messages)
-        return httpx.Response(200, json=completion(reply) if provider == "groq" else gemini_completion(reply))
+        return httpx.Response(200, json=completion(reply) if provider == "openai" else gemini_completion(reply))
 
     with TestClient(
         app_factory(upstream, assistants={"default": {"provider": provider, "max_output_tokens": 4096}})

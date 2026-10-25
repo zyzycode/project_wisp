@@ -18,7 +18,7 @@ from wisp_backend.completion.prompts.narrative import reference_lines
 from wisp_backend.providers.context_budget import estimate_input
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize("operation,cap", [("touch", 1024), ("chat", 4096)])
 @pytest.mark.parametrize("energy,comfort", [(90, 10), (10, 90)])
 def test_complete_provider_path(
@@ -40,7 +40,7 @@ def test_complete_provider_path(
         data = json.loads(request.content)
         calls.append(data)
         assert body["requestId"] not in request.content.decode()
-        if provider == "groq":
+        if provider == "openai":
             system = data["messages"][0]["content"]
             messages = data["messages"][1:]
             assert data["max_completion_tokens"] == cap
@@ -64,7 +64,7 @@ def test_complete_provider_path(
             assert any(body["summary"]["text"] in m["content"] for m in messages)
             assert any(body["previousInitiative"]["text"] in m["content"] for m in messages)
         assert 0 < request.extensions["timeout"]["read"] <= 10
-        return httpx.Response(200, json=completion(reply) if provider == "groq" else gemini_completion(reply))
+        return httpx.Response(200, json=completion(reply) if provider == "openai" else gemini_completion(reply))
 
     with TestClient(
         app_factory(upstream, assistants={"default": {"provider": provider, "max_output_tokens": 4096}})
@@ -132,7 +132,7 @@ def test_chat_hints_and_memory_keep_v1_validation(client_factory: Callable, comp
         assert response.json()["memoryCandidates"] == reply["memoryCandidates"][:1]
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize("operation", ["touch", "chat"])
 @pytest.mark.parametrize(
     "failure,status,code",
@@ -239,7 +239,7 @@ def test_exact_byte_cap_openapi_and_missing_appraisal(
         }
 
 
-@pytest.mark.parametrize("provider,model", [("groq", "openai/gpt-oss-20b"), ("gemini", "gemini-3.5-flash-lite")])
+@pytest.mark.parametrize("provider,model", [("openai", "gpt-6-sol"), ("gemini", "gemini-3.5-flash-lite")])
 @pytest.mark.parametrize("operation", ["touch", "chat"])
 def test_required_context_overflow_before_network(
     app_factory: Callable[..., FastAPI], monkeypatch: pytest.MonkeyPatch, provider: str, model: str, operation: str

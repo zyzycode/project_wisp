@@ -23,7 +23,7 @@ from wisp_backend.completion.contracts import InferenceRequest, ProviderResult
 from wisp_backend.completion.policies import POLICIES, Scenario
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize("operation", ["touch", "chat"])
 def test_pending_replay_conflict_and_retention(
     app_factory: Callable[..., FastAPI],
@@ -45,7 +45,7 @@ def test_pending_replay_conflict_and_retention(
             calls += 1
             entered.set()
             await release.wait()
-            return httpx.Response(200, json=completion(reply) if provider == "groq" else gemini_completion(reply))
+            return httpx.Response(200, json=completion(reply) if provider == "openai" else gemini_completion(reply))
 
         app = app_factory(upstream, assistants={"default": {"provider": provider}})
         body = fixture(f"request.{operation}.json")
@@ -98,7 +98,7 @@ def test_pending_replay_conflict_and_retention(
     assert "PRIVATE_" not in caplog.text
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize("operation", ["touch", "chat"])
 @pytest.mark.parametrize("shutdown", [False, True])
 def test_disconnect_or_shutdown_closes_http_and_settles(
@@ -221,7 +221,7 @@ def test_late_usage_settles_once_without_publishing(
 @pytest.mark.parametrize(
     "operation,scenario", [("touch", Scenario.INTERACTION_TOUCH), ("chat", Scenario.INTERACTION_CHAT)]
 )
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 def test_deadline_closes_response_stream(
     app_factory: Callable[..., FastAPI],
     monkeypatch: pytest.MonkeyPatch,

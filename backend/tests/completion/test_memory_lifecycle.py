@@ -4,10 +4,11 @@ import sqlite3
 
 import pytest
 from tests.helpers import CONTRACT_FIXTURES
-from wisp_backend.accounting.contracts import RESERVATION, Usage
+from wisp_backend.accounting.contracts import Usage
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.schemas.interaction import InteractionChatRequest as MemoryRequest
 from wisp_backend.completion.contracts import ProviderResult
+from wisp_backend.config.profiles import PROFILES
 
 FIXTURE = CONTRACT_FIXTURES / "desktop-backend-v1/memory/request.valid.json"
 
@@ -64,7 +65,11 @@ def test_memory_disconnect_shutdown_preserves_usage(app_factory, shutdown):
             await asyncio.wait_for(cancelled.wait(), 1)
             assert not sent
             with sqlite3.connect(service.ledger.path) as db:
-                assert db.execute("SELECT requests,reserved,uncertain FROM days").fetchone() == (1, 0, RESERVATION)
+                assert db.execute("SELECT requests,reserved,uncertain FROM days").fetchone() == (
+                    1,
+                    0,
+                    PROFILES["openai"].reservation,
+                )
 
     asyncio.run(run())
 

@@ -6,7 +6,7 @@ from typing import Protocol
 
 from wisp_backend.outcomes import Outcome
 
-RESERVATION = 131_072  # Legacy on-disk reservation, also the Groq default.
+RESERVATION = 131_072  # Legacy on-disk reservation; active providers supply their own profile.
 
 
 @dataclass(frozen=True)

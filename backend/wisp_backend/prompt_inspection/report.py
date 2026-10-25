@@ -22,11 +22,10 @@ from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.prompt_inspection.scenes import load_scene
 from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input
 from wisp_backend.providers.gemini import GeminiProvider
-from wisp_backend.providers.groq import GroqProvider
 from wisp_backend.providers.http_provider import HTTPProvider
 from wisp_backend.providers.openai import OpenAIProvider
 
-PROVIDERS: dict[str, type[HTTPProvider]] = {"groq": GroqProvider, "gemini": GeminiProvider, "openai": OpenAIProvider}
+PROVIDERS: dict[str, type[HTTPProvider]] = {"gemini": GeminiProvider, "openai": OpenAIProvider}
 RUBRIC = ("character", "coherence", "non_repetition", "state_boundaries", "memory", "appraisal")
 
 
@@ -42,7 +41,7 @@ def source_digests() -> dict[str, str]:
     root = Path(__file__).resolve().parents[1]
     paths = [*sorted((root / "completion/prompts").glob("*.py")), *sorted((root / "completion/prompts").glob("*.json"))]
     paths += [root / name for name in ("completion/context.py", "completion/policies.py", "api/dispatch.py")]
-    paths += [root / "providers" / name for name in ("groq.py", "gemini.py", "openai.py", "context_budget.py")]
+    paths += [root / "providers" / name for name in ("gemini.py", "openai.py", "context_budget.py")]
     paths += [Path(__file__).with_name("scenes.json")]
     paths += [root / "prompt_inspect.py", *sorted(Path(__file__).parent.glob("*.py"))]
     paths += sorted((root / "api/schemas").glob("*.py"))
@@ -71,7 +70,7 @@ def _absent_optionals(route: str, blocks: tuple[ContextBlock, ...], *, empty_exa
 async def inspect_scene(
     scene_id: str,
     locale: str = "en",
-    provider: str = "groq",
+    provider: str = "openai",
     model: str | None = None,
     *,
     max_output_tokens: int = 4096,

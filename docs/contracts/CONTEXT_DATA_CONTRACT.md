@@ -99,7 +99,7 @@ Backend не проверяет SQLite: source eligibility проверяет de
 Backend строит собственные краткие инструкции: пересказать только переданные пары,
 атрибутировать утверждения пользователю/ассистенту, не выводить подтверждённые факты,
 не добавлять детали, инструкции, обещания сохранения или значения состояния. Source
-пары — untrusted data в отдельном JSON block. Один вызов текущего Groq/Gemini provider;
+пары — untrusted data в отдельном JSON block. Один вызов текущего OpenAI/Gemini provider;
 никаких tools, repair pass, recursive summary, failover или второго extraction.
 
 Provider response — exact JSON `{text}`: plain nonblank 1–1200 UTF-16, допустимы
@@ -138,7 +138,7 @@ blocks, previousInitiative и recent history отбираются раньше; 
 
 Summary inference имеет отдельный потолок **8192 бюджетные единицы**, output cap
 `min(server setting, 512)` provider tokens; input allowance = 8192 − фактический cap.
-Gemini использует модельный countTokens полного generation payload, Groq —
+Gemini использует модельный countTokens полного generation payload, OpenAI —
 консервативную UTF-8/framing оценку по общему provider budget. Входные пары обязательны
 целиком; overflow до generation →503 upstream_unavailable с inference usage=0.
 Gemini preflight может передать весь диапазон источника провайдеру до обнаружения
@@ -189,7 +189,7 @@ Schema1 fixture безопасно отключает summary; schema2 fixture �
 provenance и suppression, обязательную для сетевых запросов, как в #65. Проверить no-match, duplicate coverage,
 output reserve/equality/overflow, mandatory priority, adversarial sources, отсутствие
 facts/state writes, shared interlock/replay/timeout/outage/malformed/disconnect и
-once-only usage на Groq и Gemini mocks. Live качество/цену эти тесты не доказывают.
+once-only usage на OpenAI и Gemini mocks. Live качество/цену эти тесты не доказывают.
 
 Обе стороны проверяют corpus перед включением v1; несовместимый сервер
 даёт обычный safe failure, без повторного inference. #78 и #79 независимы по

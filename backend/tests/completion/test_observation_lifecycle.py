@@ -48,7 +48,7 @@ def upstream_reply(provider: str, completion: Callable[..., dict], interaction: 
     )
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 def test_v1_replay_and_cross_endpoint_namespace_settle_once(
     app_factory: Callable[..., FastAPI],
     body: dict,
@@ -112,7 +112,7 @@ def test_v1_replay_and_cross_endpoint_namespace_settle_once(
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 def test_v1_inflight_duplicate_and_conflict_never_dispatch_again(
     app_factory: Callable[..., FastAPI],
     completion: Callable[..., dict],
@@ -173,7 +173,7 @@ def test_v1_inflight_duplicate_and_conflict_never_dispatch_again(
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize("shutdown", [False, True])
 @pytest.mark.parametrize("route,filename", [("/v1/observation", "request.valid.json")])
 def test_v1_disconnect_and_shutdown_close_provider_and_release_capacity(
@@ -242,7 +242,7 @@ def test_v1_disconnect_and_shutdown_close_provider_and_release_capacity(
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 def test_observation_late_usage_refines_once_without_replaying_success(
     app_factory: Callable[..., FastAPI],
     monkeypatch: pytest.MonkeyPatch,
@@ -296,7 +296,7 @@ def test_observation_late_usage_refines_once_without_replaying_success(
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 def test_observation_cancel_during_settlement_never_caches_success(
     app_factory: Callable[..., FastAPI],
     completion: Callable[..., dict],

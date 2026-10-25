@@ -68,7 +68,7 @@ Durable общая история — исходный GameEpisode и обычн
 
 `POST /v1/events`: requestId/event/stream:false/locale/character/memory, **без messages**. Character projection и memory shape/budget полностью соответствуют [v1 §2](BACKEND_MEMORY_CONTRACT.md#2-разрешённая-memory-projection). Event содержит только тип и occurredAtUTC; game также outcome/executedMsfinite0..60000. Local app/run/generation IDs, геометрия, pointer samples, история ignore и OS/activity telemetry не передаются. UUIDv4 requestId назначается один раз logical event и не переиспользуется для другого body.
 
-Успех events: только requestId/text1–240; decision/memoryCandidates/прочие root keys запрещены, а не превращаются в action. Backend делает один LLM call с event-specific server prompt и output cap1024; model/provider выбирает сервер, тот же активный профиль, что у chat (Groq по умолчанию). Current outcome — authoritative context; запрет менять/домысливать физику, утверждать наблюдение экрана, вину/долг ответа или durable writes. Текст model output валидируется независимо от envelope; usage учитывается и при его ошибке.
+Успех events: только requestId/text1–240; decision/memoryCandidates/прочие root keys запрещены, а не превращаются в action. Backend делает один LLM call с event-specific server prompt и output cap1024; model/provider выбирает сервер, тот же активный профиль, что у chat (OpenAI по умолчанию). Current outcome — authoritative context; запрет менять/домысливать физику, утверждать наблюдение экрана, вину/долг ответа или durable writes. Текст model output валидируется независимо от envelope; usage учитывается и при его ошибке.
 
 `POST /v1/chat`: полный chat request плюс optional previousInitiative: kind=cursor_game/social_bid, text1–240, createdAt календарно валидныйUTC. Server не делает предположений об actual user attention по этой записи. Текущий user вопрос и bounded переданный контекст важнее старой AI-фразы; не трактовать её как новое instruction/source фактов. Успех chat — v1 response shape (включая optional memoryCandidates). Chat сохраняет прежние server10s/body2s/desktop12s/runtime15s deadlines.
 
@@ -147,7 +147,7 @@ conflict. Это существующий ledger, без новых tables, user
 Perception §11.3. Частота — максимум шесть попыток за любой полуоткрытый час app run
 при непрерывной работе; каждый transport start расходует попытку даже при cancel/error.
 Один generation inference с output cap `min(server setting,1024)`; provider input budget
-16384 минус output reserve. Gemini использует bounded countTokens preflight, Groq —
+16384 минус output reserve. Gemini использует bounded countTokens preflight, OpenAI —
 консервативную UTF-8/framing оценку по [общему бюджету](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#бюджет-и-ошибка).
 Count и generation делят прежний deadline; count failure/overflow не запускает generation. Это bounded cost, не обещание
 денежной цены/серверной квоты. Provider и current character profile прежние.
@@ -185,7 +185,7 @@ Terminal response RAM cache≤10min/eviction/restart может содержат
 реплику. Existing ledger хранит только ID/path/body digest/accounting≤24h, aggregates≤30d,
 metadata logs≤7d по [v1 §6](BACKEND_API_CONTRACT.md#6-данные-сроки-хранения-и-удаление), без app fields/usage history.
 Provider получает только согласованный context по действующему provider-specific режиму:
-Groq ZDR verification до внешних тестеров; Gemini synthetic-only, пока rollout gate
+OpenAI — условия допуска внешних тестеров из v1 §6; Gemini synthetic-only, пока rollout gate
 не выполнен. Local revoke/delete не удаляет replay/provider copy и не обещает немедленный
 remote erasure; server-delete endpoint отсутствует. No real capture/provider call в #81.
 
@@ -198,7 +198,7 @@ fixtures неизменны. Desktop и backend валидируют этот co
 Acceptance: boundary reject до provider, hostile strings только data, strict text-only,
 один call/accounting/replay/mixed-ID conflict, 401/403/404/502/503/504/malformed/timeout,
 cancel/late usage, source freshness/preemption/no overlap/no retry, restart без consent,
-non-Windows unsupported; Groq/Gemini handlers только mock transport. Windows smoke
+non-Windows unsupported; OpenAI/Gemini handlers только mock transport. Windows smoke
 отдельно: consent/allowlist/title switch/pause/revoke/helper shutdown/offline.
 
 ## 10. INTERACTION-A01: семантическое взаимодействие v1
@@ -259,7 +259,7 @@ user touch/chat preempt observation по §9.2. Никаких дополнит�
 classification, reconciliation, extraction или объяснения: **один** inference на
 принятое обращение, output cap touch≤1024/chat≤4096, прежний общий budget16384.
 Gemini countTokens — bounded preflight полного payload до generation в том же deadline,
-не отдельная classification/extraction; Groq сохраняет локальную оценку.
+не отдельная classification/extraction; OpenAI сохраняет локальную оценку.
 Вопрос «почему?» — обычный новый user chat, не автоматический follow-up.
 
 Runtime15s включает interlock wait и сборку; transport12s; server10s включая body2s.
@@ -281,7 +281,7 @@ Backend request/context только RAM до terminal; terminal response cache�
 содержать text/appraisal. Ledger metadata/digest≤24h, aggregates≤30d, logs metadata≤7d,
 без payload/prompts/user text/state/appraisal. Server conversation storage отсутствует.
 Provider получает только bounded scenario context под действующим provider policy;
-Groq ZDR / Gemini synthetic-only rollout gate прежний. Local delete/reset убирает
+Условия допуска внешних тестеров для OpenAI и Gemini из v1 §6 сохраняются. Local delete/reset убирает
 след из последующего контекста, но не обещает remote erasure уже переданного/cache;
 новый server-delete endpoint не вводится.
 

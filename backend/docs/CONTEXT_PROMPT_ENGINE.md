@@ -21,7 +21,7 @@
 | [prompts/prompt_resources.json](../wisp_backend/completion/prompts/prompt_resources.json) | Редактируемые пояснения и собственные RU/EN примеры желаемой речи |
 | [prompts/resources.py](../wisp_backend/completion/prompts/resources.py) | Строгая загрузка immutable snapshot ресурсов до запуска runtime |
 | [completion/context.py](../wisp_backend/completion/context.py) | Приоритеты, атомарный отбор блоков и порядок сообщений |
-| [providers](../wisp_backend/providers/) | Бюджет и преобразование выбранных сообщений в Groq/Gemini payload |
+| [providers](../wisp_backend/providers/) | Бюджет и преобразование выбранных сообщений в OpenAI/Gemini payload |
 | [completion/replies.py](../wisp_backend/completion/replies.py), [interaction_replies.py](../wisp_backend/completion/interaction_replies.py) | Семантическая проверка результата модели |
 
 Один запрос собирает контекст и выполняет не более одного generation inference.
@@ -215,7 +215,7 @@ priority20/order1; examples остаются user-data priority10/order30. Ср�
 
 Из корня репозитория перейти в `backend/` и запустить:
 ```sh
-.venv/bin/python -m wisp_backend.prompt_inspect --scene tired --locale ru --provider groq
+.venv/bin/python -m wisp_backend.prompt_inspect --scene tired --locale ru --provider openai --model gpt-6-sol
 .venv/bin/python -m wisp_backend.prompt_inspect --scene long_context --locale en --provider gemini
 .venv/bin/python -m wisp_backend.prompt_inspect --scene touch_followup --locale ru --budget-case overflow
 ```
@@ -232,6 +232,8 @@ priority20/order1; examples остаются user-data priority10/order30. Ср�
 Зафиксированы payload/messages, selected keys, причины, бюджеты, настройки, хеши
 и commit исходников перед изменением prompt resources. Этот файл не перегенерируется
 при последующем изменении промптов; current reports сравниваются с ним отдельно.
+Groq в исторических baseline/selection_comparison сохранён как архив; runtime его не поддерживает.
+Регрессии сравнивают OpenAI/Gemini с явными model/settings из baseline, независимо от текущих default.
 Regression test `tests/completion/test_prompt_inspect.py` проверяет неизменность
 исходных данных вне expression, прежних memory/history/lore/summary/trace блоков,
 бюджетов и отсутствие HTTP/logs. Контент примеров — подмножество исходного baseline.
@@ -333,15 +335,13 @@ Count — подготовительный HTTP, не дополнительны
 Контекст уже мог быть передан тому же провайдеру для подсчёта; правила данных и
 доступа из API §6 распространяются на preflight так же, как на generation.
 
-### Groq: ограничение точности
+### OpenAI: ограничение точности
 
-Groq остаётся поддержан с консервативной оценкой:
+OpenAI использует консервативную оценку:
 число UTF-8 bytes финального JSON payload + 256 + 64 × число сообщений.
-Это **не точное число токенов**. Официальный
-[Groq API](https://console.groq.com/docs/api-reference) не предоставляет подтверждённый
-count/tokenize endpoint; локальный tokenizer без подтверждённого серверного шаблона
-не гарантирует совпадение. Для точного модельного preflight выбирать Gemini.
-Groq не делает отдельный count HTTP; mandatory overflow обнаруживается до сети.
+Это **не точное число токенов** и не billing usage. Для точного модельного preflight
+в текущей реализации используется Gemini. OpenAI не делает отдельный count HTTP;
+mandatory overflow обнаруживается до сети.
 
 ### Общие инварианты отбора
 

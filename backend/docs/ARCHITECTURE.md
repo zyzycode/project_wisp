@@ -22,7 +22,7 @@ Backend — отдельный процесс с HTTP API, одним AI-про�
 | [runtime.py](../wisp_backend/runtime.py) | Создание и закрытие ресурсов, maintenance |
 | [api](../wisp_backend/api/) | HTTP boundary, маршруты, wire-схемы, преобразование запроса и сериализация ответа |
 | [completion](../wisp_backend/completion/) | Выполнение запроса, дедлайны, отмена, политики сценариев, prompts и модели ответа |
-| [providers](../wisp_backend/providers/) | Адаптеры Groq/Gemini/OpenAI, HTTP-транспорт, извлечение текста и usage |
+| [providers](../wisp_backend/providers/) | Адаптеры OpenAI/Gemini, HTTP-транспорт, извлечение текста и usage |
 | [accounting](../wisp_backend/accounting/) | Защита от повторов, ORM, учёт расхода и кеш повторных ответов |
 | [config](../wisp_backend/config/) | Загрузка и проверка настроек, профили моделей |
 
@@ -37,7 +37,7 @@ Backend — отдельный процесс с HTTP API, одним AI-про�
 2. Wire-схема проверяет вход; `dispatch` преобразует его в контекст конкретного сценария.
    Политика проверяет тип контекста, строит блоки и задаёт parser/лимиты `CompletionJob`.
 3. Ledger проверяет request ID, возвращает кешированный ответ либо открывает запись учёта.
-4. Provider adapter отбирает контекст: Gemini использует countTokens, Groq/OpenAI —
+4. Provider adapter отбирает контекст: Gemini использует countTokens, OpenAI —
    консервативную локальную оценку. Все preflight и generation делят исходный deadline.
    После одного inference `ReplyEncoder` проверяет семантический ответ и создаёт JSON.
 5. Ledger сохраняет расход. После commit ответ может попасть в RAM-кеш,

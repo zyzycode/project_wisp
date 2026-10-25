@@ -13,7 +13,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scene", choices=SCENE_IDS, required=True)
     parser.add_argument("--locale", choices=("ru", "en"), default="en")
-    parser.add_argument("--provider", choices=("groq", "gemini", "openai"), default="groq")
+    parser.add_argument("--provider", choices=("gemini", "openai"), default="openai")
     parser.add_argument("--model", choices=sorted({model for _, model in CONTEXT_WINDOWS}))
     parser.add_argument("--max-output-tokens", type=int, choices=(512, 1024, 2048, 4096), default=4096)
     parser.add_argument("--temperature", type=float, choices=(0.0, 0.5, 1.0, 1.5, 2.0))

@@ -13,7 +13,7 @@ from wisp_backend.api.schemas.summary import SummaryRequest
 from wisp_backend.completion.context import ContextBlock, ContextOverflow, render_messages, select_context
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.providers.context_budget import estimate_input
-from wisp_backend.providers.groq import GroqProvider
+from wisp_backend.providers.openai import OpenAIProvider
 
 
 def fixture(name, model):
@@ -66,7 +66,7 @@ def test_provider_reserves512_and_rejects_whole_8192_overflow_before_http():
             transport=httpx.MockTransport(lambda _: pytest.fail("overflow reached provider")),
             base_url="https://mock.invalid",
         ) as client:
-            provider = GroqProvider(client, AssistantSettings())
+            provider = OpenAIProvider(client, AssistantSettings())
             result = await provider.complete(job.inference, 10)
             assert result.error == "upstream_unavailable" and result.usage == Usage(0, 0, 0)
 

@@ -6,7 +6,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from tests.helpers import touch_body
-from wisp_backend.accounting.contracts import RESERVATION
+from wisp_backend.config.profiles import PROFILES
 
 
 @pytest.mark.parametrize(
@@ -35,7 +35,7 @@ def test_usage_accounted_even_for_invalid_model_output(app_factory, body, chat_c
             assert db.execute("SELECT requests,confirmed,uncertain FROM days").fetchone() == (
                 1,
                 7 if confirmed else 0,
-                0 if confirmed else RESERVATION,
+                0 if confirmed else PROFILES["openai"].reservation,
             )
 
 

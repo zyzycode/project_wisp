@@ -6,7 +6,7 @@ import sqlite3
 import httpx
 import pytest
 from tests.helpers import touch_body
-from wisp_backend.accounting.contracts import RESERVATION, Usage
+from wisp_backend.accounting.contracts import Usage
 from wisp_backend.api.boundary import CompletionBoundary
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.schemas.interaction import InteractionChatRequest as ChatRequest
@@ -43,7 +43,7 @@ def test_slow_body_never_admitted(monkeypatch):
 
 @pytest.mark.parametrize("shutdown", [False, True])
 @pytest.mark.parametrize("path", ["/v1/chat", "/v1/touch"])
-@pytest.mark.parametrize("provider", ["groq", "gemini", "openai"])
+@pytest.mark.parametrize("provider", ["gemini", "openai"])
 def test_disconnect_or_shutdown_cancels_provider_and_releases_slot(app_factory, body, shutdown, path, provider):
     body = touch_body(body) if path == "/v1/touch" else body
 
@@ -106,7 +106,7 @@ def test_disconnect_or_shutdown_cancels_provider_and_releases_slot(app_factory, 
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini", "openai"])
+@pytest.mark.parametrize("provider", ["gemini", "openai"])
 def test_late_result_refines_usage_but_never_overwrites_timeout(app_factory, body, provider):
     async def run():
         release = asyncio.Event()
@@ -164,7 +164,10 @@ def test_admission_timeout_has_no_dispatch_and_settles_late_reservation(app_fact
             while service.background:
                 await asyncio.sleep(0)
             with sqlite3.connect(service.ledger.path) as db:
-                assert db.execute("SELECT reserved,uncertain FROM days").fetchone() == (0, RESERVATION)
+                assert db.execute("SELECT reserved,uncertain FROM days").fetchone() == (
+                    0,
+                    PROFILES["openai"].reservation,
+                )
 
     asyncio.run(run())
 

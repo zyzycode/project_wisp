@@ -6,10 +6,10 @@ import pytest
 
 def test_server_owns_prompt_model_and_envelope(client_factory, body, chat_completion):
     def upstream(request):
-        assert str(request.url) == "https://api.groq.com/openai/v1/chat/completions"
+        assert str(request.url) == "https://api.openai.com/v1/chat/completions"
         assert request.headers["authorization"] == "Bearer test-key"
         payload = json.loads(request.content)
-        assert payload["model"] == "openai/gpt-oss-20b"
+        assert payload["model"] == "gpt-6-sol"
         assert payload["stream"] is False
         assert payload["response_format"] == {"type": "json_object"}
         assert payload["messages"][0]["role"] == "system"

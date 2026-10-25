@@ -91,7 +91,7 @@ def test_shared_http_success(client_factory, completion, request_name, path, res
         assert response.json() == expected
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "gemini"])
 def test_actual_summary_provider_source_only_and512_cap(app_factory, completion, provider):
     from fastapi.testclient import TestClient
     from wisp_backend.config.settings import AssistantSettings
@@ -105,7 +105,7 @@ def test_actual_summary_provider_source_only_and512_cap(app_factory, completion,
         calls.append(data)
         assert body["requestId"] not in request.content.decode()
         assert "SYNTHETIC_PRIVATE_SOURCE" in request.content.decode()
-        if provider == "groq":
+        if provider == "openai":
             assert data["max_completion_tokens"] == 512
             assert len(data["messages"]) == 2
             assert data["messages"][0]["role"] == "system"
@@ -128,7 +128,7 @@ def test_actual_summary_provider_source_only_and512_cap(app_factory, completion,
 
     options = (
         {}
-        if provider == "groq"
+        if provider == "openai"
         else {"assistants": {"default": AssistantSettings(provider="gemini", model="gemini-3.5-flash-lite")}}
     )
     with TestClient(app_factory(upstream, **options)) as client:

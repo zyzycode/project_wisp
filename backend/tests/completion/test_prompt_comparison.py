@@ -65,7 +65,18 @@ async def comparison_artifact() -> dict[str, Any]:
     records = []
     resources = None
     for before in baseline["reports"]:
-        after = await inspect_scene(before["scene_id"], before["locale"], before["settings"]["provider"])
+        settings = before["settings"]
+        if settings["provider"] not in {"openai", "gemini"}:
+            continue
+        after = await inspect_scene(
+            before["scene_id"],
+            before["locale"],
+            settings["provider"],
+            settings["model"],
+            max_output_tokens=settings["max_output_tokens"],
+            temperature=settings["temperature"],
+            thinking_level=settings["thinking_level"],
+        )
         resources = after["resources"]
         records.append(comparison_record(before, after))
     return {
@@ -80,10 +91,12 @@ async def comparison_artifact() -> dict[str, Any]:
     }
 
 
-def test_comparison_artifact_reproduces_all_84_current_reports() -> None:
+def test_comparison_artifact_reproduces_active_providers_with_historical_settings() -> None:
     expected = json.loads(COMPARISON.read_text(encoding="utf-8"))
-    assert asyncio.run(comparison_artifact()) == expected
     assert len(expected["records"]) == 84
+    expected["records"] = [record for record in expected["records"] if record["provider"] in {"openai", "gemini"}]
+    assert len(expected["records"]) == 56
+    assert asyncio.run(comparison_artifact()) == expected
     for record in expected["records"]:
         assert record["projection_utf8_payload_bytes"] > 0
         assert record["live_comparison"]["status"] == "NOT RUN"

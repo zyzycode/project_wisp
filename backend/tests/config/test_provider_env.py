@@ -45,7 +45,7 @@ def test_full_environment_reaches_gemini_transport(env_values, monkeypatch, app_
 
 
 def test_blank_optional_settings_keep_defaults(env_values):
-    env_values.update(GROQ_API_KEY="test")
+    env_values.update(OPENAI_API_KEY="test")
     for name in (
         "MODEL",
         "BASE_URL",
@@ -58,7 +58,7 @@ def test_blank_optional_settings_keep_defaults(env_values):
     ):
         env_values[f"WISP_AI_{name}"] = " "
     settings = load_settings()
-    assert settings.base_url == "https://api.groq.com/openai/v1/"
+    assert settings.base_url == "https://api.openai.com/v1/"
     assert settings.request_timeout == 10
     assert settings.assistants["default"].max_output_tokens == 4096
     assert settings.assistants["default"].temperature is None
@@ -109,7 +109,7 @@ def test_invalid_env_values_fail_at_startup(env_values, name, value):
     ],
 )
 def test_unsafe_base_url_rejected(env_values, url):
-    env_values.update(GROQ_API_KEY="test", WISP_AI_BASE_URL=url)
+    env_values.update(OPENAI_API_KEY="test", WISP_AI_BASE_URL=url)
     with pytest.raises(ValidationError):
         load_settings()
 
@@ -141,10 +141,10 @@ def test_conflicting_legacy_profile_rejected(env_values, profile):
         load_settings()
 
 
-@pytest.mark.parametrize("provider,model", [("groq", "openai/gpt-oss-20b"), ("gemini", "gemini-3.8-flash")])
+@pytest.mark.parametrize("provider,model", [("openai", "gpt-6-sol"), ("gemini", "gemini-3.8-flash")])
 def test_incompatible_thinking_level_rejected(env_values, provider, model):
     env_values.update(
-        GROQ_API_KEY="test",
+        OPENAI_API_KEY="test",
         GEMINI_API_KEY="test",
         WISP_AI_PROVIDER=provider,
         WISP_AI_MODEL=model,

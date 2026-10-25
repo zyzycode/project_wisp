@@ -14,8 +14,8 @@ class AssistantSettings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     name: str = "Assistant"
-    provider: str = "groq"
-    model: str = Field(default="openai/gpt-oss-20b", min_length=1)
+    provider: str = "openai"
+    model: str = Field(default="gpt-6-sol", min_length=1)
     max_output_tokens: int = Field(default=4096, gt=0, le=4096, strict=True)
     temperature: float | None = Field(default=None, ge=0, le=2)
     thinking_level: Literal["minimal", "low", "medium", "high"] | None = None
@@ -24,7 +24,7 @@ class AssistantSettings(BaseModel):
     @classmethod
     def default_model(cls, value: Any) -> Any:
         if isinstance(value, dict) and "model" not in value:
-            provider = value.get("provider", "groq")
+            provider = value.get("provider", "openai")
             if isinstance(provider, str) and provider in PROFILES:
                 value = {**value, "model": PROFILES[provider].default_model}
         return value
@@ -45,7 +45,7 @@ class Settings(BaseModel):
         default_factory=lambda: {"default": AssistantSettings()},
         min_length=1,
     )
-    base_url: str = "https://api.groq.com/openai/v1/"
+    base_url: str = "https://api.openai.com/v1/"
     request_timeout: float = Field(default=10, gt=0, le=10)
     connect_timeout: float = Field(default=3, gt=0, le=3)
     pool_timeout: float = Field(default=3, gt=0, le=3)
@@ -65,7 +65,7 @@ class Settings(BaseModel):
         if isinstance(default, AssistantSettings):
             provider = default.provider
         else:
-            provider = default.get("provider", "groq") if isinstance(default, dict) else "groq"
+            provider = default.get("provider", "openai") if isinstance(default, dict) else "openai"
         profile = get_profile(provider)
         value.setdefault("base_url", profile.base_url)
         return value

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function frontendEnvironment(env) {
+  // Retired credentials stay blocked so old local environments cannot leak them into desktop.
   const serverOnly = new Set(['GROQ_API_KEY', 'GEMINI_API_KEY', 'OPENAI_API_KEY', 'TOKEN_API', 'ASSISTANTS_JSON',
     'WISP_AI_PROVIDER', 'WISP_AI_MODEL', 'WISP_AI_BASE_URL', 'WISP_AI_MAX_OUTPUT_TOKENS',
     'WISP_AI_TEMPERATURE', 'WISP_AI_THINKING_LEVEL', 'WISP_AI_REQUEST_TIMEOUT',
