@@ -1,4 +1,4 @@
-"""Reproduce the synthetic before/after artifact without replacing the baseline."""
+"""Preserve the historical comparison while checking stable current invariants."""
 
 import asyncio
 import hashlib
@@ -91,12 +91,47 @@ async def comparison_artifact() -> dict[str, Any]:
     }
 
 
-def test_comparison_artifact_reproduces_active_providers_with_historical_settings() -> None:
+def test_current_reports_preserve_archived_data_and_semantic_selection() -> None:
     expected = json.loads(COMPARISON.read_text(encoding="utf-8"))
     assert len(expected["records"]) == 84
-    expected["records"] = [record for record in expected["records"] if record["provider"] in {"openai", "gemini"}]
-    assert len(expected["records"]) == 56
-    assert asyncio.run(comparison_artifact()) == expected
-    for record in expected["records"]:
+    archived = [record for record in expected["records"] if record["provider"] in {"openai", "gemini"}]
+    current = asyncio.run(comparison_artifact())
+    assert len(current["records"]) == len(archived) == 56
+    assert {key: value for key, value in current.items() if key != "records"} == {
+        key: value for key, value in expected.items() if key != "records"
+    }
+    # The JSON stays an archive of the earlier prompt experiment. Instruction
+    # bytes and consequent optional budget selection may change; data, voice,
+    # resource eligibility and the measurement formulas must remain comparable.
+    for record, original in zip(current["records"], archived, strict=True):
+        for key in (
+            "scene",
+            "locale",
+            "provider",
+            "expression",
+            "before_estimate",
+            "before_selected_keys",
+            "projection_utf8_payload_bytes",
+            "live_comparison",
+        ):
+            assert record[key] == original[key]
+        assert len(record["blocks"]) == len(original["blocks"])
+        for block, old in zip(record["blocks"], original["blocks"], strict=True):
+            assert block["key"] == old["key"]
+            if block["key"] == "instructions":
+                assert block["utf8_bytes"] <= old["utf8_bytes"]
+                assert block["selected"] is True and block["reason"] == "required"
+            else:
+                assert block["utf8_bytes"] == old["utf8_bytes"]
+            assert block["selected"] == (block["key"] in record["after_selected_keys"])
+        assert len(record["resources"]) == len(original["resources"])
+        for resource, old in zip(record["resources"], original["resources"], strict=True):
+            assert {key: value for key, value in resource.items() if key not in {"included", "reason"}} == {
+                key: value for key, value in old.items() if key not in {"included", "reason"}
+            }
+        assert record["estimate_delta"] == record["after_estimate"] - record["before_estimate"]
+        assert record["prompt_and_selection_estimate_delta"] == (
+            record["estimate_delta"] - record["projection_utf8_payload_bytes"]
+        )
         assert record["projection_utf8_payload_bytes"] > 0
         assert record["live_comparison"]["status"] == "NOT RUN"

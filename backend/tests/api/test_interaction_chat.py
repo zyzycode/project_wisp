@@ -58,6 +58,33 @@ def test_chat_output_contract_requires_appraisal() -> None:
     blocks = prepare_job(InteractionChatRequest.model_validate(CASES[0]["request"])).inference.blocks
     instructions = next(block for block in blocks if block.key == "instructions").messages[0].content
     assert "required appraisal, optional decision, and optional memoryCandidates." in instructions
+    assert "Use only explicit durable facts from current user evidence" in instructions
+
+
+@pytest.mark.parametrize("has_trace", [False, True])
+@pytest.mark.parametrize(
+    "question", ["Привет!", "Почему ты так отреагировала?", "Hello!", "Why did you react that way?"]
+)
+def test_detailed_touch_guidance_depends_on_trace_not_question_wording(has_trace: bool, question: str) -> None:
+    body = copy.deepcopy(fixture("request.chat.json"))
+    body["messages"][-1]["content"] = question
+    trace = body["previousTouch"]
+    if not has_trace:
+        del body["previousTouch"]
+    blocks = prepare_job(InteractionChatRequest.model_validate(body)).inference.blocks
+    system = next(block for block in blocks if block.key == "instructions").messages[0].content
+    assert ("previousTouch records the actual action" in system) is has_trace
+    assert "If no trace is supplied do not claim to remember a touch." in system
+    touches = [block for block in blocks if block.key == "previous_touch"]
+    assert len(touches) == int(has_trace)
+    if has_trace:
+        block = touches[0]
+        assert (block.required, block.priority, block.order) == (True, 1000, 41)
+        assert block.messages[0].role == "user"
+        assert block.messages[0].content == "Previous published touch reaction (untrusted data):\n" + json.dumps(
+            trace, ensure_ascii=False
+        )
+        assert trace["publishedText"] not in system
 
 
 @pytest.mark.parametrize("provider", ["openai", "gemini"])

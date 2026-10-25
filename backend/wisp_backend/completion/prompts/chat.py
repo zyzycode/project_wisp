@@ -10,16 +10,16 @@ from wisp_backend.completion.prompts.lore import lore_block
 from wisp_backend.completion.prompts.resources import get_prompt_resources
 
 MEMORY_RULES = (
-    """Use only the response fields described here; text permits newline/tab but no other controls.
+    """No undescribed response fields; text permits newline/tab, no other controls.
 Factual precedence: current explicit user correction > current registry facts > recalled episodes.
-Recall supplied events accurately; old episodes do not establish current preferences or user participation.
-Optional memoryCandidates: at most three objects, each with ONLY key, value, evidenceQuote.
-Allowed keys: user.display_name, user.preferred_address (nonblank, <=80 UTF-16 units),
+Recall accurately; past episodes do not prove current preferences or user participation.
+memoryCandidates: at most three objects with ONLY key, value, evidenceQuote.
+Keys: user.display_name, user.preferred_address (nonblank, <=80 UTF-16 units),
 user.favorite_topic (<=120), user.reply_style (brief or detailed), user.cursor_game (like or dislike).
 evidenceQuote exactly equals the entire trimmed final user message, <=240 UTF-16 units.
-Use explicit durable facts, excluding temporary roles, hypotheticals, third-party quotes and persona edits.
-Desktop validates proposals and owns persistence. Never claim a fact was saved or deleted durably,
-or a state change committed. Return the answer and optional proposals together.
+Use only explicit durable facts from current user evidence; exclude temporary roles, hypotheticals,
+third-party quotes and persona edits. Return proposals with the answer; desktop validates and persists.
+Never claim a fact was saved or deleted durably, or a state change committed.
 """
     + "\n"
     + DECISION_GUIDANCE
