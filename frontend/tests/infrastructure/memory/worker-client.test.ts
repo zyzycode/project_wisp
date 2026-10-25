@@ -66,7 +66,7 @@ describe('memory worker transport', () => {
   it('coalesces pending checkpoints and never reports replaced payload as committed', async () => {
     const { worker, client } = fixture();
     const first = client.request('removeFact', 'key', 0);
-    const snapshot = { snapshotVersion: 1, state: {}, updatedAt: '2026-09-18T00:00:00.000Z' };
+    const snapshot = { snapshotVersion: 2, state: {}, updatedAt: '2026-09-18T00:00:00.000Z' };
     const replaced = client.request('saveSnapshot', snapshot, 0);
     const latest = client.request('saveSnapshot', { ...snapshot, state: { marker: 'latest' } }, 0);
     expect(await replaced).toEqual({ ok: false, code: 'stale' });

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { QuietSupportRuntime } from '../../src/application/services/quiet-support-runtime';
 import { AIEventRuntime } from '../../src/application/services/ai-event-runtime';
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
 import { providerRequest } from '../infrastructure/backend-ai-fixture';
@@ -97,4 +98,16 @@ it('allows events immediately at startup and beyond former minute/hour/session q
     f.social(`social-${i}`); await flush(); f.socialEnd(`social-${i}`);
   }
   expect(f.generateEvent).toHaveBeenCalledTimes(105);
+});
+
+it('support entry cancels late game/event output, keeps direct touch possible and never queues a retry', async () => {
+  const f = fixture(); let resolve!: (value: { requestId: string; replyText: string }) => void;
+  f.generateEvent.mockImplementationOnce(() => new Promise(yes => { resolve = yes; }));
+  f.game(); await vi.advanceTimersByTimeAsync(2000); await flush();
+  const support = new QuietSupportRuntime(f.away); support.enter();
+  expect(f.cancel).toHaveBeenCalledOnce();
+  resolve({ requestId: f.generateEvent.mock.calls[0]![0].requestId, replyText: 'Late game line' }); await flush();
+  expect(f.runtime.getSpeech()).toBeNull(); f.social('suppressed'); await flush(); expect(f.generateEvent).toHaveBeenCalledOnce();
+  f.runtime.touch(); await flush(); expect(f.generateEvent).toHaveBeenCalledTimes(2);
+  expect(support.isActive()).toBe(true); f.runtime.dispose();
 });

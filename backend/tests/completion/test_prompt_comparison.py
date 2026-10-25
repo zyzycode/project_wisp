@@ -97,9 +97,12 @@ def test_current_reports_preserve_archived_data_and_semantic_selection() -> None
     archived = [record for record in expected["records"] if record["provider"] in {"openai", "gemini"}]
     current = asyncio.run(comparison_artifact())
     assert len(current["records"]) == len(archived) == 56
-    assert {key: value for key, value in current.items() if key != "records"} == {
-        key: value for key, value in expected.items() if key != "records"
+    assert {key: value for key, value in current.items() if key not in {"records", "resources"}} == {
+        key: value for key, value in expected.items() if key not in {"records", "resources"}
     }
+    rollout = json.loads((ROOT / "issue123_comparison.json").read_text())
+    assert current["resources"] == rollout["resources"]["after"]
+    assert expected["resources"] == rollout["resources"]["before"]
     # The JSON stays an archive of the earlier prompt experiment. Instruction
     # bytes and consequent optional budget selection may change; data, voice,
     # resource eligibility and the measurement formulas must remain comparable.
@@ -118,8 +121,9 @@ def test_current_reports_preserve_archived_data_and_semantic_selection() -> None
         assert len(record["blocks"]) == len(original["blocks"])
         for block, old in zip(record["blocks"], original["blocks"], strict=True):
             assert block["key"] == old["key"]
-            if block["key"] == "instructions":
-                assert block["utf8_bytes"] <= old["utf8_bytes"]
+            if block["key"] in {"instructions", "character_profile_state", "interaction_policy"}:
+                # Exact changed texts/hashes are checked by test_profile_rollout.
+                assert block["utf8_bytes"] > 0
                 assert block["selected"] is True and block["reason"] == "required"
             else:
                 assert block["utf8_bytes"] == old["utf8_bytes"]

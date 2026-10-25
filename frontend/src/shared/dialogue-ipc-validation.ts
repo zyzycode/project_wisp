@@ -54,6 +54,11 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
     case 'completed': {
       exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome'], ['memorySource', 'interestThread']);
       const o = exactRecord(t.outcome, ['kind'], ['reason']);
+      if (o.kind === 'local') {
+        exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome']);
+        exactRecord(o, ['kind', 'reason']);
+        return { ...meta, turn: { phase: 'completed', requestId: id(t.requestId), replyText: plainText(t.replyText, 2000), outcome: { kind: 'local', reason: enumValue(o.reason, ['quiet_support']) } } };
+      }
       const kind = enumValue(o.kind, ['success', 'fallback']);
       exactRecord(o, kind === 'success' ? ['kind'] : ['kind', 'reason']);
       const outcome = kind === 'success' ? { kind } : { kind, reason: enumValue<DialogueFallbackReasonDTO>(o.reason, ['degraded', 'offline', 'timeout', 'provider_error', 'invalid_response']) };

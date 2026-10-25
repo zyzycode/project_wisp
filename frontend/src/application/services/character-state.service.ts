@@ -6,7 +6,7 @@ import { learnVerifiedPreference } from '../../domain/character/preferences';
 import {
   createCharacterSnapshot,
   processStimulusWithAdaptation,
-  shyDreamGirlPreset,
+  curiousStubbornGirlPreset,
   synthesizeEmotionalTone,
 } from '../../domain/character';
 import type {
@@ -68,7 +68,7 @@ function createDefaultCharacterState(now: () => number): CharacterState {
       love: 0,
       loveUnlocked: false,
     },
-    personality: clonePersonalityPreset(shyDreamGirlPreset),
+    personality: clonePersonalityPreset(curiousStubbornGirlPreset),
     intimacy: {
       flirtiness: 0,
       romanticCharge: 0,

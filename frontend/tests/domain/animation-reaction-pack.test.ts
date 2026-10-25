@@ -13,7 +13,7 @@ import {
   metabolizeNeeds,
   AutonomyCharacterEngine,
   processStimulus,
-  shyDreamGirlPreset,
+  curiousStubbornGirlPreset,
   synthesizeEmotionalTone,
   type CharacterState,
 } from '../../src/domain/character';
@@ -70,7 +70,7 @@ function createTestCharacterState(overrides: Partial<CharacterState> = {}): Char
       loveUnlocked: true,
       ...overrides.relationship,
     },
-    personality: overrides.personality ?? shyDreamGirlPreset,
+    personality: overrides.personality ?? curiousStubbornGirlPreset,
     intimacy: {
       flirtiness: 0,
       romanticCharge: 0,
@@ -339,7 +339,7 @@ describe('Domain: Animation & Reaction Pack Integration (Phase 12)', () => {
 
       // 2. Shy: high shyness (> 0.65) and low friendship (< 400)
       expect(
-        synthesizeEmotionalTone(createTestCharacterState({ relationship: { friendship: 250, love: 0, loveUnlocked: false } }))
+        synthesizeEmotionalTone(createTestCharacterState({ personality: { ...curiousStubbornGirlPreset, axes: { ...curiousStubbornGirlPreset.axes, sensitivity: { ...curiousStubbornGirlPreset.axes.sensitivity, current: .9 }, boldness: { ...curiousStubbornGirlPreset.axes.boldness, current: .2 }, extraversion: { ...curiousStubbornGirlPreset.axes.extraversion, current: .2 } } }, relationship: { friendship: 250, love: 0, loveUnlocked: false } }))
       ).toBe('shy');
 
       // 3. Affectionate: love >= 500 and friendship >= 500

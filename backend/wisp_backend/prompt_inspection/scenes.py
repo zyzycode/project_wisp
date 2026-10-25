@@ -30,6 +30,14 @@ SCENE_IDS = (
     "consent_revoked",
     "state_changed",
     "no_example_match",
+    "profile_different_taste",
+    "profile_harmless_correction",
+    "profile_failed_plan",
+    "profile_explicit_boundary",
+    "profile_failed_cheer",
+    "profile_user_busy",
+    "profile_unanswered_initiative",
+    "profile_user_project",
 )
 
 

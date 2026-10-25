@@ -2,7 +2,7 @@
  * No SQL, filesystem, Electron, worker or provider types cross this boundary.
  */
 import type { CursorGameOutcome } from './cursor-game-contract';
-import type { CharacterMemorySnapshotV1 } from './character-memory-snapshot';
+import type { CharacterMemorySnapshotV2 } from './character-memory-snapshot';
 
 export type MemoryFailureCode =
   | 'unavailable' | 'busy' | 'storage_full' | 'corrupt' | 'unsupported_version'
@@ -109,7 +109,7 @@ export interface IGameEpisodeRepository {
 
 export interface ICharacterStateRepository {
   load(context: MemoryOperationContext): Promise<MemoryResult<PersistedCharacterStateSnapshot | null>>;
-  save(snapshot: CharacterMemorySnapshotV1, context: MemoryOperationContext): Promise<MemoryResult<void>>;
+  save(snapshot: CharacterMemorySnapshotV2, context: MemoryOperationContext): Promise<MemoryResult<void>>;
 }
 
 /** Advances the generation barrier even if deletion rolls back; no per-table clear API. */

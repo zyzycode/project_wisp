@@ -49,7 +49,7 @@ it('enforces the ten-second deadline across restore reads, not only worker initi
 });
 it.each(['invalid', 'future', 'malformed-envelope'])('protects %s snapshot from automatic overwrite, including shutdown', async kind => {
   const f = fixture();
-  f.storage.character.load.mockResolvedValue(kind === 'malformed-envelope' ? { ok: false, code: 'invalid_data' } : { ok: true, value: { snapshotVersion: kind === 'future' ? 2 : 1, state: {}, updatedAt: new Date().toISOString() } });
+  f.storage.character.load.mockResolvedValue(kind === 'malformed-envelope' ? { ok: false, code: 'invalid_data' } : { ok: true, value: { snapshotVersion: kind === 'future' ? 3 : 1, state: {}, updatedAt: new Date().toISOString() } });
   await f.lifecycle.initialize(); expect(f.lifecycle.getStatus()).toEqual({ mode: 'persistent', characterRestore: kind === 'future' ? 'unsupported_snapshot' : 'invalid_snapshot' });
   await vi.advanceTimersByTimeAsync(10_000); await f.lifecycle.shutdown(); expect(f.storage.character.save).not.toHaveBeenCalled();
 });
@@ -100,4 +100,33 @@ it.each([false, true])('startup topic maintenance closes expiry before admission
   await initialization;
   if (abandon) { expect(topic.mutate).not.toHaveBeenCalled(); expect(f.lifecycle.getStatus().mode).toBe('volatile'); } else { expect(topic.mutate).toHaveBeenCalledWith(expect.objectContaining({ kind: 'close', reason: 'expired' }), { generation: 1 }); expect(f.lifecycle.currentGeneration()).toBe(1); }
   expect(f.start).toHaveBeenCalledTimes(1); await f.lifecycle.shutdown();
+});
+
+it.each([false, true])('legacy restore remains dirty until acknowledged checkpoint; busy failure retries: %s', async fail => {
+  const f = fixture(); const { cardRevision: _revision, ...state } = projectCharacterMemory(f.character.getState(), new Date().toISOString()).state;
+  const legacy = { snapshotVersion: 1, updatedAt: new Date().toISOString(), state: { ...state, presetId: 'shyDreamGirl', currentAxes: { openness: 0.55, extraversion: 0.28, agreeableness: 0.86, sensitivity: 0.88, playfulness: 0.42, boldness: 0.18, independence: 0.58 } } };
+  f.storage.character.load.mockResolvedValue({ ok: true, value: legacy });
+  await f.lifecycle.initialize(); expect(f.storage.character.save).not.toHaveBeenCalled();
+  if (fail) f.storage.character.save.mockResolvedValueOnce({ ok: false, code: 'busy' });
+  await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(1);
+  expect(f.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2, state: { presetId: 'curiousStubbornGirl', cardRevision: 2 } });
+  await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
+  await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
+  await f.lifecycle.shutdown();
+});
+
+it('failed migration save leaves the source v1 available for a clean restart', async () => {
+  const f = fixture(); const { cardRevision: _revision, ...state } = projectCharacterMemory(f.character.getState(), new Date().toISOString()).state;
+  const source = { snapshotVersion: 1, updatedAt: new Date().toISOString(), state: { ...state, presetId: 'shyDreamGirl', currentAxes: { openness: 0.55, extraversion: 0.28, agreeableness: 0.86, sensitivity: 0.88, playfulness: 0.42, boldness: 0.18, independence: 0.58 } } };
+  const frozen = structuredClone(source);
+  f.storage.character.load.mockResolvedValue({ ok: true, value: source });
+  f.storage.character.save.mockResolvedValueOnce({ ok: false, code: 'io_error' });
+  await f.lifecycle.initialize(); await f.lifecycle.checkpoint();
+  expect(f.lifecycle.getStatus()).toEqual({ mode: 'volatile', reason: 'io_error' });
+  expect(source).toEqual(frozen); await f.lifecycle.shutdown();
+  const restarted = fixture(); restarted.storage.character.load.mockResolvedValue({ ok: true, value: source });
+  await restarted.lifecycle.initialize(); await restarted.lifecycle.checkpoint();
+  expect(restarted.storage.character.save).toHaveBeenCalledTimes(1);
+  expect(restarted.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2 });
+  await restarted.lifecycle.shutdown();
 });

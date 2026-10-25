@@ -20,7 +20,7 @@
       "loveUnlocked": false
     },
     "personality": {
-      "presetId": "shyDreamGirl",
+      "presetId": "curiousStubbornGirl",
       "aiSelfConcept": "Я Wisp, твой компаньон.",
       "traits": {
         "shyness": 0.4,
@@ -44,8 +44,8 @@
     }
   },
   "card": {
-    "id": "shyDreamGirl",
-    "revision": 1
+    "id": "curiousStubbornGirl",
+    "revision": 2
   },
   "effectPolicy": "suppressed"
 }

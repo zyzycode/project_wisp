@@ -1,11 +1,5 @@
 /** Target #87 semantic contracts; implementation is delivered by #89/#90. */
 export interface CharacterCardReference {
-  readonly id: 'shyDreamGirl';
-  readonly revision: 1;
-}
-
-/** Gate #122 target only; #123 atomically replaces the active revision-1 contract. */
-export interface CharacterCardReferenceRevision2 {
   readonly id: 'curiousStubbornGirl';
   readonly revision: 2;
 }

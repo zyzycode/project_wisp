@@ -8,7 +8,7 @@ export interface InteractionProposal {
 }
 export function interactionSignature(snapshot: CharacterSnapshot): string {
   const { needs, relationship, personality, intimacy } = snapshot;
-  return JSON.stringify([personality.presetId, 1, snapshot.synthesizedTone,
+  return JSON.stringify([personality.presetId, 2, snapshot.synthesizedTone,
     needs.energy <= 20 ? 0 : needs.energy < 30 ? 1 : 2,
     needs.comfort <= 60 ? 0 : needs.comfort < 80 ? 1 : 2,
     relationship.friendship < 400 ? 0 : relationship.friendship < 500 ? 1 : 2,

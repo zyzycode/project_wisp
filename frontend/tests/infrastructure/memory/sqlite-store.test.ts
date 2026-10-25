@@ -1,3 +1,6 @@
+import { CharacterStateService } from '../../../src/application/services/character-state.service';
+import { projectCharacterMemory, restoreCharacterMemory } from '../../../src/application/services/character-memory-snapshot';
+import type { PersistedCharacterStateSnapshot } from '../../../src/application/ports/memory-repository.interface';
 import { afterEach, describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -75,7 +78,7 @@ describe('SQLite memory', () => {
     expect(run(store, 'appendEpisode', { ...episode, playCompleted: false })).toEqual({ ok: false, code: 'invalid_data' });
   });
   it('validates snapshot envelopes without interpreting domain state and preserves malformed rows', () => {
-    const { store, filename } = fixture(); const snapshot = { snapshotVersion: 1, state: { preferences: {} }, updatedAt: now };
+    const { store, filename } = fixture(); const snapshot = { snapshotVersion: 2, state: { preferences: {} }, updatedAt: now };
     expect(run(store, 'saveSnapshot', snapshot).ok).toBe(true);
     expect(run(store, 'loadSnapshot')).toEqual({ ok: true, value: snapshot });
     const db = new Database(filename); db.prepare("UPDATE character_state SET snapshot_json = 'invalid'").run();
@@ -85,7 +88,7 @@ describe('SQLite memory', () => {
   });
   it('clears all user tables but keeps schema and rejects late writes from old generations', () => {
     const { store, filename } = fixture(); run(store, 'appendTurn', turn()); run(store, 'upsertFact', fact); run(store, 'appendEpisode', episode);
-    run(store, 'saveSnapshot', { snapshotVersion: 1, state: {}, updatedAt: now });
+    run(store, 'saveSnapshot', { snapshotVersion: 2, state: {}, updatedAt: now });
     expect(run(store, 'clear', null, 1).ok).toBe(true);
     expect(run(store, 'appendTurn', turn())).toEqual({ ok: false, code: 'stale' });
     expect(run(store, 'clear', null, 1)).toEqual({ ok: false, code: 'stale' });
@@ -124,4 +127,28 @@ describe('SQLite memory', () => {
     const { store } = fixture(); expect(run(store, 'appendEpisode', { ...episode, endedAt: '2026-02-30T00:00:00.000Z' })).toEqual({ ok: false, code: 'invalid_data' });
     expect(run(store, 'appendEpisode', { ...episode, executedMs: Infinity })).toEqual({ ok: false, code: 'invalid_data' });
   });
+});
+
+it('migrates only character snapshot without DDL or changing any existing memory tables', () => {
+  const { store, filename } = fixture();
+  run(store, 'appendTurn', { ...turn(), memoryConfirmable: true }); run(store, 'upsertFact', fact); run(store, 'appendEpisode', episode);
+  run(store, 'appendTurn', { ...turn('topic'), memoryConfirmable: true });
+  expect(run(store, 'mutateInterestThread', { kind: 'confirm', commandId: 'topic-confirm', threadId: 'topic', expected: null, confirmed: true, source: { userMessageId: 'utopic', assistantMessageId: 'atopic' }, text: 'Привет', confirmedAt: now }, 1).ok).toBe(true);
+  expect(run(store, 'mutateMemoryItem', { kind: 'confirm', commandId: 'item-confirm', itemId: 'item', expectedRevision: 0, confirmed: true, source: { userMessageId: 'u', assistantMessageId: 'a' }, content: { category: 'important_event', label: 'Приветствие', text: 'Привет', occurredOn: null }, confirmedAt: now }, 2).ok).toBe(true);
+  const db = new Database(filename), defaults = new CharacterStateService().getState();
+  const { cardRevision: _revision, ...state } = projectCharacterMemory(defaults, now).state;
+  const legacy = { snapshotVersion: 1, state: { ...state, presetId: 'shyDreamGirl', currentAxes: { openness: 0.55, extraversion: 0.28, agreeableness: 0.86, sensitivity: 0.88, playfulness: 0.42, boldness: 0.18, independence: 0.58 } } };
+  db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?)").run(JSON.stringify(legacy), now);
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name!='character_state' ORDER BY name").all() as { name: string }[];
+  const dump = () => tables.map(({ name }) => ({ name, rows: db.prepare(`SELECT * FROM "${name}"`).all() }));
+  for (const name of ['interest_thread', 'interest_thread_receipts', 'memory_suppressed_pairs', 'memory_items', 'memory_mutation_receipts']) expect(db.prepare(`SELECT * FROM ${name}`).all().length).toBeGreaterThan(0);
+  const before = dump(), schema = db.prepare('SELECT type,name,sql FROM sqlite_master ORDER BY name').all();
+  const loaded = run(store, 'loadSnapshot', null, 2); expect(loaded.ok).toBe(true);
+  const restored = restoreCharacterMemory(loaded.ok ? loaded.value as PersistedCharacterStateSnapshot : { snapshotVersion: 0, state: null, updatedAt: now }, defaults, 100);
+  const migrated = projectCharacterMemory(restored, later);
+  expect(run(store, 'saveSnapshot', migrated, 2).ok).toBe(true);
+  expect(run(store, 'loadSnapshot', null, 2)).toEqual({ ok: true, value: migrated });
+  expect(run(store, 'saveSnapshot', { ...legacy, updatedAt: now }, 2)).toEqual({ ok: false, code: 'invalid_data' });
+  expect(run(store, 'loadSnapshot', null, 2)).toEqual({ ok: true, value: migrated });
+  expect(dump()).toEqual(before); expect(db.prepare('SELECT type,name,sql FROM sqlite_master ORDER BY name').all()).toEqual(schema); db.close();
 });

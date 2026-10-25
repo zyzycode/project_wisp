@@ -348,6 +348,7 @@ export type DialogueFallbackReasonDTO =
   | 'invalid_response';
 
 export type DialogueTurnPresentationDTO =
+  | QuietSupportAcknowledgementDTO
   | { readonly phase: 'idle' }
   | { readonly phase: 'thinking'; readonly requestId: string }
   | {
@@ -367,10 +368,12 @@ export type DialogueTurnPresentationDTO =
       readonly message: string;
     };
 
-/** Gate #122 target: #123 adds this local result to DialogueTurnPresentationDTO.
+/** Local deterministic support acknowledgement.
  * It has no provider result, fallback, confirmable memory source or topic claim.
  */
 export interface QuietSupportAcknowledgementDTO {
+  readonly memorySource?: never;
+  readonly interestThread?: never;
   readonly phase: 'completed';
   readonly requestId: string;
   readonly replyText: string;

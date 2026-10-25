@@ -1,3 +1,4 @@
+import { QuietSupportRuntime } from '../application/services/quiet-support-runtime';
 import { InterestThreadCommands } from '../application/services/interest-thread-commands';
 import { InterestThreadDialogue } from '../application/services/interest-thread';
 import { DialogueAdmission } from '../application/services/dialogue-admission';
@@ -126,6 +127,7 @@ let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let externalWindowSurfaces: ExternalWindowSurfacesPort | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
+const quietSupportRuntime = new QuietSupportRuntime(() => { autonomyComposition?.setQuietSupport(true); aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); });
 let dialogueRuntime: DialogueRuntime | null = null;
 let aiEventRuntime: AIEventRuntime | null = null;
 let unregisterDialogue: (() => void) | null = null;
@@ -338,6 +340,7 @@ function initializeAutonomyComposition(): void {
     createActivityRunId: randomUUID,
     onPresentationChanged: publishBrainState,
   });
+  autonomyComposition.setQuietSupport(quietSupportRuntime.isActive());
   if (memoryRuntime?.isRunning()) autonomyComposition.start();
   if (dialogueRuntime === null) {
     const ai = createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
@@ -368,7 +371,7 @@ function initializeAutonomyComposition(): void {
         canGenerate: () => !!dialogueRuntime?.getPresentation().canSubmit && !aiEventRuntime?.isBusy() && !summaryGenerating,
       });
     }
-    dialogueRuntime = new DialogueRuntime({ observation: observationRuntime,
+    dialogueRuntime = new DialogueRuntime({ quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
       memory: { ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
@@ -807,7 +810,7 @@ if (!gotTheLock) {
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
       pause: pauseCharacterRuntime, invalidateMemory: token => { dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
-      resetCommitted: () => { dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
+      resetCommitted: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
     initializeServices();

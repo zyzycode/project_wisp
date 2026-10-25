@@ -84,7 +84,7 @@ def test_full_synthetic_corpus_preserves_data_and_budgets_while_selecting_resour
             current_blocks = {block["key"]: block for block in report["blocks"]}
             assert set(original_blocks) - set(current_blocks) <= {"examples"}
             for key, original in original_blocks.items():
-                if key not in {"instructions", "character_profile_state", "examples", "memory"}:
+                if key not in {"instructions", "character_profile_state", "interaction_policy", "examples", "memory"}:
                     assert current_blocks[key]["messages_sha256"] == original["messages_sha256"]
             character = scene_context(expected["scene_id"], expected["locale"]).character
             rendered = next(

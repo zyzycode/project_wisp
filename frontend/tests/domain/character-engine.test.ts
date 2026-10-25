@@ -7,7 +7,7 @@ import {
   createCharacterSnapshot,
   metabolizeNeeds,
   processStimulus,
-  shyDreamGirlPreset,
+  curiousStubbornGirlPreset,
   synthesizeEmotionalTone,
   trackPreference,
 } from '../../src/domain/character';
@@ -29,7 +29,7 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
       loveUnlocked: true,
       ...overrides.relationship,
     },
-    personality: overrides.personality ?? shyDreamGirlPreset,
+    personality: overrides.personality ?? curiousStubbornGirlPreset,
     intimacy: {
       flirtiness: 0,
       romanticCharge: 0,
@@ -43,78 +43,22 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
 }
 
 describe('Domain: Character Engine v2', () => {
-  it('defines the Shy Dream Girl preset with contract calibration', () => {
-    expect(shyDreamGirlPreset.id).toBe('shyDreamGirl');
-    expect(shyDreamGirlPreset.displayName).toBe('Shy Dream Girl');
-    expect(shyDreamGirlPreset.axes).toEqual({
-      openness: {
-        base: 0.55,
-        current: 0.55,
-        softMin: 0.35,
-        softMax: 0.75,
-        hardMin: 0.2,
-        hardMax: 0.9,
-        plasticity: 0.3,
-      },
-      extraversion: {
-        base: 0.28,
-        current: 0.28,
-        softMin: 0.15,
-        softMax: 0.5,
-        hardMin: 0.05,
-        hardMax: 0.7,
-        plasticity: 0.25,
-      },
-      agreeableness: {
-        base: 0.86,
-        current: 0.86,
-        softMin: 0.65,
-        softMax: 0.96,
-        hardMin: 0.45,
-        hardMax: 1.0,
-        plasticity: 0.2,
-      },
-      sensitivity: {
-        base: 0.88,
-        current: 0.88,
-        softMin: 0.68,
-        softMax: 0.98,
-        hardMin: 0.5,
-        hardMax: 1.0,
-        plasticity: 0.18,
-      },
-      playfulness: {
-        base: 0.42,
-        current: 0.42,
-        softMin: 0.25,
-        softMax: 0.7,
-        hardMin: 0.1,
-        hardMax: 0.85,
-        plasticity: 0.35,
-      },
-      boldness: {
-        base: 0.18,
-        current: 0.18,
-        softMin: 0.08,
-        softMax: 0.38,
-        hardMin: 0.02,
-        hardMax: 0.58,
-        plasticity: 0.22,
-      },
-      independence: {
-        base: 0.58,
-        current: 0.58,
-        softMin: 0.35,
-        softMax: 0.82,
-        hardMin: 0.2,
-        hardMax: 0.95,
-        plasticity: 0.25,
-      },
+  it('defines the Curious Stubborn Girl preset with contract calibration', () => {
+    expect(curiousStubbornGirlPreset.id).toBe('curiousStubbornGirl');
+    expect(curiousStubbornGirlPreset.displayName).toBe('Curious Stubborn Girl');
+    expect(curiousStubbornGirlPreset.axes).toEqual({
+      openness: { base: 0.68, current: 0.68, softMin: 0.45, softMax: 0.85, hardMin: 0.25, hardMax: 0.95, plasticity: 0.3 },
+      extraversion: { base: 0.6, current: 0.6, softMin: 0.45, softMax: 0.78, hardMin: 0.2, hardMax: 0.9, plasticity: 0.25 },
+      agreeableness: { base: 0.62, current: 0.62, softMin: 0.5, softMax: 0.85, hardMin: 0.35, hardMax: 0.98, plasticity: 0.2 },
+      sensitivity: { base: 0.58, current: 0.58, softMin: 0.4, softMax: 0.72, hardMin: 0.25, hardMax: 0.9, plasticity: 0.18 },
+      playfulness: { base: 0.62, current: 0.62, softMin: 0.4, softMax: 0.8, hardMin: 0.2, hardMax: 0.95, plasticity: 0.35 },
+      boldness: { base: 0.55, current: 0.55, softMin: 0.4, softMax: 0.75, hardMin: 0.2, hardMax: 0.9, plasticity: 0.22 },
+      independence: { base: 0.68, current: 0.68, softMin: 0.45, softMax: 0.88, hardMin: 0.25, hardMax: 0.98, plasticity: 0.25 },
     });
   });
 
   it('calculates shyness from sensitivity, boldness, and extraversion', () => {
-    expect(calculateShyness(shyDreamGirlPreset.axes)).toBeCloseTo(0.827, 3);
+    expect(calculateShyness(curiousStubbornGirlPreset.axes)).toBeCloseTo(0.4985, 4);
   });
 
   it('gates flirt expression with consent, love unlock, friendship, energy, and comfort', () => {
@@ -149,7 +93,7 @@ describe('Domain: Character Engine v2', () => {
       'sleepy'
     );
     expect(synthesizeEmotionalTone(createState({ relationship: { friendship: 399, love: 0, loveUnlocked: false } }))).toBe(
-      'shy'
+      'neutral'
     );
     expect(synthesizeEmotionalTone(createState({ relationship: { friendship: 500, love: 500, loveUnlocked: true } }))).toBe(
       'affectionate'
@@ -174,13 +118,13 @@ describe('Domain: Character Engine v2', () => {
       needs: state.needs,
       relationship: state.relationship,
       personality: {
-        presetId: 'shyDreamGirl',
-        aiSelfConcept: shyDreamGirlPreset.aiSelfConcept,
+        presetId: 'curiousStubbornGirl',
+        aiSelfConcept: curiousStubbornGirlPreset.aiSelfConcept,
         traits: {
-          shyness: calculateShyness(shyDreamGirlPreset.axes),
-          playfulness: 0.42,
-          sensitivity: 0.88,
-          boldness: 0.18,
+          shyness: calculateShyness(curiousStubbornGirlPreset.axes),
+          playfulness: 0.62,
+          sensitivity: 0.58,
+          boldness: 0.55,
         },
       },
       intimacy: {
@@ -219,7 +163,7 @@ describe('Domain: Character Engine v2', () => {
 
   it('adapts personality axes with plasticity, soft resistance, and hard bounds', () => {
     const axes = {
-      ...shyDreamGirlPreset.axes,
+      ...curiousStubbornGirlPreset.axes,
       boldness: {
         base: 0.5,
         current: 0.5,
@@ -349,4 +293,16 @@ describe('Domain: Character Engine v2', () => {
     expect(next.needs.attention).toBeLessThan(56);
     expect(next.needs.boredom ?? 0).toBeGreaterThan(state.needs.boredom ?? 0);
   });
+});
+
+it('keeps authored identity bounded and shy tone situational beyond the soft envelope', () => {
+  expect(curiousStubbornGirlPreset.aiSelfConcept.length).toBeLessThanOrEqual(500);
+  const state = createState({ relationship: { friendship: 0, love: 0, loveUnlocked: false } });
+  state.personality = { ...state.personality, axes: Object.fromEntries(Object.entries(state.personality.axes).map(([key, axis]) => [key, { ...axis, current: key === 'sensitivity' ? axis.softMax : key === 'boldness' || key === 'extraversion' ? axis.softMin : axis.base }])) as typeof state.personality.axes };
+  expect(calculateShyness(state.personality.axes)).toBeLessThanOrEqual(0.644);
+  expect(synthesizeEmotionalTone(state)).toBe('neutral');
+  state.personality.axes.sensitivity.current = state.personality.axes.sensitivity.hardMax;
+  state.personality.axes.boldness.current = state.personality.axes.boldness.hardMin;
+  state.personality.axes.extraversion.current = state.personality.axes.extraversion.hardMin;
+  expect(synthesizeEmotionalTone(state)).toBe('shy');
 });

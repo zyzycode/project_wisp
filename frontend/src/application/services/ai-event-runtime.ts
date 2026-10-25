@@ -145,7 +145,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
       if (!this.current(source)) return; if (this.options.now() >= deadline) { this.publishTouch(source); return; }
       const memory = recalled?.ok ? recalled.value : emptyMemoryContext();
       const requestId = this.options.createId(); this.requestId = requestId;
-      const request: AIEventProviderRequest = { ...(source.touchReceipt ? { interaction: { card: { id: 'shyDreamGirl', revision: 1 }, effectPolicy: source.touchReceipt.effectPolicy } } : {}), requestId, event: source.event, characterSnapshot: this.options.character(), memoryContext: memory, locale };
+      const request: AIEventProviderRequest = { ...(source.touchReceipt ? { interaction: { card: { id: 'curiousStubbornGirl', revision: 2 }, effectPolicy: source.touchReceipt.effectPolicy } } : {}), requestId, event: source.event, characterSnapshot: this.options.character(), memoryContext: memory, locale };
       const raw = await this.options.provider.generateEvent(request);
       this.requestId = null;
       if (!this.current(source) || this.options.gate().localSpeech) return;

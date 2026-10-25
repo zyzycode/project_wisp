@@ -1,10 +1,10 @@
 import type { PersonalityAxis } from '../../domain/character/types';
 
-/** Persisted dynamic projection v1. Identity/caps come from the installed preset.
+/** Frozen legacy projection, accepted only by the one-way restore migration.
  * Runtime validation and restore mapping belong to Application/Domain, not SQLite.
  */
 export type CharacterMemoryStateV1 = {
-  readonly presetId: string;
+  readonly presetId: 'shyDreamGirl';
   readonly needs: {
     readonly energy: number;
     readonly attention: number;
@@ -39,7 +39,7 @@ export type CharacterMemorySnapshotV1 = {
   readonly updatedAt: string;
 };
 
-/** Gate #122 target; v1 remains the only runtime writer until #123. */
+/** Active persisted dynamic projection; authored identity/caps stay in Domain. */
 export type CharacterMemoryStateV2 = Omit<CharacterMemoryStateV1, 'presetId'> & {
   readonly presetId: 'curiousStubbornGirl';
   readonly cardRevision: 2;

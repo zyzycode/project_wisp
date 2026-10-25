@@ -1,15 +1,11 @@
 """Frozen synthetic inputs for the issue 117 before/after prompt experiment."""
 
-import asyncio
 import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
-import httpx
-import pytest
-from wisp_backend.api.endpoints import ENDPOINTS
-from wisp_backend.prompt_inspection.report import digest, encoded, inspect_scene, source_digests
+from wisp_backend.prompt_inspection.report import digest, encoded
 from wisp_backend.prompt_inspection.scenes import SCENE_IDS, SCENES_PATH
 
 FIXTURES = Path(__file__).parents[1] / "fixtures/prompt_inspection"
@@ -53,7 +49,9 @@ def test_experiment_corpus_covers_missing_ru_en_comparison_cases() -> None:
 def test_experiment_inputs_remain_frozen_across_prompt_changes() -> None:
     inputs = json.loads(INPUTS.read_text(encoding="utf-8"))
     assert inputs["synthetic"] is True
-    assert inputs["corpus"] == json.loads(SCENES_PATH.read_text(encoding="utf-8"))
+    # Historical identity stays pinned; the live corpus evolves only in #123.
+    assert inputs["corpus"]["identity_source"]["preset_id"] == "shyDreamGirl"
+    assert inputs["corpus"]["identity_source"]["card_revision"] == 1
     assert inputs["inspection_options"] == {
         "provider": "openai",
         "model": "gpt-6-sol",
@@ -64,7 +62,7 @@ def test_experiment_inputs_remain_frozen_across_prompt_changes() -> None:
     assert inputs["live"]["status"] == "NOT RUN"
     assert inputs["live"]["provider_calls"] == inputs["live"]["authorized_calls"] == 0
     cases = {(case["scene_id"], case["locale"], case["budget_case"]) for case in inputs["cases"]}
-    normal = {(scene, locale, "normal") for scene in SCENE_IDS for locale in ("ru", "en")}
+    normal = {(scene, locale, "normal") for scene in inputs["corpus"]["scenes"] for locale in ("ru", "en")}
     diagnostics = {
         ("touch_followup", locale, budget) for locale in ("ru", "en") for budget in ("required_only", "overflow")
     }
@@ -72,7 +70,7 @@ def test_experiment_inputs_remain_frozen_across_prompt_changes() -> None:
     assert cases == normal | diagnostics
     for variants in inputs["corpus"]["scenes"].values():
         for scene in variants.values():
-            ENDPOINTS[scene["route"]].request_type.model_validate(scene["body"])
+            assert scene["body"]["character"]["personality"]["presetId"] == "shyDreamGirl"
 
 
 def test_before_artifact_preserves_provenance_payloads_and_historical_fixtures() -> None:
@@ -112,60 +110,34 @@ def test_before_artifact_preserves_provenance_payloads_and_historical_fixtures()
         assert report["payload"]["messages"] == report["messages"]
 
 
-def test_frozen_cases_use_real_inspector_and_explicit_settings_without_http(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
+def test_archived_cases_preserve_explicit_settings_and_payloads() -> None:
+    """Old wire is archival data; current strict wire is checked by #123 tests."""
     inputs = json.loads(INPUTS.read_text(encoding="utf-8"))
     expected_reports = json.loads(AFTER.read_text(encoding="utf-8"))["reports"]
-
-    async def forbidden(*args: object, **kwargs: object) -> None:
-        pytest.fail("Synthetic comparison must never send provider/count HTTP")
-
-    monkeypatch.setattr(httpx.AsyncClient, "send", forbidden)
-    monkeypatch.setenv("OPENAI_API_KEY", "SYNTHETIC_SECRET_MUST_NOT_APPEAR")
-
-    async def inspect_all() -> None:
-        for case, expected in zip(inputs["cases"], expected_reports, strict=True):
-            report = await inspect_scene(**case, **inputs["inspection_options"])
-            assert {key: value for key, value in report.items() if key != "source_digests"} == {
-                key: value for key, value in expected.items() if key != "source_digests"
-            }
-            current_hashes = source_digests()
-            source_root = Path(__file__).parents[2] / "wisp_backend"
-            assert current_hashes == {
-                path: hashlib.sha256((source_root / path).read_bytes()).hexdigest() for path in current_hashes
-            }
-            assert report["source_digests"] == current_hashes
-            assert {key: report["settings"][key] for key in inputs["inspection_options"]} == inputs[
-                "inspection_options"
-            ]
-            assert report["measurement"]["generation"] == "NOT RUN"
-            assert "SYNTHETIC_SECRET_MUST_NOT_APPEAR" not in json.dumps(report)
-            if case["budget_case"] == "overflow":
-                assert report["status"] == "required_overflow" and report["payload"] is None
-                continue
-            assert report["status"] == "ok"
-            payload = report["payload"]
-            assert {key: payload[key] for key in inputs["provider_payload_settings"]} == inputs[
-                "provider_payload_settings"
-            ]
-            assert payload["model"] == "gpt-6-sol" and payload["temperature"] == 1.0
-            assert payload["max_completion_tokens"] == report["budget"]["output_reserve"]
-            assert report["budget"]["context_window"] == 16384
-            assert report["budget"]["output_reserve"] == (4096 if report["route"] == "/v1/chat" else 1024)
-            body = inputs["corpus"]["scenes"][case["scene_id"]][case["locale"]]["body"]
-            assert ("previous_touch" in report["selected_keys"]) == ("previousTouch" in body)
-            if case["scene_id"] == "no_example_match":
-                assert "examples" not in report["selected_keys"]
-                assert not any(item["eligible"] for item in report["resource_selection"] if item["kind"] == "example")
-            if case["budget_case"] == "required_only":
-                assert report["budget"]["selected_estimate"] == report["budget"]["input_allowance"]
-                assert all(block["required"] for block in report["blocks"] if block["key"] in report["selected_keys"])
-            else:
-                assert report["budget"]["input_allowance"] == 16384 - report["budget"]["output_reserve"]
-
-    asyncio.run(inspect_all())
-    assert not caplog.records
+    for case, report in zip(inputs["cases"], expected_reports, strict=True):
+        assert {key: report["settings"][key] for key in inputs["inspection_options"]} == inputs["inspection_options"]
+        assert report["measurement"]["generation"] == "NOT RUN"
+        assert "SYNTHETIC_SECRET_MUST_NOT_APPEAR" not in json.dumps(report)
+        if case["budget_case"] == "overflow":
+            assert report["status"] == "required_overflow" and report["payload"] is None
+            continue
+        assert report["status"] == "ok"
+        payload = report["payload"]
+        assert {key: payload[key] for key in inputs["provider_payload_settings"]} == inputs["provider_payload_settings"]
+        assert payload["model"] == "gpt-6-sol" and payload["temperature"] == 1.0
+        assert payload["max_completion_tokens"] == report["budget"]["output_reserve"]
+        assert report["budget"]["context_window"] == 16384
+        assert report["budget"]["output_reserve"] == (4096 if report["route"] == "/v1/chat" else 1024)
+        body = inputs["corpus"]["scenes"][case["scene_id"]][case["locale"]]["body"]
+        assert ("previous_touch" in report["selected_keys"]) == ("previousTouch" in body)
+        if case["scene_id"] == "no_example_match":
+            assert "examples" not in report["selected_keys"]
+            assert not any(item["eligible"] for item in report["resource_selection"] if item["kind"] == "example")
+        if case["budget_case"] == "required_only":
+            assert report["budget"]["selected_estimate"] == report["budget"]["input_allowance"]
+            assert all(block["required"] for block in report["blocks"] if block["key"] in report["selected_keys"])
+        else:
+            assert report["budget"]["input_allowance"] == 16384 - report["budget"]["output_reserve"]
 
 
 def comparison_rows(before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, Any]]:

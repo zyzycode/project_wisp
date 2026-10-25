@@ -16,8 +16,8 @@ function text(value: unknown, max: number): string {
 function policy(value: unknown, presetId: string, chat: boolean): BackendInteractionPolicy {
   const r = exactRecord(value, ['card', 'effectPolicy'], chat ? ['previousTouch'] : []);
   const card = exactRecord(r.card, ['id', 'revision']);
-  if (card.id !== 'shyDreamGirl' || card.revision !== 1 || card.id !== presetId) throw new TypeError('Invalid interaction card');
-  return { card: { id: 'shyDreamGirl', revision: 1 }, effectPolicy: enumValue(r.effectPolicy, ['eligible', 'suppressed']) };
+  if (card.id !== 'curiousStubbornGirl' || card.revision !== 2 || card.id !== presetId) throw new TypeError('Invalid interaction card');
+  return { card: { id: 'curiousStubbornGirl', revision: 2 }, effectPolicy: enumValue(r.effectPolicy, ['eligible', 'suppressed']) };
 }
 export function parseInteractionAppraisal(value: unknown, touch: boolean, effectPolicy: BackendInteractionPolicy['effectPolicy']): BackendInteractionAppraisal {
   const r = exactRecord(value, ['category', 'intensity', 'confidence']);

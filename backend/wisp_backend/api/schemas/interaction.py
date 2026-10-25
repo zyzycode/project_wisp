@@ -13,15 +13,15 @@ from wisp_backend.completion.replies import SummaryModelReply
 from wisp_backend.validation import Contract, omittable, text_type, trim_text
 
 
-def revision_one(value: object) -> int:
-    if type(value) is not int or value != 1:
-        raise ValueError("Expected integer revision 1")
+def revision_two(value: object) -> int:
+    if type(value) is not int or value != 2:
+        raise ValueError("Expected integer revision 2")
     return value
 
 
 class CharacterCard(Contract):
-    id: Literal["shyDreamGirl"]
-    revision: Annotated[Literal[1], BeforeValidator(revision_one)]
+    id: Literal["curiousStubbornGirl"]
+    revision: Annotated[Literal[2], BeforeValidator(revision_two)]
 
 
 class InteractionPolicy(Contract):

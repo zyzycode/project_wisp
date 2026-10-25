@@ -1,3 +1,4 @@
+import { isQuietSupportCue, LOCAL_DIALOGUE_TEXT } from './quiet-support-runtime';
 import { isTopicRefusal } from './interest-thread';
 import { DialogueAdmission } from './dialogue-admission';
 import type { InterestThreadCapture, InterestThreadRef } from '../ports/interest-thread.interface';
@@ -19,6 +20,7 @@ export class DialogueRuntime {
   private pending: object | null = null;
   private lastOffered: InterestThreadRef | undefined;
   private sourceUserText: string | null = null;
+  private supportEligible = false;
   private readonly captures = new WeakMap<Turn, InterestThreadCapture>();
   private streamId: string | null = null;
   private conversationId: string;
@@ -41,7 +43,7 @@ export class DialogueRuntime {
     this.initialContext = boundMemoryContext(messages, this.options.memory.contextLimits);
     if (this.hasStartedStream) { this.context = [...this.initialContext]; this.initialContext = null; }
   }
-  public cancelForMemoryReset(): void { const context = this.context; const messageIds = this.contextMessageIds; this.options.transaction(() => { this.reset(); this.context = context; this.contextMessageIds = messageIds; this.options.publish(); }); }
+  public cancelForMemoryReset(): void { this.options.quietSupport?.resetMemory(); const context = this.context; const messageIds = this.contextMessageIds; this.options.transaction(() => { this.reset(); this.context = context; this.contextMessageIds = messageIds; this.options.publish(); }); }
   public clearMemoryContext(admissionToken?: object): void { const own = admissionToken !== undefined && this.pending === admissionToken; const pending = own ? this.pending : null; this.hydrationAllowed = false; this.initialContext = null; this.options.transaction(() => { this.reset(); if (own) { this.pending = pending; this.executing = true; } this.options.publish(); }); }
   public isTopicRequestCurrent(requestId: string): boolean { return this.active !== null && this.active.request.requestId === requestId && this.isCurrent(this.active); }
   public isAdmissionCurrent(token: object): boolean { return !this.disposed && this.streamId !== null && this.pending === token; }
@@ -62,7 +64,7 @@ export class DialogueRuntime {
     if (this.disposed) return;
     this.options.transaction(() => { if (this.hasStartedStream) this.hydrationAllowed = false; this.reset(); this.streamId = null; });
   }
-  public dispose(): void { this.detachStream(); this.disposed = true; }
+  public dispose(): void { this.detachStream(); this.options.quietSupport?.dispose(); this.disposed = true; }
   public receive(payload: unknown): DialogueCommandReceiptDTO {
     let command;
     try { command = parseDialogueCommand(payload); } catch { return { status: 'rejected', reason: 'invalid_input' }; }
@@ -75,6 +77,12 @@ export class DialogueRuntime {
     }
     this.options.summary?.interrupt();
     if (this.executing) return { status: 'rejected', reason: 'busy' };
+    this.options.quietSupport?.resumeForUserDialogue();
+    if (!command.replyToInterestThread && this.supportEligible && isQuietSupportCue(command.text) && this.options.quietSupport) {
+      this.acknowledgeSupport(command.text);
+      return { status: 'accepted', conversationId: this.conversationId };
+    }
+    this.supportEligible = false;
     const requestedAtMs = this.options.now();
     const deadline = requestedAtMs + 15000;
     const admissionDeadline = requestedAtMs + 200;
@@ -94,6 +102,23 @@ export class DialogueRuntime {
     } else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, true);
     return { status: 'accepted', conversationId: this.conversationId };
   }
+  private acknowledgeSupport(text: string): void {
+    this.options.transaction(() => {
+      this.supportEligible = false; this.lastOffered = undefined; this.sourceUserText = null;
+      this.options.quietSupport!.enter();
+      this.options.observation?.invalidate(); this.options.events?.suppressUnsolicited?.();
+      const requestId = this.options.createId(), createdAt = this.options.timestamp();
+      const user = { id: this.options.createId(), text, createdAt };
+      const assistant = { id: this.options.createId(), text: LOCAL_DIALOGUE_TEXT.support_quiet_ack[this.options.locale === 'en' ? 'en' : 'ru'], createdAt };
+      this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text, createdAt });
+      this.turn = { phase: 'completed', requestId, replyText: assistant.text, outcome: { kind: 'local', reason: 'quiet_support' } };
+      const pair: AIProviderContextMessage[] = [{ role: 'user', text, createdAt }, { role: 'wisp', text: assistant.text, createdAt }];
+      this.context = this.options.memory?.contextLimits ? boundMemoryContext([...this.context, ...pair], this.options.memory.contextLimits) : [...this.context, ...pair].slice(-6);
+      this.contextMessageIds = [...this.contextMessageIds, user.id, assistant.id].slice(-this.context.length);
+      this.options.publish();
+      this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
+    });
+  }
   private startTurn(command: Extract<import('../../shared/ipc-contracts').DialogueCommandDTO, { type: 'send' }>, requestedAtMs: number, deadline: number, admissionDeadline: number, enrich: boolean): void {
     this.options.observation?.invalidate();
     const previousTouch = this.options.interactionEnabled ? this.options.events?.getPreviousTouch?.() : undefined;
@@ -104,7 +129,7 @@ export class DialogueRuntime {
     this.options.transaction(() => {
       const interactionReceipt = this.options.beginInteraction?.();
       if (!interactionReceipt) this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
-      const request: AIProviderRequest = { ...(this.options.interactionEnabled ? { interaction: { card: { id: 'shyDreamGirl', revision: 1 }, effectPolicy: interactionReceipt?.effectPolicy ?? 'suppressed', ...(previousTouch ? { previousTouch } : {}) } } : {}), requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
+      const request: AIProviderRequest = { ...(this.options.interactionEnabled ? { interaction: { card: { id: 'curiousStubbornGirl', revision: 2 }, effectPolicy: interactionReceipt?.effectPolicy ?? 'suppressed', ...(previousTouch ? { previousTouch } : {}) } } : {}), requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };
       const active: Turn = { ...(interactionReceipt ? { interactionReceipt } : {}), request, generation: this.generation, deadline, requestedAtMs, admissionDeadline: enrich ? admissionDeadline : requestedAtMs, ...(command.replyToInterestThread ? { replyTo: command.replyToInterestThread } : {}), memoryGeneration: this.options.memory?.generation() ?? 0 };
       this.active = active; this.turn = { phase: 'thinking', requestId };
@@ -116,7 +141,7 @@ export class DialogueRuntime {
   }
   private reset(): void {
     if (this.pending) this.executing = false;
-    this.pending = null; this.lastOffered = undefined; this.sourceUserText = null;
+    this.pending = null; this.lastOffered = undefined; this.sourceUserText = null; this.supportEligible = false;
     this.options.observation?.reset();
     this.options.events?.invalidate();
     this.options.summary?.interrupt();
@@ -237,6 +262,7 @@ export class DialogueRuntime {
         this.options.publish(); return;
       }
       this.turn = presentation.turn;
+      this.supportEligible = reason === undefined;
       this.sourceUserText = reason === undefined && !capture ? active.request.userMessage.text : null;
       this.lastOffered = reason === undefined ? capture?.use.ref : undefined;
       const createdAt = this.options.timestamp();

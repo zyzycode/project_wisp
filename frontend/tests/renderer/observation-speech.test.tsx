@@ -30,3 +30,12 @@ it('dialogue then initiative/game preempt observation and the consumed line is n
   const game = { runId: 'game', outcome: 'caught' as const, speech: { ...speech, id: 'game', text: 'Game' } };
   expect(new SpeechProjection().accept({ ...s, cursorGame: game })?.text).toBe('Game');
 });
+
+it('shows a local quiet-support ACK as ordinary dialogue exactly once without memory controls or fallback text', () => {
+  const p = new SpeechProjection(), s = snapshot();
+  const local: BrainStateDTO = { ...s, observationSpeech: null, dialogue: { conversationId: 'c', canSubmit: true,
+    turn: { phase: 'completed', requestId: 'support', replyText: 'Поняла. Я рядом.', outcome: { kind: 'local', reason: 'quiet_support' } } } };
+  expect(parseBrainStateDTO(local).dialogue).toEqual(local.dialogue);
+  expect(p.accept(local)?.text).toBe('Поняла. Я рядом.'); expect(p.accept(local)).toBeUndefined();
+  expect(p.accept({ ...local, dialogue: { ...local.dialogue, turn: { phase: 'idle' } } })).toBeNull();
+});

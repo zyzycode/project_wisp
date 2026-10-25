@@ -80,9 +80,9 @@ export class SqliteMemoryStore {
       }
       case 'saveSnapshot': {
         const snapshot = v.snapshot(c.payload);
-        if (snapshot.snapshotVersion !== 1) throw new v.MemoryDataError('invalid_data');
+        if (snapshot.snapshotVersion !== 2) throw new v.MemoryDataError('invalid_data');
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
-          .run(JSON.stringify({ snapshotVersion: 1, state: snapshot.state }), snapshot.updatedAt); return;
+          .run(JSON.stringify({ snapshotVersion: 2, state: snapshot.state }), snapshot.updatedAt); return;
       }
       case 'clear': return this.db.transaction(() => { this.db.exec('DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;

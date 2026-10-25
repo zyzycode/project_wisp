@@ -8,9 +8,9 @@ function fixture(gameObserver?: import('../../src/application/ports/ai-event-pro
   const appendTurn = vi.fn<IChatHistoryRepository['appendTurn']>(async () => ({ ok: true, value: undefined } as const));
   const append = vi.fn(async () => ({ ok: true, value: undefined } as const));
   const getRecent = vi.fn(async () => ({ ok: true, value: [{ id: 'old', role: 'assistant' as const, conversationSessionId: 'old-session', content: 'Помню тебя', createdAt: now }] } as const));
-  const failure = vi.fn();
-  const history = new MemoryHistory({ gameObserver, history: { appendTurn, getRecent, closeSession: vi.fn(async () => ({ ok: true, value: undefined } as const)), closeUnfinishedSessions: vi.fn(async () => ({ ok: true, value: undefined } as const)) }, episodes: { append }, context: () => context, createId: () => `id-${++id}`, toTimestamp: ms => new Date(Date.parse(now) + ms).toISOString(), onFailure: failure });
-  return { history, appendTurn, append, getRecent, failure, setContext: (c: MemoryOperationContext | null) => { context = c; } };
+  const failure = vi.fn(), onPersisted = vi.fn(async () => undefined);
+  const history = new MemoryHistory({ onPersisted, gameObserver, history: { appendTurn, getRecent, closeSession: vi.fn(async () => ({ ok: true, value: undefined } as const)), closeUnfinishedSessions: vi.fn(async () => ({ ok: true, value: undefined } as const)) }, episodes: { append }, context: () => context, createId: () => `id-${++id}`, toTimestamp: ms => new Date(Date.parse(now) + ms).toISOString(), onFailure: failure });
+  return { onPersisted, history, appendTurn, append, getRecent, failure, setContext: (c: MemoryOperationContext | null) => { context = c; } };
 }
 const turn = { user: { id: 'user', text: 'Привет', createdAt: now }, assistant: { id: 'assistant', text: 'Привет!', createdAt: now }, memoryGeneration: 0 };
 it('maps persistent context once without modifying stored messages', async () => {
@@ -60,4 +60,12 @@ it('notifies the event observer only after a current acknowledged game write', a
   f.append.mockRejectedValueOnce(new Error('write failed')); await f.history.game({ ...game, activityRunId: 'failure' }, 0); expect(committed).toHaveBeenCalledTimes(1);
   f.append.mockImplementationOnce(() => new Promise(resolve => { ack = resolve; })); const late = f.history.game({ ...game, activityRunId: 'late' }, 0);
   f.setContext({ generation: 1 }); ack({ ok: true, value: undefined }); await late; expect(committed).toHaveBeenCalledTimes(1);
+});
+
+it('persists local acknowledgement only as nonconfirmable history and never runs extraction or game observer', async () => {
+  const committed = vi.fn(), f = fixture({ committed });
+  await f.history.completed({ ...turn, localOnly: true, memoryConfirmable: false });
+  expect(f.appendTurn).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ memoryConfirmable: false }), { generation: 0 });
+  expect(f.onPersisted).not.toHaveBeenCalled(); expect(committed).not.toHaveBeenCalled(); expect(f.append).not.toHaveBeenCalled();
+  await f.history.completed(turn); expect(f.onPersisted).toHaveBeenCalledOnce();
 });

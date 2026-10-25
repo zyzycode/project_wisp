@@ -24,7 +24,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -89,8 +89,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -134,7 +134,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -199,8 +199,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -244,7 +244,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -309,8 +309,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -358,7 +358,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -423,8 +423,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -472,7 +472,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -537,8 +537,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -586,7 +586,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -651,8 +651,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -700,7 +700,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -765,8 +765,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -814,7 +814,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -879,8 +879,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -928,7 +928,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -993,8 +993,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -1042,7 +1042,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -1107,8 +1107,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -1156,7 +1156,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -1221,8 +1221,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -1271,7 +1271,7 @@
             "loveUnlocked": false
           },
           "personality": {
-            "presetId": "shyDreamGirl",
+            "presetId": "curiousStubbornGirl",
             "aiSelfConcept": "\u042f Wisp, \u0442\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0430\u043d\u044c\u043e\u043d.",
             "traits": {
               "shyness": 0.4,
@@ -1336,8 +1336,8 @@
           "text": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u043e\u0431\u0441\u0443\u0436\u0434\u0430\u043b \u043a\u043e\u0441\u043c\u043e\u0441."
         },
         "card": {
-          "id": "shyDreamGirl",
-          "revision": 1
+          "id": "curiousStubbornGirl",
+          "revision": 2
         },
         "effectPolicy": "suppressed",
         "previousTouch": {

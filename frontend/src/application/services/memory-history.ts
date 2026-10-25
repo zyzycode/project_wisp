@@ -45,7 +45,7 @@ export class MemoryHistory {
       assistant: { id: turn.assistant.id, conversationSessionId: session.id, role: 'assistant', content: turn.assistant.text, createdAt: turn.assistant.createdAt } }, c));
     if (result.ok && session.appRunId === this.appRunId) this.session = session;
     if (!this.isCurrent(c.generation)) return;
-    if (result.ok) { this.session = session; await this.options.onPersisted?.(turn, c); } else this.options.onFailure(result.code);
+    if (result.ok) { this.session = session; if (!turn.localOnly) await this.options.onPersisted?.(turn, c); } else this.options.onFailure(result.code);
   }
   async game(result: CursorGameResult, generation: number): Promise<void> {
     const c = this.options.context(); if (!c || c.generation !== generation || !result.playCompleted) return;

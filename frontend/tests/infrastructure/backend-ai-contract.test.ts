@@ -3,7 +3,7 @@ import { projectBackendRequest } from '../../src/infrastructure/ai/backend-reque
 import { parseBackendSuccess, parseBackendError } from '../../src/infrastructure/ai/backend-response-validation';
 import { fixture, wire, providerRequest } from './backend-ai-fixture';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
-import { createCharacterSnapshot, projectCharacterExpression, shyDreamGirlPreset } from '../../src/domain/character';
+import { createCharacterSnapshot, projectCharacterExpression, curiousStubbornGirlPreset } from '../../src/domain/character';
 import { projectCharacterMemory, restoreCharacterMemory } from '../../src/application/services/character-memory-snapshot';
 
 function component(value: unknown) { if (!value || typeof value !== 'object') throw new Error('Expected fixture'); return Object.fromEntries(Object.entries(value).filter(([key]) => !["card", "effectPolicy", "appraisal", "memory"].includes(key))); }
@@ -50,8 +50,8 @@ it.each([0, 600])('keeps the installed canonical card across state changes and r
   const checkpoint = projectCharacterMemory(state, '2026-10-17T00:00:00.000Z');
   const restored = restoreCharacterMemory(checkpoint, defaults, 1);
   const snapshot = createCharacterSnapshot(restored);
-  expect(snapshot.personality.presetId).toBe(shyDreamGirlPreset.id);
-  expect(snapshot.personality.aiSelfConcept).toBe(shyDreamGirlPreset.aiSelfConcept);
+  expect(snapshot.personality.presetId).toBe(curiousStubbornGirlPreset.id);
+  expect(snapshot.personality.aiSelfConcept).toBe(curiousStubbornGirlPreset.aiSelfConcept);
   expect(snapshot.personality.aiSelfConcept.length).toBeLessThanOrEqual(500);
   expect(snapshot.personality.traits.playfulness).toBe(0.7);
   expect(snapshot.synthesizedTone).toBe('sleepy');
@@ -59,7 +59,7 @@ it.each([0, 600])('keeps the installed canonical card across state changes and r
     .toEqual({ ...snapshot, expression: projectCharacterExpression(snapshot) });
   expect(snapshot).not.toHaveProperty('expression');
   expect(checkpoint.state).not.toHaveProperty('aiSelfConcept');
-  expect(restored.personality.axes.playfulness.base).toBe(shyDreamGirlPreset.axes.playfulness.base);
+  expect(restored.personality.axes.playfulness.base).toBe(curiousStubbornGirlPreset.axes.playfulness.base);
 });
 it.each([-1, 101, NaN, Infinity, '50', null])('rejects invalid numeric input before transport: %s', value => {
   const request = providerRequest();

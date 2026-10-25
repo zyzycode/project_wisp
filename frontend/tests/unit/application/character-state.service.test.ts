@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateShyness, shyDreamGirlPreset } from '../../../src/domain/character';
+import { calculateShyness, curiousStubbornGirlPreset } from '../../../src/domain/character';
 import type { CharacterState } from '../../../src/domain/character';
 import { CharacterStateService } from '../../../src/application/services/character-state.service';
 
@@ -19,7 +19,7 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
       loveUnlocked: false,
       ...overrides.relationship,
     },
-    personality: overrides.personality ?? shyDreamGirlPreset,
+    personality: overrides.personality ?? curiousStubbornGirlPreset,
     intimacy: {
       flirtiness: 0,
       romanticCharge: 0,
@@ -33,22 +33,22 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
 }
 
 describe('Application: CharacterStateService', () => {
-  it('initializes in-memory state with the Shy Dream Girl preset', () => {
+  it('initializes in-memory state with the Curious Stubborn Girl preset', () => {
     const service = new CharacterStateService({ now: () => 1234 });
 
     const state = service.getState();
     const snapshot = service.getSnapshot();
 
     expect(state.lastUpdated).toBe(1234);
-    expect(state.personality.id).toBe('shyDreamGirl');
-    expect(state.personality).toEqual(shyDreamGirlPreset);
-    expect(snapshot.personality.presetId).toBe('shyDreamGirl');
-    expect(snapshot.personality.aiSelfConcept).toBe(shyDreamGirlPreset.aiSelfConcept);
+    expect(state.personality.id).toBe('curiousStubbornGirl');
+    expect(state.personality).toEqual(curiousStubbornGirlPreset);
+    expect(snapshot.personality.presetId).toBe('curiousStubbornGirl');
+    expect(snapshot.personality.aiSelfConcept).toBe(curiousStubbornGirlPreset.aiSelfConcept);
     expect(snapshot.personality.traits.shyness).toBeCloseTo(
-      calculateShyness(shyDreamGirlPreset.axes),
+      calculateShyness(curiousStubbornGirlPreset.axes),
       3
     );
-    expect(snapshot.synthesizedTone).toBe('shy');
+    expect(snapshot.synthesizedTone).toBe('neutral');
   });
 
   it('applies stimuli through the domain character reducer', () => {
@@ -107,6 +107,6 @@ describe('Application: CharacterStateService', () => {
 
     expect(service.getState().needs.energy).toBe(85);
     expect(service.getState().needs.boredom).toBe(15);
-    expect(service.getState().personality.axes.boldness.current).toBe(0.18);
+    expect(service.getState().personality.axes.boldness.current).toBe(0.55);
   });
 });

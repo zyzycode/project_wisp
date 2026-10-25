@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ShimejiStimulusMapper } from '../../src/application/services/shimeji-stimulus.mapper';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
-import { shyDreamGirlPreset, type CharacterState } from '../../src/domain/character';
+import { curiousStubbornGirlPreset, type CharacterState } from '../../src/domain/character';
 
 const context = {
   createdAtIso: '2026-09-05T12:00:00.000Z',
@@ -12,7 +12,7 @@ function characterState(): CharacterState {
   return {
     needs: { energy: 70, attention: 50, play: 50, comfort: 50, boredom: 50 },
     relationship: { friendship: 0, love: 0, loveUnlocked: false },
-    personality: shyDreamGirlPreset,
+    personality: curiousStubbornGirlPreset,
     intimacy: {
       flirtiness: 0,
       romanticCharge: 0,

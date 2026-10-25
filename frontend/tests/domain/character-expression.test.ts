@@ -7,7 +7,7 @@ function snapshot(): CharacterSnapshot {
   return {
     needs: { energy: 70, comfort: 20, attention: 20, play: 20 },
     relationship: { friendship: 500, love: 0, loveUnlocked: true },
-    personality: { presetId: 'shyDreamGirl', aiSelfConcept: 'Synthetic test snapshot',
+    personality: { presetId: 'curiousStubbornGirl', aiSelfConcept: 'Synthetic test snapshot',
       traits: { shyness: 0.5, playfulness: 0.5, sensitivity: 0.5, boldness: 0.5 } },
     intimacy: { flirtiness: 0, romanticCharge: 0, userConsentEnabled: true },
     synthesizedTone: 'neutral',

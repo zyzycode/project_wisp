@@ -65,7 +65,7 @@ export class MemoryLifecycle {
       if (snapshot.code === 'invalid_data') { restore = 'invalid_snapshot'; this.snapshotWritable = false; }
       else this.startupFailure(snapshot.code);
     } else if (snapshot.value !== null) {
-      if (snapshot.value.snapshotVersion !== 1) { restore = 'unsupported_snapshot'; this.snapshotWritable = false; }
+      if (snapshot.value.snapshotVersion !== 1 && snapshot.value.snapshotVersion !== 2) { restore = 'unsupported_snapshot'; this.snapshotWritable = false; }
       else try { candidate = restoreCharacterMemory(snapshot.value, candidate, this.options.now()); restore = 'restored'; }
       catch { restore = 'invalid_snapshot'; this.snapshotWritable = false; }
     }
@@ -78,7 +78,8 @@ export class MemoryLifecycle {
     this.options.character.replaceRestoredState(candidate);
     if (this.status.mode !== 'volatile') {
       this.status = { mode: 'persistent', characterRestore: restore };
-      if (restore === 'restored') this.savedSignature = JSON.stringify(projectCharacterMemory(candidate, this.options.timestamp()).state);
+      // Legacy migration must remain dirty until the v2 write is acknowledged.
+      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 2) this.savedSignature = JSON.stringify(projectCharacterMemory(candidate, this.options.timestamp()).state);
       if (this.options.localMock) this.options.hydrate(context);
     }
     if (this.phase !== 'initializing') return;

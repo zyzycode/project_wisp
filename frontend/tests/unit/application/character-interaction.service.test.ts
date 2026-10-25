@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CharacterInteractionUseCase } from '../../../src/application/services/character-interaction.use-case';
 import { CharacterStateService } from '../../../src/application/services/character-state.service';
-import { shyDreamGirlPreset, type CharacterState } from '../../../src/domain/character';
+import { curiousStubbornGirlPreset, type CharacterState } from '../../../src/domain/character';
 
 function createState(): CharacterState {
   return {
@@ -13,7 +13,7 @@ function createState(): CharacterState {
       boredom: 50,
     },
     relationship: { friendship: 10, love: 0, loveUnlocked: false },
-    personality: shyDreamGirlPreset,
+    personality: curiousStubbornGirlPreset,
     intimacy: {
       flirtiness: 0,
       romanticCharge: 0,

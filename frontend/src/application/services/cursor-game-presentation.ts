@@ -56,6 +56,7 @@ export class CursorGamePresentation {
     }
     return false;
   }
+  public suppressSpeech(): void { if (this.value?.speech) this.value = { ...this.value, speech: null }; }
   public clear(): void { this.value = null; }
   public reset(): void { this.clear(); this.runId = null; this.seen.clear(); this.conversation = null; this.dialogueKey = null; this.thinking = false; this.guardUntil = 0; }
   public get(): CursorGamePresentationDTO | null { return this.value; }

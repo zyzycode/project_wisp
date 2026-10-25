@@ -28,7 +28,7 @@ export function command(value: unknown): Command {
     case 'upsertFact': payload = v.fact(c.payload); break;
     case 'removeFact': payload = v.text(c.payload); break;
     case 'appendEpisode': payload = v.episode(c.payload); break;
-    case 'saveSnapshot': payload = v.snapshot(c.payload); break;
+    case 'saveSnapshot': payload = v.writableSnapshot(c.payload); break;
     default: if (c.payload !== null) throw new v.MemoryDataError('invalid_data'); payload = null;
   }
   return { id: v.integer(c.id, 1), generation: v.integer(c.generation), operation, payload };

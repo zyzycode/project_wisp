@@ -20,12 +20,6 @@ export interface BackendPreviousTouchReaction {
 }
 
 export interface BackendInteractionPolicy {
-  readonly card: { readonly id: 'shyDreamGirl'; readonly revision: 1 };
-  readonly effectPolicy: 'eligible' | 'suppressed';
-}
-
-/** Gate #122 target, not an additional accepted v1 wire variant before #123. */
-export interface BackendInteractionPolicyRevision2 {
   readonly card: { readonly id: 'curiousStubbornGirl'; readonly revision: 2 };
   readonly effectPolicy: 'eligible' | 'suppressed';
 }

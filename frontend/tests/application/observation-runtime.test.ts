@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
+import { QuietSupportRuntime } from '../../src/application/services/quiet-support-runtime';
 import { observationFixture, flush } from './observation-fixture';
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(1000000); });
 afterEach(() => vi.useRealTimers());
@@ -66,4 +67,14 @@ it('mock/direct-only mode is unavailable and never starts helper or promises AI 
 it('a draining shared transport loses the threshold opportunity without spending budget', async () => {
   const f = observationFixture(); f.canStartObservation.mockReturnValue(false); f.runtime.enable(); await f.dwell();
   expect(f.spendBudget).not.toHaveBeenCalled(); expect(f.generateObservation).not.toHaveBeenCalled(); f.canStartObservation.mockReturnValue(true); await f.dwell(); expect(f.generateObservation).not.toHaveBeenCalled();
+});
+
+it('a Main-session support latch aborts late observation and permits no transport while held', async () => {
+  const f = observationFixture(); let resolve!: (value: string) => void;
+  f.generateObservation.mockImplementation(() => new Promise(yes => { resolve = yes; })); f.runtime.enable(); await f.dwell();
+  const support = new QuietSupportRuntime(() => { f.gate.allowed = false; f.runtime.invalidate(); }); support.enter();
+  expect(f.generateObservation.mock.calls[0]?.[1].aborted).toBe(true);
+  resolve('Late unsolicited observation'); await flush(); expect(f.runtime.getSpeech()).toBeNull();
+  await f.dwell('next-source', 'next-episode'); expect(f.generateObservation).toHaveBeenCalledOnce();
+  expect(support.isActive()).toBe(true); f.runtime.dispose();
 });
