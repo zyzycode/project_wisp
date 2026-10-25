@@ -6,6 +6,7 @@ import type { IAIEventProvider } from '../../src/application/ports/ai-event-prov
 import type { ILocalMemoryRecall } from '../../src/application/ports/memory-knowledge.interface';
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
 function fixture() {
+  let touchAllowed: boolean | undefined;
   let activeRunId: string | null = null, allowed = true, identity: string | null = 'stream:c:0', generation = 0, localSpeech = false;
   let id = 0;
   const generateEvent = vi.fn<IAIEventProvider['generateEvent']>(async request => {
@@ -15,7 +16,7 @@ function fixture() {
   const recall = vi.fn<ILocalMemoryRecall['recall']>(async () => ({ ok: true, value: emptyMemoryContext() }));
   const runtime = new AIEventRuntime({ provider: { generateEvent, cancel }, recall: { recall }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `r${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, character: () => providerRequest().characterSnapshot,
-    gate: () => ({ allowed, activeRunId, identity, memoryGeneration: generation, localSpeech }), publish });
+    gate: () => ({ allowed, touchAllowed, activeRunId, identity, memoryGeneration: generation, localSpeech }), publish });
   function game(runId = 'game', status: 'completed' | 'cancelled' | 'failed' = 'completed', ack = true) {
     runtime.gameTerminal({ activityRunId: runId, atMs: Date.now(), outcome: 'caught', playCompleted: true, executedMs: 2800 }, generation);
     runtime.outcome({ type: 'activity_outcome', eventId: runId, activityRunId: runId, atMs: Date.now(), family: 'cursor_interest', outcome: status, participation: 'solitary', executedMs: 2800, playCompleted: true });
@@ -24,10 +25,24 @@ function fixture() {
   }
   const social = (runId: string) => { runtime.activityStarted(); activeRunId = runId; runtime.socialStarted(runId, Date.now()); };
   const socialEnd = (runId: string, outcome: 'completed' | 'cancelled' | 'failed' = 'completed') => { activeRunId = null; runtime.outcome({ type: 'activity_outcome', eventId: runId, activityRunId: runId, atMs: Date.now(), family: 'social_bid', outcome, participation: 'solitary', executedMs: 4000, playCompleted: false }); };
-  return { runtime, generateEvent, recall, publish, cancel, game, social, socialEnd, block: () => { allowed = false; runtime.tick(); }, generation: () => { generation++; }, localSpeech: () => { localSpeech = true; }, reset: () => { identity = 'next:c:1'; runtime.invalidate(); } };
+  return { runtime, generateEvent, recall, publish, cancel, game, social, socialEnd,
+    away: () => { allowed = false; touchAllowed = true; runtime.suppressUnsolicited(); runtime.tick(); },
+    block: () => { allowed = false; runtime.tick(); }, generation: () => { generation++; }, localSpeech: () => { localSpeech = true; }, reset: () => { identity = 'next:c:1'; runtime.invalidate(); } };
 }
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(300000); });
 afterEach(() => vi.useRealTimers());
+it('suppresses an unsolicited pending reply and its late result while preserving a pending touch reply', async () => {
+  for (const touch of [false, true]) {
+    const f = fixture(); let resolve!: (value: { requestId: string; replyText: string }) => void;
+    f.generateEvent.mockImplementationOnce(() => new Promise(yes => { resolve = yes; }));
+    if (touch) f.runtime.touch(); else f.social('social');
+    await flush(); f.away();
+    expect(f.cancel).toHaveBeenCalledTimes(touch ? 0 : 1);
+    resolve({ requestId: f.generateEvent.mock.calls[0]![0].requestId, replyText: 'Ответ на прикосновение' }); await flush();
+    expect(f.runtime.getSpeech()?.text).toBe(touch ? 'Ответ на прикосновение' : undefined);
+    if (!touch) expect(f.runtime.takePreviousInitiative()).toBeUndefined(); f.runtime.dispose();
+  }
+});
 it('requires real completed terminal plus durable commit, delays exactly2s and dedupes no-op commits after expiry', async () => {
   const f = fixture(), episode = f.game();
   await vi.advanceTimersByTimeAsync(1999); expect(f.generateEvent).not.toHaveBeenCalled();

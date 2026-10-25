@@ -230,6 +230,8 @@ export class AutonomyCoordinator {
     this.lastUserActivityAtMs = this.options.clock.now();
   }
 
+  public canAcceptReactiveOpportunity(): boolean { return this.isCadenceEligible(); }
+
   public noteActivityOutcome(event: ActivityOutcomeFeedback): void {
     const index = this.trace.length - 1;
     const current = this.trace[index];

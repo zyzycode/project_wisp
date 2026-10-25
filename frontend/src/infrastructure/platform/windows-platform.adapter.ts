@@ -1,5 +1,6 @@
 import { screen, BrowserWindow } from 'electron';
 import { readCursorScreenPosition } from './cursor-screen-position';
+import { createSystemIdleSource } from './system-idle-source';
 import type {
   IPlatformAdapter,
   OverlayWindowOptions,
@@ -8,6 +9,7 @@ import type {
 } from '../../application/ports/platform-adapter.interface';
 
 export class WindowsPlatformAdapter implements IPlatformAdapter {
+  createSystemIdleSource() { return createSystemIdleSource('win32'); }
   getCursorScreenPosition() { return readCursorScreenPosition(); }
 
   getPlatformName(): SupportedPlatform {

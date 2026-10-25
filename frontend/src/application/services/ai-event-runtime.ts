@@ -46,6 +46,10 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     if (this.thinking && (this.source || this.speech)) this.invalidate(true, false);
   }
   activityStarted(): void { if (this.source?.kind !== 'user_touch') this.invalidate(false, false); }
+  suppressUnsolicited(): void {
+    this.previous = null; this.game = null;
+    if (this.source?.kind !== 'user_touch') this.invalidate(true, false);
+  }
   isBusy(): boolean { return this.pending !== null || this.source !== null; }
   isTouchPending(): boolean { return this.source?.kind === 'user_touch' && this.pending !== null; }
   getPreviousTouch() { return this.options.touchContext?.get(); }

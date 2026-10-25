@@ -1,6 +1,8 @@
 import type { CursorGameResult } from '../application/ports/cursor-game-contract';
 import { CursorGamePresentation } from '../application/services/cursor-game-presentation';
 import type { IPlatformAdapter } from '../application/ports/platform-adapter.interface';
+import type { SystemIdlePort } from '../application/ports/system-idle.port';
+import { MainSystemIdle } from './main-system-idle';
 import type { GameObservation } from '../domain/behavior/cursor-game';
 import { requiresVitalSleep, permitsAutomaticWake, isQuietCompatible } from '../domain/character/autonomy-character-engine';
 import { LANDING_RECOVERY_MS } from '../domain/behavior/autonomous-behavior';
@@ -69,6 +71,9 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
+  readonly systemIdle?: SystemIdlePort;
+  readonly wallNow?: () => number;
+  readonly onUnsolicitedBlocked?: () => void;
   readonly cursorPosition?: Pick<IPlatformAdapter, 'getCursorScreenPosition'>;
   readonly locale?: 'ru' | 'en';
   readonly clock: AutonomyClock;
@@ -98,6 +103,7 @@ export class MainAutonomyComposition {
   private readonly coordinator: AutonomyCoordinator;
   private readonly activity: BrainActivityRuntime;
   private readonly providerAdmission: ProviderBehaviorAdmission;
+  private readonly systemIdle: MainSystemIdle;
   private visualEpisodeSequence = 0;
   private visualEpisode: BrainVisualEpisode;
   private readonly localHistory: { kind: string; atMs: number }[] = [];
@@ -131,6 +137,8 @@ export class MainAutonomyComposition {
   private lastCursorObservedAtMs: number | null = null;
 
   public constructor(private readonly options: MainAutonomyCompositionOptions) {
+    this.systemIdle = new MainSystemIdle({ source: options.systemIdle, now: () => options.clock.now(),
+      wallNow: options.wallNow ?? Date.now, onBlocked: () => this.blockUnsolicited() });
     this.gamePresentation = new CursorGamePresentation(() => options.clock.now(), () => options.locale ?? 'ru');
     validateBrainLoopPolicy(this.brainLoopPolicy());
     this.visualEpisode = this.createVisualEpisode('idle_blink');
@@ -144,7 +152,7 @@ export class MainAutonomyComposition {
       movement: options.movement,
       getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
         quiet: this.quiet,
-        canSocial: this.initiativeBudget.available(options.clock.now()) && options.getCharacterSnapshot().needs.attention >= 80
+        canSocial: !this.systemIdle.isBlocked() && this.initiativeBudget.available(options.clock.now()) && options.getCharacterSnapshot().needs.attention >= 80
           && (options.getCharacterSnapshot().relationship?.friendship ?? 0) >= 100,
         canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
         canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
@@ -222,6 +230,7 @@ export class MainAutonomyComposition {
   public start(): void {
     if (this.disposed || this.started) return;
     this.started = true;
+    this.systemIdle.setEnabled(this.enabled);
     this.lastBrainTickAtMs = this.options.clock.now();
     this.coordinator.start();
   }
@@ -232,6 +241,7 @@ export class MainAutonomyComposition {
     this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
     this.started = false;
+    this.systemIdle.setEnabled(false);
     this.resetBrainLoop();
     this.coordinator.stop();
   }
@@ -242,6 +252,7 @@ export class MainAutonomyComposition {
     this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
     this.disposed = true;
+    this.systemIdle.dispose();
     this.started = false;
     this.resetBrainLoop();
     this.coordinator.dispose();
@@ -250,6 +261,7 @@ export class MainAutonomyComposition {
   /** Advances needs and Activity from one injected Main-monotonic Brain tick. */
   public tick(): boolean {
     if (!this.started || this.disposed) return false;
+    const returnCandidate = this.systemIdle.tick(!this.quiet && !this.menuOpen);
     const nowMs = this.options.clock.now();
     const previousTickAtMs = this.lastBrainTickAtMs ?? nowMs;
     if (!Number.isFinite(nowMs) || nowMs < previousTickAtMs) return false;
@@ -279,12 +291,13 @@ export class MainAutonomyComposition {
       if (resolution.resolvedIntent) this.handleResolvedIntent(resolution.resolvedIntent);
     }
     this.providerAdmission.tick();
-    const cursorChanged = this.pollCursor(nowMs);
+    const returnStarted = returnCandidate && this.tryReturn();
+    const cursorChanged = !returnStarted && this.pollCursor(nowMs);
     const activityChanged = this.activity.tick(nowMs);
     const reactionChanged = this.finishDirectReaction(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
     if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
-    return needsChanged || activityChanged || reactionChanged || showFall || speechChanged || cursorChanged;
+    return returnStarted || needsChanged || activityChanged || reactionChanged || showFall || speechChanged || cursorChanged;
   }
 
   private finishDirectReaction(nowMs: number): boolean {
@@ -319,11 +332,12 @@ export class MainAutonomyComposition {
     this.gamePresentation.observeDialogue(value);
   }
   public resetCursorGame(): void { if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true); this.resetCursorInterest(); this.gamePresentation.reset(); }
+  public resetSystemIdle(): void { this.systemIdle.reset(); }
 
   public spendObservationBudget(atMs: number): boolean { return this.initiativeBudget.start(atMs); }
 
   public getAIEventState(): { allowed: boolean; touchAllowed: boolean; activeRunId: string | null; localSpeech: boolean } {
-    return { allowed: this.started && !this.disposed && this.enabled && !this.quiet && !this.menuOpen
+    return { allowed: !this.systemIdle.isBlocked() && this.started && !this.disposed && this.enabled && !this.quiet && !this.menuOpen
       && !this.deferredUserInteractionResume && this.character.isAutonomyEligible() && !requiresVitalSleep(this.options.getCharacterSnapshot())
       && this.options.movement.canAcceptVoluntaryMovement() && this.activity.getSource() !== 'user' && this.activity.getSource() !== 'character',
       touchAllowed: this.started && !this.disposed && !this.quiet && !this.menuOpen && this.character.isAutonomyEligible()
@@ -336,6 +350,7 @@ export class MainAutonomyComposition {
   public setQuietMode(enabled: boolean): { readonly quiet: boolean } {
     if (this.quiet === enabled) return this.getAutonomyMode();
     this.quiet = enabled;
+    this.systemIdle.reset();
     if (enabled) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidateIncompatibleQuiet(); }
     this.resetCursorInterest();
     if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
@@ -355,6 +370,7 @@ export class MainAutonomyComposition {
   }
 
   public setEnabled(enabled: boolean): void {
+    this.systemIdle.setEnabled(enabled);
     this.resetCursorInterest();
     if (!enabled) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
     if (!enabled) this.cancelActivity('explicit_cancel', true);
@@ -363,6 +379,7 @@ export class MainAutonomyComposition {
   }
 
   public setMenuOpen(menuOpen: boolean): void {
+    if (this.menuOpen !== menuOpen) this.systemIdle.reset();
     this.resetCursorInterest();
     if (menuOpen) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
     if (menuOpen) this.cancelActivity('explicit_cancel', true);
@@ -458,7 +475,7 @@ export class MainAutonomyComposition {
     if (proximity.signal.distanceToRootWorldPx > DEFAULT_CURSOR_OBSERVE_CONSTRAINTS.ambientRadiusWorldPx) return false;
 
     const snapshot = this.options.getCharacterSnapshot();
-    const budgetAvailable = !this.quiet && this.initiativeBudget.available(nowMs);
+    const budgetAvailable = !this.quiet && !this.systemIdle.isBlocked() && this.initiativeBudget.available(nowMs);
     const gameCandidate = (this.options.cursorPosition === undefined || this.globalCursorActive)
       && !this.cursorMustExit && budgetAvailable && canPlayWithCursor(snapshot.needs, snapshot.synthesizedTone)
       ? createCursorInterestActivity({ root: this.options.movement.getRootPosition(), cursor: screenPosition,
@@ -736,9 +753,9 @@ export class MainAutonomyComposition {
     if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;
     const social = intent.activityFamily === 'social_bid';
     if (!isQuietCompatible(intent, this.quiet)) return false;
-    if (social && !this.initiativeBudget.available(this.options.clock.now())) return false;
+    if (social && (this.systemIdle.isBlocked() || !this.initiativeBudget.available(this.options.clock.now()))) return false;
     if (this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined)) {
-      if (social) { this.initiativeBudget.start(this.options.clock.now()); const run = this.activity.getRuntime(); if (run) this.options.onSocialBidStarted?.(run.runId, this.options.clock.now()); }
+      if (social) { this.initiativeBudget.start(this.options.clock.now()); const run = this.activity.getRuntime(); if (run && intent.source !== 'system') this.options.onSocialBidStarted?.(run.runId, this.options.clock.now()); }
       this.localHistory.push({ kind: social ? 'social_bid' : intent.kind, atMs: this.options.clock.now() });
       if (intent.calmPose) this.localHistory.push({ kind: `calm:${intent.calmPose}`, atMs: this.options.clock.now() });
       if (this.localHistory.length > 16) this.localHistory.splice(0, this.localHistory.length - 16);
@@ -751,6 +768,36 @@ export class MainAutonomyComposition {
       true,
       true
     );
+    return true;
+  }
+
+  private blockUnsolicited(): void {
+    this.options.onUnsolicitedBlocked?.();
+    if (this.activity.isInitiative() && this.activity.getSource() !== 'user') this.cancelActivity('explicit_cancel', true);
+    this.resetCursorInterest();
+  }
+
+  private tryReturn(): boolean {
+    const intent: BehaviorIntent = { kind: 'play', source: 'system', priority: 'normal', activityFamily: 'social_bid', reason: 'user_return' };
+    const catalog = { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs, 'P3_reactive')] };
+    const eligible = () => {
+      const run = this.activity.getRuntime();
+      return !this.systemIdle.isBlocked() && !this.quiet && !this.menuOpen && this.enabled
+        && this.coordinator.canAcceptReactiveOpportunity() && !this.deferredUserInteractionResume
+        && !this.providerAdmission.hasPending() && this.providerAdmission.getOwnedRun() === null
+        && (run === null || (run.activityId === 'calm' && this.activity.getSource() === 'local'))
+        && ['idle_blink', 'look_around'].includes(this.visualEpisode.intent.kind)
+        && !requiresVitalSleep(this.options.getCharacterSnapshot()) && this.options.movement.canAcceptVoluntaryMovement()
+        && this.initiativeBudget.available(this.options.clock.now()) && this.activity.canStart(intent, catalog);
+    };
+    if (!eligible()) return false;
+    const resolved = this.character.resolveDirectIntent(intent, this.options.getCharacterSnapshot()).resolvedIntent;
+    if (!resolved) return false;
+    this.cancelActivity('higher_priority_activity', false);
+    if (!eligible()) return false;
+    this.coordinator.suspendForReactiveActivity();
+    if (!this.activity.start(resolved, catalog)) { this.coordinator.resumeAfterReactiveActivity(); return false; }
+    this.initiativeBudget.start(this.options.clock.now());
     return true;
   }
 

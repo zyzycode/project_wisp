@@ -257,6 +257,7 @@ function beginBrainStream(): void {
 }
 
 function clearBrainStream(): void {
+  autonomyComposition?.resetSystemIdle();
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
   summaryStream = null;
@@ -284,6 +285,8 @@ function initializeAutonomyComposition(): void {
   const memoryGeneration = memoryRuntime?.currentGeneration() ?? 0;
   autonomyComposition = new MainAutonomyComposition({
     cursorPosition: platformAdapter,
+    systemIdle: platformAdapter.createSystemIdleSource?.(),
+    wallNow: Date.now,
     clock: { now: () => brainStatePublisher.now() },
     scheduler: createMainAutonomyScheduler(),
     prng,
@@ -291,6 +294,7 @@ function initializeAutonomyComposition(): void {
     getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState()),
     onActivityStarted: () => aiEventRuntime?.activityStarted(),
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
+    onUnsolicitedBlocked: () => { aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); },
     onAIInvalidated: () => { if (!processingTouchInput || !aiEventRuntime?.isTouchPending()) aiEventRuntime?.invalidate(true, false); observationRuntime?.invalidate(); },
     onUserContact: () => { aiEventRuntime?.userContact(); observationRuntime?.invalidate(); },
     onCursorGameResult: result => { aiEventRuntime?.gameTerminal(result, memoryGeneration); void memoryRuntime?.history.game(result, memoryGeneration); },

@@ -1,5 +1,6 @@
 import { screen, BrowserWindow } from 'electron';
 import { readCursorScreenPosition } from './cursor-screen-position';
+import { createSystemIdleSource } from './system-idle-source';
 import type {
   IPlatformAdapter,
   OverlayWindowOptions,
@@ -22,6 +23,7 @@ import type {
  *      initial position without throwing unhandled exceptions.
  */
 export class LinuxPlatformAdapter implements IPlatformAdapter {
+  createSystemIdleSource() { return createSystemIdleSource('linux', process.env.XDG_SESSION_TYPE?.toLowerCase()); }
   getCursorScreenPosition() {
     return this.getDisplaySessionType() === 'wayland' ? null : readCursorScreenPosition();
   }
