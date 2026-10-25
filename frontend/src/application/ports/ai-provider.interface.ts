@@ -44,6 +44,7 @@ export interface AIPreviousInitiative {
 }
 
 export interface AIProviderRequest {
+  readonly beveragePreference?: import('./memory-beverage.interface').AIProviderBeverageContext;
   /** Explicitly confirmed, source-validated topic; ordinary user dialogue only. */
   readonly dialogueTopic?: import('./interest-thread.interface').AIProviderDialogueTopic;
   /** Full interaction context for the external v1 adapter. */
@@ -113,6 +114,7 @@ export interface AIProviderReply {
 export type AIProviderResponseStatus = 'ok' | 'fallback';
 
 export interface AIProviderResponse {
+  readonly beverageProposal?: import('./memory-beverage.interface').BeverageProposal;
   readonly appraisal?: InteractionAppraisal;
   requestId: string;
   status: AIProviderResponseStatus;

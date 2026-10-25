@@ -100,6 +100,35 @@ export type MemoryCardListResultDTO =
   | { readonly ok: true; readonly generation: number; readonly items: readonly MemoryCardDTO[]; readonly nextCursor: number | null }
   | { readonly ok: false; readonly generation: number; readonly code: MemoryCardFailureDTO };
 
+/** Additive bridge declarations; #114 supplies validators, handlers and UI wiring. */
+export interface BeveragePreferenceRefDTO { readonly itemId: string; readonly revision: number }
+export interface BeveragePreferenceDTO {
+  readonly ref: BeveragePreferenceRefDTO;
+  readonly source: MemoryCardSourceDTO;
+  readonly evidenceQuote: string;
+  readonly value: 'coffee' | 'tea';
+  readonly provenance: 'model_proposal' | 'user_statement';
+  readonly validity: 'hypothesis' | 'confirmed' | 'rejected';
+  readonly manuallyCorrected: boolean;
+  readonly status: 'active' | 'withdrawn';
+}
+export type BeveragePreferenceCommandDTO = {
+  readonly streamId: string; readonly sequence: number; readonly generation: number; readonly commandId: string;
+} & (
+  | { readonly kind: 'save_hypothesis'; readonly itemId: string; readonly expected: null;
+      readonly offerId: string; readonly consented: true }
+  | { readonly kind: 'confirm' | 'correct'; readonly expected: BeveragePreferenceRefDTO;
+      readonly value: 'coffee' | 'tea'; readonly confirmed: true }
+  | { readonly kind: 'reject' | 'withdraw' | 'delete'; readonly expected: BeveragePreferenceRefDTO }
+);
+export interface BeveragePreferenceBridge {
+  read(command: { readonly streamId: string }): Promise<InterestThreadResultDTO<BeveragePreferenceDTO | null>>;
+  mutate(command: BeveragePreferenceCommandDTO): Promise<InterestThreadResultDTO<{
+    readonly commandId: string; readonly ref: BeveragePreferenceRefDTO;
+    readonly outcome: 'hypothesis' | 'confirmed' | 'rejected' | 'withdrawn' | 'deleted';
+  }>>;
+}
+
 export interface InterestThreadRefDTO { readonly threadId: string; readonly revision: number }
 export interface InterestThreadDTO {
   readonly ref: InterestThreadRefDTO;
@@ -328,7 +357,7 @@ export interface DialogueCommandMetaDTO {
 }
 
 export type DialogueCommandDTO = DialogueCommandMetaDTO & (
-  | { readonly type: 'send'; readonly text: string; readonly replyToInterestThread?: InterestThreadRefDTO }
+  | { readonly type: 'send'; readonly text: string; readonly replyToInterestThread?: InterestThreadRefDTO; readonly requestBeverageProposal?: true }
   | { readonly type: 'reset' }
 );
 
@@ -356,6 +385,7 @@ export type DialogueTurnPresentationDTO =
       readonly requestId: string;
       readonly replyText: string;
       readonly memorySource?: MemoryCardSourceDTO;
+      readonly beverageOffer?: { readonly offerId: string; readonly value: 'coffee' | 'tea'; readonly evidenceQuote: string };
       /** Local reply target, only for a successful turn that used the confirmed topic. */
       readonly interestThread?: InterestThreadRefDTO;
       readonly outcome:

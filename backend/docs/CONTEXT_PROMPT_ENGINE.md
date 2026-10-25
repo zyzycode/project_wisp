@@ -430,3 +430,9 @@ late-result barriers. Общие wire fixtures проверяют совмест
 recursive summaries, автоматические triggers и внешние зависимости не включены.
 Backend поставляется под [MIT notice](../LICENSE).
 
+
+### Условная гипотеза кофе/чай (#113 → #114)
+
+Форма/лимиты/validation и last-priority atomic block — [Backend Memory §8](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#8-гипотеза-кофечай-113). Это независимый optional ordinary-chat block только при `beveragePreference`; его отсутствие не добавляет instruction/data/schema guidance и сохраняет текущую #123 no-hypothesis baseline побайтно. Новый optional response schema key может объявляться только при allowProposal=true в enabled provider schema; recall-only allowProposal=false не включает proposal instructions/schema; required поля и disabled schema остаются прежними. Один provider call, никакого summary как evidence и продвижения гипотезы в факт. Current user correction приоритетна; профиль, quiet support, topic block/eligibility и frozen resources не меняются.
+
+До runtime edits #114 сохранить отдельный offline before текущего #123 source/settings/hashes, затем after для тех же no-field сцен и enabled synthetic RU/EN вариантов. No-field reports должны совпасть по messages/payload/settings/selected blocks/budgets; для enabled варианта допустим только conditional beverage bundle/provider schema delta и trace его последнего приоритета. #117 архивы/source hashes и профильный delta #123 не переписывать и не расширять; исходники и новый comparison фиксируются отдельно. Structural lifecycle tests не доказывают качество semantic inference/речи; реальные calls не разрешены этим gate.

@@ -86,12 +86,41 @@ class DialogueTopic(Contract):
         return value
 
 
+class BeverageCurrent(Contract):
+    value: Literal["coffee", "tea"]
+    validity: Literal["hypothesis", "confirmed"]
+
+
+class BeveragePreference(Contract):
+    allowProposal: bool
+    current: BeverageCurrent = omittable()
+
+    @model_validator(mode="after")
+    def meaningful_context(self) -> "BeveragePreference":
+        if not self.allowProposal and "current" not in self.model_fields_set:
+            raise ValueError("Recall-only context requires current preference")
+        return self
+
+
+class BeverageProposal(Contract):
+    value: Literal["coffee", "tea"]
+    evidenceQuote: text_type(240)
+
+    @field_validator("evidenceQuote")
+    @classmethod
+    def already_trimmed(cls, value: str) -> str:
+        if value != trim_text(value):
+            raise ValueError("Quote must be trimmed")
+        return value
+
+
 class InteractionChatRequest(ChatFields, InteractionPolicy):
     memory: MemoryContext
     previousInitiative: PreviousInitiative = omittable()
     summary: SummaryModelReply = omittable()
     previousTouch: PreviousTouch = omittable()
     dialogueTopic: DialogueTopic = omittable()
+    beveragePreference: BeveragePreference = omittable()
 
     @model_validator(mode="after")
     def card_matches(self) -> "InteractionChatRequest":
@@ -106,3 +135,4 @@ class InteractionTouchResponse(InteractionTouchReply):
 
 class InteractionChatResponse(InteractionChatReply):
     requestId: RequestId
+    beverageProposal: BeverageProposal = omittable()
