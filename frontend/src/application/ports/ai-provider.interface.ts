@@ -44,6 +44,8 @@ export interface AIPreviousInitiative {
 }
 
 export interface AIProviderRequest {
+  /** Explicitly confirmed, source-validated topic; ordinary user dialogue only. */
+  readonly dialogueTopic?: import('./interest-thread.interface').AIProviderDialogueTopic;
   /** Full interaction context for the external v1 adapter. */
   readonly interaction?: { readonly card: CharacterCardReference; readonly effectPolicy: 'eligible' | 'suppressed'; readonly previousTouch?: PreviousTouchReaction };
   readonly summary?: { readonly text: string };
@@ -124,6 +126,8 @@ export interface AIProviderResponse {
 }
 
 export interface IAIProvider {
+  /** Absent means unsupported. Check capability and ready status before reserving a topic. */
+  readonly supportsDialogueTopic?: true;
   /** Whether the final wire projection keeps summary; lets recall restore covered sources when it does not fit. */
   canIncludeSummary?(request: AIProviderRequest): boolean;
   /** Abort a retired request when supported; generation checks still reject late results. */

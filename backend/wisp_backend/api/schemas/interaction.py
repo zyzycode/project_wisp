@@ -73,11 +73,25 @@ class InteractionTouchRequest(TouchFields, InteractionPolicy):
         return self
 
 
+class DialogueTopic(Contract):
+    mode: Literal["follow_up", "reply"]
+    text: text_type(160)
+    statedAt: Timestamp
+
+    @field_validator("text")
+    @classmethod
+    def already_trimmed(cls, value: str) -> str:
+        if value != trim_text(value):
+            raise ValueError("Topic text must be trimmed")
+        return value
+
+
 class InteractionChatRequest(ChatFields, InteractionPolicy):
     memory: MemoryContext
     previousInitiative: PreviousInitiative = omittable()
     summary: SummaryModelReply = omittable()
     previousTouch: PreviousTouch = omittable()
+    dialogueTopic: DialogueTopic = omittable()
 
     @model_validator(mode="after")
     def card_matches(self) -> "InteractionChatRequest":

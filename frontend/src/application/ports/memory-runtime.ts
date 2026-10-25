@@ -2,12 +2,14 @@ import type { AIProviderContextMessage } from './ai-provider.interface';
 import type { ChatContextLimits } from './memory-repository.interface';
 
 export interface CompletedDialogueMemoryTurn {
+  readonly interestThread?: import('./interest-thread.interface').InterestThreadTurnUse;
   readonly memoryConfirmable?: boolean;
   readonly user: { readonly id: string; readonly text: string; readonly createdAt: string };
   readonly assistant: { readonly id: string; readonly text: string; readonly createdAt: string };
   readonly memoryGeneration: number;
 }
 export interface DialogueMemoryHooks {
+  readonly interestThread?: import('./interest-thread.interface').IInterestThreadDialogue;
   readonly generation: () => number;
   readonly recall?: import('./memory-knowledge.interface').ILocalMemoryRecall;
   readonly completed: (turn: CompletedDialogueMemoryTurn) => void;
@@ -21,6 +23,7 @@ export interface MemoryScheduler {
 export interface InitialDialogueContext { readonly messages: readonly AIProviderContextMessage[] }
 
 export interface MemoryRepositories {
+  readonly interestThread?: import('./interest-thread.interface').IInterestThreadRepository;
   readonly items?: import('./memory-items.interface').IMemoryItemsRepository;
   readonly history: import('./memory-repository.interface').IChatHistoryRepository;
   readonly facts: import('./memory-repository.interface').IUserFactsRepository;

@@ -24,6 +24,13 @@ export interface BackendInteractionPolicy {
   readonly effectPolicy: 'eligible' | 'suppressed';
 }
 
+/** Untrusted quotation of an explicitly selected user statement; not a memory fact. */
+export interface BackendDialogueTopic {
+  readonly mode: 'follow_up' | 'reply';
+  readonly text: string;
+  readonly statedAt: string;
+}
+
 export interface BackendInteractionTouchRequest extends BackendInteractionPolicy {
   readonly requestId: string;
   readonly stream: false;
@@ -41,6 +48,7 @@ export interface BackendInteractionTouchResponse {
 export type BackendInteractionChatRequest = BackendSummaryChatRequest &
   BackendInteractionPolicy & {
     readonly previousTouch?: BackendPreviousTouchReaction;
+    readonly dialogueTopic?: BackendDialogueTopic;
   };
 
 export type BackendInteractionChatResponse = BackendSummaryChatResponse & {

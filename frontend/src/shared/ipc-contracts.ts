@@ -100,6 +100,38 @@ export type MemoryCardListResultDTO =
   | { readonly ok: true; readonly generation: number; readonly items: readonly MemoryCardDTO[]; readonly nextCursor: number | null }
   | { readonly ok: false; readonly generation: number; readonly code: MemoryCardFailureDTO };
 
+export interface InterestThreadRefDTO { readonly threadId: string; readonly revision: number }
+export interface InterestThreadDTO {
+  readonly ref: InterestThreadRefDTO;
+  readonly state: 'unanswered' | 'answered' | 'closed';
+  readonly text: string | null;
+  readonly confirmedAt: string;
+  readonly expiresAt: string;
+  readonly attempted: boolean;
+}
+interface InterestThreadEnvelopeDTO {
+  readonly streamId: string;
+  readonly sequence: number;
+  readonly generation: number;
+  readonly commandId: string;
+}
+export type InterestThreadCommandDTO = InterestThreadEnvelopeDTO & (
+  | { readonly kind: 'confirm'; readonly threadId: string; readonly expected: InterestThreadRefDTO | null;
+      readonly conversationId: string; readonly source: MemoryCardSourceDTO; readonly text: string; readonly confirmed: true }
+  | { readonly kind: 'close'; readonly expected: InterestThreadRefDTO; readonly reason: 'declined' | 'dismissed' }
+  | { readonly kind: 'delete'; readonly expected: InterestThreadRefDTO }
+);
+export type InterestThreadResultDTO<T> =
+  | { readonly ok: true; readonly generation: number; readonly value: T }
+  | { readonly ok: false; readonly generation: number; readonly code: MemoryCardFailureDTO };
+export interface InterestThreadApiBridge {
+  read(command: { readonly streamId: string }): Promise<InterestThreadResultDTO<InterestThreadDTO | null>>;
+  mutate(command: InterestThreadCommandDTO): Promise<InterestThreadResultDTO<{
+    readonly commandId: string; readonly ref: InterestThreadRefDTO;
+    readonly outcome: 'unanswered' | 'answered' | 'closed' | 'deleted';
+  }>>;
+}
+
 export interface IgnoreMouseEventsDTO {
   ignore: boolean;
   forward?: boolean;
@@ -296,7 +328,7 @@ export interface DialogueCommandMetaDTO {
 }
 
 export type DialogueCommandDTO = DialogueCommandMetaDTO & (
-  | { readonly type: 'send'; readonly text: string }
+  | { readonly type: 'send'; readonly text: string; readonly replyToInterestThread?: InterestThreadRefDTO }
   | { readonly type: 'reset' }
 );
 
@@ -323,6 +355,8 @@ export type DialogueTurnPresentationDTO =
       readonly requestId: string;
       readonly replyText: string;
       readonly memorySource?: MemoryCardSourceDTO;
+      /** Local reply target, only for a successful turn that used the confirmed topic. */
+      readonly interestThread?: InterestThreadRefDTO;
       readonly outcome:
         | { readonly kind: 'success' }
         | { readonly kind: 'fallback'; readonly reason: DialogueFallbackReasonDTO };
@@ -452,6 +486,7 @@ export interface SummaryApiBridge {
 }
 
 export interface WispApiBridge {
+  readonly interestThread?: InterestThreadApiBridge;
   readonly observationCommand?: import('./observation-contracts').ObservationBridge['observationCommand'];
   readonly summary?: SummaryApiBridge;
   mutateMemoryCard(command: MemoryCardCommandDTO): Promise<MemoryCardResultDTO>;

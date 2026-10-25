@@ -41,6 +41,8 @@ export interface ConversationSession {
 
 /** A completed, displayed turn; session creation and both messages commit together. */
 export interface CompletedChatTurn {
+  /** Suppress the whole pair; a successful reply also atomically closes the matching topic as answered. */
+  readonly interestThread?: import('./interest-thread.interface').InterestThreadTurnUse;
   /** Only a displayed successful result can be selected for explicit confirmation. */
   readonly memoryConfirmable?: boolean;
   readonly session: ConversationSession;
