@@ -54,13 +54,16 @@ def test_full_synthetic_corpus_preserves_data_and_budgets_while_selecting_resour
     monkeypatch.setenv("OPENAI_API_KEY", "SYNTHETIC_SECRET_MUST_NOT_APPEAR")
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     assert baseline["synthetic"] is True
-    assert len(baseline["reports"]) == len(SCENE_IDS) * 2 * 3
+    historical_scenes = {report["scene_id"] for report in baseline["reports"]}
+    assert len(historical_scenes) == 14
+    assert historical_scenes <= set(SCENE_IDS)
+    assert len(baseline["reports"]) == len(historical_scenes) * 2 * 3
     # Preserve the historical corpus, including the retired provider. Compare
     # active providers with the model/settings captured then, not today's defaults.
     active_reports = [
         report for report in baseline["reports"] if report["settings"]["provider"] in {"openai", "gemini"}
     ]
-    assert len(active_reports) == len(SCENE_IDS) * 2 * 2
+    assert len(active_reports) == len(historical_scenes) * 2 * 2
 
     async def run() -> None:
         for expected in active_reports:

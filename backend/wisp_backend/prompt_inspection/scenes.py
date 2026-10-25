@@ -22,6 +22,14 @@ SCENE_IDS = (
     "no_match",
     "event_caught",
     "event_missed",
+    "multi_turn_banter",
+    "touch_trace_unrelated",
+    "touch_why_absent",
+    "touch_suppressed",
+    "consent_on",
+    "consent_revoked",
+    "state_changed",
+    "no_example_match",
 )
 
 

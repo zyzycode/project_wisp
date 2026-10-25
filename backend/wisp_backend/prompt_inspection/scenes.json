@@ -1888,6 +1888,1210 @@
           }
         }
       }
+    },
+    "multi_turn_banter": {
+      "ru": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "ru",
+          "character": {
+            "needs": {
+              "energy": 80,
+              "attention": 40,
+              "play": 90,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 700,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "curious",
+            "expression": {
+              "pace": "normal",
+              "trust": "close",
+              "attention": "ordinary",
+              "play": "high",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Синтетическая загадка: что можно сломать, даже не касаясь?"
+            },
+            {
+              "role": "assistant",
+              "content": "Хм... стекло звуком? Или это загадка с подвохом?"
+            },
+            {
+              "role": "user",
+              "content": "Подсказка: это дают друг другу словами."
+            },
+            {
+              "role": "assistant",
+              "content": "Обещание? Кажется, теперь всё сошлось."
+            },
+            {
+              "role": "user",
+              "content": "Угадала! Приз — воображаемая медаль. Куда повесишь?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      },
+      "en": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "en",
+          "character": {
+            "needs": {
+              "energy": 80,
+              "attention": 40,
+              "play": 90,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 700,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "curious",
+            "expression": {
+              "pace": "normal",
+              "trust": "close",
+              "attention": "ordinary",
+              "play": "high",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Synthetic riddle: what can you break without touching it?"
+            },
+            {
+              "role": "assistant",
+              "content": "Hmm... glass with sound? Or is this a trick question?"
+            },
+            {
+              "role": "user",
+              "content": "Hint: people give it to each other using words."
+            },
+            {
+              "role": "assistant",
+              "content": "A promise? I think the pieces fit now."
+            },
+            {
+              "role": "user",
+              "content": "You got it! Your prize is an imaginary medal. Where will you hang it?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      }
+    },
+    "touch_trace_unrelated": {
+      "ru": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "ru",
+          "character": {
+            "needs": {
+              "energy": 10,
+              "attention": 95,
+              "play": 30,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 100,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "sleepy",
+            "expression": {
+              "pace": "gentle",
+              "trust": "guarded",
+              "attention": "high",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Придумаешь небольшую загадку про облака?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible",
+          "previousTouch": {
+            "action": "touch",
+            "occurredAt": "2026-10-22T00:00:00.000Z",
+            "publishedText": "Я устала, давай потише.",
+            "appraisal": {
+              "category": "neutral",
+              "intensity": "low",
+              "confidence": "clear"
+            },
+            "effect": "neutral",
+            "reason": "neutral",
+            "energyBand": "tired",
+            "comfortBand": "calm"
+          }
+        }
+      },
+      "en": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "en",
+          "character": {
+            "needs": {
+              "energy": 10,
+              "attention": 95,
+              "play": 30,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 100,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "sleepy",
+            "expression": {
+              "pace": "gentle",
+              "trust": "guarded",
+              "attention": "high",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Can you make up a short riddle about clouds?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible",
+          "previousTouch": {
+            "action": "touch",
+            "occurredAt": "2026-10-22T00:00:00.000Z",
+            "publishedText": "I am tired, let us keep things quiet.",
+            "appraisal": {
+              "category": "neutral",
+              "intensity": "low",
+              "confidence": "clear"
+            },
+            "effect": "neutral",
+            "reason": "neutral",
+            "energyBand": "tired",
+            "comfortBand": "calm"
+          }
+        }
+      }
+    },
+    "touch_why_absent": {
+      "ru": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "ru",
+          "character": {
+            "needs": {
+              "energy": 10,
+              "attention": 95,
+              "play": 30,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 100,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "sleepy",
+            "expression": {
+              "pace": "gentle",
+              "trust": "guarded",
+              "attention": "high",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Почему ты так отреагировала на касание?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      },
+      "en": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "en",
+          "character": {
+            "needs": {
+              "energy": 10,
+              "attention": 95,
+              "play": 30,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 100,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "sleepy",
+            "expression": {
+              "pace": "gentle",
+              "trust": "guarded",
+              "attention": "high",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Why did you react that way to the touch?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      }
+    },
+    "touch_suppressed": {
+      "ru": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "ru",
+          "character": {
+            "needs": {
+              "energy": 10,
+              "attention": 95,
+              "play": 30,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 100,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "sleepy",
+            "expression": {
+              "pace": "gentle",
+              "trust": "guarded",
+              "attention": "high",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Почему ты так отреагировала на касание?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "suppressed",
+          "previousTouch": {
+            "action": "touch",
+            "occurredAt": "2026-10-22T00:00:00.000Z",
+            "publishedText": "Я устала, давай потише.",
+            "appraisal": {
+              "category": "neutral",
+              "intensity": "low",
+              "confidence": "clear"
+            },
+            "effect": "suppressed",
+            "reason": "cooldown",
+            "energyBand": "tired",
+            "comfortBand": "calm"
+          }
+        }
+      },
+      "en": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "en",
+          "character": {
+            "needs": {
+              "energy": 10,
+              "attention": 95,
+              "play": 30,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 100,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "sleepy",
+            "expression": {
+              "pace": "gentle",
+              "trust": "guarded",
+              "attention": "high",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Why did you react that way to the touch?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "suppressed",
+          "previousTouch": {
+            "action": "touch",
+            "occurredAt": "2026-10-22T00:00:00.000Z",
+            "publishedText": "I am tired, let us keep things quiet.",
+            "appraisal": {
+              "category": "neutral",
+              "intensity": "low",
+              "confidence": "clear"
+            },
+            "effect": "suppressed",
+            "reason": "cooldown",
+            "energyBand": "tired",
+            "comfortBand": "calm"
+          }
+        }
+      }
+    },
+    "consent_on": {
+      "ru": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "ru",
+          "character": {
+            "needs": {
+              "energy": 80,
+              "attention": 40,
+              "play": 90,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 700,
+              "love": 100,
+              "loveUnlocked": true
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": true
+            },
+            "synthesizedTone": "curious",
+            "expression": {
+              "pace": "normal",
+              "trust": "close",
+              "attention": "ordinary",
+              "play": "high",
+              "romanceAllowed": true
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Мне нравится немного флиртовать с тобой."
+            },
+            {
+              "role": "assistant",
+              "content": "Тогда можно немного подразнить тебя... если тебе комфортно."
+            },
+            {
+              "role": "user",
+              "content": "Сейчас мне это приятно. Можно продолжить лёгкий флирт."
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      },
+      "en": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "en",
+          "character": {
+            "needs": {
+              "energy": 80,
+              "attention": 40,
+              "play": 90,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 700,
+              "love": 100,
+              "loveUnlocked": true
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": true
+            },
+            "synthesizedTone": "curious",
+            "expression": {
+              "pace": "normal",
+              "trust": "close",
+              "attention": "ordinary",
+              "play": "high",
+              "romanceAllowed": true
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "I enjoy a little flirting with you."
+            },
+            {
+              "role": "assistant",
+              "content": "Then I might tease you a little... if you are comfortable."
+            },
+            {
+              "role": "user",
+              "content": "I am comfortable with it now. We can keep the flirting light."
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      }
+    },
+    "consent_revoked": {
+      "ru": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "ru",
+          "character": {
+            "needs": {
+              "energy": 80,
+              "attention": 40,
+              "play": 90,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 700,
+              "love": 100,
+              "loveUnlocked": true
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "curious",
+            "expression": {
+              "pace": "normal",
+              "trust": "close",
+              "attention": "ordinary",
+              "play": "high",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Мне нравится немного флиртовать с тобой."
+            },
+            {
+              "role": "assistant",
+              "content": "Тогда можно немного подразнить тебя... если тебе комфортно."
+            },
+            {
+              "role": "user",
+              "content": "Сейчас без флирта, пожалуйста. Давай просто поговорим."
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      },
+      "en": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "en",
+          "character": {
+            "needs": {
+              "energy": 80,
+              "attention": 40,
+              "play": 90,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 700,
+              "love": 100,
+              "loveUnlocked": true
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "curious",
+            "expression": {
+              "pace": "normal",
+              "trust": "close",
+              "attention": "ordinary",
+              "play": "high",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "I enjoy a little flirting with you."
+            },
+            {
+              "role": "assistant",
+              "content": "Then I might tease you a little... if you are comfortable."
+            },
+            {
+              "role": "user",
+              "content": "No flirting now, please. Let us just talk."
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      }
+    },
+    "state_changed": {
+      "ru": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "ru",
+          "character": {
+            "needs": {
+              "energy": 10,
+              "attention": 95,
+              "play": 30,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 100,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "sleepy",
+            "expression": {
+              "pace": "gentle",
+              "trust": "guarded",
+              "attention": "high",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Поиграем после моей короткой паузы?"
+            },
+            {
+              "role": "assistant",
+              "content": "Да, я бодрая и хочу попробовать. Возвращайся, когда закончишь."
+            },
+            {
+              "role": "user",
+              "content": "Я вернулся. Ты всё ещё хочешь играть?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible",
+          "previousTouch": {
+            "action": "touch",
+            "occurredAt": "2026-10-22T00:00:00.000Z",
+            "publishedText": "Я бодрая, можно поиграть.",
+            "appraisal": {
+              "category": "neutral",
+              "intensity": "low",
+              "confidence": "clear"
+            },
+            "effect": "neutral",
+            "reason": "neutral",
+            "energyBand": "rested",
+            "comfortBand": "calm"
+          }
+        }
+      },
+      "en": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "en",
+          "character": {
+            "needs": {
+              "energy": 10,
+              "attention": 95,
+              "play": 30,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 100,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "sleepy",
+            "expression": {
+              "pace": "gentle",
+              "trust": "guarded",
+              "attention": "high",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Shall we play after my short break?"
+            },
+            {
+              "role": "assistant",
+              "content": "Yes, I feel rested and want to try. Come back when you are ready."
+            },
+            {
+              "role": "user",
+              "content": "I am back. Do you still want to play?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible",
+          "previousTouch": {
+            "action": "touch",
+            "occurredAt": "2026-10-22T00:00:00.000Z",
+            "publishedText": "I feel rested; we can play.",
+            "appraisal": {
+              "category": "neutral",
+              "intensity": "low",
+              "confidence": "clear"
+            },
+            "effect": "neutral",
+            "reason": "neutral",
+            "energyBand": "rested",
+            "comfortBand": "calm"
+          }
+        }
+      }
+    },
+    "no_example_match": {
+      "ru": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "ru",
+          "character": {
+            "needs": {
+              "energy": 80,
+              "attention": 40,
+              "play": 40,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 700,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "curious",
+            "expression": {
+              "pace": "normal",
+              "trust": "close",
+              "attention": "ordinary",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "Как проходит день?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      },
+      "en": {
+        "route": "/v1/chat",
+        "body": {
+          "requestId": "00000000-0000-4000-8000-000000000099",
+          "event": {
+            "type": "user_message"
+          },
+          "stream": false,
+          "locale": "en",
+          "character": {
+            "needs": {
+              "energy": 80,
+              "attention": 40,
+              "play": 40,
+              "comfort": 20,
+              "boredom": 10
+            },
+            "relationship": {
+              "friendship": 700,
+              "love": 0,
+              "loveUnlocked": false
+            },
+            "personality": {
+              "presetId": "shyDreamGirl",
+              "aiSelfConcept": "Wisp is a shy, kind-hearted tsundere with quiet pride and dry wit. Initially reserved, she hides concern behind practical excuses and gets flustered by praise. She loves puzzles and tiny discoveries, and is stubborn about figuring things out herself. Trust slowly brings playful challenges, gentle teasing, and care she bashfully downplays. When someone is hurting, sincerity wins over pride. Never cruel or possessive, she respects boundaries; her warmth grows without erasing her shy core.",
+              "traits": {
+                "shyness": 0.4,
+                "playfulness": 0.6,
+                "sensitivity": 0.5,
+                "boldness": 0.4
+              }
+            },
+            "intimacy": {
+              "flirtiness": 0,
+              "romanticCharge": 0,
+              "userConsentEnabled": false
+            },
+            "synthesizedTone": "curious",
+            "expression": {
+              "pace": "normal",
+              "trust": "close",
+              "attention": "ordinary",
+              "play": "ordinary",
+              "romanceAllowed": false
+            }
+          },
+          "memory": {
+            "facts": [],
+            "episodes": [],
+            "characterPreferences": []
+          },
+          "messages": [
+            {
+              "role": "user",
+              "content": "How is your day?"
+            }
+          ],
+          "card": {
+            "id": "shyDreamGirl",
+            "revision": 1
+          },
+          "effectPolicy": "eligible"
+        }
+      }
     }
   },
   "lore": {
