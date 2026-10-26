@@ -783,3 +783,22 @@ html, body {
 .memory-panel ol {
   padding-left: 18px;
 }
+
+.memory-actions {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.memory-panel dl {
+  margin: 6px 0;
+}
+
+.memory-panel dt {
+  font-weight: 600;
+}
+
+.memory-panel dd {
+  margin: 0 0 4px;
+}

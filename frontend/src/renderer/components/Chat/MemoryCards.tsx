@@ -1,3 +1,8 @@
+import { MemoryOverview, supportsMemoryOverview } from './MemoryOverview';
+import { consumeMemoryClearRefresh, getMemoryOperationStatus } from '../../memory-operation-status';
+import { getMemoryOverviewClient } from '../../memory-overview-client';
+import { getBeverageClient } from '../../beverage-client';
+import { getInterestThreadClient } from '../../interest-thread-client';
 import { BeverageControls } from './BeverageControls';
 import { InterestThreadControls } from './InterestThreadControls';
 import { SummaryControls } from './SummaryControls';
@@ -5,19 +10,34 @@ import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import type { BrainStateDTO, MemoryCardContentDTO, MemoryCardDTO, MemoryCardSourceDTO, WispApiBridge } from '../../../shared/ipc-contracts';
 import { getMemoryCardClient } from '../../memory-card-client';
 
-interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary' | 'interestThread' | 'beveragePreference'> & Partial<Pick<WispApiBridge, 'postDialogueCommand'>>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
+interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary' | 'interestThread' | 'beveragePreference'> & Partial<Pick<WispApiBridge, 'postDialogueCommand' | 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'>>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
 function supportsDialogue(bridge: Props['bridge']): bridge is Props['bridge'] & Pick<WispApiBridge, 'postDialogueCommand'> { return typeof bridge.postDialogueCommand === 'function'; }
+const noSubscribe = () => () => {};
+const noReset = () => 0;
 interface Draft extends MemoryCardContentDTO { readonly source: MemoryCardSourceDTO; readonly item?: MemoryCardDTO }
 export function MemoryCards({ bridge, snapshot }: Props) {
   const panelId = useId();
   const client = getMemoryCardClient(bridge);
   const state = useSyncExternalStore(client.subscribe, client.getState, client.getState);
+  const operations = getMemoryOperationStatus(bridge);
+  const otherBusy = useSyncExternalStore(operations.subscribe, operations.getState, operations.getState);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [removal, setRemoval] = useState<{ kind: 'withdraw' | 'delete'; item: MemoryCardDTO } | null>(null);
-  const streamId = snapshot?.streamId ?? null;
-  useEffect(() => { client.acceptStream(streamId); setDraft(null); setRemoval(null); }, [client, streamId]);
-  useEffect(() => { if (open) void client.list(); }, [client, streamId, open]);
+  const streamId = snapshot?.streamId ?? null, conversationId = snapshot?.dialogue.conversationId ?? null;
+  const overview = supportsMemoryOverview(bridge) ? getMemoryOverviewClient(bridge) : null;
+  const cleared = useSyncExternalStore(overview?.subscribe ?? noSubscribe, overview ? () => overview.getState().cleared : noReset, noReset);
+  useEffect(() => {
+    client.acceptStream(streamId); client.invalidateProjection(); setDraft(null); setRemoval(null);
+    if (bridge.beveragePreference) { const beverage = getBeverageClient(bridge.beveragePreference); beverage.invalidateAfterReset(); if (open) void beverage.read(); }
+    if (bridge.interestThread) { const topic = getInterestThreadClient(bridge.interestThread); topic.invalidateAfterReset(); if (open) void topic.read(); }
+  }, [client, streamId, conversationId, bridge]);
+  useEffect(() => {
+    if (!supportsMemoryOverview(bridge) || !consumeMemoryClearRefresh(bridge, streamId, conversationId)) return;
+    if (open && bridge.beveragePreference) void getBeverageClient(bridge.beveragePreference).read();
+    if (open && bridge.interestThread) void getInterestThreadClient(bridge.interestThread).read();
+  }, [client, cleared, bridge]);
+  useEffect(() => { if (open) void client.list(); }, [client, streamId, conversationId, cleared, open]);
   const turn = snapshot?.dialogue.turn;
   const source = turn?.phase === 'completed' && turn.outcome.kind === 'success' ? turn.memorySource : undefined;
   const locked = state.busy || state.uncertain;
@@ -25,9 +45,8 @@ export function MemoryCards({ bridge, snapshot }: Props) {
     if (!source) return;
     setOpen(true); setRemoval(null); setDraft({ category, label: '', text: '', occurredOn: null, source });
   }
-  return <section className={`memory-panel${open ? ' is-open' : ''}`} data-wisp-interactive="true" aria-label="Карточки памяти">
-    <button type="button" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => setOpen(!open)}>Память</button>
-    {open && <div id={panelId}>
+  const memoryContent = <>
+    {open && <><h3>События и шутки</h3>
       {source ? <><button type="button" disabled={locked} onClick={() => begin('important_event')}>Сохранить событие</button>
         <button type="button" disabled={locked} onClick={() => begin('shared_joke')}>Сохранить шутку</button></>
         : <p>Сохранение события или шутки доступно после завершённого ответа, сохранённого в истории разговора.</p>}
@@ -59,9 +78,17 @@ export function MemoryCards({ bridge, snapshot }: Props) {
       </li>)}</ul>
       <button type="button" disabled={locked} onClick={() => { void client.list(); }}>Обновить список</button>
       {state.nextCursor !== null && <button type="button" disabled={locked} onClick={() => { void client.list(state.nextCursor); }}>Следующие 20</button>}
-    </div>}
+    </>}
     {bridge.beveragePreference && <BeverageControls bridge={bridge.beveragePreference} {...(supportsDialogue(bridge) ? { dialogueBridge: bridge } : {})} snapshot={snapshot} visible={open} />}
     {bridge.interestThread && <InterestThreadControls bridge={bridge.interestThread} {...(supportsDialogue(bridge) ? { dialogueBridge: bridge } : {})} snapshot={snapshot} visible={open} />}
     {bridge.summary && <SummaryControls bridge={bridge.summary} snapshot={snapshot} visible={open} />}
+  </>;
+  return <section className={`memory-panel${open ? ' is-open' : ''}`} data-wisp-interactive="true" aria-label="Карточки памяти">
+    <button type="button" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => setOpen(!open)}>Память</button>
+    <div id={open ? panelId : undefined}>
+      {supportsMemoryOverview(bridge) ? <MemoryOverview bridge={bridge} snapshot={snapshot} visible={open} otherBusy={otherBusy}>
+        {memoryContent}
+      </MemoryOverview> : memoryContent}
+    </div>
   </section>;
 }

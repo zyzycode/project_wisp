@@ -6,6 +6,7 @@ export class InterestThreadClient {
   private sequence = 0;
   private refreshPending = false;
   private projectionEpoch = 0;
+  private readSequence = 0;
   private pending: InterestThreadCommandDTO | null = null;
   private state: { item: InterestThreadDTO | null; generation: number | null; busy: boolean; uncertain: boolean; message: string | null } = { item: null, generation: null, busy: false, uncertain: false, message: null };
   private listeners = new Set<() => void>();
@@ -13,17 +14,22 @@ export class InterestThreadClient {
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   getState = () => this.state;
   acceptStream(stream: string | null): void { if (stream === this.stream) return; this.stream = stream; this.sequence = 0; this.refreshPending = false; this.pending = null; this.state = { item: null, generation: null, busy: false, uncertain: false, message: null }; this.notify(); }
+  invalidateAfterReset(clearPending = false): void {
+    this.projectionEpoch++; this.readSequence++; this.refreshPending = false;
+    if (clearPending) this.pending = null;
+    this.state = { ...this.state, item: null, generation: null, ...(this.pending ? {} : { busy: false, uncertain: false, message: null }) }; this.notify();
+  }
   invalidateProjection(): void { this.projectionEpoch++; this.state = { ...this.state, item: null, generation: null, message: null }; this.notify(); }
   async read(): Promise<void> {
     if (!this.stream || this.state.uncertain) return;
     if (this.state.busy) { this.refreshPending = true; return; }
-    const stream = this.stream, epoch = this.projectionEpoch; this.state = { ...this.state, busy: true }; this.notify();
+    const stream = this.stream, epoch = this.projectionEpoch, readSequence = ++this.readSequence; this.state = { ...this.state, busy: true }; this.notify();
     try {
       const result = parseInterestThreadReadResult(await this.bridge.read({ streamId: stream }));
       if (this.stream !== stream || this.projectionEpoch !== epoch) return;
       this.state = result.ok ? { ...this.state, item: result.value, generation: result.generation, message: null } : { ...this.state, item: null, generation: null, message: 'Тема временно недоступна.' };
     } catch { if (this.stream === stream && this.projectionEpoch === epoch) this.state = { ...this.state, item: null, generation: null, message: 'Не удалось прочитать тему.' }; }
-    finally { if (this.stream === stream) { this.state = { ...this.state, busy: false }; this.notify(); if (this.refreshPending) { this.refreshPending = false; void this.read(); } } }
+    finally { if (this.stream === stream && this.readSequence === readSequence) { this.state = { ...this.state, busy: false }; this.notify(); if (this.refreshPending) { this.refreshPending = false; void this.read(); } } }
   }
   async mutate(draft: Draft): Promise<boolean> {
     if (!this.stream || this.state.generation === null || this.state.busy || this.state.uncertain) return false;

@@ -141,3 +141,35 @@ it('invalidates summary again after acknowledged same-generation beverage correc
   expect(summary.invalidate).toHaveBeenCalledTimes(1); expect(f.lifecycle.currentGeneration()).toBe(0);
   expect(f.storage.facts.upsert).not.toHaveBeenCalled(); await f.lifecycle.shutdown();
 });
+it('reads all five public facts despite extra local preferences and returns no storage identities', async () => {
+  const f = fixture(); await f.lifecycle.initialize();
+  const entries = [['user.cursor_game', 'like'], ['user.display_name', 'Анна'], ['user.explore', 'like'], ['user.favorite_topic', 'music'], ['user.preferred_address', 'Аня'], ['user.reply_style', 'brief'], ['user.social_bid', 'dislike']];
+  f.storage.facts.list.mockResolvedValue({ ok: true, value: entries.map(([factKey, factValue]) => ({ id: factKey!, factKey: factKey!, factValue: factValue!, confidence: 1, sourceMessageId: 'secret', createdAt: 'now', updatedAt: 'now' })) });
+  expect(await f.lifecycle.readFacts()).toEqual({ ok: true, value: entries.filter(([key]) => key !== 'user.explore' && key !== 'user.social_bid').map(([key, value]) => ({ key, value })) });
+  expect(f.storage.facts.list).toHaveBeenLastCalledWith(100, { generation: 0 }); await f.lifecycle.shutdown();
+});
+it('discards a late facts read across reset and never treats storage failure as empty success', async () => {
+  const f = fixture(); await f.lifecycle.initialize(); const pending = deferred<MemoryResult<readonly import('../../src/application/ports/memory-repository.interface').UserFact[]>>();
+  f.storage.facts.list.mockReturnValueOnce(pending.promise); const reading = f.lifecycle.readFacts(); await f.lifecycle.reset();
+  pending.resolve({ ok: true, value: [] }); expect(await reading).toEqual({ ok: false, code: 'stale' });
+  f.storage.facts.list.mockResolvedValue({ ok: false, code: 'io_error' }); expect(await f.lifecycle.readFacts()).toEqual({ ok: false, code: 'io_error' }); await f.lifecycle.shutdown();
+});
+it('does not read initializing or volatile storage and rejects invalid public values', async () => {
+  const f = fixture();
+  expect(await f.lifecycle.readFacts()).toEqual({ ok: false, code: 'unavailable' }); expect(f.storage.facts.list).not.toHaveBeenCalled();
+  await f.lifecycle.initialize();
+  f.storage.facts.list.mockResolvedValue({ ok: true, value: [{ id: 'private', factKey: 'user.reply_style', factValue: 'invented', confidence: 1, sourceMessageId: null, createdAt: 'now', updatedAt: 'now' }] });
+  expect(await f.lifecycle.readFacts()).toEqual({ ok: false, code: 'invalid_data' });
+  f.lifecycle.failure('corrupt'); f.storage.facts.list.mockClear();
+  expect(await f.lifecycle.readFacts()).toEqual({ ok: false, code: 'unavailable' }); expect(f.storage.facts.list).not.toHaveBeenCalled(); await f.lifecycle.shutdown();
+});
+it('rejects a read finishing during reset before the durable reset settles', async () => {
+  const f = fixture(); await f.lifecycle.initialize();
+  const reading = deferred<MemoryResult<readonly import('../../src/application/ports/memory-repository.interface').UserFact[]>>();
+  const deleting = deferred<MemoryResult<void>>();
+  f.storage.facts.list.mockReturnValue(reading.promise); f.storage.clear.clearUserMemory.mockReturnValue(deleting.promise);
+  const pendingRead = f.lifecycle.readFacts(), pendingReset = f.lifecycle.reset();
+  reading.resolve({ ok: true, value: [] }); expect(await pendingRead).toEqual({ ok: false, code: 'stale' });
+  expect(await f.lifecycle.readFacts()).toEqual({ ok: false, code: 'unavailable' });
+  deleting.resolve({ ok: true, value: undefined }); await pendingReset; await f.lifecycle.shutdown();
+});

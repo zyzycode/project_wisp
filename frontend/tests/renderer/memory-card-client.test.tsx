@@ -52,3 +52,13 @@ it('reloads stale generation without reporting a save and preserves transcript w
   expect(await f.client.remove('withdraw', item)).toBe(true); expect(f.client.getState().message).toContain('Переписка сохранена');
   expect(await f.client.remove('delete', { ...item, revision: 3 })).toBe(true); expect(f.client.getState().message).toContain('Переписка сохранена');
 });
+it('preserves pending identity across a same-stream conversation barrier and keeps command sequencing', async () => {
+  const f = fixture(); await f.client.list();
+  let reject!: (error: Error) => void;
+  f.mutateMemoryCard.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+  const saving = f.client.save(content, source); f.client.invalidateProjection();
+  reject(new Error('lost ack')); expect(await saving).toBe(false); expect(f.client.getState().uncertain).toBe(true);
+  expect(await f.client.retry()).toBe(true); expect(f.mutateMemoryCard.mock.calls[1]![0]).toBe(f.mutateMemoryCard.mock.calls[0]![0]);
+  f.client.invalidateProjection(true); await f.client.list(); await f.client.save(content, source);
+  expect(f.mutateMemoryCard.mock.calls[2]![0].sequence).toBe(2);
+});

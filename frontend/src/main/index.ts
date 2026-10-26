@@ -1,3 +1,4 @@
+import { MemoryFactsReader } from '../application/services/memory-facts-reader';
 import { BeverageCommands } from '../application/services/beverage-commands';
 import { BeverageDialogue } from '../application/services/beverage-preference';
 import { QuietSupportRuntime } from '../application/services/quiet-support-runtime';
@@ -122,6 +123,7 @@ const interestThreadCommands = new InterestThreadCommands({ runtime: () => memor
   timestamp: () => new Date().toISOString(), createId: randomUUID,
   bounded: work => topicCommandAdmission.run(performance.now() + 200, () => work),
 });
+const memoryFacts = new MemoryFactsReader(() => memoryRuntime);
 const clearMemory = new ClearMemoryUseCase(() => memoryRuntime?.reset() ?? Promise.resolve({ ok: false, code: 'unavailable' }));
 const platformAdapter = createPlatformAdapter();
 const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
@@ -152,7 +154,7 @@ const appLogger = new AppLogger({
 });
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); beverageCommands.replaceStream(id); return id; },
+  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); beverageCommands.replaceStream(id); return id; },
   prepareSnapshot: () => {
     observationRuntime?.tick();
     aiEventRuntime?.tick();
@@ -276,7 +278,7 @@ function clearBrainStream(): void {
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
   summaryStream = null;
-  clearMemory.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null); beverageCommands.replaceStream(null);
+  clearMemory.replaceStream(null); memoryFacts.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null); beverageCommands.replaceStream(null);
   dialogueRuntime?.detachStream();
 }
 
@@ -597,7 +599,7 @@ function registerIpcHandlers(): void {
   });
   unregisterSummary = registerSummaryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
-  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, cards: memoryCards, interestThread: interestThreadCommands, beverage: beverageCommands });
+  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands, beverage: beverageCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {

@@ -1,4 +1,6 @@
 import type { MemoryItemMutation, MemoryItemPage, MemoryItemReceipt } from '../ports/memory-items.interface';
+import { MEMORY_FACT_KEYS, parseMemoryFact } from './memory-fact-registry';
+import type { IUserMemoryFactsReader, UserMemoryFact } from '../ports/memory-knowledge.interface';
 import { MemoryKnowledge } from './memory-knowledge';
 import type { ICharacterPreferenceLearning } from '../ports/memory-knowledge.interface';
 import type { MemoryRepositories, MemoryScheduler } from '../ports/memory-runtime';
@@ -28,7 +30,7 @@ interface Options {
   readonly resetCommitted: () => void;
   readonly resume: () => void;
 }
-export class MemoryLifecycle {
+export class MemoryLifecycle implements IUserMemoryFactsReader {
   readonly history: MemoryHistory;
   private readonly knowledge: MemoryKnowledge;
   private generation = 0;
@@ -144,6 +146,24 @@ export class MemoryLifecycle {
     const result = await this.safe(() => this.options.storage.facts.removeByKey(key, c));
     if (this.context()?.generation !== c.generation) return { ok: false, code: 'stale' };
     if (!result.ok) this.failure(result.code); return result;
+  }
+  async readFacts(): Promise<MemoryResult<readonly UserMemoryFact[]>> {
+    const c = this.context();
+    if (!c || this.phase !== 'running') return { ok: false, code: 'unavailable' };
+    const result = await this.safe(() => this.options.storage.facts.list(100, c));
+    if (this.context()?.generation !== c.generation || this.phase !== 'running') return { ok: false, code: 'stale' };
+    if (!result.ok) return result;
+    try {
+      if (result.value.length > 100) return { ok: false, code: 'invalid_data' };
+      const facts: UserMemoryFact[] = [];
+      for (const fact of result.value) {
+        if (!MEMORY_FACT_KEYS.some(key => key === fact.factKey)) continue;
+        const projected = parseMemoryFact({ key: fact.factKey, value: fact.factValue });
+        if (facts.some(existing => existing.key === projected.key)) return { ok: false, code: 'invalid_data' };
+        facts.push(projected);
+      }
+      return { ok: true, value: facts };
+    } catch { return { ok: false, code: 'invalid_data' }; }
   }
   async listItems(query: { readonly cursor: number | null; readonly limit: number }): Promise<MemoryResult<MemoryItemPage>> {
     const c = this.context(), items = this.options.storage.items;

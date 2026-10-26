@@ -56,6 +56,16 @@ describe('Preload: Shimeji bridge', () => {
     await expect(api.listMemoryCards({ streamId: 's', cursor: null, limit: 20 })).rejects.toThrow();
     electronMocks.invoke.mockReset();
   });
+  it('validates readonly facts requests and responses without leaking storage details', async () => {
+    const api = exposedApi(); electronMocks.invoke.mockReset();
+    await expect(api.readMemoryFacts({ streamId: '' })).rejects.toThrow();
+    expect(electronMocks.invoke).not.toHaveBeenCalled();
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, facts: [{ key: 'user.display_name', value: 'Анна' }] });
+    expect(await api.readMemoryFacts({ streamId: 's' })).toEqual({ ok: true, facts: [{ key: 'user.display_name', value: 'Анна' }] });
+    expect(electronMocks.invoke).toHaveBeenLastCalledWith('wisp:read-memory-facts', { streamId: 's' });
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, facts: [{ key: 'user.display_name', value: 'Анна', sourceMessageId: 'secret' }] });
+    await expect(api.readMemoryFacts({ streamId: 's' })).rejects.toThrow(); electronMocks.invoke.mockReset();
+  });
   it('exposes typed memory status/reset with validation in both directions', async () => {
     const api = exposedApi(); electronMocks.invoke.mockReset();
     electronMocks.invoke.mockResolvedValueOnce({ mode: 'persistent', characterRestore: 'restored' });

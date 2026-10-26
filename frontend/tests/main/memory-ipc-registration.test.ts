@@ -57,3 +57,13 @@ it('validates beverage sender, exact typed input and outbound DTO at the standal
   expect(await reading({ sender: f.sender }, { streamId: 'stream' })).toEqual({ ok: true, generation: 0, value: null });
   unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:read-beverage'); expect(f.remove).toHaveBeenCalledWith('wisp:mutate-beverage');
 });
+it('exposes only trusted, exact readonly facts commands and validates private output', async () => {
+  const f = fixture(), read = vi.fn(async () => ({ ok: true as const, facts: [] }));
+  const unregister = registerMemoryIpc({ register: (channel, handler) => f.handlers.set(channel, handler), remove: f.remove, getSender: () => f.sender, getStatus: () => ({ mode: 'initializing' }), clear: new ClearMemoryUseCase(f.reset), facts: { read } });
+  const handler = f.handlers.get('wisp:read-memory-facts')!;
+  await expect(handler({ sender: {} }, { streamId: 's' })).rejects.toThrow('Untrusted');
+  await expect(handler({ sender: f.sender }, { streamId: 's', source: 'private' })).rejects.toThrow();
+  await expect(handler({ sender: f.sender }, { streamId: 's' }, null)).rejects.toThrow();
+  expect(read).not.toHaveBeenCalled(); expect(await handler({ sender: f.sender }, { streamId: 's' })).toEqual({ ok: true, facts: [] });
+  unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:read-memory-facts');
+});

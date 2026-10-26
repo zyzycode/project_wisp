@@ -28,6 +28,13 @@ export class MemoryCardClient {
     this.streamId = streamId; this.sequence = 0; this.request++; this.pending = null;
     this.state = empty(); this.patch({});
   }
+  public invalidateProjection(clearPending = false): void {
+    this.request++;
+    if (clearPending) this.pending = null;
+    const previous = this.state;
+    this.state = empty();
+    this.patch(this.pending ? { busy: previous.busy, uncertain: previous.uncertain, message: previous.message } : {});
+  }
   public async list(cursor: number | null = null): Promise<void> {
     if (!this.streamId || this.state.busy || this.pending) return;
     const streamId = this.streamId, request = ++this.request;

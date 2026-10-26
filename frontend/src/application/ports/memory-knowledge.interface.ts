@@ -72,3 +72,9 @@ export interface ICharacterPreferenceLearning {
   /** Called only for the current, persisted, source-validated user turn; never on restore. */
   observe(evidence: VerifiedPreferenceEvidence): void;
 }
+
+/** Read-only presentation of existing public facts; no source/storage identities. */
+export type UserMemoryFact = { readonly key: MemoryFactKey; readonly value: string };
+export interface IUserMemoryFactsReader {
+  readFacts(): Promise<MemoryResult<readonly UserMemoryFact[]>>;
+}
