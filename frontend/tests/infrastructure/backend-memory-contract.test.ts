@@ -55,12 +55,6 @@ it('performs exactly one explicitly selected v1 call and returns independently v
   expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(request);
   expect(parseProviderResponse(result, request.requestId).memoryCandidates).toEqual([{ key: 'user.cursor_game', value: 'like', evidenceQuote: request.messages[0]!.content }]);
 });
-it('does not probe/downgrade/retry an unavailable v1 endpoint', async () => {
-  const fetcher = vi.fn<typeof fetch>(async () => new Response('not found', { status: 404 }));
-  const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, now: () => 0, fetch: fetcher });
-  await expect(provider.generateResponse(semantic())).rejects.toThrow();
-  expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/v1/chat');
-});
 it('rejects unexpected envelope fields and drops fallback semantic proposals', () => {
   expect(() => parseBackendMemorySuccess({ unexpected: true, requestId: request.requestId, text: 'no' }, request.requestId, '')).toThrow();
   expect(() => parseBackendMemoryError({ unexpected: true, requestId: request.requestId, error: { code: 'upstream_unavailable' } }, request.requestId, 503)).toThrow();

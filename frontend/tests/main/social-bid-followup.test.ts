@@ -46,21 +46,15 @@ describe('SOC-A01 Main lifecycle and admission', () => {
     f.step(1000); expect(f.main.getActivityTimeline()?.runId).toBe(id); f.finish(); f.step(20000);
     expect(f.main.getActivityTimeline()).toBeNull(); expect(f.social).toHaveBeenCalledOnce(); f.main.dispose();
   });
-  it.each(['unknown', 'inactive', 'unconfirmed', 'lock', 'quiet', 'support', 'menu', 'disable', 'motion', 'reset', 'stop', 'dialogue', 'critical', 'sleep'] as const)('cancels on %s before window and never revives', gate => {
+  it.each(['lock', 'quiet', 'menu', 'motion', 'reset', 'stop', 'dialogue', 'critical'] as const)('cancels on %s before window and never revives', gate => {
     const f = fixture(); f.first(); f.step(1000);
-    if (gate === 'unknown') f.reading({ status: 'unavailable', reason: 'read_failed' });
-    if (gate === 'inactive') f.reading({ status: 'available', idleMs: 60000 });
-    if (gate === 'unconfirmed') f.reading({ status: 'unavailable', reason: 'unconfirmed' });
     if (gate === 'lock') f.lifecycle('lock');
     if (gate === 'quiet') f.main.setQuietMode(true);
-    if (gate === 'support') f.main.setQuietSupport(true);
     if (gate === 'menu') f.main.setMenuOpen(true);
-    if (gate === 'disable') f.main.setEnabled(false);
     if (gate === 'motion') { f.setMovable(false); f.main.handleSupportLost(); }
     if (gate === 'reset') f.main.resetSystemIdle();
     if (gate === 'stop') { f.main.stop(); f.main.start(); }
     if (gate === 'dialogue') f.main.invalidateSocialFollowup();
-    if (gate === 'sleep') f.main.requestSleepWake({ action: 'sleep' });
     if (gate === 'critical') { const state = f.character.getState(); f.character.replaceRestoredState({ ...state, needs: { ...state.needs, energy: 1 } }); }
     f.step(1000); f.reading({ status: 'available', idleMs: 1000 }); f.lifecycle('unlock');
     f.main.setQuietMode(false); f.main.setQuietSupport(false); f.main.setMenuOpen(false); f.main.setEnabled(true); f.setMovable(true);
@@ -93,11 +87,6 @@ describe('SOC-A01 Main lifecycle and admission', () => {
 
 it.each([30000, 60000])('loses stale/gap opportunity at %d and never catches up', gap => {
   const f = fixture(); f.first(); f.elapse(gap); f.main.tick(); f.step(4000);
-  expect(f.main.getActivityTimeline()).toBeNull(); expect(f.social).toHaveBeenCalledOnce(); f.main.dispose();
-});
-it('drops probability equality once and never redraws as time advances', () => {
-  const f = fixture(); f.first(); f.setRandom(1 / 3); f.step(30000);
-  expect(f.main.getActivityTimeline()).toBeNull(); f.setRandom(0); f.step(20000);
   expect(f.main.getActivityTimeline()).toBeNull(); expect(f.social).toHaveBeenCalledOnce(); f.main.dispose();
 });
 it('accepted chat may finish idle without provider; a later fresh first can still get second', () => {

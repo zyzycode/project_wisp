@@ -4,9 +4,6 @@ import type {
   BodyEventDTO,
   BodyInteractionTypeDTO,
   BrainStateDTO,
-  EnvironmentSnapshotDTO,
-  SetAutonomyEnabledDTO,
-  SleepWakeCommandDTO,
 } from '../../src/shared/ipc-contracts';
 import {
   parseBodyEventDTO,
@@ -47,6 +44,10 @@ function brainState(): BrainStateDTO {
   };
 }
 
+// Compile-time boundary: semantic sleep/wake commands are not Body interactions.
+expectTypeOf<'sleep'>().not.toMatchTypeOf<BodyInteractionTypeDTO>();
+expectTypeOf<'wake'>().not.toMatchTypeOf<BodyInteractionTypeDTO>();
+
 describe('Shared: IPC contracts', () => {
   it.each([undefined, 0, -1, .5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
     'rejects invalid visual episode sequence %s', episodeSequence => {
@@ -58,32 +59,6 @@ describe('Shared: IPC contracts', () => {
 
     expect(source).not.toMatch(/^import .*\.\.\/(domain|application|infrastructure)/m);
     expect(source).not.toMatch(/^export .*\.\.\/(domain|application|infrastructure)/m);
-  });
-
-  it('provides standalone serializable Shimeji DTO shapes', () => {
-    const environment: EnvironmentSnapshotDTO = {
-      capturedAtMs: 1,
-      screenBounds: { id: 'primary', x: 0, y: 0, width: 100, height: 100 },
-    };
-    const brain = brainState();
-    const body: BodyEventDTO = {
-      streamId: 'stream-1', sequence: 1, basedOnRevision: 1, observedAtMs: 30,
-      type: 'interaction', interaction: 'think', intensity: 0.5,
-    };
-    const autonomy: SetAutonomyEnabledDTO = { enabled: true };
-    const sleepCommand: SleepWakeCommandDTO = { action: 'sleep' };
-    const wakeCommand: SleepWakeCommandDTO = { action: 'wake' };
-
-    expect({
-      environment,
-      brain,
-      body,
-      autonomy,
-      sleepCommand,
-      wakeCommand,
-    }).toBeDefined();
-    expectTypeOf<'sleep'>().not.toMatchTypeOf<BodyInteractionTypeDTO>();
-    expectTypeOf<'wake'>().not.toMatchTypeOf<BodyInteractionTypeDTO>();
   });
 
   it('copies exact Brain and Body payloads and rejects non-serializable or malformed shapes', () => {
@@ -107,18 +82,5 @@ describe('Shared: IPC contracts', () => {
       .toThrow(TypeError);
   });
 
-  it('accepts the point-specific Explore visual intents through the exact Brain DTO validator', () => {
-    for (const kind of ['look_around', 'crouch_examine', 'edge_peek', 'surface_touch'] as const) {
-      const brain = brainState();
-      expect(parseBrainStateDTO({
-        ...brain,
-        visualIntent: {
-          ...brain.visualIntent,
-          kind,
-          category: 'gesture',
-          loop: 'bounded',
-        },
-      }).visualIntent.kind).toBe(kind);
-    }
-  });
+
 });

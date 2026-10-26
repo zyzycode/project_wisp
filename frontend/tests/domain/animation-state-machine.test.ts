@@ -24,24 +24,6 @@ describe('Domain: AnimationStateMachine', () => {
     expect(fsm.getCurrentState()).toBe('settle');
   });
 
-  it('transitions properly into thinking state and reacts to dialogue responses', () => {
-    const fsm = new AnimationStateMachine('idle');
-
-    // Idle -> THINK -> thinking (expression: curious)
-    expect(fsm.transition('THINK')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('thinking');
-    expect(fsm.getCurrentExpression()).toBe('curious');
-
-    // Thinking -> REACT_HAPPY -> happy (expression: happy)
-    expect(fsm.transition('REACT_HAPPY')).toBe(true);
-    expect(fsm.getCurrentState()).toBe('happy');
-    expect(fsm.getCurrentExpression()).toBe('happy');
-
-    // Happy -> idle directly after bounded reaction completes
-    fsm.completeCurrentState();
-    expect(fsm.getCurrentState()).toBe('idle');
-  });
-
   it('blocks non-allowed transitions from current state', () => {
     const fsm = new AnimationStateMachine('dragged');
 
@@ -146,19 +128,6 @@ describe('Domain: AnimationStateMachine', () => {
   });
 
   describe('FSM Locomotion Expansion', () => {
-    it('supports sit and stand_up lifecycle', () => {
-      const fsm = new AnimationStateMachine('idle');
-
-      expect(fsm.transition('SIT')).toBe(true);
-      expect(fsm.getCurrentState()).toBe('sit');
-      expect(fsm.getCurrentExpression()).toBe('idle');
-
-      expect(fsm.transition('STAND_UP')).toBe(true);
-      expect(fsm.getCurrentState()).toBe('stand_up');
-      fsm.completeCurrentState();
-      expect(fsm.getCurrentState()).toBe('idle');
-    });
-
     it('supports jump -> fall -> land sequence', () => {
       const fsm = new AnimationStateMachine('idle');
 

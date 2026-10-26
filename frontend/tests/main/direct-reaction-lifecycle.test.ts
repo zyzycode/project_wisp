@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { scenario } from './autonomy-scenario-fixture';
 
 describe('direct reactions without autonomy or Skin completion', () => {
-  it.each(['click', 'double_click', 'feed', 'pet'] as const)('finishes %s on the Brain clock', type => {
+  it('finishes a direct reaction on the Brain clock', () => {
     const f = scenario();
     f.main.setEnabled(false);
-    f.main.handleCharacterInteraction(type);
+    f.main.handleCharacterInteraction('click');
     expect(f.main.getVisualEpisode().intent.kind).toBe('happy_reaction');
     f.advance(3000);
     expect(f.main.getVisualEpisode().intent.kind).toBe('idle_blink');

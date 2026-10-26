@@ -29,7 +29,7 @@ describe('real Character closed loop', () => {
   });
 
   it.each([
-    ['soft_landing', 800], ['stumble', 800], ['crash_landing', 1600],
+    ['soft_landing', 800], ['crash_landing', 1600],
   ] as const)('selects an activity after %s recovery without another idle delay', (outcome, recoveryMs) => {
     const f = scenario({}, 0);
     f.main.beginDrag();

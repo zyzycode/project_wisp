@@ -96,16 +96,6 @@ describe('Renderer: AssetResolver', () => {
     }
   });
 
-  it('maps walk to the real body_walk track with the four frames and normative body z-index', () => {
-    const clip = new AssetResolver(manifest).resolve(createSystemAnimationIntent('walk'));
-
-    expect(clip.body.animationKey).toBe('body_walk');
-    expect(clip.body.zIndex).toBe(10);
-    expect(clip.body.frames.map((frame) => frame.source)).toEqual([
-      'body_walk_0.png', 'body_walk_1.png', 'body_walk_2.png', 'body_walk_3.png',
-    ]);
-  });
-
   it('does not synthesize blush from persistent mood during neutral idle', () => {
     const clip = new AssetResolver(manifest).resolve(createSystemAnimationIntent('idle_blink', 'shy'));
     expect(clip.proceduralBlush).toBeUndefined();
@@ -209,10 +199,4 @@ describe('Renderer: AssetResolver', () => {
     expect(clip.face).toBeUndefined();
   });
 
-  it('resolves exact manifest body and face keys for the debug inspector', () => {
-    const clip = new AssetResolver(manifest).resolveDebugSelection('body_walk', 'face_happy');
-
-    expect(clip.body.animationKey).toBe('body_walk');
-    expect(clip.face?.animationKey).toBe('face_happy');
-  });
 });

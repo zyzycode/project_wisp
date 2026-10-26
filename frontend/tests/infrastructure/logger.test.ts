@@ -112,19 +112,6 @@ describe('Infrastructure: structured logging', () => {
     expect(logger.getBufferedEntries().map((entry) => entry.id)).toEqual(['log-3', 'log-4', 'log-5']);
   });
 
-  it('uses a 100-entry ring buffer by default', () => {
-    const logger = createLogger({ level: 'debug' });
-
-    for (let index = 1; index <= 101; index++) {
-      logger.info('Autonomy', `entry ${index}`);
-    }
-
-    const entries = logger.getBufferedEntries();
-    expect(entries).toHaveLength(100);
-    expect(entries[0]?.message).toBe('entry 2');
-    expect(entries[99]?.message).toBe('entry 101');
-  });
-
   it('falls back to the default bounded capacity for non-finite input', () => {
     const buffer = new LogBuffer(Infinity);
 

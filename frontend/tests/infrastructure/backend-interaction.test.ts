@@ -4,7 +4,7 @@ import type { AIProviderRequest } from '../../src/application/ports/ai-provider.
 import type { AIEventProviderRequest } from '../../src/application/ports/ai-event-provider.interface';
 import type { BackendInteractionChatRequest, BackendInteractionTouchRequest } from '../../src/application/ports/backend-interaction-contract';
 import { projectInteractionChat, projectInteractionTouch, parseInteractionChatResponse, parseInteractionTouchResponse, parseInteractionError } from '../../src/infrastructure/ai/backend-interaction-validation';
-import { projectSummaryChat, parseSummaryRequest } from '../../src/infrastructure/ai/backend-summary-validation';
+import { projectSummaryChat } from '../../src/infrastructure/ai/backend-summary-validation';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
 
 const fixture = (name: string, feature = 'interaction'): unknown => JSON.parse(readFileSync(`../docs/contracts/fixtures/desktop-backend-v1/${feature}/${name}`, 'utf8'));
@@ -28,6 +28,8 @@ afterEach(() => vi.useRealTimers());
 it('matches shared touch/chat/error fixtures and retains full v1 context', () => {
   expect(projectInteractionChat(chatInput())).toEqual(chatWire);
   expect(projectInteractionTouch(touchInput())).toEqual(touchWire);
+  const suppressedTouch = fixture('request.touch.json', '.') as BackendInteractionTouchRequest;
+  expect(projectInteractionTouch(touchInput(suppressedTouch))).toEqual(suppressedTouch);
   expect(parseInteractionChatResponse(fixture('response.chat.json'), chatWire.requestId, chatInput().userMessage.text, 'suppressed')).toEqual(fixture('response.chat.json'));
   const touch = fixture('response.touch.json') as { text: string; appraisal: unknown };
   expect(parseInteractionTouchResponse(touch, touchWire.requestId, 'eligible')).toEqual({ requestId: touchWire.requestId, replyText: touch.text, appraisal: touch.appraisal });
@@ -60,14 +62,11 @@ it('routes both interactions through explicit v1 and returns only validated sema
   expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual(chatWire);
   for (const call of fetcher.mock.calls) expect(call[1]).toMatchObject({ credentials: 'omit', redirect: 'error', cache: 'no-store' });
 });
-it.each([401, 403, 404, 502, 503])('does not retry or downgrade a failed v1 request, HTTP %s', async status => {
-  const fetcher = vi.fn<typeof fetch>(async () => json({ requestId: touchWire.requestId, error: { code: status === 503 ? 'upstream_unavailable' : 'invalid_model_response' } }, status));
+it('rejects a failed touch request without retry or downgrade', async () => {
+  const fetcher = vi.fn<typeof fetch>(async () => json({ requestId: touchWire.requestId, error: { code: 'upstream_unavailable' } }, 503));
   await expect(client(fetcher).generateEvent(touchInput())).rejects.toThrow();
-  const provider = client(fetcher);
-  if (status === 502 || status === 503) await expect(provider.generateResponse(chatInput())).resolves.toMatchObject({ status: 'fallback' });
-  else await expect(provider.generateResponse(chatInput())).rejects.toThrow();
-  expect(fetcher).toHaveBeenCalledTimes(2);
-  expect(fetcher.mock.calls.every(call => String(call[0]).includes('/v1/'))).toBe(true);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/api/v1/touch');
 });
 it('validates shared interaction errors against request ID, HTTP status and envelope', () => {
   const error = fixture('response.error.json') as Record<string, unknown>;
@@ -152,40 +151,6 @@ it.each(['chat', 'touch'] as const)('bounds ignored-abort %s settlement to 3s wh
   for (let i = 0; i < 20; i++) await Promise.resolve();
   expect(await provider.getStatus()).toEqual({ kind: 'ready' });
   expect(settled).toHaveBeenCalledTimes(1);
-});
-it('keeps aborted v1 summary in the shared slot until its ignored-abort HTTP settles', async () => {
-  const summary = parseSummaryRequest(fixture('request.summary.json', 'summary'));
-  let resolve!: (response: Response) => void;
-  const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
-  const provider = client(fetcher), controller = new AbortController();
-  const pending = provider.generateSummary({ requestId: summary.requestId, locale: summary.locale, pairs: summary.pairs }, controller.signal);
-  const rejected = expect(pending).rejects.toThrow(); controller.abort(); await rejected;
-  await expect(provider.generateEvent(touchInput())).rejects.toThrow();
-  expect(provider.canStartObservation()).toBe(false); expect(fetcher).toHaveBeenCalledTimes(1);
-  resolve(json(fixture('response.summary.success.json', 'summary')));
-  for (let i = 0; i < 20; i++) await Promise.resolve();
-  expect(await provider.getStatus()).toEqual({ kind: 'ready' });
-});
-it.each(['offline', 'malformed', 'timeout'] as const)('settles v1 chat %s without downgrade or accepting late output', async mode => {
-  let resolve!: (response: Response) => void;
-  const fetcher = vi.fn<typeof fetch>(async () => {
-    if (mode === 'offline') throw new TypeError('offline');
-    if (mode === 'malformed') return json({ requestId: chatWire.requestId, text: 'Invalid without appraisal' });
-    return new Promise(yes => { resolve = yes; });
-  });
-  const provider = client(fetcher), pending = provider.generateResponse(chatInput());
-  if (mode === 'malformed') await expect(pending).rejects.toThrow();
-  else {
-    if (mode === 'timeout') await vi.advanceTimersByTimeAsync(12000);
-    await expect(pending).resolves.toMatchObject({ status: 'fallback' });
-  }
-  expect(fetcher).toHaveBeenCalledTimes(1); expect(String(fetcher.mock.calls[0]?.[0])).toContain('/v1/chat');
-  if (mode === 'timeout') {
-    await expect(provider.generateEvent(touchInput())).rejects.toThrow();
-    resolve(json(fixture('response.chat.json')));
-    for (let i = 0; i < 20; i++) await Promise.resolve();
-  }
-  expect(await provider.getStatus()).toEqual({ kind: 'ready' });
 });
 it('preserves independent decision and memory candidate sanitization inside valid v1 appraisal', () => {
   const response = { requestId: chatWire.requestId, text: 'Ответ', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' },

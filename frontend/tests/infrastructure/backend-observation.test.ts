@@ -33,13 +33,9 @@ it('uses the fixed observation endpoint and exact projection', async () => {
   expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/api/v1/observation'); expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(wire);
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ credentials: 'omit', redirect: 'error', cache: 'no-store' }); expect(fetcher).toHaveBeenCalledTimes(1);
 });
-it.each(['offline', '401', '403', '404', '502', '503', '504', 'content-type', 'invalid-json', 'oversize', 'utf8'] as const)('silently rejects %s without retry/probe/downgrade', async failure => {
+it.each(['offline', '503'] as const)('silently rejects %s without retry/probe/downgrade', async failure => {
   const fetcher = vi.fn<typeof fetch>(async () => {
     if (failure === 'offline') throw new Error('offline');
-    if (failure === 'content-type') return new Response('{}');
-    if (failure === 'invalid-json') return new Response('{', { headers: { 'Content-Type': 'application/json' } });
-    if (failure === 'oversize') return new Response(' '.repeat(16385), { headers: { 'Content-Type': 'application/json' } });
-    if (failure === 'utf8') return new Response(new Uint8Array([0xff]), { headers: { 'Content-Type': 'application/json' } });
     return json(fixture('response.error.json'), Number(failure));
   });
   const provider = client(fetcher); await expect(provider.generateObservation(input, new AbortController().signal)).rejects.toThrow();

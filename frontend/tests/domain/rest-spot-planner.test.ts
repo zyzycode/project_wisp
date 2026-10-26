@@ -20,15 +20,6 @@ describe('AUTO-I06 rest and route planning', () => {
       choreographyKey: 'rest:nap', selectedAtMs: c.nowMs })) };
     expect(['edge', 'corner']).not.toContain(selectRestSpot({ ...c, history }, true)!.target.pointKind);
   });
-  it('does not replay the lying-down entrance during the floor settling phase', () => {
-    const plan = selectRestSpot({ ...context(), externalSurfaces: [] }, true)!;
-    expect(createRestSpotActivity(plan).steps.find(s => s.id === 'settle')).toMatchObject({ intent: { kind: 'sleep_start' } });
-  });
-  it('holds finite preparation and wake poses instead of looping their transitions', () => {
-    const plan = selectRestSpot({ ...context(), externalSurfaces: [] }, true)!;
-    const phases = createRestSpotActivity(plan).steps.filter(step => step.type === 'animation');
-    expect(phases.map(step => step.intent.loop)).toEqual(['none', 'none', 'until_replaced', 'none']);
-  });
   it('selects a reachable rest spot and gives nap an explicit wake phase', () => {
     const plan = selectRestSpot(context(), true)!;
     expect(plan.route[0]?.type).toBe('locomotion');

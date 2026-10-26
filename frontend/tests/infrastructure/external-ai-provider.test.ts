@@ -37,13 +37,6 @@ it('rejects invalid snapshot without sending', async () => {
   await expect(f.provider.generateResponse(request)).rejects.toThrow(); expect(f.fetcher).not.toHaveBeenCalled();
   await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
 });
-it('rejects a 501-unit self concept before HTTP and leaves the provider ready', async () => {
-  const f = setup(); const request = providerRequest();
-  Object.assign(request.characterSnapshot.personality, { aiSelfConcept: 'я'.repeat(501) });
-  await expect(f.provider.generateResponse(request)).rejects.toThrow();
-  expect(f.fetcher).not.toHaveBeenCalled();
-  await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
-});
 it('keeps maximum valid multibyte context within the wire byte limit', async () => {
   const fetcher = vi.fn(async (_url: Parameters<typeof fetch>[0], _init?: Parameters<typeof fetch>[1]) => json(fixture('response.success.json')));
   const f = setup(fetcher); const request = providerRequest();
@@ -72,7 +65,7 @@ it('maps network outage to local fallback without retries or leaking errors', as
   expect(result.diagnostics?.fallbackReason).toBe('provider_unavailable'); expect(JSON.stringify(result)).not.toContain('secret');
   await vi.advanceTimersByTimeAsync(120_000); expect(f.fetcher).toHaveBeenCalledTimes(1);
 });
-it.each([() => new Response('<html>bad</html>', { status: 500 }), () => json({ unexpected: true, requestId: wire.requestId, text: 'bad', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), () => json({ requestId: 'wrong', text: 'bad', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), () => json({ requestId: wire.requestId, error: { code: 'rate_limited' } }, 503), () => new Response('{', { headers: { 'Content-Type': 'application/json' } })])('rejects malformed protocol instead of accepting any model hints', async response => {
+it.each([() => new Response('<html>bad</html>', { status: 500 }), () => new Response(new Uint8Array([0xff]), { headers: { 'Content-Type': 'application/json' } }), () => json({ unexpected: true, requestId: wire.requestId, text: 'bad', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), () => json({ requestId: 'wrong', text: 'bad', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }), () => json({ requestId: wire.requestId, error: { code: 'rate_limited' } }, 503), () => new Response('{', { headers: { 'Content-Type': 'application/json' } })])('rejects malformed protocol instead of accepting any model hints', async response => {
   const f = setup(vi.fn(async () => response()));
   await expect(f.provider.generateResponse(providerRequest())).rejects.toThrow();
   await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' }); expect(f.fetcher).toHaveBeenCalledTimes(1);

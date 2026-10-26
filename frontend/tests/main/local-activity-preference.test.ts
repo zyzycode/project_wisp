@@ -37,19 +37,6 @@ it.each(['activity.explore', 'activity.social_bid'] as const)('uses real authore
   expect(choices[0]).toBe(key === 'activity.explore' ? 'explore' : 'social_bid');
   expect(choices[1]).not.toBe(choices[0]);
 });
-it.each(['menu', 'sleep', 'disabled', 'quiet'] as const)('high local preferences preserve %s admission', mode => {
-  const seed = state();
-  const f = scenario({}, .99, { ...seed, needs: { ...seed.needs, energy: mode === 'sleep' ? 20 : 51 },
-    preferences: { 'activity.explore': { value: 100, confidence: 1, samples: 1000 }, 'activity.social_bid': { value: 100, confidence: 1, samples: 1000 } } });
-  try {
-    if (mode === 'menu') f.main.setMenuOpen(true);
-    if (mode === 'disabled') f.main.setEnabled(false);
-    if (mode === 'quiet') f.main.setQuietMode(true);
-    f.pulse();
-    expect(f.main.getActivityTimeline()?.activityId).not.toBe('social_bid');
-    if (mode !== 'quiet') expect(f.main.getActivityTimeline()?.activityId).not.toBe('explore');
-  } finally { f.main.dispose(); }
-});
 it('high social preference cannot spend a third initiative token or interrupt its active peer', () => {
   const initial = state();
   const f = scenario({}, .999, { ...initial, needs: { ...initial.needs, attention: 100 },

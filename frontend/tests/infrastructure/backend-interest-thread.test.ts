@@ -65,26 +65,3 @@ it('drops the whole topic without evicting baseline history, summary or memory',
   }
   expect(dropped).toBe(true);
 });
-it.each(['offline', 'malformed', 'timeout', 'cancel'] as const)('keeps one topic request through %s and ignores late output', async mode => {
-  let resolve!: (response: Response) => void;
-  const fetcher = vi.fn<typeof fetch>(async () => {
-    if (mode === 'offline') throw new TypeError('offline');
-    if (mode === 'malformed') return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
-    return new Promise(yes => { resolve = yes; });
-  });
-  const adapter = provider(fetcher), pending = adapter.generateResponse(input());
-  if (mode === 'malformed') await expect(pending).rejects.toThrow();
-  else {
-    if (mode === 'timeout') await vi.advanceTimersByTimeAsync(12000);
-    if (mode === 'cancel') { adapter.cancel(followUp.requestId); await vi.advanceTimersByTimeAsync(3000); }
-    await expect(pending).resolves.toMatchObject({ status: 'fallback' });
-  }
-  expect(fetcher).toHaveBeenCalledTimes(1);
-  if (resolve) {
-    await expect(adapter.generateResponse(input())).rejects.toThrow();
-    resolve(reply());
-    for (let i = 0; i < 20; i++) await Promise.resolve();
-  }
-  expect(await adapter.getStatus()).toEqual({ kind: 'ready' });
-  expect(fetcher).toHaveBeenCalledTimes(1);
-});

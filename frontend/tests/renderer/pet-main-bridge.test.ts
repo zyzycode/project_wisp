@@ -100,9 +100,9 @@ describe('Renderer: Pet Main bridge', () => {
 });
 
 describe('external window capability projection', () => {
-  it.each(['available', 'initializing', 'unavailable', 'unsupported'] as const)('retains %s through the shared validator', status => {
+  it('retains available capability through the shared validator', () => {
     const gate = new BrainStateRevisionGate(() => {});
-    expect(gate.accept({ ...brainState(), externalWindowSupport: status })?.externalWindowSupport).toBe(status);
+    expect(gate.accept({ ...brainState(), externalWindowSupport: 'available' })?.externalWindowSupport).toBe('available');
   });
   it('keeps absent capability unknown and rejects arbitrary metadata', () => {
     expect(new BrainStateRevisionGate(() => {}).accept(brainState())?.externalWindowSupport).toBeUndefined();

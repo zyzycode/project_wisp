@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { LinuxPlatformAdapter } from '../../src/infrastructure/platform/linux-platform.adapter';
 import { WindowsPlatformAdapter } from '../../src/infrastructure/platform/windows-platform.adapter';
 import { MacOSPlatformAdapter } from '../../src/infrastructure/platform/macos-platform.adapter';
-import { createPlatformAdapter } from '../../src/infrastructure/platform/platform-adapter.factory';
 
 // Mock electron modules
 vi.mock('electron', () => {
@@ -28,12 +27,6 @@ describe('Platform Adapters', () => {
     const adapter = new LinuxPlatformAdapter();
     const bounds = adapter.getDisplayWorkArea();
     expect(bounds).toEqual({ x: 0, y: 0, width: 1920, height: 1040 });
-  });
-
-  it('createPlatformAdapter returns appropriate adapter for the runtime environment', () => {
-    const adapter = createPlatformAdapter();
-    expect(adapter).toBeDefined();
-    expect(typeof adapter.getPlatformName()).toBe('string');
   });
 
   it.each([

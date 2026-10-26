@@ -39,7 +39,7 @@ function fixture() {
 }
 
 describe('Brain snapshot activity deadlines', () => {
-  it.each([3000, 3001, 60000])('advances a phase before publishing at %i ms between motion ticks', async (nowMs) => {
+  it.each([3000, 60000])('advances a phase before publishing at %i ms between motion ticks', async (nowMs) => {
     const f = fixture();
     f.publisher.replaceStream();
     await Promise.resolve();

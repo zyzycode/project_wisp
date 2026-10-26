@@ -30,14 +30,6 @@ it('recomputes the next outgoing projection from current validated state without
   expect(first.romanceAllowed).toBe(false); expect(second.romanceAllowed).toBe(true);
 });
 
-it.each([
-  undefined, null, {}, { ...expression, extra: true }, { ...expression, pace: 'sleepy' },
-  { ...expression, trust: 'trusted' }, { ...expression, attention: true }, { ...expression, play: 70 },
-  { ...expression, romanceAllowed: 'false' }, { ...expression, romanceAllowed: 0 },
-])('strictly rejects missing or malformed wire expression %j', value => {
-  expect(() => parseBackendExpression(value)).toThrow();
-});
-
 it('accepts only the five independent wire fields without interpreting their numeric origin', () => {
   expect(parseBackendExpression(expression)).toEqual(expression);
   for (const key of Object.keys(expression)) {

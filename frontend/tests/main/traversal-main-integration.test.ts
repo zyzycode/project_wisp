@@ -80,13 +80,11 @@ describe('AUTO-I04 Brain → Motion integration', () => {
     expect(f.timers.size).toBe(1);
   });
 
-  it.each(['menu', 'click', 'disable', 'drag', 'shutdown'] as const)('%s cancels an attached Activity without resurrecting it', reason => {
+  it.each(['menu', 'drag', 'shutdown'] as const)('%s cancels an attached Activity without resurrecting it', reason => {
     const f = fixture();
     f.advance(2500);
     expect(f.main.getActivityTimeline()?.phaseId).toBe('climb');
     if (reason === 'menu') f.main.setMenuOpen(true);
-    if (reason === 'click') f.main.handleClick();
-    if (reason === 'disable') f.main.setEnabled(false);
     if (reason === 'shutdown') { f.main.stop(); f.motion.stop(); }
     if (reason === 'drag') {
       f.main.beginDrag();

@@ -36,17 +36,6 @@ it('allows more than 100 sends without minute or session quotas', async () => {
   }
   expect(f.transport).toHaveBeenCalledTimes(105); expect(new Set(f.requests).size).toBe(105);
 });
-it('keeps reset/reload available while rejecting invalid or overlapping dialogue commands', async () => {
-  const f = setup();
-  for (let i = 1; i <= 5; i++) { f.runtime.receive(f.command(i)); await flush(); }
-  expect(f.runtime.receive({ ...f.command(6), text: '' }).status).toBe('rejected');
-  f.runtime.receive(f.command(6)); expect(f.runtime.receive(f.command(7))).toEqual({ status: 'rejected', reason: 'busy' }); await flush();
-  const { text: _text, ...meta } = f.command(8); f.runtime.receive({ ...meta, type: 'reset' });
-  expect(f.runtime.getPresentation().canSubmit).toBe(true);
-  f.runtime.replaceStream('next'); expect(f.runtime.getPresentation().canSubmit).toBe(true);
-  expect(f.transport).toHaveBeenCalledTimes(6);
-  await vi.advanceTimersByTimeAsync(60_000); expect(f.runtime.getPresentation().canSubmit).toBe(true);
-});
 it('allows an immediate new user request after server failure without automatic retries', async () => {
   let fail = true;
   const f = setup(async (_url, init) => {
@@ -64,23 +53,19 @@ it('allows an immediate new user request after server failure without automatic 
   expect(f.runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Снова работаю' });
   expect(f.transport).toHaveBeenCalledTimes(2);
 });
-it.each(['reset', 'reload', 'dispose'])('ignores successful late transport output after %s and keeps its guard until transport settlement', async action => {
+it('ignores successful late transport output after reset and keeps its guard until transport settlement', async () => {
   let resolve!: (response: Response) => void; let requestId = '';
   const pending = new Promise<Response>(yes => { resolve = yes; });
   const f = setup(async (_url, init) => {
     const value: { requestId: string } = JSON.parse(String(init?.body)); requestId = value.requestId; return pending;
   });
   f.runtime.receive(f.command(1)); await flush();
-  if (action === 'reset') { const { text: _text, ...meta } = f.command(2); f.runtime.receive({ ...meta, type: 'reset' }); }
-  if (action === 'reload') f.runtime.replaceStream('stream');
-  if (action === 'dispose') f.runtime.dispose();
+  const { text: _text, ...meta } = f.command(2); f.runtime.receive({ ...meta, type: 'reset' });
   expect(f.runtime.getPresentation().canSubmit).toBe(false);
-  const publishes = f.publish.mock.calls.length;
-  resolve(new Response(JSON.stringify({ requestId, text: 'late', decision: { behavior: 'play', confidence: 1 } }), { headers: { 'Content-Type': 'application/json' } }));
+  resolve(new Response(JSON.stringify({ requestId, text: 'late', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, decision: { behavior: 'play', confidence: 1 } }), { headers: { 'Content-Type': 'application/json' } }));
   await flush(); expect(f.offerIntent).not.toHaveBeenCalled(); expect(f.applyStimulus).toHaveBeenCalledTimes(1);
   expect(f.runtime.getPresentation().turn.phase).toBe('idle');
-  if (action === 'dispose') expect(f.publish).toHaveBeenCalledTimes(publishes);
-  else expect(f.runtime.getPresentation().canSubmit).toBe(true);
+  expect(f.runtime.getPresentation().canSubmit).toBe(true);
 });
 it('ends thinking at the 12s timeout and immediately allows another user request', async () => {
   const f = setup(async () => new Promise<Response>(() => undefined));

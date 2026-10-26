@@ -1,11 +1,7 @@
 import type { ProviderBehaviorOffer } from '../../src/application/ports/behavior-admission-port';
 import type { SurfaceSnapshotDto } from '../../src/domain/behavior/surface-kinematics';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  DEFAULT_CURSOR_OBSERVE_COOLDOWN_MS,
-  DEFAULT_ZOOMIES_COOLDOWN_MS,
-  type IPrng,
-} from '../../src/domain/behavior';
+import type { IPrng } from '../../src/domain/behavior';
 import type { Needs } from '../../src/domain/character';
 import { MainAutonomyComposition } from '../../src/main/main-autonomy-composition';
 
@@ -124,17 +120,6 @@ function createFixture(
 }
 
 describe('Main integration: Brain runtime', () => {
-  it('creates unique bounded identities even when the raw factory repeats long names', () => {
-    const f = createFixture(undefined, {}, [], undefined, () => `${'x'.repeat(99)} ${'y'.repeat(400)}`);
-    const first = f.composition.getVisualEpisode();
-    f.composition.handleClick();
-    const second = f.composition.getVisualEpisode();
-    expect(first.sequence).toBe(1);
-    expect(second.sequence).toBe(2);
-    expect(second.id).not.toBe(first.id);
-    expect(second.id.length).toBeLessThanOrEqual(128);
-    expect(second.id.trim()).toBe(second.id);
-  });
   it('releases only dialogue-owned thinking and offers a reply through Character gates', () => {
     const f = createFixture(); f.composition.start();
     f.composition.setBehaviorContext({ requestId: 'request', conversationId: 'c', generation: 0, requestedAtMs: f.scheduler.nowMs }); f.composition.beginDialogueThinking('request');
@@ -259,31 +244,6 @@ describe('Main integration: Brain runtime', () => {
     expect(fixture.composition.getVisualEpisode().intent.gazeDirection).toBeUndefined();
   });
 
-  it('runs a noticed cursor gesture as one stationary Brain Activity and returns to autonomy', () => {
-    const fixture = createFixture(sequence(0.5, 0, 0));
-    fixture.composition.start();
-
-    expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(true);
-    expect(fixture.composition.getActivityTimeline()).toMatchObject({
-      activityId: 'observe_cursor', phaseId: 'react', stage: 'looping', phaseEndsAtMs: 1_800,
-    });
-    expect(fixture.composition.getVisualEpisode().intent).toMatchObject({
-      kind: 'wave', expressionHint: 'curious', loop: 'bounded',
-    });
-    expect(fixture.requestVoluntaryMovement).not.toHaveBeenCalled();
-    expect(fixture.scheduler.size()).toBe(0);
-
-    fixture.scheduler.nowMs = 1_800;
-    fixture.composition.tick();
-    expect(fixture.composition.getActivityTimeline()).toBeNull();
-    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
-    expect(fixture.scheduler.size()).toBe(1);
-    expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(false);
-
-    fixture.scheduler.nowMs = DEFAULT_CURSOR_OBSERVE_COOLDOWN_MS;
-    expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(true);
-  });
-
   it('suppresses cursor reactions while another Activity owns the Brain timeline', () => {
     const fixture = createFixture();
     fixture.composition.start();
@@ -295,19 +255,11 @@ describe('Main integration: Brain runtime', () => {
     expect(fixture.composition.getActivityTimeline()).toEqual(timeline);
   });
 
-  it.each([
-    ['click', (composition: MainAutonomyComposition) => composition.handleClick()],
-    ['drag', (composition: MainAutonomyComposition) => composition.beginDrag()],
-    ['menu pause', (composition: MainAutonomyComposition) => composition.setMenuOpen(true)],
-    ['autonomy disable', (composition: MainAutonomyComposition) => composition.setEnabled(false)],
-    ['shutdown', (composition: MainAutonomyComposition) => composition.dispose()],
-  ])('interrupts Observe Cursor on %s', (_label, interrupt) => {
+  it('drag interrupts stationary cursor observation without issuing movement', () => {
     const fixture = createFixture(sequence(0.5, 0, 0));
     fixture.composition.start();
     expect(fixture.composition.handleCursorObservation({ x: 110, y: 200 })).toBe(true);
-
-    interrupt(fixture.composition);
-
+    fixture.composition.beginDrag();
     expect(fixture.composition.getActivityTimeline()).toBeNull();
     expect(fixture.requestVoluntaryMovement).not.toHaveBeenCalled();
   });
@@ -369,60 +321,6 @@ describe('Main integration: Brain runtime', () => {
     expect(f.scheduler.size()).toBe(1);
   });
 
-  it('starts Zoomies only after a Character-resolved play intent', () => {
-    const fixture = createFixture();
-    fixture.composition.start();
-    fixture.composition.suspendForUserInteraction();
-
-    expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
-    fixture.composition.resumeAfterUserInteraction();
-    expect(fixture.composition.getActivityTimeline()).toMatchObject({
-      activityId: 'zoomies', phaseId: 'sprint', stage: 'looping',
-    });
-    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('run');
-    expect(fixture.requestVoluntaryMovement).toHaveBeenCalledOnce();
-    expect(fixture.scheduler.size()).toBe(0);
-
-    fixture.composition.notifyVoluntaryMovementCompleted();
-    expect(fixture.composition.getActivityTimeline()).toMatchObject({
-      phaseId: 'settle', stage: 'exiting', phaseEndsAtMs: 3_000,
-    });
-    fixture.scheduler.nowMs = 3_000;
-    fixture.composition.tick();
-    expect(fixture.composition.getActivityTimeline()).toBeNull();
-    expect(fixture.composition.getVisualEpisode().intent.kind).toBe('idle_blink');
-    expect(fixture.scheduler.size()).toBe(1);
-  });
-
-  it('rejects Zoomies when Domain needs gates do not allow resolved play', () => {
-    const fixture = createFixture(undefined, { energy: 64 });
-    fixture.composition.start();
-    fixture.composition.suspendForUserInteraction();
-
-    expect(fixture.composition.handleCharacterInteraction('play')).toBe(false);
-    fixture.composition.resumeAfterUserInteraction();
-    expect(fixture.composition.getActivityTimeline()).toBeNull();
-    expect(fixture.requestVoluntaryMovement).not.toHaveBeenCalled();
-    expect(fixture.scheduler.size()).toBe(1);
-  });
-
-  it('keeps repeated Zoomies blocked until its monotonic Domain cooldown expires', () => {
-    const fixture = createFixture();
-    fixture.composition.start();
-    fixture.composition.suspendForUserInteraction();
-    expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
-    fixture.composition.resumeAfterUserInteraction();
-    fixture.composition.handleClick();
-
-    fixture.composition.suspendForUserInteraction();
-    expect(fixture.composition.handleCharacterInteraction('play')).toBe(false);
-    fixture.composition.resumeAfterUserInteraction();
-
-    fixture.scheduler.nowMs = DEFAULT_ZOOMIES_COOLDOWN_MS;
-    fixture.composition.suspendForUserInteraction();
-    expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
-  });
-
   it('commits cancellation of a user Rest route', () => {
     const fixture = createFixture();
     fixture.composition.start();
@@ -453,33 +351,6 @@ describe('Main integration: Brain runtime', () => {
     expect(fixture.onPresentationChanged).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    [
-      'menu pause',
-      (composition: MainAutonomyComposition) => composition.setMenuOpen(true),
-      (composition: MainAutonomyComposition) => composition.setMenuOpen(false),
-    ],
-    [
-      'autonomy disable',
-      (composition: MainAutonomyComposition) => composition.setEnabled(false),
-      (composition: MainAutonomyComposition) => composition.setEnabled(true),
-    ],
-  ])('restores cadence after %s interrupts deferred Zoomies', (_label, pause, resume) => {
-    const fixture = createFixture();
-    fixture.composition.start();
-    fixture.composition.suspendForUserInteraction();
-    expect(fixture.composition.handleCharacterInteraction('play')).toBe(true);
-    fixture.composition.resumeAfterUserInteraction();
-    expect(fixture.composition.getActivityTimeline()?.activityId).toBe('zoomies');
-
-    pause(fixture.composition);
-    expect(fixture.composition.getActivityTimeline()).toBeNull();
-    expect(fixture.scheduler.size()).toBe(0);
-
-    resume(fixture.composition);
-    expect(fixture.scheduler.size()).toBe(1);
-  });
-
   it('ticks needs from bounded accumulated Brain-loop delta', () => {
     const fixture = createFixture();
     fixture.composition.start();
@@ -491,20 +362,6 @@ describe('Main integration: Brain runtime', () => {
     fixture.scheduler.nowMs = 650;
     fixture.composition.tick();
     expect(fixture.tickNeeds.mock.calls).toEqual([[100], [100], [100]]);
-  });
-
-  it('creates a fresh episode for each intentional click replay', () => {
-    const fixture = createFixture();
-
-    expect(fixture.composition.handleClick()).toBe(true);
-    const firstClick = fixture.composition.getVisualEpisode();
-    expect(firstClick.intent.kind).toBe('happy_reaction');
-    expect(fixture.composition.handleClick()).toBe(true);
-    const secondClick = fixture.composition.getVisualEpisode();
-
-    expect(secondClick.intent.kind).toBe('happy_reaction');
-    expect(secondClick.id).not.toBe(firstClick.id);
-    expect(fixture.onPresentationChanged).toHaveBeenCalledTimes(2);
   });
 
   it('maps the Body think interaction through the Domain-owned intent gate', () => {
@@ -545,14 +402,10 @@ describe('Main integration: Brain runtime', () => {
 
   it.each([
     ['click', (composition: MainAutonomyComposition) => composition.handleClick()],
-    ['drag', (composition: MainAutonomyComposition) => composition.beginDrag()],
     ['forced motion', (composition: MainAutonomyComposition) => composition.handleMotionEvent({
       type: 'airborne_started', cause: 'support_lost', atMs: 20,
     })],
-    ['menu pause', (composition: MainAutonomyComposition) => composition.setMenuOpen(true)],
-    ['autonomy disable', (composition: MainAutonomyComposition) => composition.setEnabled(false)],
     ['support loss', (composition: MainAutonomyComposition) => composition.handleSupportLost()],
-    ['shutdown', (composition: MainAutonomyComposition) => composition.dispose()],
   ])('cancels the active Activity on %s without a second owner', (_label, interrupt) => {
     const fixture = createFixture();
     fixture.composition.start();

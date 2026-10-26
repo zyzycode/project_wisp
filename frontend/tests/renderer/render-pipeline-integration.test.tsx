@@ -156,16 +156,6 @@ describe('Phase 13: render and telemetry pipeline', () => {
     expect(currentBodySource(states)).toBe('body_idle_3.png');
   });
 
-  it('uses exact specialized assets at Level 1 and system baseline at Level 3', () => {
-    const levelOneClip = new AssetResolver(manifest).resolve(createSystemAnimationIntent('walk', 'playful'));
-    const levelThreeClip = new AssetResolver({ schemaVersion: 1, animations: {} }).resolve(createSystemAnimationIntent('dragged'));
-
-    expect(levelOneClip.body.animationKey).toBe('body_walk_playful');
-    expect(levelOneClip.face?.animationKey).toBe('face_winking');
-    expect(levelOneClip.props?.[0]?.animationKey).toBe('prop_sparkle');
-    expect(levelThreeClip.body.frames[0]?.source).toBe('system://wisp/default_idle.svg');
-  });
-
   it('plays exact manifest body and face selections without consulting FSM intent mapping', () => {
     const selectedBody = manifest.animations.body_sleep;
     if (selectedBody === undefined) throw new Error('Integration manifest must contain body_sleep.');

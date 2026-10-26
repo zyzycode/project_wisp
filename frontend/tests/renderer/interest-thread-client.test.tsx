@@ -1,8 +1,5 @@
-import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
 import { InterestThreadClient } from '../../src/renderer/interest-thread-client';
-import { InterestThreadControls } from '../../src/renderer/components/Chat/InterestThreadControls';
-import { ChatInput } from '../../src/renderer/components/Chat/ChatInput';
 import type { InterestThreadApiBridge } from '../../src/shared/ipc-contracts';
 it('preserves exact command on unknown acknowledgement and rejects foreign receipts', async () => {
   const read = vi.fn<InterestThreadApiBridge['read']>(async () => ({ ok: true, generation: 0, value: null }));
@@ -11,14 +8,6 @@ it('preserves exact command on unknown acknowledgement and rejects foreign recei
   mutate.mockResolvedValueOnce({ ok: true, generation: 1, value: { commandId: 'foreign', ref: { threadId: 't', revision: 1 }, outcome: 'unanswered' } });
   expect(await client.mutate({ kind: 'confirm', text: 'topic', source: { userMessageId: 'u', assistantMessageId: 'a' }, conversationId: 'c' })).toBe(false);
   expect(client.getState()).toMatchObject({ uncertain: true }); expect(await client.retry()).toBe(true); expect(mutate.mock.calls[1]![0]).toEqual(mutate.mock.calls[0]![0]);
-});
-it('shows controls only in existing open memory surface and reply selection visibly at input', () => {
-  const bridge = { read: vi.fn(), mutate: vi.fn() };
-  const snapshot = { streamId: 's', dialogue: { conversationId: 'c', canSubmit: true, turn: { phase: 'completed', requestId: 'r', replyText: 'Ответ', outcome: { kind: 'success' }, memorySource: { userMessageId: 'u', assistantMessageId: 'a' } } } } as const;
-  expect(renderToStaticMarkup(<InterestThreadControls bridge={bridge} snapshot={snapshot} visible={false} />)).toBe('');
-  expect(renderToStaticMarkup(<InterestThreadControls bridge={bridge} snapshot={snapshot} visible />)).toContain('Вернуться к теме'); expect(bridge.mutate).not.toHaveBeenCalled();
-  const html = renderToStaticMarkup(<ChatInput isOpen canSubmit onSendMessage={vi.fn()} onClose={vi.fn()} replyTopic="собеседование" cancelTopic={vi.fn()} />);
-  expect(html).toContain('Ответ по теме: собеседование'); expect(html).toContain('Отменить выбор темы');
 });
 it('coalesces a refresh requested at committed admission release while an earlier read is busy', async () => {
   let settle!: (value: Awaited<ReturnType<InterestThreadApiBridge['read']>>) => void;

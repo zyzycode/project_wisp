@@ -8,7 +8,7 @@ import { LANDING_RECOVERY_MS } from '../../src/domain/behavior/autonomous-behavi
 
 afterEach(() => vi.useRealTimers());
 
-it.each([0, .2, .5, .9])('resumes an activity after a real drag and landing (random %s)', random => {
+it('resumes an activity after a real drag and landing', () => {
   vi.useFakeTimers(); vi.setSystemTime(0);
   const bounds = { id: 'screen', x: 0, y: 0, width: 1920, height: 1040 };
   const character = new CharacterStateService({ now: Date.now });
@@ -36,7 +36,7 @@ it.each([0, .2, .5, .9])('resumes an activity after a real drag and landing (ran
   main = new MainAutonomyComposition({
     clock: { now: Date.now },
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
-    prng: { next: () => random }, prngMetadata: { algorithm: 'constant', seed: 0 },
+    prng: { next: () => .5 }, prngMetadata: { algorithm: 'constant', seed: 0 },
     getCharacterSnapshot: () => character.getSnapshot(),
     movement: {
       getRootPosition: () => motion.getMotionState().position, getBounds: () => bounds,

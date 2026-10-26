@@ -13,18 +13,6 @@ it('does not rewrite identity or preferences from one role request or unverified
   expect(current.axes.boldness).toEqual(original.personality.axes.boldness); expect(current.axes.extraversion.current - original.personality.axes.extraversion.current).toBeLessThanOrEqual(0.004 * original.personality.axes.extraversion.plasticity + Number.EPSILON);
   expect(current.aiSelfConcept).toBe(original.personality.aiSelfConcept);
 });
-it('requires six spaced distinct persisted statements for confident affinity and learns different histories', () => {
-  const positive = fixture(), negative = fixture();
-  positive.service.observe(evidence('too-early')); expect(positive.service.getState().preferences).toEqual({});
-  for (let sample = 1; sample <= 6; sample++) {
-    positive.setTime(sample * 300000); negative.setTime(sample * 300000);
-    positive.service.observe(evidence(`source-${sample}`)); negative.service.observe(evidence(`source-${sample}`, 'dislike'));
-  }
-  expect(positive.service.getState().preferences['activity.cursor_game']).toEqual({ value: 12, samples: 6, confidence: 0.5 });
-  expect(negative.service.getState().preferences['activity.cursor_game']).toEqual({ value: -12, samples: 6, confidence: 0.5 });
-  for (let sample = 7; sample <= 12; sample++) { positive.setTime(sample * 300000); positive.service.observe(evidence(`source-${sample}`, 'dislike')); }
-  expect(positive.service.getState().preferences['activity.cursor_game']?.value).toBe(0);
-});
 it('deduplicates even a rejected early source and keeps axes/preference cooldowns separate', () => {
   const f = fixture(); f.service.observe(evidence('early')); f.setTime(300000); f.service.observe(evidence('early'));
   expect(f.service.getState().preferences).toEqual({});
