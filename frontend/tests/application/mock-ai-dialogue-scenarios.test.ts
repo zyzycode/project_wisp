@@ -73,14 +73,15 @@ describe('Application: MockAI Dialogue Scenarios & Intent Mapping', () => {
       expect(intent.requestId).toBe('req-dialogue-1');
     });
 
-    it('maps question response to respond BehaviorIntent with curious mood', async () => {
+    it('maps unsupported question to the existing fallback intent', async () => {
       const response = await provider.generateResponse(createRequest('Почему трава зелёная?'));
-      expect(response.status).toBe('ok');
+      expect(response.status).toBe('fallback');
 
       const intent = mapProviderResponseToBehaviorIntent(response);
-      expect(intent.kind).toBe('respond');
+      expect(intent.kind).toBe('react_confused');
+      expect(intent.reason).toBe('unsupported_input');
       expect(intent.source).toBe('provider');
-      expect(intent.moodHint).toBe('curious');
+      expect(intent.moodHint).toBe('neutral');
       expect(intent.replyText).toBeDefined();
     });
 
@@ -96,7 +97,7 @@ describe('Application: MockAI Dialogue Scenarios & Intent Mapping', () => {
     });
 
     it('maps sleep response to sleep BehaviorIntent with sleepy mood', async () => {
-      const response = await provider.generateResponse(createRequest('Пора спать, спокойной ночи'));
+      const response = await provider.generateResponse(createRequest('Иди спать'));
       expect(response.status).toBe('ok');
 
       const intent = mapProviderResponseToBehaviorIntent(response);
@@ -117,12 +118,12 @@ describe('Application: MockAI Dialogue Scenarios & Intent Mapping', () => {
       expect(intent.replyText).toBeDefined();
     });
 
-    it('maps unknown user input gracefully to respond BehaviorIntent', async () => {
+    it('maps unknown user input to the existing fallback intent', async () => {
       const response = await provider.generateResponse(createRequest('неизвестная команда 98765'));
-      expect(response.status).toBe('ok');
+      expect(response.status).toBe('fallback');
 
       const intent = mapProviderResponseToBehaviorIntent(response);
-      expect(intent.kind).toBe('respond');
+      expect(intent.kind).toBe('react_confused');
       expect(intent.source).toBe('provider');
       expect(intent.replyText).toBeDefined();
     });

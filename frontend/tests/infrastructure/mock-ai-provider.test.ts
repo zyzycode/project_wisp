@@ -1,8 +1,10 @@
+import { createCharacterSnapshot } from '../../src/domain/character/character-snapshot';
+import { CharacterStateService } from '../../src/application/services/character-state.service';
 import { describe, it, expect } from 'vitest';
 import { MockAIProvider } from '../../src/infrastructure/ai/mock-ai-provider';
 import {
   CATEGORY_TEMPLATES,
-  DEFAULT_FALLBACK_TEMPLATE,
+  UNSUPPORTED_REPLIES,
 } from '../../src/infrastructure/ai/mock-response-catalog';
 import type { AIProviderRequest } from '../../src/application/ports/ai-provider.interface';
 
@@ -51,24 +53,18 @@ describe('Infrastructure: MockAIProvider', () => {
   it('keeps category coverage and default fallback', () => {
     expect(Object.keys(CATEGORY_TEMPLATES)).toEqual([
       'greeting',
-      'question',
       'care',
       'play',
       'sleep',
-      'unknown',
     ]);
-    expect(DEFAULT_FALLBACK_TEMPLATE.text).toBe(
-      '*Мерцает мягким светом* Я пока не всё знаю, но всегда рядом с тобой!'
-    );
+    expect(UNSUPPORTED_REPLIES.ru).toBe('На это у меня пока нет подходящего ответа');
   });
 
   it.each([
     ['greeting', 'Привет', 'react_happy', 4],
-    ['question', 'Почему?', 'respond', 4],
-    ['care', 'Обнять', 'react_happy', 4],
+    ['care', 'Хочу тебя обнять', 'react_happy', 4],
     ['play', 'Поиграем', 'play', 4],
     ['sleep', 'Спать', 'sleep', 4],
-    ['unknown', 'Сегодня отличный день', 'respond', 8],
   ])('varies %s replies across requests while keeping reproducible localized semantics', async (
     _category, text, behavior, minimumReplies
   ) => {
@@ -104,11 +100,9 @@ describe('Infrastructure: MockAIProvider', () => {
   describe('Response locale', () => {
     it.each([
       ['greeting', 'Привет', 'Hello'],
-      ['question', 'Почему?', 'Why?'],
-      ['care', 'Обнять', 'Hug'],
+      ['care', 'Хочу тебя обнять', 'I want to hug you'],
       ['play', 'Поиграем', 'Play'],
       ['sleep', 'Спать', 'Sleep'],
-      ['unknown', 'абвгд 42', 'xyz 42'],
     ])('uses the requested language for %s regardless of requestId or input language', async (_category, russian, english) => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
       for (const locale of ['ru', 'en']) {
@@ -181,34 +175,10 @@ describe('Infrastructure: MockAIProvider', () => {
       expect(en3.suggestedBehavior).toBe('react_happy');
     });
 
-    it('handles question messages with question marks and interrogative words', async () => {
-      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
-
-      const q1 = await provider.generateResponse(createRequest('Как твои дела?'));
-      expect(q1.status).toBe('ok');
-      expect(q1.reply.tone).toBe('curious');
-      expect(q1.suggestedMood).toBe('curious');
-      expect(q1.suggestedBehavior).toBe('respond');
-
-      const q2 = await provider.generateResponse(createRequest('Why is the sky blue'));
-      expect(q2.status).toBe('ok');
-      expect(q2.reply.tone).toBe('curious');
-      expect(q2.suggestedBehavior).toBe('respond');
-
-      const q3 = await provider.generateResponse(createRequest('почему мерцают звезды'));
-      expect(q3.status).toBe('ok');
-      expect(q3.reply.tone).toBe('curious');
-      expect(q3.suggestedBehavior).toBe('respond');
-
-      const q4 = await provider.generateResponse(createRequest('Расскажи где ты живешь'));
-      expect(q4.status).toBe('ok');
-      expect(q4.suggestedBehavior).toBe('respond');
-    });
-
     it('handles care messages with affectionate words', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
-      const res1 = await provider.generateResponse(createRequest('Хочу тебя погладить и обнять'));
+      const res1 = await provider.generateResponse(createRequest('Хочу тебя погладить'));
       expect(res1.status).toBe('ok');
       expect(res1.reply.tone).toBe('warm');
       expect(res1.suggestedMood).toBe('happy');
@@ -218,7 +188,7 @@ describe('Infrastructure: MockAIProvider', () => {
       expect(res2.status).toBe('ok');
       expect(res2.suggestedBehavior).toBe('react_happy');
 
-      const res3 = await provider.generateResponse(createRequest('I love you, snuggle closer'));
+      const res3 = await provider.generateResponse(createRequest('I love you'));
       expect(res3.status).toBe('ok');
       expect(res3.suggestedBehavior).toBe('react_happy');
     });
@@ -232,11 +202,11 @@ describe('Infrastructure: MockAIProvider', () => {
       expect(res1.suggestedMood).toBe('happy');
       expect(res1.suggestedBehavior).toBe('play');
 
-      const res2 = await provider.generateResponse(createRequest('Поиграем вместе, попрыгай'));
+      const res2 = await provider.generateResponse(createRequest('Поиграем вместе'));
       expect(res2.status).toBe('ok');
       expect(res2.suggestedBehavior).toBe('play');
 
-      const res3 = await provider.generateResponse(createRequest('Let us dance and have fun game'));
+      const res3 = await provider.generateResponse(createRequest('Let us play'));
       expect(res3.status).toBe('ok');
       expect(res3.suggestedBehavior).toBe('play');
     });
@@ -244,17 +214,17 @@ describe('Infrastructure: MockAIProvider', () => {
     it('handles sleep messages', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
-      const res1 = await provider.generateResponse(createRequest('Я устал, пора спать, спокойной ночи'));
+      const res1 = await provider.generateResponse(createRequest('Иди спать'));
       expect(res1.status).toBe('ok');
       expect(res1.reply.tone).toBe('sleepy');
       expect(res1.suggestedMood).toBe('sleepy');
       expect(res1.suggestedBehavior).toBe('sleep');
 
-      const res2 = await provider.generateResponse(createRequest('Отдохни и засыпай'));
+      const res2 = await provider.generateResponse(createRequest('Отдохни'));
       expect(res2.status).toBe('ok');
       expect(res2.suggestedBehavior).toBe('sleep');
 
-      const res3 = await provider.generateResponse(createRequest('Time to take a nap, goodnight'));
+      const res3 = await provider.generateResponse(createRequest('Take a nap'));
       expect(res3.status).toBe('ok');
       expect(res3.suggestedBehavior).toBe('sleep');
     });
@@ -263,11 +233,12 @@ describe('Infrastructure: MockAIProvider', () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
       const res = await provider.generateResponse(createRequest('абвгд xyz 42 998877'));
-      expect(res.status).toBe('ok');
+      expect(res.status).toBe('fallback');
+      expect(res.diagnostics?.fallbackReason).toBe('unsupported_input');
       expect(res.suggestedBehavior).toBe('respond');
       expect(res.reply.text).toBeDefined();
       expect(res.reply.text.length).toBeGreaterThan(0);
-      expect(res.confidence).toBe(0.7);
+      expect(res.confidence).toBe(0.3);
     });
   });
 
@@ -295,7 +266,7 @@ describe('Infrastructure: MockAIProvider', () => {
 
       // Exactly at limit -> OK
       const atLimit = await provider.generateResponse(createRequest('1234567890'));
-      expect(atLimit.status).toBe('ok');
+      expect(atLimit.diagnostics?.fallbackReason).toBe('unsupported_input');
 
       // Exceeds limit by 1 -> fallback
       const overLimit = await provider.generateResponse(createRequest('12345678901'));
@@ -369,4 +340,77 @@ describe('Infrastructure: MockAIProvider', () => {
       }
     });
   });
+  describe('Issue #105: bounded local scenarios', () => {
+    it.each([
+      ['ru', 'Я не хочу играть'], ['ru', 'Не хочу спать'],
+      ['en', "I don't want to play"], ['en', 'I do not want to sleep'],
+      ['en', "Don't hug me"], ['ru', 'Не обнимай меня'],
+      ['en', 'What does sleep mean?'], ['ru', 'Что значит слово спать?'],
+      ['en', 'I fixed a bug in my game'], ['en', 'I bought a new bed'],
+      ['ru', 'Ты не устала?'], ['ru', 'Это хороший багрепорт'],
+      ['en', 'I care about software quality'], ['ru', 'Привет, что значит game?'],
+      ['ru', '2 + 2 = ?'], ['en', 'Why is the sky blue?'],
+      ['ru', 'Почему?'], ['en', 'Why?'], ['ru', 'abc xyz 42'],
+      ['ru', 'Прыгай'], ['ru', 'Танцуй'], ['en', 'Dance'], ['en', 'Jump'],
+      ['ru', 'Обнять'], ['ru', 'Погладить'], ['en', 'Hug'], ['en', 'Pet'],
+      ['ru', 'Хочу спать'], ['ru', 'Пора спать'], ['en', 'I am tired'],
+      ['ru', 'Не хочу спать, давай играть'], ['en', 'Do not play, sleep instead'],
+    ])('honestly declines unsupported %s input: %s', async (locale, text) => {
+      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+      const response = await provider.generateResponse({ ...createRequest(text), locale });
+      expect(response).toMatchObject({ status: 'fallback', suggestedBehavior: 'respond',
+        reply: { text: locale === 'en' ? "I don't have a suitable reply to that yet." : 'На это у меня пока нет подходящего ответа' },
+        diagnostics: { provider: 'mock', fallbackReason: 'unsupported_input' } });
+    });
+    it.each([['ru', 'Привет🙂'], ['en', 'Hello🙂'], ['ru', 'Привет!🙂'], ['en', 'Hello🙂!']])('recognizes an emoji greeting in %s', async (locale, text) => {
+      const response = await new MockAIProvider({ simulatedLatencyMs: 0 }).generateResponse({ ...createRequest(text), locale });
+      expect(response).toMatchObject({ status: 'ok', suggestedBehavior: 'react_happy' });
+    });
+    it.each(['Давай поиграем', 'Поиграй со мной', 'Можешь поиграть со мной?'])('accepts explicit play request: %s', async text => {
+      const response = await new MockAIProvider({ simulatedLatencyMs: 0 }).generateResponse(createRequest(text));
+      expect(response).toMatchObject({ status: 'ok', suggestedBehavior: 'play' });
+    });
+    it('does not pretend to answer a contextual follow-up', async () => {
+      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+      for (const text of ['Давай играть', 'Пора спать']) {
+        const response = await provider.generateResponse({ ...createRequest('Почему?'), recentContext: [
+          { role: 'user', text, createdAt: '2026-10-26T00:00:00.000Z' }, { role: 'wisp', text: 'synthetic previous reply', createdAt: '2026-10-26T00:00:01.000Z' },
+        ] });
+        expect(response.status).toBe('fallback');
+        expect(response.diagnostics?.fallbackReason).toBe('unsupported_input');
+      }
+    });
+    it('declines play when the Domain tone is sleepy instead of attaching sleepy tone to eager play', async () => {
+      const request = createRequest('Давай играть'); request.characterSnapshot.synthesizedTone = 'sleepy';
+      const response = await new MockAIProvider({ simulatedLatencyMs: 0 }).generateResponse(request);
+      expect(response.status).toBe('fallback');
+      expect(response.suggestedBehavior).toBe('respond');
+    });
+    it.each(['sleepy', 'shy', 'affectionate'] as const)('uses the Domain %s tone with a quiet existing greeting', async tone => {
+      const request = createRequest('Привет'); request.characterSnapshot.synthesizedTone = tone;
+      const response = await new MockAIProvider({ simulatedLatencyMs: 0 }).generateResponse(request);
+      expect(response).toMatchObject({ status: 'ok', reply: { tone, text: 'Привет! Устроюсь рядом, пока ты занимаешься своими делами.' }, suggestedMood: tone });
+    });
+  });
+
+  it('uses actual Domain snapshot synthesis for energy, shyness and friendship without copying thresholds', async () => {
+    const state = new CharacterStateService({ now: () => 0 }).getState();
+    state.personality.axes.sensitivity.current = 1;
+    state.personality.axes.boldness.current = 0;
+    state.personality.axes.extraversion.current = 0;
+    const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+    const request = createRequest('Привет');
+    request.characterSnapshot = createCharacterSnapshot(state);
+    expect(request.characterSnapshot.synthesizedTone).toBe('shy');
+    expect((await provider.generateResponse(request)).reply.tone).toBe('shy');
+    state.relationship.friendship = 1000;
+    request.characterSnapshot = createCharacterSnapshot(state);
+    expect(request.characterSnapshot.synthesizedTone).toBe('neutral');
+    expect((await provider.generateResponse(request)).reply.tone).toBe('warm');
+    state.needs = { ...state.needs, energy: 0 };
+    request.characterSnapshot = createCharacterSnapshot(state);
+    expect(request.characterSnapshot.synthesizedTone).toBe('sleepy');
+    expect((await provider.generateResponse(request)).reply.tone).toBe('sleepy');
+  });
+
 });

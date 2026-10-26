@@ -159,7 +159,9 @@ Application нормализует `AIProviderFallbackReason`: `empty_input`, `m
 
 ### `MockAIProvider`
 
-Полностью offline, без API keys; локальные реплики учитывают snapshot (shyness/energy/friendship) и симулируют thinking/latency.
+Полностью offline, без API keys; симулирует thinking/latency. Поддерживает ограниченную грамматику полных RU/EN приветствий, явных просьб поиграть/отдохнуть и добрых слов персонажу. Совпадение отдельного слова не означает просьбу; отрицания, неоднозначные сообщения, произвольные вопросы и уточнения дают `fallback` / `unsupported_input` с согласованной нейтральной репликой. `recentContext`/memory не используются для понимания диалога.
+
+Для совместимых готовых реплик использует `characterSnapshot.synthesizedTone`: energy/shyness/friendship учитывает существующий Domain synthesis, provider не копирует его формулы. Спокойные greeting/care варианты отражают тон; если подходящей готовой реплики нет (например, просьба играть при sleepy/shy), возвращается тот же fallback. Явная просьба отдыха использует sleepy-реплику. Внутри допустимого набора вариант детерминирован по requestId. `unsupported_input` проходит существующий degraded путь DialogueRuntime без provider stimulus/intent; standalone mapper сохраняет общий fallback mapping.
 
 ### `ExternalAIProviderClient`
 

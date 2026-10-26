@@ -6,7 +6,6 @@ import type {
 
 export type MockMessageCategory =
   | 'greeting'
-  | 'question'
   | 'care'
   | 'play'
   | 'sleep'
@@ -22,13 +21,10 @@ export interface MockResponseTemplate {
   readonly confidence: number;
 }
 
-export const DEFAULT_FALLBACK_TEMPLATE = {
-  text: '*Мерцает мягким светом* Я пока не всё знаю, но всегда рядом с тобой!',
-  tone: 'curious',
-  suggestedMood: 'curious',
-  suggestedBehavior: 'respond',
-  confidence: 0.7,
-} as const satisfies MockResponseTemplate;
+export const UNSUPPORTED_REPLIES = {
+  ru: 'На это у меня пока нет подходящего ответа',
+  en: "I don't have a suitable reply to that yet.",
+} as const;
 
 function withReplies(
   template: MockResponseTemplate,
@@ -39,7 +35,7 @@ function withReplies(
 
 export const CATEGORY_TEMPLATES: Readonly<
   Record<
-    MockMessageCategory,
+    Exclude<MockMessageCategory, 'unknown'>,
     Readonly<Record<MockResponseLocale, readonly [MockResponseTemplate, ...MockResponseTemplate[]]>>
   >
 > = {
@@ -65,30 +61,6 @@ export const CATEGORY_TEMPLATES: Readonly<
       "Hey there! Mind if I keep you company?",
       "Hello again! What shall we do today?",
       "*Gives a cheerful little flicker* Hi! Good to see you.",
-    ),
-  },
-  question: {
-    ru: withReplies({
-      text: 'Интересный вопрос! Я пока маленький огонёк, но внимательно тебя слушаю.',
-      tone: 'curious',
-      suggestedMood: 'curious',
-      suggestedBehavior: 'respond',
-      confidence: 0.9,
-    },
-      "Не уверен в ответе. Расскажешь, что тебя заинтересовало?",
-      "Хм, тут я могу только задумчиво померцать. А ты что думаешь?",
-      "Боюсь, точного ответа у меня нет. Но послушать твою версию интересно!",
-    ),
-    en: withReplies({
-      text: "That's an intriguing thought! Let me think about it with you.",
-      tone: 'curious',
-      suggestedMood: 'curious',
-      suggestedBehavior: 'respond',
-      confidence: 0.9,
-    },
-      "I'm not sure of the answer. What got you curious?",
-      "Hmm, that one has me puzzled. What do you think?",
-      "I don't have a reliable answer, but I'd like to hear your thoughts.",
     ),
   },
   care: {
@@ -163,117 +135,4 @@ export const CATEGORY_TEMPLATES: Readonly<
       "*Settles down with a tiny yawn* Sweet dreams.",
     ),
   },
-  unknown: {
-    ru: withReplies(DEFAULT_FALLBACK_TEMPLATE,
-      "Я рядом. Можешь рассказать чуть подробнее?",
-      "*Тихонько мерцает* Продолжай, я слушаю.",
-      "Не всё понимаю, но мне приятно составить тебе компанию.",
-      "Можем просто немного поболтать. О чём тебе хочется?",
-      "*Устраивается поудобнее* А что у тебя сейчас на уме?",
-      "Иногда я теряюсь в словах. Попробуешь сказать по-другому?",
-      "Побуду здесь маленьким огоньком для компании.",
-    ),
-    en: withReplies({
-      text: "*Flickers warmly* I'm still learning, but I love spending time with you!",
-      tone: 'warm',
-      suggestedMood: 'neutral',
-      suggestedBehavior: 'respond',
-      confidence: 0.7,
-    },
-      "I'm here. Want to tell me a little more?",
-      "*Flickers softly* Go on, I am listening.",
-      "I may not understand everything, but I'm glad to keep you company.",
-      "We can just chat for a bit. What would you like to talk about?",
-      "*Settles in comfortably* What is on your mind?",
-      "I get a little lost with words sometimes. Could you put that another way?",
-      "I'll be a little glow here to keep you company.",
-    ),
-  },
 };
-
-export const GREETING_WORDS = [
-  'hi',
-  'hello',
-  'hey',
-  'greetings',
-  'howdy',
-  'привет',
-  'здравствуй',
-  'здравствуйте',
-  'хай',
-  'добрый день',
-  'добрый вечер',
-  'доброе утро',
-  'салют',
-] as const;
-
-export const SLEEP_WORDS = [
-  'sleep',
-  'nap',
-  'bed',
-  'tired',
-  'goodnight',
-  'night',
-  'спать',
-  'дремать',
-  'устал',
-  'устала',
-  'спокойной ночи',
-  'баиньки',
-  'отдыхать',
-  'отдохни',
-  'засыпай',
-] as const;
-
-export const PLAY_WORDS = [
-  'play',
-  'game',
-  'jump',
-  'dance',
-  'fun',
-  'играть',
-  'поиграем',
-  'прыгай',
-  'танцуй',
-  'лови',
-  'веселье',
-  'мячик',
-  'поиграй',
-] as const;
-
-export const CARE_WORDS = [
-  'pet',
-  'pat',
-  'hug',
-  'love',
-  'care',
-  'snuggle',
-  'feed',
-  'cookie',
-  'погладить',
-  'гладить',
-  'обнять',
-  'люблю',
-  'хороший',
-  'умница',
-  'кушать',
-  'покормить',
-  'печенька',
-  'почесать',
-] as const;
-
-export const QUESTION_WORDS = [
-  'why',
-  'what',
-  'how',
-  'who',
-  'where',
-  'when',
-  'почему',
-  'что',
-  'как',
-  'кто',
-  'где',
-  'когда',
-  'зачем',
-] as const;

@@ -1,3 +1,4 @@
+import { MockAIProvider } from '../../src/infrastructure/ai/mock-ai-provider';
 import { afterEach, expect, it, vi } from 'vitest';
 import { DialogueRuntime } from '../../src/application/services/dialogue-loop.service';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
@@ -13,7 +14,7 @@ function fixture(provider: IAIProvider) {
     getCharacterSnapshot: () => character.getSnapshot(), applyStimulus: stimulus => { character.applyStimulus(stimulus); },
     offerIntent, beginThinking: () => {}, endThinking: () => {}, transaction: commit => commit(), publish: () => {} });
   runtime.replaceStream('stream');
-  const send = (sequence: number) => runtime.receive({ type: 'send', text: '  Привет  ', sequence, streamId: 'stream', conversationId: runtime.getPresentation().conversationId });
+  const send = (sequence: number, text = '  Привет  ') => runtime.receive({ type: 'send', text, sequence, streamId: 'stream', conversationId: runtime.getPresentation().conversationId });
   return { runtime, send, character, apply, offerIntent };
 }
 function provider(response: (request: AIProviderRequest) => AIProviderResponse) {
@@ -64,4 +65,23 @@ it('limits reply/context to 2000 UTF-16 units and clears context on reset', asyn
 it('timeout wins at the exact deadline even before the timer callback', async () => {
   const p = provider(r => { vi.setSystemTime(15000); return success(r); }), f = fixture(p);
   f.send(1); await flush(); expect(f.runtime.getPresentation().turn).toMatchObject({ outcome: { reason: 'timeout' } }); expect(f.offerIntent).not.toHaveBeenCalled();
+});
+
+it('Issue #105: real Mock unsupported replies complete degraded without applying provider intents or stimuli', async () => {
+  const f = fixture(new MockAIProvider({ simulatedLatencyMs: 0 }));
+  for (const [index, text] of ['Я не хочу играть', 'Не хочу спать', 'Почему?'].entries()) {
+    expect(f.send(index + 1, text).status).toBe('accepted'); await flush();
+    expect(f.runtime.getPresentation()).toMatchObject({ canSubmit: true, turn: { phase: 'completed',
+      replyText: 'На это у меня пока нет подходящего ответа', outcome: { kind: 'fallback', reason: 'degraded' } } });
+  }
+  expect(f.offerIntent).not.toHaveBeenCalled();
+  expect(f.apply.mock.calls.map(call => call[0].type)).toEqual(['user_message', 'user_message', 'user_message']);
+});
+it('Issue #105: real Mock supported requests still reach the existing intent route', async () => {
+  const f = fixture(new MockAIProvider({ simulatedLatencyMs: 0 }));
+  expect(f.send(1, 'Давай играть').status).toBe('accepted'); await flush();
+  expect(f.runtime.getPresentation().turn).toMatchObject({ outcome: { kind: 'success' } });
+  expect(f.offerIntent).toHaveBeenCalledOnce();
+  expect(f.offerIntent.mock.calls[0]![0]).toMatchObject({ intent: { kind: 'play' } });
+  expect(f.apply.mock.calls.map(call => call[0].type)).toEqual(['user_message', 'provider_response']);
 });

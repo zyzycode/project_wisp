@@ -8,14 +8,7 @@ import type {
   ProviderSuggestedBehaviorKind,
   AIProviderFallbackReason,
 } from '../../application/ports/ai-provider.interface';
-import {
-  CARE_WORDS,
-  CATEGORY_TEMPLATES,
-  GREETING_WORDS,
-  PLAY_WORDS,
-  QUESTION_WORDS,
-  SLEEP_WORDS,
-} from './mock-response-catalog';
+import { CATEGORY_TEMPLATES, UNSUPPORTED_REPLIES } from './mock-response-catalog';
 import type {
   MockMessageCategory,
   MockResponseTemplate,
@@ -38,24 +31,18 @@ export interface MockAIProviderOptions {
   maxMessageLength?: number;
 }
 
-function containsAnyWord(
-  normalizedText: string,
-  words: readonly string[]
-): boolean {
-  for (const word of words) {
-    if (word.includes(' ')) {
-      if (normalizedText.includes(word)) {
-        return true;
-      }
-    } else {
-      const tokens = normalizedText.split(/[\s,.:;!?~`'"()[\]{}<>/\\|+=*&^%$#@!—–-]+/);
-      if (tokens.includes(word)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
+// Whole utterances form a deliberately small local command grammar, not an NLP classifier.
+const SCENARIOS: ReadonlyArray<readonly [Exclude<MockMessageCategory, 'unknown'>, RegExp]> = [
+  ['greeting', /^(?:привет|здравствуй|здравствуйте|хай|добрый день|добрый вечер|доброе утро|салют)(?: (?:wisp|маленький огонек|маленький огонёк))?$/u],
+  ['greeting', /^(?:hi|hello|hey|greetings|howdy)(?: (?:wisp|friend|partner))?$/u],
+  ['play', /^(?:(?:давай|давайте) )?(?:играть|поиграем|поиграй)(?: вместе| со мной| в мячик)?$/u],
+  ['play', /^можешь поиграть(?: со мной| вместе)?$/u],
+  ['play', /^(?:(?:let's|let us|please) )?play(?: with me| together)?$/u],
+  ['sleep', /^(?:спать|иди спать|отдохни|засыпай)$/u],
+  ['sleep', /^(?:sleep|go to sleep|take a nap|rest|please rest)$/u],
+  ['care', /^(?:хочу тебя (?:погладить|обнять)|люблю тебя|ты умница(?: вот тебе печенька)?)$/u],
+  ['care', /^(?:i (?:want to hug you|love you)|you are (?:lovely|great)|you're (?:lovely|great))$/u],
+];
 
 export class MockAIProvider implements IAIProvider {
   private status: AIProviderStatus = { kind: 'ready' };
@@ -116,7 +103,12 @@ export class MockAIProvider implements IAIProvider {
       }
 
       const category = this.detectCategory(trimmed);
-      const template = this.pickTemplate(category, request.requestId, locale);
+      const template = category === 'unknown' ? undefined
+        : this.pickTemplate(category, request.requestId, locale, request.characterSnapshot.synthesizedTone);
+      if (!template) {
+        return this.createFallbackResponse(request.requestId, 'unsupported_input', UNSUPPORTED_REPLIES[locale],
+          'quiet', 'neutral', 'respond', Date.now() - startTime);
+      }
 
       return {
         requestId: request.requestId,
@@ -139,33 +131,38 @@ export class MockAIProvider implements IAIProvider {
   }
 
   public detectCategory(text: string): MockMessageCategory {
-    const normalized = text.toLowerCase();
-
-    if (containsAnyWord(normalized, SLEEP_WORDS)) {
-      return 'sleep';
+    // Quotes are not command wrappers: a mentioned command must not launch an action.
+    if (/["“”«»]/u.test(text)) return 'unknown';
+    const normalized = text.toLowerCase().trim().replace(/[,]/gu, ' ').replace(/\s+/gu, ' ')
+      .replace(/[.!?]+$/u, '').trim();
+    const greeting = normalized.replace(/[.!?\s\p{Extended_Pictographic}\uFE0F]+$/u, '').trim();
+    for (const [category, pattern] of SCENARIOS) {
+      if (pattern.test(category === 'greeting' ? greeting : normalized)) return category;
     }
-    if (containsAnyWord(normalized, PLAY_WORDS)) {
-      return 'play';
-    }
-    if (containsAnyWord(normalized, CARE_WORDS)) {
-      return 'care';
-    }
-    if (containsAnyWord(normalized, GREETING_WORDS)) {
-      return 'greeting';
-    }
-    if (text.includes('?') || containsAnyWord(normalized, QUESTION_WORDS)) {
-      return 'question';
-    }
-
     return 'unknown';
   }
 
   private pickTemplate(
-    category: MockMessageCategory,
+    category: Exclude<MockMessageCategory, 'unknown'>,
     requestId: string,
-    locale: MockResponseLocale
-  ): MockResponseTemplate {
+    locale: MockResponseLocale,
+    tone: AIProviderRequest['characterSnapshot']['synthesizedTone']
+  ): MockResponseTemplate | undefined {
     const templates = CATEGORY_TEMPLATES[category][locale];
+    // Never relabel an eager action as sleepy/shy. No compatible authored play line exists.
+    if (category === 'play' && (tone === 'sleepy' || tone === 'shy' || tone === 'flustered')) return undefined;
+    if ((category === 'greeting' || category === 'care') && tone !== 'neutral') {
+      // These existing variants contain no energetic or intimate stage directions.
+      const selected = templates[1];
+      if (!selected) return undefined;
+      if (tone === 'sleepy' || tone === 'shy' || tone === 'affectionate') {
+        return { ...selected, tone, suggestedMood: tone, suggestedBehavior: 'respond' };
+      }
+      if (tone === 'playful' || tone === 'curious') {
+        return { ...selected, tone, suggestedMood: tone === 'curious' ? 'curious' : 'happy' };
+      }
+      return undefined;
+    }
 
     // Deterministic selection based on requestId hash for predictable reproducibility
     let hash = 0;
