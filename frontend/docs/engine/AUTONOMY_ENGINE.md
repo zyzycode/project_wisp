@@ -248,6 +248,39 @@ Return не вызывает `onSocialBidStarted` → `AIEventRuntime.socialStar
 
 Quiet/menu/disable/reset/dispose и lifecycle из Perception теряют return, не создавая deferred greeting. Quiet/menu exit не переиспользует latch уже наблюдённого away; для нового return нужен новый непрерывный active→away episode. AFK invalidation не обнуляет существующие initiative ledger/cooldown. Обязательные fake-time сценарии: keyboard-only idle reset, threshold/hysteresis, startup с большим idle, zero/error/stale/out-of-order, gap/suspend/resume/clock jump, один return и busy drop, общий budget/cooldown, quiet/menu/critical/provider, late callback/reset/dispose, отсутствие AI-event на return.
 
+### 13.2. Одна дополнительная попытка после молчания (SOC-A01)
+
+**Архитектурное решение; implementation target отдельной задачи.** Первый slice невербальный: обычный local Utility SocialBid с `source: timer` может получить одну вторую попытку, затем Wisp занимается своими делами. Молчание не означает отказа, согласия, обиды или отсутствия человека. Provider/user инициативы, cursor episodes и system/P3 return (§13.1) не открывают эту цепочку; return не является ответом и не снимает её ограничение.
+
+Transient session state принадлежит существующей Application/Main autonomy composition: `chainId`, lifecycle generation, actual runId первой/второй попытки, ordinal и terminal monotonic time. Чистая Domain policy решает переходы по явным времени, gates и RNG; Main передаёт факты, Activity остаётся единственным executor. Не нужны новый engine, IPC/wire поля, SQLite или очередь. Attempt variant передаётся внутренним typed значением, не строкой `reason`, не новым public BehaviorIntent/AnimationIntent kind.
+
+| Событие | Переход и эффект |
+|---|---|
+| Первый local SocialBid реально started | Новая chain, attempt=1; silence latch закрывает обычный Utility SocialBid до нового принятого user input. Admission без start chain не создаёт. |
+| Принятый direct chat либо реальный принятый pet/P1 input к Wisp | `answered`: закрыть chain/кандидат до async работы; снять silence latch. Будущий Utility выбор проходит обычные gates. Участие не доказывает удовольствия; второго reward нет. |
+| Первый run completed без ответа | `unanswered`: T=terminal time; максимум один кандидат в окне ниже. Cancelled/failed run права на second не даёт. |
+| Вторая попытка started | Attempt=2 с новым actual runId той же chain; duplicate started/terminal не создаёт attempt=3. |
+| Вероятность не прошла, admission/start отказал, истёк deadline, второй run завершился | Закрыть кандидат; silence latch сохраняется. Последующий Utility SocialBid не становится скрытой третьей попыткой; остальные занятия продолжаются. |
+| Отмена либо смена lifecycle/generation | `cancelled`: кандидат безвозвратно теряется; late callbacks проверяют identity/generation. Отмена сама не является user ответом. |
+
+Accepted send учитывается при admission до recall/provider, включая будущий fallback/error; rejected/busy/duplicate send не считается контактом. Новый NLP-классификатор «стоп» не вводится: существующий явный user cancel отменяет pending, его принятый input учитывается как контакт. Cursor samples, keyboard activity вне Wisp, idle=`active`, return, provider reply и время не снимают silence latch. Это eligibility gate, без отрицательных learning/Needs/relationship effects.
+
+Кандидат рассматривается на **первой оценке общего Brain tick/admission** с `T+30000 <= now < T+60000`: после обработки Activity terminal, до нового Utility выбора в той же transaction, как local P4 opportunity; отдельного scheduler/timer нет. Эта оценка не ждёт свободного runner: если он занят (включая calm), кандидат сразу теряется; terminal drain не запускает новый calm до этой проверки. При `now >= T+60000` он истёк, включая точную границу; resume/gap не создают catch-up. До окна RNG не читается. На этой одной opportunity после hard gates — один явный Domain draw `r∈[0,1)`: `r < 1/3` допускает second, равенство не проходит. Результат потребляется до start; ticks, budget expiry, failed start и duplicate terminal не дают повторного draw. Числа — стартовый tuning `SOC-A01-v1`, не измеренная оптимальная частота.
+
+Second остаётся local P4 в существующей цепочке Character → admission → Activity. Он не прерывает **никакую** active Activity (включая calm), игру, Motion, provider/deferred owner, P0/P1/P2, user dialogue thinking/его speech guard или более приоритетную реакцию. Занятость на выбранной opportunity теряет кандидат, не откладывает текущую работу. Другие занятия могут выполняться во время ожидания; зарезервированного social slot нет. В одной transaction максимум один initiative start.
+
+Second требует свежий Perception presence=`active`, последний authoritative sample со status=`available` и непрерывную текущую lifecycle generation; `inactive`, `unknown`, `probably_away`, unsupported/stale/zero/unconfirmed reading не доказывают доступности и теряют pending second. Baseline первого SocialBid/return не меняется. Quiet, [quietSupport](CHARACTER_ENGINE.md#61-тихая-поддержка-после-явной-реплики), menu, disable, sleep/critical, forced physics, lock/suspend/session loss и safety/privacy invalidation также теряют его сразу; снятие запрета кандидат не возвращает. Existing Character intimacy/safety gates сохраняются; thresholds сна/presence не копируются.
+
+Перед выбором и непосредственно перед actual start повторить identity/generation, chain state, deadline, fresh presence, перечисленные gates, applicable Activity cooldown и **тот же** InitiativeBudget. Actual start расходует ещё один token и заново устанавливает общий minimum interval; бесплатного start/refill/резерва нет, отмена token не возвращает. Если другой episode получил приоритет, second пропускается. Preference/attention не компенсируют запрет. Нет обхода Character boundary отдельным executor или отдельного SocialBid cooldown.
+
+Stationary second: existing `thinking_loop` + `expressionHint: curious`, `propHint: none`, bounded 1200 ms — как существующий [head_tilt](../../src/domain/behavior/cursor-observe-policy.ts); затем existing idle wait максимум 4000 ms. Вместо first `wave` — любопытный наклон; без approach, повторного wave, слов, talking и негативной эмоции. Semantic отличие проверяется автоматически; видимость наклона на текущем Skin/fallback требует отдельного native smoke. Архитектура её не подтверждает; новые ассеты/реплики не требуются.
+
+Second **не** вызывает `onSocialBidStarted`/AI-event runtime, recall, provider, `previousInitiative`, memory/learning или dialogue history. First сохраняет existing opt-in event speech и прежние gates; дополнительных запросов нет. [AI Events §3](../../../docs/contracts/AI_EVENTS_CONTRACT.md#socialbid) описывает отдельную речь/контекст следующего пользовательского диалога, а не владельца second. Запрет повторной инициативной отправки в [Character §6](CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122) относится к реплике; этот невербальный slice его не расширяет.
+
+Reset/detach/replaceStream/Renderer reload, full memory reset, stop/dispose и Main restart теряют chain/run linkage; restore их не восстанавливает. В той же Main session silence latch сохраняется при quiet/menu/disable, reset/reload/stop и отмене до принятого input к Wisp; full memory reset/Main restart/dispose очищают его вместе с session state. После restart обычный baseline не воспроизводит старую second. Budget/cooldown сохраняют собственный lifecycle (§13), не сбрасываются ради функции.
+
+Приёмка разработчика: unanswered/answered/cancelled, duplicate terminal, точные 30s/60s и `r=1/3`, один draw, budget exhaustion/новое окно/minimum interval, busy drop без preemption, fresh active против inactive/unknown/stale, quiet/support/sleep/privacy/AFK cancellation, input до async/позднего start, reset/reload/restore/dispose, отсутствие третьей попытки при бесконечных ticks, отдельный return, отсутствие новых AI calls/history/learning и semantic отличие жеста. Native smoke отдельно проверяет видимый curious head-tilt и возвращение к своим делам.
+
 ## 14. Обязательные инварианты и tuning автономности
 
 Порядок источников, once-only, конечность deadlines/budget, отсутствие resume/очереди и единые owners
@@ -260,6 +293,8 @@ Quiet/menu/disable/reset/dispose и lifecycle из Perception теряют retur
 | Initiative window / max episodes / minimum interval | 120000 ms / 2 / 30000 ms |
 | Cursor episode / суммарный approach distance | 6000 ms / 160 DIP |
 | Social wait | 4000 ms |
+| SOC-A01 second: delay / expiry от completed first / chance | 30000 / 60000 ms / 1⁄3 (один draw) |
+| SOC-A01 second: curious gesture / wait max | 1200 / 4000 ms |
 | Calm lifetime | 5000–11000 ms, существующая idle tuning range |
 
 Все durations/distances конечны и положительны; counts — положительные целые; tuning version

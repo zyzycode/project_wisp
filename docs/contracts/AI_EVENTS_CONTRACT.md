@@ -40,6 +40,8 @@ Application владеет event lifecycle/current IDs/generation и admission; 
 
 Триггер сразу после реального started и existing budget.start; request не выбирает/не задерживает жест или его4s wait. Reply разрешён только пока тот же SocialBid ещё active и исходные gates действуют; completed/cancelled/failed до reply → discard. Deadline Activity не продлевается ради AI. Переход к обычному локальному следующему занятию не откладывается.
 
+Вторая невербальная попытка [SOC-A01](../../frontend/docs/engine/AUTONOMY_ENGINE.md#132-одна-дополнительная-попытка-после-молчания-soc-a01) — implementation target отдельной задачи, не новый `social_bid_started` AI-trigger. Для second Main не вызывает `onSocialBidStarted`/`socialStarted`; нет recall, transport, speech publication, `previousInitiative`, истории или memory write. System/P3 return сохраняет своё исключение, first — прежний opt-in event path. Следующий user chat с `previousInitiative` (§4) остаётся ответом на реально опубликованную первую AI-фразу, а не автоматической второй инициативой.
+
 ### Общие gates
 
 Перед recall, transport и публикацией: current stream/conversation/dialogue-generation/memory-generation, events enabled, !quiet/!menu/!disabled, awake без P2 sleep/critical overload, нет P0/активного P1/forced physics, нет user dialogue thinking. Нет начавшегося нового conflicting run. Root/controller подтверждает source identity, не boolean от Renderer/provider.
