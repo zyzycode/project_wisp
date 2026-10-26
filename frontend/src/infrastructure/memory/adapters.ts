@@ -1,3 +1,5 @@
+import type { IBeveragePreferencesRepository } from '../../application/ports/memory-beverage.interface';
+import { beverageRead, beverageReceipt } from './beverage-validation';
 import type { IInterestThreadRepository } from '../../application/ports/interest-thread.interface';
 import { topicRead, topicReceipt, topicCapture } from './interest-thread-validation';
 import type { ISummarySourceReader } from '../../application/ports/summary';
@@ -16,6 +18,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly beverage: IBeveragePreferencesRepository;
   readonly interestThread: IInterestThreadRepository;
   readonly summarySources: ISummarySourceReader;
   readonly items: IMemoryItemsRepository;
@@ -33,6 +36,7 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    beverage: { read: c => call('readBeverage', null, c, beverageRead), mutate: (command, c) => call('mutateBeverage', command, c, beverageReceipt) },
     interestThread: {
       read: c => call('readInterestThread', null, c, topicRead),
       mutate: (command, c) => call('mutateInterestThread', command, c, topicReceipt),

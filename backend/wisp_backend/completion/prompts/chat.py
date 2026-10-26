@@ -3,6 +3,7 @@
 import json
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage
+from wisp_backend.completion.prompts.beverage import beverage_block
 from wisp_backend.completion.prompts.blocks import common_blocks
 from wisp_backend.completion.prompts.character_guidance import DECISION_GUIDANCE
 from wisp_backend.completion.prompts.context import InteractionChatContext
@@ -128,6 +129,9 @@ def build_chat_blocks(
                 ),
             )
         )
+    beverage = beverage_block(context.beverage_preference)
+    if beverage is not None:
+        blocks.append(beverage)
     # Wire validation guarantees user/assistant pairs followed by the current user.
     for index in range(0, len(context.messages) - 1, 2):
         pair = context.messages[index : index + 2]

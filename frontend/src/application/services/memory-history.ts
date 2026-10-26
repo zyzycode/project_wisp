@@ -19,7 +19,7 @@ export class MemoryHistory {
   private appRunId: string;
   private session: ConversationSession | null = null;
   private pendingTurns = 0;
-  private turns: Promise<void> = Promise.resolve();
+  private turns: Promise<unknown> = Promise.resolve();
   constructor(private readonly options: MemoryHistoryOptions) { this.appRunId = options.createId(); }
   async hydrate(): Promise<readonly AIProviderContextMessage[]> {
     const c = this.options.context(); if (!c) return [];
@@ -28,24 +28,25 @@ export class MemoryHistory {
     if (!result.ok) { this.options.onFailure(result.code); return []; }
     return boundMemoryContext(result.value.map(message => ({ role: message.role === 'assistant' ? 'wisp' : 'user', text: message.content, createdAt: message.createdAt })));
   }
-  completed(turn: CompletedDialogueMemoryTurn): Promise<void> {
+  completed(turn: CompletedDialogueMemoryTurn): Promise<boolean> {
     const context = this.options.context();
-    if (!context || context.generation !== turn.memoryGeneration) return Promise.resolve();
-    if (this.pendingTurns >= 100) { this.options.onFailure('busy'); return Promise.resolve(); }
+    if (!context || context.generation !== turn.memoryGeneration) return Promise.resolve(false);
+    if (this.pendingTurns >= 100) { this.options.onFailure('busy'); return Promise.resolve(false); }
     this.pendingTurns++;
     const write = this.turns.then(() => this.appendCompleted(turn, context));
     this.turns = write.finally(() => { this.pendingTurns--; });
-    return this.turns;
+    return write;
   }
-  private async appendCompleted(turn: CompletedDialogueMemoryTurn, c: MemoryOperationContext): Promise<void> {
-    if (!this.isCurrent(c.generation)) return;
+  private async appendCompleted(turn: CompletedDialogueMemoryTurn, c: MemoryOperationContext): Promise<boolean> {
+    if (!this.isCurrent(c.generation)) return false;
     const session = this.session ?? { id: this.options.createId(), appRunId: this.appRunId, startedAt: turn.user.createdAt, endedAt: null };
-    const result = await this.safe(() => this.options.history.appendTurn({ session, ...(turn.interestThread ? { interestThread: turn.interestThread } : {}), ...(turn.memoryConfirmable === undefined ? {} : { memoryConfirmable: turn.memoryConfirmable }),
+    const result = await this.safe(() => this.options.history.appendTurn({ session, ...(turn.beverageUse ? { beverageUse: turn.beverageUse } : {}), ...(turn.beverageCorrection ? { beverageCorrection: turn.beverageCorrection } : {}), ...(turn.beverageProposalSource ? { beverageProposalSource: true as const } : {}), ...(turn.interestThread ? { interestThread: turn.interestThread } : {}), ...(turn.memoryConfirmable === undefined ? {} : { memoryConfirmable: turn.memoryConfirmable }),
       user: { id: turn.user.id, conversationSessionId: session.id, role: 'user', content: turn.user.text, createdAt: turn.user.createdAt },
       assistant: { id: turn.assistant.id, conversationSessionId: session.id, role: 'assistant', content: turn.assistant.text, createdAt: turn.assistant.createdAt } }, c));
     if (result.ok && session.appRunId === this.appRunId) this.session = session;
-    if (!this.isCurrent(c.generation)) return;
+    if (!this.isCurrent(c.generation)) return false;
     if (result.ok) { this.session = session; if (!turn.localOnly) await this.options.onPersisted?.(turn, c); } else this.options.onFailure(result.code);
+    return result.ok;
   }
   async game(result: CursorGameResult, generation: number): Promise<void> {
     const c = this.options.context(); if (!c || c.generation !== generation || !result.playCompleted) return;
@@ -55,7 +56,7 @@ export class MemoryHistory {
     if (this.options.context()?.generation === generation && !saved.ok) this.options.onFailure(saved.code);
   }
   /** Recall can await preceding acknowledged fact corrections within its own bounded budget. */
-  whenSettled(): Promise<void> { return this.turns; }
+  whenSettled(): Promise<void> { return this.turns.then(() => undefined); }
   reset(): void { this.session = null; this.appRunId = this.options.createId(); }
   async close(endedAt: string): Promise<void> {
     const c = this.options.context(); if (!c) return;

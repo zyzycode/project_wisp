@@ -1,3 +1,4 @@
+import { BeverageStore } from './beverage-store';
 import { InterestThreadStore } from './interest-thread-store';
 import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -31,12 +32,15 @@ export class MemoryItemStore {
         if (storedDigest !== hash) throw new MemoryDataError('conflict');
         return itemReceipt(receipt);
       }
-      const row = this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ?`).get(c.itemId);
+      const row = this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ? AND category!='beverage_preference'`).get(c.itemId);
       const current = row === undefined ? null : parseRow(row);
       if (c.kind === 'confirm' && this.db.prepare('SELECT 1 FROM memory_mutation_receipts WHERE item_id = ? LIMIT 1').get(c.itemId)) throw new MemoryDataError('conflict');
       if (c.kind === 'confirm' ? current !== null : current === null || current.revision !== c.expectedRevision) throw new MemoryDataError('conflict');
       const revision = (current?.revision ?? 0) + 1;
-      if (current) new InterestThreadStore(this.db).invalidateCardSource(c.itemId);
+      if (current) {
+        new InterestThreadStore(this.db).invalidateCardSource(c.itemId);
+        new BeverageStore(this.db).invalidateCardSource(c.itemId);
+      }
       if (c.kind === 'confirm' || c.kind === 'update') {
         this.validateSource(c);
         this.db.prepare(`INSERT INTO memory_items (id, revision, status, category, label, text, occurred_on, confirmed_at, command_id, source_user_id, source_assistant_id)
@@ -47,7 +51,7 @@ export class MemoryItemStore {
         this.db.prepare('INSERT OR IGNORE INTO memory_item_sources VALUES (?, ?, ?)').run(c.itemId, c.source.userMessageId, c.source.assistantMessageId);
         this.db.prepare('INSERT OR IGNORE INTO memory_suppressed_pairs VALUES (?, ?)').run(c.source.userMessageId, c.source.assistantMessageId);
         this.db.prepare('DELETE FROM memory_item_terms WHERE item_id = ?').run(c.itemId);
-        const item = parseRow(this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ?`).get(c.itemId));
+        const item = parseRow(this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ? AND category!='beverage_preference'`).get(c.itemId));
         const order = integer(record(this.db.prepare('SELECT insertion_order FROM memory_items WHERE id = ?').get(c.itemId)).insertion_order, 1);
         const insert = this.db.prepare('INSERT INTO memory_item_terms VALUES (?, ?, ?)');
         for (const token of tokens(item)) insert.run(token, c.itemId, order);
@@ -56,13 +60,13 @@ export class MemoryItemStore {
         this.db.prepare('DELETE FROM memory_item_terms WHERE item_id=?').run(c.itemId);
       } else this.db.prepare('DELETE FROM memory_items WHERE id=?').run(c.itemId);
       const outcome: MemoryItemReceipt['outcome'] = c.kind === 'delete' ? 'deleted' : c.kind === 'withdraw' ? 'withdrawn' : 'active';
-      this.db.prepare('INSERT INTO memory_mutation_receipts VALUES (?, ?, ?, ?, ?, ?)').run(c.commandId, c.kind, c.itemId, revision, outcome, hash);
+      this.db.prepare('INSERT INTO memory_mutation_receipts (command_id,kind,item_id,revision,outcome,digest) VALUES (?, ?, ?, ?, ?, ?)').run(c.commandId, c.kind, c.itemId, revision, outcome, hash);
       return { commandId: c.commandId, itemId: c.itemId, revision, outcome };
     }).immediate();
   }
   list(input: unknown): MemoryItemPage {
     const q = itemListQuery(input);
-    const rows = this.db.prepare(`SELECT ${columns}, insertion_order FROM memory_items WHERE (? IS NULL OR insertion_order < ?) ORDER BY insertion_order DESC LIMIT ?`).all(q.cursor, q.cursor, q.limit + 1);
+    const rows = this.db.prepare(`SELECT ${columns}, insertion_order FROM memory_items WHERE category!='beverage_preference' AND (? IS NULL OR insertion_order < ?) ORDER BY insertion_order DESC LIMIT ?`).all(q.cursor, q.cursor, q.limit + 1);
     const page = rows.slice(0, q.limit);
     const items = page.map(row => { const { insertion_order: _order, ...rest } = record(row); return parseRow(rest); });
     const last = page[page.length - 1];

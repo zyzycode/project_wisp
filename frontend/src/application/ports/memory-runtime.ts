@@ -2,6 +2,9 @@ import type { AIProviderContextMessage } from './ai-provider.interface';
 import type { ChatContextLimits } from './memory-repository.interface';
 
 export interface CompletedDialogueMemoryTurn {
+  readonly beverageUse?: import('./memory-beverage.interface').BeverageTurnUse;
+  readonly beverageCorrection?: import('./memory-beverage.interface').BeverageCorrectionTurn;
+  readonly beverageProposalSource?: true;
   readonly interestThread?: import('./interest-thread.interface').InterestThreadTurnUse;
   readonly memoryConfirmable?: boolean;
   /** Local acknowledgement is history only, never fact extraction or learning. */
@@ -11,10 +14,11 @@ export interface CompletedDialogueMemoryTurn {
   readonly memoryGeneration: number;
 }
 export interface DialogueMemoryHooks {
+  readonly beverage?: import('./memory-beverage.interface').IBeverageDialogue;
   readonly interestThread?: import('./interest-thread.interface').IInterestThreadDialogue;
   readonly generation: () => number;
   readonly recall?: import('./memory-knowledge.interface').ILocalMemoryRecall;
-  readonly completed: (turn: CompletedDialogueMemoryTurn) => void;
+  readonly completed: (turn: CompletedDialogueMemoryTurn) => void | Promise<boolean>;
   /** Present only for the local Mock; network providers retain their six-message policy. */
   readonly contextLimits?: ChatContextLimits;
 }
@@ -25,6 +29,7 @@ export interface MemoryScheduler {
 export interface InitialDialogueContext { readonly messages: readonly AIProviderContextMessage[] }
 
 export interface MemoryRepositories {
+  readonly beverage?: import('./memory-beverage.interface').IBeveragePreferencesRepository;
   readonly interestThread?: import('./interest-thread.interface').IInterestThreadRepository;
   readonly items?: import('./memory-items.interface').IMemoryItemsRepository;
   readonly history: import('./memory-repository.interface').IChatHistoryRepository;

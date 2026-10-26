@@ -143,3 +143,17 @@ describe('Preload: Shimeji bridge', () => {
     expect(electronMocks.on).toHaveBeenCalledWith('wisp:brain-state', registeredListener);
   });
 });
+
+it('validates beverage consent, outbound preference shapes and per-turn opt-in through Preload', async () => {
+  const api = exposedApi(); electronMocks.invoke.mockReset();
+  const command = { streamId: 's', sequence: 1, generation: 0, commandId: 'c', kind: 'save_hypothesis', itemId: 'i', expected: null, offerId: 'o', consented: true } as const;
+  electronMocks.invoke.mockResolvedValueOnce({ ok: false, generation: 0, code: 'unavailable' });
+  await expect(api.beveragePreference!.mutate(command)).resolves.toMatchObject({ ok: false });
+  expect(electronMocks.invoke).toHaveBeenLastCalledWith('wisp:mutate-beverage', command);
+  electronMocks.invoke.mockResolvedValueOnce({ ok: true, generation: 0, value: null, providerSecret: true });
+  await expect(api.beveragePreference!.read({ streamId: 's' })).rejects.toThrow();
+  electronMocks.invoke.mockResolvedValueOnce({ status: 'accepted', conversationId: 'c' });
+  await api.postDialogueCommand({ type: 'send', streamId: 's', conversationId: 'c', sequence: 1, text: 'чай', requestBeverageProposal: true });
+  expect(electronMocks.invoke).toHaveBeenLastCalledWith('wisp:dialogue-command', expect.objectContaining({ requestBeverageProposal: true }));
+  electronMocks.invoke.mockReset();
+});

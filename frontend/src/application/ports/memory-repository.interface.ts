@@ -41,6 +41,7 @@ export interface ConversationSession {
 
 /** A completed, displayed turn; session creation and both messages commit together. */
 export interface CompletedChatTurn {
+  readonly beverageProposalSource?: true;
   /** Suppress all derived output pairs of an actually dispatched current preference projection. */
   readonly beverageUse?: import('./memory-beverage.interface').BeverageTurnUse;
   /** Atomically applies a previously admitted explicit coffee/tea correction after source append. */

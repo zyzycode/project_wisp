@@ -6,7 +6,7 @@ import type { MemoryRepositories } from '../../src/application/ports/memory-runt
 import type { MemoryResult, PersistedCharacterStateSnapshot } from '../../src/application/ports/memory-repository.interface';
 
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes; }); return { promise, resolve }; }
-function fixture() {
+function fixture(summary?: Pick<import('../../src/application/ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>) {
   vi.useFakeTimers(); vi.setSystemTime('2026-09-18T00:00:00.000Z'); let id = 0;
   const character = new CharacterStateService({ now: Date.now });
   const storage = {
@@ -19,7 +19,7 @@ function fixture() {
     close: vi.fn(async () => {}), abort: vi.fn(async () => {}),
   };
   const start = vi.fn(), pause = vi.fn(), resume = vi.fn(), resetCommitted = vi.fn(), hydrate = vi.fn();
-  const lifecycle = new MemoryLifecycle({ storage, character, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, toTimestamp: ms => new Date(ms).toISOString(), localMock: true, start, pause, resume, resetCommitted, hydrate });
+  const lifecycle = new MemoryLifecycle({ ...(summary ? { summary } : {}), storage, character, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, toTimestamp: ms => new Date(ms).toISOString(), localMock: true, start, pause, resume, resetCommitted, hydrate });
   return { lifecycle, storage, character, start, pause, resume, resetCommitted, hydrate };
 }
 afterEach(() => vi.useRealTimers());
@@ -129,4 +129,15 @@ it('failed migration save leaves the source v1 available for a clean restart', a
   expect(restarted.storage.character.save).toHaveBeenCalledTimes(1);
   expect(restarted.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2 });
   await restarted.lifecycle.shutdown();
+});
+
+it('invalidates summary again after acknowledged same-generation beverage correction append', async () => {
+  const summary = { invalidate: vi.fn(), reset: vi.fn(async () => ({ ok: true as const, value: undefined })), dispose: vi.fn() };
+  const f = fixture(summary); await f.lifecycle.initialize();
+  const pending = deferred<MemoryResult<void>>(); f.storage.history.appendTurn.mockReturnValueOnce(pending.promise);
+  const completed = f.lifecycle.history.completed({ memoryGeneration: 0, memoryConfirmable: true, beverageCorrection: { expected: { itemId: 'item', revision: 2 }, value: 'tea', requestId: 'r', userMessageId: 'u' }, user: { id: 'u', text: 'Нет, предпочитаю чай', createdAt: new Date().toISOString() }, assistant: { id: 'a', text: 'Поняла', createdAt: new Date().toISOString() } });
+  await Promise.resolve(); expect(summary.invalidate).not.toHaveBeenCalled();
+  pending.resolve({ ok: true, value: undefined }); expect(await completed).toBe(true);
+  expect(summary.invalidate).toHaveBeenCalledTimes(1); expect(f.lifecycle.currentGeneration()).toBe(0);
+  expect(f.storage.facts.upsert).not.toHaveBeenCalled(); await f.lifecycle.shutdown();
 });

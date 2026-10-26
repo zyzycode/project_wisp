@@ -100,7 +100,7 @@ export type MemoryCardListResultDTO =
   | { readonly ok: true; readonly generation: number; readonly items: readonly MemoryCardDTO[]; readonly nextCursor: number | null }
   | { readonly ok: false; readonly generation: number; readonly code: MemoryCardFailureDTO };
 
-/** Additive bridge declarations; #114 supplies validators, handlers and UI wiring. */
+/** Explicit beverage preference commands; opaque offers resolve only in Main. */
 export interface BeveragePreferenceRefDTO { readonly itemId: string; readonly revision: number }
 export interface BeveragePreferenceDTO {
   readonly ref: BeveragePreferenceRefDTO;
@@ -530,6 +530,7 @@ export interface SummaryApiBridge {
 
 export interface WispApiBridge {
   readonly interestThread?: InterestThreadApiBridge;
+  readonly beveragePreference?: BeveragePreferenceBridge;
   readonly observationCommand?: import('./observation-contracts').ObservationBridge['observationCommand'];
   readonly summary?: SummaryApiBridge;
   mutateMemoryCard(command: MemoryCardCommandDTO): Promise<MemoryCardResultDTO>;

@@ -128,6 +128,7 @@ export interface AIProviderResponse {
 }
 
 export interface IAIProvider {
+  canIncludeBeverage?(request: AIProviderRequest): boolean;
   /** Absent means unsupported. Check capability and ready status before reserving a topic. */
   readonly supportsDialogueTopic?: true;
   /** Whether the final wire projection keeps summary; lets recall restore covered sources when it does not fit. */

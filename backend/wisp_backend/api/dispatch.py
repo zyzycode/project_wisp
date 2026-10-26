@@ -11,6 +11,7 @@ from wisp_backend.api.schemas.observation import ObservationRequest
 from wisp_backend.api.schemas.summary import SummaryRequest
 from wisp_backend.completion.contracts import CompletionJob, InferenceRequest
 from wisp_backend.completion.policies import POLICIES
+from wisp_backend.completion.prompts.beverage import bounded_preference
 from wisp_backend.completion.prompts.context import (
     DialogueTurn,
     EventContext,
@@ -64,6 +65,10 @@ def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | Non
         interaction=InteractionContext(body.card.model_dump(), body.effectPolicy),
         previous_touch=body.previousTouch.model_dump() if body.previousTouch is not None else None,
         dialogue_topic=body.dialogueTopic.model_dump() if body.dialogueTopic is not None else None,
+        beverage_preference=bounded_preference(
+            body.beveragePreference.model_dump(exclude_none=True) if body.beveragePreference is not None else None,
+            trim_text(body.messages[-1].content),
+        ),
     )
 
 
@@ -117,5 +122,14 @@ def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> C
         request_id=body.requestId,
         inference=InferenceRequest(policy.build_blocks(context), policy.max_output_tokens, policy.context_window),
         timeout=policy.timeout,
-        encoder=WireReplyEncoder(body.requestId, policy, endpoint.response_type, quote, effect_policy),
+        encoder=WireReplyEncoder(
+            body.requestId,
+            policy,
+            endpoint.response_type,
+            quote,
+            effect_policy,
+            isinstance(context, InteractionChatContext)
+            and context.beverage_preference is not None
+            and context.beverage_preference["allowProposal"] is True,
+        ),
     )

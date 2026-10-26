@@ -1,3 +1,4 @@
+import { parseBeverageCommand, parseBeverageRead, parseBeverageReadResult, parseBeverageMutationResult } from '../shared/beverage-validation';
 import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
 import { parseMemoryCardCommand, parseMemoryCardListCommand, parseMemoryCardListResult, parseMemoryCardResult } from '../shared/memory-card-validation';
 import type { ClearMemoryUseCase } from '../application/services/clear-memory.use-case';
@@ -9,6 +10,7 @@ interface Options {
   readonly getSender: () => object | null;
   readonly getStatus: () => MemoryStatusDTO;
   readonly clear: ClearMemoryUseCase;
+  readonly beverage?: import('../shared/ipc-contracts').BeveragePreferenceBridge;
   readonly interestThread?: import('../shared/ipc-contracts').InterestThreadApiBridge;
   readonly cards?: {
     mutate(command: MemoryCardCommandDTO): Promise<MemoryCardResultDTO>;
@@ -23,6 +25,10 @@ export function registerMemoryIpc(options: Options): () => void {
     options.register('wisp:read-interest-thread', async (event, ...args) => { trusted(event.sender); if (args.length !== 1) throw new TypeError('Invalid topic arguments'); return parseInterestThreadReadResult(await options.interestThread!.read(parseInterestThreadRead(args[0]))); });
     options.register('wisp:mutate-interest-thread', async (event, ...args) => { trusted(event.sender); if (args.length !== 1) throw new TypeError('Invalid topic arguments'); return parseInterestThreadMutationResult(await options.interestThread!.mutate(parseInterestThreadCommand(args[0]))); });
   }
+  if (options.beverage) {
+    options.register('wisp:read-beverage', async (event, ...args) => { trusted(event.sender); if (args.length !== 1) throw new TypeError('Invalid preference arguments'); return parseBeverageReadResult(await options.beverage!.read(parseBeverageRead(args[0]))); });
+    options.register('wisp:mutate-beverage', async (event, ...args) => { trusted(event.sender); if (args.length !== 1) throw new TypeError('Invalid preference arguments'); return parseBeverageMutationResult(await options.beverage!.mutate(parseBeverageCommand(args[0]))); });
+  }
   const cards = options.cards;
   if (cards) {
     options.register('wisp:mutate-memory-card', async (event, ...args) => {
@@ -34,5 +40,5 @@ export function registerMemoryIpc(options: Options): () => void {
       return parseMemoryCardListResult(await cards.list(parseMemoryCardListCommand(args[0])));
     });
   }
-  return () => { if (options.interestThread) { options.remove('wisp:read-interest-thread'); options.remove('wisp:mutate-interest-thread'); } if (cards) { options.remove('wisp:mutate-memory-card'); options.remove('wisp:list-memory-cards'); } options.remove('wisp:get-memory-status'); options.remove('wisp:clear-memory'); };
+  return () => { if (options.beverage) { options.remove('wisp:read-beverage'); options.remove('wisp:mutate-beverage'); } if (options.interestThread) { options.remove('wisp:read-interest-thread'); options.remove('wisp:mutate-interest-thread'); } if (cards) { options.remove('wisp:mutate-memory-card'); options.remove('wisp:list-memory-cards'); } options.remove('wisp:get-memory-status'); options.remove('wisp:clear-memory'); };
 }

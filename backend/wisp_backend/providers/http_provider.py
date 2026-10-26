@@ -1,12 +1,20 @@
 """Bounded provider transport, envelope decoding and usage extraction."""
 
 import asyncio
+import json
 from abc import ABC, abstractmethod
 from typing import Any
 
 import httpx
 from wisp_backend.accounting.contracts import Usage
-from wisp_backend.completion.context import ContextBlock, ContextOverflow, render_messages, select_context
+from wisp_backend.completion.context import (
+    ContextBlock,
+    ContextOverflow,
+    StructuredReplySchema,
+    render_messages,
+    response_schema_for,
+    select_context,
+)
 from wisp_backend.completion.contracts import InferenceRequest, ProviderResult
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.errors import ServiceError
@@ -23,7 +31,12 @@ class HTTPProvider(ABC):
 
     @abstractmethod
     def request(
-        self, messages: list[dict[str, str]], settings: AssistantSettings, output_cap: int
+        self,
+        messages: list[dict[str, str]],
+        settings: AssistantSettings,
+        output_cap: int,
+        *,
+        response_schema: StructuredReplySchema | None = None,
     ) -> tuple[str, dict[str, Any]]: ...
 
     @abstractmethod
@@ -55,7 +68,9 @@ class HTTPProvider(ABC):
             # A cancelled count cannot dispatch generation. Return known zero usage
             # so the service can correct an uncertain reservation after cancellation.
             return ProviderResult(usage=Usage(0, 0, 0), error="upstream_timeout")
-        path, payload = self.request(render_messages(selected), self.settings, cap)
+        path, payload = self.request(
+            render_messages(selected), self.settings, cap, response_schema=response_schema_for(selected)
+        )
         timeout = deadline - asyncio.get_running_loop().time()
         if timeout <= 0:
             return ProviderResult(usage=Usage(0, 0, 0), error="upstream_timeout")
@@ -73,7 +88,21 @@ class HTTPProvider(ABC):
                     if len(content) + len(chunk) > MAX_UPSTREAM_BYTES:
                         return ProviderResult(error="invalid_model_response")
                     content.extend(chunk)
-                return self._decode_completion(content)
+                result = self._decode_completion(content)
+                if (
+                    response_schema_for(request.blocks) is not None
+                    and response_schema_for(selected) is None
+                    and result.text is not None
+                ):
+                    # A dropped bundle cannot authorize a proposal, even if a provider invents it.
+                    try:
+                        decoded = decode_json(result.text)
+                        if isinstance(decoded, dict) and "beverageProposal" in decoded:
+                            decoded.pop("beverageProposal")
+                            result = ProviderResult(json.dumps(decoded, ensure_ascii=False), result.usage, result.error)
+                    except (ValueError, RecursionError):
+                        pass  # Required malformed output remains the semantic encoder's responsibility.
+                return result
         except httpx.TimeoutException:
             return ProviderResult(error="upstream_timeout")
         except httpx.RequestError:
@@ -97,7 +126,7 @@ class HTTPProvider(ABC):
         def estimate(blocks: tuple[ContextBlock, ...]) -> int:
             self.remaining(deadline)
             messages = render_messages(blocks)
-            _, payload = self.request(messages, self.settings, cap)
+            _, payload = self.request(messages, self.settings, cap, response_schema=response_schema_for(blocks))
             return estimate_input(payload, len(messages))
 
         return select_context(request.blocks, allowance, estimate)

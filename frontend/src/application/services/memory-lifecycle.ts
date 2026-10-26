@@ -42,7 +42,7 @@ export class MemoryLifecycle {
   private shutdownPromise: Promise<void> | undefined;
   constructor(private readonly options: Options) {
     this.knowledge = new MemoryKnowledge({ invalidateSummary: () => options.summary?.invalidate(), facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
-    this.history = new MemoryHistory({ ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => this.knowledge.persisted(turn, context), ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
+    this.history = new MemoryHistory({ ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => { if (turn.beverageCorrection) options.summary?.invalidate(); return this.knowledge.persisted(turn, context); }, ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
   }
   currentGeneration(): number { return this.generation; }
   getStatus(): MemoryStatusDTO { return { ...this.status }; }
@@ -173,6 +173,23 @@ export class MemoryLifecycle {
     if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
     this.phase = 'running'; this.scheduleCheckpoint();
     return result;
+  }
+  async readBeverage() {
+    const c = this.context(), repository = this.options.storage.beverage;
+    if (!c || !repository || this.phase !== 'running') return { ok: false as const, code: 'unavailable' as const };
+    const result = await this.safe(() => repository.read(c));
+    return this.context()?.generation === c.generation ? result : { ok: false as const, code: 'stale' as const };
+  }
+  async mutateBeverage(command: import('../ports/memory-beverage.interface').BeverageMutation, admissionToken?: object) {
+    const repository = this.options.storage.beverage;
+    if (!repository || !this.context() || this.phase !== 'running') return { ok: false as const, code: 'unavailable' as const };
+    this.phase = 'mutating'; this.generation++; this.stopTimer();
+    const generation = this.generation;
+    this.options.summary?.invalidate(); this.options.invalidateMemory?.(admissionToken);
+    const result = await this.safe(() => repository.mutate(command, { generation }));
+    if (this.phase !== 'mutating' || this.generation !== generation) return { ok: false as const, code: 'stale' as const };
+    if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
+    this.phase = 'running'; this.scheduleCheckpoint(); return result;
   }
   async readInterestThread() {
     const c = this.context(), repository = this.options.storage.interestThread;

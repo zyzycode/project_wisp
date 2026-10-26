@@ -1,0 +1,77 @@
+{
+  "before": {
+    "path": "issue114_before.json",
+    "sha256": "9c8095fba038212fb258933abd907db52793fea0d1122e5c70dde2dd34a6eb99"
+  },
+  "after": {
+    "path": "issue114_after.json",
+    "sha256": "20bb5f168697efe531f4e5da89e70061aafa3ddf705f092c477c7bb4cdc02a6d"
+  },
+  "enabled": {
+    "path": "issue114_enabled.json",
+    "sha256": "5129a96953a7187773f099c27527c8fb248210e88ae2023c3b9748bfdcf0f4c2"
+  },
+  "no_field_reports": 120,
+  "no_field_allowed_deltas": [
+    "source_digests (exact provenance allowlist below)"
+  ],
+  "source_changes": {
+    "completion/prompts/chat.py": {
+      "before": "5433e82c12153712cf88fb81014af3b1cb3f6bd90df5000e18367e12d0fe1cea",
+      "after": "c41761db42de58ee62aab24c4aef694ce2213d1fe67645d86b9c4fdf393d76dc"
+    },
+    "prompt_inspection/report.py": {
+      "before": "031fe462838ac5b65becf6208df465625025213d289bacbeed36153085e4ab7b",
+      "after": "da199aacb6a86aa37c390fec7e472e47a9e6dc35f9bbc2ccc4dcad1ca39db571"
+    },
+    "api/schemas/interaction.py": {
+      "before": "0ac56acc9a262f82520842cab836ae9d8ec745e8a83cc725fd3b65fa71473489",
+      "after": "6c562542be30e8cbfde8dd2d59c4af5242a322c28e504e3040ab5cb3a93e4f50"
+    },
+    "completion/prompts/context.py": {
+      "before": "f10bd5f268592cb93d77214e144e12d0218285bed012233368b7a8932c226032",
+      "after": "c713d380ec7def5264abe96a41899a9548b48a7af515cff661c78c1c36b870de"
+    },
+    "providers/gemini.py": {
+      "before": "41468fd348ee901b2e4cdf27dfb4c1de942761072e7de1cbe91995bf07757a34",
+      "after": "58a50dc24eb319b81cec8e56c66f62aeaaebc06125d519bfcc1cc249d0acfda4"
+    },
+    "completion/context.py": {
+      "before": "0207c021ab4a61f0db6d1eff2b2aa659bb321557a5edc374d1018d55553abfd8",
+      "after": "6b605dbe35020f173014d2867b50fe776c753930d36223beb911df96ed018078"
+    },
+    "api/dispatch.py": {
+      "before": "96bedbc8437889c0829d5fdb670b7ff3f341c31cccb5c73a5b0dd160e6c6bcd6",
+      "after": "3affcca21718c58bdd185a467bb66db03ed7527dea3d09044bd01e518e2b1fce"
+    },
+    "completion/policies.py": {
+      "before": "29fa1c4f9d45a2c2b69b85c46ccb700b13e3499b482724f1421237d33e800e05",
+      "after": "86b3c20649125c55f4cbf76a427c0af8c4258359aaf4c6a5dc97208ef7494770"
+    },
+    "completion/prompts/beverage.py": {
+      "before": null,
+      "after": "21566b6cea34625f9e03a8d2c2f865c8d0d6cc72871896bb31e760f8ca8d2ca0"
+    },
+    "providers/openai.py": {
+      "before": "7cd0c1c861ac3318be5ba5e68996103e09b9e46e1d2d67b8df8222cf42648105",
+      "after": "03028c306ac112823173b8b87275a58fc79d5a12d29435551040b85603a88c85"
+    }
+  },
+  "enabled_allowed_deltas": [
+    "beverage_case diagnostic metadata",
+    "one last-priority atomic beverage_preference system+untrusted-user block",
+    "OpenAI response_format json_schema or Gemini responseJsonSchema only for selected opt_in",
+    "corresponding selected keys/trace/byte sizes/estimates/digests; baseline blocks/resource selection unchanged"
+  ],
+  "preserved_archives": {
+    "issue123_comparison.json": "a17c02558d91e825bbec59ac8e29b6ea50d59298e790a542a8831facc784e2ce",
+    "issue117_inputs.json": "04e56cce675966494d303b1786bc02cde023a42225af988d7bfdda561afaeade",
+    "issue123_before.json": "dd93ddb72e89e0508821f1914ce4874163ec3a16348253628e37b5731550ce65",
+    "issue117_after.json": "321f78880d381fe6514d414526404177821fcf669bfd95dabbf603e192f9a3f3",
+    "issue117_before.json": "993c57a34237e3293036404d1ebc1a1193618c5e22fb762a40b49a6155b4af85",
+    "issue123_after.json": "f658f853850baef0c8aceaeb8316202aa4c80db60acbef8648cb537cc476f9f0",
+    "issue117_live.json": "6c642617c65fa9e50e4d39e323765b602fa98a8d5bc17b07be5499007c2f1440",
+    "issue117_comparison.json": "d6cc3ed5e5135614eb2e382c8fcb4fc8196d7fe9ecfed6e84d7b03aea0420129"
+  },
+  "live_quality": "NOT RUN; zero provider calls; structure does not prove semantic quality"
+}

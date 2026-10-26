@@ -1,0 +1,1301 @@
+{
+  "requests": [
+    {
+      "name": "null",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": null
+      }
+    },
+    {
+      "name": "array",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": []
+      }
+    },
+    {
+      "name": "numeric-true",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {
+          "allowProposal": 1
+        }
+      }
+    },
+    {
+      "name": "numeric-false",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {
+          "allowProposal": 0
+        }
+      }
+    },
+    {
+      "name": "no-current",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {
+          "allowProposal": false
+        }
+      }
+    },
+    {
+      "name": "missing-allow",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {}
+      }
+    },
+    {
+      "name": "unknown",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {
+          "allowProposal": true,
+          "sourceId": "x"
+        }
+      }
+    },
+    {
+      "name": "null-current",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {
+          "allowProposal": true,
+          "current": null
+        }
+      }
+    },
+    {
+      "name": "unknown-current",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {
+          "allowProposal": false,
+          "current": {
+            "value": "coffee",
+            "validity": "hypothesis",
+            "extra": true
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid-value",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {
+          "allowProposal": false,
+          "current": {
+            "value": "juice",
+            "validity": "confirmed"
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid-validity",
+      "value": {
+        "requestId": "dbb40246-fc9f-4f59-a0a6-6b36a63259e6",
+        "event": {
+          "type": "user_message"
+        },
+        "stream": false,
+        "locale": "ru",
+        "character": {
+          "needs": {
+            "energy": 80,
+            "attention": 50,
+            "play": 60,
+            "comfort": 80,
+            "boredom": 10
+          },
+          "relationship": {
+            "friendship": 100,
+            "love": 0,
+            "loveUnlocked": false
+          },
+          "personality": {
+            "presetId": "curiousStubbornGirl",
+            "aiSelfConcept": "Я Wisp, твой компаньон.",
+            "traits": {
+              "shyness": 0.4,
+              "playfulness": 0.6,
+              "sensitivity": 0.5,
+              "boldness": 0.4
+            }
+          },
+          "intimacy": {
+            "flirtiness": 0,
+            "romanticCharge": 0,
+            "userConsentEnabled": false
+          },
+          "synthesizedTone": "curious",
+          "expression": {
+            "pace": "gentle",
+            "trust": "guarded",
+            "attention": "ordinary",
+            "play": "ordinary",
+            "romanceAllowed": false
+          }
+        },
+        "memory": {
+          "facts": [
+            {
+              "key": "user.display_name",
+              "value": "Аня"
+            },
+            {
+              "key": "user.reply_style",
+              "value": "brief"
+            }
+          ],
+          "episodes": [
+            {
+              "kind": "cursor_game",
+              "outcome": "caught",
+              "executedMs": 1900,
+              "occurredAt": "2026-09-18T08:30:00.000Z"
+            }
+          ],
+          "characterPreferences": [
+            {
+              "key": "activity.cursor_game",
+              "value": 12,
+              "confidence": 0.5
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Я обычно предпочитаю кофе."
+          }
+        ],
+        "previousInitiative": {
+          "kind": "social_bid",
+          "text": "Хочешь поговорить о музыке?",
+          "createdAt": "2026-09-18T09:00:01.000Z"
+        },
+        "summary": {
+          "text": "Пользователь обсуждал космос."
+        },
+        "card": {
+          "id": "curiousStubbornGirl",
+          "revision": 2
+        },
+        "effectPolicy": "suppressed",
+        "previousTouch": {
+          "action": "touch",
+          "occurredAt": "2026-10-17T08:30:00.000Z",
+          "publishedText": "Мне приятно это лёгкое касание.",
+          "appraisal": {
+            "category": "supportive",
+            "intensity": "low",
+            "confidence": "clear"
+          },
+          "effect": "accepted",
+          "reason": "applied",
+          "energyBand": "rested",
+          "comfortBand": "calm"
+        },
+        "beveragePreference": {
+          "allowProposal": false,
+          "current": {
+            "value": "coffee",
+            "validity": "rejected"
+          }
+        }
+      }
+    }
+  ],
+  "proposals": [
+    {
+      "name": "null",
+      "value": null
+    },
+    {
+      "name": "array",
+      "value": []
+    },
+    {
+      "name": "invalid-value",
+      "value": {
+        "value": "juice",
+        "evidenceQuote": "Я обычно предпочитаю кофе."
+      }
+    },
+    {
+      "name": "unknown",
+      "value": {
+        "value": "coffee",
+        "evidenceQuote": "Я обычно предпочитаю кофе.",
+        "confidence": 1
+      }
+    },
+    {
+      "name": "mismatch",
+      "value": {
+        "value": "coffee",
+        "evidenceQuote": "кофе"
+      }
+    },
+    {
+      "name": "trim",
+      "value": {
+        "value": "coffee",
+        "evidenceQuote": " Я обычно предпочитаю кофе."
+      }
+    },
+    {
+      "name": "empty",
+      "value": {
+        "value": "coffee",
+        "evidenceQuote": ""
+      }
+    },
+    {
+      "name": "utf16-overflow",
+      "value": {
+        "value": "coffee",
+        "evidenceQuote": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      }
+    },
+    {
+      "name": "control",
+      "value": {
+        "value": "coffee",
+        "evidenceQuote": "\u0000"
+      }
+    },
+    {
+      "name": "numeric-quote",
+      "value": {
+        "value": "coffee",
+        "evidenceQuote": 1
+      }
+    }
+  ]
+}

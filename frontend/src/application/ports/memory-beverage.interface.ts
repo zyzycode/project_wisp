@@ -1,4 +1,4 @@
-/** Narrow coffee/tea hypotheses, MEMORY_ENGINE §15. Declarations; activation belongs to #114. */
+/** Narrow coffee/tea hypotheses and explicit statements, MEMORY_ENGINE §15. */
 import type { MemorySourcePair } from './memory-items.interface';
 import type { MemoryOperationContext, MemoryResult } from './memory-repository.interface';
 
@@ -12,6 +12,8 @@ export interface BeveragePreference {
   readonly validity: 'hypothesis' | 'confirmed' | 'rejected';
   readonly manuallyCorrected: boolean;
   readonly status: 'active' | 'withdrawn';
+  /** Derived from the validated current source pair; never a persisted text copy. */
+  readonly evidenceQuote: string;
   readonly source: MemorySourcePair;
   readonly updatedAt: string;
 }
@@ -56,4 +58,18 @@ export interface BeverageCorrectionTurn {
 export interface IBeveragePreferencesRepository {
   read(context: MemoryOperationContext): Promise<MemoryResult<BeveragePreference | null>>;
   mutate(command: BeverageMutation, next: MemoryOperationContext): Promise<MemoryResult<BeverageReceipt>>;
+}
+
+export interface BeverageCapture {
+  readonly generation: number;
+  readonly context: AIProviderBeverageContext;
+  readonly use?: BeverageTurnUse;
+}
+export interface IBeverageDialogue {
+  invalidateOffer(): void;
+  admit(input: { readonly text: string; readonly replyToTopic: boolean; readonly admissionToken: object; readonly deadlineMs: number }, context: MemoryOperationContext): Promise<MemoryResult<{ readonly generation: number; readonly correction?: { readonly expected: BeveragePreferenceRef; readonly value: BeverageValue } }>>;
+  prepare(input: { readonly requestId: string; readonly userMessageId: string; readonly allowProposal: boolean }, context: MemoryOperationContext): Promise<MemoryResult<BeverageCapture | null>>;
+  offer(proposal: BeverageProposal, source: MemorySourcePair, generation: number): BeverageOffer | null;
+  resolveOffer(offerId: string): BeverageOffer | null;
+  isCurrent(capture: BeverageCapture): boolean;
 }

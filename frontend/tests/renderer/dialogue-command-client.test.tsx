@@ -9,7 +9,7 @@ function snapshot(revision: number, streamId = 'stream'): BrainStateDTO {
 }
 function fixture() {
   let settle!: (receipt: DialogueCommandReceiptDTO) => void;
-  const postDialogueCommand = vi.fn(() => new Promise<DialogueCommandReceiptDTO>(resolve => { settle = resolve; }));
+  const postDialogueCommand = vi.fn((_command: import('../../src/shared/ipc-contracts').DialogueCommandDTO) => new Promise<DialogueCommandReceiptDTO>(resolve => { settle = resolve; }));
   const client = new DialogueCommandClient({ postDialogueCommand }); client.accept(snapshot(1));
   return { client, postDialogueCommand, settle: (r: DialogueCommandReceiptDTO) => settle(r) };
 }
@@ -44,3 +44,14 @@ it('keeps the newest policy notice without allowing stale snapshots to clear it 
   expect(await f.client.send('Again')).toBe(false); expect(f.postDialogueCommand).not.toHaveBeenCalled();
   f.client.accept(snapshot(4)); expect(f.client.getState().submissionMessage).toBeUndefined();
 });
+
+it('sends explicit beverage proposal permission once and allows cancelling it before send', async () => {
+  const f = fixture(); f.client.requestBeverageProposal(); expect(f.client.getState()).toHaveProperty('beverageProposal', true);
+  const first = f.client.send('Чай'); expect(f.postDialogueCommand.mock.calls[0]?.[0]).toMatchObject({ type: 'send', requestBeverageProposal: true });
+  f.settle({ status: 'accepted', conversationId: 'c' }); await first;
+  expect(f.client.getState()).not.toHaveProperty('beverageProposal');
+  const next = f.client.send('А теперь о другом'); expect(f.postDialogueCommand.mock.calls[1]?.[0]).not.toHaveProperty('requestBeverageProposal');
+  f.settle({ status: 'accepted', conversationId: 'c' }); await next;
+  f.client.requestBeverageProposal(); f.client.cancelBeverageProposal(); expect(f.client.getState()).not.toHaveProperty('beverageProposal');
+});
+it('drops queued beverage permission on stream/conversation replacement', () => { const f = fixture(); f.client.requestBeverageProposal(); f.client.accept({ ...snapshot(2), dialogue: { conversationId: 'reset', canSubmit: true, turn: { phase: 'idle' } } }); expect(f.client.getState()).not.toHaveProperty('beverageProposal'); f.client.requestBeverageProposal(); f.client.accept(snapshot(1, 'new')); expect(f.client.getState()).not.toHaveProperty('beverageProposal'); });

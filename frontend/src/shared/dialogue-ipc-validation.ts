@@ -1,3 +1,4 @@
+import { beverageId, parseBeverageProposal } from './beverage-validation';
 import { parseInterestThreadRef } from './interest-thread-validation';
 import type { DialogueCommandDTO, DialogueCommandReceiptDTO, DialoguePresentationDTO, DialogueFallbackReasonDTO, MemoryCardSourceDTO } from './ipc-contracts';
 
@@ -24,12 +25,13 @@ export function enumValue<const T extends string>(value: unknown, values: readon
   if (typeof value !== 'string' || !values.includes(value as T)) throw new TypeError('Invalid dialogue enum'); return value as T;
 }
 export function parseDialogueCommand(value: unknown): DialogueCommandDTO {
-  const base = exactRecord(value, ['type', 'streamId', 'conversationId', 'sequence'], ['text', 'replyToInterestThread']);
+  const base = exactRecord(value, ['type', 'streamId', 'conversationId', 'sequence'], ['text', 'replyToInterestThread', 'requestBeverageProposal']);
   const type = enumValue(base.type, ['send', 'reset']);
-  exactRecord(value, ['type', 'streamId', 'conversationId', 'sequence', ...(type === 'send' ? ['text'] : [])], type === 'send' ? ['replyToInterestThread'] : []);
+  exactRecord(value, ['type', 'streamId', 'conversationId', 'sequence', ...(type === 'send' ? ['text'] : [])], type === 'send' ? ['replyToInterestThread', 'requestBeverageProposal'] : []);
   if (!Number.isSafeInteger(base.sequence) || typeof base.sequence !== 'number' || base.sequence <= 0) throw new TypeError('Invalid sequence');
   const meta = { streamId: id(base.streamId), conversationId: id(base.conversationId), sequence: base.sequence };
-  return type === 'send' ? { ...meta, type, text: plainText(base.text, 240, true), ...(Object.hasOwn(base, 'replyToInterestThread') ? { replyToInterestThread: parseInterestThreadRef(base.replyToInterestThread) } : {}) } : { ...meta, type };
+  if (Object.hasOwn(base, 'requestBeverageProposal') && base.requestBeverageProposal !== true) throw new TypeError('Invalid per-turn preference opt-in');
+  return type === 'send' ? { ...meta, type, text: plainText(base.text, 240, true), ...(base.requestBeverageProposal === true ? { requestBeverageProposal: true as const } : {}), ...(Object.hasOwn(base, 'replyToInterestThread') ? { replyToInterestThread: parseInterestThreadRef(base.replyToInterestThread) } : {}) } : { ...meta, type };
 }
 export function parseDialogueReceipt(value: unknown): DialogueCommandReceiptDTO {
   const r = exactRecord(value, ['status'], ['conversationId', 'reason']);
@@ -43,7 +45,7 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
   if (r.canSubmit && Object.hasOwn(r, 'submissionMessage')) throw new TypeError('Available dialogue cannot have admission notice');
   const meta = { conversationId: id(r.conversationId), canSubmit: r.canSubmit,
     ...(Object.hasOwn(r, 'submissionMessage') ? { submissionMessage: plainText(r.submissionMessage, 240, true) } : {}) };
-  const t = exactRecord(r.turn, ['phase'], ['requestId', 'replyText', 'outcome', 'message', 'memorySource', 'interestThread']);
+  const t = exactRecord(r.turn, ['phase'], ['requestId', 'replyText', 'outcome', 'message', 'memorySource', 'interestThread', 'beverageOffer']);
   switch (t.phase) {
     case 'idle': exactRecord(t, ['phase']); return { ...meta, turn: { phase: 'idle' } };
     case 'thinking': exactRecord(t, ['phase', 'requestId']);
@@ -52,7 +54,7 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
     case 'error': exactRecord(t, ['phase', 'requestId', 'message']);
       return { ...meta, turn: { phase: 'error', requestId: id(t.requestId), message: plainText(t.message, 2000) } };
     case 'completed': {
-      exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome'], ['memorySource', 'interestThread']);
+      exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome'], ['memorySource', 'interestThread', 'beverageOffer']);
       const o = exactRecord(t.outcome, ['kind'], ['reason']);
       if (o.kind === 'local') {
         exactRecord(t, ['phase', 'requestId', 'replyText', 'outcome']);
@@ -69,7 +71,13 @@ export function parseDialoguePresentation(value: unknown): DialoguePresentationD
         memorySource = { userMessageId: id(source.userMessageId), assistantMessageId: id(source.assistantMessageId) };
         if (memorySource.userMessageId === memorySource.assistantMessageId) throw new TypeError('Invalid memory source');
       }
-      return { ...meta, turn: { phase: 'completed', ...(Object.hasOwn(t, 'interestThread') ? { interestThread: parseInterestThreadRef(t.interestThread) } : {}), ...(memorySource ? { memorySource } : {}), requestId: id(t.requestId), replyText: plainText(t.replyText, 2000), outcome } };
+      let beverageOffer;
+      if (Object.hasOwn(t, 'beverageOffer')) {
+        if (kind !== 'success') throw new TypeError('Fallback cannot offer preference');
+        const offer = exactRecord(t.beverageOffer, ['offerId', 'value', 'evidenceQuote']);
+        const { offerId, ...proposal } = offer; beverageOffer = { offerId: beverageId(offerId), ...parseBeverageProposal(proposal) };
+      }
+      return { ...meta, turn: { phase: 'completed', ...(beverageOffer ? { beverageOffer } : {}), ...(Object.hasOwn(t, 'interestThread') ? { interestThread: parseInterestThreadRef(t.interestThread) } : {}), ...(memorySource ? { memorySource } : {}), requestId: id(t.requestId), replyText: plainText(t.replyText, 2000), outcome } };
     }
     default: throw new TypeError('Invalid turn');
   }

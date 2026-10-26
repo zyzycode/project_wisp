@@ -3,13 +3,19 @@
 from typing import Any
 
 from wisp_backend.accounting.contracts import Usage
+from wisp_backend.completion.context import StructuredReplySchema
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.providers.http_provider import HTTPProvider
 
 
 class OpenAIProvider(HTTPProvider):
     def request(
-        self, messages: list[dict[str, str]], settings: AssistantSettings, output_cap: int
+        self,
+        messages: list[dict[str, str]],
+        settings: AssistantSettings,
+        output_cap: int,
+        *,
+        response_schema: StructuredReplySchema | None = None,
     ) -> tuple[str, dict[str, Any]]:
         payload: dict[str, Any] = {
             "model": settings.model,
@@ -19,6 +25,11 @@ class OpenAIProvider(HTTPProvider):
             "max_completion_tokens": output_cap,
             "response_format": {"type": "json_object"},
         }
+        if response_schema is not None:
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "wisp_beverage_reply", "strict": False, "schema": response_schema.document()},
+            }
         if settings.model == "gpt-6-astra":
             payload["reasoning_effort"] = "low"
         elif settings.model == "gpt-6-sol":

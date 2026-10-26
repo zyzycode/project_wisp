@@ -72,6 +72,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     this.urls = { chat: endpoint(options.baseUrl, options.development, 'chat'), touch: endpoint(options.baseUrl, options.development, 'touch'), events: endpoint(options.baseUrl, options.development, 'events'), summary: endpoint(options.baseUrl, options.development, 'summary'), observation: endpoint(options.baseUrl, options.development, 'observation') };
     this.fetch = options.fetch ?? globalThis.fetch;
   }
+  public canIncludeBeverage(request: AIProviderRequest): boolean { return projectInteractionChat(request).beveragePreference !== undefined; }
   public canIncludeSummary(request: AIProviderRequest): boolean {
     return projectInteractionChat(request).summary !== undefined;
   }
@@ -112,10 +113,11 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
         return this.fallback(request.requestId, reason, startedAt);
       }
       let result;
-      try { result = parseInteractionChatResponse(value, request.requestId, request.userMessage.text, projected.effectPolicy); }
+      try { result = parseInteractionChatResponse(value, request.requestId, request.userMessage.text, projected.effectPolicy, projected.beveragePreference?.allowProposal === true); }
       catch { throw new ProtocolError('Invalid backend success'); }
       const decision = result.decision;
       return { requestId: result.requestId, status: 'ok',
+        ...('beverageProposal' in result ? { beverageProposal: result.beverageProposal } : {}),
         ...('appraisal' in result ? { appraisal: result.appraisal } : {}),
         ...('memoryCandidates' in result ? { memoryCandidates: result.memoryCandidates } : {}), reply: { text: result.text, ...(decision?.tone === undefined ? {} : { tone: decision.tone }) },
         suggestedBehavior: decision?.behavior ?? 'respond', confidence: decision?.confidence ?? 1,

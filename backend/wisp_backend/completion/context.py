@@ -1,5 +1,6 @@
 """Internal context values and deterministic selection, independent of any API."""
 
+import json
 from collections.abc import Awaitable, Callable, Generator
 from dataclasses import dataclass
 from typing import Literal
@@ -27,6 +28,17 @@ class ContextMessage:
 
 
 @dataclass(frozen=True)
+class StructuredReplySchema:
+    """Immutable backend-authored schema value; providers need no prompt/reply dependencies."""
+
+    name: Literal["beverage_proposal"]
+    document_json: str
+
+    def document(self) -> dict[str, object]:
+        return json.loads(self.document_json)
+
+
+@dataclass(frozen=True)
 class ContextBlock:
     key: str
     source: ContextSource
@@ -34,10 +46,15 @@ class ContextBlock:
     priority: int
     order: int
     messages: tuple[ContextMessage, ...]
+    response_schema: StructuredReplySchema | None = None
 
     def __post_init__(self) -> None:
         if self.source != "server_instructions" and any(item.role == "system" for item in self.messages):
             raise ValueError("Only server instructions may use the system role")
+
+
+def response_schema_for(blocks: tuple[ContextBlock, ...]) -> StructuredReplySchema | None:
+    return next((block.response_schema for block in blocks if block.response_schema is not None), None)
 
 
 class ContextOverflow(ValueError):

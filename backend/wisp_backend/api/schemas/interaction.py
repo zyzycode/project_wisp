@@ -9,7 +9,7 @@ from wisp_backend.api.schemas.events import PreviousInitiative
 from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
 from wisp_backend.api.schemas.touch import TouchEvent, TouchFields
 from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply, TouchAppraisal
-from wisp_backend.completion.replies import SummaryModelReply
+from wisp_backend.completion.replies import BeverageProposal, SummaryModelReply
 from wisp_backend.validation import Contract, omittable, text_type, trim_text
 
 
@@ -100,18 +100,6 @@ class BeveragePreference(Contract):
         if not self.allowProposal and "current" not in self.model_fields_set:
             raise ValueError("Recall-only context requires current preference")
         return self
-
-
-class BeverageProposal(Contract):
-    value: Literal["coffee", "tea"]
-    evidenceQuote: text_type(240)
-
-    @field_validator("evidenceQuote")
-    @classmethod
-    def already_trimmed(cls, value: str) -> str:
-        if value != trim_text(value):
-            raise ValueError("Quote must be trimmed")
-        return value
 
 
 class InteractionChatRequest(ChatFields, InteractionPolicy):

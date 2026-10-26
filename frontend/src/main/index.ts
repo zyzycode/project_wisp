@@ -1,3 +1,5 @@
+import { BeverageCommands } from '../application/services/beverage-commands';
+import { BeverageDialogue } from '../application/services/beverage-preference';
 import { QuietSupportRuntime } from '../application/services/quiet-support-runtime';
 import { InterestThreadCommands } from '../application/services/interest-thread-commands';
 import { InterestThreadDialogue } from '../application/services/interest-thread';
@@ -111,6 +113,8 @@ let summaryRuntime: SummaryRuntime | null = null;
 let summaryGenerating = false;
 let summaryStream: string | null = null;
 const localMock = !process.env.WISP_BACKEND_URL?.trim();
+let beverageDialogue: BeverageDialogue | null = null;
+const beverageCommands = new BeverageCommands({ runtime: () => memoryRuntime, dialogue: () => beverageDialogue, timestamp: () => new Date().toISOString() });
 const memoryCards = new MemoryCards(() => memoryRuntime, () => new Date().toISOString());
 const topicCommandAdmission = new DialogueAdmission(() => performance.now(), createMainAutonomyScheduler());
 const interestThreadCommands = new InterestThreadCommands({ runtime: () => memoryRuntime,
@@ -148,7 +152,7 @@ const appLogger = new AppLogger({
 });
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); return id; },
+  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); beverageCommands.replaceStream(id); return id; },
   prepareSnapshot: () => {
     observationRuntime?.tick();
     aiEventRuntime?.tick();
@@ -272,7 +276,7 @@ function clearBrainStream(): void {
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
   summaryStream = null;
-  clearMemory.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null);
+  clearMemory.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null); beverageCommands.replaceStream(null);
   dialogueRuntime?.detachStream();
 }
 
@@ -371,12 +375,13 @@ function initializeAutonomyComposition(): void {
         canGenerate: () => !!dialogueRuntime?.getPresentation().canSubmit && !aiEventRuntime?.isBusy() && !summaryGenerating,
       });
     }
+    beverageDialogue = memoryComposition?.beverage ? new BeverageDialogue({ runtime: () => memoryRuntime, createId: randomUUID, timestamp: () => new Date().toISOString(), now: () => brainStatePublisher.now(), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) : null;
     dialogueRuntime = new DialogueRuntime({ quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
-      memory: { ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
+      memory: { ...(beverageDialogue ? { beverage: beverageDialogue } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
           now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, notice: publishBrainState, isTurnCurrent: requestId => dialogueRuntime?.isTopicRequestCurrent(requestId) ?? false, onFailure: code => memoryRuntime?.failure(code), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) } : {}), generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
-        completed: turn => { void memoryRuntime?.history.completed(turn); }, ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
+        completed: turn => memoryRuntime?.history.completed(turn) ?? Promise.resolve(false), ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
       getCharacterSnapshot: () => defaultCharacterStateService.getSnapshot(),
       beginInteraction: () => defaultCharacterStateService.beginChat(++interactionSequence),
@@ -592,7 +597,7 @@ function registerIpcHandlers(): void {
   });
   unregisterSummary = registerSummaryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
-  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, cards: memoryCards, interestThread: interestThreadCommands });
+  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, cards: memoryCards, interestThread: interestThreadCommands, beverage: beverageCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
@@ -809,8 +814,8 @@ if (!gotTheLock) {
       scheduler: createMainAutonomyScheduler(), now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
-      pause: pauseCharacterRuntime, invalidateMemory: token => { dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
-      resetCommitted: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
+      pause: pauseCharacterRuntime, invalidateMemory: token => { beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
+      resetCommitted: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); beverageCommands.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
     initializeServices();

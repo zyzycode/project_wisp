@@ -46,3 +46,14 @@ it('checks sender, exact topic input and parsed output before exposing local com
   expect(await reading({ sender: f.sender }, { streamId: 'stream' })).toEqual({ ok: true, generation: 0, value: null });
   unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:read-interest-thread'); expect(f.remove).toHaveBeenCalledWith('wisp:mutate-interest-thread');
 });
+it('validates beverage sender, exact typed input and outbound DTO at the standalone IPC boundary', async () => {
+  const f = fixture(), read = vi.fn(async () => ({ ok: true as const, generation: 0, value: null })), mutate = vi.fn(async () => ({ ok: false as const, generation: 0, code: 'unavailable' as const }));
+  const unregister = registerMemoryIpc({ register: (channel, handler) => f.handlers.set(channel, handler), remove: f.remove, getSender: () => f.sender, getStatus: () => ({ mode: 'persistent', characterRestore: 'restored' }), clear: new ClearMemoryUseCase(f.reset), beverage: { read, mutate } });
+  const reading = f.handlers.get('wisp:read-beverage')!, mutating = f.handlers.get('wisp:mutate-beverage')!;
+  const command = { streamId: 'stream', commandId: 'c', sequence: 1, generation: 0, kind: 'save_hypothesis', expected: null, itemId: 'i', offerId: 'o', consented: true };
+  await expect(reading({ sender: {} }, { streamId: 'stream' })).rejects.toThrow('Untrusted');
+  for (const extra of [{ consented: 1 }, { value: 'coffee' }, { source: { userMessageId: 'u', assistantMessageId: 'a' } }, { confirmed: true }]) await expect(mutating({ sender: f.sender }, { ...command, ...extra })).rejects.toThrow();
+  expect(mutate).not.toHaveBeenCalled(); expect(await mutating({ sender: f.sender }, command)).toMatchObject({ ok: false, code: 'unavailable' });
+  expect(await reading({ sender: f.sender }, { streamId: 'stream' })).toEqual({ ok: true, generation: 0, value: null });
+  unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:read-beverage'); expect(f.remove).toHaveBeenCalledWith('wisp:mutate-beverage');
+});

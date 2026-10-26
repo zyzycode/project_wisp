@@ -96,6 +96,18 @@ class MemoryModelReply(ModelReply):
         return {**clean, "memoryCandidates": accepted}
 
 
+class BeverageProposal(Contract):
+    value: Literal["coffee", "tea"]
+    evidenceQuote: text_type(240)
+
+    @field_validator("evidenceQuote")
+    @classmethod
+    def already_trimmed(cls, value: str) -> str:
+        if value != trim_text(value):
+            raise ValueError("Quote must be trimmed")
+        return value
+
+
 class TouchModelReply(Contract):
     text: text_type(240)
 

@@ -1,3 +1,4 @@
+import { BeverageStore } from './beverage-store';
 import { InterestThreadStore } from './interest-thread-store';
 import { readSummarySources, summarySources } from './summary-source-reader';
 import { MemoryItemStore } from './item-store';
@@ -34,7 +35,7 @@ export class SqliteMemoryStore {
     try {
       const c = command(input);
       if (c.operation === 'close') { this.db.close(); this.unavailable = true; return { ok: true, value: undefined }; }
-      if ((c.operation === 'clear' || c.operation === 'mutateMemoryItem' || c.operation === 'mutateInterestThread')) {
+      if ((c.operation === 'clear' || c.operation === 'mutateMemoryItem' || c.operation === 'mutateInterestThread' || c.operation === 'mutateBeverage')) {
         if (c.generation !== this.generation + 1) return { ok: false, code: 'stale' };
         // The barrier survives rollback: old callbacks never regain write access.
         this.generation = c.generation;
@@ -50,6 +51,8 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'readBeverage': return new BeverageStore(this.db).read();
+      case 'mutateBeverage': return new BeverageStore(this.db).mutate(c.payload);
       case 'readInterestThread': return new InterestThreadStore(this.db).read();
       case 'mutateInterestThread': return new InterestThreadStore(this.db).mutate(c.payload);
       case 'claimInterestThread': return new InterestThreadStore(this.db).capture(c.payload, c.generation, true);
@@ -95,8 +98,9 @@ export class SqliteMemoryStore {
   private appendTurn(payload: unknown): void {
     const t = v.turn(payload);
     this.db.transaction(() => {
-      const topics = new InterestThreadStore(this.db);
-      if (topics.checkTurn(t) === 'replay') return;
+      const topics = new InterestThreadStore(this.db), beverage = new BeverageStore(this.db);
+      const topicReplay = topics.checkTurn(t), beverageReplay = beverage.checkTurn(t);
+      if (topicReplay === 'replay' || beverageReplay === 'replay') return;
       const existing = this.db.prepare(`SELECT ${sessionColumns} FROM conversation_sessions WHERE id = ? OR app_run_id = ?`).all(t.session.id, t.session.appRunId);
       const messages = this.db.prepare(`SELECT ${messageColumns} FROM messages WHERE id IN (?, ?) ORDER BY sequence`).all(t.user.id, t.assistant.id).map(v.message);
       if (existing.length > 1) throw new v.MemoryDataError('conflict');
@@ -118,6 +122,7 @@ export class SqliteMemoryStore {
       const insert = this.db.prepare('INSERT INTO messages (id, conversation_session_id, role, content, created_at, memory_confirmable) VALUES (?, ?, ?, ?, ?, ?)');
       for (const m of [t.user, t.assistant]) insert.run(m.id, m.conversationSessionId, m.role, m.content, m.createdAt, t.memoryConfirmable === true ? 1 : 0);
       topics.commitTurn(t);
+      beverage.commitTurn(t);
     }).immediate();
   }
   private upsertFact(payload: unknown): unknown {

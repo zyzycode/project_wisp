@@ -120,7 +120,12 @@ def test_current_inspector_reproduces_after_for_both_providers_without_http(monk
                 thinking_level=settings["thinking_level"],
                 budget_case=expected["budget_case"],
             )
-            assert actual == expected
+            # #114 changes tracked source provenance only on the no-field route.
+            current = json.loads((FIXTURES / "issue114_after.json").read_text())
+            assert actual["source_digests"] == current["reports"][0]["source_digests"]
+            assert {key: value for key, value in actual.items() if key != "source_digests"} == {
+                key: value for key, value in expected.items() if key != "source_digests"
+            }
             # The same API schemas admit all active synthetic chat/touch inputs.
             assert expected["route"] in ENDPOINTS
 

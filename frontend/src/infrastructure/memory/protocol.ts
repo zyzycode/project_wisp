@@ -1,13 +1,14 @@
+import { beverageMutation, beverageRead, beverageReceipt } from './beverage-validation';
 import { topicRead, topicMutation, topicReservation, topicReceipt, topicCapture } from './interest-thread-validation';
 import { summarySources, summarySnapshot } from './summary-source-reader';
 import type { MemoryFailureCode, MemoryResult } from '../../application/ports/memory-repository.interface';
 import { itemMutation, itemListQuery, itemReceipt, itemPage } from './item-validation';
 import * as v from './validation';
 
-export type Operation = 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
+export type Operation = 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
 export interface Command { readonly id: number; readonly generation: number; readonly operation: Operation; readonly payload: unknown }
 export interface Reply { readonly id: number; readonly result: MemoryResult<unknown> }
-const operations: readonly string[] = ['readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
+const operations: readonly string[] = ['readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
 const codes: readonly string[] = ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'invalid_data', 'conflict', 'stale', 'io_error'];
 export function command(value: unknown): Command {
   const c = v.record(value, ['id', 'generation', 'operation', 'payload']);
@@ -15,6 +16,7 @@ export function command(value: unknown): Command {
   const operation = c.operation as Operation;
   let payload: unknown;
   switch (operation) {
+    case 'mutateBeverage': payload = beverageMutation(c.payload); break;
     case 'mutateInterestThread': payload = topicMutation(c.payload); break;
     case 'claimInterestThread': case 'captureInterestThreadReply': payload = topicReservation(c.payload); break;
     case 'summaryExact': payload = summarySources(c.payload); break;
@@ -55,6 +57,8 @@ export function failure(error: unknown): MemoryResult<never> {
 
 export function responseValue(operation: Operation, value: unknown): unknown {
   switch (operation) {
+    case 'readBeverage': return beverageRead(value);
+    case 'mutateBeverage': return beverageReceipt(value);
     case 'readInterestThread': return topicRead(value);
     case 'mutateInterestThread': return topicReceipt(value);
     case 'claimInterestThread': case 'captureInterestThreadReply': return topicCapture(value);

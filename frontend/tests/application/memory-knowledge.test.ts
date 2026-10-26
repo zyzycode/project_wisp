@@ -54,7 +54,7 @@ it.each([
   expect(f.observe).toHaveBeenCalledExactlyOnceWith({ sourceMessageId: 'u', key, disposition: 'like' });
 });
 it('does not extract after a failed append', async () => { const f = fixture(); f.appendTurn.mockResolvedValue({ ok: false, code: 'storage_full' }); await f.history.completed(turn); expect(f.upsert).not.toHaveBeenCalled(); });
-it('reports a failed fact write without rejecting completed history or emitting learning', async () => { const f = fixture(); f.upsert.mockResolvedValue({ ok: false, code: 'storage_full' }); await expect(f.history.completed(turn)).resolves.toBeUndefined(); expect(f.onFailure).toHaveBeenCalledWith('storage_full'); expect(f.observe).not.toHaveBeenCalled(); });
+it('reports a failed fact write without rejecting completed history or emitting learning', async () => { const f = fixture(); f.upsert.mockResolvedValue({ ok: false, code: 'storage_full' }); await expect(f.history.completed(turn)).resolves.toBe(true); expect(f.onFailure).toHaveBeenCalledWith('storage_full'); expect(f.observe).not.toHaveBeenCalled(); });
 it('ignores append ack after reset/dispose', async () => {
   const f = fixture(); let ack!: (value: MemoryResult<void>) => void;
   f.appendTurn.mockImplementationOnce(() => new Promise(resolve => { ack = resolve; }));

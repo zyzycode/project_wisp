@@ -1,3 +1,4 @@
+import { schema3 } from './schema-fixture';
 import { afterEach, describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -98,10 +99,11 @@ describe('interest thread worker persistence', () => {
   });
   it('rolls migration3 back to schema2 without changing transcript or snapshots', () => {
     const f = setup(); f.store.close(); const db = new Database(f.filename);
+    schema3(db);
     db.exec("DROP TABLE interest_thread; DROP TABLE interest_thread_receipts; DELETE FROM schema_migrations WHERE version=3; PRAGMA user_version=2; CREATE TRIGGER reject_v3 BEFORE INSERT ON schema_migrations WHEN NEW.version=3 BEGIN SELECT RAISE(ABORT,'test'); END;");
     const before = db.prepare('SELECT * FROM messages').all(); expect(() => initializeSchema(db, now)).toThrow();
     expect(db.pragma('user_version', { simple: true })).toBe(2); expect(db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'interest_%'").all()).toEqual([]); expect(db.prepare('SELECT * FROM messages').all()).toEqual(before);
-    db.exec('DROP TRIGGER reject_v3'); initializeSchema(db, now); expect(db.pragma('user_version', { simple: true })).toBe(3); db.close();
+    db.exec('DROP TRIGGER reject_v3'); initializeSchema(db, now); expect(db.pragma('user_version', { simple: true })).toBe(4); db.close();
   });
   it('replaces only by explicit CAS with a fresh pair and retains earlier suppression', () => {
     const f = setup(); expect(run(f.store, 'appendTurn', pair('new'), 1).ok).toBe(true);

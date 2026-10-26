@@ -18,7 +18,7 @@ export function summarySnapshot(value: unknown): SummarySourceSnapshot {
 /** Worker-only bounded reads. No filtering before the 100-message boundary. */
 export function readSummarySources(db: Database.Database, sources: readonly SummarySource[] | null): SummarySourceSnapshot {
   return db.transaction(() => {
-    if (integer(record(db.prepare('PRAGMA user_version').get()).user_version) !== 3) return { pairs: [], facts: [] };
+    if (integer(record(db.prepare('PRAGMA user_version').get()).user_version) !== 4) return { pairs: [], facts: [] };
     const projection = `SELECT u.sequence AS ordinal, u.id AS userMessageId, a.id AS assistantMessageId, u.conversation_session_id AS sessionId, u.content AS userText, a.content AS assistantText,
       (u.memory_confirmable=1 AND a.memory_confirmable=1 AND NOT EXISTS(SELECT 1 FROM memory_suppressed_pairs s WHERE s.user_message_id=u.id OR s.assistant_message_id=a.id)) AS eligible
       FROM messages u JOIN messages a ON a.sequence=u.sequence+1 AND a.conversation_session_id=u.conversation_session_id AND a.role='assistant' WHERE u.role='user'`;

@@ -4,7 +4,13 @@ from typing import Any
 
 import httpx
 from wisp_backend.accounting.contracts import Usage
-from wisp_backend.completion.context import ContextBlock, render_messages, select_context_async
+from wisp_backend.completion.context import (
+    ContextBlock,
+    StructuredReplySchema,
+    render_messages,
+    response_schema_for,
+    select_context_async,
+)
 from wisp_backend.completion.contracts import InferenceRequest
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.errors import ServiceError
@@ -14,7 +20,12 @@ from wisp_backend.providers.http_provider import HTTPProvider
 
 class GeminiProvider(HTTPProvider):
     def request(
-        self, messages: list[dict[str, str]], settings: AssistantSettings, output_cap: int
+        self,
+        messages: list[dict[str, str]],
+        settings: AssistantSettings,
+        output_cap: int,
+        *,
+        response_schema: StructuredReplySchema | None = None,
     ) -> tuple[str, dict[str, Any]]:
         generation: dict[str, Any] = {
             "responseMimeType": "application/json",
@@ -22,6 +33,8 @@ class GeminiProvider(HTTPProvider):
             "candidateCount": 1,
             "thinkingConfig": {"thinkingLevel": settings.effective_thinking_level},
         }
+        if response_schema is not None:
+            generation["responseJsonSchema"] = response_schema.document()
         if settings.temperature is not None:
             generation["temperature"] = settings.temperature
         contents: list[dict[str, Any]] = []
@@ -47,7 +60,9 @@ class GeminiProvider(HTTPProvider):
         self, request: InferenceRequest, cap: int, allowance: int, deadline: float
     ) -> tuple[ContextBlock, ...]:
         async def count(blocks: tuple[ContextBlock, ...]) -> int:
-            _, payload = self.request(render_messages(blocks), self.settings, cap)
+            _, payload = self.request(
+                render_messages(blocks), self.settings, cap, response_schema=response_schema_for(blocks)
+            )
             return await self.count_tokens(payload, deadline)
 
         return await select_context_async(request.blocks, allowance, count)
