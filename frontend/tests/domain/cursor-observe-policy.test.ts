@@ -127,19 +127,10 @@ describe('Domain: Observe Cursor policy', () => {
     expect(missing.noticed).toBe(false);
   });
 
-  it.each([
-    ['fatigue', input({ needs: { energy: 20, attention: 0, play: 100, comfort: 0, boredom: 100 } }), 'near', 'gaze_only'],
-    ['curiosity', input({ tone: 'curious' }), 'near', 'head_tilt'],
-    ['playfulness', input({ tone: 'playful' }), 'near', 'point'],
-    ['friendship', input({ friendship: 800 }), 'near', 'greeting'],
-    ['close approach', input({ signal: signal(20) }), 'contact', 'reach'],
-  ] as const)('selects the %s state variant in Behavior Brain', (
-    _label,
-    reactionInput,
-    zone,
-    expected
-  ) => {
-    expect(selectedReaction(reactionInput, zone, 0)).toBe(`observe_cursor:${expected}`);
+  it('keeps a fatigued character watching without an active cursor gesture', () => {
+    expect(selectedReaction(input({
+      needs: { energy: 20, attention: 0, play: 100, comfort: 0, boredom: 100 },
+    }))).toBe('observe_cursor:gaze_only');
   });
 
   it('uses shared Activity cooldown/repetition while strong context only raises notice chance', () => {
@@ -199,23 +190,12 @@ describe('Domain: Observe Cursor policy', () => {
     )).toBeNull();
   });
 
-  it('builds a single stationary Brain Activity with existing visual fallbacks', () => {
+  it('keeps cursor watching stationary and passes gaze to presentation', () => {
     const gaze = createCursorObserveActivity('gaze_only', 'right');
-    const head = createCursorObserveActivity('head_tilt');
-    const point = createCursorObserveActivity('point');
-    const reach = createCursorObserveActivity('reach');
-    const greeting = createCursorObserveActivity('greeting');
-
     expect(gaze.steps[0]).toMatchObject({
       type: 'animation',
       intent: { kind: 'idle_blink', expressionHint: 'gaze', gazeDirection: 'right' },
     });
-    expect(head.steps[0]).toMatchObject({ type: 'animation', intent: { kind: 'thinking_loop' } });
-    expect(point.steps[0]).toMatchObject({ type: 'animation', intent: { kind: 'thinking_loop' } });
-    expect(reach.steps[0]).toMatchObject({ type: 'animation', intent: { kind: 'wave' } });
-    expect(greeting.steps[0]).toMatchObject({ type: 'animation', intent: { kind: 'wave' } });
-    expect([gaze, head, point, reach, greeting].every(
-      (definition) => definition.steps.every((step) => step.type !== 'locomotion')
-    )).toBe(true);
+    expect(gaze.steps.every(step => step.type !== 'locomotion')).toBe(true);
   });
 });

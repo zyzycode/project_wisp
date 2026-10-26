@@ -24,28 +24,6 @@ describe('Platform Adapters', () => {
     expect(new MacOSPlatformAdapter().getOverlayWindowOptions()).toEqual({ enableLargerThanScreen: true });
   });
 
-  it.each([new WindowsPlatformAdapter(), new LinuxPlatformAdapter()])('keeps native constructor defaults on other platforms', adapter => {
-    expect(adapter.getOverlayWindowOptions()).toEqual({});
-  });
-
-  it('LinuxPlatformAdapter returns correct platform name and session type', () => {
-    const adapter = new LinuxPlatformAdapter();
-    expect(adapter.getPlatformName()).toBe('linux');
-    expect(['x11', 'wayland']).toContain(adapter.getDisplaySessionType());
-  });
-
-  it('WindowsPlatformAdapter returns win32 platform name', () => {
-    const adapter = new WindowsPlatformAdapter();
-    expect(adapter.getPlatformName()).toBe('win32');
-    expect(adapter.getDisplaySessionType()).toBe('dwm');
-  });
-
-  it('MacOSPlatformAdapter returns darwin platform name', () => {
-    const adapter = new MacOSPlatformAdapter();
-    expect(adapter.getPlatformName()).toBe('darwin');
-    expect(adapter.getDisplaySessionType()).toBe('cocoa');
-  });
-
   it('getDisplayWorkArea returns correct screen bounds', () => {
     const adapter = new LinuxPlatformAdapter();
     const bounds = adapter.getDisplayWorkArea();

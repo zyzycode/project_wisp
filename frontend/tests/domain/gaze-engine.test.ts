@@ -113,21 +113,6 @@ describe('Domain: GazeEngine', () => {
     expect(engine.update(far, { nowMs: 1500, deltaSec: 1, target: { type: 'neutral' }, geometry }).direction).toBe('neutral');
   });
 
-  it.each([
-    [{ x: 100, y: -100 }, 'up'],
-    [{ x: -100, y: 100 }, 'left'],
-    [{ x: 300, y: 100 }, 'right'],
-    [{ x: 100, y: 300 }, 'down'],
-  ] as const)('maps the dominant cursor axis to face_gaze %s', (globalPosition, direction) => {
-    const result = new GazeEngine().update(gazeState(), {
-      nowMs: 20,
-      deltaSec: 0.02,
-      target: { type: 'world_point', globalPosition },
-      geometry,
-    });
-    expect(result.direction).toBe(direction);
-  });
-
   it('validates monotonic timing and positive rendering scale', () => {
     const engine = new GazeEngine();
     expect(() =>

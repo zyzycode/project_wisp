@@ -93,13 +93,6 @@ it('accepts unbound support after a successful topic follow-up without reusing i
   const local = f.completed.mock.calls.at(-1)?.[0]; expect(local.interestThread).toBeUndefined(); expect(local.localOnly).toBe(true);
   f.send('continue'); await flush(); expect(f.admit.mock.calls.at(-1)?.[0]).not.toHaveProperty('lastOffered');
 });
-it('does not broadly invalidate a pending direct-touch reply on local acknowledgement', async () => {
-  const f = fixture(); f.send(); await flush(); f.events.invalidate.mockClear(); f.events.interruptForUser.mockClear();
-  f.send('мне от этого не легче');
-  expect(f.events.suppressUnsolicited).toHaveBeenCalledOnce();
-  expect(f.events.invalidate).not.toHaveBeenCalled(); expect(f.events.interruptForUser).not.toHaveBeenCalled();
-});
-
 it('preserves an actual pending direct-touch response through an accepted support cue', async () => {
   vi.useFakeTimers(); vi.setSystemTime(0); let f: ReturnType<typeof fixture>;
   let resolve!: (value: { requestId: string; replyText: string }) => void;

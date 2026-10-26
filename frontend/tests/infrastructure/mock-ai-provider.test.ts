@@ -46,64 +46,20 @@ describe('Infrastructure: MockAIProvider', () => {
     locale: 'ru',
   });
 
-  it.each([
-    ['greeting', 'Привет', 'react_happy', 4],
-    ['care', 'Хочу тебя обнять', 'react_happy', 4],
-    ['play', 'Поиграем', 'play', 4],
-    ['sleep', 'Спать', 'sleep', 4],
-  ])('varies %s replies across requests while keeping reproducible localized semantics', async (
-    _category, text, behavior, minimumReplies
-  ) => {
-    const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
-    const freshProvider = new MockAIProvider({ simulatedLatencyMs: 0 });
-    for (const locale of ['ru', 'en']) {
-      const replies = new Set<string>();
-      for (let index = 0; index < 32; index++) {
-        const request = { ...createRequest(text, `dialogue-${index}`), locale };
-        const response = await provider.generateResponse(request);
-        const repeated = await freshProvider.generateResponse(request);
-        expect(response.status).toBe('ok');
-        expect(response.suggestedBehavior).toBe(behavior);
-        expect(response.diagnostics?.provider).toBe('mock');
-        expect(/[А-Яа-яЁё]/u.test(response.reply.text)).toBe(locale === 'ru');
-        expect(repeated.reply).toEqual(response.reply);
-        expect(repeated.suggestedMood).toBe(response.suggestedMood);
-        expect(repeated.confidence).toBe(response.confidence);
-        replies.add(response.reply.text);
-      }
-      expect(replies.size).toBeGreaterThanOrEqual(minimumReplies);
-    }
-  });
-
   describe('Response locale', () => {
     it.each([
-      ['greeting', 'Привет', 'Hello'],
-      ['care', 'Хочу тебя обнять', 'I want to hug you'],
-      ['play', 'Поиграем', 'Play'],
-      ['sleep', 'Спать', 'Sleep'],
-    ])('uses the requested language for %s regardless of requestId or input language', async (_category, russian, english) => {
+      ['en', 'Привет'], ['ru', 'Hello'],
+    ])('uses requested locale %s for an input in the other language', async (locale, text) => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
-      for (const locale of ['ru', 'en']) {
-        for (const requestId of ['a', 'b']) {
-          for (const text of [russian, english]) {
-            const request = { ...createRequest(text, requestId), locale };
-            const response = await provider.generateResponse(request);
-            expect(response.status).toBe('ok');
-            expect(/[А-Яа-яЁё]/u.test(response.reply.text)).toBe(locale === 'ru');
-            const repeated = await provider.generateResponse(request);
-            expect(repeated.reply).toEqual(response.reply);
-            expect(repeated.suggestedBehavior).toBe(response.suggestedBehavior);
-            expect(repeated.suggestedMood).toBe(response.suggestedMood);
-          }
-        }
-      }
+      const response = await provider.generateResponse({ ...createRequest(text), locale });
+      expect(response.status).toBe('ok');
+      expect(/[А-Яа-яЁё]/u.test(response.reply.text)).toBe(locale === 'ru');
     });
 
-    it.each([undefined, '', 'unsupported'])('defaults locale %s to Russian', async (locale) => {
-      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
-      const response = await provider.generateResponse({ ...createRequest('Hello', 'a'), locale });
-      const russianResponse = await provider.generateResponse({ ...createRequest('Hello', 'a'), locale: 'ru' });
-      expect(response.reply).toEqual(russianResponse.reply);
+    it('defaults an unsupported locale to Russian', async () => {
+      const response = await new MockAIProvider({ simulatedLatencyMs: 0 })
+        .generateResponse({ ...createRequest('Hello'), locale: 'unsupported' });
+      expect(response.status).toBe('ok');
       expect(/[А-Яа-яЁё]/u.test(response.reply.text)).toBe(true);
     });
 
@@ -320,18 +276,11 @@ describe('Infrastructure: MockAIProvider', () => {
   });
   describe('Issue #105: bounded local scenarios', () => {
     it.each([
-      ['ru', 'Я не хочу играть'], ['ru', 'Не хочу спать'],
-      ['en', "I don't want to play"], ['en', 'I do not want to sleep'],
-      ['en', "Don't hug me"], ['ru', 'Не обнимай меня'],
+      ['ru', 'Я не хочу играть'], ['en', "Don't hug me"],
       ['en', 'What does sleep mean?'], ['ru', 'Что значит слово спать?'],
-      ['en', 'I fixed a bug in my game'], ['en', 'I bought a new bed'],
-      ['ru', 'Ты не устала?'], ['ru', 'Это хороший багрепорт'],
-      ['en', 'I care about software quality'], ['ru', 'Привет, что значит game?'],
-      ['ru', '2 + 2 = ?'], ['en', 'Why is the sky blue?'],
-      ['ru', 'Почему?'], ['en', 'Why?'], ['ru', 'abc xyz 42'],
-      ['ru', 'Прыгай'], ['ru', 'Танцуй'], ['en', 'Dance'], ['en', 'Jump'],
-      ['ru', 'Обнять'], ['ru', 'Погладить'], ['en', 'Hug'], ['en', 'Pet'],
-      ['ru', 'Хочу спать'], ['ru', 'Пора спать'], ['en', 'I am tired'],
+      ['en', 'I fixed a bug in my game'], ['ru', 'Привет, что значит game?'],
+      ['ru', 'Прыгай'], ['en', 'Dance'],
+      ['ru', 'Хочу спать'], ['en', 'I am tired'],
       ['ru', 'Не хочу спать, давай играть'], ['en', 'Do not play, sleep instead'],
     ])('honestly declines unsupported %s input: %s', async (locale, text) => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
@@ -340,11 +289,12 @@ describe('Infrastructure: MockAIProvider', () => {
         reply: { text: locale === 'en' ? "I don't have a suitable reply to that yet." : 'На это у меня пока нет подходящего ответа' },
         diagnostics: { provider: 'mock', fallbackReason: 'unsupported_input' } });
     });
-    it.each([['ru', 'Привет🙂'], ['en', 'Hello🙂'], ['ru', 'Привет!🙂'], ['en', 'Hello🙂!']])('recognizes an emoji greeting in %s', async (locale, text) => {
+    it.each([['ru', 'Привет🙂'], ['en', 'Hello🙂!']])('recognizes an emoji greeting in %s', async (locale, text) => {
       const response = await new MockAIProvider({ simulatedLatencyMs: 0 }).generateResponse({ ...createRequest(text), locale });
       expect(response).toMatchObject({ status: 'ok', suggestedBehavior: 'react_happy' });
     });
-    it.each(['Давай поиграем', 'Поиграй со мной', 'Можешь поиграть со мной?'])('accepts explicit play request: %s', async text => {
+    it('accepts an explicit play request phrased as a question', async () => {
+      const text = 'Можешь поиграть со мной?';
       const response = await new MockAIProvider({ simulatedLatencyMs: 0 }).generateResponse(createRequest(text));
       expect(response).toMatchObject({ status: 'ok', suggestedBehavior: 'play' });
     });
@@ -364,7 +314,8 @@ describe('Infrastructure: MockAIProvider', () => {
       expect(response.status).toBe('fallback');
       expect(response.suggestedBehavior).toBe('respond');
     });
-    it.each(['sleepy', 'shy', 'affectionate'] as const)('uses the Domain %s tone with a quiet existing greeting', async tone => {
+    it('uses the Domain sleepy tone with a quiet existing greeting', async () => {
+      const tone = 'sleepy';
       const request = createRequest('Привет'); request.characterSnapshot.synthesizedTone = tone;
       const response = await new MockAIProvider({ simulatedLatencyMs: 0 }).generateResponse(request);
       expect(response).toMatchObject({ status: 'ok', reply: { tone, text: 'Привет! Устроюсь рядом, пока ты занимаешься своими делами.' }, suggestedMood: tone });

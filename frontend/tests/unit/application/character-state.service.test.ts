@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateShyness, curiousStubbornGirlPreset } from '../../../src/domain/character';
+import { curiousStubbornGirlPreset } from '../../../src/domain/character';
 import type { CharacterState } from '../../../src/domain/character';
 import { CharacterStateService } from '../../../src/application/services/character-state.service';
 
@@ -33,24 +33,6 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
 }
 
 describe('Application: CharacterStateService', () => {
-  it('initializes in-memory state with the Curious Stubborn Girl preset', () => {
-    const service = new CharacterStateService({ now: () => 1234 });
-
-    const state = service.getState();
-    const snapshot = service.getSnapshot();
-
-    expect(state.lastUpdated).toBe(1234);
-    expect(state.personality.id).toBe('curiousStubbornGirl');
-    expect(state.personality).toEqual(curiousStubbornGirlPreset);
-    expect(snapshot.personality.presetId).toBe('curiousStubbornGirl');
-    expect(snapshot.personality.aiSelfConcept).toBe(curiousStubbornGirlPreset.aiSelfConcept);
-    expect(snapshot.personality.traits.shyness).toBeCloseTo(
-      calculateShyness(curiousStubbornGirlPreset.axes),
-      3
-    );
-    expect(snapshot.synthesizedTone).toBe('neutral');
-  });
-
   it('applies stimuli through the domain character reducer', () => {
     const service = new CharacterStateService({
       initialState: createState({

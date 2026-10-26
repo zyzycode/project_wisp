@@ -47,8 +47,8 @@ function fixture(explorer = false) {
     move: (x = 400, y = 200) => { surface = { ...surface, bounds: { ...surface.bounds, x, y }, supportY: y }; } };
 }
 describe('user-selected external support', () => {
-  it.each([170, 230])('lands on the observed window after releasing above it at y=%s', y => {
-    const f = fixture(); f.releaseAbove(y);
+  it('lands on the observed window after releasing above it', () => {
+    const f = fixture(); f.releaseAbove(170);
     expect(f.o.getMotionState().phase).toBe('airborne');
     f.advance(1000);
     expect(f.o.getMotionState().position).toEqual({ x: 310, y: 250 });

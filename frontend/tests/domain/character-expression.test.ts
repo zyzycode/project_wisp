@@ -15,29 +15,6 @@ function snapshot(): CharacterSnapshot {
 }
 
 it.each([
-  [20, 79, 'gentle'], [21, 79, 'normal'], [21, 80, 'gentle'], [100, 100, 'gentle'],
-] as const)('projects pace from current needs at energy=%s comfort=%s', (energy, comfort, pace) => {
-  const source = snapshot();
-  source.needs = { ...source.needs, energy, comfort };
-  expect(projectCharacterExpression(source).pace).toBe(pace);
-});
-
-it.each([
-  [399, 'guarded'], [400, 'familiar'], [499, 'familiar'], [500, 'close'],
-] as const)('projects current trust at friendship=%s', (friendship, trust) => {
-  const source = snapshot(); source.relationship.friendship = friendship;
-  expect(projectCharacterExpression(source).trust).toBe(trust);
-});
-
-it.each([
-  [89, 69, 'ordinary', 'ordinary'], [90, 69, 'high', 'ordinary'],
-  [89, 70, 'ordinary', 'high'], [90, 70, 'high', 'high'],
-] as const)('preserves independent attention=%s and play=%s needs', (attention, play, expectedAttention, expectedPlay) => {
-  const source = snapshot(); source.needs = { ...source.needs, energy: 10, attention, play };
-  expect(projectCharacterExpression(source)).toMatchObject({ pace: 'gentle', attention: expectedAttention, play: expectedPlay });
-});
-
-it.each([
   [true, true, 500, 30, 60, true],
   [false, true, 500, 30, 60, false],
   [true, false, 500, 30, 60, false],

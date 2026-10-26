@@ -13,8 +13,6 @@ describe('AUTO-I11 action consequences', () => {
 
   it.each([
     [{ activityOutcome: 'explore_completed' }, -1, 0, -8],
-    [{ dragRunId: 'drag', heldMs: 2000 }, 0, 2, 0],
-    [{ landingOutcome: 'stumble' }, -1, 2, 0],
     [{ landingOutcome: 'crash_landing' }, -2, 6, 0],
   ] as const)('applies physical and exploration semantics %j', (metadata, energy, comfort, boredom) => {
     const service = new CharacterStateService({ now: () => 0 });

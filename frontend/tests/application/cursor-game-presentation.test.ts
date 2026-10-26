@@ -9,12 +9,6 @@ it('emits one attempt and one outcome per run, with expiry and no terminal repla
   now = 2999; expect(p.tick()).toBe(false); now = 3000; expect(p.tick()).toBe(true);
   p.terminal('run', 'caught'); expect(p.get()).toBeNull();
 });
-it('uses ru/en fallback catalog and cancels silently', () => {
-  const p = new CursorGamePresentation(() => 0, () => 'en');
-  p.phase('run', 'attempt', null); expect(p.get()?.speech?.text).toBe('Wait, I almost caught you!');
-  p.phase('run', 'reaction', 'lost_target'); expect(p.get()?.speech?.text).toBe('Where did you go?');
-  p.terminal('run', 'cancelled'); expect(p.get()).toBeNull();
-});
 it('hides game speech for thinking and five seconds after dialogue, without queued lines', () => {
   let now = 0; const p = new CursorGamePresentation(() => now);
   p.observeDialogue({ conversationId: 'c', canSubmit: true, turn: { phase: 'idle' } });

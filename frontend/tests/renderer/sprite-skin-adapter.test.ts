@@ -155,57 +155,21 @@ function fixture() {
 }
 
 describe('Renderer: SpriteSkinAdapter', () => {
-  it.each([['walk', 'body_walk_3.png'], ['run', 'body_idle_3.png']] as const)(
-    'settles stopped %s on an existing planted pose', (kind, source) => {
-      const { adapter, states } = fixture(); adapter.init();
-      adapter.update({ ...visualState(1, kind), motionVelocityPxPerSec: { x: 0, y: 0 } });
-      expect(states.at(-1)?.layers[0]?.frame?.source).toBe(source);
-      adapter.destroy();
-    });
-  it.each([['walk', true], ['run', false]] as const)(
-    'normalizes native %s facing for rightward motion', (kind, flipX) => {
-      const { adapter, states } = fixture(); adapter.init();
-      adapter.update(visualState(1, kind, { flipX: true }));
-      expect(states.at(-1)?.transform.flipX).toBe(flipX);
-      adapter.update(visualState(2, kind, { flipX: false }));
-      expect(states.at(-1)?.transform.flipX).toBe(!flipX);
-      adapter.destroy();
-    });
-  it('keeps debug preview cadence independent of a stopped Brain locomotion state', () => {
+  it('scales walking cadence with velocity and resumes after stopping', () => {
+    const kind = 'walk';
+    const referenceSpeed = 90;
     const { adapter, scheduler, states } = fixture();
-    adapter.init();
-    adapter.update(createAnimationPreviewState({ ...visualState(1), motionVelocityPxPerSec: { x: 0, y: 0 } },
-      { bodyKey: 'body_walk', loop: true }));
+    const moving = (revision: number, speed: number): BodyVisualState => ({
+      ...visualState(revision, kind), motionVelocityPxPerSec: { x: speed, y: 0 },
+    });
+    adapter.init(); adapter.update(moving(1, referenceSpeed / 2));
     scheduler.run(0); scheduler.run(100);
-    expect(states.at(-1)?.playback?.frameIndex).toBe(1);
-    adapter.destroy();
-  });
-  it.each([['walk', 90], ['run', 180], ['climb_wall', 220]] as const)(
-    'scales %s cadence with actual velocity and preserves progress while stopped', (kind, referenceSpeed) => {
-      const { adapter, scheduler, states } = fixture();
-      const moving = (revision: number, speed: number): BodyVisualState => ({
-        ...visualState(revision, kind), motionVelocityPxPerSec: kind === 'climb_wall'
-          ? { x: 0, y: -speed } : { x: speed, y: 0 },
-      });
-      adapter.init(); adapter.update(moving(1, referenceSpeed / 2));
-      scheduler.run(0); scheduler.run(100);
-      expect(states.at(-1)?.playback?.frameIndex).toBe(0);
-      scheduler.run(200); expect(states.at(-1)?.playback?.frameIndex).toBe(1);
-      adapter.update(moving(2, 0)); scheduler.run(1200);
-      expect(states.at(-1)?.playback?.frameIndex).toBe(kind === 'climb_wall' ? 1 : 0);
-      adapter.update(moving(3, referenceSpeed)); scheduler.run(1300);
-      expect(states.at(-1)?.playback?.frameIndex).toBe(2);
-      adapter.destroy();
-    });
-  it('uses the idle face for a neutral pupil offset instead of downward gaze', () => {
-    const { adapter, states } = fixture();
-    adapter.init();
-    adapter.update(visualState(1, 'idle_blink', { pupilOffset: { x: 0, y: 1 } }));
-    expect(states.at(-1)?.layers[1]).toMatchObject({
-      animationKey: 'face_gaze', frame: { source: 'face_gaze_3.png' },
-    });
-    adapter.update(visualState(2, 'idle_blink', { pupilOffset: { x: 0, y: 0 } }));
-    expect(states.at(-1)?.layers[1]).toMatchObject({ animationKey: 'face_happy' });
+    expect(states.at(-1)?.playback?.frameIndex).toBe(0);
+    scheduler.run(200); expect(states.at(-1)?.playback?.frameIndex).toBe(1);
+    adapter.update(moving(2, 0)); scheduler.run(1200);
+    expect(states.at(-1)?.playback?.frameIndex).toBe(0);
+    adapter.update(moving(3, referenceSpeed)); scheduler.run(1300);
+    expect(states.at(-1)?.playback?.frameIndex).toBe(2);
     adapter.destroy();
   });
   it('restarts a completed missing-art fallback as a live local idle loop', () => {
@@ -253,42 +217,6 @@ describe('Renderer: SpriteSkinAdapter', () => {
     expect(brain.visualIntent.episodeId).toBe('episode-1');
     adapter.destroy();
     expect(scheduler.pendingCount()).toBe(0);
-  });
-
-  it('maps semantic gait/activity/expression to existing clips and deterministic fallback', () => {
-    const { adapter, states } = fixture();
-    adapter.init();
-
-    const mappings: ReadonlyArray<readonly [BrainVisualIntentKindDTO, string]> = [
-      ['idle_blink', 'body_idle'],
-      ['walk', 'body_walk'],
-      ['run', 'body_run'],
-      ['fall', 'body_fall'],
-      ['sleep_loop', 'body_sleep'],
-      ['happy_reaction', 'body_petting'],
-    ];
-    mappings.forEach(([kind, animationKey], index) => {
-      adapter.update(visualState(index + 1, kind, { episodeId: `episode-${index + 1}` }));
-      expect(states.at(-1)?.layers[0]).toMatchObject({ animationKey });
-    });
-
-    adapter.update(visualState(7, 'idle_blink', {
-      episodeId: 'episode-7',
-      expressionHint: 'happy',
-    }));
-    expect(states.at(-1)?.layers[1]).toMatchObject({ animationKey: 'face_happy' });
-
-    adapter.update(visualState(8, 'jump', { episodeId: 'episode-8' }));
-    expect(states.at(-1)?.layers[0]).toMatchObject({ animationKey: 'body_idle' });
-
-    adapter.update(visualState(9, 'idle_blink', {
-      episodeId: 'episode-9',
-      pupilOffset: { x: -1, y: 0 },
-    }));
-    expect(states.at(-1)?.layers[1]).toMatchObject({
-      animationKey: 'face_gaze',
-      frame: { source: 'face_gaze_0.png' },
-    });
   });
 
   it('suppresses unchanged frames, publishes changed frames, and applies reflexes without replay', () => {

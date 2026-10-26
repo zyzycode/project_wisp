@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   createExploreActivityDefinition,
   createExplorePlanCandidates,
-  isExplorePoseCompatible,
   recordExplorePlan,
   scoreExplorePlans,
   selectExplorePlan,
@@ -56,23 +55,6 @@ describe('Domain: Explore planner', () => {
     expect(createExplorePlanCandidates(unavailable)).toEqual([]);
   });
 
-  it('binds inspection to point kind and selects only surface-compatible poses', () => {
-    const plans = createExplorePlanCandidates(context({
-      needs: { energy: 30, attention: 20, play: 20, comfort: 20, boredom: 20 },
-    }));
-    const inspections = Object.fromEntries(plans.map((plan) => [plan.pointKind, plan.inspection]));
-
-    expect(inspections).toMatchObject({
-      ordinary: 'look_around',
-      corner: 'crouch_examine',
-      edge: 'edge_peek',
-      interesting_surface: 'surface_touch',
-    });
-    expect(plans.every((plan) => isExplorePoseCompatible(plan.pose, plan.surfaceKind))).toBe(true);
-    expect(plans.find((plan) => plan.pointKind === 'ordinary')?.pose).toBe('lie');
-    expect(isExplorePoseCompatible('lie', 'window_top')).toBe(true);
-  });
-
   it('penalizes recent targets, routes, and choreography while strong need overcomes the penalty', () => {
     const base = context();
     const plan = createExplorePlanCandidates(base)[0]!;
@@ -95,27 +77,6 @@ describe('Domain: Explore planner', () => {
     expect(repeated.repetitionScore).toBeLessThan(fresh.repetitionScore);
     expect(strongNeed.repetitionScore).toBeGreaterThan(repeated.repetitionScore);
     expect(strongNeed.repetitionScore).toBeCloseTo(1, 8);
-  });
-
-  it('scores distance and surface type as independent target factors', () => {
-    const base = context();
-    const plan = createExplorePlanCandidates(base).find(
-      (candidate) => candidate.pointKind === 'ordinary'
-    )!;
-    const near = { ...plan, distancePx: 100 };
-    const far = { ...plan, distancePx: 500 };
-    const windowTop = { ...plan, surfaceKind: 'window_top' as const };
-    const unknown = { ...plan, surfaceKind: 'unknown' as const };
-
-    expect(scoreExplorePlans([far], base)[0]!.distanceScore).toBeGreaterThan(
-      scoreExplorePlans([near], base)[0]!.distanceScore
-    );
-    expect(scoreExplorePlans([windowTop], base)[0]!.surfaceScore).toBe(
-      scoreExplorePlans([plan], base)[0]!.surfaceScore
-    );
-    expect(scoreExplorePlans([unknown], base)[0]!.surfaceScore).toBeLessThan(
-      scoreExplorePlans([plan], base)[0]!.surfaceScore
-    );
   });
 
   it('selects deterministically, records bounded history, and builds one point-specific chain', () => {

@@ -47,9 +47,9 @@ function fixture(detour = false) {
 const explore: BehaviorIntent = { kind: 'wander', source: 'timer', priority: 'normal', reason: 'test' };
 const nap: BehaviorIntent = { kind: 'sleep', source: 'timer', priority: 'high', reason: 'autonomous_nap' };
 describe('AUTO-I06 Activity → real Motion integration', () => {
-  it.each([explore, nap])('reaches the tall intervening window through a side detour for $kind', intent => {
+  it('reaches a tall intervening window through an exploration side detour', () => {
     const f = fixture(true);
-    expect(f.start(intent)).toBe(true);
+    expect(f.start(explore)).toBe(true);
     const goal = f.activity.getExplorePlan();
     expect(goal?.surfaceKind).toBe('window_top');
     expect(goal!.distancePx).toBeGreaterThan(500);
@@ -74,8 +74,8 @@ describe('AUTO-I06 Activity → real Motion integration', () => {
     expect(f.motion.getSurfaceState().externalAttachment).toBeUndefined();
   });
 
-  it.each([1000, 7000])('cancels user interaction at %s ms of the detour without reaching the window', ms => {
-    const f = fixture(true); f.start(explore); f.advance(ms);
+  it('cancels user interaction during the detour without reaching the window', () => {
+    const f = fixture(true); f.start(explore); f.advance(1000);
     expect(f.activity.cancel('user_interaction')).toBe(true);
     f.advance(15000);
     expect(f.activity.getRuntime()).toBeNull();

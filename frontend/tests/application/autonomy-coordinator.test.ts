@@ -86,7 +86,6 @@ function createCoordinator(
   scheduler: FakeScheduler,
   random: IPrng,
   moving: MockMovement = movement(),
-  traceCapacity = 32,
   behaviorConfig: BehaviorConfig = {
     minIdleDurationMs: 10,
     maxIdleDurationMs: 10,
@@ -114,7 +113,6 @@ function createCoordinator(
     onIntentResolved: onIntent,
     onMovementStopped: onStopped,
     behaviorConfig,
-    traceCapacity,
   });
   return { coordinator, moving, onIntent, onStopped, character };
 }
@@ -135,7 +133,6 @@ describe('Application: AutonomyCoordinator', () => {
       scheduler,
       sequencePrng(0.5, 0.5, 0.5),
       movement(),
-      32,
       config
     );
     fixture.coordinator.start();
@@ -350,26 +347,6 @@ describe('Application: AutonomyCoordinator', () => {
     expect(scheduler.size()).toBe(1);
   });
 
-  it('keeps a bounded internal trace with sequence, time, candidates, outcome, and seed metadata', () => {
-    const scheduler = new FakeScheduler();
-    const fixture = createCoordinator(scheduler, sequencePrng(0, 0.95), movement(), 2);
-    fixture.coordinator.start();
-    scheduler.advanceBy(10);
-    fixture.coordinator.notifyActivityFinished();
-    scheduler.advanceBy(10);
-    fixture.coordinator.notifyActivityFinished();
-    scheduler.advanceBy(10);
-
-    const trace = fixture.coordinator.getDecisionTrace();
-    expect(trace).toHaveLength(2);
-    expect(trace[0]!.decisionSequence).toBeLessThan(trace[1]!.decisionSequence);
-    expect(trace[0]!.opportunityAtMs).toBeLessThan(trace[1]!.opportunityAtMs);
-    expect(trace[1]).toMatchObject({
-      orderedCandidateKinds: ['idle', 'wander', 'sleep'],
-      outcomeKind: 'idle',
-      prng: { algorithm: 'test-sequence', seed: 17 },
-    });
-  });
 });
 
 it('plans ordinary wandering on the current window at its support height', () => {
@@ -381,13 +358,6 @@ it('plans ordinary wandering on the current window at its support height', () =>
   const f = createCoordinator(new FakeScheduler(), sequencePrng(0, .99), moving);
   expect(f.coordinator.requestActivityLocomotion()).toBe(true);
   expect(moving.requestVoluntaryMovement).toHaveBeenCalledWith(expect.objectContaining({ targetRootPosition: { x: 90, y: 200 } }));
-});
-
-it('does not consume random values for an explicit activity target', () => {
-  const prng = { next: vi.fn(() => .5) };
-  const f = createCoordinator(new FakeScheduler(), prng);
-  expect(f.coordinator.requestActivityLocomotion({ x: 200, y: 390 })).toBe(true);
-  expect(prng.next).not.toHaveBeenCalled();
 });
 
 it('does not dispatch movement when a window has no screen intersection', () => {

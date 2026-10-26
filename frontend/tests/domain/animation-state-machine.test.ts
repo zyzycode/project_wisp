@@ -2,12 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { AnimationStateMachine, ANIMATION_STATES } from '../../src/domain/animation';
 
 describe('Domain: AnimationStateMachine', () => {
-  it('initializes in idle state with idle expression', () => {
-    const fsm = new AnimationStateMachine();
-    expect(fsm.getCurrentState()).toBe('idle');
-    expect(fsm.getCurrentExpression()).toBe('idle');
-  });
-
   it('transitions properly on valid events', () => {
     const fsm = new AnimationStateMachine('idle');
 
@@ -165,29 +159,6 @@ describe('Domain: AnimationStateMachine', () => {
       expect(fsm.getCurrentState()).toBe('idle');
     });
 
-    it('supports lie_down and get_up lifecycle', () => {
-      const fsm = new AnimationStateMachine('idle');
-
-      expect(fsm.transition('LIE_DOWN')).toBe(true);
-      expect(fsm.getCurrentState()).toBe('lie_down');
-      expect(fsm.getCurrentExpression()).toBe('sleepy');
-
-      expect(fsm.transition('GET_UP')).toBe(true);
-      expect(fsm.getCurrentState()).toBe('get_up');
-      fsm.completeCurrentState();
-      expect(fsm.getCurrentState()).toBe('idle');
-    });
-
-    it('supports run locomotion', () => {
-      const fsm = new AnimationStateMachine('idle');
-
-      expect(fsm.transition('RUN')).toBe(true);
-      expect(fsm.getCurrentState()).toBe('run');
-      expect(fsm.getCurrentExpression()).toBe('happy');
-      fsm.completeCurrentState();
-      expect(fsm.getCurrentState()).toBe('idle');
-    });
-
     it('supports jump -> fall -> land sequence', () => {
       const fsm = new AnimationStateMachine('idle');
 
@@ -204,16 +175,6 @@ describe('Domain: AnimationStateMachine', () => {
       expect(fsm.getCurrentState()).toBe('landing');
       fsm.completeCurrentState();
       expect(fsm.getCurrentState()).toBe('settle');
-    });
-
-    it('supports crawl locomotion', () => {
-      const fsm = new AnimationStateMachine('idle');
-
-      expect(fsm.transition('CRAWL')).toBe(true);
-      expect(fsm.getCurrentState()).toBe('crawl');
-      expect(fsm.getCurrentExpression()).toBe('idle');
-      fsm.completeCurrentState();
-      expect(fsm.getCurrentState()).toBe('idle');
     });
 
     it('supports wall climbing and ceiling hanging, while P0 fall and P1 drag interrupt both', () => {

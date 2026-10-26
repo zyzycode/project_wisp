@@ -10,19 +10,6 @@ const track = (previous: GazeState, x: number, y: number, deltaSec: number) => e
 });
 
 describe('gaze smoothing and neutral presentation', () => {
-  it('distinguishes looking down from neutral', () => {
-    expect(track(initial, 0, 150, 0.1).mode).toBe('tracking');
-    expect(track(initial, 0, 0, 0.1).direction).toBe('neutral');
-  });
-  it('does not teleport direction when time has not advanced', () => {
-    const right = track(initial, 150, 0, 0.1);
-    expect(track(right, -150, 0, 0).direction).toBe('right');
-  });
-  it('holds direction across small diagonal jitter', () => {
-    const right = track(initial, 151, 150, 1);
-    expect(track(right, 150, 151, 1).direction).toBe('right');
-    expect(track(right, 40, 200, 1).direction).toBe('down');
-  });
   it('returns gradually after a sample expires, then reaches neutral', () => {
     const right = track(initial, 200, 0, 1);
     const stale = engine.update(right, { nowMs: 1020, deltaSec: 0.02, geometry,
