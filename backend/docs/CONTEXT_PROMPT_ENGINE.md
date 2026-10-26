@@ -342,11 +342,17 @@ Count — подготовительный HTTP, не дополнительны
 
 ### OpenAI: ограничение точности
 
-OpenAI использует консервативную оценку:
-число UTF-8 bytes финального JSON payload + 256 + 64 × число сообщений.
-Это **не точное число токенов** и не billing usage. Для точного модельного preflight
-в текущей реализации используется Gemini. OpenAI не делает отдельный count HTTP;
-mandatory overflow обнаруживается до сети.
+Для `gpt-6-sol`/`reasoning_effort=none` весь финальный compact JSON оценивается по runs:
+ASCII letters длиной ≤32: ceil(n/3); кириллица А–я/Ёё: n; остальные символы,
+цифры, punctuation, длинные ASCII identifiers: UTF-8 bytes. Затем ceil(1.2 × units)
++ 256 + 64 × messages; результат не выше legacy byte estimate. Mini/Astra и другие
+reasoning modes сохраняют legacy bytes + 256 + 64 × messages. Нет count HTTP.
+Это эмпирические **единицы оценки**, не tokenizer, billing или доказанный upper bound:
+короткие случайные ASCII words могут недооцениваться, запас не гарантирует отсутствие
+provider overflow. Mandatory overflow по оценке отклоняется до сети; provider errors,
+length/incomplete JSON и paid usage остаются прежними, без retry/тихой обрезки.
+[Метод, модельные ограничения и резерв](INPUT_BUDGET_MEASUREMENTS.md) отделяют
+исторический endpoint usage от текущих offline RU/EN comparisons; новые calls не выполнялись.
 
 ### Общие инварианты отбора
 

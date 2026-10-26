@@ -21,7 +21,7 @@ from wisp_backend.completion.prompts.resources import get_prompt_resources
 from wisp_backend.completion.prompts.selection import select_prompt_resources
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.prompt_inspection.scenes import load_scene
-from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input
+from wisp_backend.providers.context_budget import CONTEXT_WINDOWS
 from wisp_backend.providers.gemini import GeminiProvider
 from wisp_backend.providers.http_provider import HTTPProvider
 from wisp_backend.providers.openai import OpenAIProvider
@@ -42,7 +42,7 @@ def source_digests() -> dict[str, str]:
     root = Path(__file__).resolve().parents[1]
     paths = [*sorted((root / "completion/prompts").glob("*.py")), *sorted((root / "completion/prompts").glob("*.json"))]
     paths += [root / name for name in ("completion/context.py", "completion/policies.py", "api/dispatch.py")]
-    paths += [root / "providers" / name for name in ("gemini.py", "openai.py", "context_budget.py")]
+    paths += [root / "providers" / name for name in ("gemini.py", "openai.py", "http_provider.py", "context_budget.py")]
     paths += [Path(__file__).with_name("scenes.json")]
     paths += [root / "prompt_inspect.py", *sorted(Path(__file__).parent.glob("*.py"))]
     paths += sorted((root / "api/schemas").glob("*.py"))
@@ -122,7 +122,7 @@ async def inspect_scene(
 
         def size(candidate: tuple[ContextBlock, ...]) -> int:
             messages = render_messages(candidate)
-            return estimate_input(
+            return formatter.estimate_payload(
                 formatter.request(messages, settings, cap, response_schema=response_schema_for(candidate))[1],
                 len(messages),
             )
@@ -190,7 +190,7 @@ async def inspect_scene(
         "status": status,
         "measurement": {
             "method": "offline_estimate",
-            "formula": "UTF-8 payload JSON bytes + 256 + 64 * message count",
+            "formula": formatter.estimate_method,
             "not_tokenizer_or_billing": True,
             "provider_count": "NOT RUN",
             "generation": "NOT RUN",

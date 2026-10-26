@@ -162,9 +162,24 @@ def test_topic_keeps_existing_safe_failures(
 
 
 def test_actual_provider_budget_drops_instruction_and_quote_without_displacing_baseline(
-    client_factory: Callable, completion: Callable
+    client_factory: Callable, completion: Callable, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from uuid import uuid4
+
+    from wisp_backend.providers.openai import OpenAIProvider
+
+    original = OpenAIProvider.select_blocks
+
+    async def baseline_capacity(adapter, request, cap, allowance, deadline):
+        # Exercise atomic omission at an explicit real-estimator boundary, rather
+        # than depending on this fixture accidentally filling the default window.
+        baseline = tuple(block for block in request.blocks if block.key != "dialogue_topic")
+        messages = render_messages(baseline)
+        payload = adapter.request(messages, adapter.settings, cap)[1]
+        capacity = adapter.estimate_payload(payload, len(messages))
+        return await original(adapter, request, cap, min(allowance, capacity), deadline)
+
+    monkeypatch.setattr(OpenAIProvider, "select_blocks", baseline_capacity)
 
     body = fixture("request.follow-up.json")
     payloads = []

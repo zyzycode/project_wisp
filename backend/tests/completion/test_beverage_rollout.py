@@ -5,7 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
 from wisp_backend.prompt_inspection.report import digest, inspect_scene
+from wisp_backend.providers.http_provider import HTTPProvider
+from wisp_backend.providers.openai import OpenAIProvider
 
 ROOT = Path(__file__).parents[1] / "fixtures/prompt_inspection"
 BEFORE_HASH = "9c8095fba038212fb258933abd907db52793fea0d1122e5c70dde2dd34a6eb99"
@@ -89,7 +92,12 @@ def test_enabled_ru_en_both_providers_add_only_bundle_and_conditional_schema() -
         assert new["budget"]["selected_estimate"] <= new["budget"]["input_allowance"]
 
 
-def test_current_inspector_reproduces_new_snapshots() -> None:
+def test_archived_snapshots_replay_with_the_explicit_legacy_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    # #118 intentionally changes runtime estimates/selection. Replay the frozen
+    # #114 contract under its original estimator, then verify current sources.
+    monkeypatch.setattr(OpenAIProvider, "estimate_payload", HTTPProvider.estimate_payload)
+    monkeypatch.setattr(OpenAIProvider, "estimate_method", HTTPProvider.estimate_method)
+
     async def run():
         snapshots = read("issue114_after.json")["reports"]
         snapshots += [row["enabled"] for row in read("issue114_enabled.json")["reports"]]
@@ -115,7 +123,18 @@ def test_current_inspector_reproduces_new_snapshots() -> None:
             assert current_hash == "381a8e3f5a9ecf90bee09e9d0438db6be2ede789b7fd4ebe2ef0c0bc7bca773d"
             assert current["source_digests"][lore_path] == current_hash
             assert expected["source_digests"][lore_path] != current_hash
-            adjusted = {**expected, "source_digests": {**expected["source_digests"], lore_path: current_hash}}
+            sources = {**expected["source_digests"], lore_path: current_hash}
+            changes = read("issue118_comparison.json")["source_changes"]
+            assert set(changes) == {
+                "providers/context_budget.py",
+                "providers/http_provider.py",
+                "providers/openai.py",
+                "prompt_inspection/report.py",
+            }
+            for path, delta in changes.items():
+                assert sources.get(path) == delta["before"]
+                sources[path] = delta["after"]
+            adjusted = {**expected, "source_digests": sources}
             assert current == adjusted
 
     asyncio.run(run())

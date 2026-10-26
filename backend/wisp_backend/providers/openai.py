@@ -5,10 +5,18 @@ from typing import Any
 from wisp_backend.accounting.contracts import Usage
 from wisp_backend.completion.context import StructuredReplySchema
 from wisp_backend.config.settings import AssistantSettings
+from wisp_backend.providers.context_budget import estimate_openai_input, openai_estimate_method
 from wisp_backend.providers.http_provider import HTTPProvider
 
 
 class OpenAIProvider(HTTPProvider):
+    @property
+    def estimate_method(self) -> str:
+        return openai_estimate_method(self.settings.model, "none" if self.settings.model == "gpt-6-sol" else None)
+
+    def estimate_payload(self, payload: dict[str, Any], message_count: int) -> int:
+        return estimate_openai_input(payload, message_count)
+
     def request(
         self,
         messages: list[dict[str, str]],

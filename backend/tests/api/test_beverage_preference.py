@@ -148,11 +148,9 @@ def test_real_mock_provider_schema_matches_selection_and_dropped_output_is_disca
 
                 async def select(request, cap, allowance, deadline):
                     baseline = tuple(block for block in request.blocks if block.key != "beverage_preference")
-                    from wisp_backend.providers.context_budget import estimate_input
-
                     payload = adapter.request(render_messages(baseline), settings, cap)[1]
                     return await original(
-                        request, cap, estimate_input(payload, len(render_messages(baseline))), deadline
+                        request, cap, adapter.estimate_payload(payload, len(render_messages(baseline))), deadline
                     )
 
                 adapter.select_blocks = select
