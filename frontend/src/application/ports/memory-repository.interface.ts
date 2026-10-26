@@ -122,7 +122,7 @@ export interface IClearMemoryStore {
   clearUserMemory(nextContext: MemoryOperationContext): Promise<MemoryResult<void>>;
 }
 
-/** Local Mock context policy; persistent context for a network provider needs #55/#56. */
+/** Finite recent-history safety bounds; provider budgets may retain a smaller whole-pair suffix. */
 export interface ChatContextLimits {
   readonly maxMessages: number;
   readonly maxTotalCharacters: number;

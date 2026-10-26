@@ -27,12 +27,12 @@ it('generates explicitly, restarts, resolves exact sources after1000 pairs, and 
   try {
   const generator = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', development: false, now: Date.now, fetch: bridge.fetch });
   const options = () => ({ sources, cache: new FileSummaryCache(cachefile), generator, context: () => ({ generation }), now: Date.now, createId: randomUUID, hash: (s: string) => createHash('sha256').update(s).digest('hex'), scheduler: { setTimeout, clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) }, locale: 'ru' as const, beforeRead: async () => {}, canGenerate: () => true });
-  for (let n = 0; n < 11; n++) append(n);
+  for (let n = 0; n < 18; n++) append(n);
   const first = new SummaryRuntime(options()); const preview = await first.preview(); expect(preview.ok).toBe(true); if (!preview.ok) throw new Error('preview');
   expect(await first.confirm(randomUUID(), preview.value.previewId)).toMatchObject({ ok: true }); first.dispose(); store.close();
   store = SqliteMemoryStore.open(filename, date); session = 'new-session';
   // Reuse the persisted session directly only for the synthetic fixture; normal app creates a new session.
-  for (let n = 11; n < 1011; n++) append(n);
+  for (let n = 18; n < 1018; n++) append(n);
   const restarted = new SummaryRuntime(options()); const capture = await restarted.capture('Космос'); expect(capture?.excludedMessageIds).toHaveLength(16);
   await generator.generateResponse({ ...providerRequest(), summary: { text: capture!.text } }); expect(bridge.requests.at(-1)?.body).toMatchObject({ summary: { text: 'Пользователь обсуждал космос.' } });
   expect(bridge.requests.filter(request => request.path === '/v1/summary')).toHaveLength(1);

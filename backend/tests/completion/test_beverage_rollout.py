@@ -134,6 +134,12 @@ def test_archived_snapshots_replay_with_the_explicit_legacy_budget(monkeypatch: 
             for path, delta in changes.items():
                 assert sources.get(path) == delta["before"]
                 sources[path] = delta["after"]
+            # #119 changes only the bounded chat schema source; old scene bytes stay frozen.
+            history = json.loads((ROOT / "issue119_comparison.json").read_text())["source_changes"]
+            assert set(history) == {"api/schemas/chat.py"}
+            for path, delta in history.items():
+                assert sources[path] == delta["before"]
+                sources[path] = delta["after"]
             adjusted = {**expected, "source_digests": sources}
             assert current == adjusted
 

@@ -26,7 +26,7 @@ export class MemoryHistory {
     const result = await this.safe(() => this.options.history.getRecent(20, c));
     if (this.options.context()?.generation !== c.generation) return [];
     if (!result.ok) { this.options.onFailure(result.code); return []; }
-    return boundMemoryContext(result.value.map(message => ({ role: message.role === 'assistant' ? 'wisp' : 'user', text: message.content, createdAt: message.createdAt })));
+    return boundMemoryContext(result.value.map(message => ({ sourceMessageId: message.id, role: message.role === 'assistant' ? 'wisp' : 'user', text: message.content, createdAt: message.createdAt })));
   }
   completed(turn: CompletedDialogueMemoryTurn): Promise<boolean> {
     const context = this.options.context();

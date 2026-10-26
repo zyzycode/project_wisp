@@ -22,14 +22,14 @@ function provider(response: (request: AIProviderRequest) => AIProviderResponse) 
 const success = (r: AIProviderRequest): AIProviderResponse => ({ requestId: r.requestId, status: 'ok', reply: { text: 'Привет!', tone: 'warm' }, confidence: 1 });
 afterEach(() => vi.useRealTimers());
 
-it('uses Main Character snapshot and keeps only three complete context pairs', async () => {
+it('uses Main Character snapshot and keeps every fitting complete context pair', async () => {
   const p = provider(success), f = fixture(p);
   expect(f.send(1).status).toBe('accepted');
   const admittedSnapshot = f.character.getSnapshot(); await flush();
   for (let sequence = 2; sequence <= 5; sequence++) { expect(f.send(sequence).status).toBe('accepted'); await flush(); }
   const requests = p.generateResponse.mock.calls.map(call => call[0]);
-  expect(requests.map(r => r.recentContext.length)).toEqual([0, 2, 4, 6, 6]);
-  expect(requests[4]!.recentContext.map(m => m.role)).toEqual(['user', 'wisp', 'user', 'wisp', 'user', 'wisp']);
+  expect(requests.map(r => r.recentContext.length)).toEqual([0, 2, 4, 6, 8]);
+  expect(requests[4]!.recentContext.map(m => m.role)).toEqual(['user', 'wisp', 'user', 'wisp', 'user', 'wisp', 'user', 'wisp']);
   expect(requests[0]!.userMessage.text).toBe('Привет');
   expect(requests[0]!.characterSnapshot).toEqual(admittedSnapshot);
   expect(f.apply.mock.calls.filter(c => c[0].type === 'user_message')).toHaveLength(5);

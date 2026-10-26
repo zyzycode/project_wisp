@@ -46,7 +46,7 @@ export class DialogueRuntime {
   public hydrateInitialContext(messages: readonly AIProviderContextMessage[]): void {
     if (!this.hydrationAllowed || !this.options.memory?.contextLimits || this.disposed) return;
     this.initialContext = boundMemoryContext(messages, this.options.memory.contextLimits);
-    if (this.hasStartedStream) { this.context = [...this.initialContext]; this.initialContext = null; }
+    if (this.hasStartedStream) { this.context = [...this.initialContext]; this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []); this.initialContext = null; }
   }
   public cancelForMemoryReset(): void { this.options.quietSupport?.resetMemory(); const context = this.context; const messageIds = this.contextMessageIds; this.options.transaction(() => { this.reset(); this.context = context; this.contextMessageIds = messageIds; this.options.publish(); }); }
   public clearMemoryContext(admissionToken?: object): void { const own = admissionToken !== undefined && this.pending === admissionToken; const pending = own ? this.pending : null; this.hydrationAllowed = false; this.initialContext = null; this.options.transaction(() => { this.reset(); if (own) { this.pending = pending; this.executing = true; } this.options.publish(); }); }
@@ -63,7 +63,7 @@ export class DialogueRuntime {
   }
   public replaceStream(streamId: string): void {
     if (this.disposed) return;
-    this.options.transaction(() => { if (this.hasStartedStream) this.hydrationAllowed = false; this.reset(); if (!this.hasStartedStream && this.initialContext) this.context = [...this.initialContext]; this.initialContext = null; this.hasStartedStream = true; this.streamId = streamId; this.sequence = 0; this.options.publish(); });
+    this.options.transaction(() => { if (this.hasStartedStream) this.hydrationAllowed = false; this.reset(); if (!this.hasStartedStream && this.initialContext) this.context = [...this.initialContext]; this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []); this.initialContext = null; this.hasStartedStream = true; this.streamId = streamId; this.sequence = 0; this.options.publish(); });
   }
   public detachStream(): void {
     if (this.disposed) return;
@@ -125,9 +125,9 @@ export class DialogueRuntime {
       const assistant = { id: this.options.createId(), text: LOCAL_DIALOGUE_TEXT.support_quiet_ack[this.options.locale === 'en' ? 'en' : 'ru'], createdAt };
       this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text, createdAt });
       this.turn = { phase: 'completed', requestId, replyText: assistant.text, outcome: { kind: 'local', reason: 'quiet_support' } };
-      const pair: AIProviderContextMessage[] = [{ role: 'user', text, createdAt }, { role: 'wisp', text: assistant.text, createdAt }];
-      this.context = this.options.memory?.contextLimits ? boundMemoryContext([...this.context, ...pair], this.options.memory.contextLimits) : [...this.context, ...pair].slice(-6);
-      this.contextMessageIds = [...this.contextMessageIds, user.id, assistant.id].slice(-this.context.length);
+      const pair: AIProviderContextMessage[] = [{ role: 'user', text, createdAt, sourceMessageId: user.id }, { role: 'wisp', text: assistant.text, createdAt, sourceMessageId: assistant.id }];
+      this.context = boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
+      this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
       this.options.publish();
       this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
     });
@@ -193,7 +193,8 @@ export class DialogueRuntime {
       const enriched = needsEnrichment ? await this.admission.run(turn.admissionDeadline, async () => {
         let request = turn.request;
         const alive = () => this.isCurrent(turn) && this.options.now() < turn.admissionDeadline && (this.options.memory?.generation() ?? turn.memoryGeneration) === turn.memoryGeneration;
-        const summary = this.options.summary ? await this.options.summary.capture(request.userMessage.text) : undefined;
+        const capturedSummary = this.options.summary ? await this.options.summary.capture(request.userMessage.text) : undefined;
+        const summary = capturedSummary?.excludedMessageIds.some(id => this.contextMessageIds.includes(id)) ? undefined : capturedSummary;
         if (!alive()) return undefined;
         if (this.options.memory?.recall) {
           const recalled = await this.options.memory.recall.recall({ text: request.userMessage.text, excludedMessageIds: [...this.contextMessageIds, ...(summary?.excludedMessageIds ?? [])] }, { generation: turn.memoryGeneration });
@@ -290,8 +291,8 @@ export class DialogueRuntime {
       this.sourceUserText = reason === undefined && !capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active) ? active.request.userMessage.text : null;
       this.lastOffered = reason === undefined ? capture?.use.ref : undefined;
       const createdAt = this.options.timestamp();
-      const pair: AIProviderContextMessage[] = [{ role: 'user', text: active.request.userMessage.text, createdAt: active.request.userMessage.createdAt }, { role: 'wisp', text: replyText, createdAt }];
-      this.context = capture || active.beverageCorrection || this.dispatchedBeverage.has(active) ? this.context : this.options.memory?.contextLimits ? boundMemoryContext([...this.context, ...pair], this.options.memory.contextLimits) : [...this.context, ...pair].slice(-6);
+      const pair: AIProviderContextMessage[] = [{ role: 'user', text: active.request.userMessage.text, createdAt: active.request.userMessage.createdAt, sourceMessageId: active.request.userMessage.id }, { role: 'wisp', text: replyText, createdAt, sourceMessageId: assistantId }];
+      this.context = capture || active.beverageCorrection || this.dispatchedBeverage.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
       if (reason === undefined && response) {
         const tone = response.reply.tone;
         this.options.applyStimulus({ type: 'provider_response', source: 'provider', text: replyText, requestId, createdAt,
@@ -304,7 +305,7 @@ export class DialogueRuntime {
         }
       }
       this.options.publish();
-      if (!capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active)) this.contextMessageIds = [...this.contextMessageIds, active.request.userMessage.id, assistantId].slice(-this.context.length);
+      if (!capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active)) this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
       const beverage = this.dispatchedBeverage.has(active) ? this.beverageCaptures.get(active) : undefined;
       let proposal;
       if (reason === undefined && !capture && !active.beverageCorrection && beverage?.context.allowProposal && !beverage.use && response?.beverageProposal) try { proposal = parseBeverageProposal(response.beverageProposal, active.request.userMessage.text); } catch { /* Attribution is independent of the semantic model guess. */ }

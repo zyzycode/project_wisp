@@ -1,0 +1,141 @@
+{
+  "requestId": "02d80270-1a72-47c9-a713-335b872ad24b",
+  "event": {
+    "type": "user_message"
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Помни тему 0"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 0"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 1"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 1"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 2"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 2"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 3"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 3"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 4"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 4"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 5"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 5"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 6"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 6"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 7"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 7"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 8"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 8"
+    },
+    {
+      "role": "user",
+      "content": "Помни тему 9"
+    },
+    {
+      "role": "assistant",
+      "content": "Обсудили тему 9"
+    },
+    {
+      "role": "user",
+      "content": "Вернёмся к теме 0"
+    }
+  ],
+  "stream": false,
+  "locale": "ru",
+  "character": {
+    "needs": {
+      "energy": 80,
+      "attention": 50,
+      "play": 60,
+      "comfort": 80,
+      "boredom": 10
+    },
+    "relationship": {
+      "friendship": 100,
+      "love": 0,
+      "loveUnlocked": false
+    },
+    "personality": {
+      "presetId": "curiousStubbornGirl",
+      "aiSelfConcept": "Я Wisp, твой компаньон.",
+      "traits": {
+        "shyness": 0.4,
+        "playfulness": 0.6,
+        "sensitivity": 0.5,
+        "boldness": 0.4
+      }
+    },
+    "intimacy": {
+      "flirtiness": 0,
+      "romanticCharge": 0,
+      "userConsentEnabled": false
+    },
+    "synthesizedTone": "curious",
+    "expression": {
+      "pace": "gentle",
+      "trust": "guarded",
+      "attention": "ordinary",
+      "play": "ordinary",
+      "romanceAllowed": false
+    }
+  },
+  "card": {
+    "id": "curiousStubbornGirl",
+    "revision": 2
+  },
+  "effectPolicy": "suppressed",
+  "memory": {
+    "facts": [],
+    "episodes": [],
+    "characterPreferences": []
+  }
+}

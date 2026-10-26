@@ -41,12 +41,13 @@ export function projectBackendRequest(request: AIProviderRequest): BackendAIRequ
     intimacy: { flirtiness: finiteRange(s.intimacy.flirtiness, 100), romanticCharge: finiteRange(s.intimacy.romanticCharge, 100), userConsentEnabled: boolean(s.intimacy.userConsentEnabled) },
     synthesizedTone: enumValue(s.synthesizedTone, ['shy', 'sleepy', 'playful', 'curious', 'neutral', 'affectionate', 'flustered']),
   };
-  if (request.recentContext.length % 2 !== 0) throw new TypeError('Incomplete dialogue pair');
-  const messages = request.recentContext.slice(-6).map((message, index) => {
+  if (request.recentContext.length > 20 || request.recentContext.length % 2 !== 0) throw new TypeError('Incomplete dialogue pair');
+  const messages = request.recentContext.map((message, index) => {
     if (message.role !== (index % 2 === 0 ? 'user' : 'wisp')) throw new TypeError('Invalid dialogue order');
     return { role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
       content: plainText(message.text, index % 2 === 0 ? 240 : 2000, true) };
   });
+  while (messages.reduce((sum, message) => sum + message.content.length, 0) > 8000) messages.splice(0, 2);
   messages.push({ role: 'user', content: plainText(request.userMessage.text, 240, true) });
   return { requestId: backendRequestId(request.requestId), event: { type: 'user_message' }, messages,
     stream: false, locale: request.locale === 'en' ? 'en' : 'ru',

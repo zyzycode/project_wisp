@@ -143,6 +143,12 @@ def test_archived_profile_replays_with_legacy_budget_without_http(monkeypatch: p
             for path, delta in changes.items():
                 assert sources.get(path) == delta["before"]
                 sources[path] = delta["after"]
+            # #119 changes only the bounded chat schema source; old scene bytes stay frozen.
+            history = json.loads((FIXTURES / "issue119_comparison.json").read_text())["source_changes"]
+            assert set(history) == {"api/schemas/chat.py"}
+            for path, delta in history.items():
+                assert sources[path] == delta["before"]
+                sources[path] = delta["after"]
             assert actual["source_digests"] == sources
             assert {key: value for key, value in actual.items() if key != "source_digests"} == {
                 key: value for key, value in expected.items() if key != "source_digests"

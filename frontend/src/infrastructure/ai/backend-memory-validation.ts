@@ -1,3 +1,4 @@
+import { fitChatRequestBytes } from './backend-history-budget';
 import type { BackendMemoryCandidate, BackendMemoryContext, BackendMemoryRequest, BackendMemoryResponse } from '../../application/ports/backend-memory-contract';
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
 import { exactRecord, enumValue, plainText } from '../../shared/dialogue-ipc-validation';
@@ -58,8 +59,7 @@ export function projectBackendMemoryRequest(request: AIProviderRequest): Backend
   while (new TextEncoder().encode(JSON.stringify(result)).byteLength > 32 * 1024 && result.memory.episodes.length) {
     result = { ...result, memory: { ...result.memory, episodes: result.memory.episodes.slice(0, -1) } };
   }
-  if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 32 * 1024) throw new TypeError('Request too large');
-  return result;
+  return fitChatRequestBytes(result);
 }
 function candidates(value: unknown, userText: string): readonly BackendMemoryCandidate[] | undefined {
   if (!Array.isArray(value) || value.length > 3) return undefined;

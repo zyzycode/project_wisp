@@ -1,3 +1,4 @@
+import { boundMemoryContext } from './memory-context';
 import { summaryPlainText } from '../../shared/summary-text-validation';
 import type { SummaryEntry, SummaryPair, SummarySource, SummarySourceSnapshot } from '../ports/summary';
 import { recognizeMemoryFact } from './memory-fact-registry';
@@ -7,7 +8,8 @@ export function eligibleSummaryPair(pair: SummaryPair): boolean {
   return pair.eligible && !recognizeMemoryFact(pair.userText) && !/^(?:Исправление:|Correction:|Забудь|Forget)/iu.test(pair.userText.trim());
 }
 export function selectSummaryPairs(pairs: readonly SummaryPair[]): readonly SummaryPair[] {
-  const older = pairs.slice(0, -3);
+  const recent = boundMemoryContext(pairs.flatMap(pair => [{ role: 'user' as const, text: pair.userText, createdAt: '' }, { role: 'wisp' as const, text: pair.assistantText, createdAt: '' }]));
+  const older = pairs.slice(0, pairs.length - recent.length / 2);
   let end = older.length;
   while (end > 0) {
     if (!eligibleSummaryPair(older[end - 1]!)) { end--; continue; }

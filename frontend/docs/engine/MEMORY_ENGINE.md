@@ -148,9 +148,9 @@ Corrupt SQLite/NOTADB, неуспешная migration, future schema, read-only/
 
 ## 5. История, подбор и AI context
 
-Хранилище не вызывает provider и не знает token budgets. `getRecent` выбирает последние N по sequence, возвращает oldest-first. Application builder использует `ChatContextLimits`/`DEFAULT_CHAT_CONTEXT_LIMITS`: 20 сообщений, 8000 UTF-16 units суммарно, 2000 на сообщение. Сначала ограничить отдельный текст (не разделяя surrogate pair), затем удалить старейшие сообщения до общего лимита. Историю в БД не менять. `assistant` отображается в provider role `wisp`; текущий userMessage передаётся отдельно, не добавляется второй раз.
+Хранилище не вызывает provider и не знает token budgets. `getRecent` выбирает последние N по sequence, возвращает oldest-first. Application builder использует `ChatContextLimits`/`DEFAULT_CHAT_CONTEXT_LIMITS`: 20 сообщений, 8000 UTF-16 units суммарно, user ≤240 и assistant ≤2000 на сообщение. Оставить непрерывный суффикс целых user/assistant пар без усечения текста; при переполнении убрать старейшие пары, неполная/некорректная последняя пара не допускает подмешивания более старых. Историю в БД не менять. `assistant` отображается в provider role `wisp`; текущий userMessage передаётся отдельно, не добавляется второй раз.
 
-Базовый persistent dialogue context подключается к локальному Mock; network v1 сохраняет три volatile завершённые пары из [AI contract](AI_PROVIDER_CONTRACT.md#контекст-reset-и-lifecycle). Наличие history/facts/game/state в SQLite не расширяет wire v1. Явные знания и bounded recall для memory-capable режима описаны в §9, сетевые данные — в [Memory wire contract](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md).
+Базовый persistent dialogue context подключается к локальному Mock; network v1 использует те же bounds для volatile завершённых пар из [AI contract](AI_PROVIDER_CONTRACT.md#контекст-reset-и-lifecycle). Network startup hydration не подключается; wire finite caps и provider suffix selection описаны в общем API-контракте. Явные знания и bounded recall для memory-capable режима описаны в §9, сетевые данные — в [Memory wire contract](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md).
 
 Dialogue reset/reload очищает runtime context по AI contract, **не удаляет БД**. Persistent hydration Mock выполняется один раз на Main startup; после dialogue reset старые сообщения не подмешиваются снова в текущую conversation. Новые завершённые turn продолжают сохраняться в storage session этого запуска. При read/write failure система продолжает работу с bounded runtime context, status/diagnostic не выдаёт volatile данные за сохранённые. В базовом режиме этого раздела facts/эпизоды/summaries не участвуют в context; расширенный подбор описан в §9. Storage и recall не влияют на Character напрямую.
 
@@ -219,7 +219,7 @@ LLM может предложить до трёх кандидатов в том
 
 ### Подбор контекста
 
-В memory-capable режиме один admission собирает context с общим **200 ms** бюджетом чтения в пределах dialogue deadline. `facts.list(100)`, `history.getRecent(100)`, `gameReader.getRecent(20)`; нет полного scan всей БД/ожидания больше budget. Ошибка/таймаут любого read даёт пустой memory context на этот turn и безопасную storage diagnostic; поздний read не меняет уже отправленное и не пишет данные. Между turn нет polling/summary/LLM background jobs. Character snapshot и текущие три volatile пары доступны независимо от storage.
+В memory-capable режиме один admission собирает context с общим **200 ms** бюджетом чтения в пределах dialogue deadline. `facts.list(100)`, `history.getRecent(100)`, `gameReader.getRecent(20)`; нет полного scan всей БД/ожидания больше budget. Ошибка/таймаут любого read даёт пустой memory context на этот turn и безопасную storage diagnostic; поздний read не меняет уже отправленное и не пишет данные. Между turn нет polling/summary/LLM background jobs. Character snapshot и bounded volatile suffix §5 доступны независимо от storage.
 
 - **Always include:** актуальное авторское ядро/needs/отношения из CharacterSnapshot и все найденные пять registry facts с валидным источником/значением; неизвестные keys не передавать. Facts не зависят от совпадения вопроса. Character learned `activity.cursor_game` включается отдельно при confidence ≥0.5; user preference не выдаётся за вкус персонажа.
 - Кандидаты dialogue: только полные соседние user→assistant пары одной session из последних 100 сообщений; исключить IDs текущего volatile context. Пару с любой распознаваемой registry-фразой исключить целиком: актуальные structured facts — единственный источник этих значений, старое исправленное значение не возвращается через episode. Также не подбирать пары с явным префиксом `Забудь`/`Forget`/`Сегодня будь`/`Today act as`.
@@ -318,9 +318,9 @@ source, непоказанный результат, event speech и lore ник
 Команда «Составить краткое содержание» в существующем диалоге открывает preview
 диапазона и отдельное подтверждение отправки этих пар backend/provider. Application
 читает ≤100 последних messages за ≤200ms; из них выбирает самый поздний непрерывный
-run 4–8 допустимых пар одной session вне последних трёх volatile пар. Невалидная пара
+run 4–8 допустимых пар одной session вне recent window по bounds §5. Невалидная пара
 разрывает run; массив не склеивает пропуски. Среди suffixes run выбирается самый
-длинный помещающийся в wire caps; тексты не обрезаются. Нет 4 пар → генерации нет.
+длинный помещающийся в wire caps; тексты не обрезаются. Нет 4 подходящих старых пар → генерации нет.
 Пары с scalar registry forms или префиксами «Исправление:»/«Correction:», «Забудь»/
 «Forget» исключаются: исправленные значения не возвращаются через пересказ.
 

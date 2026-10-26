@@ -7,7 +7,7 @@ const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const pair = (n: number, userText = `Тема космос ${n}`): SummaryPair => ({ userMessageId: `u${n}`, assistantMessageId: `a${n}`, sessionId: 's', userText, assistantText: 'Обсудили космос.', eligible: true });
 function fixture(interruptObservation?: () => Promise<void>) {
   let stored: SummaryCache = { formatVersion: 1, entry: null, receipt: null }, epoch = 0, generation = 0;
-  let snapshot: SummarySourceSnapshot = { pairs: Array.from({ length: 11 }, (_, n) => pair(n)), facts: [] };
+  let snapshot: SummarySourceSnapshot = { pairs: Array.from({ length: 18 }, (_, n) => pair(n)), facts: [] };
   const write = vi.fn<ISummaryCache['write']>(async (value, g) => { if (g !== epoch) return { ok: false, code: 'stale' }; stored = value; return { ok: true, value: undefined }; });
   const cache: ISummaryCache = { read: async () => ({ ok: true, value: stored }), write, invalidate: () => ++epoch, clear: async reset => { epoch++; stored = { ...stored, entry: null, receipt: reset ? null : stored.receipt }; return { ok: true, value: undefined }; }, dispose: () => { epoch++; } };
   const generateSummary = vi.fn(async () => 'Пользователь обсуждал космос.');
@@ -19,8 +19,8 @@ function fixture(interruptObservation?: () => Promise<void>) {
 }
 async function preview(f: ReturnType<typeof fixture>) { const p = await f.runtime.preview(); if (!p.ok) throw new Error(p.code); return p.value; }
 afterEach(() => vi.useRealTimers());
-it('selects contiguous latest 4–8 pairs outside three volatile pairs and all registry/correction sources', () => {
-  const all = Array.from({ length: 15 }, (_, n) => pair(n));
+it('selects contiguous latest 4–8 pairs outside the bounded recent window and all registry/correction sources', () => {
+  const all = Array.from({ length: 22 }, (_, n) => pair(n));
   expect(selectSummaryPairs(all)).toEqual(all.slice(4, 12));
   for (const text of ['Correction: cosmos', 'Forget space', 'Меня зовут Аня', 'Забудь космос']) {
     const changed = [...all]; changed[8] = pair(8, text); expect(selectSummaryPairs(changed)).toEqual(all.slice(0, 8));
@@ -86,4 +86,13 @@ it('summary interrupted during observation drain never writes receipt or dispatc
   let settle!: () => void; const f = fixture(() => new Promise<void>(resolve => { settle = resolve; })), p = await preview(f);
   const pending = f.runtime.confirm(randomUUID(), p.previewId); f.runtime.interrupt(); settle();
   expect(await pending).toMatchObject({ ok: false, code: 'stale' }); expect(f.generateSummary).not.toHaveBeenCalled(); expect(f.write).not.toHaveBeenCalled();
+});
+
+it('reserves the actual character-bounded recent window rather than a fixed pair count', () => {
+  const pairs = Array.from({ length: 12 }, (_, n) => pair(n));
+  for (let index = 8; index < 12; index++) pairs[index] = { ...pairs[index]!, assistantText: 'x'.repeat(1900) };
+  // Four large recent pairs fit; the fifth would exceed 8000 only if its text is large too.
+  pairs[7] = { ...pairs[7]!, assistantText: 'x'.repeat(1000) };
+  const selected = selectSummaryPairs(pairs);
+  expect(selected).toEqual(pairs.slice(0, 8));
 });

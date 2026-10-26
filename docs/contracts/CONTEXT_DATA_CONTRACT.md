@@ -120,8 +120,10 @@ Local source IDs/revisions/generation и cache metadata не передаютс�
 Desktop передаёт summary только при source-valid cache и лексическом совпадении хотя
 бы одного Unicode token текущего user text (NFC/lowercase, длина 2–64) с summary text.
 Выбор один, без индекса/полного scan; отсутствие match → обычный v1 chat без summary.
-При inclusion covered source IDs исключаются из recalled dialogue episodes; последние
-три volatile пары никогда не входили в source диапазон. Если summary не отправлена,
+При inclusion covered source IDs исключаются из recalled dialogue episodes. Preview
+оставляет вне источников bounded recent window по общим 20-message/8000-UTF-16 bounds,
+без тестового среза трёх пар. Перед dispatch любое пересечение coverage с retained recent
+IDs исключает summary целиком, сохраняя непрерывный raw suffix; local IDs не попадают в wire. Если summary не отправлена,
 обычный разрешённый recall сохраняется. Suppression применяется независимо от summary.
 При HTTP byte overflow убрать summary целиком прежде ranked episodes; ядро/текущий
 user/facts не режутся. Backend может не включить optional summary по prompt budget;

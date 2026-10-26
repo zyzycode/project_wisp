@@ -31,6 +31,8 @@ export interface AIProviderUserMessage {
 export type AIProviderCharacterSnapshot = CharacterSnapshot;
 
 export interface AIProviderContextMessage {
+  /** Local provenance only; never projected into provider/wire messages. */
+  readonly sourceMessageId?: string;
   role: 'user' | 'wisp';
   text: string;
   createdAt: string;

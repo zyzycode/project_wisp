@@ -20,16 +20,16 @@ it('publishes a whole completed pair before persistence and keeps stable user id
   expect(f.publish.mock.invocationCallOrder.some(order => order < f.completed.mock.invocationCallOrder[0]!)).toBe(true); f.runtime.dispose();
 });
 it('hydrates only the first startup conversation and never rehydrates after dialogue reset', async () => {
-  const f = fixture(); const context = [{ role: 'wisp' as const, text: 'Старое воспоминание', createdAt: new Date().toISOString() }];
+  const f = fixture(); const context = [{ role: 'user' as const, text: 'Старая тема', createdAt: new Date().toISOString() }, { role: 'wisp' as const, text: 'Старое воспоминание', createdAt: new Date().toISOString() }];
   f.runtime.hydrateInitialContext(context); await f.send(); expect(f.generateResponse.mock.calls[0]?.[0].recentContext).toEqual(context);
   f.reset(); f.runtime.hydrateInitialContext(context); await f.send(); expect(f.generateResponse.mock.calls[1]?.[0].recentContext).toEqual([]); f.runtime.dispose();
 });
-it('does not send persistent context to a network provider and retains its six-message limit', async () => {
+it('does not hydrate persistent network context and retains more than three bounded volatile pairs', async () => {
   const f = fixture(false); f.runtime.hydrateInitialContext([{ role: 'wisp', text: 'private stored text', createdAt: new Date().toISOString() }]);
   for (let i = 0; i < 6; i++) await f.send();
-  expect(f.generateResponse.mock.calls[0]?.[0].recentContext).toEqual([]); expect(f.generateResponse.mock.calls[5]?.[0].recentContext).toHaveLength(6); f.runtime.dispose();
+  expect(f.generateResponse.mock.calls[0]?.[0].recentContext).toEqual([]); expect(f.generateResponse.mock.calls[5]?.[0].recentContext).toHaveLength(10); f.runtime.dispose();
 });
-it('keeps the expanded bounded context exclusively for Mock', async () => {
+it('uses the same expanded bounded context for Mock', async () => {
   const f = fixture(); for (let i = 0; i < 7; i++) await f.send(); expect(f.generateResponse.mock.calls[6]?.[0].recentContext).toHaveLength(12); f.runtime.dispose();
 });
 it('records one shown timeout fallback but ignores a late result after full-memory cancellation', async () => {

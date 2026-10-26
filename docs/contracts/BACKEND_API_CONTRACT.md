@@ -16,7 +16,7 @@
 
 `requestId` — UUID v4, созданный desktop для нового обращения. Backend возвращает тот же ID. Локальные conversationId/generation/streamId не отправляются. Для chat `event.type` только `user_message`; `locale` только `ru`/`en`.
 
-`messages`: 1–7 записей, до трёх полных пар истории и последнее user message, порядок `user, assistant, …, user`. `role` только user/assistant; content после trim непустой, user ≤240, assistant ≤2000 UTF-16 code units. System/developer/tool roles запрещены. Данные example не заменяют реальную character projection.
+`messages`: 1–21 записей: до 10 полных пар истории (finite safety cap) и последнее current user message, порядок `user, assistant, …, user`. `role` только user/assistant; content после trim непустой, user ≤240, assistant ≤2000 UTF-16 code units. История ≤8000 UTF-16 units суммарно, current user ≤240 отдельно; тексты не сокращаются. Desktop оставляет непрерывный суффикс целых пар под этими caps и 32KiB JSON; backend под provider budget может убрать только старейшие целые пары. Current user и обязательные blocks сохраняются. Чётное число messages, нарушение порядка/текстовых caps →400 invalid_request; body >32KiB →413 payload_too_large; mandatory provider overflow →503 upstream_unavailable без generation. System/developer/tool roles запрещены. Данные example не заменяют реальную character projection.
 
 Все числовые границы **включительные**, числа конечные; числовые строки, null, NaN/Infinity и выход за диапазон не принимаются. Boolean поля принимают только JSON boolean, не 0/1 или строки. Отсутствие допускается только для полей, помеченных optional в wire type.
 

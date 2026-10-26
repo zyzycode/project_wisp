@@ -1,3 +1,4 @@
+import { fitChatRequestBytes } from './backend-history-budget';
 import { parseBeverageProposal } from '../../shared/beverage-validation';
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
 import type { AIEventProviderRequest } from '../../application/ports/ai-event-provider.interface';
@@ -68,7 +69,7 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
   // Interaction context is required. Drop summary atomically, then optional episodes.
   if (bytes(result) > 32768 && result.summary !== undefined) { const { summary: _summary, ...withoutSummary } = result; result = withoutSummary; }
   while (bytes(result) > 32768 && result.memory.episodes.length) result = { ...result, memory: { ...result.memory, episodes: result.memory.episodes.slice(0, -1) } };
-  if (bytes(result) > 32768) throw new TypeError('Request too large');
+  result = fitChatRequestBytes(result);
   // Preserve the established baseline. A topic never evicts any existing context.
   if (request.dialogueTopic !== undefined) {
     const withTopic = { ...result, dialogueTopic: parseDialogueTopic(request.dialogueTopic) };

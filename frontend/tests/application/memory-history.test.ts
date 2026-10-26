@@ -7,14 +7,14 @@ function fixture(gameObserver?: import('../../src/application/ports/ai-event-pro
   let id = 0; let context: MemoryOperationContext | null = { generation: 0 };
   const appendTurn = vi.fn<IChatHistoryRepository['appendTurn']>(async () => ({ ok: true, value: undefined } as const));
   const append = vi.fn(async () => ({ ok: true, value: undefined } as const));
-  const getRecent = vi.fn(async () => ({ ok: true, value: [{ id: 'old', role: 'assistant' as const, conversationSessionId: 'old-session', content: 'Помню тебя', createdAt: now }] } as const));
+  const getRecent = vi.fn(async () => ({ ok: true, value: [{ id: 'old-user', role: 'user' as const, conversationSessionId: 'old-session', content: 'Помнишь меня?', createdAt: now }, { id: 'old', role: 'assistant' as const, conversationSessionId: 'old-session', content: 'Помню тебя', createdAt: now }] } as const));
   const failure = vi.fn(), onPersisted = vi.fn(async () => undefined);
   const history = new MemoryHistory({ onPersisted, gameObserver, history: { appendTurn, getRecent, closeSession: vi.fn(async () => ({ ok: true, value: undefined } as const)), closeUnfinishedSessions: vi.fn(async () => ({ ok: true, value: undefined } as const)) }, episodes: { append }, context: () => context, createId: () => `id-${++id}`, toTimestamp: ms => new Date(Date.parse(now) + ms).toISOString(), onFailure: failure });
   return { onPersisted, history, appendTurn, append, getRecent, failure, setContext: (c: MemoryOperationContext | null) => { context = c; } };
 }
 const turn = { user: { id: 'user', text: 'Привет', createdAt: now }, assistant: { id: 'assistant', text: 'Привет!', createdAt: now }, memoryGeneration: 0 };
 it('maps persistent context once without modifying stored messages', async () => {
-  const f = fixture(); expect(await f.history.hydrate()).toEqual([{ role: 'wisp', text: 'Помню тебя', createdAt: now }]); expect(f.getRecent).toHaveBeenCalledWith(20, { generation: 0 });
+  const f = fixture(); expect(await f.history.hydrate()).toEqual([{ sourceMessageId: 'old-user', role: 'user', text: 'Помнишь меня?', createdAt: now }, { sourceMessageId: 'old', role: 'wisp', text: 'Помню тебя', createdAt: now }]); expect(f.getRecent).toHaveBeenCalledWith(20, { generation: 0 });
 });
 it('uses one lazy app session for completed pairs, rotates it only on full memory reset', async () => {
   const f = fixture(); await f.history.completed(turn); await f.history.completed({ ...turn, user: { ...turn.user, id: 'next' } });
@@ -43,11 +43,13 @@ it('uses bounded volatile fallback after read failure and never queues it for re
   f.setContext(null); await f.history.completed(turn); expect(f.appendTurn).not.toHaveBeenCalled();
 });
 describe('bounded context', () => {
-  it('caps message count and total characters while preserving latest chronological order', () => {
-    const input = Array.from({ length: 30 }, (_, i) => ({ role: 'wisp' as const, text: `${i}:` + 'x'.repeat(2100), createdAt: now }));
-    const result = boundMemoryContext(input); expect(result).toHaveLength(4); expect(result[0]?.text.startsWith('26:')).toBe(true); expect(result.reduce((sum, m) => sum + m.text.length, 0)).toBe(8000); expect(input[0]?.text.length).toBe(2102);
+  it('caps complete pairs and total characters while preserving latest chronological order', () => {
+    const input = Array.from({ length: 15 }, (_, i) => [{ role: 'user' as const, text: `${i}`, createdAt: now }, { role: 'wisp' as const, text: 'x'.repeat(2000), createdAt: now }]).flat();
+    const result = boundMemoryContext(input); expect(result).toHaveLength(6); expect(result[0]?.text).toBe('12'); expect(result.reduce((sum, m) => sum + m.text.length, 0)).toBe(6006); expect(input[1]?.text.length).toBe(2000);
   });
-  it('never truncates between a surrogate pair', () => { expect(boundMemoryContext([{ role: 'wisp', text: 'x'.repeat(1999) + '😀', createdAt: now }])[0]?.text).toBe('x'.repeat(1999)); });
+  it('omits an oversized pair instead of truncating even at a surrogate boundary', () => {
+    expect(boundMemoryContext([{ role: 'user', text: 'hi', createdAt: now }, { role: 'wisp', text: 'x'.repeat(1999) + '😀', createdAt: now }])).toEqual([]);
+  });
 });
 
 it('notifies the event observer only after a current acknowledged game write', async () => {

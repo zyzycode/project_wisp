@@ -69,6 +69,7 @@ export interface BackendCharacterContext {
 export interface BackendAIRequest {
   readonly requestId: string;
   readonly event: { readonly type: 'user_message' };
+  /** 1..21 alternating messages, final current user; history <=8000 UTF-16 units. */
   readonly messages: readonly BackendAIMessage[];
   readonly stream: false;
   readonly locale: 'ru' | 'en';

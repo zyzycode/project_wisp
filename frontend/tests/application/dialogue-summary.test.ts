@@ -1,3 +1,4 @@
+import { DEFAULT_CHAT_CONTEXT_LIMITS } from '../../src/application/ports/memory-repository.interface';
 import type { ILocalMemoryRecall } from '../../src/application/ports/memory-knowledge.interface';
 import type { MemoryResult } from '../../src/application/ports/memory-repository.interface';
 import type { AIProviderMemoryContext } from '../../src/application/ports/memory-knowledge.interface';
@@ -8,14 +9,14 @@ import type { AIProviderRequest, IAIProvider } from '../../src/application/ports
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
 import { providerRequest } from '../infrastructure/backend-ai-fixture';
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
-function fixture(canIncludeSummary?: (request: AIProviderRequest) => boolean) {
+function fixture(canIncludeSummary?: (request: AIProviderRequest) => boolean, localMock = false) {
   let id = 0;
   const summary: ISummaryRuntime = { preview: vi.fn(), confirm: vi.fn(), deleteSummary: vi.fn(), capture: vi.fn(async () => ({ text: 'summary', excludedMessageIds: ['covered-user', 'covered-assistant'], generation: 1 })), isCurrent: vi.fn(() => true), interrupt: vi.fn(), invalidate: vi.fn(), reset: vi.fn(), dispose: vi.fn() };
   const getStatus = vi.fn<IAIProvider['getStatus']>(async () => ({ kind: 'ready' }));
   const generateResponse = vi.fn<IAIProvider['generateResponse']>(async request => ({ requestId: request.requestId, status: 'ok', confidence: 1, reply: { text: 'Ответ' } }));
   const recalled = { ...emptyMemoryContext(), facts: [{ key: 'user.display_name' as const, value: 'Мария' }] };
   const recall = vi.fn<ILocalMemoryRecall['recall']>(async () => ({ ok: true as const, value: recalled }));
-  const runtime = new DialogueRuntime({ summary, provider: { getStatus, generateResponse, ...(canIncludeSummary ? { canIncludeSummary } : {}) }, memory: { generation: () => 0, recall: { recall }, completed: vi.fn() }, now: () => 0, timestamp: () => '2026-10-17T00:00:00.000Z', createId: () => `id-${++id}`, scheduler: { setTimeout: () => 0, clearTimeout: vi.fn() }, getCharacterSnapshot: () => providerRequest().characterSnapshot, transaction: commit => commit(), applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), publish: vi.fn(), offerIntent: vi.fn() });
+  const runtime = new DialogueRuntime({ summary, provider: { getStatus, generateResponse, ...(canIncludeSummary ? { canIncludeSummary } : {}) }, memory: { ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}), generation: () => 0, recall: { recall }, completed: vi.fn() }, now: () => 0, timestamp: () => '2026-10-17T00:00:00.000Z', createId: () => `id-${++id}`, scheduler: { setTimeout: () => 0, clearTimeout: vi.fn() }, getCharacterSnapshot: () => providerRequest().characterSnapshot, transaction: commit => commit(), applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('s'); vi.mocked(summary.interrupt).mockClear();
   const send = (sequence = 1) => runtime.receive({ type: 'send', text: 'вопрос', sequence, streamId: 's', conversationId: runtime.getPresentation().conversationId });
   return { summary, runtime, send, getStatus, generateResponse, recall, recalled };
@@ -75,4 +76,31 @@ it('continues chat with empty memory after failed replacement recall', async () 
   const f = fixture(() => false);
   f.recall.mockResolvedValueOnce({ ok: true, value: f.recalled }).mockResolvedValueOnce({ ok: false, code: 'unavailable' });
   f.send(); await flush(); expect(f.generateResponse.mock.calls[0]?.[0].memoryContext).toEqual(emptyMemoryContext()); expect(f.generateResponse.mock.calls[0]?.[0]).not.toHaveProperty('summary'); f.runtime.dispose();
+});
+
+it('omits an overlapping cached summary after six turns while preserving the entire recent suffix', async () => {
+  const f = fixture();
+  vi.mocked(f.summary.capture).mockResolvedValue(undefined);
+  for (let sequence = 1; sequence <= 6; sequence++) { f.send(sequence); await flush(); }
+  const first = f.generateResponse.mock.calls[0]![0];
+  vi.mocked(f.summary.capture).mockResolvedValue({ text: 'summary', excludedMessageIds: [first.userMessage.id], generation: 1 });
+  f.send(7); await flush();
+  const request = f.generateResponse.mock.calls[6]![0];
+  expect(request.recentContext).toHaveLength(12);
+  expect(request.recentContext[0]?.text).toBe(first.userMessage.text);
+  expect(request).not.toHaveProperty('summary');
+  expect(f.recall.mock.calls.at(-1)?.[0].excludedMessageIds).toHaveLength(12);
+  f.runtime.dispose();
+});
+
+it('uses hydrated local source identities for coverage and forgets them after reset', async () => {
+  const f = fixture(undefined, true);
+  f.runtime.hydrateInitialContext([{ role: 'user', text: 'saved topic', createdAt: '', sourceMessageId: 'covered-user' }, { role: 'wisp', text: 'saved answer', createdAt: '', sourceMessageId: 'covered-assistant' }]);
+  f.send(); await flush();
+  expect(f.generateResponse.mock.calls[0]?.[0]).not.toHaveProperty('summary');
+  expect(f.recall.mock.calls[0]?.[0].excludedMessageIds).toEqual(['covered-user', 'covered-assistant']);
+  f.runtime.clearMemoryContext(); f.send(2); await flush();
+  expect(f.generateResponse.mock.calls[1]?.[0]).toHaveProperty('summary');
+  expect(f.generateResponse.mock.calls[1]?.[0].recentContext).toEqual([]);
+  f.runtime.dispose();
 });

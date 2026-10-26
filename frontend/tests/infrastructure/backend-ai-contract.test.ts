@@ -14,7 +14,7 @@ it('projects exactly the shared backend request fixture and accepts both shared 
   expect(parseBackendSuccess(component(fixture('response.success.json')), wire.requestId)).toMatchObject({ text: 'Привет! Чем займёмся?' });
   expect(parseBackendError(fixture('response.error.json'), wire.requestId, 503)).toMatchObject({ error: { code: 'upstream_unavailable' } });
 });
-it('copies only allowed fields, preserves self concept, defaults locale, optional boredom absence and last three pairs', () => {
+it('copies only allowed fields, preserves self concept, defaults locale, optional boredom absence and all fitting complete pairs', () => {
   const request = providerRequest();
   Object.assign(request.characterSnapshot.needs, { boredom: undefined });
   Object.assign(request.characterSnapshot.needs, { privateScreenData: 42 });
@@ -25,7 +25,7 @@ it('copies only allowed fields, preserves self concept, defaults locale, optiona
   expect(projected.character.needs).toEqual({ energy: 80, attention: 50, play: 60, comfort: 80 });
   expect(projected.character.personality.aiSelfConcept).toHaveLength(500);
   expect(projected.locale).toBe('ru');
-  expect(projected.messages).toEqual([...Array.from({ length: 6 }, (_, index) => ({ role: index % 2 === 0 ? 'user' : 'assistant', content: `${index + 2}` })), { role: 'user', content: 'Привет!' }]);
+  expect(projected.messages).toEqual([...Array.from({ length: 8 }, (_, index) => ({ role: index % 2 === 0 ? 'user' : 'assistant', content: `${index}` })), { role: 'user', content: 'Привет!' }]);
   expect(JSON.stringify(projected)).not.toMatch(/local-only|privateScreenData|secret/u);
   Object.assign(request.characterSnapshot.needs, { energy: 0 });
   expect(projected.character.needs.energy).toBe(80);

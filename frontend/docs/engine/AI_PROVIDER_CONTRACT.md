@@ -119,7 +119,7 @@ Cancellation API нет. Timeout/reset отменяют запрос **логи�
 
 ### Контекст, reset и lifecycle
 
-- Volatile context — последние **три завершённые пары** user/reply (шесть сообщений); request получает копию, current userMessage отдельно. Пара добавляется атомарно после success/показанного fallback; error/reset/cancel не добавляют половину. User ≤240, reply ≤2000.
+- Volatile context — непрерывный суффикс целых завершённых пар user/reply под конечными safety bounds: ≤20 сообщений и ≤8000 UTF-16 units суммарно; provider budget может оставить меньше. Request получает копию, current userMessage отдельно. Текст сообщения не обрезается ради вместимости; превышающая лимит пара останавливает расширение суффикса. Пара добавляется атомарно после success/показанного fallback; error/reset/cancel не добавляют половину. User ≤240, reply ≤2000.
 - Persistent hydration: [Memory §5](MEMORY_ENGINE.md#5-история-подбор-и-ai-context) задаёт долговременную гидратацию только локального Mock; для сетевого провайдера сохраняется volatile policy этой секции до явного подключения персистентности памяти. Лимит хранения не равен лимиту отправляемого context. Полный memory reset отдельный от dialogue reset, его generation barrier — [Memory §6](MEMORY_ENGINE.md#6-полный-reset-и-защита-от-поздних-записей).
 - Reset допустим при thinking: новая conversationId/generation, пустой context, turn=idle, отмена deadline. Needs/relationship и уже применённый user_message не откатываются; execution guard ждёт settlement.
 - Reload/replacement webContents меняет stream и сбрасывает conversation/context как reset. Старые commands/receipts/results не переносятся. React remount только переподписывается, не сбрасывает Main.
