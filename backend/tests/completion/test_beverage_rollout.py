@@ -95,19 +95,27 @@ def test_current_inspector_reproduces_new_snapshots() -> None:
         snapshots += [row["enabled"] for row in read("issue114_enabled.json")["reports"]]
         for expected in snapshots:
             settings = expected["settings"]
-            assert (
-                await inspect_scene(
-                    expected["scene_id"],
-                    expected["locale"],
-                    settings["provider"],
-                    settings["model"],
-                    max_output_tokens=settings["max_output_tokens"],
-                    temperature=settings["temperature"],
-                    thinking_level=settings["thinking_level"],
-                    budget_case=expected["budget_case"],
-                    beverage_case=expected.get("beverage_case"),
-                )
-                == expected
+            current = await inspect_scene(
+                expected["scene_id"],
+                expected["locale"],
+                settings["provider"],
+                settings["model"],
+                max_output_tokens=settings["max_output_tokens"],
+                temperature=settings["temperature"],
+                thinking_level=settings["thinking_level"],
+                budget_case=expected["budget_case"],
+                beverage_case=expected.get("beverage_case"),
             )
+            # #120 changes only shipped-catalogue provenance; these scenes retain
+            # their frozen synthetic lore. Compare every other byte/selection field.
+            lore_path = "completion/prompts/lore.json"
+            lore_file = Path(__file__).parents[2] / "wisp_backend" / lore_path
+            assert json.loads(lore_file.read_text()) == {"formatVersion": 1, "revision": 2, "entries": []}
+            current_hash = hashlib.sha256(lore_file.read_bytes()).hexdigest()
+            assert current_hash == "381a8e3f5a9ecf90bee09e9d0438db6be2ede789b7fd4ebe2ef0c0bc7bca773d"
+            assert current["source_digests"][lore_path] == current_hash
+            assert expected["source_digests"][lore_path] != current_hash
+            adjusted = {**expected, "source_digests": {**expected["source_digests"], lore_path: current_hash}}
+            assert current == adjusted
 
     asyncio.run(run())

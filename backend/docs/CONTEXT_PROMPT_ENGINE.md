@@ -371,8 +371,10 @@ usage, cancellation и отсутствия late publication. Prompts/count payl
 locale, NFC/lowercase и Unicode token boundaries. Отбор: priority DESC → число
 совпавших ключей DESC → id ASC; вывод: order ASC → id ASC. Максимум три записи
 и 1200 UTF-16 text, пропуск только целой записи. SourceRef в prompt не попадает.
-Нет match, файл отсутствует или невалиден → chat работает без lore; диагностика
-содержит только `lore_catalogue_unavailable`. После изменения revision нужен restart.
+Рабочий каталог намеренно пуст (`revision=2`, `entries=[]`) до авторского наполнения (#120);
+это нормальный startup без предупреждений и fallback-записей, lore блок не добавляется.
+Synthetic fixtures проверяют loader/selector отдельно. Нет match → chat без lore и диагностики;
+только отсутствующий/невалидный файл даёт `lore_catalogue_unavailable`. После изменения revision нужен restart.
 Touch/events/observation не активируют lore.
 
 `/v1/summary` реализован как отдельный явный сценарий: полные хронологические пары,

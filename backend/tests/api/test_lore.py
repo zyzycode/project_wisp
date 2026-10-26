@@ -17,6 +17,7 @@ from wisp_backend.accounting.contracts import Usage
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.schemas.interaction import InteractionChatRequest as ChatRequest
 from wisp_backend.completion.contracts import ProviderResult
+from wisp_backend.completion.prompts.lore import parse_catalogue
 from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input
 
 
@@ -28,13 +29,19 @@ def request_body(fixture: str = "request.valid.json") -> dict[str, Any]:
 
 
 @pytest.mark.parametrize("provider,model", list(CONTEXT_WINDOWS))
-def test_chat_handlers_use_reviewed_lore_with_output_reserve(
+@pytest.mark.parametrize("locale,query", [("ru", "На рабочем столе"), ("en", "Tell me about the desktop")])
+def test_chat_handlers_start_with_empty_lore_and_output_reserve(
     app_factory: Callable[..., FastAPI],
     chat_completion: Callable[..., dict[str, Any]],
     provider: str,
     model: str,
+    locale: str,
+    query: str,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     body = request_body()
+    body["locale"] = locale
+    body["messages"][-1]["content"] = query
     calls = []
 
     def upstream(request: httpx.Request) -> httpx.Response:
@@ -67,15 +74,18 @@ def test_chat_handlers_use_reviewed_lore_with_output_reserve(
             }
         assert estimate_input(data, len(parts) + 1) + cap <= CONTEXT_WINDOWS[(provider, model)]
         lore = [part for part in parts if part.startswith("Untrusted author lore_context")]
-        assert len(lore) == 1 and "Wisp lives on the desktop." in lore[0]
-        assert "sourceRef" not in lore[0] and "399bc8" not in lore[0]
+        assert not lore
         assert "Author lore supplies world reference" in system
         assert "Wisp lives on the desktop." not in system
         assert parts[-1] == body["messages"][-1]["content"] and cap == 4096
         calls.append(parts)
         return httpx.Response(200, json=reply)
 
-    with TestClient(app_factory(upstream, assistants={"default": {"provider": provider, "model": model}})) as client:
+    app = app_factory(upstream, assistants={"default": {"provider": provider, "model": model}})
+    with TestClient(app) as client:
+        assert app.state.lore_catalogue is not None
+        assert app.state.lore_catalogue.revision == 2
+        assert app.state.lore_catalogue.entries == ()
         response = client.post("/v1/chat", json=body)
         assert response.status_code == 200
         assert response.json() == {
@@ -84,9 +94,18 @@ def test_chat_handlers_use_reviewed_lore_with_output_reserve(
             "appraisal": {"category": "neutral", "intensity": "low", "confidence": "clear"},
         }
     assert len(calls) == 1
+    assert "lore_catalogue_unavailable" not in caplog.text
+
+
+@pytest.fixture
+def synthetic_lore(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Exercise populated lore independently of the intentionally empty shipped file."""
+    source = parse_catalogue(catalogue(entry(keys=["desktop"])))
+    monkeypatch.setattr("wisp_backend.application.load_catalogue", lambda: source)
 
 
 def test_only_current_user_activates_lore_and_touch_events_do_not_scan(
+    synthetic_lore: None,
     client_factory: Callable[..., TestClient],
     completion: Callable[..., dict[str, Any]],
 ) -> None:
@@ -210,6 +229,7 @@ def test_revision_delete_and_invalid_replacement_apply_only_after_restart(
 
 
 def test_shutdown_cancels_lore_completion_and_late_result_cannot_publish(
+    synthetic_lore: None,
     app_factory: Callable[..., FastAPI],
 ) -> None:
     async def run() -> None:

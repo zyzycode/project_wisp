@@ -122,7 +122,13 @@ def test_current_inspector_reproduces_after_for_both_providers_without_http(monk
             )
             # #114 changes tracked source provenance only on the no-field route.
             current = json.loads((FIXTURES / "issue114_after.json").read_text())
-            assert actual["source_digests"] == current["reports"][0]["source_digests"]
+            # #120 empties the shipped catalogue; archived scenes keep synthetic lore.
+            lore_path = "completion/prompts/lore.json"
+            lore_file = Path(__file__).parents[2] / "wisp_backend" / lore_path
+            assert json.loads(lore_file.read_text()) == {"formatVersion": 1, "revision": 2, "entries": []}
+            lore_hash = hashlib.sha256(lore_file.read_bytes()).hexdigest()
+            assert lore_hash == "381a8e3f5a9ecf90bee09e9d0438db6be2ede789b7fd4ebe2ef0c0bc7bca773d"
+            assert actual["source_digests"] == {**current["reports"][0]["source_digests"], lore_path: lore_hash}
             assert {key: value for key, value in actual.items() if key != "source_digests"} == {
                 key: value for key, value in expected.items() if key != "source_digests"
             }

@@ -168,13 +168,16 @@ def test_lore_is_atomic_optional_context_below_facts_state_and_recent_history() 
     assert lore not in select_context((*required, lore), cost((*required, lore)) - 1, cost)
 
 
-def test_shipped_source_and_no_empty_blocks() -> None:
+@pytest.mark.parametrize("locale", ["ru", "en"])
+def test_shipped_source_is_intentionally_empty_without_warning_or_fallback(
+    locale: str, caplog: pytest.LogCaptureFixture
+) -> None:
     source = load_catalogue()
-    assert source is not None and source.revision == 1
-    assert {item.id for item in source.entries} == {"desktop-home-ru", "desktop-home-en"}
-    assert select_entries(source, "На рабочем столе", "ru")[0].text == "Wisp живёт на рабочем столе."
-    assert select_entries(source, "desktop", "en")[0].text == "Wisp lives on the desktop."
-    assert all("399bc8b498d229d9b3fa3356a1ce5a77955c10d8" in item.source_ref for item in source.entries)
-    assert lore_block(source, "no match", "en") is None
-    assert lore_block(None, "desktop", "en") is None
-    assert lore_block(parse_catalogue(catalogue()), "castle", "en") is None
+    assert source is not None and source.revision == 2
+    assert source.entries == ()
+    assert "lore_catalogue_unavailable" not in caplog.text
+    for query in ("На рабочем столе", "рабочий стол", "desktop", "castle", ""):
+        assert select_entries(source, query, locale) == ()
+        assert lore_block(source, query, locale) is None
+    assert lore_block(None, "desktop", locale) is None
+    assert lore_block(parse_catalogue(catalogue()), "castle", locale) is None
