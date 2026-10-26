@@ -76,3 +76,19 @@ it('serializes correction writes in source order instead of letting a slower old
   const fact = f.upsert.mock.calls[0]![0]; ack({ ok: true, value: fact }); await first; await second;
   expect(f.upsert.mock.calls.map(call => call[0].factValue)).toEqual(['Аня', 'Мария']);
 });
+
+it('bounds recognized-source retention while suppressing recent duplicate learning', async () => {
+  const f = fixture();
+  for (let index = 0; index < 1024; index++) {
+    await f.knowledge.persisted({ ...turn, user: { ...turn.user, id: `source-${index}` } }, { generation: 0 });
+  }
+  const observed: unknown = Reflect.get(f.knowledge, 'observed');
+  expect(observed).toBeInstanceOf(Set);
+  if (!(observed instanceof Set)) throw new Error('Missing source deduplication cache');
+  expect(observed.size).toBeLessThanOrEqual(128);
+  await f.knowledge.persisted({ ...turn, user: { ...turn.user, id: 'source-1023' } }, { generation: 0 });
+  expect(f.upsert).toHaveBeenCalledTimes(1024);
+  expect(f.observe).toHaveBeenCalledTimes(1024);
+  f.knowledge.reset();
+  expect(observed.size).toBe(0);
+});

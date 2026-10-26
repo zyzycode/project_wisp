@@ -3,6 +3,8 @@ import type { CompletedDialogueMemoryTurn } from '../ports/memory-runtime';
 import type { IUserFactsRepository, MemoryFailureCode, MemoryOperationContext } from '../ports/memory-repository.interface';
 import { recognizeMemoryFact } from './memory-fact-registry';
 
+const MAX_RECENT_SOURCE_IDS = 128;
+
 export class MemoryKnowledge {
   private readonly observed = new Set<string>();
   constructor(private readonly options: {
@@ -19,6 +21,8 @@ export class MemoryKnowledge {
     const fact = recognizeMemoryFact(turn.user.text); if (!fact) return;
     this.options.invalidateSummary?.();
     this.observed.add(turn.user.id);
+    // History serializes acknowledged turns; retain recent duplicate callbacks, not a lifetime ID log.
+    if (this.observed.size > MAX_RECENT_SOURCE_IDS) this.observed.delete(this.observed.values().next().value!);
     try {
       const result = await this.options.facts.upsert({ id: this.options.createId(), factKey: fact.key, factValue: fact.value,
         confidence: 1, sourceMessageId: turn.user.id, createdAt: turn.user.createdAt, updatedAt: turn.user.createdAt }, context);

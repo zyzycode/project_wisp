@@ -111,3 +111,38 @@ it('support entry cancels late game/event output, keeps direct touch possible an
   f.runtime.touch(); await flush(); expect(f.generateEvent).toHaveBeenCalledTimes(2);
   expect(support.isActive()).toBe(true); f.runtime.dispose();
 });
+
+it('bounds event deduplication across long sessions and releases it on dispose', async () => {
+  const f = fixture();
+  for (let index = 0; index < 1024; index++) f.runtime.socialStarted(`inactive-${index}`, Date.now());
+  const seen: unknown = Reflect.get(f.runtime, 'seen');
+  expect(seen).toBeInstanceOf(Set);
+  if (!(seen instanceof Set)) throw new Error('Missing event deduplication cache');
+  expect(seen.size).toBeLessThanOrEqual(128);
+  f.social('current'); await flush();
+  await vi.advanceTimersByTimeAsync(2000);
+  f.runtime.socialStarted('current', Date.now()); await flush();
+  expect(f.generateEvent).toHaveBeenCalledTimes(1);
+  f.runtime.dispose();
+  expect(seen.size).toBe(0);
+  f.runtime.socialStarted('after-dispose', Date.now());
+  f.runtime.committed({ appRunId: 'app', activityRunId: 'after-dispose', kind: 'cursor_game', outcome: 'caught', playCompleted: true, executedMs: 2800, endedAt: new Date().toISOString() }, { generation: 0 });
+  expect(seen.size).toBe(0);
+});
+
+it('rejects an evicted old game commit without disturbing the current game', async () => {
+  const f = fixture();
+  const old = f.game('old');
+  await vi.advanceTimersByTimeAsync(4000);
+  expect(f.generateEvent).toHaveBeenCalledTimes(1);
+  for (let index = 0; index < 1024; index++) {
+    f.runtime.committed({ ...old, activityRunId: `unrelated-${index}` }, { generation: 0 });
+  }
+  const current = f.game('current', 'completed', false);
+  f.runtime.committed(old, { generation: 0 });
+  f.runtime.committed(current, { generation: 0 });
+  f.runtime.committed(current, { generation: 0 });
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(f.generateEvent).toHaveBeenCalledTimes(2);
+  f.runtime.dispose();
+});

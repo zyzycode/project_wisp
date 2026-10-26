@@ -14,7 +14,7 @@ import { useCharacterAnimation } from '../../hooks/useCharacterAnimation';
 import { useGaze } from '../../hooks/useGaze';
 import type { CursorSample, GazePresentationDirection } from '../../../domain/behavior/gaze-engine';
 import type { CursorScreenPosition } from '../../body-ui-runtime';
-import { SpriteRenderer, resolveSpriteSource } from './SpriteRenderer';
+import { SpriteRenderer } from './SpriteRenderer';
 import { createAnimationPreviewState, type DebugAnimationSelection } from '../../render-engine/animation-preview';
 import { createSpriteProjection } from '../../render-engine/sprite-projection';
 import type { PupilPoseHandle } from '../../render-engine/pupil-pose';
@@ -174,18 +174,6 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
             });
             cachedManifestResolver = loaded;
             setResolver(loaded);
-
-            // Preload sprite frames into browser image decode cache to avoid micro-flashing
-            if (typeof Image !== 'undefined' && manifest && typeof manifest === 'object') {
-              for (const anim of Object.values(manifest as Record<string, { frames?: string[] }>)) {
-                if (Array.isArray(anim?.frames)) {
-                  for (const frameSrc of anim.frames) {
-                    const img = new Image();
-                    img.src = resolveSpriteSource(frameSrc);
-                  }
-                }
-              }
-            }
           }
         })
         .catch(() => undefined);

@@ -11,6 +11,8 @@ import type { AIInitiativeSpeechDTO, DialoguePresentationDTO } from '../../share
 import { exactRecord, plainText } from '../../shared/dialogue-ipc-validation';
 import { emptyMemoryContext } from './memory-recall';
 
+const MAX_RECENT_EVENT_IDS = 128;
+
 interface Gate { readonly allowed: boolean; readonly touchAllowed?: boolean; readonly identity: string | null; readonly memoryGeneration: number; readonly activeRunId: string | null; readonly localSpeech: boolean }
 interface Source { readonly runId: string; readonly kind: 'cursor_game' | 'social_bid' | 'user_touch'; readonly event: AICompanionEvent; readonly terminalAt: number; readonly identity: string; readonly memoryGeneration: number; readonly epoch: number; readonly touchReceipt?: TouchInteractionReceipt }
 interface Options {
@@ -80,7 +82,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     if (this.requestId) this.options.provider.cancel(this.requestId);
     const changed = this.speech !== null; this.speech = null; if (changed) this.options.publish();
   }
-  dispose(): void { this.disposed = true; this.invalidate(); }
+  dispose(): void { this.disposed = true; this.invalidate(); this.seen.clear(); }
   gameTerminal(result: CursorGameResult, generation: number): void {
     if (this.options.autonomousEnabled === false) return;
     if (this.pending || this.source) return;
@@ -96,8 +98,9 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     }
   }
   committed(episode: GameEpisode, context: MemoryOperationContext): void {
+    if (this.disposed) return;
     const key = `game:${context.generation}:${episode.appRunId}:${episode.activityRunId}`;
-    if (this.seen.has(key)) return; this.seen.add(key);
+    if (!this.rememberEvent(key)) return;
     const game = this.game;
     if (!game || !game.completed || game.generation !== context.generation || game.result.activityRunId !== episode.activityRunId || game.result.outcome !== episode.outcome
       || game.epoch !== this.epoch || this.options.now() >= game.result.atMs + 2000 || this.pending || this.source || !this.baseAllowed()) return;
@@ -109,13 +112,20 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     this.causalTimer = this.options.scheduler.setTimeout(() => { if (this.options.now() < source.terminalAt + 2500) this.begin(source); else this.source = null; }, Math.max(0, source.terminalAt + 2000 - this.options.now()));
   }
   socialStarted(runId: string, atMs: number): void {
-    if (this.options.autonomousEnabled === false) return;
-    const key = `social:${runId}`; if (this.seen.has(key)) return; this.seen.add(key);
+    if (this.disposed || this.options.autonomousEnabled === false) return;
+    const key = `social:${runId}`; if (!this.rememberEvent(key)) return;
     const gate = this.options.gate();
     if (this.pending || this.source || !gate.identity || !this.baseAllowed() || gate.activeRunId !== runId) return;
     const source: Source = { runId, kind: 'social_bid', terminalAt: atMs, epoch: this.epoch, identity: gate.identity, memoryGeneration: gate.memoryGeneration,
       event: { type: 'social_bid_started', occurredAt: this.options.timestamp() } };
     this.source = source; this.begin(source);
+  }
+  private rememberEvent(key: string): boolean {
+    if (this.seen.has(key)) return false;
+    // Older game callbacks also need a current terminal/deadline; social callbacks need the active run.
+    this.seen.add(key);
+    if (this.seen.size > MAX_RECENT_EVENT_IDS) this.seen.delete(this.seen.values().next().value!);
+    return true;
   }
   private baseAllowed(touch = this.source?.kind === 'user_touch'): boolean {
     const gate = this.options.gate();
