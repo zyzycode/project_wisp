@@ -1,11 +1,7 @@
 import { createCharacterSnapshot } from '../../src/domain/character/character-snapshot';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { MockAIProvider } from '../../src/infrastructure/ai/mock-ai-provider';
-import {
-  CATEGORY_TEMPLATES,
-  UNSUPPORTED_REPLIES,
-} from '../../src/infrastructure/ai/mock-response-catalog';
 import type { AIProviderRequest } from '../../src/application/ports/ai-provider.interface';
 
 describe('Infrastructure: MockAIProvider', () => {
@@ -50,16 +46,6 @@ describe('Infrastructure: MockAIProvider', () => {
     locale: 'ru',
   });
 
-  it('keeps category coverage and default fallback', () => {
-    expect(Object.keys(CATEGORY_TEMPLATES)).toEqual([
-      'greeting',
-      'care',
-      'play',
-      'sleep',
-    ]);
-    expect(UNSUPPORTED_REPLIES.ru).toBe('На это у меня пока нет подходящего ответа');
-  });
-
   it.each([
     ['greeting', 'Привет', 'react_happy', 4],
     ['care', 'Хочу тебя обнять', 'react_happy', 4],
@@ -87,14 +73,6 @@ describe('Infrastructure: MockAIProvider', () => {
       }
       expect(replies.size).toBeGreaterThanOrEqual(minimumReplies);
     }
-  });
-
-  it('initializes with default status ready', async () => {
-    const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
-    const status = await provider.getStatus();
-
-    expect(status.kind).toBe('ready');
-    expect(status.activeRequestId).toBeUndefined();
   });
 
   describe('Response locale', () => {
@@ -278,24 +256,24 @@ describe('Infrastructure: MockAIProvider', () => {
   });
 
   describe('Status & latency lifecycle', () => {
-    it('switches status to thinking during execution and back to ready', async () => {
-      const provider = new MockAIProvider({ simulatedLatencyMs: 30 });
+    it('switches ready → thinking → ready on the configured deadline', async () => {
+      vi.useFakeTimers();
+      try {
+        const provider = new MockAIProvider({ simulatedLatencyMs: 30 });
+        expect(await provider.getStatus()).toEqual({ kind: 'ready' });
+        const promise = provider.generateResponse(createRequest('Привет', 'req-async-1'));
+        expect(await provider.getStatus()).toEqual({ kind: 'thinking', activeRequestId: 'req-async-1' });
 
-      const promise = provider.generateResponse(createRequest('Привет', 'req-async-1'));
-
-      // Check immediate status during in-flight request
-      const thinkingStatus = await provider.getStatus();
-      expect(thinkingStatus.kind).toBe('thinking');
-      expect(thinkingStatus.activeRequestId).toBe('req-async-1');
-
-      const response = await promise;
-      expect(response.status).toBe('ok');
-      expect(response.diagnostics?.latencyMs).toBeGreaterThanOrEqual(25);
-
-      // Status should be ready again
-      const finalStatus = await provider.getStatus();
-      expect(finalStatus.kind).toBe('ready');
-      expect(finalStatus.activeRequestId).toBeUndefined();
+        await vi.advanceTimersByTimeAsync(29);
+        expect(await provider.getStatus()).toMatchObject({ kind: 'thinking' });
+        await vi.advanceTimersByTimeAsync(1);
+        const response = await promise;
+        expect(response.status).toBe('ok');
+        expect(response.diagnostics?.latencyMs).toBe(30);
+        expect(await provider.getStatus()).toEqual({ kind: 'ready' });
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

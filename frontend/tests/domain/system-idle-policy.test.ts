@@ -8,10 +8,8 @@ import {
 
 type Sample = Parameters<typeof updateSystemIdle>[1];
 
-function session(initialState = createSystemIdleState(1)) {
+function session(initialState = createSystemIdleState(1), sequence = 0, nowMs = 0) {
   let state = initialState;
-  let sequence = 0;
-  let nowMs = 0;
   return {
     get state() { return state; },
     get nowMs() { return nowMs; },
@@ -28,13 +26,22 @@ function session(initialState = createSystemIdleState(1)) {
   };
 }
 
+// Derive the shared baseline through the reducer once per arming mode. Each case
+// receives its own state, while continuous episode tests below exercise the full cadence.
+const awayBaselines = new Map<boolean, SystemIdleState>();
+
 function observedAway(armingAllowed = true) {
-  const run = session();
-  for (let idleMs = 1_000; idleMs <= 301_000; idleMs += 1_000) {
-    expect(run.sample(idleMs, { armingAllowed }).returned).toBe(false);
+  let baseline = awayBaselines.get(armingAllowed);
+  if (!baseline) {
+    const run = session();
+    for (let idleMs = 1_000; idleMs <= 301_000; idleMs += 1_000) {
+      expect(run.sample(idleMs, { armingAllowed }).returned).toBe(false);
+    }
+    baseline = run.state;
+    awayBaselines.set(armingAllowed, baseline);
   }
-  expect(run.state.presence).toBe('probably_away');
-  return run;
+  expect(baseline.presence).toBe('probably_away');
+  return session(structuredClone(baseline), 301, 301_000);
 }
 
 describe('Domain: system idle presence', () => {

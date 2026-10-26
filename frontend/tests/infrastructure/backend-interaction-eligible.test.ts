@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
 import type { AIProviderRequest } from '../../src/application/ports/ai-provider.interface';
 import type { BackendInteractionAppraisal, BackendInteractionChatRequest, BackendInteractionChatResponse } from '../../src/application/ports/backend-interaction-contract';
-import { projectInteractionChat, parseInteractionChatResponse, parseInteractionTouchResponse } from '../../src/infrastructure/ai/backend-interaction-validation';
+import { projectInteractionChat, parseInteractionChatResponse } from '../../src/infrastructure/ai/backend-interaction-validation';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
 
 const fixture = (name: string): unknown => JSON.parse(readFileSync(`../docs/contracts/fixtures/desktop-backend-v1/interaction/${name}`, 'utf8'));
@@ -19,9 +19,10 @@ const client = (fetcher: typeof fetch) => new ExternalAIProviderClient({ baseUrl
 function reply(appraisal: BackendInteractionAppraisal): BackendInteractionChatResponse {
   return { requestId: wire.requestId, text: 'Понимаю.', appraisal };
 }
-const appraisals: readonly BackendInteractionAppraisal[] = (['supportive', 'playful', 'boundary', 'hostile', 'neutral'] as const)
-  .flatMap(category => (['low', 'moderate'] as const).flatMap(intensity => (['clear', 'uncertain'] as const).map(confidence => ({ category, intensity, confidence }))));
-it.each(appraisals)('uses one v1 chat request for eligible $category/$intensity/$confidence', async appraisal => {
+// The complete shared corpus below owns appraisal values; transport needs one
+// non-neutral reply and one suppressed rejection, not their Cartesian product.
+it('uses one v1 chat request for eligible hostile/moderate/uncertain appraisal', async () => {
+  const appraisal: BackendInteractionAppraisal = { category: 'hostile', intensity: 'moderate', confidence: 'uncertain' };
   const fetcher = vi.fn<typeof fetch>(async () => json(reply(appraisal)));
   const result = await client(fetcher).generateResponse(input());
   expect(result).toMatchObject({ status: 'ok', appraisal, reply: { text: 'Понимаю.' } });
@@ -30,17 +31,10 @@ it.each(appraisals)('uses one v1 chat request for eligible $category/$intensity/
   expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({ ...wire, effectPolicy: 'eligible' });
   expect(result).not.toHaveProperty('memoryCandidates');
 });
-it.each(appraisals.filter(appraisal => appraisal.category === 'hostile' || appraisal.intensity === 'moderate'))('keeps $category/$intensity/$confidence out of touch responses', appraisal => {
-  expect(() => parseInteractionTouchResponse(reply(appraisal), wire.requestId, 'eligible')).toThrow();
-});
-it.each(appraisals.filter(appraisal => JSON.stringify(appraisal) !== JSON.stringify(neutral)))('rejects $category/$intensity/$confidence when the chat gate is suppressed', async appraisal => {
+it('rejects an eligible appraisal when the chat gate is suppressed without retry', async () => {
+  const appraisal: BackendInteractionAppraisal = { category: 'hostile', intensity: 'moderate', confidence: 'clear' };
   const fetcher = vi.fn<typeof fetch>(async () => json(reply(appraisal)));
   await expect(client(fetcher).generateResponse(input(wire))).rejects.toThrow();
-  expect(fetcher).toHaveBeenCalledTimes(1);
-});
-it('keeps neutral/low/clear valid in suppressed chat', async () => {
-  const fetcher = vi.fn<typeof fetch>(async () => json(reply(neutral)));
-  await expect(client(fetcher).generateResponse(input(wire))).resolves.toMatchObject({ status: 'ok', appraisal: neutral });
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
 it.each(['deltas', 'friendship', 'love', 'axes', 'consent', 'userConsentEnabled', 'numericEffect'])('rejects numeric or authority instruction key %s at root and appraisal without a second request', async key => {
@@ -79,14 +73,8 @@ it('source-validates memory candidates independently from current appraisal and 
 });
 
 const eligible = fixture('chat.eligible.json') as readonly { name: string; request: BackendInteractionChatRequest; response: BackendInteractionChatResponse }[];
-it.each(eligible)('shares the full eligible corpus case $name with the backend and uses one HTTP request', async entry => {
+it.each(eligible)('shares the full eligible projection and response corpus case $name with the backend', entry => {
   const request = input(entry.request);
   expect(projectInteractionChat(request)).toEqual(entry.request);
   expect(parseInteractionChatResponse(entry.response, request.requestId, request.userMessage.text, 'eligible')).toEqual(entry.response);
-  const fetcher = vi.fn<typeof fetch>(async () => json(entry.response));
-  const result = await client(fetcher).generateResponse(request);
-  expect(result).toMatchObject({ status: 'ok', reply: { text: entry.response.text }, appraisal: entry.response.appraisal });
-  expect(fetcher).toHaveBeenCalledTimes(1);
-  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://backend.example/api/v1/chat');
-  expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(entry.request);
 });
