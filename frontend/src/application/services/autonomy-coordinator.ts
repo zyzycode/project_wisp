@@ -84,6 +84,7 @@ export interface AutonomyCoordinatorOptions {
     intent: BehaviorIntent,
     opportunity: { readonly decisionSequence: number; readonly opportunityAtMs: number }
   ) => boolean;
+  readonly beforeLocalOpportunity?: () => boolean;
   readonly getLocalSelection?: () => LocalSelectionContext;
   readonly onMovementStopped?: () => void;
   readonly behaviorConfig?: BehaviorConfig;
@@ -270,6 +271,7 @@ export class AutonomyCoordinator {
   }
 
   private runOpportunity(): void {
+    if (this.options.beforeLocalOpportunity?.() || !this.isCadenceEligible()) return;
     if (!this.options.movement.canAcceptVoluntaryMovement()) {
       this.recordTrace(null, 'movement_unavailable');
       this.scheduleNextOpportunity();

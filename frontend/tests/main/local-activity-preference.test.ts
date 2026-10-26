@@ -58,7 +58,9 @@ it('high social preference cannot spend a third initiative token or interrupt it
     f.pulse(); expect(f.main.getActivityTimeline()?.activityId).toBe('social_bid');
     const first = f.main.getActivityTimeline()?.runId; f.advance(1);
     expect(f.main.getActivityTimeline()?.runId).toBe(first);
-    f.finish(); f.advance(31000); f.pulse();
+    f.finish(); f.advance(31000);
+    // A newly accepted contact releases SOC-A01's session silence latch.
+    f.main.acceptUserContact(); f.pulse();
     expect(f.main.getActivityTimeline()?.activityId).toBe('social_bid');
     f.finish(); f.advance(31000); f.pulse();
     expect(f.main.getActivityTimeline()?.activityId).not.toBe('social_bid');

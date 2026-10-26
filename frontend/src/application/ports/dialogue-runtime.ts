@@ -19,6 +19,8 @@ export interface IQuietSupportRuntime {
 /** All effects are injected by Main; provider execution belongs to one app lifecycle. */
 export interface DialogueRuntimeOptions {
   readonly provider: IAIProvider;
+  readonly onAcceptedUserInput?: () => void;
+  readonly onLifecycleReset?: () => void;
   readonly quietSupport?: IQuietSupportRuntime;
   readonly interactionEnabled?: boolean;
   readonly beginInteraction?: () => InteractionReceipt;

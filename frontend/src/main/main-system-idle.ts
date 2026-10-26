@@ -6,6 +6,7 @@ export class MainSystemIdle {
   private generation = 0;
   private sequence = 0;
   private state = createSystemIdleState(this.generation);
+  private lastReadingAvailable = false;
   private lastReadAt: number | null = null;
   private enabled = true;
   private suspended = false;
@@ -18,6 +19,7 @@ export class MainSystemIdle {
     readonly now: () => number;
     readonly wallNow: () => number;
     readonly onBlocked: () => void;
+    readonly onInvalidated?: () => void;
   }) { this.subscribe(); }
 
   public isBlocked(): boolean {
@@ -25,7 +27,14 @@ export class MainSystemIdle {
       || systemPresenceAt(this.state, this.options.now()) === 'probably_away');
   }
 
+  public isFreshActive(): boolean {
+    return this.enabled && !this.disposed && !this.suspended && !this.inactiveSession && !this.locked
+      && this.lastReadingAvailable && systemPresenceAt(this.state, this.options.now()) === 'active';
+  }
+
   public reset(): void {
+    this.options.onInvalidated?.();
+    this.lastReadingAvailable = false;
     this.generation++; this.state = createSystemIdleState(this.generation);
     this.unsubscribe?.(); this.subscribe();
   }
@@ -49,6 +58,7 @@ export class MainSystemIdle {
     const locked = reading.status === 'available' || reading.reason === 'unconfirmed' ? false
       : reading.reason === 'inactive_session' || this.locked;
     if (this.locked !== locked || (reading.status === 'unavailable' && reading.reason !== 'unconfirmed')) this.reset();
+    this.lastReadingAvailable = reading.status === 'available';
     this.locked = locked;
     const update = updateSystemIdle(this.state, { generation: this.generation, sequence: ++this.sequence,
       nowMs, wallNowMs: this.options.wallNow(), idleMs: reading.status === 'available' ? reading.idleMs : null,

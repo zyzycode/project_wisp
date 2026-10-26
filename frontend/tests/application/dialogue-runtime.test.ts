@@ -11,15 +11,16 @@ function fixture(statusPending = false) {
   vi.useFakeTimers(); vi.setSystemTime(0); let id = 0;
   const status = deferred<AIProviderStatus>(), response = deferred<AIProviderResponse>();
   const provider = { getStatus: vi.fn(() => statusPending ? status.promise : Promise.resolve({ kind: 'ready' as const })), generateResponse: vi.fn((_request: AIProviderRequest) => response.promise) };
+  const acceptedContact = vi.fn(), lifecycleReset = vi.fn();
   const applyStimulus = vi.fn(), offerIntent = vi.fn(), publish = vi.fn(), endThinking = vi.fn();
-  const runtime = new DialogueRuntime({ provider, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+  const runtime = new DialogueRuntime({ onAcceptedUserInput: acceptedContact, onLifecycleReset: lifecycleReset, provider, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus, offerIntent, publish, beginThinking: vi.fn(), endThinking,
     transaction: commit => commit() });
   runtime.replaceStream('stream');
   const command = (sequence = 1) => ({ type: 'send' as const, text: 'Привет', sequence, streamId: 'stream', conversationId: runtime.getPresentation().conversationId });
   const success = (): AIProviderResponse => ({ requestId: provider.generateResponse.mock.calls[0]![0].requestId, status: 'ok', reply: { text: 'Привет!' }, confidence: 1 });
-  return { runtime, provider, status, response, applyStimulus, offerIntent, publish, endThinking, command, success };
+  return { acceptedContact, lifecycleReset, runtime, provider, status, response, applyStimulus, offerIntent, publish, endThinking, command, success };
 }
 afterEach(() => vi.useRealTimers());
 it('rejects malformed payloads before any provider call or semantic stimulus', async () => {
@@ -97,4 +98,16 @@ it('offers explicit behavior with Main-owned request freshness metadata only aft
 it('keeps text-only success out of behavior admission', async () => {
   const f = fixture(); f.runtime.receive(f.command()); await flush(); f.response.resolve(f.success()); await flush();
   expect(f.runtime.getPresentation().turn.phase).toBe('completed'); expect(f.offerIntent).not.toHaveBeenCalled();
+});
+
+it('signals accepted contact synchronously before provider awaits; rejects and reset never signal contact', async () => {
+  const f = fixture(true);
+  expect(f.runtime.receive({ ...f.command(), text: '\u0000' }).status).toBe('rejected');
+  expect(f.acceptedContact).not.toHaveBeenCalled();
+  expect(f.runtime.receive(f.command()).status).toBe('accepted');
+  expect(f.acceptedContact).toHaveBeenCalledOnce(); expect(f.provider.getStatus).not.toHaveBeenCalled();
+  f.runtime.receive(f.command()); f.runtime.receive(f.command(2)); expect(f.acceptedContact).toHaveBeenCalledOnce();
+  const { text: _text, ...meta } = f.command(3); f.runtime.receive({ ...meta, type: 'reset' });
+  expect(f.acceptedContact).toHaveBeenCalledOnce(); expect(f.lifecycleReset).toHaveBeenCalledTimes(2);
+  await flush(); f.runtime.dispose();
 });

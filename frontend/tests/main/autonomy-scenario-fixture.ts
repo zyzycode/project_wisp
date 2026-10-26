@@ -10,7 +10,7 @@ import type { ProviderBehaviorOffer } from '../../src/application/ports/behavior
 import type { IPlatformAdapter } from '../../src/application/ports/platform-adapter.interface';
 export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialState?: CharacterState,
   cursorPosition?: Pick<IPlatformAdapter, 'getCursorScreenPosition'>,
-  hooks: Pick<MainAutonomyCompositionOptions, 'onCursorGameResult' | 'onActivityOutcome' | 'onActivityStarted' | 'onSocialBidStarted' | 'onAIInvalidated' | 'onUserContact' | 'systemIdle' | 'onUnsolicitedBlocked'> = {},
+  hooks: Partial<Pick<MainAutonomyCompositionOptions, 'onCursorGameResult' | 'onActivityOutcome' | 'onActivityStarted' | 'onSocialBidStarted' | 'onAIInvalidated' | 'onUserContact' | 'systemIdle' | 'onUnsolicitedBlocked' | 'onPresentationChanged'>> = {},
   useAuthoredTraits = false) {
   let now = 0; let id = 0; let nextTimer = 0; let root = { x: 400, y: 790 }; let target: typeof root | null = null;
   let movable = true; let supportValid = true; let random = randomUnit;
@@ -42,7 +42,7 @@ export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialSta
       canAcceptVoluntaryMovement: () => movable, requestVoluntaryMovement: move,
       cancelVoluntaryMovement: () => { const had = target !== null; target = null; return had; } },
     requestManualRootPosition: () => false, createVisualEpisodeId: () => `visual-${++id}`,
-    createActivityRunId: () => `run-${++id}`, onPresentationChanged: () => {},
+    createActivityRunId: () => `run-${++id}`, onPresentationChanged: () => hooks.onPresentationChanged?.(),
   });
   main.start();
   const pulse = () => { const entry = [...timers.entries()].sort((a,b) => a[1].atMs - b[1].atMs)[0];
@@ -58,6 +58,6 @@ export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialSta
     return main.offerDialogueIntent({ intent: { kind, source: 'provider', priority: 'normal', requestId },
       conversationId: 'conversation', generation: 0, requestedAtMs: now, receivedAtMs: now, expiresAtMs: now + 30000 }); };
   return { main, character, input, outcomes, timers, move, pulse, advance, arrive, finish, play, offer, environment,
-    now: () => now, root: () => root, setRandom: (value: number) => { random = value; },
+    elapse: (delta: number) => { now += delta; }, now: () => now, root: () => root, setRandom: (value: number) => { random = value; },
     setMovable: (value: boolean) => { movable = value; }, setSupportValid: (value: boolean) => { supportValid = value; } };
 }

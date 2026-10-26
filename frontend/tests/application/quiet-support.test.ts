@@ -12,23 +12,25 @@ function fixture(locale = 'ru', topic = false, eventRuntime?: DialogueRuntimeOpt
   vi.useFakeTimers(); vi.setSystemTime(0); let id = 0;
   const invalidate = vi.fn(), quietSupport = new QuietSupportRuntime(invalidate);
   const provider = { ...(topic ? { supportsDialogueTopic: true as const } : {}), getStatus: vi.fn(async () => ({ kind: 'ready' as const })), generateResponse: vi.fn(async (request: AIProviderRequest): Promise<AIProviderResponse> => ({ requestId: request.requestId, status: 'ok' as const, reply: { text: 'Hello' }, confidence: 1 })) };
+  const acceptedContact = vi.fn();
   const completed = vi.fn(), applyStimulus = vi.fn();
   const admit = vi.fn<NonNullable<NonNullable<DialogueRuntimeOptions['memory']>['interestThread']>['admit']>(async () => ({ ok: true as const, value: { kind: 'continue' as const, generation: 0 } }));
   const prepare = vi.fn<NonNullable<NonNullable<DialogueRuntimeOptions['memory']>['interestThread']>['prepare']>(async () => ({ ok: true, value: null }));
   const interestThread: NonNullable<NonNullable<DialogueRuntimeOptions['memory']>['interestThread']> = { admit, prepare, isCurrent: () => true };
   const events = { interruptForUser: vi.fn(async () => undefined), invalidate: vi.fn(), suppressUnsolicited: vi.fn(), takePreviousInitiative: vi.fn(() => undefined) };
-  const runtime = new DialogueRuntime({ provider, quietSupport, locale, events: eventRuntime ?? events, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+  const runtime = new DialogueRuntime({ onAcceptedUserInput: acceptedContact, provider, quietSupport, locale, events: eventRuntime ?? events, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     memory: { generation: () => 0, completed, ...(topic ? { interestThread } : {}) },
     getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus, offerIntent: vi.fn(), publish: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: commit => commit() });
   runtime.replaceStream('stream'); let sequence = 0;
   const send = (text = 'Hello', extra = {}) => runtime.receive({ type: 'send', text, streamId: 'stream', conversationId: runtime.getPresentation().conversationId, sequence: ++sequence, ...extra });
-  return { runtime, send, provider, completed, quietSupport, invalidate, applyStimulus, admit, prepare, events };
+  return { acceptedContact, runtime, send, provider, completed, quietSupport, invalidate, applyStimulus, admit, prepare, events };
 }
 afterEach(() => vi.useRealTimers());
 it.each([['ru', '  МНЕ ОТ ЭТОГО НЕ ЛЕГЧЕ !?.  ', 'Поняла. Я рядом.'], ['en', 'That doesn’t make me feel better!!!', "I understand. I'm here."]])('acknowledges exact %s cue once without provider, topic admission or evidence', async (locale, cue, ack) => {
-  const f = fixture(locale, true); f.send(); await flush(); f.provider.generateResponse.mockClear(); f.admit.mockClear(); f.applyStimulus.mockClear();
+  const f = fixture(locale, true); f.send(); await flush(); f.provider.generateResponse.mockClear(); f.admit.mockClear(); f.applyStimulus.mockClear(); f.acceptedContact.mockClear();
   expect(f.send(cue).status).toBe('accepted');
+  expect(f.acceptedContact).toHaveBeenCalledOnce();
   expect(f.runtime.getPresentation()).toMatchObject({ turn: { phase: 'completed', replyText: ack, outcome: { kind: 'local', reason: 'quiet_support' } } });
   await flush(); expect(f.quietSupport.isActive()).toBe(true); expect(f.invalidate).toHaveBeenCalledOnce();
   expect(f.provider.generateResponse).not.toHaveBeenCalled(); expect(f.admit).not.toHaveBeenCalled();

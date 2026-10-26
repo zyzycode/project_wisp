@@ -82,6 +82,7 @@ export class DialogueRuntime {
     }
     this.options.summary?.interrupt();
     if (this.executing) return { status: 'rejected', reason: 'busy' };
+    this.options.onAcceptedUserInput?.();
     this.options.memory?.beverage?.invalidateOffer();
     this.options.quietSupport?.resumeForUserDialogue();
     if (!command.replyToInterestThread && this.supportEligible && isQuietSupportCue(command.text) && this.options.quietSupport) {
@@ -153,6 +154,7 @@ export class DialogueRuntime {
     });
   }
   private reset(): void {
+    this.options.onLifecycleReset?.();
     if (this.pending) this.executing = false;
     this.options.memory?.beverage?.invalidateOffer();
     this.pending = null; this.lastOffered = undefined; this.sourceUserText = null; this.supportEligible = false;

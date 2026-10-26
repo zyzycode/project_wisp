@@ -71,6 +71,7 @@ export interface BrainActivityRuntimeOptions {
   readonly createRunId: () => string;
   readonly cooldownRules?: readonly CooldownRule[];
   readonly onVisualIntent: (intent: AnimationIntent<AnimationIntentKind>) => void;
+  readonly onRunCommitted?: (runId: string, activityId: string) => void;
   readonly onStarted?: (runId: string, activityId: string) => void;
   readonly onOutcome?: (event: ActivityOutcomeFeedback) => void;
   readonly onSettled?: (runId: string, result: ActivityResult) => void;
@@ -169,6 +170,7 @@ export class BrainActivityRuntime {
     if (this.cursorGame) this.options.onCursorGamePhase?.(runId, 'notice', null);
     this.explorePlan = selectedExplorePlan;
     this.applyCooldown(definition, 'start', nowMs);
+    this.options.onRunCommitted?.(runId, definition.id);
     this.applyUpdate(definition, update);
     if (this.runtime === null) return false;
     if (selectedExplorePlan !== null) {

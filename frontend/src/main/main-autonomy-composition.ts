@@ -8,6 +8,7 @@ import { requiresVitalSleep, permitsAutomaticWake, isQuietCompatible } from '../
 import { LANDING_RECOVERY_MS } from '../domain/behavior/autonomous-behavior';
 import { ProviderBehaviorAdmission } from '../application/services/provider-behavior-admission';
 import type { ProviderBehaviorOffer, BehaviorTurnContext, BehaviorAdmissionReceipt, BehaviorAdmissionRejection } from '../application/ports/behavior-admission-port';
+import { SocialBidFollowupPolicy, type SocialFollowupTicket } from '../domain/behavior/social-bid-followup-policy';
 import { createSocialBidActivity } from '../domain/behavior/social-bid-activity';
 import { InitiativeBudget, INITIATIVE_TUNING } from '../application/services/initiative-budget';
 import { createCursorInterestActivity } from '../domain/behavior/cursor-interest-activity';
@@ -118,6 +119,13 @@ export class MainAutonomyComposition {
   private quietSupport = false;
   private menuOpen = false;
   private cursorReactionActive = false;
+  private readonly socialFollowup = new SocialBidFollowupPolicy();
+  private startingSocial: 'first' | SocialFollowupTicket | null = null;
+  private secondRunId: string | null = null;
+  private initiativeStartSequence = 0;
+  private dialoguePending = false;
+  private dialogueGuardUntilMs = 0;
+  private lastDialogueTerminal: string | null = null;
   private readonly initiativeBudget = new InitiativeBudget();
   private cursorEpisode: { endsAtMs: number; supportId: string | undefined } | null = null;
   private readonly gamePresentation: CursorGamePresentation;
@@ -139,7 +147,7 @@ export class MainAutonomyComposition {
 
   public constructor(private readonly options: MainAutonomyCompositionOptions) {
     this.systemIdle = new MainSystemIdle({ source: options.systemIdle, now: () => options.clock.now(),
-      wallNow: options.wallNow ?? Date.now, onBlocked: () => this.blockUnsolicited() });
+      wallNow: options.wallNow ?? Date.now, onInvalidated: () => this.socialFollowup.invalidate(), onBlocked: () => this.blockUnsolicited() });
     this.gamePresentation = new CursorGamePresentation(() => options.clock.now(), () => options.locale ?? 'ru');
     validateBrainLoopPolicy(this.brainLoopPolicy());
     this.visualEpisode = this.createVisualEpisode('idle_blink');
@@ -151,9 +159,14 @@ export class MainAutonomyComposition {
       character: this.character,
       getCharacterSnapshot: options.getCharacterSnapshot,
       movement: options.movement,
+      beforeLocalOpportunity: () => {
+        const previous = this.initiativeStartSequence;
+        this.drainSocialAdmission();
+        return this.initiativeStartSequence !== previous;
+      },
       getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
         quiet: this.quiet || this.quietSupport,
-        canSocial: !this.systemIdle.isBlocked() && this.initiativeBudget.available(options.clock.now()) && options.getCharacterSnapshot().needs.attention >= 80
+        canSocial: this.socialFollowup.canStartFirst() && !this.systemIdle.isBlocked() && this.initiativeBudget.available(options.clock.now()) && options.getCharacterSnapshot().needs.attention >= 80
           && (options.getCharacterSnapshot().relationship?.friendship ?? 0) >= 100,
         canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
         canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
@@ -189,10 +202,22 @@ export class MainAutonomyComposition {
       },
       cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
-      onStarted: (runId, activityId) => options.onActivityStarted?.(runId, activityId),
-      onOutcome: event => { options.onActivityOutcome?.(event); this.coordinator.noteActivityOutcome(event); },
+      onRunCommitted: (runId, activityId) => {
+        if (this.activity.isInitiative()) this.initiativeStartSequence++;
+        if (activityId !== 'social_bid' || this.startingSocial === null) return;
+        this.initiativeBudget.start(options.clock.now());
+        if (this.startingSocial === 'first') this.socialFollowup.firstStarted(runId);
+        else { this.socialFollowup.secondStarted(this.startingSocial, runId, options.clock.now()); this.secondRunId = runId; }
+      },
+      onStarted: (runId, activityId) => { if (runId !== this.secondRunId) options.onActivityStarted?.(runId, activityId); },
+      onOutcome: event => { if (event.activityRunId === this.secondRunId) return; options.onActivityOutcome?.(event); this.coordinator.noteActivityOutcome(event); },
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
-      onSettled: (runId, result) => this.providerAdmission?.terminated(runId, result),
+      onSettled: (runId, result) => {
+        this.socialFollowup.terminal(runId, result.status, result.status === 'completed' ? result.completedAtMs
+          : result.status === 'cancelled' ? result.cancelledAtMs : result.failedAtMs);
+        if (this.secondRunId === runId) this.secondRunId = null;
+        this.providerAdmission?.terminated(runId, result);
+      },
       onTerminated: (result) => {
         if (result.activityId === 'rest_spot_sleep' && result.status === 'completed') this.stableRestSpotSleep = true;
         if (result.activityId === 'rest_spot_nap' || (result.activityId === 'rest_spot_sleep' && result.status !== 'completed')) this.character.finishRest();
@@ -237,6 +262,7 @@ export class MainAutonomyComposition {
   }
 
   public stop(): void {
+    this.invalidateSocialFollowup();
     this.options.onAIInvalidated?.();
     if (this.disposed) return;
     this.providerAdmission.invalidate('disposed');
@@ -248,6 +274,7 @@ export class MainAutonomyComposition {
   }
 
   public dispose(): void {
+    this.socialFollowup.reset();
     this.options.onAIInvalidated?.();
     if (this.disposed) return;
     this.providerAdmission.invalidate('disposed');
@@ -295,10 +322,11 @@ export class MainAutonomyComposition {
     const returnStarted = returnCandidate && this.tryReturn();
     const cursorChanged = !returnStarted && this.pollCursor(nowMs);
     const activityChanged = this.activity.tick(nowMs);
+    const secondStarted = this.trySocialFollowup();
     const reactionChanged = this.finishDirectReaction(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();
     if (showFall) { this.jumpFallAtMs = null; this.setVisualKind('fall', true, true); }
-    return returnStarted || needsChanged || activityChanged || reactionChanged || showFall || speechChanged || cursorChanged;
+    return secondStarted || returnStarted || needsChanged || activityChanged || reactionChanged || showFall || speechChanged || cursorChanged;
   }
 
   private finishDirectReaction(nowMs: number): boolean {
@@ -331,9 +359,20 @@ export class MainAutonomyComposition {
   public getCursorGamePresentation() { this.gamePresentation.tick(); if (this.quietSupport) this.gamePresentation.suppressSpeech(); return this.gamePresentation.get(); }
   public observeDialoguePresentation(value: import('../shared/ipc-contracts').DialoguePresentationDTO): void {
     this.gamePresentation.observeDialogue(value);
+    if (value.turn.phase === 'idle' && value.canSubmit) this.dialoguePending = false;
+    if (value.turn.phase === 'thinking') this.dialoguePending = true;
+    if (value.turn.phase === 'completed' || value.turn.phase === 'error') {
+      this.dialoguePending = false;
+      const key = `${value.conversationId}:${value.turn.requestId}:${value.turn.phase}`;
+      if (key !== this.lastDialogueTerminal) { this.lastDialogueTerminal = key; this.dialogueGuardUntilMs = this.options.clock.now() + 5000; }
+    }
   }
   public resetCursorGame(): void { if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true); this.resetCursorInterest(); this.gamePresentation.reset(); }
-  public resetSystemIdle(): void { this.systemIdle.reset(); }
+  public resetSystemIdle(): void { this.invalidateSocialFollowup(); this.systemIdle.reset(); }
+  public invalidateSocialFollowup(): void { this.socialFollowup.invalidate(); this.dialoguePending = false; }
+  public resetSocialFollowupMemory(): void { this.socialFollowup.reset(); this.dialoguePending = false; }
+  public acceptUserContact(): void { this.socialFollowup.contact(); }
+  public acceptDialogueContact(): void { this.acceptUserContact(); this.dialoguePending = true; }
 
   public spendObservationBudget(atMs: number): boolean { return this.initiativeBudget.start(atMs); }
 
@@ -350,6 +389,7 @@ export class MainAutonomyComposition {
     if (this.quietSupport === enabled) return;
     this.quietSupport = enabled;
     if (enabled) {
+      this.socialFollowup.invalidate();
       this.providerAdmission.invalidateIncompatibleQuiet();
       this.blockUnsolicited();
       if (this.activity.getRuntime()?.activityId === 'zoomies' && this.activity.getSource() !== 'user') this.cancelActivity('explicit_cancel', true);
@@ -362,7 +402,7 @@ export class MainAutonomyComposition {
     if (this.quiet === enabled) return this.getAutonomyMode();
     this.quiet = enabled;
     this.systemIdle.reset();
-    if (enabled) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidateIncompatibleQuiet(); }
+    if (enabled) { this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidateIncompatibleQuiet(); }
     this.resetCursorInterest();
     if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
       this.cancelActivity('explicit_cancel', true);
@@ -383,7 +423,7 @@ export class MainAutonomyComposition {
   public setEnabled(enabled: boolean): void {
     this.systemIdle.setEnabled(enabled);
     this.resetCursorInterest();
-    if (!enabled) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
+    if (!enabled) { this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
     if (!enabled) this.cancelActivity('explicit_cancel', true);
     this.enabled = enabled;
     this.coordinator.setEnabled(enabled);
@@ -392,7 +432,7 @@ export class MainAutonomyComposition {
   public setMenuOpen(menuOpen: boolean): void {
     if (this.menuOpen !== menuOpen) this.systemIdle.reset();
     this.resetCursorInterest();
-    if (menuOpen) { this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
+    if (menuOpen) { this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
     if (menuOpen) this.cancelActivity('explicit_cancel', true);
     this.menuOpen = menuOpen;
     this.coordinator.setMenuOpen(menuOpen);
@@ -573,8 +613,10 @@ export class MainAutonomyComposition {
     if (command.action === 'sleep') {
       const started = this.activity.start(intent);
       this.resumeAfterUserInteraction();
+      if (started) this.acceptUserContact();
       return started;
     }
+    this.acceptUserContact();
     this.setVisualKind('wake_up', true, true);
     this.resumeAfterUserInteraction();
     return true;
@@ -586,11 +628,13 @@ export class MainAutonomyComposition {
     this.suspendForUserInteraction();
     if (!this.options.movement.canAcceptVoluntaryMovement()) { this.resumeAfterUserInteraction(); return true; }
     if (wasAwake) {
+      this.acceptUserContact();
       this.setVisualKind('happy_reaction', true, true);
       this.resumeAfterUserInteraction();
       return true;
     }
     if (this.character.isAutonomyEligible()) {
+      this.acceptUserContact();
       this.setVisualKind('wake_up', true, true); this.resumeAfterUserInteraction(); return true;
     }
     const intent = this.character.resolveDirectIntent(
@@ -601,19 +645,22 @@ export class MainAutonomyComposition {
       this.resumeAfterUserInteraction();
       return false;
     }
+    this.acceptUserContact();
     this.setVisualKind('wake_up', true, true);
     this.resumeAfterUserInteraction();
     return true;
   }
 
   public handleCharacterInteraction(type: BodyInteractionTypeDTO): boolean {
-    if (type === 'pet') this.options.onUserContact?.(); else this.options.onAIInvalidated?.();
+    if (type !== 'pet') this.options.onAIInvalidated?.();
     if (type !== 'click') {
       this.cancelActivity('user_interaction', true);
       if (!this.options.movement.canAcceptVoluntaryMovement()) return false;
     }
     if (type === 'click') return this.handleClick();
     if (type === 'double_click' || type === 'pet' || type === 'feed') {
+      this.acceptUserContact();
+      if (type === 'pet') this.options.onUserContact?.();
       this.setVisualKind('happy_reaction', true, true);
       return true;
     }
@@ -623,18 +670,22 @@ export class MainAutonomyComposition {
         this.options.getCharacterSnapshot()
       ).resolvedIntent;
       if (intent === null) return false;
-      this.handleResolvedIntent(intent);
-      return true;
+      const started = this.handleResolvedIntent(intent);
+      if (started) this.acceptUserContact();
+      return started;
     }
     if (type !== 'play') return false;
     const intent = this.character.resolveDirectIntent(
       { kind: 'play', source: 'user', priority: 'high', reason: 'user_play' },
       this.options.getCharacterSnapshot()
     ).resolvedIntent;
-    return intent !== null && this.activity.start(intent);
+    const started = intent !== null && this.activity.start(intent);
+    if (started) this.acceptUserContact();
+    return started;
   }
 
   public beginDrag(): void {
+    this.acceptUserContact();
     this.options.onAIInvalidated?.();
     this.cancelActivity('user_interaction', true, true);
     this.coordinator.noteUserActivity();
@@ -708,7 +759,7 @@ export class MainAutonomyComposition {
     if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true);
   }
 
-  public endDialogueThinking(_requestId: string): void {}
+  public endDialogueThinking(_requestId: string): void { this.dialoguePending = false; }
 
   public setBehaviorContext(context: BehaviorTurnContext | null): void { this.providerAdmission.setContext(context); }
 
@@ -764,9 +815,13 @@ export class MainAutonomyComposition {
     if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;
     const social = intent.activityFamily === 'social_bid';
     if (!isQuietCompatible(intent, this.quiet || this.quietSupport)) return false;
+    if (social && intent.source === 'timer' && !this.socialFollowup.canStartFirst()) return false;
     if (social && (this.systemIdle.isBlocked() || !this.initiativeBudget.available(this.options.clock.now()))) return false;
-    if (this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined)) {
-      if (social) { this.initiativeBudget.start(this.options.clock.now()); const run = this.activity.getRuntime(); if (run && intent.source !== 'system') this.options.onSocialBidStarted?.(run.runId, this.options.clock.now()); }
+    this.startingSocial = social && intent.source === 'timer' ? 'first' : null;
+    let started: boolean;
+    try { started = this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined); } finally { this.startingSocial = null; }
+    if (started) {
+      if (social) { const run = this.activity.getRuntime(); if (run && intent.source !== 'system') this.options.onSocialBidStarted?.(run.runId, this.options.clock.now()); }
       this.localHistory.push({ kind: social ? 'social_bid' : intent.kind, atMs: this.options.clock.now() });
       if (intent.calmPose) this.localHistory.push({ kind: `calm:${intent.calmPose}`, atMs: this.options.clock.now() });
       if (this.localHistory.length > 16) this.localHistory.splice(0, this.localHistory.length - 16);
@@ -783,9 +838,38 @@ export class MainAutonomyComposition {
   }
 
   private blockUnsolicited(): void {
+    this.socialFollowup.invalidate();
     this.options.onUnsolicitedBlocked?.();
     if (this.activity.isInitiative() && this.activity.getSource() !== 'user') this.cancelActivity('explicit_cancel', true);
     this.resetCursorInterest();
+  }
+
+  private drainSocialAdmission(): void {
+    const returned = this.systemIdle.tick(!this.quiet && !this.quietSupport && !this.menuOpen);
+    this.providerAdmission.tick();
+    this.activity.tick(this.options.clock.now());
+    if (returned) this.tryReturn();
+    this.trySocialFollowup();
+  }
+
+  private trySocialFollowup(): boolean {
+    const now = () => this.options.clock.now();
+    const intent: BehaviorIntent = { kind: 'play', source: 'timer', priority: 'normal', activityFamily: 'social_bid' };
+    const catalog = { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs, 'P4_autonomous', 'second')] };
+    const continuous = () => this.started && !this.disposed && this.enabled && !this.quiet && !this.quietSupport
+      && !this.menuOpen && this.systemIdle.isFreshActive() && this.character.isAutonomyEligible()
+      && !requiresVitalSleep(this.options.getCharacterSnapshot()) && this.options.movement.canAcceptVoluntaryMovement();
+    const eligible = () => continuous() && this.activity.getRuntime() === null && !this.dialoguePending
+      && now() >= this.dialogueGuardUntilMs && !this.deferredUserInteractionResume
+      && this.coordinator.canAcceptReactiveOpportunity() && !this.providerAdmission.hasPending()
+      && this.providerAdmission.getOwnedRun() === null && this.initiativeBudget.available(now())
+      && this.activity.canStart(intent, catalog);
+    const ticket = this.socialFollowup.evaluate(now(), continuous(), eligible(), () => this.options.prng.next());
+    if (!ticket) return false;
+    const resolved = this.character.resolveDirectIntent(intent, this.options.getCharacterSnapshot()).resolvedIntent;
+    if (!resolved || !this.socialFollowup.isCurrent(ticket, now()) || !eligible()) return false;
+    this.startingSocial = ticket;
+    try { return this.activity.start(resolved, catalog); } finally { this.startingSocial = null; }
   }
 
   private tryReturn(): boolean {
@@ -824,6 +908,7 @@ export class MainAutonomyComposition {
 
   private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
     if (reason === 'user_interaction' || reason === 'forced_motion') {
+      this.socialFollowup.invalidate();
       this.providerAdmission?.invalidate(reason);
     }
 
