@@ -10,7 +10,7 @@ import type { ProviderBehaviorOffer } from '../../src/application/ports/behavior
 import type { IPlatformAdapter } from '../../src/application/ports/platform-adapter.interface';
 export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialState?: CharacterState,
   cursorPosition?: Pick<IPlatformAdapter, 'getCursorScreenPosition'>,
-  hooks: Partial<Pick<MainAutonomyCompositionOptions, 'onCursorGameResult' | 'onActivityOutcome' | 'onActivityStarted' | 'onSocialBidStarted' | 'onAIInvalidated' | 'onUserContact' | 'systemIdle' | 'onUnsolicitedBlocked' | 'onPresentationChanged'>> = {},
+  hooks: Partial<Pick<MainAutonomyCompositionOptions, 'onCursorGameResult' | 'onActivityOutcome' | 'onActivityStarted' | 'onSocialBidStarted' | 'onAIInvalidated' | 'onUserContact' | 'systemIdle' | 'routine' | 'routineCalendar' | 'onUnsolicitedBlocked' | 'onPresentationChanged'>> = {},
   useAuthoredTraits = false) {
   let now = 0; let id = 0; let nextTimer = 0; let root = { x: 400, y: 790 }; let target: typeof root | null = null;
   let movable = true; let supportValid = true; let random = randomUnit;

@@ -1,8 +1,9 @@
 import type Database from 'better-sqlite3';
 import { MEMORY_ITEMS_SCHEMA } from '../../../src/infrastructure/memory/item-schema';
-/** Test fixture downgrade of an empty schema4 card store, before populating migration3 data. */
+/** Test fixture downgrade of an empty schema5 card store, before populating migration3 data. */
 export function schema3(db:Database.Database):void {
- db.exec(`DROP TABLE memory_item_terms;DROP TABLE memory_item_sources;DROP TABLE memory_items;
+ db.exec(`DROP TABLE IF EXISTS routine_observations; DROP TABLE IF EXISTS routine_metadata; DELETE FROM schema_migrations WHERE version=5;
+ DROP TABLE memory_item_terms;DROP TABLE memory_item_sources;DROP TABLE memory_items;
  DROP INDEX beverage_turn_request;DROP INDEX beverage_turn_user;DROP INDEX beverage_turn_assistant;
  ALTER TABLE memory_mutation_receipts DROP COLUMN request_id;
  ALTER TABLE memory_mutation_receipts DROP COLUMN user_message_id;

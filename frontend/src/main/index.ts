@@ -1,3 +1,4 @@
+import { RoutineCapture } from '../application/services/routine-capture';
 import { MemoryFactsReader } from '../application/services/memory-facts-reader';
 import { BeverageCommands } from '../application/services/beverage-commands';
 import { BeverageDialogue } from '../application/services/beverage-preference';
@@ -73,7 +74,7 @@ import { MainAutonomyComposition } from './main-autonomy-composition';
 import { initialPetWindowPosition } from './initial-pet-position';
 import { registerAutonomyIpcHandlers } from './autonomy-ipc-registration';
 import { BodyEventIngress } from './body-event-ingress';
-import { BrainStatePublisher } from './brain-state-publisher';
+import { BrainStatePublisher, publishWindowBrainState } from './brain-state-publisher';
 import { DialogueRuntime } from '../application/services/dialogue-loop.service';
 import { createMainAIProvider } from './main-ai-provider-composition';
 import { registerDialogueIpc } from './dialogue-ipc-registration';
@@ -105,6 +106,7 @@ let mainWindow: BrowserWindow | null = null;
 let memoryComposition: ReturnType<typeof createMainMemoryComposition> | null = null;
 let memoryShutdownComplete = false;
 let memoryRuntime: MemoryLifecycle | null = null;
+let routineCapture: RoutineCapture | null = null;
 let unregisterMemory: (() => void) | null = null;
 let unregisterSummary: (() => void) | null = null;
 let observationRuntime: ObservationRuntime | null = null;
@@ -250,8 +252,7 @@ function publishEnvironmentSnapshot(snapshot: EnvironmentSnapshot): void {
 }
 
 function publishBrainState(): void {
-  aiEventRuntime?.tick();
-  brainStatePublisher.requestCommit();
+  publishWindowBrainState(mainWindow, aiEventRuntime, brainStatePublisher);
 }
 
 function cancelActiveBodyDrag(): void {
@@ -303,6 +304,13 @@ function initializeAutonomyComposition(): void {
   autonomyComposition = new MainAutonomyComposition({
     cursorPosition: platformAdapter,
     systemIdle: platformAdapter.createSystemIdleSource?.(),
+    routine: { sample: (sample, source) => routineCapture?.sample(sample, source), boundary: () => routineCapture?.boundary(), clockDiscontinuity: () => routineCapture?.clockDiscontinuity() },
+    routineCalendar: utcMs => {
+      const date = new Date(utcMs);
+      let zoneId: string | null = null;
+      try { zoneId = Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { /* Unknown calendar remains unknown. */ }
+      return { zoneId, offsetMinutes: -date.getTimezoneOffset(), localDate: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` };
+    },
     wallNow: Date.now,
     clock: { now: () => brainStatePublisher.now() },
     scheduler: createMainAutonomyScheduler(),
@@ -347,7 +355,7 @@ function initializeAutonomyComposition(): void {
     onPresentationChanged: publishBrainState,
   });
   autonomyComposition.setQuietSupport(quietSupportRuntime.isActive());
-  if (memoryRuntime?.isRunning()) autonomyComposition.start();
+  if (memoryRuntime?.isRunning() && mainWindow !== null && !mainWindow.isDestroyed()) autonomyComposition.start();
   if (dialogueRuntime === null) {
     const ai = createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
     const recall = !localMock && memoryComposition
@@ -483,10 +491,12 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
 
 function startCharacterRuntime(): void {
   if (!shimejiMotionOrchestrator || stopShimejiMotionLoopHandle) return;
-  autonomyComposition?.start();
+  if (mainWindow !== null && !mainWindow.isDestroyed()) autonomyComposition?.start();
+  else autonomyComposition?.stop();
   stopShimejiMotionLoopHandle = startShimejiMotionLoop({
     orchestrator: shimejiMotionOrchestrator,
     getWindow: () => mainWindow,
+    advanceBackgroundSampling: () => autonomyComposition?.tickBackgroundSampling(),
     advanceBrain: () => { observationRuntime?.tick(); aiEventRuntime?.tick(); const changed = autonomyComposition?.tick() ?? false; aiEventRuntime?.tick(); return changed; },
     publishPresentation: publishBrainState,
     beginPresentationTransaction: () => brainStatePublisher.beginTransaction(),
@@ -599,7 +609,7 @@ function registerIpcHandlers(): void {
   });
   unregisterSummary = registerSummaryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
-  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands, beverage: beverageCommands });
+  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands, beverage: beverageCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
@@ -782,8 +792,10 @@ function createWindow(): void {
   }
 
   mainWindow.on('closed', () => {
-    disposeAutonomyComposition();
-    stopShimejiMotionLoop();
+    // Keep the sole sampler/interval alive; the windowless branch never advances the character.
+    autonomyComposition?.stop();
+    shimejiMotionOrchestrator?.stop();
+    externalWindowSurfaces?.dispose(); externalWindowSurfaces = null;
     clearBrainStream();
     mainWindow = null;
   });
@@ -816,10 +828,14 @@ if (!gotTheLock) {
       scheduler: createMainAutonomyScheduler(), now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
-      pause: pauseCharacterRuntime, invalidateMemory: token => { beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
-      resetCommitted: () => { autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); beverageCommands.clearReceipts(); },
+      shutdownCapture: () => routineCapture?.shutdown() ?? Promise.resolve(),
+      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { routineCapture?.invalidate(); beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
+      resetCommitted: () => { routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); beverageCommands.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
+    routineCapture = new RoutineCapture({ repository: memoryComposition.routine,
+      context: () => memoryRuntime?.context() ?? null,
+      storageMode: () => memoryRuntime?.getStatus().mode ?? 'initializing', now: () => brainStatePublisher.now(), createId: randomUUID, appRunId: randomUUID() });
     initializeServices();
     registerIpcHandlers();
     createWindow();

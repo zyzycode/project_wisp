@@ -1,3 +1,4 @@
+import { parseRoutineStatus } from '../shared/routine-status-validation';
 import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-facts-validation';
 import { parseBeverageCommand, parseBeverageRead, parseBeverageReadResult, parseBeverageMutationResult } from '../shared/beverage-validation';
 import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
@@ -11,6 +12,7 @@ interface Options {
   readonly getSender: () => object | null;
   readonly getStatus: () => MemoryStatusDTO;
   readonly clear: ClearMemoryUseCase;
+  readonly routineStatus?: () => import('../shared/ipc-contracts').RoutineStatusDTO;
   readonly facts?: Pick<import('../application/services/memory-facts-reader').MemoryFactsReader, 'read'>;
   readonly beverage?: import('../shared/ipc-contracts').BeveragePreferenceBridge;
   readonly interestThread?: import('../shared/ipc-contracts').InterestThreadApiBridge;
@@ -20,6 +22,7 @@ interface Options {
   };
 }
 export function registerMemoryIpc(options: Options): () => void {
+  if (options.routineStatus) options.register('wisp:get-routine-status', async (event, ...args) => { trusted(event.sender); if (args.length !== 0) throw new TypeError('Invalid routine status arguments'); return parseRoutineStatus(options.routineStatus!()); });
   const trusted = (sender: object) => { if (options.getSender() === null || sender !== options.getSender()) throw new TypeError('Untrusted memory sender'); };
   options.register('wisp:get-memory-status', async (event, ...args) => { trusted(event.sender); if (args.length !== 0) throw new TypeError('Invalid memory status arguments'); return parseMemoryStatus(options.getStatus()); });
   options.register('wisp:clear-memory', async (event, ...args) => { trusted(event.sender); if (args.length !== 1) throw new TypeError('Invalid memory arguments'); return parseClearMemoryResult(await options.clear.execute(parseClearMemoryCommand(args[0]))); });
@@ -46,5 +49,5 @@ export function registerMemoryIpc(options: Options): () => void {
       return parseMemoryCardListResult(await cards.list(parseMemoryCardListCommand(args[0])));
     });
   }
-  return () => { if (options.facts) options.remove('wisp:read-memory-facts'); if (options.beverage) { options.remove('wisp:read-beverage'); options.remove('wisp:mutate-beverage'); } if (options.interestThread) { options.remove('wisp:read-interest-thread'); options.remove('wisp:mutate-interest-thread'); } if (cards) { options.remove('wisp:mutate-memory-card'); options.remove('wisp:list-memory-cards'); } options.remove('wisp:get-memory-status'); options.remove('wisp:clear-memory'); };
+  return () => { if (options.routineStatus) options.remove('wisp:get-routine-status'); if (options.facts) options.remove('wisp:read-memory-facts'); if (options.beverage) { options.remove('wisp:read-beverage'); options.remove('wisp:mutate-beverage'); } if (options.interestThread) { options.remove('wisp:read-interest-thread'); options.remove('wisp:mutate-interest-thread'); } if (cards) { options.remove('wisp:mutate-memory-card'); options.remove('wisp:list-memory-cards'); } options.remove('wisp:get-memory-status'); options.remove('wisp:clear-memory'); };
 }

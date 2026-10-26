@@ -23,7 +23,7 @@ it('rebuilds populated schema3 without losing child rows, old receipt columns or
  expect(f.db.pragma('foreign_keys',{simple:true})).toBe(1);expect(f.db.pragma('foreign_key_check')).toEqual([]);
  expect(f.db.prepare("SELECT seq FROM sqlite_sequence WHERE name='memory_items'").get()).toEqual({seq:90});
  expect(f.db.prepare("SELECT name FROM sqlite_master WHERE name='memory_terms_order'").get()).toEqual({name:'memory_terms_order'});
- expect(f.db.pragma('user_version',{simple:true})).toBe(4);
+ expect(f.db.pragma('user_version',{simple:true})).toBe(5);
  }finally{f.dispose();}});
 it.each(['DROP TABLE memory_item_sources','DROP TABLE memory_items','ALTER TABLE memory_items_v4 RENAME TO memory_items'])('rolls back DDL, child data and sequence when fault follows %s',fault=>{const f=fixture();try{
  const before=tables.map(t=>f.db.prepare(`SELECT * FROM ${t}`).all());const original=f.db.exec.bind(f.db);

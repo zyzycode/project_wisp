@@ -81,3 +81,19 @@ describe('system idle local initiative integration', () => {
     expect(f.outcomes.at(-1)).toMatchObject({ family: 'social_bid', outcome: 'cancelled', playCompleted: false }); f.main.dispose();
   });
 });
+
+it('windowless capture uses the retained sampler without advancing needs, activities, provider admission or presentation', () => {
+  const sample = vi.fn(), source: SystemIdlePort = { read: vi.fn(() => ({ status: 'available' as const, idleMs: 1000 })), subscribeLifecycle: () => () => {}, dispose: vi.fn() };
+  const social = vi.fn(), presentation = vi.fn();
+  const f = scenario({}, 0, undefined, undefined, { systemIdle: source,
+    routine: { sample, boundary: vi.fn() }, routineCalendar: () => ({ zoneId: 'UTC', offsetMinutes: 0, localDate: '1970-01-01' }),
+    onSocialBidStarted: social, onPresentationChanged: presentation });
+  f.main.stop(); const state = f.character.getState(); const published = presentation.mock.calls.length;
+  for (let n = 0; n < 301; n++) { f.elapse(1000); f.main.tickBackgroundSampling(); }
+  expect(source.read).toHaveBeenCalledTimes(301); expect(sample).toHaveBeenCalledTimes(301);
+  expect(f.character.getState()).toEqual(state); expect(f.main.getActivityTimeline()).toBeNull();
+  expect(f.move).not.toHaveBeenCalled(); expect(social).not.toHaveBeenCalled();
+  expect(presentation).toHaveBeenCalledTimes(published); expect(f.timers.size).toBe(0);
+  f.main.dispose(); f.main.dispose(); f.elapse(1000); f.main.tickBackgroundSampling();
+  expect(source.read).toHaveBeenCalledTimes(301); expect(source.dispose).toHaveBeenCalledOnce();
+});

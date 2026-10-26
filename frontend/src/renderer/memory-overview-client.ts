@@ -1,10 +1,13 @@
+import { parseRoutineStatus } from '../shared/routine-status-validation';
+import type { RoutineStatusDTO } from '../shared/ipc-contracts';
 import type { ClearMemoryCommandDTO, MemoryFactsResultDTO, MemoryStatusDTO, WispApiBridge } from '../shared/ipc-contracts';
 import { parseMemoryFactsResult } from '../shared/memory-facts-validation';
 import { parseClearMemoryResult, parseMemoryStatus } from '../shared/memory-ipc-validation';
-export type MemoryOverviewBridge = Pick<WispApiBridge, 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'>;
+export type MemoryOverviewBridge = Pick<WispApiBridge, 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'> & Partial<Pick<WispApiBridge, 'getRoutineStatus'>>;
 type Facts = Extract<MemoryFactsResultDTO, { ok: true }>['facts'];
 interface State {
   readonly status: MemoryStatusDTO | null;
+  readonly routine: RoutineStatusDTO | null;
   readonly facts: Facts | null;
   readonly loading: boolean;
   readonly busy: boolean;
@@ -19,7 +22,7 @@ async function boundedWait<T>(promise: Promise<T>): Promise<T> {
   try { return await Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Memory acknowledgement timeout')), IPC_WAIT_MS); })]); }
   finally { if (timer !== undefined) clearTimeout(timer); }
 }
-const empty = (): State => ({ status: null, facts: null, loading: false, busy: false, uncertain: false, confirming: false, cleared: 0, message: null });
+const empty = (): State => ({ status: null, routine: null, facts: null, loading: false, busy: false, uncertain: false, confirming: false, cleared: 0, message: null });
 /** Only document-local presentation and command correlation; durable decisions stay in Main. */
 export class MemoryOverviewClient {
   private streamId: string | null = null;
@@ -42,7 +45,7 @@ export class MemoryOverviewClient {
       this.epoch++; this.sequence = 0; this.consumedClear = 0; this.pending = null; this.state = empty();
     }
     this.streamId = streamId; this.conversationId = conversationId;
-    this.patch({ facts: null, status: null, loading: false, confirming: false });
+    this.patch({ facts: null, status: null, routine: null, loading: false, confirming: false });
   }
   consumeClearRefresh(): boolean {
     if (this.state.cleared === this.consumedClear) return false;
@@ -51,12 +54,12 @@ export class MemoryOverviewClient {
   async read(preserveMessage = false): Promise<void> {
     if (!this.streamId || this.state.busy || this.pending || this.state.loading) return;
     const request = ++this.request, streamId = this.streamId;
-    this.patch({ loading: true, facts: null, status: null, ...(!preserveMessage ? { message: null } : {}) });
+    this.patch({ loading: true, facts: null, status: null, routine: null, ...(!preserveMessage ? { message: null } : {}) });
     try {
-      const [rawStatus, rawFacts] = await boundedWait(Promise.all([this.bridge.getMemoryStatus(), this.bridge.readMemoryFacts({ streamId })]));
+      const [rawStatus, rawFacts, rawRoutine] = await boundedWait(Promise.all([this.bridge.getMemoryStatus(), this.bridge.readMemoryFacts({ streamId }), this.bridge.getRoutineStatus?.()]));
       if (request !== this.request) return;
       const status = parseMemoryStatus(rawStatus), result = parseMemoryFactsResult(rawFacts);
-      this.patch({ status });
+      this.patch({ status, routine: rawRoutine === undefined ? null : parseRoutineStatus(rawRoutine) });
       if (status.mode === 'persistent' && result.ok) this.patch({ facts: result.facts });
       else if (status.mode === 'persistent') this.patch({ message: 'Не удалось загрузить факты. Обновите память и проверьте результат.' });
     } catch { if (request === this.request) this.patch({ message: 'Не удалось загрузить память. Повторите проверку.' }); }
@@ -85,7 +88,7 @@ export class MemoryOverviewClient {
         return false;
       }
       reload = true;
-      this.patch({ facts: null, status: null, cleared: this.state.cleared + 1, message: 'Локальная память очищена. Настройки, внешний вид и авторская личность сохранены.' });
+      this.patch({ facts: null, status: null, routine: null, cleared: this.state.cleared + 1, message: 'Локальная память очищена. Настройки, внешний вид и авторская личность сохранены.' });
       return true;
     } catch {
       if (epoch === this.epoch && this.pending === command) this.patch({ uncertain: true, message: 'Не удалось подтвердить результат. Проверьте ту же команду; новая очистка не запускается.' });

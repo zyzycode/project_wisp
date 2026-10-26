@@ -28,6 +28,7 @@ interface Options {
   readonly pause: () => void;
   readonly invalidateMemory?: (admissionToken?: object) => void;
   readonly resetCommitted: () => void;
+  readonly shutdownCapture?: () => Promise<void>;
   readonly resume: () => void;
 }
 export class MemoryLifecycle implements IUserMemoryFactsReader {
@@ -247,13 +248,14 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   shutdown(): Promise<void> { return this.shutdownPromise ??= this.stop(); }
   private async stop(): Promise<void> {
     this.options.scheduler.clearTimeout(this.startupTimer); this.stopTimer();
+    const capture = this.options.shutdownCapture?.() ?? Promise.resolve();
     const c = this.context(); const sessionClose = c ? this.history.close(this.options.timestamp()) : Promise.resolve();
     this.phase = 'stopping'; this.options.summary?.dispose(); this.options.pause();
     let grace: unknown;
     const deadline = new Promise<void>(resolve => { grace = this.options.scheduler.setTimeout(() => { void this.options.storage.abort().then(resolve); }, 7000); });
     const drain = async () => {
       if (c && this.snapshotWritable) await this.safe(() => this.options.storage.character.save(projectCharacterMemory(this.options.character.getState(), this.options.timestamp()), c));
-      await sessionClose; await this.options.storage.close(this.generation);
+      await capture; await sessionClose; await this.options.storage.close(this.generation);
     };
     try { await Promise.race([drain(), deadline]); } finally { this.options.scheduler.clearTimeout(grace); }
   }

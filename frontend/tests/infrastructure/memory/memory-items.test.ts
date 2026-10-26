@@ -95,7 +95,7 @@ describe('explicit persisted memory cards', () => {
     expect(run(f.store, 'listMemoryItems', { cursor: null, limit: 21 }, 21)).toEqual({ ok: false, code: 'invalid_data' });
     expect(run(f.store, 'clear', null, 22).ok).toBe(true);
     for (const table of ['memory_items', 'memory_item_sources', 'memory_item_terms', 'memory_suppressed_pairs', 'memory_mutation_receipts', 'messages']) expect(raw(f.filename, `SELECT * FROM ${table}`)).toEqual([]);
-    expect(raw(f.filename, 'SELECT version FROM schema_migrations')).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
+    expect(raw(f.filename, 'SELECT version FROM schema_migrations')).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
   });
 });
 

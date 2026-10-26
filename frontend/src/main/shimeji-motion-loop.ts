@@ -17,6 +17,8 @@ export interface ShimejiMotionLoopOptions {
   readonly orchestrator: MotionLoopOrchestrator;
   readonly getWindow: () => MotionLoopWindow | null;
   readonly advanceBrain?: () => boolean;
+  /** Same interval, semantic capture only while no presentation window exists. */
+  readonly advanceBackgroundSampling?: () => void;
   readonly publishPresentation: () => void;
   readonly beginPresentationTransaction?: () => void;
   readonly commitPresentationTransaction?: () => void;
@@ -35,8 +37,10 @@ export function startShimejiMotionLoop(options: ShimejiMotionLoopOptions): () =>
     options.orchestrator.stop();
   };
   const handle = timer.setInterval(() => {
+    if (stopped) return;
     const window = options.getWindow();
     if (window === null || window.isDestroyed()) {
+      if (options.advanceBackgroundSampling) { options.advanceBackgroundSampling(); return; }
       stop();
       return;
     }
@@ -49,6 +53,7 @@ export function startShimejiMotionLoop(options: ShimejiMotionLoopOptions): () =>
       options.commitPresentationTransaction?.();
     }
   }, options.intervalMs);
-  options.orchestrator.start();
+  const window = options.getWindow();
+  if (!options.advanceBackgroundSampling || (window !== null && !window.isDestroyed())) options.orchestrator.start();
   return stop;
 }

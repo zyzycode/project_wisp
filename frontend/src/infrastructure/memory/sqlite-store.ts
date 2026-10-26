@@ -1,3 +1,4 @@
+import { RoutineStore } from './routine-store';
 import { BeverageStore } from './beverage-store';
 import { InterestThreadStore } from './interest-thread-store';
 import { readSummarySources, summarySources } from './summary-source-reader';
@@ -51,6 +52,9 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'beginRoutine': return new RoutineStore(this.db).begin(c.payload);
+      case 'appendRoutine': return new RoutineStore(this.db).append(c.payload);
+      case 'readRoutineStatus': return new RoutineStore(this.db).read();
       case 'readBeverage': return new BeverageStore(this.db).read();
       case 'mutateBeverage': return new BeverageStore(this.db).mutate(c.payload);
       case 'readInterestThread': return new InterestThreadStore(this.db).read();
@@ -87,7 +91,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 2, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { this.db.exec('DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { new RoutineStore(this.db).clear(); this.db.exec('DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }

@@ -6,7 +6,7 @@ import type { MemoryRepositories } from '../../src/application/ports/memory-runt
 import type { MemoryResult, PersistedCharacterStateSnapshot } from '../../src/application/ports/memory-repository.interface';
 
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes; }); return { promise, resolve }; }
-function fixture(summary?: Pick<import('../../src/application/ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>) {
+function fixture(summary?: Pick<import('../../src/application/ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>, shutdownCapture?: () => Promise<void>) {
   vi.useFakeTimers(); vi.setSystemTime('2026-09-18T00:00:00.000Z'); let id = 0;
   const character = new CharacterStateService({ now: Date.now });
   const storage = {
@@ -19,7 +19,7 @@ function fixture(summary?: Pick<import('../../src/application/ports/summary').IS
     close: vi.fn(async () => {}), abort: vi.fn(async () => {}),
   };
   const start = vi.fn(), pause = vi.fn(), resume = vi.fn(), resetCommitted = vi.fn(), hydrate = vi.fn();
-  const lifecycle = new MemoryLifecycle({ ...(summary ? { summary } : {}), storage, character, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, toTimestamp: ms => new Date(ms).toISOString(), localMock: true, start, pause, resume, resetCommitted, hydrate });
+  const lifecycle = new MemoryLifecycle({ shutdownCapture, ...(summary ? { summary } : {}), storage, character, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, toTimestamp: ms => new Date(ms).toISOString(), localMock: true, start, pause, resume, resetCommitted, hydrate });
   return { lifecycle, storage, character, start, pause, resume, resetCommitted, hydrate };
 }
 afterEach(() => vi.useRealTimers());
@@ -172,4 +172,14 @@ it('rejects a read finishing during reset before the durable reset settles', asy
   reading.resolve({ ok: true, value: [] }); expect(await pendingRead).toEqual({ ok: false, code: 'stale' });
   expect(await f.lifecycle.readFacts()).toEqual({ ok: false, code: 'unavailable' });
   deleting.resolve({ ok: true, value: undefined }); await pendingReset; await f.lifecycle.shutdown();
+});
+
+it('starts capture drain before pause and bounds it by the existing shutdown grace', async () => {
+  const pending = deferred<void>(); const capture = vi.fn(() => pending.promise);
+  const f = fixture(undefined, capture); await f.lifecycle.initialize();
+  capture.mockImplementation(() => { expect(f.lifecycle.context()).toEqual({ generation: 0 }); expect(f.pause).not.toHaveBeenCalled(); return pending.promise; });
+  const stopping = f.lifecycle.shutdown(); expect(capture).toHaveBeenCalledOnce(); expect(f.pause).toHaveBeenCalledOnce();
+  await vi.advanceTimersByTimeAsync(6999); expect(f.storage.abort).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1); await stopping; expect(f.storage.abort).toHaveBeenCalledOnce();
+  expect(f.storage.close).not.toHaveBeenCalled(); pending.resolve();
 });

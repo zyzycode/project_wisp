@@ -1,3 +1,5 @@
+import type { IRoutineObservationRepository } from '../../application/ports/routine-observation.port';
+import { routineIdentity, routineStatus } from './routine-validation';
 import type { IBeveragePreferencesRepository } from '../../application/ports/memory-beverage.interface';
 import { beverageRead, beverageReceipt } from './beverage-validation';
 import type { IInterestThreadRepository } from '../../application/ports/interest-thread.interface';
@@ -18,6 +20,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly routine: IRoutineObservationRepository;
   readonly beverage: IBeveragePreferencesRepository;
   readonly interestThread: IInterestThreadRepository;
   readonly summarySources: ISummarySourceReader;
@@ -36,6 +39,7 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    routine: { begin: (input,c) => call('beginRoutine',input,c,routineIdentity), append: (input,c) => call('appendRoutine',input,c,nothing), readStatus: c => call('readRoutineStatus',null,c,routineStatus) },
     beverage: { read: c => call('readBeverage', null, c, beverageRead), mutate: (command, c) => call('mutateBeverage', command, c, beverageReceipt) },
     interestThread: {
       read: c => call('readInterestThread', null, c, topicRead),

@@ -1,3 +1,4 @@
+import { parseRoutineStatus } from '../shared/routine-status-validation';
 import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-facts-validation';
 import { parseBeverageCommand, parseBeverageRead, parseBeverageReadResult, parseBeverageMutationResult } from '../shared/beverage-validation';
 import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
@@ -70,6 +71,7 @@ const api: WispApiBridge = {
   listMemoryCards: async command => parseMemoryCardListResult(await ipcRenderer.invoke('wisp:list-memory-cards', parseMemoryCardListCommand(command))),
   clearMemory: async command => parseClearMemoryResult(await ipcRenderer.invoke('wisp:clear-memory', parseClearMemoryCommand(command))),
   readMemoryFacts: async command => parseMemoryFactsResult(await ipcRenderer.invoke('wisp:read-memory-facts', parseMemoryFactsRead(command))),
+  getRoutineStatus: async () => parseRoutineStatus(await ipcRenderer.invoke('wisp:get-routine-status')),
   getMemoryStatus: async () => parseMemoryStatus(await ipcRenderer.invoke('wisp:get-memory-status')),
   setQuietMode: async command => parseAutonomyMode(await ipcRenderer.invoke('wisp:set-quiet-mode', parseQuietModeCommand(command))),
   postDialogueCommand: async command => parseDialogueReceipt(await ipcRenderer.invoke('wisp:dialogue-command', parseDialogueCommand(command))),

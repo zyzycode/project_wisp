@@ -13,6 +13,7 @@ vi.mock('react', async importOriginal => ({ ...await importOriginal<typeof impor
 beforeEach(() => { hooks.values = []; hooks.index = 0; });
 function fixture() {
   const bridge = {
+    getRoutineStatus: vi.fn(async () => ({ source: 'unsupported' as const, storage: 'persistent' as const, lastAcknowledgedAt: null as string | null })),
     getMemoryStatus: vi.fn(async (): Promise<MemoryStatusDTO> => ({ mode: 'persistent', characterRestore: 'default' })),
     readMemoryFacts: vi.fn(async (): Promise<MemoryFactsResultDTO> => ({ ok: true, facts: [
       { key: 'user.display_name', value: 'Анна' }, { key: 'user.preferred_address', value: 'Аня' },
@@ -75,4 +76,14 @@ it('disables both destructive entry and confirm while another memory operation i
   const { render, client } = fixture(); await client.read(); client.openConfirmation();
   expect(button(render(true, true), 'Очистить всю локальную память').disabled).toBe(true);
   expect(button(render(true, true), 'Удалить всю локальную память').disabled).toBe(true);
+});
+
+it('shows bounded routine status and includes automatic recording in full reset scope', async () => {
+  const { bridge, client, render } = fixture(); await client.read();
+  let html = renderToStaticMarkup(render());
+  expect(html).toContain('не поддерживается'); expect(html).toContain('Подтверждённых наблюдений пока нет');
+  expect(html).toContain('автоматически сохраняются'); expect(html).toContain('до полной очистки памяти');
+  bridge.getRoutineStatus.mockResolvedValueOnce({ source: 'unsupported', storage: 'persistent', lastAcknowledgedAt: '2026-10-26T10:00:00.000Z' });
+  await client.read(); html = renderToStaticMarkup(render()); expect(html).toContain('2026-10-26T10:00:00.000Z');
+  client.openConfirmation(); expect(renderToStaticMarkup(render())).toContain('наблюдения системной активности');
 });

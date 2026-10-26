@@ -546,6 +546,7 @@ export interface WispApiBridge {
   listMemoryCards(command: MemoryCardListCommandDTO): Promise<MemoryCardListResultDTO>;
   clearMemory(command: ClearMemoryCommandDTO): Promise<ClearMemoryResultDTO>;
   getMemoryStatus(): Promise<MemoryStatusDTO>;
+  getRoutineStatus(): Promise<RoutineStatusDTO>;
   readMemoryFacts(command: MemoryFactsReadDTO): Promise<MemoryFactsResultDTO>;
   setQuietMode(command: SetQuietModeDTO): Promise<AutonomyModeDTO>;
   postDialogueCommand(command: DialogueCommandDTO): Promise<DialogueCommandReceiptDTO>;
@@ -567,4 +568,11 @@ export interface WispApiBridge {
   clearDebugTelemetryLogs?: () => Promise<void>;
   onDebugTelemetry?: (listener: (telemetry: DebugTelemetryDTO) => void) => () => void;
   closeApp: () => Promise<void>;
+}
+
+/** Readonly projection; no observations, local identifiers or inferred schedule. */
+export interface RoutineStatusDTO {
+  readonly source: 'available' | 'unknown' | 'unsupported';
+  readonly storage: 'initializing' | 'persistent' | 'degraded' | 'volatile';
+  readonly lastAcknowledgedAt: string | null;
 }

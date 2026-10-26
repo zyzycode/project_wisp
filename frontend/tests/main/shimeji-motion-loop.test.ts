@@ -86,3 +86,25 @@ describe('Main: Shimeji motion loop', () => {
     expect(commitPresentationTransaction).toHaveBeenCalledOnce();
   });
 });
+
+it('retains the same interval for background sampling without motion, Brain or presentation', () => {
+  let callback: (() => void) | undefined, live = true;
+  const timer = { setInterval: vi.fn((next: () => void) => { callback = next; return {} as ReturnType<typeof setInterval>; }), clearInterval: vi.fn() };
+  const orchestrator = { start: vi.fn(), stop: vi.fn(), tick: vi.fn(() => false) };
+  const advanceBrain = vi.fn(), advanceBackgroundSampling = vi.fn(), publishPresentation = vi.fn(), beginPresentationTransaction = vi.fn();
+  const stop = startShimejiMotionLoop({ orchestrator, getWindow: () => live ? { isDestroyed: () => false } : null,
+    advanceBrain, advanceBackgroundSampling, publishPresentation, beginPresentationTransaction, intervalMs: 8, timer });
+  callback?.(); live = false; callback?.(); callback?.();
+  expect(timer.setInterval).toHaveBeenCalledOnce(); expect(timer.clearInterval).not.toHaveBeenCalled();
+  expect(orchestrator.tick).toHaveBeenCalledOnce(); expect(advanceBrain).toHaveBeenCalledOnce(); expect(beginPresentationTransaction).toHaveBeenCalledOnce();
+  expect(advanceBackgroundSampling).toHaveBeenCalledTimes(2); expect(publishPresentation).not.toHaveBeenCalled();
+  stop(); stop(); callback?.(); expect(timer.clearInterval).toHaveBeenCalledOnce(); expect(advanceBackgroundSampling).toHaveBeenCalledTimes(2);
+});
+it('headless reset/resume can start a sampling-only interval without starting Motion', () => {
+  let callback: (() => void) | undefined;
+  const timer = { setInterval: vi.fn((next: () => void) => { callback = next; return {} as ReturnType<typeof setInterval>; }), clearInterval: vi.fn() };
+  const orchestrator = { start: vi.fn(), stop: vi.fn(), tick: vi.fn(() => true) }, advanceBrain = vi.fn(), publishPresentation = vi.fn(), background = vi.fn();
+  const stop = startShimejiMotionLoop({ orchestrator, getWindow: () => null, advanceBackgroundSampling: background, advanceBrain, publishPresentation, intervalMs: 8, timer });
+  callback?.(); expect(background).toHaveBeenCalledOnce(); expect(orchestrator.start).not.toHaveBeenCalled(); expect(orchestrator.tick).not.toHaveBeenCalled();
+  expect(advanceBrain).not.toHaveBeenCalled(); expect(publishPresentation).not.toHaveBeenCalled(); stop();
+});

@@ -253,3 +253,10 @@ function createSemanticSignature(state: BrainStateDTO): string {
     visualIntent: state.visualIntent,
   });
 }
+
+/** No AI deadlines or snapshot preparation may advance without a presentation window. */
+export function publishWindowBrainState(window: { isDestroyed(): boolean } | null,
+  ai: { tick(): void } | null, publisher: Pick<BrainStatePublisher, 'requestCommit'>): void {
+  if (window === null || window.isDestroyed()) return;
+  ai?.tick(); publisher.requestCommit();
+}

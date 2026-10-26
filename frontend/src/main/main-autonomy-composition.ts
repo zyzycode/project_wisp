@@ -73,6 +73,8 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 
 export interface MainAutonomyCompositionOptions {
   readonly systemIdle?: SystemIdlePort;
+  readonly routine?: ConstructorParameters<typeof MainSystemIdle>[0]['routine'];
+  readonly routineCalendar?: ConstructorParameters<typeof MainSystemIdle>[0]['calendar'];
   readonly wallNow?: () => number;
   readonly onUnsolicitedBlocked?: () => void;
   readonly cursorPosition?: Pick<IPlatformAdapter, 'getCursorScreenPosition'>;
@@ -146,7 +148,7 @@ export class MainAutonomyComposition {
   private lastCursorObservedAtMs: number | null = null;
 
   public constructor(private readonly options: MainAutonomyCompositionOptions) {
-    this.systemIdle = new MainSystemIdle({ source: options.systemIdle, now: () => options.clock.now(),
+    this.systemIdle = new MainSystemIdle({ source: options.systemIdle, routine: options.routine, calendar: options.routineCalendar, now: () => options.clock.now(),
       wallNow: options.wallNow ?? Date.now, onInvalidated: () => this.socialFollowup.invalidate(), onBlocked: () => this.blockUnsolicited() });
     this.gamePresentation = new CursorGamePresentation(() => options.clock.now(), () => options.locale ?? 'ru');
     validateBrainLoopPolicy(this.brainLoopPolicy());
@@ -284,6 +286,11 @@ export class MainAutonomyComposition {
     this.started = false;
     this.resetBrainLoop();
     this.coordinator.dispose();
+  }
+
+  /** Windowless application capture: no needs, Activity, Motion, admission or AI. */
+  public tickBackgroundSampling(): void {
+    if (!this.disposed && this.options.routine) this.systemIdle.tick(false);
   }
 
   /** Advances needs and Activity from one injected Main-monotonic Brain tick. */

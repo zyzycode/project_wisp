@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BrainStateDTO } from '../../src/shared/ipc-contracts';
 import {
   BrainStatePublisher,
+  publishWindowBrainState,
   type BrainStateSnapshotMeta,
 } from '../../src/main/brain-state-publisher';
 
@@ -304,4 +305,13 @@ describe('Main: Brain state publisher', () => {
     expect(revisionSink.replaceStream.mock.calls).toEqual([['stream-1'], ['stream-2']]);
     expect(revisionSink.advanceRevision).toHaveBeenCalledWith(1);
   });
+});
+
+it('ignores headless reset/resume publication and late closed-window callbacks before any AI tick or commit', () => {
+  const order: string[] = [], ai = { tick: vi.fn(() => { order.push('ai'); }) }, publisher = { requestCommit: vi.fn(() => { order.push('snapshot'); }) };
+  publishWindowBrainState(null, ai, publisher);
+  publishWindowBrainState({ isDestroyed: () => true }, ai, publisher);
+  expect(ai.tick).not.toHaveBeenCalled(); expect(publisher.requestCommit).not.toHaveBeenCalled();
+  publishWindowBrainState({ isDestroyed: () => false }, ai, publisher);
+  expect(order).toEqual(['ai', 'snapshot']);
 });
