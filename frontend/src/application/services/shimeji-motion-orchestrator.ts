@@ -98,7 +98,9 @@ interface DragSession {
   readonly startedAtMs: number;
   lastSequence: number;
   lastAppliedSequence: number;
+  startFeedbackEmitted: boolean;
   holdFeedbackEmitted: boolean;
+  endFeedbackEmitted: boolean;
   samples: PointerMotionSample[];
 }
 
@@ -138,7 +140,8 @@ export class ShimejiMotionOrchestrator {
   private simulationAtMs: number | undefined;
   private presentationRevision = 0;
   private readonly queuedPointerEvents: QueuedPointerEvent[] = [];
-  private readonly emittedStimulusIds = new Set<string>();
+  private landingEpisode = 0;
+  private landingFeedbackEmitted: boolean;
   private cancelScheduledTick: (() => void) | undefined;
   private running = false;
   private generatedSessionCount = 0;
@@ -160,6 +163,7 @@ export class ShimejiMotionOrchestrator {
     if (!Number.isFinite(this.dragHoldThresholdMs()) || this.dragHoldThresholdMs() < 0) {
       throw new RangeError('Drag hold threshold must be finite and non-negative');
     }
+    this.landingFeedbackEmitted = options.initialMotion.phase !== 'airborne';
     this.motion = options.initialMotion;
     this.surface = options.initialSurface;
   }
@@ -186,7 +190,9 @@ export class ShimejiMotionOrchestrator {
     if (!isValidPointerInput(input) || this.dragSession !== undefined || this.hasQueuedBegin()) return null;
     this.releasedWindowLanding.clear();
     this.cancelVoluntaryMovement(true);
-    const sessionId = this.options.createDragSessionId?.() ?? `drag-${++this.generatedSessionCount}`;
+    const ordinal = ++this.generatedSessionCount;
+    const suffix = this.options.createDragSessionId?.().slice(0, 100).trimEnd();
+    const sessionId = suffix === undefined ? `drag-${ordinal}` : `${ordinal}:${suffix}`;
     const nowMs = this.options.now();
     this.dragSession = {
       id: sessionId,
@@ -198,7 +204,9 @@ export class ShimejiMotionOrchestrator {
       startedAtMs: nowMs,
       lastSequence: input.sequence,
       lastAppliedSequence: input.sequence,
+      startFeedbackEmitted: false,
       holdFeedbackEmitted: false,
+      endFeedbackEmitted: false,
       samples: [],
     };
     this.queuedPointerEvents.push({ type: 'begin', input, sessionId, receivedAtMs: nowMs });
@@ -540,8 +548,7 @@ export class ShimejiMotionOrchestrator {
             this.surface = attached.state; this.motion = attached.motion.state;
             this.dragSession = undefined;
             this.routeEvents([{ type: 'landed', outcome: 'soft_landing', impactSeverity: 0 }], attached.events);
-            this.emitFeedback({ type: 'drag_ended', eventId: `${session.id}:ended`, dragRunId: session.id,
-              heldMs: Math.max(0, event.receivedAtMs - session.startedAtMs), atMs: event.receivedAtMs });
+            this.emitDragEnd(session, event.receivedAtMs);
             this.presentationDirty = true;
             continue;
           }
@@ -551,10 +558,7 @@ export class ShimejiMotionOrchestrator {
         this.surface = { ...groundedSurface(stepAtMs), phase: 'airborne' };
         this.routeEvents(released.events, []);
         this.beginWindowLandingEpisode();
-        this.emitFeedback({
-          type: 'drag_ended', eventId: `${session.id}:ended`, dragRunId: session.id,
-          heldMs: Math.max(0, event.receivedAtMs - session.startedAtMs), atMs: event.receivedAtMs,
-        });
+        this.emitDragEnd(session, event.receivedAtMs);
         this.dragSession = undefined;
       }
     }
@@ -565,6 +569,13 @@ export class ShimejiMotionOrchestrator {
     const surfaces = this.availableExternalSurfaces().filter(surface =>
       this.options.environment({ x: surface.bounds.x, y: surface.bounds.y }).screenBounds.id === boundsId);
     this.releasedWindowLanding.begin(surfaces, boundsId, this.options.environment(this.motion.position).screenBounds);
+  }
+
+  private emitDragEnd(session: DragSession, atMs: number): void {
+    if (session.endFeedbackEmitted) return;
+    session.endFeedbackEmitted = true;
+    this.emitFeedback({ type: 'drag_ended', eventId: `${session.id}:ended`, dragRunId: session.id,
+      heldMs: Math.max(0, atMs - session.startedAtMs), atMs });
   }
 
   private emitDragHold(session: DragSession, atMs: number): void {
@@ -769,10 +780,23 @@ export class ShimejiMotionOrchestrator {
     }
     for (const event of motionEvents) {
       this.options.eventDispatcher?.dispatchMotionEvent(event);
-      if (event.type === 'drag_started') {
-        this.emitFeedback({ type: 'drag_started', eventId: `${this.dragSession?.id ?? 'unknown'}:started`, atMs: event.atMs });
-      } else if (event.type === 'landed' && event.outcome !== 'soft_landing') {
-        this.emitFeedback({ type: 'landing', eventId: `landing:${this.presentationRevision + 1}:${event.outcome}`, outcome: event.outcome, impactSeverity: event.impactSeverity, atMs: this.lastTickAtMs ?? 0 });
+      // Only the current synchronous producer owns feedback. Closed drag inputs
+      // are rejected by session/sequence admission, not a lifetime ID cache.
+      if (event.type === 'airborne_started') {
+        this.landingEpisode += 1;
+        this.landingFeedbackEmitted = false;
+      } else if (event.type === 'drag_started') {
+        this.landingFeedbackEmitted = true;
+        const session = this.dragSession;
+        if (session !== undefined && !session.startFeedbackEmitted) {
+          session.startFeedbackEmitted = true;
+          this.emitFeedback({ type: 'drag_started', eventId: `${session.id}:started`, atMs: event.atMs });
+        }
+      } else if (event.type === 'landed' && !this.landingFeedbackEmitted) {
+        this.landingFeedbackEmitted = true;
+        if (event.outcome !== 'soft_landing') this.emitFeedback({ type: 'landing',
+          eventId: `landing:${this.landingEpisode}:${event.outcome}`, outcome: event.outcome,
+          impactSeverity: event.impactSeverity, atMs: this.lastTickAtMs ?? 0 });
       }
     }
     for (const event of surfaceEvents) {
@@ -782,14 +806,12 @@ export class ShimejiMotionOrchestrator {
 
   private emitFeedback(event: ShimejiFeedbackEvent): void {
     const mapper = this.options.stimulusMapper;
-    if (mapper === undefined || this.emittedStimulusIds.has(event.eventId)) return;
+    if (mapper === undefined) return;
     const stimulus = mapper.map(event, {
       createdAtIso: this.options.createStimulusTimestamp?.() ?? '',
       landingThresholds: { stumbleMaxSeverity: this.constraints().stumbleMaxSeverity },
     });
-    if (stimulus === null || this.emittedStimulusIds.has(stimulus.id)) return;
-    this.emittedStimulusIds.add(event.eventId);
-    this.emittedStimulusIds.add(stimulus.id);
+    if (stimulus === null) return;
     this.options.applyStimulus?.(stimulus);
   }
 }

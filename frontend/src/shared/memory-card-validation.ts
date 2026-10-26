@@ -1,5 +1,5 @@
 import type { MemoryCardCommandDTO, MemoryCardContentDTO, MemoryCardDTO, MemoryCardFailureDTO, MemoryCardListCommandDTO, MemoryCardListResultDTO, MemoryCardResultDTO, MemoryCardSourceDTO } from './ipc-contracts';
-import { exactRecord, plainText } from './dialogue-ipc-validation';
+import { exactRecord, plainText } from './validation-primitives';
 function text(value: unknown, max = 128): string { return plainText(value, max); }
 export function memoryCardInteger(value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number { if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) throw new TypeError('Invalid memory card'); return value; }
 export function parseMemoryCardContent(input: unknown): MemoryCardContentDTO {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { BrainStateDTO, WispApiBridge } from '../../shared/ipc-contracts';
 import type { ChatMessage } from '../../domain/chat/chat-message';
-import { createChatMessage } from '../../domain/chat/chat-message';
+import { createChatMessage } from '../render-engine/chat-message-presentation';
 import { INTERACTION_REPLIES } from '../content/interaction-replies';
 import { useDialogueLoop } from './useDialogueLoop';
 

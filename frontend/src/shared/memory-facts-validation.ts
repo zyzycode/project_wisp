@@ -1,5 +1,5 @@
 import type { MemoryFactsReadDTO, MemoryFactsResultDTO } from './ipc-contracts';
-import { enumValue, exactRecord, plainText } from './dialogue-ipc-validation';
+import { enumValue, exactRecord, plainText } from './validation-primitives';
 const keys = ['user.display_name', 'user.preferred_address', 'user.favorite_topic', 'user.reply_style', 'user.cursor_game'] as const;
 export function parseMemoryFactsRead(input: unknown): MemoryFactsReadDTO {
   const r = exactRecord(input, ['streamId']);

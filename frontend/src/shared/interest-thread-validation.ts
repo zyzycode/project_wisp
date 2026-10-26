@@ -1,5 +1,5 @@
 import type { InterestThreadCommandDTO, InterestThreadDTO, InterestThreadRefDTO, InterestThreadResultDTO } from './ipc-contracts';
-import { enumValue, exactRecord, plainText } from './dialogue-ipc-validation';
+import { enumValue, exactRecord, plainText } from './validation-primitives';
 import { memoryCardInteger, parseMemoryCardSource } from './memory-card-validation';
 function id(value: unknown): string { const s = plainText(value, 128); if (s !== s.trim()) throw new TypeError('Invalid topic id'); return s; }
 export function parseInterestThreadRef(value: unknown): InterestThreadRefDTO { const r = exactRecord(value, ['threadId', 'revision']); return { threadId: id(r.threadId), revision: memoryCardInteger(r.revision, 1) }; }

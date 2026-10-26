@@ -110,7 +110,7 @@ Calm выбирает существующие `idle_blink`/`look_around` взв
 | `landingThresholds.stumbleMaxSeverity` | Минимальный context для landing mapping | Берётся из текущих `MotionConstraints`, не копируется в Domain event. |
 | `IShimejiStimulusMapper.map(...)` | Преобразовать semantic feedback в `StimulusDto` или `null` | Чистое deterministic mapping; не применяет stimulus и не владеет дедупликацией. |
 
-Drag start/hold/end → user stimuli; `stumble`/`crash_landing` → system; petting/completed Swat → configured deltas. Soft landing, raw pointer events, physics substeps/bounces/frames не размножают feedback. Application дедуплицирует eventId; hold — максимум один на run после configured hold, completed feedback связан с `activityRunId`.
+Drag start/hold/end → user stimuli; `stumble`/`crash_landing` → system; petting/completed Swat → configured deltas. Soft landing, raw pointer events, physics substeps/bounces/frames не размножают feedback. Application обеспечивает дедупликацию в текущем lifecycle: start/hold/end flags текущего drag run и consumed flag landing episode. Monotonic session ordinal исключает повтор ID фабрики; закрытые drag sessions/устаревшие sequence отклоняются до feedback, история ID не накапливается; hold — максимум один на run после configured hold, completed feedback связан с `activityRunId`.
 
 Character clamp-ит шкалы/синтезирует tone. Новый selection snapshot публикуется только после landing `settle`/`recover`, без arbitration посреди forced motion.
 

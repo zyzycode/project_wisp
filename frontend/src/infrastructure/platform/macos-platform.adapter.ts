@@ -1,6 +1,7 @@
 import { screen, BrowserWindow } from 'electron';
 import { readCursorScreenPosition } from './cursor-screen-position';
 import { createSystemIdleSource } from './system-idle-source';
+import type { IElectronWindowAdapter } from './electron-window-adapter.interface';
 import type {
   IPlatformAdapter,
   OverlayWindowOptions,
@@ -8,7 +9,7 @@ import type {
   SupportedPlatform,
 } from '../../application/ports/platform-adapter.interface';
 
-export class MacOSPlatformAdapter implements IPlatformAdapter {
+export class MacOSPlatformAdapter implements IPlatformAdapter, IElectronWindowAdapter {
   createSystemIdleSource() { return createSystemIdleSource('darwin'); }
   getCursorScreenPosition() { return readCursorScreenPosition(); }
 

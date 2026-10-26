@@ -1,5 +1,5 @@
 import type { RoutineStatusDTO } from './ipc-contracts';
-import { exactRecord } from './dialogue-ipc-validation';
+import { exactRecord } from './validation-primitives';
 export function parseRoutineStatus(input: unknown): RoutineStatusDTO {
   const r = exactRecord(input, ['source', 'storage', 'lastAcknowledgedAt']);
   if (r.source !== 'available' && r.source !== 'unknown' && r.source !== 'unsupported') throw new TypeError('Invalid routine source');

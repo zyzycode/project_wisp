@@ -1,5 +1,5 @@
 import type { ObservationCommandDTO, ObservationSettingsDTO } from './observation-contracts';
-import { exactRecord, enumValue, plainText } from './dialogue-ipc-validation';
+import { exactRecord, enumValue, plainText } from './validation-primitives';
 function generation(value: unknown): number { if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new TypeError('Invalid observation generation'); return value; }
 function bool(value: unknown): boolean { if (typeof value !== 'boolean') throw new TypeError('Invalid observation flag'); return value; }
 function id(value: unknown): string { const text = plainText(value, 128); if (text.trim() !== text) throw new TypeError('Invalid observation identity'); return text; }

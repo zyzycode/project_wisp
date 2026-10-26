@@ -1,4 +1,4 @@
-import { plainText } from './dialogue-ipc-validation';
+import { plainText } from './validation-primitives';
 /** V5 aligns with Python Unicode Cc/Cs: only newline/tab are allowed controls. */
 export function summaryPlainText(value: unknown, max: number): string {
   const text = plainText(value, max);

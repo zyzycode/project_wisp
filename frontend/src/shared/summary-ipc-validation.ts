@@ -1,6 +1,6 @@
 import { summaryPlainText } from './summary-text-validation';
 import type { SummaryCommandDTO, SummaryConfirmCommandDTO, SummaryPreviewDTO, SummaryResultDTO } from './ipc-contracts';
-import { enumValue, exactRecord } from './dialogue-ipc-validation';
+import { enumValue, exactRecord } from './validation-primitives';
 function id(value: unknown): string { const result = summaryPlainText(value, 128); if (result.trim() !== result) throw new TypeError('Invalid summary id'); return result; }
 export function parseSummaryCommand(input: unknown): SummaryCommandDTO {
   const value = exactRecord(input, ['streamId']); return { streamId: id(value.streamId) };

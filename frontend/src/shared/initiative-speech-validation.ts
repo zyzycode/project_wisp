@@ -1,5 +1,5 @@
 import type { AIInitiativeSpeechDTO } from './ipc-contracts';
-import { exactRecord, plainText } from './dialogue-ipc-validation';
+import { exactRecord, plainText } from './validation-primitives';
 export function parseInitiativeSpeech(value: unknown, sampledAtMs: number): AIInitiativeSpeechDTO | null {
   if (value === null) return null;
   const r = exactRecord(value, ['id', 'text', 'startedAtMs', 'expiresAtMs']);

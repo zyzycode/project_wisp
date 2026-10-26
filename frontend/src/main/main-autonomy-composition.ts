@@ -32,15 +32,13 @@ import {
   resolveCursorObserve,
 } from '../domain/behavior/cursor-observe-policy';
 import type { ExplorePlan } from '../domain/behavior/explore-planner';
-import {
-  CursorProximityEngine,
-  DEFAULT_CURSOR_REACTION_CONSTRAINTS,
-  type CursorProximityState,
-} from '../domain/behavior/gaze-engine';
+import { DEFAULT_CURSOR_REACTION_CONSTRAINTS } from '../domain/behavior/gaze-engine';
+import { MainCursorObservationState } from './main-cursor-observation-state';
+import { MainVisualEpisodeState, type BrainVisualEpisode } from './main-visual-episode-state';
+export type { BrainVisualEpisode } from './main-visual-episode-state';
 import type { MotionEvent, Vector2Dto } from '../domain/behavior/motion-engine';
 import { AutonomyCharacterEngine, type CharacterAutonomySnapshot } from '../domain/character';
 import {
-  createSystemAnimationIntent,
   mapBehaviorIntentToAnimationIntent,
   type AnimationIntent,
 } from '../domain/animation/animation-intent';
@@ -53,13 +51,6 @@ import type {
   BrainVisualIntentKindDTO,
   BodyInteractionTypeDTO,
 } from '../shared/ipc-contracts';
-
-export interface BrainVisualEpisode {
-  readonly id: string;
-  readonly sequence: number;
-  readonly startedAtMs: number;
-  readonly intent: AnimationIntent<BrainVisualIntentKindDTO>;
-}
 
 export interface BrainLoopPolicy {
   readonly needsTickIntervalMs: number;
@@ -107,8 +98,7 @@ export class MainAutonomyComposition {
   private readonly activity: BrainActivityRuntime;
   private readonly providerAdmission: ProviderBehaviorAdmission;
   private readonly systemIdle: MainSystemIdle;
-  private visualEpisodeSequence = 0;
-  private visualEpisode: BrainVisualEpisode;
+  private readonly visuals: MainVisualEpisodeState;
   private readonly localHistory: { kind: string; atMs: number }[] = [];
   private activityRunSequence = 0;
   private started = false;
@@ -131,28 +121,17 @@ export class MainAutonomyComposition {
   private readonly initiativeBudget = new InitiativeBudget();
   private cursorEpisode: { endsAtMs: number; supportId: string | undefined } | null = null;
   private readonly gamePresentation: CursorGamePresentation;
-  private latestCursor: GameObservation['cursor'] = null;
-  private latestGlobalCursor: GameObservation['cursor'] = null;
-  private nextCursorPollAtMs = 0;
-  private globalCursorActive = false;
-  private cursorMustExit = false;
+  private readonly cursor = new MainCursorObservationState();
   private stableRestSpotSleep = false;
   private jumpFallAtMs: number | null = null;
-
-  private readonly cursorProximityEngine = new CursorProximityEngine();
-  private cursorProximityState: CursorProximityState = {
-    withinSwatRange: false,
-    dwellWithinSwatRangeMs: 0,
-    updatedAtMs: 0,
-  };
-  private lastCursorObservedAtMs: number | null = null;
 
   public constructor(private readonly options: MainAutonomyCompositionOptions) {
     this.systemIdle = new MainSystemIdle({ source: options.systemIdle, routine: options.routine, calendar: options.routineCalendar, now: () => options.clock.now(),
       wallNow: options.wallNow ?? Date.now, onInvalidated: () => this.socialFollowup.invalidate(), onBlocked: () => this.blockUnsolicited() });
     this.gamePresentation = new CursorGamePresentation(() => options.clock.now(), () => options.locale ?? 'ru');
     validateBrainLoopPolicy(this.brainLoopPolicy());
-    this.visualEpisode = this.createVisualEpisode('idle_blink');
+    this.visuals = new MainVisualEpisodeState({ now: () => options.clock.now(),
+      tone: () => options.getCharacterSnapshot().synthesizedTone, createId: options.createVisualEpisodeId });
     this.coordinator = new AutonomyCoordinator({
       clock: options.clock,
       scheduler: options.scheduler,
@@ -168,8 +147,7 @@ export class MainAutonomyComposition {
       },
       getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
         quiet: this.quiet || this.quietSupport,
-        canSocial: this.socialFollowup.canStartFirst() && !this.systemIdle.isBlocked() && this.initiativeBudget.available(options.clock.now()) && options.getCharacterSnapshot().needs.attention >= 80
-          && (options.getCharacterSnapshot().relationship?.friendship ?? 0) >= 100,
+        canSocial: this.socialFollowup.canStartFirst() && !this.systemIdle.isBlocked() && this.initiativeBudget.available(options.clock.now()),
         canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
         canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
         canRest: this.activity.canStart({ kind: 'sleep', source: 'timer', priority: 'normal' }) }),
@@ -338,29 +316,24 @@ export class MainAutonomyComposition {
 
   private finishDirectReaction(nowMs: number): boolean {
     if (this.activity.getRuntime() !== null) return false;
-    const kind = this.visualEpisode.intent.kind;
+    const kind = this.visuals.current.intent.kind;
     const durationMs = kind === 'happy_reaction' || kind === 'confused_reaction' || kind === 'spook'
       ? 3000 : kind === 'wake_up' ? 1500 : kind === 'land' ? LANDING_RECOVERY_MS.normal
       : kind === 'crash_landing' ? LANDING_RECOVERY_MS.crash : null;
-    if (durationMs === null || nowMs < this.visualEpisode.startedAtMs + durationMs) return false;
+    if (durationMs === null || nowMs < this.visuals.current.startedAtMs + durationMs) return false;
     this.setVisualKind(kind === 'land' || kind === 'crash_landing' ? 'settle' : 'idle_blink', true);
     return true;
   }
 
   public getGlobalCursorSample(): GameObservation['cursor'] {
-    return this.latestGlobalCursor === null ? null : {
-      ...this.latestGlobalCursor, globalPosition: { ...this.latestGlobalCursor.globalPosition },
-    };
+    return this.cursor.getGlobalSample();
   }
 
   private getCursorObservation(): GameObservation {
-    const nowMs = this.options.clock.now();
     const root = this.options.movement.getRootPosition();
-    this.cursorProximityState = this.cursorProximityEngine.update(this.cursorProximityState, {
-      nowMs, rootGlobalPosition: root, ...(this.latestCursor ? { cursor: this.latestCursor } : {}), compatible: true,
-    }).state;
-    return { root, cursor: this.latestCursor, environment: this.options.movement.getEnvironmentSnapshot(),
-      collisionInsets: this.options.movement.getCollisionInsets(), dwellMs: this.cursorProximityState.dwellWithinSwatRangeMs };
+    const dwellMs = this.cursor.getDwell(this.options.clock.now(), root);
+    return { root, cursor: this.cursor.latest, environment: this.options.movement.getEnvironmentSnapshot(),
+      collisionInsets: this.options.movement.getCollisionInsets(), dwellMs };
   }
 
   public getCursorGamePresentation() { this.gamePresentation.tick(); if (this.quietSupport) this.gamePresentation.suppressSpeech(); return this.gamePresentation.get(); }
@@ -420,11 +393,8 @@ export class MainAutonomyComposition {
   }
 
   private resetCursorInterest(): void {
-    this.globalCursorActive = false;
-    this.lastCursorObservedAtMs = null;
-    this.latestCursor = null;
+    this.cursor.resetInterest(this.options.clock.now());
     this.gamePresentation.clear();
-    this.cursorProximityState = { withinSwatRange: false, dwellWithinSwatRangeMs: 0, updatedAtMs: this.options.clock.now() };
   }
 
   public setEnabled(enabled: boolean): void {
@@ -446,7 +416,7 @@ export class MainAutonomyComposition {
   }
 
   public getVisualEpisode(): BrainVisualEpisode {
-    return { ...this.visualEpisode, intent: { ...this.visualEpisode.intent } };
+    return { ...this.visuals.current, intent: { ...this.visuals.current.intent } };
   }
 
   public getActivityTimeline(): BrainActivityTimelineDTO | null {
@@ -477,31 +447,16 @@ export class MainAutonomyComposition {
   }
 
   public handleCursorObservation(screenPosition: Vector2Dto): boolean {
-    if (this.globalCursorActive) return false;
+    if (this.cursor.globalActive) return false;
     return this.observeCursor(screenPosition);
   }
 
   private pollCursor(nowMs: number): boolean {
-    if (!this.options.cursorPosition || nowMs < this.nextCursorPollAtMs) return false;
-    this.nextCursorPollAtMs = nowMs + 100;
-    const position = this.options.cursorPosition.getCursorScreenPosition();
-    const hadSample = this.latestGlobalCursor !== null;
-    this.latestGlobalCursor = position === null ? null : { globalPosition: { ...position }, capturedAtMs: nowMs };
-    if (position === null) {
-      if (this.globalCursorActive) {
-        this.latestCursor = null;
-        this.lastCursorObservedAtMs = null;
-        this.cursorMustExit = false;
-        this.cursorProximityState = { withinSwatRange: false, dwellWithinSwatRangeMs: 0, updatedAtMs: nowMs };
-      }
-      this.globalCursorActive = false;
-      if (hadSample) this.options.onPresentationChanged();
-      return hadSample;
-    }
-    this.globalCursorActive = true;
-    this.observeCursor(position);
-    this.options.onPresentationChanged();
-    return true;
+    const changed = this.cursor.poll(nowMs, this.options.cursorPosition);
+    if (changed === null) return false;
+    if (this.cursor.globalActive && this.cursor.global !== null) this.observeCursor(this.cursor.global.globalPosition);
+    if (changed) this.options.onPresentationChanged();
+    return changed;
   }
 
   private observeCursor(screenPosition: Vector2Dto): boolean {
@@ -515,27 +470,17 @@ export class MainAutonomyComposition {
       !this.deferredUserInteractionResume &&
       (this.activity.getRuntime() === null ||
         (this.activity.getRuntime()?.activityId === 'calm' && this.activity.getSource() === 'local')) &&
-      (this.visualEpisode.intent.kind === 'idle_blink' || this.visualEpisode.intent.kind === 'look_around') &&
+      (this.visuals.current.intent.kind === 'idle_blink' || this.visuals.current.intent.kind === 'look_around') &&
       this.character.isAutonomyEligible() &&
       this.options.movement.canAcceptVoluntaryMovement());
-    this.latestCursor = { globalPosition: screenPosition, capturedAtMs: nowMs };
-    if (Math.hypot(screenPosition.x - this.options.movement.getRootPosition().x,
-      screenPosition.y - this.options.movement.getRootPosition().y) > DEFAULT_CURSOR_OBSERVE_CONSTRAINTS.ambientRadiusWorldPx) this.cursorMustExit = false;
-    const proximity = this.cursorProximityEngine.update(this.cursorProximityState, {
-      nowMs,
-      rootGlobalPosition: this.options.movement.getRootPosition(),
-      cursor: { globalPosition: screenPosition, capturedAtMs: nowMs },
-      compatible,
-    });
-    this.cursorProximityState = proximity.state;
-    this.lastCursorObservedAtMs = nowMs;
+    const proximity = this.cursor.observe(screenPosition, nowMs, this.options.movement.getRootPosition(), compatible);
     if (playing || !compatible || proximity.signal === undefined) return false;
     if (proximity.signal.distanceToRootWorldPx > DEFAULT_CURSOR_OBSERVE_CONSTRAINTS.ambientRadiusWorldPx) return false;
 
     const snapshot = this.options.getCharacterSnapshot();
     const budgetAvailable = !this.quiet && !this.quietSupport && !this.systemIdle.isBlocked() && this.initiativeBudget.available(nowMs);
-    const gameCandidate = (this.options.cursorPosition === undefined || this.globalCursorActive)
-      && !this.cursorMustExit && budgetAvailable && canPlayWithCursor(snapshot.needs, snapshot.synthesizedTone)
+    const gameCandidate = (this.options.cursorPosition === undefined || this.cursor.globalActive)
+      && !this.cursor.mustExit && budgetAvailable && canPlayWithCursor(snapshot.needs, snapshot.synthesizedTone)
       ? createCursorInterestActivity({ root: this.options.movement.getRootPosition(), cursor: screenPosition,
           environment: this.options.movement.getEnvironmentSnapshot(), collisionInsets: this.options.movement.getCollisionInsets() })
       : null;
@@ -583,7 +528,7 @@ export class MainAutonomyComposition {
     this.cursorReactionActive = true;
     if (this.activity.start(resolvedIntent, { play: playCandidates })) {
       if (this.activity.isInitiative()) this.initiativeBudget.start(nowMs);
-      if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cursorMustExit = true;
+      if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cursor.mustExit = true;
       this.cursorEpisode = { endsAtMs: nowMs + INITIATIVE_TUNING.cursorEpisodeMaxMs,
         supportId: this.options.movement.getEnvironmentSnapshot().currentSurface?.id };
       return true;
@@ -594,18 +539,7 @@ export class MainAutonomyComposition {
   }
 
   private expireCursorObservation(nowMs: number): void {
-    const observedAtMs = this.lastCursorObservedAtMs;
-    if (
-      observedAtMs === null ||
-      nowMs - observedAtMs <= DEFAULT_CURSOR_REACTION_CONSTRAINTS.signalMaxAgeMs
-    ) return;
-    this.cursorProximityState = this.cursorProximityEngine.update(this.cursorProximityState, {
-      nowMs,
-      rootGlobalPosition: this.options.movement.getRootPosition(),
-      compatible: false,
-    }).state;
-    this.lastCursorObservedAtMs = null;
-    this.cursorMustExit = false;
+    if (!this.cursor.expire(nowMs, this.options.movement.getRootPosition())) return;
     if (this.cursorReactionActive && this.activity.getRuntime()?.activityId !== 'cursor_interest') this.cancelActivity('environment_invalidated', true);
   }
 
@@ -888,7 +822,7 @@ export class MainAutonomyComposition {
         && this.coordinator.canAcceptReactiveOpportunity() && !this.deferredUserInteractionResume
         && !this.providerAdmission.hasPending() && this.providerAdmission.getOwnedRun() === null
         && (run === null || (run.activityId === 'calm' && this.activity.getSource() === 'local'))
-        && ['idle_blink', 'look_around'].includes(this.visualEpisode.intent.kind)
+        && ['idle_blink', 'look_around'].includes(this.visuals.current.intent.kind)
         && !requiresVitalSleep(this.options.getCharacterSnapshot()) && this.options.movement.canAcceptVoluntaryMovement()
         && this.initiativeBudget.available(this.options.clock.now()) && this.activity.canStart(intent, catalog);
     };
@@ -948,38 +882,15 @@ export class MainAutonomyComposition {
   }
 
   private setVisualKind(kind: BrainVisualIntentKindDTO, publish: boolean, replay = false): void {
-    if (!replay && this.visualEpisode.intent.kind === kind) return;
-    this.visualEpisode = this.createVisualEpisode(kind);
-    if (publish) this.options.onPresentationChanged();
+    if (this.visuals.set(kind, replay) && publish) this.options.onPresentationChanged();
   }
 
-  private setVisualIntent(
-    intent: AnimationIntent<BrainVisualIntentKindDTO>,
-    publish: boolean,
-    replay: boolean
-  ): void {
-    if (!replay && this.visualEpisode.intent.kind === intent.kind) return;
-    this.visualEpisode = this.createVisualEpisode(intent);
-    if (publish) this.options.onPresentationChanged();
-  }
-
-  private createVisualEpisode(
-    source: BrainVisualIntentKindDTO | AnimationIntent<BrainVisualIntentKindDTO>
-  ): BrainVisualEpisode {
-    const rawId = this.options.createVisualEpisodeId();
-    if (rawId.trim().length === 0 || rawId.trim() !== rawId) throw new Error('Visual episode ID must be trimmed and non-empty');
-    if (this.visualEpisodeSequence >= Number.MAX_SAFE_INTEGER) throw new Error('Visual episode sequence exhausted');
-    const sequence = ++this.visualEpisodeSequence;
-    const id = `${sequence}:${rawId.slice(0, 100).trimEnd()}`;
-    const intent = typeof source === 'string'
-      ? createSystemAnimationIntent(source, this.options.getCharacterSnapshot().synthesizedTone)
-      : source;
-    return { id, sequence, startedAtMs: this.options.clock.now(), intent: { ...intent } };
+  private setVisualIntent(intent: AnimationIntent<BrainVisualIntentKindDTO>, publish: boolean, replay: boolean): void {
+    if (this.visuals.set(intent, replay) && publish) this.options.onPresentationChanged();
   }
 
   private resetBrainLoop(): void {
-    this.latestGlobalCursor = null;
-    this.nextCursorPollAtMs = 0;
+    this.cursor.resetPolling();
     this.lastBrainTickAtMs = null;
     this.needsCatchUpMs = 0;
     this.deferredUserInteractionResume = false;

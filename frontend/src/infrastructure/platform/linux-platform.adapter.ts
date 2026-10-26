@@ -1,6 +1,7 @@
 import { screen, BrowserWindow } from 'electron';
 import { readCursorScreenPosition } from './cursor-screen-position';
 import { createSystemIdleSource } from './system-idle-source';
+import type { IElectronWindowAdapter } from './electron-window-adapter.interface';
 import type {
   IPlatformAdapter,
   OverlayWindowOptions,
@@ -22,7 +23,7 @@ import type {
  *    - Under native Wayland, if `setPosition()` is constrained by the compositor, the window safely remains at its
  *      initial position without throwing unhandled exceptions.
  */
-export class LinuxPlatformAdapter implements IPlatformAdapter {
+export class LinuxPlatformAdapter implements IPlatformAdapter, IElectronWindowAdapter {
   createSystemIdleSource() { return createSystemIdleSource('linux', process.env.XDG_SESSION_TYPE?.toLowerCase()); }
   getCursorScreenPosition() {
     return this.getDisplaySessionType() === 'wayland' ? null : readCursorScreenPosition();

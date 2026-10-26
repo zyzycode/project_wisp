@@ -4,8 +4,6 @@ import type { PetBodyController } from '../pet-body-controller';
 import {
   registerOverlayMouseListener,
   shouldIgnoreOverlayPointer,
-  type ListenerTarget,
-  type OverlayDocument,
 } from '../body-ui-runtime';
 
 export interface UseWindowOverlayOptions {
@@ -59,10 +57,10 @@ export function useWindowOverlay({
       return undefined;
     }
     requestMouseMode(!forced);
-    const removeListener = registerOverlayMouseListener(window as unknown as ListenerTarget, (event) => {
+    const removeListener = registerOverlayMouseListener(window, (event) => {
       requestMouseMode(shouldIgnoreOverlayPointer(
         forced,
-        document as unknown as OverlayDocument,
+        document,
         event.clientX,
         event.clientY
       ));

@@ -39,7 +39,7 @@ const initialSurface: SurfaceKinematicsState = {
   locomotionVelocityPxPerSec: { x: 0, y: 0 },
 };
 
-function createOrchestrator(now: () => number, initialMotion: MotionState = motion()) {
+function createOrchestrator(now: () => number, initialMotion: MotionState = motion(), createDragSessionId = () => 'session-1') {
   const commitRootPosition = vi.fn();
   const dispatchMotionEvent = vi.fn();
   const dispatchSurfaceEvent = vi.fn();
@@ -62,7 +62,7 @@ function createOrchestrator(now: () => number, initialMotion: MotionState = moti
     stimulusMapper: mapper,
     applyStimulus,
     createStimulusTimestamp: () => '2026-09-05T00:00:00.000Z',
-    createDragSessionId: () => 'session-1',
+    createDragSessionId,
   });
   return {
     orchestrator,
@@ -113,11 +113,11 @@ describe('Application: ShimejiMotionOrchestrator', () => {
     nowMs = 10;
     result.orchestrator.tick();
     result.orchestrator.releaseDrag({
-      pointerId: 2, dragSessionId: 'session-1', sequence: 1,
+      pointerId: 2, dragSessionId: '1:session-1', sequence: 1,
       screenPosition: { x: 100, y: 500 },
     });
     result.orchestrator.releaseDrag({
-      pointerId: 2, dragSessionId: 'session-1', sequence: 1,
+      pointerId: 2, dragSessionId: '1:session-1', sequence: 1,
       screenPosition: { x: 100, y: 500 },
     });
     nowMs = 20;
@@ -125,9 +125,88 @@ describe('Application: ShimejiMotionOrchestrator', () => {
 
     expect(result.applyStimulus).toHaveBeenCalledTimes(2);
     expect(result.applyStimulus.mock.calls.map(([stimulus]) => stimulus.id)).toEqual([
-      'stimulus:session-1:started',
-      'stimulus:session-1:ended',
+      'stimulus:1:session-1:started',
+      'stimulus:1:session-1:ended',
     ]);
+  });
+
+  it('bounds feedback identity state across many runs and rejects retired drag input', () => {
+    let nowMs = 0;
+    let sourceId = 0;
+    const result = createOrchestrator(() => nowMs, motion(), () => `source-${++sourceId}`);
+    result.orchestrator.start();
+    let firstSession = '';
+    let lastSession = '';
+    for (let index = 0; index < 1100; index += 1) {
+      const session = result.orchestrator.beginDrag({ pointerId: 2, sequence: 0, screenPosition: { x: 100, y: 790 } });
+      expect(session).not.toBeNull();
+      if (session === null) throw new Error('Expected accepted drag');
+      if (index === 0) firstSession = session;
+      lastSession = session;
+      nowMs += 10;
+      result.orchestrator.tick();
+      result.orchestrator.releaseDrag({ pointerId: 2, sequence: 1, dragSessionId: session, screenPosition: { x: 100, y: 790 } });
+      nowMs += 10;
+      result.orchestrator.tick();
+    }
+    // Diagnostic only: no lifetime identity collection may retain all past runs.
+    const retainedIdentities = Object.values(result.orchestrator)
+      .filter((value): value is Set<unknown> => value instanceof Set)
+      .reduce((count, value) => count + value.size, 0);
+    expect(retainedIdentities).toBeLessThanOrEqual(6);
+    expect(lastSession).not.toBe(firstSession);
+    expect(result.applyStimulus).toHaveBeenCalledTimes(2200);
+
+    const session = result.orchestrator.beginDrag({ pointerId: 2, sequence: 0, screenPosition: { x: 100, y: 790 } });
+    nowMs += 10;
+    result.orchestrator.tick();
+    const beforeReplay = result.applyStimulus.mock.calls.length;
+    result.orchestrator.releaseDrag({ pointerId: 2, sequence: 99, dragSessionId: firstSession, screenPosition: { x: 100, y: 790 } });
+    nowMs += 10;
+    result.orchestrator.tick();
+    expect(result.applyStimulus).toHaveBeenCalledTimes(beforeReplay);
+    expect(result.orchestrator.getMotionState().phase).toBe('dragged');
+    expect(session).not.toBe(firstSession);
+  });
+
+  it('never reuses a factory identity for a later drag run', () => {
+    let nowMs = 0;
+    const result = createOrchestrator(() => nowMs);
+    result.orchestrator.start();
+    const first = result.orchestrator.beginDrag({ pointerId: 1, sequence: 0, screenPosition: { x: 100, y: 790 } });
+    nowMs = 10;
+    result.orchestrator.tick();
+    if (first === null) throw new Error('Expected accepted drag');
+    result.orchestrator.releaseDrag({ pointerId: 1, sequence: 1, dragSessionId: first, screenPosition: { x: 100, y: 790 } });
+    nowMs = 20;
+    result.orchestrator.tick();
+    const next = result.orchestrator.beginDrag({ pointerId: 1, sequence: 0, screenPosition: { x: 100, y: 790 } });
+    expect(next).not.toBe(first);
+    nowMs = 30;
+    result.orchestrator.tick();
+    result.orchestrator.releaseDrag({ pointerId: 1, sequence: 100, dragSessionId: first, screenPosition: { x: 100, y: 790 } });
+    nowMs = 40;
+    result.orchestrator.tick();
+    expect(result.orchestrator.getMotionState().phase).toBe('dragged');
+    expect(result.applyStimulus).toHaveBeenCalledTimes(3);
+  });
+
+  it('consumes repeated landing feedback only once in the current airborne episode', () => {
+    let nowMs = 0;
+    const motionEngine = new MotionEngine();
+    vi.spyOn(motionEngine, 'step').mockImplementation(({ state }) => ({ state,
+      events: [{ type: 'landed', outcome: 'crash_landing', impactSeverity: 1400 }] }));
+    const applyStimulus = vi.fn();
+    const orchestrator = new ShimejiMotionOrchestrator({
+      initialMotion: motion({ phase: 'airborne', position: { x: 100, y: 300 } }), initialSurface,
+      motionEngine, surfaceKinematics: new SurfaceKinematics(), environment: () => environment,
+      positionPort: { commitRootPosition: vi.fn() }, now: () => nowMs,
+      stimulusMapper: { map: event => ({ id: event.eventId, type: 'system_event' }) },
+      applyStimulus, createStimulusTimestamp: () => '2026-09-05T00:00:00.000Z',
+    });
+    orchestrator.start();
+    for (let index = 0; index < 20; index += 1) { nowMs += 100; orchestrator.tick(); }
+    expect(applyStimulus).toHaveBeenCalledTimes(1);
   });
 
   it('emits one bounded hold stimulus per drag run', () => {
@@ -143,14 +222,14 @@ describe('Application: ShimejiMotionOrchestrator', () => {
     nowMs = 499;
     result.orchestrator.tick();
     expect(result.applyStimulus.mock.calls.map(([stimulus]) => stimulus.id))
-      .not.toContain('stimulus:session-1:hold');
+      .not.toContain('stimulus:1:session-1:hold');
 
     nowMs = 500;
     result.orchestrator.tick();
     nowMs = 900;
     result.orchestrator.tick();
     result.orchestrator.releaseDrag({
-      pointerId: 2, dragSessionId: 'session-1', sequence: 1,
+      pointerId: 2, dragSessionId: '1:session-1', sequence: 1,
       screenPosition: { x: 100, y: 500 },
     });
     nowMs = 910;
@@ -160,7 +239,7 @@ describe('Application: ShimejiMotionOrchestrator', () => {
       .map(([event]) => event)
       .filter((event) => event.type === 'drag_hold');
     expect(holdEvents).toEqual([{
-      type: 'drag_hold', eventId: 'session-1:hold', dragRunId: 'session-1',
+      type: 'drag_hold', eventId: '1:session-1:hold', dragRunId: '1:session-1',
       heldMs: 500, atMs: 500,
     }]);
   });
@@ -199,16 +278,16 @@ describe('Application: ShimejiMotionOrchestrator', () => {
       sequence: 0,
       screenPosition: { x: 100, y: 790 },
     });
-    expect(sessionId).toBe('session-1');
+    expect(sessionId).toBe('1:session-1');
     result.orchestrator.moveDrag({
       pointerId: 7,
-      dragSessionId: 'session-1',
+      dragSessionId: '1:session-1',
       sequence: 1,
       screenPosition: { x: 160, y: 720 },
     });
     result.orchestrator.moveDrag({
       pointerId: 7,
-      dragSessionId: 'session-1',
+      dragSessionId: '1:session-1',
       sequence: 1,
       screenPosition: { x: 999, y: 1 },
     });
@@ -228,7 +307,7 @@ describe('Application: ShimejiMotionOrchestrator', () => {
     expect(result.dispatchMotionEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'drag_started' }));
     expect(result.dispatchSurfaceEvent).not.toHaveBeenCalled();
     expect(result.applyStimulus).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'stimulus:session-1:started', type: 'user_drag_start' })
+      expect.objectContaining({ id: 'stimulus:1:session-1:started', type: 'user_drag_start' })
     );
     expect(result.orchestrator.getPresentationRevision()).toBe(1);
   });
@@ -442,11 +521,11 @@ describe('Application: ShimejiMotionOrchestrator', () => {
     result.orchestrator.beginDrag({ pointerId: 5, sequence: 0, screenPosition: { x: 100, y: 400 } });
     nowMs = 40;
     result.orchestrator.moveDrag({
-      pointerId: 5, dragSessionId: 'session-1', sequence: 1, screenPosition: { x: 140, y: 400 },
+      pointerId: 5, dragSessionId: '1:session-1', sequence: 1, screenPosition: { x: 140, y: 400 },
     });
     nowMs = 80;
     result.orchestrator.releaseDrag({
-      pointerId: 5, dragSessionId: 'session-1', sequence: 2, screenPosition: { x: 180, y: 400 },
+      pointerId: 5, dragSessionId: '1:session-1', sequence: 2, screenPosition: { x: 180, y: 400 },
     });
 
     nowMs = 100;
@@ -464,7 +543,7 @@ describe('Application: ShimejiMotionOrchestrator', () => {
 
     result.orchestrator.moveDrag({
       pointerId: 4,
-      dragSessionId: 'session-1',
+      dragSessionId: '1:session-1',
       sequence: 1,
       screenPosition: { x: 600, y: 1 },
     });
@@ -476,19 +555,19 @@ describe('Application: ShimejiMotionOrchestrator', () => {
     });
     result.orchestrator.moveDrag({
       pointerId: 3,
-      dragSessionId: 'session-1',
+      dragSessionId: '1:session-1',
       sequence: 1,
       screenPosition: { x: Number.NaN, y: 1 },
     });
     result.orchestrator.moveDrag({
       pointerId: 3,
-      dragSessionId: 'session-1',
+      dragSessionId: '1:session-1',
       sequence: 2,
       screenPosition: { x: 180, y: 740 },
     });
     result.orchestrator.moveDrag({
       pointerId: 3,
-      dragSessionId: 'session-1',
+      dragSessionId: '1:session-1',
       sequence: 1,
       screenPosition: { x: 500, y: 1 },
     });

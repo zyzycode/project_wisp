@@ -1,5 +1,5 @@
 import type { CursorGamePresentationDTO } from './ipc-contracts';
-import { exactRecord, enumValue, plainText } from './dialogue-ipc-validation';
+import { exactRecord, enumValue, plainText } from './validation-primitives';
 function id(value: unknown): string {
   const text = plainText(value, 128);
   if (text !== text.trim()) throw new TypeError('Invalid game ID');

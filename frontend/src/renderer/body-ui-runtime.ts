@@ -152,9 +152,18 @@ export interface PetDragGlobalHandlers {
   readonly cancel: (event: PetPointerEvent) => void;
 }
 
+export interface BodyUIEventMap {
+  readonly mousemove: { readonly screenX: number; readonly screenY: number; readonly clientX: number; readonly clientY: number };
+  readonly pointermove: PetPointerEvent;
+  readonly pointerup: PetPointerEvent;
+  readonly pointercancel: PetPointerEvent;
+  readonly pointerleave: object;
+  readonly visibilitychange: object;
+}
+
 export interface ListenerTarget {
-  addEventListener(type: string, listener: (event: never) => void): void;
-  removeEventListener(type: string, listener: (event: never) => void): void;
+  addEventListener<K extends keyof BodyUIEventMap>(type: K, listener: (event: BodyUIEventMap[K]) => void): void;
+  removeEventListener<K extends keyof BodyUIEventMap>(type: K, listener: (event: BodyUIEventMap[K]) => void): void;
 }
 
 export interface VisibilityListenerTarget extends ListenerTarget {
@@ -169,11 +178,11 @@ export function registerCursorObservationListeners(
     readonly unavailable: () => void;
   }
 ): () => void {
-  const move = handlers.move as (event: never) => void;
-  const unavailable = handlers.unavailable as (event: never) => void;
+  const move = handlers.move;
+  const unavailable = handlers.unavailable;
   const visibilityChanged = (() => {
     if (visibilityTarget.hidden) handlers.unavailable();
-  }) as (event: never) => void;
+  });
   pointerTarget.addEventListener('mousemove', move);
   pointerTarget.addEventListener('pointerleave', unavailable);
   pointerTarget.addEventListener('pointercancel', unavailable);
@@ -190,9 +199,9 @@ export function registerPetDragGlobalListeners(
   target: ListenerTarget,
   handlers: PetDragGlobalHandlers
 ): () => void {
-  const move = handlers.move as (event: never) => void;
-  const end = handlers.end as (event: never) => void;
-  const cancel = handlers.cancel as (event: never) => void;
+  const move = handlers.move;
+  const end = handlers.end;
+  const cancel = handlers.cancel;
   target.addEventListener('pointermove', move);
   target.addEventListener('pointerup', end);
   target.addEventListener('pointercancel', cancel);
@@ -233,7 +242,7 @@ export function registerOverlayMouseListener(
   target: ListenerTarget,
   listener: (event: { readonly clientX: number; readonly clientY: number }) => void
 ): () => void {
-  const typedListener = listener as (event: never) => void;
+  const typedListener = listener;
   target.addEventListener('mousemove', typedListener);
   return (): void => target.removeEventListener('mousemove', typedListener);
 }

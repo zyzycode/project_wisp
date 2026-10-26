@@ -1,3 +1,4 @@
+import { registerWindowIpc } from './window-ipc-registration';
 import { RoutineCapture } from '../application/services/routine-capture';
 import { MemoryFactsReader } from '../application/services/memory-facts-reader';
 import { BeverageCommands } from '../application/services/beverage-commands';
@@ -29,14 +30,9 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import type {
-  PingResponseDTO,
-  SystemInfoDTO,
-  IgnoreMouseEventsDTO,
   PetPositionDTO,
-  ScreenBoundsDTO,
   DebugTelemetryDTO,
   BodyEventDTO,
-  EnvironmentSnapshotDTO,
 } from '../shared/ipc-contracts';
 import { createPlatformAdapter } from '../infrastructure/platform/platform-adapter.factory';
 import { PlatformEnvironmentAdapter } from '../infrastructure/platform/platform-environment.adapter';
@@ -631,100 +627,40 @@ function registerIpcHandlers(): void {
     expandedSize: { width: EXPANDED_WINDOW_WIDTH, height: EXPANDED_WINDOW_HEIGHT },
   });
 
-  ipcMain.handle('wisp:ping', async (_event, message: unknown): Promise<PingResponseDTO> => {
-    const text = typeof message === 'string' ? message : '';
-    return {
-      reply: `pong: ${text}`,
-      timestamp: Date.now(),
-    };
-  });
-
-  ipcMain.handle('wisp:get-system-info', async (): Promise<SystemInfoDTO> => {
-    return {
-      platform: platformAdapter.getPlatformName(),
-      sessionType: platformAdapter.getDisplaySessionType(),
-      appVersion: app.getVersion(),
-      electronVersion: process.versions.electron || 'unknown',
-      chromeVersion: process.versions.chrome || 'unknown',
-      nodeVersion: process.versions.node || 'unknown',
-    };
-  });
-
-  ipcMain.handle(
-    'wisp:set-ignore-mouse-events',
-    async (_event, payload: IgnoreMouseEventsDTO): Promise<void> => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        const ignore = Boolean(payload?.ignore);
-        const forward = payload?.forward ?? true;
-        platformAdapter.setIgnoreMouseEvents(mainWindow, ignore, forward);
-      }
-    }
-  );
-
-  ipcMain.handle('wisp:get-position', async (): Promise<PetPositionDTO> => {
-    return getNativePosition();
-  });
-
-  ipcMain.handle(
-    'wisp:update-position',
-    async (_event, targetPos: PetPositionDTO): Promise<PetPositionDTO> => {
+  registerWindowIpc({
+    register: (channel, handler) => ipcMain.handle(channel, handler),
+    remove: channel => ipcMain.removeHandler(channel),
+    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null,
+    now: Date.now,
+    systemInfo: () => ({
+      platform: platformAdapter.getPlatformName(), sessionType: platformAdapter.getDisplaySessionType(),
+      appVersion: app.getVersion(), electronVersion: process.versions.electron || 'unknown',
+      chromeVersion: process.versions.chrome || 'unknown', nodeVersion: process.versions.node || 'unknown',
+    }),
+    ignoreMouse: command => {
+      if (mainWindow && !mainWindow.isDestroyed()) platformAdapter.setIgnoreMouseEvents(mainWindow, command.ignore, command.forward);
+    },
+    getPosition: getNativePosition,
+    updatePosition: target => {
       const currentPos = getNativePosition();
-
-      const validX =
-        typeof targetPos?.x === 'number' && Number.isFinite(targetPos.x)
-          ? targetPos.x
-          : currentPos.x;
-      const validY =
-        typeof targetPos?.y === 'number' && Number.isFinite(targetPos.y)
-          ? targetPos.y
-          : currentPos.y;
-
       const bounds = platformEnvironmentAdapter.getSnapshot().screenBounds;
-      const requestedRoot = nativeToRootPosition({ x: validX, y: validY }, ROOT_PIVOT_OFFSET);
+      const requestedRoot = nativeToRootPosition(target, ROOT_PIVOT_OFFSET);
       let targetRoot;
-      try {
-        targetRoot = clampRootPosition(requestedRoot, bounds, DEFAULT_MOTION_CONSTRAINTS.collisionInsets);
-      } catch {
-        return currentPos;
-      }
+      try { targetRoot = clampRootPosition(requestedRoot, bounds, DEFAULT_MOTION_CONSTRAINTS.collisionInsets); }
+      catch { return currentPos; }
       if (!memoryRuntime?.admitInput()) return currentPos;
-      const accepted = autonomyComposition?.requestManualRootPosition(targetRoot) ?? false;
-      return accepted
-        ? rootToNativePosition(targetRoot, bounds, ROOT_PIVOT_OFFSET)
-        : currentPos;
-    }
-  );
-
-  ipcMain.handle('wisp:get-screen-bounds', async (): Promise<ScreenBoundsDTO> => {
-    return platformAdapter.getDisplayWorkArea();
-  });
-
-  ipcMain.handle('wisp:get-environment-snapshot', async (): Promise<EnvironmentSnapshotDTO> => {
-    return toEnvironmentSnapshotDTO(shimejiMotionOrchestrator?.getEnvironmentSnapshot() ?? platformEnvironmentAdapter.getSnapshot());
-  });
-
-  ipcMain.handle(
-    'wisp:set-always-on-top',
-    async (_event, enabled: unknown): Promise<boolean> => {
-      if (typeof enabled !== 'boolean') {
-        throw new TypeError('Invalid always-on-top value');
-      }
+      return autonomyComposition?.requestManualRootPosition(targetRoot)
+        ? rootToNativePosition(targetRoot, bounds, ROOT_PIVOT_OFFSET) : currentPos;
+    },
+    screenBounds: () => platformAdapter.getDisplayWorkArea(),
+    environment: () => toEnvironmentSnapshotDTO(shimejiMotionOrchestrator?.getEnvironmentSnapshot() ?? platformEnvironmentAdapter.getSnapshot()),
+    alwaysOnTop: enabled => {
       if (!mainWindow || mainWindow.isDestroyed()) return false;
       platformAdapter.setAlwaysOnTop(mainWindow, enabled);
       return mainWindow.isAlwaysOnTop();
-    }
-  );
-
-  if (isDebugMode()) {
-    ipcMain.handle('wisp:get-debug-telemetry', async (): Promise<DebugTelemetryDTO> => getDebugTelemetry());
-    ipcMain.handle('wisp:clear-debug-telemetry-logs', async (): Promise<void> => {
-      appLogger.clearBuffer();
-      publishDebugTelemetry();
-    });
-  }
-
-  ipcMain.handle('wisp:close-app', async (): Promise<void> => {
-    app.quit();
+    },
+    ...(isDebugMode() ? { debug: { read: getDebugTelemetry, clear: () => { appLogger.clearBuffer(); publishDebugTelemetry(); } } } : {}),
+    close: () => app.quit(),
   });
 }
 

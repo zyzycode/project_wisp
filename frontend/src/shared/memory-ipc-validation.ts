@@ -1,5 +1,5 @@
 import type { ClearMemoryCommandDTO, ClearMemoryResultDTO, MemoryStatusDTO } from './ipc-contracts';
-import { exactRecord } from './dialogue-ipc-validation';
+import { exactRecord } from './validation-primitives';
 const failures = ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'io_error'] as const;
 function id(value: unknown): string { if (typeof value !== 'string' || !value.trim() || value.length > 128) throw new TypeError('Invalid memory command'); return value; }
 function reason(value: unknown): (typeof failures)[number] { if (typeof value !== 'string' || !failures.some(code => code === value)) throw new TypeError('Invalid memory status'); return value as (typeof failures)[number]; }

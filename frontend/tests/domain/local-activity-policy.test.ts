@@ -15,3 +15,22 @@ describe('local calm variation', () => {
     expect(count([{ kind: 'calm:look_around', atMs: -900000 }])).toBe(count([]));
   });
 });
+
+
+describe('SocialBid Domain eligibility', () => {
+  it.each([
+    [79, 100, false], [80, 99, false], [80, 100, true], [81, 101, true],
+  ])('requires attention=%s and friendship=%s at the existing thresholds', (attention, friendship, eligible) => {
+    const selection = selectLocalActivity({ ...snapshot, needs: { ...snapshot.needs, attention },
+      relationship: { friendship } }, { ...context, canSocial: true }, .99);
+    expect(selection.trace.find(row => row.kind === 'social_bid')?.eligible).toBe(eligible);
+  });
+  it('retains technical admission and quiet gates above both thresholds', () => {
+    const social = { ...snapshot, needs: { ...snapshot.needs, attention: 100 },
+      relationship: { friendship: 1000 } };
+    for (const gates of [{ canSocial: false }, { canSocial: true, quiet: true }]) {
+      expect(selectLocalActivity(social, { ...context, ...gates }, .99).trace
+        .find(row => row.kind === 'social_bid')?.eligible).toBe(false);
+    }
+  });
+});

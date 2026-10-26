@@ -1,9 +1,10 @@
 import type { IPlatformAdapter } from '../../application/ports/platform-adapter.interface';
+import type { IElectronWindowAdapter } from './electron-window-adapter.interface';
 import { LinuxPlatformAdapter } from './linux-platform.adapter';
 import { WindowsPlatformAdapter } from './windows-platform.adapter';
 import { MacOSPlatformAdapter } from './macos-platform.adapter';
 
-export function createPlatformAdapter(): IPlatformAdapter {
+export function createPlatformAdapter(): IPlatformAdapter & IElectronWindowAdapter {
   switch (process.platform) {
     case 'linux':
       return new LinuxPlatformAdapter();

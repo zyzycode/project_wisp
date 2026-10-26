@@ -1,5 +1,6 @@
 import type { BrainStateDTO } from '../shared/ipc-contracts';
-import { createChatMessage, type ChatMessage } from '../domain/chat/chat-message';
+import type { ChatMessage } from '../domain/chat/chat-message';
+import { createChatMessage } from './render-engine/chat-message-presentation';
 
 /** Dedupe presentation identities; never decides a game outcome or a reply. */
 export class SpeechProjection {

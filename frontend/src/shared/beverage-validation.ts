@@ -1,5 +1,5 @@
 import type { BeveragePreferenceCommandDTO, BeveragePreferenceDTO, BeveragePreferenceRefDTO, InterestThreadResultDTO } from './ipc-contracts';
-import { enumValue, exactRecord, plainText } from './dialogue-ipc-validation';
+import { enumValue, exactRecord, plainText } from './validation-primitives';
 import { memoryCardInteger, parseMemoryCardSource } from './memory-card-validation';
 export function beverageId(value: unknown): string { const text = plainText(value, 128); if (text !== text.trim()) throw new TypeError('Invalid preference id'); return text; }
 export function parseBeverageRef(value: unknown): BeveragePreferenceRefDTO { const r = exactRecord(value, ['itemId', 'revision']); return { itemId: beverageId(r.itemId), revision: memoryCardInteger(r.revision, 1) }; }

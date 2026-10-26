@@ -31,7 +31,8 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
     { kind: 'wander', eligible: context.canExplore, need: .2 + (n.boredom ?? 0) / 30, personality: .5 + t.openness },
     { kind: 'sleep', eligible: context.canRest, need: .05 + (100 - n.energy + n.comfort) / 140, personality: .5 + t.independence },
     { kind: 'play', eligible: context.canPlay && !context.quiet, need: n.play / 20 + (n.boredom ?? 0) / 25, personality: .5 + t.playfulness },
-    { kind: 'social_bid', eligible: context.canSocial === true && !context.quiet, need: n.attention / 25,
+    { kind: 'social_bid', eligible: context.canSocial === true && !context.quiet && n.attention >= 80
+      && (snapshot.relationship?.friendship ?? 0) >= 100, need: n.attention / 25,
       personality: (.5 + t.extraversion) * (.5 + (snapshot.relationship?.friendship ?? 0) / 1000) },
   ] as const;
   const trace = definitions.map(d => {

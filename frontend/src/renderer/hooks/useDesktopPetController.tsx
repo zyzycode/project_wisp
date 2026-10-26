@@ -1,27 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CharacterTheme } from '../../domain/models/character-visuals';
 import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
-import type {
-  AnimationEvent,
-  AnyAnimationState,
-  TerminalAnimationState,
-} from '../../domain/animation/animation-state-machine';
 import {
   createSystemAnimationIntent,
-  type AnimationExpressionHint,
   type AnimationIntentKind,
 } from '../../domain/animation/animation-intent';
-import { createChatMessage } from '../../domain/chat/chat-message';
+import { createChatMessage } from '../render-engine/chat-message-presentation';
 import type {
-  DebugTelemetryDTO,
   PetPositionDTO,
   ScreenBoundsDTO,
   WispApiBridge,
 } from '../../shared/ipc-contracts';
-import type {
-  DebugAnimationSelection,
-  ManifestAnimationRegistry,
-} from '../components/Character/CharacterRenderer';
 import {
   INTERACTION_REPLIES,
 } from '../content/interaction-replies';
@@ -32,20 +21,17 @@ import { usePetBodyController } from './usePetBodyController';
 import { usePetDialogue } from './usePetDialogue';
 import { usePetDragController } from './usePetDragController';
 import { useWindowOverlay } from './useWindowOverlay';
+import { usePetDebugController } from './usePetDebugController';
+import {
+  animationStateToIntentKind,
+  expressionToHint,
+  localTerminalKind,
+  synchronizeLocalAnimationState,
+} from '../render-engine/pet-animation-presentation';
 import { isCursorObservationCompatible } from '../body-ui-runtime';
 import { applyLocalTerminalState } from '../render-engine/local-terminal-state';
 
 const COMPACT_WINDOW_SIZE = { width: 280, height: 320 };
-
-const EMPTY_DEBUG_TELEMETRY: DebugTelemetryDTO = {
-  character: {
-    needs: { energy: 0, attention: 0, play: 0, comfort: 0 },
-    relationship: { friendship: 0, love: 0, loveUnlocked: false },
-    synthesizedTone: 'neutral',
-    lastUpdated: 0,
-  },
-  logs: [],
-};
 
 export interface UseDesktopPetControllerOptions {
   readonly bridge: WispApiBridge;
@@ -62,17 +48,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
   );
   const [debugHudVisible, setDebugHudVisible] = useState(false);
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(true);
-  const [manifestAnimations, setManifestAnimations] = useState<ManifestAnimationRegistry>({
-    bodyKeys: [],
-    faceKeys: [],
-  });
-  const [inspectorBodyKey, setInspectorBodyKey] = useState<string | null>(null);
-  const [inspectorFaceKey, setInspectorFaceKey] = useState<string | null>(null);
-  const [previewLoop, setPreviewLoop] = useState(true);
-  const [previewReplayToken, setPreviewReplayToken] = useState(0);
-  const [showAnchorPoint, setShowAnchorPoint] = useState(false);
-  const [debugTelemetry, setDebugTelemetry] = useState(EMPTY_DEBUG_TELEMETRY);
-  const [renderFps, setRenderFps] = useState(0);
   const activeVisualEpisodeRef = useRef<string | null>(null);
   const activeVisualKindRef = useRef<AnimationIntentKind>('idle_blink');
   const debugHudEnabled = bridge.debugEnabled;
@@ -99,6 +74,16 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
       dialogue.chatOpen ||
       dialogue.currentMessage !== null ||
       debugHudVisible,
+  });
+
+  const {
+    debugAnimationSelection, showAnchorPoint, manifestAnimations, setManifestAnimations,
+    debugTelemetry, renderFps, inspectorBodyKey, inspectorFaceKey, previewLoop,
+    selectPreviewBody, selectPreviewFace, clearPreview, setShowAnchorPoint,
+    togglePreviewLoop, replayPreview, clearDebugLogs,
+  } = usePetDebugController({
+    bridge, menuOpen: overlay.menuOpen, setMenuOpen: overlay.setMenuOpen,
+    debugHudVisible, setDebugHudVisible,
   });
 
   const handleDragStarted = useCallback(() => {
@@ -146,42 +131,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     });
   }, [animState, expression, localTerminalVisualKind, visual]);
 
-  const debugAnimationSelection = useMemo<DebugAnimationSelection | undefined>(() => {
-    if (!overlay.menuOpen || inspectorBodyKey === null) return undefined;
-    return {
-      bodyKey: inspectorBodyKey,
-      replayToken: previewReplayToken,
-      loop: previewLoop,
-      ...(inspectorFaceKey === null ? {} : { faceKey: inspectorFaceKey }),
-    };
-  }, [inspectorBodyKey, inspectorFaceKey, overlay.menuOpen, previewReplayToken, previewLoop]);
-
-  useEffect(() => {
-    if (!overlay.menuOpen) {
-      setInspectorBodyKey(null);
-      setInspectorFaceKey(null);
-    }
-  }, [overlay.menuOpen]);
-
-  const selectPreviewBody = useCallback((key: string | null) => {
-    overlay.setMenuOpen(true);
-    setInspectorBodyKey(key);
-    if (key === null) setInspectorFaceKey(null);
-    setPreviewReplayToken(value => value + 1);
-  }, [overlay.setMenuOpen]);
-
-  const selectPreviewFace = useCallback((key: string | null) => {
-    overlay.setMenuOpen(true);
-    setInspectorFaceKey(key);
-    if (key !== null) setInspectorBodyKey(current => current ?? 'body_idle');
-    setPreviewReplayToken(value => value + 1);
-  }, [overlay.setMenuOpen]);
-
-  const clearPreview = useCallback(() => {
-    setInspectorBodyKey(null);
-    setInspectorFaceKey(null);
-  }, []);
-
   const handleAnimationCompleted = useCallback((
     _event: unknown,
     completedVisualEpisodeId: string | undefined
@@ -197,62 +146,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
       setLocalTerminalVisualKind('idle_blink');
     }
   }, []);
-
-  useEffect(() => {
-    if (!debugHudEnabled || (!debugHudVisible && !overlay.menuOpen)) return undefined;
-    const getDebugTelemetry = bridge.getDebugTelemetry;
-    const onDebugTelemetry = bridge.onDebugTelemetry;
-    if (getDebugTelemetry === undefined || onDebugTelemetry === undefined) return undefined;
-    let active = true;
-    const refreshTelemetry = (): void => {
-      void getDebugTelemetry()
-        .then((telemetry) => {
-          if (active) setDebugTelemetry(telemetry);
-        })
-        .catch(() => undefined);
-    };
-    refreshTelemetry();
-    const unsubscribe = onDebugTelemetry((telemetry) => {
-      if (active) setDebugTelemetry(telemetry);
-    });
-    const intervalId = window.setInterval(refreshTelemetry, 1_000);
-    return (): void => {
-      active = false;
-      window.clearInterval(intervalId);
-      unsubscribe();
-    };
-  }, [bridge, debugHudEnabled, debugHudVisible, overlay.menuOpen]);
-
-  useEffect(() => {
-    if (!debugHudEnabled) return undefined;
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
-        event.preventDefault();
-        setDebugHudVisible((visible) => !visible);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return (): void => window.removeEventListener('keydown', handleKeyDown);
-  }, [debugHudEnabled]);
-
-  useEffect(() => {
-    if (!debugHudVisible && !overlay.menuOpen) return undefined;
-    let frameId = 0;
-    let frames = 0;
-    let sampleStartedAt = performance.now();
-    const sample = (now: number): void => {
-      frames += 1;
-      const elapsedMs = now - sampleStartedAt;
-      if (elapsedMs >= 500) {
-        setRenderFps(Math.round((frames * 1_000) / elapsedMs));
-        frames = 0;
-        sampleStartedAt = now;
-      }
-      frameId = window.requestAnimationFrame(sample);
-    };
-    frameId = window.requestAnimationFrame(sample);
-    return (): void => window.cancelAnimationFrame(frameId);
-  }, [debugHudVisible, overlay.menuOpen]);
 
   const sendSleepWake = useCallback((action: 'sleep' | 'wake'): void => {
     void requestCharacterSleepWake(bridge, action).catch((error: unknown) => {
@@ -377,11 +270,9 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     setInspectorFaceKey: selectPreviewFace,
     setShowAnchorPoint,
     previewLoop,
-    togglePreviewLoop: () => { setPreviewLoop(value => !value); setPreviewReplayToken(value => value + 1); },
-    replayPreview: () => setPreviewReplayToken(value => value + 1),
-    clearDebugLogs: () => {
-      if (bridge.clearDebugTelemetryLogs !== undefined) void bridge.clearDebugTelemetryLogs();
-    },
+    togglePreviewLoop,
+    replayPreview,
+    clearDebugLogs,
     sendInteraction: postInteraction,
     sendSleepWake,
     petFromMenu: () => {
@@ -434,58 +325,4 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
       dialogue.setCurrentMessage(createChatMessage('thought', thought));
     },
   };
-}
-
-function animationStateToIntentKind(state: AnyAnimationState): AnimationIntentKind {
-  const mapping: Partial<Record<AnyAnimationState, AnimationIntentKind>> = {
-    float: 'walk', dragged: 'dragged', falling: 'fall', fall: 'fall', landing: 'land',
-    land: 'land', sleep: 'sleep_loop', sleep_loop: 'sleep_loop', sleep_start: 'sleep_start',
-    wake_up: 'wake_up', happy: 'happy_reaction', surprised: 'confused_reaction',
-    thinking: 'thinking_loop', spook: 'spook', wave: 'wave', celebrate: 'celebrate',
-    bored: 'bored', settle: 'settle', sit: 'sit', stand_up: 'stand_up', lie_down: 'lie_down',
-    get_up: 'get_up', run: 'run', jump: 'jump', crawl: 'crawl', climb_wall: 'climb_wall',
-    hang_ceiling: 'hang_ceiling', idle: 'idle_blink',
-  };
-  return mapping[state] ?? 'idle_blink';
-}
-
-function localTerminalKind(kind: AnimationIntentKind): AnimationIntentKind | null {
-  if (kind === 'sleep_start') return 'sleep_loop';
-  if (kind === 'land' || kind === 'crash_landing') return 'settle';
-  if (['wake_up', 'happy_reaction', 'confused_reaction', 'talking', 'spook'].includes(kind)) {
-    return 'idle_blink';
-  }
-  return null;
-}
-
-function synchronizeLocalAnimationState(
-  kind: AnimationIntentKind,
-  dispatch: (event: AnimationEvent, force?: boolean, loop?: boolean) => boolean,
-  synchronizeTerminal: (state: TerminalAnimationState) => boolean
-): void {
-  if (kind === 'idle_blink' || kind === 'settle' || kind === 'sleep_loop') {
-    synchronizeTerminal(kind === 'idle_blink' ? 'idle' : kind);
-    return;
-  }
-  const events: Partial<Record<AnimationIntentKind, AnimationEvent>> = {
-    grab_edge: 'CLIMB_WALL', jump_travel: 'JUMP', pull_up_edge: 'LAND',
-    sit_edge_settle: 'SIT', sit_edge_sleep: 'START_SLEEP', cursor_play: 'WAVE',
-    walk: 'START_FLOAT', sleep_start: 'START_SLEEP', wake_up: 'WAKE_UP',
-    happy_reaction: 'REACT_HAPPY', confused_reaction: 'REACT_CONFUSED',
-    thinking_loop: 'THINK', bored: 'BORED', wave: 'WAVE', celebrate: 'CELEBRATE',
-    spook: 'SPOOK', dragged: 'START_DRAG', land: 'LAND', sit: 'SIT', sit_edge: 'SIT',
-    stand_up: 'STAND_UP', lie_down: 'LIE_DOWN', get_up: 'GET_UP', run: 'RUN',
-    jump: 'JUMP', fall: 'FALL', crawl: 'CRAWL', climb_wall: 'CLIMB_WALL',
-    hang_ceiling: 'HANG_CEILING',
-  };
-  const event = events[kind];
-  if (event !== undefined) dispatch(event, true, kind.endsWith('_loop'));
-}
-
-function expressionToHint(expression: string): AnimationExpressionHint {
-  if (expression === 'happy') return 'happy';
-  if (expression === 'sleepy') return 'sleepy';
-  if (expression === 'surprised' || expression === 'flying') return 'surprised';
-  if (expression === 'curious') return 'curious';
-  return 'idle';
 }

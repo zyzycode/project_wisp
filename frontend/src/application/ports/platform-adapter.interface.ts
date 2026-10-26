@@ -1,6 +1,6 @@
 /**
  * Application Port: Platform Adapter Interface
- * Defines platform-specific operations isolated from domain and application layers.
+ * Defines platform observations and overlay options without native window types.
  */
 import type { SystemIdlePort } from './system-idle.port';
 
@@ -25,8 +25,5 @@ export interface IPlatformAdapter {
   getPlatformName(): SupportedPlatform;
   getDisplaySessionType(): string; // 'x11' | 'wayland' | 'native'
   getOverlayWindowOptions(): OverlayWindowOptions;
-  configureOverlayWindow(window: Electron.BrowserWindow): void;
-  setAlwaysOnTop(window: Electron.BrowserWindow, enabled: boolean): void;
-  setIgnoreMouseEvents(window: Electron.BrowserWindow, ignore: boolean, forward?: boolean): void;
   getDisplayWorkArea(point?: { x: number; y: number }): ScreenBounds;
 }

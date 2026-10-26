@@ -3,7 +3,6 @@ import type { PetBodyController } from '../pet-body-controller';
 import {
   LatestAnimationFrameQueue,
   registerPetDragGlobalListeners,
-  type ListenerTarget,
   type PetDragGlobalHandlers,
   type PetPointerEvent,
 } from '../body-ui-runtime';
@@ -120,7 +119,7 @@ export function usePetDragController({
       cancel: (event) => finish(event, true),
     };
     const removeListeners = registerPetDragGlobalListeners(
-      window as unknown as ListenerTarget,
+      window,
       handlers
     );
     return (): void => {
