@@ -74,7 +74,6 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         externalWindowSupport={model.bodySnapshot?.brain.externalWindowSupport}
         isOpen={model.menuOpen}
         tone={model.debugTelemetry.character.synthesizedTone}
-        currentTheme={model.currentTheme}
         autoWanderEnabled={model.autoWanderEnabled}
         quietMode={model.quietMode}
         onToggleQuietMode={model.toggleQuietMode}
@@ -105,12 +104,10 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         onToggleDebugHud={() => model.setDebugHudVisible((visible) => !visible)}
         onToggleAlwaysOnTop={model.toggleAlwaysOnTop}
         onResetPosition={model.handleResetPosition}
-        onSelectTheme={model.setCurrentTheme}
         onQuit={model.closeApp}
       />
       <CharacterRenderer
         expression={model.expression}
-        theme={model.currentTheme}
         visualState={model.visualState}
         isDragging={model.isDragging}
         debugAnimationSelection={model.debugAnimationSelection}

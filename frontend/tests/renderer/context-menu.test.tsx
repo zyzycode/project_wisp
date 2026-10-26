@@ -7,14 +7,12 @@ import {
   subscribeToOutsideMouseDown,
 } from '../../src/renderer/components/Interaction/ContextMenu';
 import { AnimationPreviewControls } from '../../src/renderer/components/Interaction/AnimationPreviewControls';
-import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 
 describe('Renderer: ContextMenu', () => {
   it('returns null when isOpen is false', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen={false}
-        currentTheme={DEFAULT_THEMES.cosmic!}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled={false}
@@ -25,7 +23,6 @@ describe('Renderer: ContextMenu', () => {
         onThink={vi.fn()}
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
-        onSelectTheme={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -33,13 +30,12 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toBe('');
   });
 
-  it('renders actions and themes without character size controls', () => {
+  it('renders actions without theme or character size controls', () => {
     const markup = renderToStaticMarkup(
       <ContextMenu
         isOpen
         activeTab="main"
         tone="affectionate"
-        currentTheme={DEFAULT_THEMES.cosmic!}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled
@@ -61,7 +57,6 @@ describe('Renderer: ContextMenu', () => {
           bodyKey="body_sit" faceKey={null} loop
           onSelectBody={vi.fn()} onSelectFace={vi.fn()} onToggleLoop={vi.fn()} onReplay={vi.fn()}
         />}
-        onSelectTheme={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -95,7 +90,11 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Сбросить позицию');
     expect(markup).toContain('Поверх окон: ВКЛ');
     expect(markup).toContain('Debug HUD: ВЫКЛ');
-    expect(markup).toContain('Космический');
+    expect(markup).not.toContain('Темы оформления');
+    expect(markup).not.toContain('menu-theme');
+    expect(markup).not.toContain('Космический');
+    expect(markup).not.toContain('Изумрудный');
+    expect(markup).not.toContain('Янтарный');
     expect(markup).not.toContain('Размер:');
     expect(markup).not.toContain('Уменьшить');
     expect(markup).not.toContain('Увеличить');
@@ -112,7 +111,6 @@ describe('Renderer: ContextMenu', () => {
       <ContextMenu
         isOpen
         activeTab="debug"
-        currentTheme={DEFAULT_THEMES.cosmic!}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled
@@ -122,7 +120,6 @@ describe('Renderer: ContextMenu', () => {
         onThink={vi.fn()}
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
-        onSelectTheme={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -137,7 +134,6 @@ describe('Renderer: ContextMenu', () => {
       <ContextMenu
         isOpen
         position={{ x: 100, y: 50 }}
-        currentTheme={DEFAULT_THEMES.cosmic!}
         autoWanderEnabled
         isSleeping={false}
         debugHudEnabled={false}
@@ -146,7 +142,6 @@ describe('Renderer: ContextMenu', () => {
         onThink={vi.fn()}
         onToggleSleep={vi.fn()}
         onToggleWander={vi.fn()}
-        onSelectTheme={vi.fn()}
         onQuit={vi.fn()}
       />
     );
@@ -215,9 +210,9 @@ describe('external window status in ordinary menu', () => {
     [undefined, 'Доступность окон пока неизвестна'],
   ] as const)('shows %s without enabling debug', (externalWindowSupport, label) => {
     const markup = renderToStaticMarkup(<ContextMenu isOpen activeTab="main" externalWindowSupport={externalWindowSupport}
-      currentTheme={DEFAULT_THEMES.cosmic!} autoWanderEnabled isSleeping={false} debugHudEnabled={false}
+      autoWanderEnabled isSleeping={false} debugHudEnabled={false}
       onClose={vi.fn()} onPet={vi.fn()} onThink={vi.fn()} onToggleSleep={vi.fn()} onToggleWander={vi.fn()}
-      onSelectTheme={vi.fn()} onQuit={vi.fn()} />);
+      onQuit={vi.fn()} />);
     expect(markup).toContain(label);
   });
 });

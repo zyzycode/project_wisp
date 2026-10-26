@@ -9,7 +9,6 @@ import {
   projectAnchorPoint,
 } from '../../src/renderer/components/Character/CharacterRenderer';
 import type { RenderPresentationState } from '../../src/renderer/render-engine';
-import { DEFAULT_THEMES } from '../../src/domain/models/character-visuals';
 
 const state: RenderPresentationState = {
   viewport: { width: 512, height: 512 },
@@ -108,11 +107,11 @@ describe('Renderer: CharacterRenderer Visual Polish', () => {
     expect(markup).toContain(`height:${BASE_CHARACTER_SIZE.height}px`);
   });
 
-  it('applies theme drop-shadow glow and dragging class cleanly', () => {
+  it('applies the standard drop-shadow glow and dragging class', () => {
     const markup = renderToStaticMarkup(
-      <CharacterRenderer theme={DEFAULT_THEMES.emerald} isDragging />
+      <CharacterRenderer isDragging />
     );
-    expect(markup).toContain('drop-shadow(0 0 16px rgba(16, 185, 129, 0.65))');
+    expect(markup).toContain('drop-shadow(0 0 16px rgba(168, 85, 247, 0.65))');
     expect(markup).toContain('dragging');
   });
 

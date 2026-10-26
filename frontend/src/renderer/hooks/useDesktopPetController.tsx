@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CharacterTheme } from '../../domain/models/character-visuals';
-import { DEFAULT_THEMES } from '../../domain/models/character-visuals';
 import {
   createSystemAnimationIntent,
   type AnimationIntentKind,
@@ -43,9 +41,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
   const [dragInteractionActive, setDragInteractionActive] = useState(false);
   const [localTerminalVisualKind, setLocalTerminalVisualKind] =
     useState<AnimationIntentKind | null>(null);
-  const [currentTheme, setCurrentTheme] = useState<CharacterTheme>(
-    DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!
-  );
   const [debugHudVisible, setDebugHudVisible] = useState(false);
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(true);
   const activeVisualEpisodeRef = useRef<string | null>(null);
@@ -229,8 +224,6 @@ export function useDesktopPetController({ bridge }: UseDesktopPetControllerOptio
     animState,
     expression,
     characterAnimationIntent,
-    currentTheme,
-    setCurrentTheme,
     visualState: visual === null ? undefined : applyLocalTerminalState(visual,
       visual.visualIntent.episodeId === activeVisualEpisodeRef.current ? localTerminalVisualKind : null),
     flipX: visual?.reflex.transform.flipX ?? false,

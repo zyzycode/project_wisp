@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { CharacterTheme } from '../../../domain/models/character-visuals';
-import { DEFAULT_THEMES } from '../../../domain/models/character-visuals';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
 
 import type { BrainStateDTO } from '../../../shared/ipc-contracts';
@@ -18,7 +16,6 @@ export interface ContextMenuProps {
   position?: ContextMenuPosition;
   activeTab?: ContextMenuTab;
   tone?: SynthesizedEmotionalTone;
-  currentTheme: CharacterTheme;
   autoWanderEnabled: boolean;
   quietMode?: boolean;
   onToggleQuietMode?: () => void;
@@ -40,7 +37,6 @@ export interface ContextMenuProps {
   onToggleDebugHud?: () => void;
   onToggleAlwaysOnTop?: () => void;
   onResetPosition?: () => void;
-  onSelectTheme: (theme: CharacterTheme) => void;
   onQuit: () => void;
 }
 
@@ -113,7 +109,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   position,
   activeTab,
   tone = 'neutral',
-  currentTheme,
   autoWanderEnabled,
   quietMode = false,
   onToggleQuietMode,
@@ -135,7 +130,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onToggleDebugHud,
   onToggleAlwaysOnTop,
   onResetPosition,
-  onSelectTheme,
   onQuit,
 }) => {
   const [internalTab, setInternalTab] = useState<ContextMenuTab>('main');
@@ -266,25 +260,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               >
                 {autoWanderEnabled ? 'После закрытия: автономность ВКЛ' : 'После закрытия: автономность ВЫКЛ'}
               </button>
-            </div>
-          </div>
-
-          {/* Themes */}
-          <div className="menu-section">
-            <div className="menu-divider" />
-            <div className="menu-section-title">Темы оформления</div>
-            <div className="menu-theme-grid">
-              {Object.values(DEFAULT_THEMES).map((theme) => (
-                <button
-                  key={theme.id}
-                  type="button"
-                  className={`menu-theme-btn ${currentTheme.id === theme.id ? 'active' : ''}`}
-                  style={{ background: theme.palette.primary }}
-                  onClick={() => onSelectTheme(theme)}
-                >
-                  {theme.name}
-                </button>
-              ))}
             </div>
           </div>
 

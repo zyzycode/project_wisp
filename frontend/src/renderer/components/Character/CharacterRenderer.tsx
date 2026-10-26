@@ -1,13 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PET_PRESENTATION_LAYOUT } from '../../../shared/pet-presentation-layout';
 import { createSystemAnimationIntent } from '../../../domain/animation/animation-intent';
-import type {
-  CharacterExpression,
-  CharacterTheme,
-} from '../../../domain/models/character-visuals';
-import {
-  DEFAULT_THEMES,
-} from '../../../domain/models/character-visuals';
+import type { CharacterExpression } from '../../../domain/models/character-visuals';
 import {
   AssetResolver,
   ManifestLoader,
@@ -70,7 +64,6 @@ export interface ManifestAnimationRegistry {
 
 export interface CharacterRendererProps {
   expression?: CharacterExpression;
-  theme?: CharacterTheme;
   visualState?: Readonly<BodyVisualState>;
   isDragging?: boolean;
   debugAnimationSelection?: DebugAnimationSelection;
@@ -96,7 +89,6 @@ export interface CharacterRendererProps {
 
 export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
   expression = 'idle',
-  theme = DEFAULT_THEMES.cosmic ?? Object.values(DEFAULT_THEMES)[0]!,
   visualState = FALLBACK_VISUAL_STATE,
   isDragging = false,
   debugAnimationSelection,
@@ -214,7 +206,7 @@ export const CharacterRenderer: React.FC<CharacterRendererProps> = ({
         width: `${renderedSize.width}px`,
         height: `${renderedSize.height}px`,
         willChange: 'transform',
-        filter: `drop-shadow(0 0 16px ${theme.palette.glow})`,
+        filter: 'drop-shadow(0 0 16px rgba(168, 85, 247, 0.65))',
       }}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
