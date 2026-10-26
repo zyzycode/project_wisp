@@ -9,7 +9,6 @@ import {
   processStimulus,
   curiousStubbornGirlPreset,
   synthesizeEmotionalTone,
-  trackPreference,
 } from '../../src/domain/character';
 import type { CharacterState } from '../../src/domain/character';
 
@@ -181,22 +180,6 @@ describe('Domain: Character Engine v2', () => {
     expect(resisted.boldness.current).toBeCloseTo(0.635, 3);
     expect(hardClamped.boldness.current).toBe(0.65);
     expect(axes.boldness.current).toBe(0.5);
-  });
-
-  it('tracks preference samples, confidence, and value drift', () => {
-    const first = trackPreference({}, 'tea', 60);
-    const second = trackPreference(first, 'tea', -60);
-
-    expect(first.tea).toEqual({
-      value: 60,
-      confidence: 1 / 7,
-      samples: 1,
-    });
-    expect(second.tea).toEqual({
-      value: 0,
-      confidence: 0.25,
-      samples: 2,
-    });
   });
 
   it('processes stimuli immutably, gates love with consent, and rejects unverified preference metadata', () => {

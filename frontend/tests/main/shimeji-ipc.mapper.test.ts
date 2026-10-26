@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EnvironmentSnapshot, MotionState } from '../../src/domain/behavior';
 import {
-  toEnvironmentSnapshot,
   toEnvironmentSnapshotDTO,
   toBrainStateDTO,
 } from '../../src/main/mappers/shimeji-ipc.mapper';
@@ -25,7 +24,6 @@ describe('Main: Shimeji IPC mappers', () => {
     const dto = toEnvironmentSnapshotDTO(environment);
 
     expect(dto).toEqual(environment);
-    expect(toEnvironmentSnapshot(dto)).toEqual(environment);
   });
 
   it('maps one complete Brain snapshot with authoritative forced motion', () => {

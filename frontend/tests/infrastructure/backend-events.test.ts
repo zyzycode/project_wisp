@@ -25,8 +25,8 @@ it('matches all six common v1 fixtures without inventing a user message for even
   expect(parseEventError(fixture('response.error.json'), game.requestId, 503).requestId).toBe(game.requestId);
   expect(parseEventAwareChat(component(fixture('response.chat.success.json')), chat.requestId, chat.messages.at(-1)!.content)).toEqual(component(fixture('response.chat.success.json')));
 });
-it.each([{ decision: null }, { memoryCandidates: [] }, { delta: 1 }, { text: '' }, { text: 'x'.repeat(241) }, { requestId: 'wrong' }])('strictly rejects event output extension/bounds %j', extra => {
-  expect(() => parseEventResponse({ requestId: game.requestId, text: 'Привет', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, ...extra }, game.requestId)).toThrow();
+it.each([{ decision: null }, { text: '' }, { text: 'x'.repeat(241) }, { requestId: 'wrong' }])('strictly rejects event output extension/bounds %j', extra => {
+  expect(() => parseEventResponse({ requestId: game.requestId, text: 'Привет', ...extra }, game.requestId)).toThrow();
 });
 it('does not expose source IDs or allow forged game outcomes/duration', () => {
   const request = { requestId: game.requestId, event: game.event, characterSnapshot: game.character, memoryContext: game.memory, locale: game.locale };

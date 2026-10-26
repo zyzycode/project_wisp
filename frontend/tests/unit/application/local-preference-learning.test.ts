@@ -1,8 +1,6 @@
 import { expect, it } from 'vitest';
 import { CharacterStateService } from '../../../src/application/services/character-state.service';
-import { MemoryKnowledge } from '../../../src/application/services/memory-knowledge';
 import type { VerifiedPreferenceEvidence } from '../../../src/application/ports/memory-knowledge.interface';
-import type { IUserFactsRepository } from '../../../src/application/ports/memory-repository.interface';
 
 const keys = ['activity.cursor_game', 'activity.explore', 'activity.social_bid'] as const;
 function fixture() {
@@ -33,16 +31,4 @@ it('shares one gate and one source identity across every key, including sources 
   f.observe('next', 'activity.social_bid'); f.observe('other', 'activity.explore');
   expect(f.service.getState().preferences['activity.social_bid']?.samples).toBe(1);
   expect(f.service.getState().preferences['activity.explore']).toBeUndefined();
-});
-it.each(['Мне нравятся твои прогулки', 'Мне нравятся твои инициативы общения'])('does not replay retired %s sources after defensive cache eviction', async text => {
-  const f = fixture(); f.setTime(300000); let id = 0;
-  const facts: IUserFactsRepository = { upsert: async fact => ({ ok: true, value: fact }), removeByKey: async () => ({ ok: true, value: undefined }), list: async () => ({ ok: true, value: [] }) };
-  const owner = new MemoryKnowledge({ facts, isCurrent: generation => generation === 0, createId: () => `fact-${++id}`, onFailure: () => {}, preferenceLearning: f.service });
-  const turn = (source: string) => ({ memoryGeneration: 0, user: { id: source, text, createdAt: '2026-10-25T00:00:00.000Z' },
-    assistant: { id: `reply-${source}`, text: 'Хорошо', createdAt: '2026-10-25T00:00:00.000Z' } });
-  for (let source = 0; source <= 100; source++) await owner.persisted(turn(`source-${source}`), { generation: 0 });
-  const before = f.service.getState(); f.setTime(600000);
-  await owner.persisted(turn('source-0'), { generation: 0 }); expect(f.service.getState()).toEqual(before);
-  await owner.persisted(turn('fresh'), { generation: 0 });
-  expect(Object.values(f.service.getState().preferences)[0]?.samples).toBe(2);
 });

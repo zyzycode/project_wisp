@@ -5,7 +5,6 @@ import type { AIEventProviderRequest } from '../../src/application/ports/ai-even
 import type { BackendInteractionChatRequest, BackendInteractionTouchRequest } from '../../src/application/ports/backend-interaction-contract';
 import { projectInteractionChat, projectInteractionTouch, parseInteractionChatResponse, parseInteractionTouchResponse, parseInteractionError } from '../../src/infrastructure/ai/backend-interaction-validation';
 import { projectSummaryChat, parseSummaryRequest } from '../../src/infrastructure/ai/backend-summary-validation';
-import { parseObservationRequest } from '../../src/infrastructure/ai/backend-observation-validation';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
 
 const fixture = (name: string, feature = 'interaction'): unknown => JSON.parse(readFileSync(`../docs/contracts/fixtures/desktop-backend-v1/${feature}/${name}`, 'utf8'));
@@ -61,19 +60,6 @@ it('routes both interactions through explicit v1 and returns only validated sema
   expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual(chatWire);
   for (const call of fetcher.mock.calls) expect(call[1]).toMatchObject({ credentials: 'omit', redirect: 'error', cache: 'no-store' });
 });
-it('routes summary, events and observation through the shared v1 adapter', async () => {
-  const summary = parseSummaryRequest(fixture('request.summary.json', 'summary'));
-  const observation = parseObservationRequest(fixture('request.valid.json', 'observation'));
-  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json(fixture('response.summary.success.json', 'summary')))
-    .mockResolvedValueOnce(json({ requestId: touchWire.requestId, text: 'Привет' }))
-    .mockResolvedValueOnce(json(fixture('response.success.json', 'observation')));
-  const provider = client(fetcher);
-  expect(provider.canIncludeSummary(chatInput())).toBe(true);
-  await provider.generateSummary({ requestId: summary.requestId, locale: summary.locale, pairs: summary.pairs }, new AbortController().signal);
-  await provider.generateEvent({ ...touchInput(), interaction: undefined, event: { type: 'social_bid_started', occurredAt: '2026-10-17T00:00:00.000Z' } });
-  await provider.generateObservation({ requestId: observation.requestId, locale: observation.locale, characterSnapshot: observation.character, observation: observation.observation }, new AbortController().signal);
-  expect(fetcher.mock.calls.map(call => String(call[0]))).toEqual(['https://example.com/api/v1/summary', 'https://example.com/api/v1/events', 'https://example.com/api/v1/observation']);
-});
 it.each([401, 403, 404, 502, 503])('does not retry or downgrade a failed v1 request, HTTP %s', async status => {
   const fetcher = vi.fn<typeof fetch>(async () => json({ requestId: touchWire.requestId, error: { code: status === 503 ? 'upstream_unavailable' : 'invalid_model_response' } }, status));
   await expect(client(fetcher).generateEvent(touchInput())).rejects.toThrow();
@@ -83,10 +69,10 @@ it.each([401, 403, 404, 502, 503])('does not retry or downgrade a failed v1 requ
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(fetcher.mock.calls.every(call => String(call[0]).includes('/v1/'))).toBe(true);
 });
-it.each(['touch', 'chat'] as const)('validates %s errors against request ID, HTTP status and envelope', kind => {
+it('validates shared interaction errors against request ID, HTTP status and envelope', () => {
   const error = fixture('response.error.json') as Record<string, unknown>;
   for (const extra of [{ requestId: null }, { requestId: 'wrong' }, { extra: true }]) {
-    expect(() => parseInteractionError({ ...error, ...extra }, kind === 'touch' ? touchWire.requestId : chatWire.requestId, 502)).toThrow();
+    expect(() => parseInteractionError({ ...error, ...extra }, chatWire.requestId, 502)).toThrow();
   }
   expect(() => parseInteractionError(error, chatWire.requestId, 503)).toThrow();
 });

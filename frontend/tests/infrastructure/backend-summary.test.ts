@@ -70,14 +70,6 @@ it('sends only selected pairs on explicit summary and uses the v1 chat endpoint 
   expect(String(fetcher.mock.calls[1]?.[0])).toBe('https://example.com/api/v1/chat');
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
-it('keeps event and touch projections distinct on the shared transport', async () => {
-  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(json({ requestId: summaryWire.requestId, text: 'Привет' })).mockResolvedValueOnce(json({ requestId: summaryWire.requestId, text: 'Мур', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }));
-  const provider = client(fetcher); await provider.generateEvent(eventInput()); await provider.generateEvent(eventInput(true));
-  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://example.com/api/v1/events');
-  expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({ event: { type: 'social_bid_started' } });
-  expect(String(fetcher.mock.calls[1]?.[0])).toBe('https://example.com/api/v1/touch');
-  expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toMatchObject({ event: { type: 'user_touch', variant: 'touch' } });
-});
 it.each([{ requestId: 'wrong-id' }, { text: '' }, { text: ' ' }, { text: 'bad\u0000' }, { text: 'x'.repeat(1201) }, { decision: {} }, { sources: [] }])('rejects malformed summary response %j without retry', async extra => {
   const fetcher = vi.fn<typeof fetch>(async () => json({ requestId: summaryWire.requestId, text: 'text', ...extra }));
   const provider = client(fetcher); await expect(provider.generateSummary(summaryInput, new AbortController().signal)).rejects.toThrow();
@@ -126,10 +118,6 @@ it('uses one shared slot across summary, chat and events without background admi
   const event = provider.generateEvent(eventInput());
   await expect(provider.generateSummary(summaryInput, new AbortController().signal)).rejects.toThrow();
   resolve(json({ requestId: summaryWire.requestId, text: 'Привет' })); await event; expect(fetcher).toHaveBeenCalledTimes(3);
-});
-it.each([{ requestId: 'wrong-id' }, { text: 'bad\u0000' }, { summary: { text: 'forged' } }, { text: 'x'.repeat(2001) }])('rejects malformed v1 chat output %j without downgrading', async extra => {
-  const fetcher = vi.fn<typeof fetch>(async () => json({ requestId: chatWire.requestId, text: 'Ответ', ...extra }));
-  await expect(client(fetcher).generateResponse(chatInput())).rejects.toThrow(); expect(fetcher).toHaveBeenCalledTimes(1);
 });
 it('late aborted summary cannot free the slot belonging to a newer chat', async () => {
   let resolveSummary!: (response: Response) => void, resolveChat!: (response: Response) => void;

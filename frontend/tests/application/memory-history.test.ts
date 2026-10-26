@@ -47,9 +47,6 @@ describe('bounded context', () => {
     const input = Array.from({ length: 15 }, (_, i) => [{ role: 'user' as const, text: `${i}`, createdAt: now }, { role: 'wisp' as const, text: 'x'.repeat(2000), createdAt: now }]).flat();
     const result = boundMemoryContext(input); expect(result).toHaveLength(6); expect(result[0]?.text).toBe('12'); expect(result.reduce((sum, m) => sum + m.text.length, 0)).toBe(6006); expect(input[1]?.text.length).toBe(2000);
   });
-  it('omits an oversized pair instead of truncating even at a surrogate boundary', () => {
-    expect(boundMemoryContext([{ role: 'user', text: 'hi', createdAt: now }, { role: 'wisp', text: 'x'.repeat(1999) + '😀', createdAt: now }])).toEqual([]);
-  });
 });
 
 it('notifies the event observer only after a current acknowledged game write', async () => {

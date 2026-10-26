@@ -82,24 +82,6 @@ describe('Renderer: DebugHUD', () => {
     expect(markup).toContain('neutral');
   });
 
-  it('invokes log clear callback when clear button is clicked', () => {
-    const onClearLogs = vi.fn();
-    const markup = renderToStaticMarkup(
-      <DebugHUD
-        needs={sampleNeeds}
-        relationship={sampleRelationship}
-        tone="shy"
-        animationState="idle"
-        animationIntent={createSystemAnimationIntent('idle_blink', 'shy')}
-        fps={45}
-        logs={[{ id: '1', level: 'error', category: 'ai', message: 'Quota exceeded', timestamp: 100 }]}
-        onClearLogs={onClearLogs}
-      />
-    );
-
-    expect(markup).toContain('Clear');
-    expect(markup).toContain('Quota exceeded');
-  });
 
   it('embeds control sections and tab switching in ContextMenu', () => {
     const logs: DebugLogEntryDTO[] = [

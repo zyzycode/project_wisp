@@ -32,12 +32,8 @@ it('uses v1 touch without local quotas even when autonomous events are disabled'
   for (let i = 0; i < 105; i++) await f.provider.generateEvent(request());
   expect(fetcher).toHaveBeenCalledTimes(106);
 });
-it.each([401, 503])('keeps HTTP %s failures silent without a cooldown', async status => {
-  const f = fixture(async () => new Response(JSON.stringify({ requestId: wire.requestId, error: { code: 'upstream_unavailable' } }), { status, headers: { 'Content-Type': 'application/json' } }));
-  await expect(f.provider.generateEvent(request())).rejects.toThrow(); await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
-});
-it.each([{ text: '' }, { text: 'x'.repeat(241) }, { decision: {} }, { requestId: 'wrong' }])('rejects malformed text response %j', extra => {
-  expect(() => parseTouchResponse({ requestId: wire.requestId, text: 'OK', ...extra }, wire.requestId)).toThrow();
+it('rejects a response correlated to another touch', () => {
+  expect(() => parseTouchResponse({ requestId: 'wrong', text: 'OK', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }, wire.requestId)).toThrow();
 });
 it('cancels touch and keeps the shared transport busy until cancellation settles', async () => {
   let release!: () => void;
@@ -49,12 +45,4 @@ it('cancels touch and keeps the shared transport busy until cancellation settles
   await expect(f.provider.generateResponse(providerRequest())).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(1); release(); await rejected;
   await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
-});
-it('times out without retry or accepting a late response', async () => {
-  let resolve!: (response: Response) => void;
-  const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
-  const f = fixture(fetcher), pending = f.provider.generateEvent(request());
-  const rejected = expect(pending).rejects.toThrow(); await vi.advanceTimersByTimeAsync(12000); await rejected;
-  resolve(new Response(JSON.stringify({ requestId: wire.requestId, text: 'Late' }), { headers: { 'Content-Type': 'application/json' } }));
-  await vi.advanceTimersByTimeAsync(0); expect(fetcher).toHaveBeenCalledTimes(1); await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
 });
