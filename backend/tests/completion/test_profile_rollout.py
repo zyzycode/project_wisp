@@ -10,7 +10,6 @@ import pytest
 from pydantic import ValidationError
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.api.schemas.interaction import CharacterCard
-from wisp_backend.completion.prompts.resources import RESOURCE_PATH
 from wisp_backend.prompt_inspection.report import digest, inspect_scene
 from wisp_backend.prompt_inspection.scenes import SCENE_IDS
 from wisp_backend.providers.http_provider import HTTPProvider
@@ -38,11 +37,12 @@ def test_only_new_card_is_accepted_without_negotiation(card: dict[str, object]) 
     assert CharacterCard.model_validate({"id": "curiousStubbornGirl", "revision": 2}).revision == 2
 
 
-def test_profile_rollout_preserves_examples_bytes_and_all_archives() -> None:
+def test_profile_rollout_preserves_examples_bytes_and_all_archives(legacy_speech_resources) -> None:
     comparison = json.loads((FIXTURES / "issue123_comparison.json").read_text())
     for name, expected in comparison["preserved_archives"].items():
         assert hashlib.sha256((FIXTURES / name).read_bytes()).hexdigest() == expected
-    resources = RESOURCE_PATH.read_text()
+    assert legacy_speech_resources.revision == "wisp-prompts-4"
+    resources = (FIXTURES / "issue121_legacy_resources.json").read_text()
     assert hashlib.sha256(resources[resources.index('  "examples":') :].encode()).hexdigest() == EXAMPLES_HASH
     assert json.loads(resources)["revision"] == "wisp-prompts-4"
     assert "Let shy reserve" not in json.loads(resources)["texts"]["expression"]
@@ -102,7 +102,9 @@ def test_profile_comparison_enumerates_every_changed_message_and_source() -> Non
     assert set(comparison["live_quality"]["scores_0_to_2"].values()) == {"NOT RUN"}
 
 
-def test_archived_profile_replays_with_legacy_budget_without_http(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_archived_profile_replays_with_legacy_budget_without_http(
+    monkeypatch: pytest.MonkeyPatch, legacy_speech_resources
+) -> None:
     async def forbidden(*args: object, **kwargs: object) -> None:
         pytest.fail("Offline comparison must not call provider/count APIs")
 
@@ -147,6 +149,11 @@ def test_archived_profile_replays_with_legacy_budget_without_http(monkeypatch: p
             history = json.loads((FIXTURES / "issue119_comparison.json").read_text())["source_changes"]
             assert set(history) == {"api/schemas/chat.py"}
             for path, delta in history.items():
+                assert sources[path] == delta["before"]
+                sources[path] = delta["after"]
+            resource_delta = json.loads((FIXTURES / "issue121_comparison.json").read_text())["source_changes"]
+            assert set(resource_delta) == {"completion/prompts/prompt_resources.json"}
+            for path, delta in resource_delta.items():
                 assert sources[path] == delta["before"]
                 sources[path] = delta["after"]
             assert actual["source_digests"] == sources

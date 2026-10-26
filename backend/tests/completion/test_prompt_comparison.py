@@ -91,7 +91,7 @@ async def comparison_artifact() -> dict[str, Any]:
     }
 
 
-def test_current_reports_preserve_archived_data_and_semantic_selection() -> None:
+def test_archived_reports_preserve_data_and_selection_with_legacy_speech(legacy_speech_resources) -> None:
     expected = json.loads(COMPARISON.read_text(encoding="utf-8"))
     assert len(expected["records"]) == 84
     archived = [record for record in expected["records"] if record["provider"] in {"openai", "gemini"}]
@@ -100,6 +100,7 @@ def test_current_reports_preserve_archived_data_and_semantic_selection() -> None
     assert {key: value for key, value in current.items() if key not in {"records", "resources"}} == {
         key: value for key, value in expected.items() if key not in {"records", "resources"}
     }
+    assert legacy_speech_resources.revision == "wisp-prompts-4"
     rollout = json.loads((ROOT / "issue123_comparison.json").read_text())
     assert current["resources"] == rollout["resources"]["after"]
     assert expected["resources"] == rollout["resources"]["before"]

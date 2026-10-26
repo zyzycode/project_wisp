@@ -94,7 +94,7 @@ traits — 0..1; романтическое выражение требует в
 Серверные инструкции и selector не вычисляют числовые пороги; их единственный
 владелец — Domain Character. `romanceAllowed` ограничивает речь, не разрешает эффект или действие.
 
-Целевой профиль #122/rollout #123 — [Character §6](../../frontend/docs/engine/CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122), `curiousStubbornGirl/2`. До rollout действует `shyDreamGirl/1`. Backend guidance и ресурс expression интерпретируют card/state без требования reserve/quiet pride/shy core. Examples сохраняются побайтно: робость допустима как ситуативная сцена, но пример не устанавливает core/хобби/биографию и уступает текущей card. Смена profile требует новой resource revision; `guarded` означает знакомство, не робость. Примеры уступают текущему состоянию, могут исчезнуть из бюджета и не являются обязательной фразой. Ошибки допустимы в безобидном разговоре, не в consent/evidence/фактах действий; поправка признаётся без реткона и квоты ошибок.
+Целевой профиль #122/rollout #123 — [Character §6](../../frontend/docs/engine/CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122), `curiousStubbornGirl/2`. До rollout действует `shyDreamGirl/1`. Backend guidance и ресурс expression интерпретируют card/state без требования reserve/quiet pride/shy core. В #123 прежние examples сохранялись побайтно; #121/resource revision 5 заменяет четыре chat-примера RU/EN утверждёнными ориентирами полезного ответа, сухого юмора, интереса и спокойной границы без обязательного жеста. Они не устанавливают core/хобби/биографию и уступают текущей card. Смена profile требует новой resource revision; `guarded` означает знакомство, не робость. Примеры уступают текущему состоянию, могут исчезнуть из бюджета и не являются обязательной фразой. Ошибки допустимы в безобидном разговоре, не в consent/evidence/фактах действий; поправка признаётся без реткона и квоты ошибок.
 Quiet-support ACK/gate принадлежит desktop [Character §6.1](../../frontend/docs/engine/CHARACTER_ENGINE.md#61-тихая-поддержка-после-явной-реплики), без новых response fields/LLM classifier. Для иных формулировок guidance допускает короткое признание неудачной поддержки без очередной шутки/допроса; полнота распознавания не гарантируется.
 
 ## Проверяемые ресурсы промптов
@@ -159,6 +159,8 @@ macros, шаблонизатора, импорта Python или интерпо�
 пакета, неизменяемость и fresh-process restart. Редактирование examples не меняет
 identity, поля ответа или ограничения в Python; это проверяемые данные стиля.
 
+#121: [paired speech comparison](../tests/fixtures/prompt_inspection/issue121_comparison.json) фиксирует 32 RU/EN normal/required-only случая с одинаковыми входами/settings, UTF-8/UTF-16 размером, standalone estimate и trace; вне examples блоки/messages/selection совпадают. [Исторический resource 4](../tests/fixtures/prompt_inspection/issue121_legacy_resources.json) используется только явно выбранными frozen replay tests. Оценки включают provider framing и не складываются; mock/offline результат не доказывает живость или отсутствие повторов, generation/countTokens не запускались.
+
 ## Условный выбор guidance и примеров
 
 Selector получает только locale, scenario, готовую expression,
@@ -173,6 +175,7 @@ boolean userConsentEnabled и реальный event kind/outcome. Он не а�
 | `chat_guarded` | chat; pace=normal; trust=guarded; consent=false |
 | `chat_playful_close` | chat; pace=normal; trust=close; play=high; consent=false |
 | `chat_tired_company` | chat; pace=gentle; attention=high; consent=false |
+| `chat_familiar` | chat; pace=normal; trust=familiar; consent=false |
 | `touch_familiar` | touch; pace=normal; trust=familiar или close; consent=false |
 | `touch_gentle` | touch; pace=gentle; consent=false |
 | `event_missed` | event; cursor_game_completed с фактическим outcome=missed |
@@ -180,8 +183,7 @@ boolean userConsentEnabled и реальный event kind/outcome. Он не а�
 Сначала exact locale/scenario, затем predicate. Примеры в этой таблице взаимно
 исключаются внутри сценария; выбирается максимум один. No-match (включая иное
 сочетание state/consent или успешную игру) означает отсутствие examples, без
-подстановки нерелевантного примера. Текст существующих примеров сохраняется;
-правка авторского голоса не является частью отбора.
+подстановки другого predicate. Predicate определяет совместимость стиля, а не тему реальной фразы: selector не распознаёт завал, юмор или границу по словам. #121 меняет только утверждённые примеры; описанная в них предыстория вымышленная и не переносится в реальный диалог. Примеры не задают фиксированный ответ; текущее сообщение/state/consent выше стиля.
 
 Редактируемые guidance: gentle → короткая спокойная речь; company → мягкое предложение
 компании; play → лёгкая игра; guarded/close → соответствующая степень знакомства.

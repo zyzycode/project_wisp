@@ -92,7 +92,9 @@ def test_enabled_ru_en_both_providers_add_only_bundle_and_conditional_schema() -
         assert new["budget"]["selected_estimate"] <= new["budget"]["input_allowance"]
 
 
-def test_archived_snapshots_replay_with_the_explicit_legacy_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_archived_snapshots_replay_with_the_explicit_legacy_budget(
+    monkeypatch: pytest.MonkeyPatch, legacy_speech_resources
+) -> None:
     # #118 intentionally changes runtime estimates/selection. Replay the frozen
     # #114 contract under its original estimator, then verify current sources.
     monkeypatch.setattr(OpenAIProvider, "estimate_payload", HTTPProvider.estimate_payload)
@@ -138,6 +140,11 @@ def test_archived_snapshots_replay_with_the_explicit_legacy_budget(monkeypatch: 
             history = json.loads((ROOT / "issue119_comparison.json").read_text())["source_changes"]
             assert set(history) == {"api/schemas/chat.py"}
             for path, delta in history.items():
+                assert sources[path] == delta["before"]
+                sources[path] = delta["after"]
+            resource_delta = read("issue121_comparison.json")["source_changes"]
+            assert set(resource_delta) == {"completion/prompts/prompt_resources.json"}
+            for path, delta in resource_delta.items():
                 assert sources[path] == delta["before"]
                 sources[path] = delta["after"]
             adjusted = {**expected, "source_digests": sources}

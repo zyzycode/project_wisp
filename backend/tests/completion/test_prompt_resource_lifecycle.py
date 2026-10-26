@@ -75,6 +75,7 @@ asyncio.run(run())
 
 def test_snapshot_survives_file_edits_and_multiple_apps_until_process_restart(tmp_path: Path) -> None:
     path = installed_copy(tmp_path)
+    initial_revision = json.loads(path.read_text())["revision"]
     result = run_copy(
         tmp_path,
         """
@@ -124,7 +125,7 @@ async def run():
 asyncio.run(run())
 """,
     )
-    assert result.stdout == "wisp-prompts-4\n"
+    assert result.stdout == initial_revision + "\n"
     assert result.stderr.count("application_started") == 3
     assert "Synthetic updated intro" not in result.stderr
     restarted = run_copy(

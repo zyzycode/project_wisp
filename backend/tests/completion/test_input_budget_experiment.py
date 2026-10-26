@@ -48,7 +48,9 @@ def options(case: dict) -> dict:
     }
 
 
-def test_current_runtime_and_legacy_replay_reproduce_every_compact_row_without_http(monkeypatch) -> None:
+def test_current_runtime_and_legacy_replay_reproduce_every_compact_row_without_http(
+    monkeypatch, legacy_speech_resources
+) -> None:
     artifact = json.loads((ROOT / "issue118_comparison.json").read_text())
 
     async def forbidden(*args, **kwargs):

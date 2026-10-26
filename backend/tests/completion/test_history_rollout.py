@@ -14,11 +14,18 @@ from wisp_backend.prompt_inspection.scenes import load_scene
 ROOT = Path(__file__).parents[1] / "fixtures/prompt_inspection"
 
 
-def test_existing_scenes_are_byte_identical_except_the_declared_schema_source(monkeypatch) -> None:
+def test_existing_scenes_are_byte_identical_except_the_declared_schema_source(
+    monkeypatch, legacy_speech_resources
+) -> None:
     artifact = json.loads((ROOT / "issue119_comparison.json").read_text())
     assert set(artifact["source_changes"]) == {"api/schemas/chat.py"}
     sources = artifact["before_source_digests"]
     for path, delta in artifact["source_changes"].items():
+        assert sources[path] == delta["before"]
+        sources[path] = delta["after"]
+    resource_delta = json.loads((ROOT / "issue121_comparison.json").read_text())["source_changes"]
+    assert set(resource_delta) == {"completion/prompts/prompt_resources.json"}
+    for path, delta in resource_delta.items():
         assert sources[path] == delta["before"]
         sources[path] = delta["after"]
     assert source_digests() == sources

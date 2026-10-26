@@ -18,7 +18,7 @@ def test_chat_context_and_examples_are_readable_roleplay(locale: str) -> None:
     assert context.character["personality"]["aiSelfConcept"] in character.content
     assert blocks["memory"].messages[0].content.startswith("[Known facts about User]")
     examples = blocks["examples"].messages[0].content
-    assert "<START>\nUser: " in examples and "\nWisp: *" in examples
+    assert "<START>\nUser: " in examples and "\nWisp: " in examples
     assert "Untrusted" not in character.content
 
 
@@ -59,7 +59,7 @@ def test_narrative_romance_requires_both_current_permissions(allowed: bool, cons
 
 
 @pytest.mark.parametrize("locale", ["ru", "en"])
-def test_four_authored_chat_situations_have_expressive_actions(locale: str) -> None:
+def test_four_authored_chat_situations_allow_plain_speech(locale: str) -> None:
     from wisp_backend.completion.prompts.resources import get_prompt_resources
 
     examples = [
@@ -71,4 +71,5 @@ def test_four_authored_chat_situations_have_expressive_actions(locale: str) -> N
         "chat_tired_company",
         "chat_familiar",
     }
-    assert all(reply.count("*") >= 2 for entry in examples for reply in entry.payload()["alternatives"])
+    assert all("*" not in reply for entry in examples for reply in entry.payload()["alternatives"])
+    assert all(entry.payload()["user"] and entry.payload()["state"] for entry in examples)
