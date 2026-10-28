@@ -41,7 +41,7 @@ export const CATEGORY_TEMPLATES: Readonly<
 > = {
   greeting: {
     ru: withReplies({
-      text: 'Привет! Я Wisp, твой настольный компаньон. Рад тебя видеть!',
+      text: 'Привет! Я Wisp, твой настольный компаньон. Рада тебя видеть!',
       tone: 'warm',
       suggestedMood: 'happy',
       suggestedBehavior: 'react_happy',

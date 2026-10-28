@@ -73,6 +73,15 @@ describe('Infrastructure: MockAIProvider', () => {
   });
 
   describe('Category detection & responses', () => {
+    it.each(['Привет', 'Привет 👋'])('uses feminine agreement when introducing Wisp for %s', async (text) => {
+      const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
+      // The request ID selects the self-introduction among the authored greeting variants.
+      const response = await provider.generateResponse(createRequest(text, 'greeting-0'));
+      expect(response.status).toBe('ok');
+      expect(response.reply.text).toContain('Я Wisp');
+      expect(response.reply.text).toContain('Рада тебя видеть');
+    });
+
     it('handles greeting messages in Russian, English and various casings', async () => {
       const provider = new MockAIProvider({ simulatedLatencyMs: 0 });
 
