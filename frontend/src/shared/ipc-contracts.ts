@@ -537,7 +537,32 @@ export interface SummaryApiBridge {
   deleteSummary(command: SummaryCommandDTO): Promise<SummaryResultDTO<null>>;
 }
 
+/** Personal OpenAI setup only. Read projections never contain a key or key fragment. */
+export interface AIConnectionStatusDTO {
+  readonly mode: 'offline' | 'ready' | 'unavailable' | 'external';
+  readonly hasSavedKey: boolean;
+  readonly secureStorageAvailable: boolean;
+  /** Ready means the local backend started; it does not validate the provider key. */
+  readonly failure: 'secure_storage_unavailable' | 'storage_error' | 'runtime_unavailable'
+    | 'startup_failed' | 'startup_timeout' | null;
+}
+export interface AIConnectionReadDTO { readonly streamId: string }
+export type AIConnectionCommandDTO =
+  | { readonly streamId: string; readonly kind: 'save'; readonly apiKey: string }
+  | { readonly streamId: string; readonly kind: 'remove' };
+export type AIConnectionResultDTO =
+  | { readonly ok: true; readonly restartRequired: true }
+  | { readonly ok: false; readonly code: 'invalid_input' | 'stale' | 'busy' | 'externally_managed'
+      | 'secure_storage_unavailable' | 'storage_error' };
+export interface AIConnectionApiBridge {
+  read(command: AIConnectionReadDTO): Promise<AIConnectionStatusDTO>;
+  /** Write-only credential ingress; success schedules a normal application restart. */
+  configure(command: AIConnectionCommandDTO): Promise<AIConnectionResultDTO>;
+}
+
 export interface WispApiBridge {
+  /** Declared before implementation; the settings UI requires this capability. */
+  readonly aiConnection?: AIConnectionApiBridge;
   readonly interestThread?: InterestThreadApiBridge;
   readonly beveragePreference?: BeveragePreferenceBridge;
   readonly observationCommand?: import('./observation-contracts').ObservationBridge['observationCommand'];

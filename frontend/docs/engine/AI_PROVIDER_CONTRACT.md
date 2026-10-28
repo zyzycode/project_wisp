@@ -10,6 +10,77 @@ Application владеет портом, сборкой `AIProviderRequest` и `
 
 `getStatus()` — status/debug/fallback для Application, без network setup/login/user configuration. `generateResponse()` — один semantic response; streaming требует отдельного Architect review.
 
+## Личный ключ OpenAI и подключение из приложения
+
+Настройка личного подключения отделена от семантического `IAIProvider`. Контракты:
+[ai-connection.interface.ts](../../src/application/ports/ai-connection.interface.ts),
+`AIConnectionApiBridge` и связанные DTO в [ipc-contracts.ts](../../src/shared/ipc-contracts.ts).
+Main владеет настройкой, доверенным IPC sender, хранилищем ключа, локальным backend child
+и выбором маршрута. Renderer владеет только формой и временным вводом пользователя.
+
+**Две категории credentials:** ключ оператора внешнего backend никогда не передаётся
+в desktop; `.env` backend не читается и не редактируется из приложения. Личный ключ
+пользователь вводит сам: masked set-only поле → typed preload → Main. Этот одноразовый
+ввод не разрешает чтение сохранённых секретов из Renderer. Ответы IPC, Brain snapshots,
+диалог, память, логи, ошибки и telemetry не содержат ключ, его часть или hash. Поле
+очищается после отправки, закрытия формы и смены stream; localStorage/sessionStorage
+и автосохранение draft запрещены. JavaScript не гарантирует стирание строк из RAM.
+
+Первый slice поддерживает только OpenAI; модель и upstream URL выбирает существующий
+backend profile. Форма не принимает provider/model/URL, не переключает Gemini и не
+включает автономные платные события. Изменение Gemini rollout требует отдельного решения.
+UI объясняет отправку сообщений и разрешённой памяти OpenAI, возможность расходов и
+то, что сохранение ключа не проверяет его действительность. Автоматических inference
+или иных provider probes при открытии/сохранении/старте нет.
+
+| Операция | Правило |
+|---|---|
+| `read` | Только mode, наличие ключа, доступность защищённого хранения, безопасный код ошибки. `ready` означает запуск локального backend, не успешную проверку ключа. |
+| `save` | Точный DTO текущего Brain stream; после trim ключ 1–512 ASCII non-whitespace символов. Один mutation in-flight, без повторов. Сохранить атомарно; только после успеха штатно перезапустить приложение. |
+| `remove` | Удалить только личный сохранённый ключ, затем штатно перезапустить offline. Память, история, настройки персонажа и provider account не удаляются. |
+| Неуспешная запись/удаление | Не утверждать успех и не перезапускать. Старый файл сохраняется при ошибке записи; пользователю возвращается безопасный код. |
+| Указан внешний `WISP_BACKEND_URL` | Режим `external`, локальное управление ключом недоступно. Не менять внешний backend, не загружать личный ключ и не подменять его серверный credential. |
+
+Trusted sender проверяется до payload; точная форма, enum, длины и stream проверяются
+в Main, вход/выход также валидируются в preload. Неизвестные поля отклоняются без
+echo исходного ввода. Чтение не возвращает credential. Stale IPC не изменяет хранилище.
+Если stream сменился во время завершённой записи, повторного restart/повторной записи
+нет; результат не применяется к новой форме. После admitted успешной записи Main
+завершает один нормальный restart независимо от закрытия формы.
+
+`IUserAIKeyStore` реализуется в Infrastructure/platform через Electron `safeStorage`
+после app ready. Зашифрованный файл — только в `app.getPath('userData')`, вне repo,
+с атомарной заменой и ограниченными правами. Использовать доступный async API текущего
+Electron. При недоступном OS encryption либо Linux `basic_text`/`unknown` — fail closed:
+не записывать plaintext, не включать `setUsePlainTextEncryption`, продолжить offline.
+Ошибка расшифровки не удаляет файл автоматически; UI позволяет заменить/удалить ключ.
+Платформенные различия проверяются только platform adapter. Защита не обещает
+невозможности доступа любому процессу текущего OS пользователя.
+
+Startup: без внешнего URL Main загружает личный ключ. При отсутствии — прежний Mock;
+при наличии — один managed backend по [Backend §7](../../../docs/contracts/BACKEND_API_CONTRACT.md#7-личный-local-backend-desktop).
+Main сохраняет plaintext только на время bootstrap; HTTP adapter хранит только
+случайный session token. Ожидание старта ограничено 10 s и не блокирует event loop;
+ошибка/таймаут оставляют рабочий локальный runtime и понятный статус подключения.
+Готовый маршрут передаётся в существующую AI-композицию один раз, без горячей смены
+Dialogue/Event/Observation services. Упавший child не перезапускается автоматически.
+
+Сохранение/удаление запускает штатные `relaunch`/`quit` после ответа IPC. Существующие
+memory flush, dispose/cancel и generation checks сохраняются; поздние ответы не
+публикуются после dispose. Main останавливает только принадлежащий ему child:
+закрыть stdin, дать короткое graceful окно, затем завершить этот child при
+необходимости; общий stop deadline ≤3 s, включая kill escalation и ожидание выхода.
+Нельзя искать/убивать чужие процессы по имени или порту. Потеря Main
+закрывает pipe и завершает child. После запуска форма показывает безопасную причину
+неуспеха; неверный ключ выявляется только обычным запросом пользователя, существующий
+provider failure не выдаётся за успешное подключение к OpenAI.
+
+Development launcher передаёт доверенный путь backend/Python, но не ключи; обычный
+`dev` запускает desktop, который владеет личным child. Явный `dev:backend` и внешний
+deployment сохраняются. При отсутствии доверенного runtime в packaged приложении —
+`runtime_unavailable`, без поиска Python по произвольным путям или скачивания файлов.
+Упаковка Python/backend в distributable не входит в этот slice.
+
 ## Request DTO (Форма запроса)
 
 [ai-provider.interface.ts](../../src/application/ports/ai-provider.interface.ts) использует точный alias `AIProviderCharacterSnapshot = CharacterSnapshot` из [domain types](../../src/domain/character/types.ts); отдельной provider-модели traits нет.

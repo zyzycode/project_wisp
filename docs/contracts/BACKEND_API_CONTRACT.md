@@ -8,7 +8,7 @@
 
 - `POST /v1/chat`, `/v1/touch`, `/v1/events`, `/v1/summary`, `/v1/observation`; `GET /health` без inference. JSON UTF-8; request `Content-Type: application/json`, `Accept: application/json`, JSON responses `Content-Type: application/json`. Успех — HTTP 200. Только `stream: false`; SSE, tools и файлы не входят в v1.
 - Удалённый backend — HTTPS; HTTP допустим только loopback при разработке. Base URL — доверенная конфигурация Main. Desktop не следует redirect, не принимает URL от Renderer/модели.
-- Первая версия без авторизации, cookies и login UI. LLM credential остаётся на backend; requestId/IP/installation ID не подтверждают личность пользователя.
+- Standalone deployment — без application auth, cookies и login UI в ограничениях §5. Личный desktop-owned backend использует только локальный session token (§7), не аккаунт/авторизацию пользователей. Серверный credential оператора остаётся на backend; requestId/IP/installation ID не подтверждают личность пользователя.
 - Backend формирует system prompt, выбирает модель, проверяет вход и модельный вывод. Пользовательские сообщения и character — недоверенные данные, не системные инструкции. Модель не исполняет команды, не выбирает URL/инструменты и не меняет сохранённое состояние desktop.
 - Каждый endpoint передаёт только свою bounded projection. Chat включает выбранную память, card/effectPolicy и optional summary/previousInitiative/previousTouch; touch — character/card/effectPolicy; events — character/memory/event; summary — выбранные пары; observation — разрешённые appName/windowTitle и character. Скриншоты, файлы, координаты и credentials не передаются. Server dialogue state не требуется: каждый запрос содержит свой контекст. История не пишется в application logs; ошибки не раскрывают prompts, stack traces или provider internals.
 
@@ -203,3 +203,78 @@ OpenAI получает тот же разрешённый текстовый к
 ZDR: этот режим отдельно согласуется с провайдером. Перед внешними тестерами оператор
 подтверждает регион, допустимость retention и информирование пользователей.
 Backend не отправляет запросы удаления в OpenAI; локальный reset не удаляет provider copy.
+
+## 7. Личный local backend desktop
+
+Это отдельный способ запуска существующего Python/FastAPI runtime, не новый inference
+API и не управление чужим deployment. Main запускает ровно один собственный child
+из доверенного backend/Python path; без shell, reload, дополнительных workers и
+наследования provider/transport/logging overrides. Обычный standalone `main:app`
+сохраняет конфигурацию §5. Managed entry не загружает `.env` или server credentials;
+создаёт `Settings` явно для существующего default OpenAI profile, `trust_env=false`,
+фиксированного provider URL и прежних deadlines/validation/accounting. Gemini,
+custom endpoint/model, новая server persistence и обновление зависимостей не входят.
+
+Личный user-entered key однократно поступает Main из формы и сохраняется зашифрованно
+локально по [AI Provider](../../frontend/docs/engine/AI_PROVIDER_CONTRACT.md#личный-ключ-openai-и-подключение-из-приложения).
+Это не выдача серверного ключа в desktop: operator credential никогда не читается
+или возвращается. Plaintext передаётся только дочернему процессу по private stdin,
+не HTTP, argv, environment, temp files или stdout. Не добавляется endpoint для
+чтения/записи ключей, и ключ никогда не включается в `/v1/*` semantic payload.
+
+### Bootstrap и readiness
+
+Один UTF-8 JSON record с newline, ≤16 KiB вместе с разделителем; unknown/duplicate
+keys, invalid UTF-8, controls и неверные типы отклоняются до runtime/network startup.
+Без повторных bootstrap, negotiation и поля version. Main держит stdin открытым
+после первой строки для наблюдения за завершением parent. Python schema валидирует
+точную форму, связанную с `LocalAIBackendBootstrap` в
+[ai-connection.interface.ts](../../frontend/src/application/ports/ai-connection.interface.ts):
+
+| Поле | Владелец и предел |
+|---|---|
+| `apiKey` | Личный ключ OpenAI, после trim 1–512 ASCII non-whitespace символов. Не выводить validation input/repr/exception. |
+| `sessionToken` | Main создаёт 32 cryptographically random bytes на каждый child, wire — 64 lowercase hex символа. Не связан с provider key, не сохраняется на диск. |
+| `ledgerPath` | Доверенный абсолютный путь Main внутри app userData, UTF-8 ≤4096 bytes, без NUL; существующий SQLite ledger и retention §6. Не выбирается Renderer. |
+
+Child заранее привязывает socket к `127.0.0.1:0`; ОС выбирает свободный порт без
+проверки-освобождения/rebind race. После успешного lifespan startup child выдаёт одну
+строку `LocalAIBackendReady` (`kind=ready`, integer port 1–65535), ≤256 bytes. Stdout
+используется только для этого control record; unknown/лишний вывод или EOF до ready
+означает startup failure. Main не логирует stdout/stderr child, stderr игнорируется
+или ограниченно дренируется без сохранения. Backend logging остаётся санитизированным;
+bootstrap validation errors не должны печатать исходный ввод или exception dump.
+
+Общий startup deadline Main — 10 s, включая spawn, bootstrap, ready и один
+authenticated `GET /health`; ответ и чтение bounded прежним 16 KiB cap, probe ≤1 s
+и не выходит за оставшийся startup deadline. Ни startup, ни health не вызывают
+provider. Готовность локального backend не доказывает действительность ключа.
+Ошибка/timeout закрывают child и оставляют desktop offline, без автоматических
+повторов. Поздний ready не подключает retired process.
+
+### Локальная защита и lifecycle
+
+Managed child принимает только `Authorization: Bearer <sessionToken>`, constant-time
+сравнение, один header, без query/cookie auth. Проверка выполняется до body parsing,
+admission и provider call на всех HTTP маршрутах, включая health; CORS не включён,
+запрос с `Origin` отклоняется. OpenAPI/docs в managed режиме отключены. Отказ —
+HTTP 401 с постоянным JSON `{"error":"unauthorized"}`, без request echo. Это
+transport refusal вне semantic error envelope §3; desktop не принимает из него
+decision и не пытается повторно авторизоваться. Standalone §5 не получает этот
+token mode автоматически и не становится публичным авторизованным deployment.
+
+Main хранит token только для собственного child; `ExternalAIProviderClient` может
+принять его из trusted Main configuration и добавляет header ко всем пяти операциям.
+Нельзя отправлять этот token на настроенный внешним оператором URL или redirect.
+Provider credentials и token не включаются в IPC responses, UI, логи или telemetry.
+Случайный порт сам по себе не считается защитой; bind loopback не заменяет token.
+
+На stop/quit Main закрывает stdin, даёт короткое graceful окно, затем при
+необходимости завершает только собственный child. Общий stop deadline ≤3 s,
+включая kill escalation и ожидание выхода. EOF stdin/потеря parent
+останавливают Uvicorn, закрывают runtime/httpx/ledger; вторые настройки через pipe
+не принимаются. При рестарте новый child получает новый token. Generation checks,
+abort/late-result rejection desktop и серверные deadline/cancellation/idempotency
+сохраняются. Сбой child не останавливает Motion/FSM/input и не запускает auto-retry.
+Удаление личного ключа отключает следующий managed запуск, но не удаляет память,
+ledger/provider copy и не отзывает ключ в аккаунте OpenAI.
