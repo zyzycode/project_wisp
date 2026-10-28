@@ -15,6 +15,12 @@ it('validates the additive optional/null/object projection with bounded text/tim
   expect(parseBrainStateDTO({ ...s, initiativeSpeech: null }).initiativeSpeech).toBeNull();
   for (const bad of [{ ...speech, text: 'x'.repeat(241) }, { ...speech, id: '' }, { ...speech, expiresAtMs: 2101 }, { ...speech, startedAtMs: 101 }, { ...speech, expiresAtMs: 100 }, { ...speech, extra: true }]) expect(() => parseInitiativeSpeech(bad, 100)).toThrow();
 });
+it('accepts a two-second deadline created from fractional monotonic time without extending the bound', () => {
+  const startedAtMs = 48.001;
+  const fractional = { ...speech, startedAtMs, expiresAtMs: startedAtMs + 2000 };
+  expect(parseInitiativeSpeech(fractional, startedAtMs)).toEqual(fractional);
+  expect(() => parseInitiativeSpeech({ ...fractional, expiresAtMs: fractional.expiresAtMs + 0.001 }, startedAtMs)).toThrow('Invalid speech lifetime');
+});
 it('dedupes initiative and removes it on expiry without replaying the previous dialogue', () => {
   const p = new SpeechProjection(), s = snapshot();
   const dialogue: BrainStateDTO = { ...s, initiativeSpeech: null, dialogue: { ...s.dialogue, turn: { phase: 'completed', requestId: 'old', replyText: 'Ответ', outcome: { kind: 'success' } } } };

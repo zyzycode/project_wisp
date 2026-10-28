@@ -39,6 +39,23 @@ function fixture() {
 }
 
 describe('Brain snapshot activity deadlines', () => {
+  it('commits initiative speech created at fractional monotonic time', async () => {
+    const f = fixture();
+    const startedAtMs = 48.001;
+    f.setTime(startedAtMs);
+    f.publisher.replaceStream();
+    await Promise.resolve();
+    await Promise.resolve();
+    const createSnapshot = f.options.createSnapshot;
+    const speech = { id: 'initiative-1', text: 'Поговорим?', startedAtMs, expiresAtMs: startedAtMs + 2000 };
+    f.options.createSnapshot = meta => ({ ...createSnapshot(meta), initiativeSpeech: speech });
+    f.publisher.beginTransaction();
+    f.publisher.requestCommit();
+    expect(() => f.publisher.commitTransaction()).not.toThrow();
+    await Promise.resolve();
+    expect(f.delivered.at(-1)).toMatchObject({ revision: 2, initiativeSpeech: speech });
+  });
+
   it.each([3000, 60000])('advances a phase before publishing at %i ms between motion ticks', async (nowMs) => {
     const f = fixture();
     f.publisher.replaceStream();

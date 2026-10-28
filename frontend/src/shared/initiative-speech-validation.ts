@@ -6,6 +6,6 @@ export function parseInitiativeSpeech(value: unknown, sampledAtMs: number): AIIn
   const id = plainText(r.id, 128); if (id !== id.trim()) throw new TypeError('Invalid speech identity');
   const start = r.startedAtMs, end = r.expiresAtMs;
   if (typeof start !== 'number' || !Number.isFinite(start) || start < 0 || start > sampledAtMs
-    || typeof end !== 'number' || !Number.isFinite(end) || end <= sampledAtMs || end <= start || end - start > 2000) throw new TypeError('Invalid speech lifetime');
+    || typeof end !== 'number' || !Number.isFinite(end) || end <= sampledAtMs || end <= start || end > start + 2000) throw new TypeError('Invalid speech lifetime');
   return { id, text: plainText(r.text, 240, true), startedAtMs: start, expiresAtMs: end };
 }
