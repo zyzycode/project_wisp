@@ -52,9 +52,24 @@
     "mac": {
       "entitlements": "packaging/entitlements.mac.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Wisp uses the microphone only when you record a voice message. Speech is recognized locally on this device."
+        "NSMicrophoneUsageDescription": "Wisp uses the microphone while voice input is enabled. Speech is recognized locally on this device."
       }
-    }
+    },
+    "extraResources": [
+      {
+        "from": ".cache/voice-models/ff4177021cc41f7db950912b73ea4fdf7d01d8e7",
+        "to": "voice-models/ff4177021cc41f7db950912b73ea4fdf7d01d8e7",
+        "filter": [
+          "config.json",
+          "generation_config.json",
+          "preprocessor_config.json",
+          "tokenizer.json",
+          "tokenizer_config.json",
+          "onnx/decoder_model_merged_quantized.onnx",
+          "onnx/encoder_model_quantized.onnx"
+        ]
+      }
+    ]
   },
   "keywords": [
     "desktop-pet",

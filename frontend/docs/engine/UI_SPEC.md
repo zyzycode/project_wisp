@@ -235,50 +235,66 @@ Body проверяет immutable episode payload; Main — trusted current `web
 
 Toggle в существующем меню не включает sleep и не меняет autonomy enabled. Семантика/cancel — [Character §2.2](CHARACTER_ENGINE.md#22-устойчивый-quiet-auto-a09). Renderer не считает budget/cooldown/admission. Disable/menu pause — отдельные blockers, закрытие меню не снимает quiet. `dialogue.turn` отображает provider thinking без заморозки locomotion/Activity; AI ownership/trace внутренние, Renderer не меняет Brain lifecycle.
 
-## Локальный голосовой ввод (#150)
+## Локальный голосовой ввод
 
 Контракты: [IVoiceInput](../../src/application/ports/voice-input.port.ts),
-[VoiceInputApiBridge и DTO](../../src/shared/ipc-contracts.ts). Голос — альтернативный ввод
-черновика существующего чата, без новой команды Dialogue, TTS или облачной отправки аудио.
+[VoiceInputApiBridge и DTO](../../src/shared/ipc-contracts.ts). Непрерывный голосовой режим
+преобразует законченную фразу в обычный submit существующего Dialogue. Ответ остаётся
+текстовым; TTS, wake word и облачная отправка аудио в этот scope не входят.
 
-- Renderer владеет явным start/stop, `getUserMedia({ audio: true })`, остановкой всех tracks,
-  mono PCM/resampling и состоянием черновика. Запись максимум 30 секунд, 16 kHz;
-  при лимите запись останавливается автоматически и начинается распознавание.
-  Нет фонового прослушивания, wake word, истории аудио или файлов записи.
-- Main создаёт Infrastructure adapter через Application port; загрузка — только этим adapter.
-  Inference исполняется в отдельном Main-owned Node worker, не в Renderer/Main event loop.
-  Worker получает только локальный путь проверенной модели и bounded PCM, не Electron API,
-  credentials, dialogue/history или сетевые полномочия SDK. Worker — изоляция вычислений,
-  а не sandbox для недоверенного кода. Загружается только поставленный код и pinned model.
-- Перед записью `begin` проверяет актуальные stream/conversation и создаёт один requestId.
-  Permission request/check handlers разрешают только microphone/audio для точных trusted
-  webContents, main frame и app origin с активной capture lease; camera, чужой frame/origin
-  и запрос без lease отклоняются. Существующая Electron isolation и CSP не ослабляются.
-  Lease до 45 секунд, при cancel/submit/reload/reset/window close/quit отзывается.
-- Единственная активная запись/транскрипция на окно; повтор begin возвращает busy.
-  Transcribe однократно потребляет requestId, повтор/foreign request не запускает worker.
-  Main проверяет exact shape, контекст, dense array длиной 1..480000 и finite [-1,1]
-  до копирования в Float32Array. Язык явный ru/en, задача transcribe, не translate.
-  Inference deadline 60 секунд, включая загрузку worker. Cancel/timeout прекращает worker;
-  поколение проверяется после каждого await. Поздний результат после смены контекста,
-  reset/dispose, закрытия или новой записи не возвращается как действующий transcript.
-- UI показывает подготовку модели, запись, распознавание и понятную локальную ошибку.
-  Полученный текст подставляется только при неизменном draft revision и capture generation.
-  Ручная правка, отправка или закрытие чата отменяют pending подстановку. Старый черновик
-  сохраняется при любой ошибке/отмене. Пустой результат/тишина не подставляются.
-  Текст длиннее существующего лимита 240 символов отклоняется с предложением короткой
-  записи; молчаливого truncate и auto-send нет. Отправка — обычной кнопкой пользователя.
-- Модель Whisper tiny multilingual q8 устанавливается явной кнопкой, не при старте приложения.
-  UI сообщает объём загрузки/прогресс и локальное выполнение. Offline после установки
-  не требует сервера. Ошибка модели не останавливает текстовый чат и runtime персонажа.
-  Независимая установка может продолжиться после закрытия чата; quit/dispose её отменяет.
-- Main хранит модель в отдельном userData cache по immutable revision, вне git/SQLite.
-  Manifest содержит allowlist имён, byte sizes и SHA256 **всех** файлов. Download: HTTPS
-  pinned revision, проверяемые HF/CDN redirects, без пользовательского URL/path, streaming
-  size cap по manifest, общий deadline 10 минут. Сначала temp, затем hash/size validation
-  и atomic rename. Частичные/повреждённые файлы не становятся ready; очистка допускает
-  повторную установку. Перед использованием cache integrity проверяется снова.
-  Worker отключает remote model access; скачивание отсутствующих файлов SDK запрещено.
-- Аудио и transcript живут только в памяти до завершения/отмены; не логируются и не
-  сохраняются адаптером. Сохранение/отправка текста начинается только обычным chat submit.
-  Ошибки наружу — разрешённые коды без stack, путей, provider internals или содержания речи.
+- Режим по умолчанию выключен. Пользователь явно включает его отдельной доступной
+  кнопкой с видимым состоянием микрофона и немедленным выключением. После включения
+  не требуются ручные start/stop/submit для каждой фразы. Закрытие текстового чата
+  не выключает режим: контроллер ввода живёт независимо от ChatInput. Reload/reset,
+  смена stream/conversation, lock/suspend/session deactivation, dispose и quit отзывают
+  режим; unlock/resume не включают микрофон, повторное включение явное.
+- Renderer владеет `getUserMedia({ audio: true })`, audio tracks, mono PCM/resampling
+  и сегментацией пользовательского аудио. Простой energy VAD без новой зависимости
+  удерживает до 300 ms pre-roll, принимает минимум 250 ms речи и завершает фразу после
+  800 ms тишины либо при 15 s общего PCM. Буферы ограничены; тишина не порождает запросов.
+  Это распознавание законченных фраз, без промежуточной потоковой транскрипции.
+- Пока обычный Dialogue не принимает submit, новые аудиофразы не накапливаются и не
+  отправляются. После восстановления готовности слушание продолжается без нового
+  переключения. Одновременно допустима одна транскрипция; очереди старого аудио нет.
+  Потеря микрофона или ошибка распознавания видна пользователю; бесконечного retry нет.
+- Main хранит явное разрешение режима для текущих stream/conversation отдельно от
+  краткоживущего requestId фразы. `enable` валидирует контекст и готовность локальной
+  модели; `disable` идемпотентно отзывает режим и отменяет pending работу. Permission
+  request/check handlers разрешают только microphone/audio для точных trusted
+  webContents, main frame и app origin с активным режимом; camera и чужие frame/origin
+  отклоняются. Electron isolation и CSP не ослабляются. Выключение останавливает tracks,
+  сбрасывает VAD/PCM и запрещает поздний transcript/submit.
+- Main сообщает отзыв режима событием `wisp:voice-disabled` с единственным payload
+  `null`; Preload валидирует его и предоставляет typed `onDisabled` с unsubscribe.
+  Renderer подписывается до запроса enable и при отзыве немедленно закрывает tracks,
+  отменяет pending работу и очищает PCM/VAD. Отзыв действует и при закрытом ChatInput;
+  повторные события идемпотентны. Power/session события инкапсулируются в Infrastructure
+  platform adapter; Main получает только callback отзыва, Renderer не получает ОС API.
+- `begin` проверяет активный режим и актуальный контекст, выдаёт один requestId фразы.
+  Transcribe однократно потребляет его; повтор/foreign request не запускает inference.
+  Main проверяет exact shape, dense finite mono PCM [-1,1] и существующий транспортный
+  предел 1..480000 samples до Float32Array; Renderer ограничивает фразу 15 s при 16 kHz.
+  Язык явный ru/en, задача transcribe, не translate. Deadline inference 60 s; generation
+  проверяется после каждого await. Cancel/timeout прекращает вычисление в worker.
+- Main создаёт Infrastructure adapter через Application port. CPU inference выполняется
+  в Main-owned Node worker, вне Main event loop и Renderer. Допустим тёплый worker с
+  одной моделью и последовательными запросами; после cancel/timeout worker завершается,
+  следующий запрос создаёт новый. Worker получает только путь проверенной модели и PCM,
+  без Electron API, credentials, dialogue/history и сетевых полномочий SDK.
+- Распознанный текст отправляется через существующий валидированный Dialogue submit,
+  сохраняя его admission, request IDs, cancellation, errors и лимит 240 символов.
+  Тишина/пустой transcript не отправляются; превышение лимита не обрезается и показывается
+  как ошибка с предложением более короткой фразы. Неподтверждённый текущим контекстом
+  или поздний transcript после disable/reset/dispose не отправляется. Ручной текстовый
+  ввод остаётся доступен; голос не затирает черновик и не создаёт второй Dialogue path.
+- Pinned Whisper tiny multilingual q8 входит в поставку приложения отдельным ресурсом.
+  Подготовка модели выполняется tooling до dev-запуска/упаковки, с manifest allowlist,
+  размерами и SHA256 всех файлов; неполная подготовка блокирует готовность поставки.
+  Runtime проверяет локальные ресурсы, не скачивает модель и не предлагает пользователю
+  загрузку. Повреждение/отсутствие модели возвращает безопасную ошибку; текстовый чат
+  и локальный runtime персонажа продолжают работу. SDK remote model access отключён.
+- Аудио и transcript существуют только в памяти до окончания/отмены, не логируются
+  и не сохраняются адаптером. Разрешённый состав передачи — только обычный текст
+  после автоматического submit в явно включённом режиме; действуют существующие
+  правила dialogue history/backend. Ошибки не раскрывают stack, пути, содержание речи
+  или provider internals. Сетевые ошибки ответа не создают повторного voice submit.

@@ -1,60 +1,71 @@
 # Локальный голосовой ввод
 
-В чате нажмите подготовку модели и дождитесь окончания загрузки, затем выберите RU/EN,
-начните запись и остановите её. Через 30 секунд запись остановится автоматически.
-Результат появляется в редактируемом черновике; отправка всегда ручная. Изменение
-черновика, отмена или закрытие чата отменяет подстановку. Текст длиннее 240 символов
-не обрезается: сократите запись и повторите. Разрешение микрофона нужно только для записи.
+Под подписью Wisp находится кнопка **«Включить микрофон»**. Выберите RU/EN и включите
+режим; при первом включении система может запросить доступ к микрофону. После этого
+говорите обычными короткими фразами: пауза примерно 800 мс завершает реплику, текст
+распознаётся локально и автоматически отправляется существующему диалогу. Текстовый
+чат можно закрыть — режим продолжит работать. Ответ Wisp пока только текстовый.
 
-Используется multilingual `onnx-community/whisper-tiny`, q8, revision
-`ff4177021cc41f7db950912b73ea4fdf7d01d8e7`. Манифест с размерами и SHA256 каждого файла:
-[model-manifest.ts](../src/infrastructure/voice/model-manifest.ts). Всего 43 613 734 байта
-модели, tokenizer и конфигурации. Загрузка явная, HTTPS, с проверкой перенаправлений,
-ограничением размера и десятиминутным deadline. Частичные файлы не используются.
-После подготовки распознавание работает без сети, backend и API-ключей.
+Статус под кнопкой показывает прослушивание, распознавание, отправку или паузу.
+Во время распознавания и занятости диалога новый звук не накапливается: дождитесь
+«слушаю» перед следующей фразой. Кнопка **«Выключить микрофон»** сразу прекращает
+захват. После перезапуска, сброса диалога, блокировки/сна системы режим нужно включить
+снова; автоматического возобновления нет. Ручной черновик голосом не заменяется.
 
-Кеш: `<Electron userData>/voice-models/<revision>`. Его можно удалить при закрытом
-приложении, чтобы освободить место. Повреждённый кеш потребует повторной подготовки.
-Перед каждым распознаванием проверяется целостность. Записи и распознанный текст
-не сохраняются адаптером на диск и не логируются. До запуска native runtime адаптер
-устанавливает `ORT_DISABLE_TELEMETRY=1`: отключены ORT uploader, события и persistent ID
-([ORT Privacy](https://github.com/microsoft/onnxruntime/blob/main/docs/Privacy.md)). Добавленный пользователем в чат
-текст далее подчиняется обычным правилам истории чата.
+Фраза ограничена 15 секундами; более длинная речь разделяется на фрагменты.
+Результат длиннее 240 символов не обрезается и не отправляется: скажите короче.
+Тишина и короткие щелчки отбрасываются. Сегментация использует энергию звука,
+а не отдельный классификатор человеческой речи: громкий фон может мешать. Точность
+и задержка зависят от микрофона, шума и CPU; это распознавание законченных фраз,
+без показа промежуточного текста по каждому слову.
 
-## Runtime и поставка
+## Модель и поставка
 
-`@huggingface/transformers@4.3.2` использует CPU prebuilt `onnxruntime-node` в отдельном
-Main-owned worker с двумя intra-op потоками. Native SDK загружается лениво; недоступный
-binary возвращает безопасную ошибку, не останавливает персонажа. Сборка native runtime
-на машине пользователя не предусмотрена. Для установки CPU-зависимостей без загрузки
-ненужного CUDA payload в `frontend/.npmrc` закреплён `onnxruntime-node-install=skip`
-(CPU уже в npm package; эквивалент `ONNXRUNTIME_NODE_INSTALL=skip`).
-У транзитивного onnxruntime-node 1.30.0 нет darwin/x64 prebuilt: macOS Intel
-в этой поставке считается unavailable, arm64 требует отдельной нативной проверки.
+Multilingual `onnx-community/whisper-tiny`, q8, revision
+`ff4177021cc41f7db950912b73ea4fdf7d01d8e7` входит в приложение. Размеры и SHA256:
+[model-manifest.ts](../src/infrastructure/voice/model-manifest.ts). Всего 43 613 734 байта.
+Пользователь ничего не скачивает из интерфейса; runtime не обращается за моделью
+в сеть. При отсутствии или повреждении ресурса переустановите Wisp; текстовый ввод
+и локальный runtime персонажа продолжают работать.
 
-Worker включён в Vite и desktop smoke entries. Electron-builder явно распаковывает
-`onnxruntime-node`, `sharp`, `@img` из ASAR. macOS конфигурация содержит
-`NSMicrophoneUsageDescription` и `com.apple.security.device.audio-input`; camera
-permission не запрашивается. Основание: [Electron media permissions](https://www.electronjs.org/docs/latest/api/system-preferences#systempreferencesaskformediaaccessmediatype-macos).
-Подписанная сборка macOS и её системный permission prompt требуют проверки на macOS.
+Vite до dev-запуска/компиляции запускает
+[prepare-voice-model.mjs](../scripts/prepare-voice-model.mjs): проверка pinned файлов
+в `frontend/.cache/voice-models/<revision>`, при необходимости HTTPS-загрузка с
+ограничением размера, allowlist redirects и проверкой SHA256. Это подготовка на
+машине разработчика/сборки, не действие пользователя установленного приложения.
+Неполная подготовка блокирует запуск tooling. Для offline dev заранее подготовьте
+модель командой `node frontend/scripts/prepare-voice-model.mjs` из корня.
+Electron-builder переносит ровно семь manifest-файлов в
+`<resources>/voice-models/<revision>`. Проверенные файлы читаются непосредственно
+из ресурса, без копирования в userData и без скрытого сетевого fallback.
 
-Размер модели не равен размеру приложения или памяти: в Linux probe установленный
-`onnxruntime-node` занимал 288 MiB, Transformers — 16 MiB (не полный размер зависимостей
-или installer). Процесс во время CPU sample smoke показывал RSS около 582 MB.
+`@huggingface/transformers@4.3.2` и prebuilt `onnxruntime-node` исполняют CPU inference
+в отдельном Main-owned worker с двумя intra-op потоками. Worker сохраняет модель
+между репликами; отмена/таймаут завершают его. Main остаётся отзывчивым.
+Remote model access и FS cache SDK выключены, `ORT_DISABLE_TELEMETRY=1`
+устанавливается до загрузки native runtime. Аудио и transcript не сохраняются и
+не логируются адаптером; автоматически отправленный текст подчиняется обычным
+правилам истории диалога. Канонический контракт:
+[UI_SPEC](engine/UI_SPEC.md#локальный-голосовой-ввод).
 
-## Проверка
+CPU binary входит в npm package (`frontend/.npmrc`: `onnxruntime-node-install=skip`).
+У onnxruntime-node 1.30.0 нет darwin/x64 prebuilt; macOS Intel здесь unavailable.
+macOS arm64 и подписанные Windows/macOS packages требуют нативной проверки.
+Electron-builder распаковывает `onnxruntime-node`, `sharp`, `@img` из ASAR;
+macOS имеет microphone usage description и audio-input entitlement.
 
-Адресные tests: `node scripts/wisp.mjs test:frontend tests/voice` из корня.
+## Проверки
+
+Адресные tests: `node scripts/wisp.mjs test:frontend tests/voice tests/renderer/continuous-voice tests/renderer/voice-activity-detector`.
 Полные gates: `node scripts/wisp.mjs typecheck`, затем `node scripts/wisp.mjs test:frontend`.
-Desktop smoke использует test-only fake microphone, без записи настоящего микрофона.
+Desktop smoke использует синтетический микрофон, реальные capture/VAD/IPC/permissions
+и тестовое распознавание. Реальный микрофон автоматически не записывается.
 
-Реальный CPU probe: публичный [jfk.wav из whisper.cpp](https://github.com/ggml-org/whisper.cpp/blob/master/samples/jfk.wav),
-11 секунд mono PCM16/16 kHz. После загрузки и проверки модели запуск без сетевого
-доступа вернул корректный английский текст за ~1.37 секунды, включая загрузку worker;
-таймер основного процесса продолжал работать (135 ticks по 10 ms). Это наблюдение на
-одной Linux-машине, не гарантия задержки. Реальный русский sample и подписанные
-Windows/macOS packages в этой проверке не запускались; RU routing покрыт unit tests.
+CPU probe публичного [jfk.wav](https://github.com/ggml-org/whisper.cpp/blob/master/samples/jfk.wav)
+без сетевого доступа в одном worker дал успешное распознавание за ~1.43 s и ~0.66 s
+при повторе; таймер Main продолжал работать. Это результат одной Linux-машины,
+не гарантия задержки. Живой русский микрофон требует отдельной пользовательской проверки.
 
-Provenance: исходная [OpenAI Whisper](https://github.com/openai/whisper) — MIT,
-[ONNX export](https://huggingface.co/onnx-community/whisper-tiny) ссылается на неё без
-отдельной license metadata; Transformers — Apache-2.0, ONNX Runtime — MIT.
+Provenance: [OpenAI Whisper](https://github.com/openai/whisper) — MIT,
+[ONNX export](https://huggingface.co/onnx-community/whisper-tiny), Transformers — Apache-2.0,
+ONNX Runtime — MIT.

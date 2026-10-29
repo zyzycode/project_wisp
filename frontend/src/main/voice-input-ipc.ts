@@ -9,15 +9,17 @@ interface Options {
   readonly service: VoiceInputService;
 }
 export function registerVoiceInputIpc(options: Options): () => void {
-  const channels = ['status', 'prepare', 'begin', 'transcribe', 'cancel'] as const;
+  const channels = ['status', 'prepare', 'enable', 'disable', 'begin', 'transcribe', 'cancel'] as const;
   for (const action of channels) options.register(`wisp:voice-${action}`, async (event, ...args) => {
     const sender = options.getSender();
     if (!sender || event.sender !== sender || event.senderFrame !== sender.mainFrame || !options.trustedUrl(event.senderFrame.url)) return { ok: false, code: 'invalid_request' };
     try {
-      if (args.length !== (action === 'status' || action === 'prepare' ? 0 : 1)) return { ok: false, code: 'invalid_request' };
+      if (args.length !== (action === 'status' || action === 'prepare' || action === 'disable' ? 0 : 1)) return { ok: false, code: 'invalid_request' };
       switch (action) {
         case 'status': return options.service.readStatus();
         case 'prepare': return await options.service.prepare();
+        case 'enable': return options.service.enable(parseVoiceContext(args[0]));
+        case 'disable': return options.service.disable();
         case 'begin': return options.service.begin(parseVoiceContext(args[0]));
         case 'transcribe': return await options.service.transcribe(parseVoiceTranscribe(args[0]));
         case 'cancel': return options.service.cancel(parseVoiceCancel(args[0]).requestId);

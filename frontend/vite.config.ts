@@ -1,4 +1,6 @@
 import { defineConfig } from 'vite';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import electron from 'vite-plugin-electron/simple';
@@ -33,6 +35,12 @@ export default defineConfig({
         },
       },
     }),
+    {
+      name: 'wisp-bundled-voice-model',
+      async configResolved() {
+        await promisify(execFile)(process.execPath, [path.join(configDirectory, 'scripts', 'prepare-voice-model.mjs')]);
+      },
+    },
   ],
   resolve: {
     alias: {

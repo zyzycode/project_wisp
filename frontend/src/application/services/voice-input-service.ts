@@ -5,6 +5,7 @@ interface Options {
   readonly context: () => VoiceCaptureContextDTO | null;
   readonly createId: () => string;
   readonly schedule: (callback: () => void, delay: number) => () => void;
+  readonly onDisabled?: () => void;
 }
 interface Capture {
   readonly requestId: string;
@@ -18,12 +19,27 @@ export class VoiceInputService {
   private readonly setup = new AbortController();
   private preparing = false;
   private disposed = false;
+  private session: VoiceCaptureContextDTO | null = null;
   constructor(private readonly options: Options) {}
   private current(context: VoiceCaptureContextDTO): boolean {
     const current = this.options.context();
     return !this.disposed && current?.streamId === context.streamId && current.conversationId === context.conversationId;
   }
-  public hasCaptureLease(): boolean { return this.capture?.phase === 'capture' && this.current(this.capture.context); }
+  public hasCaptureLease(): boolean { return this.session !== null && this.current(this.session); }
+  public enable(context: VoiceCaptureContextDTO): VoiceInputResultDTO<null> {
+    if (!this.current(context)) return { ok: false, code: 'stale_context' };
+    if (this.preparing) return { ok: false, code: 'busy' };
+    if (this.options.adapter.getStatus().state !== 'ready') return { ok: false, code: 'not_ready' };
+    this.session = { ...context };
+    return { ok: true, value: null };
+  }
+  public disable(): VoiceInputResultDTO<null> {
+    const active = this.session !== null;
+    this.session = null;
+    this.invalidate();
+    if (active) this.options.onDisabled?.();
+    return { ok: true, value: null };
+  }
   public readStatus(): VoiceInputResultDTO<VoiceModelStatusDTO> {
     return this.disposed ? { ok: false, code: 'unavailable' } : { ok: true, value: this.options.adapter.getStatus() };
   }
@@ -37,6 +53,7 @@ export class VoiceInputService {
   }
   public begin(context: VoiceCaptureContextDTO): VoiceInputResultDTO<{ readonly requestId: string }> {
     if (!this.current(context)) return { ok: false, code: 'stale_context' };
+    if (!this.hasCaptureLease()) return { ok: false, code: 'cancelled' };
     if (this.capture || this.preparing) return { ok: false, code: 'busy' };
     if (this.options.adapter.getStatus().state !== 'ready') return { ok: false, code: 'not_ready' };
     const capture: Capture = { requestId: this.options.createId(), context, abort: new AbortController(), release: () => undefined, phase: 'capture' };
@@ -72,5 +89,5 @@ export class VoiceInputService {
     } catch { return { ok: false, code: timedOut ? 'timeout' : 'recognition_failed' }; }
     finally { capture.release(); if (this.capture === capture) this.capture = null; }
   }
-  public async dispose(): Promise<void> { this.disposed = true; this.invalidate(); this.setup.abort(); await this.options.adapter.dispose(); }
+  public async dispose(): Promise<void> { this.disposed = true; this.disable(); this.setup.abort(); await this.options.adapter.dispose(); }
 }

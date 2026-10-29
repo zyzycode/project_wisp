@@ -639,6 +639,12 @@ export interface VoiceTranscribeDTO extends VoiceCaptureContextDTO {
 export interface VoiceInputApiBridge {
   readStatus(): Promise<VoiceInputResultDTO<VoiceModelStatusDTO>>;
   prepare(): Promise<VoiceInputResultDTO<VoiceModelStatusDTO>>;
+  /** Explicit microphone mode for this dialogue context; independent of chat visibility. */
+  enable(context: VoiceCaptureContextDTO): Promise<VoiceInputResultDTO<null>>;
+  /** Revokes microphone permission mode and cancels every pending utterance. */
+  disable(): Promise<VoiceInputResultDTO<null>>;
+  /** Main revoked the mode; stop browser tracks and discard pending audio immediately. */
+  onDisabled(listener: () => void): () => void;
   begin(context: VoiceCaptureContextDTO): Promise<VoiceInputResultDTO<{ readonly requestId: string }>>;
   transcribe(command: VoiceTranscribeDTO): Promise<VoiceInputResultDTO<{ readonly text: string }>>;
   cancel(command: { readonly requestId: string }): Promise<VoiceInputResultDTO<null>>;

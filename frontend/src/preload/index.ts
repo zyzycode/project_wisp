@@ -56,6 +56,15 @@ ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
   voiceInput: {
+    enable: async context => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-enable', parseVoiceContext(context)), parseVoiceNull),
+    disable: async () => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-disable'), parseVoiceNull),
+    onDisabled: listener => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: unknown): void => {
+        if (payload === null) listener();
+      };
+      ipcRenderer.on('wisp:voice-disabled', handler);
+      return () => ipcRenderer.removeListener('wisp:voice-disabled', handler);
+    },
     readStatus: async () => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-status'), parseVoiceStatus),
     prepare: async () => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-prepare'), parseVoiceStatus),
     begin: async context => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-begin', parseVoiceContext(context)), parseVoiceRequest),

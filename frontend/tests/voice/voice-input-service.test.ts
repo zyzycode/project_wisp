@@ -12,31 +12,69 @@ function fixture() {
 afterEach(() => vi.useRealTimers());
 describe('voice lifecycle', () => {
   it('bounds capture lease and rejects stale requests', () => {
-    const { service } = fixture();
+    const { service } = fixture(); service.enable(context);
     expect(service.begin({ ...context, conversationId: 'stale' })).toEqual({ ok: false, code: 'stale_context' });
     expect(service.begin(context).ok).toBe(true); expect(service.hasCaptureLease()).toBe(true);
     expect(service.begin(context)).toEqual({ ok: false, code: 'busy' });
-    vi.advanceTimersByTime(45000); expect(service.hasCaptureLease()).toBe(false);
+    vi.advanceTimersByTime(45000); expect(service.hasCaptureLease()).toBe(true);
+    expect(service.begin(context).ok).toBe(true); service.disable(); expect(service.hasCaptureLease()).toBe(false);
   });
   it('consumes lease once and rejects late result after cancellation', async () => {
-    const { service, adapter, command } = fixture();
+    const { service, adapter, command } = fixture(); service.enable(context);
     let finish!: (value: VoiceInputResult<string>) => void;
     vi.mocked(adapter.transcribe).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
     service.begin(context); const pending = service.transcribe(command);
-    expect(service.hasCaptureLease()).toBe(false);
+    expect(service.hasCaptureLease()).toBe(true);
     expect(await service.transcribe(command)).toEqual({ ok: false, code: 'busy' });
     service.cancel('request'); finish({ ok: true, value: 'Late' });
     expect(await pending).toEqual({ ok: false, code: 'cancelled' });
   });
   it.each([['', 'empty_transcript'], ['x'.repeat(241), 'text_too_long']])('preserves explicit transcript failure %s', async (text, code) => {
-    const { service, adapter, command } = fixture();
+    const { service, adapter, command } = fixture(); service.enable(context);
     vi.mocked(adapter.transcribe).mockResolvedValue({ ok: true, value: text }); service.begin(context);
     expect(await service.transcribe(command)).toEqual({ ok: false, code });
   });
   it('aborts inference at deadline and reports timeout', async () => {
-    const { service, adapter, command } = fixture();
+    const { service, adapter, command } = fixture(); service.enable(context);
     vi.mocked(adapter.transcribe).mockImplementation((_audio, signal) => new Promise(resolve => { signal.addEventListener('abort', () => resolve({ ok: false, code: 'cancelled' })); }));
     service.begin(context); const pending = service.transcribe(command); await vi.advanceTimersByTimeAsync(60000);
     expect(await pending).toEqual({ ok: false, code: 'timeout' });
+  });
+});
+
+
+describe('continuous voice permission', () => {
+  it('requires explicit enable and keeps mode beyond one utterance deadline', () => {
+    const { service } = fixture();
+    expect(service.hasCaptureLease()).toBe(false);
+    expect(service.enable(context)).toEqual({ ok: true, value: null });
+    expect(service.hasCaptureLease()).toBe(true);
+    service.begin(context);
+    vi.advanceTimersByTime(45000);
+    expect(service.hasCaptureLease()).toBe(true);
+    expect(service.begin(context).ok).toBe(true);
+    service.disable();
+    expect(service.hasCaptureLease()).toBe(false);
+    expect(service.begin(context)).toEqual({ ok: false, code: 'cancelled' });
+  });
+  it('preserves continuous permission after a completed utterance', async () => {
+    const { service, command } = fixture();
+    service.enable(context); service.begin(context);
+    expect(await service.transcribe(command)).toEqual({ ok: true, value: { text: 'Hello' } });
+    expect(service.hasCaptureLease()).toBe(true);
+    service.disable();
+  });
+  it('notifies once and rejects pending transcription after disable', async () => {
+    const notify = vi.fn();
+    let finish!: (result: VoiceInputResult<string>) => void;
+    const f = fixture();
+    const service = new VoiceInputService({ adapter: f.adapter, context: () => context,
+      createId: () => 'request', schedule: () => () => undefined, onDisabled: notify });
+    vi.mocked(f.adapter.transcribe).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    service.enable(context); service.begin(context);
+    const pending = service.transcribe(f.command);
+    service.disable(); service.disable(); finish({ ok: true, value: 'Late' });
+    expect(await pending).toEqual({ ok: false, code: 'cancelled' });
+    expect(notify).toHaveBeenCalledOnce();
   });
 });

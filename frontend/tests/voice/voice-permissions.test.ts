@@ -16,7 +16,7 @@ it('allows only audio on trusted main frame during explicit capture lease', () =
   const callback = vi.fn();
   const details = { requestingUrl: 'file:///app/index.html', isMainFrame: true, mediaTypes: ['audio'] };
   request(sender, 'media', callback, details); expect(callback).toHaveBeenLastCalledWith(false);
-  service.begin({ streamId: 's', conversationId: 'c' });
+  service.enable({ streamId: 's', conversationId: 'c' });
   request(sender, 'media', callback, details); expect(callback).toHaveBeenLastCalledWith(true);
   request(sender, 'media', callback, { ...details, mediaTypes: ['video'] }); expect(callback).toHaveBeenLastCalledWith(false);
   request(sender, 'media', callback, { ...details, isMainFrame: false }); expect(callback).toHaveBeenLastCalledWith(false);
@@ -24,5 +24,5 @@ it('allows only audio on trusted main frame during explicit capture lease', () =
   request({ ...sender } as WebContents, 'media', callback, details); expect(callback).toHaveBeenLastCalledWith(false);
   expect(check(sender, 'media', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true, mediaType: 'audio' })).toBe(true);
   expect(check(sender, 'media', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true, mediaType: 'unknown' })).toBe(false);
-  service.invalidate(); request(sender, 'media', callback, details); expect(callback).toHaveBeenLastCalledWith(false);
+  service.disable(); request(sender, 'media', callback, details); expect(callback).toHaveBeenLastCalledWith(false);
 });

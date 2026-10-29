@@ -13,16 +13,17 @@ export function installVoiceSmoke(sender: WebContents, context: VoiceCaptureCont
       prepare: async () => ({ ok: true, value: undefined }),
       transcribe: async audio => {
         transcriptions++; samples = audio.samples.length;
-        return { ok: true, value: 'Проверка голосового черновика' };
+        return { ok: true, value: 'Проверка голосового ввода' };
       },
       dispose: async () => undefined,
     },
     context: () => context,
+    onDisabled: () => { if (!sender.isDestroyed()) sender.send('wisp:voice-disabled', null); },
     createId: () => 'smoke-capture',
     schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
   });
   const trustedUrl = (url: string) => new URL(url).origin === new URL(sender.getURL()).origin;
-  for (const action of ['status', 'prepare', 'begin', 'transcribe', 'cancel']) ipcMain.removeHandler(`wisp:voice-${action}`);
+  for (const action of ['status', 'prepare', 'enable', 'disable', 'begin', 'transcribe', 'cancel']) ipcMain.removeHandler(`wisp:voice-${action}`);
   const unregister = registerVoiceInputIpc({ service, trustedUrl, getSender: () => sender,
     register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel) });
   installVoicePermissions(sender, service, trustedUrl);

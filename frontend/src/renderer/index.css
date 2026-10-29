@@ -832,8 +832,9 @@ html, body {
 }
 
 /* Voice remains part of the compact, scrollable draft surface. */
-.chat-voice { margin-top: 6px; color: #e9d5ff; font-size: 11px; }
-.chat-voice-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pet-voice-panel { position: absolute; width: 260px; transform: translateX(-50%); z-index: 65; }
+.chat-voice { color: #f1f5f9; font-size: 11px; text-align: center; }
+.chat-voice-controls { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .chat-voice-controls button, .chat-voice-controls select {
   border: 1px solid #7e5b9c;
   border-radius: 6px;
@@ -846,5 +847,6 @@ html, body {
 .chat-voice-controls button:hover:not(:disabled) { background: #513065; }
 .chat-voice-controls :disabled { color: #c4aed8; cursor: default; }
 .chat-voice-controls :focus-visible { outline: 2px solid #e9d5ff; outline-offset: 2px; }
-.chat-voice-status { margin-top: 4px; font-variant-numeric: tabular-nums; }
-.chat-voice-error { margin-top: 4px; color: #fecdd3; }
+.chat-voice-status { margin-top: 3px; color: #f1f5f9; background: #0f172a; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.chat-voice-error { position: absolute; bottom: calc(100% + 6px); width: 100%; padding: 8px; color: #fecdd3; background: #291c30; border-radius: 8px; overflow-wrap: anywhere; }
+.chat-voice-controls button[aria-pressed="true"] { background: #35443a; border-color: #a7f3d0; color: #d1fae5; }

@@ -5,6 +5,7 @@ import type { RenderPresentationState } from '../render-engine';
 import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../shared/pet-presentation-layout';
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { MemoryCards } from './Chat/MemoryCards';
+import { VoiceInputControls } from './Chat/VoiceInputControls';
 import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { DebugHUD } from './Debug';
@@ -61,8 +62,6 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         <SpeechBubble message={model.dialogue.currentMessage} onDismiss={model.dialogue.dismissMessage} />
         {model.dialogue.chatOpen && <MemoryCards {...model.dialogue.memoryCards} />}
         <ChatInput
-          voiceBridge={model.dialogue.voiceBridge}
-          voiceContext={model.dialogue.voiceContext}
           canSubmit={model.dialogue.canSubmit}
           errorMessage={model.dialogue.error}
           submissionMessage={model.dialogue.submissionMessage}
@@ -72,6 +71,10 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
           onSendMessage={model.dialogue.handleSendMessage}
           onClose={model.dialogue.closeChat}
         />
+      </div>
+      <div className="pet-voice-panel" style={{ left: labelAnchor.x, top: labelAnchor.y + 32 }}>
+        <VoiceInputControls client={model.dialogue.voice} state={model.dialogue.voiceState}
+          available={model.dialogue.voiceAvailable} contextReady={model.dialogue.voiceContextReady} />
       </div>
       <ContextMenu
         externalWindowSupport={model.bodySnapshot?.brain.externalWindowSupport}

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { BrainStateDTO, WispApiBridge } from '../../shared/ipc-contracts';
 import type { ChatMessage } from '../../domain/chat/chat-message';
 import { createChatMessage } from '../render-engine/chat-message-presentation';
 import { INTERACTION_REPLIES } from '../content/interaction-replies';
+import { ContinuousVoiceClient } from '../continuous-voice-client';
 import { useDialogueLoop } from './useDialogueLoop';
 
 export interface UsePetDialogueOptions {
@@ -23,6 +24,16 @@ export function usePetDialogue({
     setCurrentMessage,
   });
 
+  const voice = useMemo(() => new ContinuousVoiceClient(bridge.voiceInput, handleSendMessage), [bridge.voiceInput, handleSendMessage]);
+  const voiceState = useSyncExternalStore(voice.subscribe, voice.getSnapshot, voice.getSnapshot);
+  const streamId = snapshot?.streamId;
+  const conversationId = snapshot?.dialogue.conversationId;
+  useEffect(() => {
+    voice.setContext(streamId && conversationId ? { streamId, conversationId } : null);
+  }, [voice, streamId, conversationId]);
+  useEffect(() => { voice.setCanSubmit(canSubmit); }, [voice, canSubmit]);
+  useEffect(() => () => voice.disable(), [voice]);
+
   useEffect(() => {
     const welcomeTimer = window.setTimeout(() => {
       setCurrentMessage(current => current ?? createChatMessage('pet', INTERACTION_REPLIES.welcome));
@@ -35,8 +46,7 @@ export function usePetDialogue({
 
   return {
     memoryCards: { bridge, snapshot },
-    voiceBridge: bridge.voiceInput,
-    voiceContext: snapshot ? { streamId: snapshot.streamId, conversationId: snapshot.dialogue.conversationId } : undefined,
+    voice, voiceState, voiceAvailable: Boolean(bridge.voiceInput), voiceContextReady: Boolean(streamId && conversationId),
     currentMessage,
     setCurrentMessage,
     chatOpen,

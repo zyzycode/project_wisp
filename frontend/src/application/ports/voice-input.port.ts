@@ -19,7 +19,7 @@ export interface VoiceAudioInput {
   readonly language: 'ru' | 'en';
 }
 
-/** Main creates the adapter; download and compute have separate cancellation scopes. */
+/** Main creates the adapter; preparation verifies installed resources without network access. */
 export interface IVoiceInput {
   getStatus(): VoiceModelStatus;
   prepare(signal: AbortSignal): Promise<VoiceInputResult<void>>;
