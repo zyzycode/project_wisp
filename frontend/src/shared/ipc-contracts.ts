@@ -572,6 +572,7 @@ export interface AIConnectionApiBridge {
 }
 
 export interface WispApiBridge {
+  readonly voiceOutput?: import('./voice-output-contracts').VoiceOutputBridge;
   /** Optional capability until the local runtime and model are available. */
   readonly voiceInput?: VoiceInputApiBridge;
   /** Declared before implementation; the settings UI requires this capability. */

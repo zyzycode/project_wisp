@@ -13,12 +13,12 @@ export default defineConfig({
     react(),
     electron({
       main: {
-        entry: { index: 'src/main/index.ts', 'memory-worker': 'src/infrastructure/memory/worker.ts', 'voice-worker': 'src/infrastructure/voice/worker.ts' },
+        entry: { index: 'src/main/index.ts', 'memory-worker': 'src/infrastructure/memory/worker.ts', 'voice-worker': 'src/infrastructure/voice/worker.ts', 'speech-worker': 'src/infrastructure/voice-output/worker.ts' },
         vite: {
           build: {
             outDir: 'dist-electron/main',
             rolldownOptions: {
-              external: ['electron', 'better-sqlite3', '@huggingface/transformers', /^node:/],
+              external: ['electron', 'better-sqlite3', '@huggingface/transformers', 'onnxruntime-node', /^node:/],
             },
           },
         },
@@ -39,6 +39,7 @@ export default defineConfig({
       name: 'wisp-bundled-voice-model',
       async configResolved() {
         await promisify(execFile)(process.execPath, [path.join(configDirectory, 'scripts', 'prepare-voice-model.mjs')]);
+        await promisify(execFile)(process.execPath, [path.join(configDirectory, 'scripts', 'prepare-tts-model.mjs')]);
       },
     },
   ],

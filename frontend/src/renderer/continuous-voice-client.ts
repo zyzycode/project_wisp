@@ -22,6 +22,8 @@ export class ContinuousVoiceClient {
   private readonly detector = new VoiceActivityDetector();
   private context: VoiceCaptureContextDTO | null = null;
   private canSubmit = false;
+  private dialogueCanSubmit = false;
+  private outputBlocked = false;
   private generation = 0;
   private utterance = 0;
   private language: 'ru' | 'en' = 'ru';
@@ -45,6 +47,15 @@ export class ContinuousVoiceClient {
     this.context = context;
   }
   public setCanSubmit(canSubmit: boolean): void {
+    this.dialogueCanSubmit = canSubmit;
+    this.updateAdmission();
+  }
+  public setOutputBlocked(blocked: boolean): void {
+    this.outputBlocked = blocked;
+    this.updateAdmission();
+  }
+  private updateAdmission(): void {
+    const canSubmit = this.dialogueCanSubmit && !this.outputBlocked;
     if (canSubmit === this.canSubmit) return;
     this.canSubmit = canSubmit;
     this.detector.reset();

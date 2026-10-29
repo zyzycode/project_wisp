@@ -5,6 +5,8 @@ import { createChatMessage } from '../render-engine/chat-message-presentation';
 import { INTERACTION_REPLIES } from '../content/interaction-replies';
 import { ContinuousVoiceClient } from '../continuous-voice-client';
 import { useDialogueLoop } from './useDialogueLoop';
+import { ReplyOutputs, TextReplyOutput } from '../reply-output';
+import { VoiceReplyOutput } from '../voice-reply-output';
 
 export interface UsePetDialogueOptions {
   readonly bridge: WispApiBridge;
@@ -18,10 +20,14 @@ export function usePetDialogue({
 }: UsePetDialogueOptions) {
   const [currentMessage, setCurrentMessage] = useState<ChatMessage | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const voiceOutput = useMemo(() => new VoiceReplyOutput(bridge.voiceOutput), [bridge.voiceOutput]);
+  const outputState = useSyncExternalStore(voiceOutput.subscribe, voiceOutput.getSnapshot, voiceOutput.getSnapshot);
+  const output = useMemo(() => new ReplyOutputs([new TextReplyOutput(setCurrentMessage), voiceOutput]), [voiceOutput]);
   const { handleSendMessage, canSubmit, error, submissionMessage, replyTopic, cancelTopic, isThinking } = useDialogueLoop({
     bridge,
     snapshot,
     setCurrentMessage,
+    output,
   });
 
   const voice = useMemo(() => new ContinuousVoiceClient(bridge.voiceInput, handleSendMessage), [bridge.voiceInput, handleSendMessage]);
@@ -32,6 +38,11 @@ export function usePetDialogue({
     voice.setContext(streamId && conversationId ? { streamId, conversationId } : null);
   }, [voice, streamId, conversationId]);
   useEffect(() => { voice.setCanSubmit(canSubmit); }, [voice, canSubmit]);
+  useEffect(() => { voice.setOutputBlocked(outputState.phase === 'preparing' || outputState.phase === 'speaking'); }, [voice, outputState.phase]);
+  useEffect(() => { void voiceOutput.initialize(); return () => voiceOutput.dispose(); }, [voiceOutput]);
+  useEffect(() => {
+    return () => { voiceOutput.clear(); void voiceOutput.configure(false); };
+  }, [voiceOutput, streamId, conversationId]);
   useEffect(() => () => voice.disable(), [voice]);
 
   useEffect(() => {
@@ -46,6 +57,7 @@ export function usePetDialogue({
 
   return {
     memoryCards: { bridge, snapshot },
+    voiceOutput, outputState, outputAvailable: Boolean(bridge.voiceOutput),
     voice, voiceState, voiceAvailable: Boolean(bridge.voiceInput), voiceContextReady: Boolean(streamId && conversationId),
     currentMessage,
     setCurrentMessage,

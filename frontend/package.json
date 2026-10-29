@@ -68,6 +68,28 @@
           "onnx/decoder_model_merged_quantized.onnx",
           "onnx/encoder_model_quantized.onnx"
         ]
+      },
+      {
+        "from": ".cache/voice-models/18b0bf898d211718bc33082fadc36a448e0cbc0c",
+        "to": "voice-models/18b0bf898d211718bc33082fadc36a448e0cbc0c",
+        "filter": [
+          "cpu_int4/code_predictor.onnx",
+          "cpu_int4/codec_embed.onnx",
+          "cpu_int4/residual_embed.onnx",
+          "cpu_int4/talker_cache.onnx",
+          "cpu_int4/text_embed.onnx",
+          "cpu_int4/tok_decoder.onnx"
+        ]
+      },
+      {
+        "from": ".cache/voice-models/85e237c12c027371202489a0ec509ded67b5e4b5",
+        "to": "voice-models/85e237c12c027371202489a0ec509ded67b5e4b5",
+        "filter": [
+          "config.json",
+          "tokenizer_config.json",
+          "vocab.json",
+          "merges.txt"
+        ]
       }
     ]
   },

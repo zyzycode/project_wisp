@@ -27,6 +27,17 @@ function fixture(start?: StartContinuousVoiceCapture) {
   return { client, bridge, submit, cancel, feed, phrase, fail: () => failed(), remoteDisable: () => disabled() };
 }
 afterEach(() => vi.restoreAllMocks());
+it('drops speech output feedback, invalidates a pending transcript and resumes only with retained consent', async () => {
+  const f = fixture(); const result = deferred<Awaited<ReturnType<VoiceInputApiBridge['transcribe']>>>();
+  f.bridge.transcribe.mockReturnValue(result.promise); await f.client.enable('ru'); f.phrase();
+  await vi.waitFor(() => expect(f.bridge.transcribe).toHaveBeenCalledOnce());
+  f.client.setOutputBlocked(true); expect(f.client.getSnapshot().phase).toBe('paused');
+  result.resolve({ ok: true, value: { text: 'Echo' } }); await Promise.resolve(); await Promise.resolve();
+  f.phrase(); expect(f.submit).not.toHaveBeenCalled();
+  f.client.setOutputBlocked(false); expect(f.client.getSnapshot().phase).toBe('listening');
+  f.remoteDisable(); f.client.setOutputBlocked(true); f.client.setOutputBlocked(false);
+  expect(f.client.getSnapshot().phase).toBe('off');
+});
 it('starts only explicitly and automatically submits successive utterances without restarting the microphone', async () => {
   const f = fixture(); expect(f.bridge.enable).not.toHaveBeenCalled();
   await f.client.enable('ru'); expect(f.client.getSnapshot().phase).toBe('listening');

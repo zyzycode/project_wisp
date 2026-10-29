@@ -1,4 +1,7 @@
 import { pathToFileURL } from 'node:url';
+import { VoiceOutputService } from '../application/services/voice-output-service';
+import { LocalSpeechSynthesizer } from '../infrastructure/voice-output/local-speech-synthesizer';
+import { registerVoiceOutputIpc } from './voice-output-ipc';
 import { VoiceInputService } from '../application/services/voice-input-service';
 import { LocalVoiceInput } from '../infrastructure/voice/voice-input-adapter';
 import { installVoicePermissions, registerVoiceInputIpc } from './voice-input-ipc';
@@ -198,6 +201,7 @@ const brainStatePublisher = new BrainStatePublisher({
     if (mainWindow === null || mainWindow.isDestroyed()) {
       throw new Error('Brain state destination is unavailable');
     }
+    voiceOutput?.observe(state);
     mainWindow.webContents.send('wisp:brain-state', state);
   },
   revisionSink: bodyEventIngress,
@@ -278,6 +282,7 @@ function cancelActiveBodyDrag(): void {
 }
 
 function beginBrainStream(): void {
+  voiceOutput?.reset();
   voiceInput?.disable();
   cancelActiveBodyDrag();
   if (memoryRuntime?.isRunning()) autonomyComposition?.tick();
@@ -285,6 +290,7 @@ function beginBrainStream(): void {
 }
 
 function clearBrainStream(): void {
+  voiceOutput?.reset();
   voiceInput?.disable();
   autonomyComposition?.resetSystemIdle();
   cancelActiveBodyDrag();
@@ -402,7 +408,7 @@ function initializeAutonomyComposition(): void {
       });
     }
     beverageDialogue = memoryComposition?.beverage ? new BeverageDialogue({ runtime: () => memoryRuntime, createId: randomUUID, timestamp: () => new Date().toISOString(), now: () => brainStatePublisher.now(), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) : null;
-    dialogueRuntime = new DialogueRuntime({ getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { voiceInput?.disable(); autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
+    dialogueRuntime = new DialogueRuntime({ getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { voiceOutput?.reset(); voiceInput?.disable(); autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
@@ -609,6 +615,8 @@ function handleAcceptedBodyEvent(
 }
 
 let voiceInput: VoiceInputService | null = null;
+let voiceOutput: VoiceOutputService | null = null;
+let unregisterVoiceOutput: (() => void) | null = null;
 let unregisterVoice: (() => void) | null = null;
 let unsubscribeVoiceLifecycle: (() => void) | null = null;
 function trustedVoiceUrl(url: string): boolean {
@@ -619,6 +627,7 @@ function trustedVoiceUrl(url: string): boolean {
   } catch { return false; }
 }
 function registerIpcHandlers(): void {
+  if (voiceOutput) unregisterVoiceOutput = registerVoiceOutputIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, trustedUrl: trustedVoiceUrl, service: voiceOutput });
   if (voiceInput) unregisterVoice = registerVoiceInputIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, trustedUrl: trustedVoiceUrl, service: voiceInput });
   unregisterDialogue = registerDialogueIpc({
     register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
@@ -826,8 +835,17 @@ if (!gotTheLock) {
       context: () => summaryStream && dialogueRuntime ? { streamId: summaryStream, conversationId: dialogueRuntime.getPresentation().conversationId } : null,
       schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
     });
-    unsubscribeVoiceLifecycle = subscribeVoiceRevocation(() => { voiceInput?.disable(); });
+    voiceOutput = new VoiceOutputService({
+      synthesizer: new LocalSpeechSynthesizer(app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..', '.cache'), path.join(__dirname, 'speech-worker.js')),
+      createId: randomUUID, language: () => 'ru',
+      current: () => summaryStream && dialogueRuntime && autonomyComposition ? { streamId: summaryStream, dialogue: dialogueRuntime.getPresentation(), autonomy: autonomyComposition.getAutonomyMode() } : null,
+      blockInput: blocked => voiceInput?.setOutputBlocked(blocked),
+      revokeInput: () => { voiceInput?.disable(); },
+      revokePlayback: () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('wisp:voice-output-revoked', null); },
+    });
+    unsubscribeVoiceLifecycle = subscribeVoiceRevocation(() => { voiceInput?.disable(); voiceOutput?.reset(); });
     await voiceAdapter.initialize();
+    await voiceOutput.initialize();
     if (shutdownStarted) return;
     initializeServices();
     registerIpcHandlers();
@@ -856,11 +874,11 @@ app.on('before-quit', event => {
     event.preventDefault();
     if (!shutdownStarted) {
       shutdownStarted = true;
-      void Promise.allSettled([memoryRuntime?.shutdown() ?? memoryComposition?.close(0), aiConnection?.stop(), voiceInput?.dispose()])
+      void Promise.allSettled([memoryRuntime?.shutdown() ?? memoryComposition?.close(0), aiConnection?.stop(), voiceInput?.dispose(), voiceOutput?.dispose()])
         .then(() => { memoryShutdownComplete = true; app.quit(); });
     }
   }
-  void voiceInput?.dispose(); unregisterVoice?.(); unsubscribeVoiceLifecycle?.();
+  void voiceInput?.dispose(); void voiceOutput?.dispose(); unregisterVoiceOutput?.(); unregisterVoice?.(); unsubscribeVoiceLifecycle?.();
   observationRuntime?.dispose(); unregisterObservation?.(); aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.(); unregisterAIConnection?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();

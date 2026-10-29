@@ -20,12 +20,14 @@ export class VoiceInputService {
   private preparing = false;
   private disposed = false;
   private session: VoiceCaptureContextDTO | null = null;
+  private outputBlocked = false;
   constructor(private readonly options: Options) {}
   private current(context: VoiceCaptureContextDTO): boolean {
     const current = this.options.context();
     return !this.disposed && current?.streamId === context.streamId && current.conversationId === context.conversationId;
   }
   public hasCaptureLease(): boolean { return this.session !== null && this.current(this.session); }
+  public setOutputBlocked(blocked: boolean): void { this.outputBlocked = blocked; if (blocked) this.invalidate(); }
   public enable(context: VoiceCaptureContextDTO): VoiceInputResultDTO<null> {
     if (!this.current(context)) return { ok: false, code: 'stale_context' };
     if (this.preparing) return { ok: false, code: 'busy' };
@@ -52,6 +54,7 @@ export class VoiceInputService {
     finally { this.preparing = false; }
   }
   public begin(context: VoiceCaptureContextDTO): VoiceInputResultDTO<{ readonly requestId: string }> {
+    if (this.outputBlocked) return { ok: false, code: 'busy' };
     if (!this.current(context)) return { ok: false, code: 'stale_context' };
     if (!this.hasCaptureLease()) return { ok: false, code: 'cancelled' };
     if (this.capture || this.preparing) return { ok: false, code: 'busy' };
@@ -70,6 +73,7 @@ export class VoiceInputService {
     capture?.release(); capture?.abort.abort();
   }
   public async transcribe(command: VoiceTranscribeDTO): Promise<VoiceInputResultDTO<{ readonly text: string }>> {
+    if (this.outputBlocked) return { ok: false, code: 'busy' };
     const capture = this.capture;
     if (!capture || capture.requestId !== command.requestId || !this.current(command) || capture.context.streamId !== command.streamId || capture.context.conversationId !== command.conversationId) return { ok: false, code: 'stale_context' };
     if (capture.phase !== 'capture') return { ok: false, code: 'busy' };

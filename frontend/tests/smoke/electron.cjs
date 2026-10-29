@@ -117,6 +117,17 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     assert.equal(installedVoice.ok, true);
     assert.equal(installedVoice.value.state, 'ready');
     record('bundled-voice-model-ready', 'PASS', 'Real installed resource verified; no runtime download');
+    const installedOutput = await evaluate('window.wispAPI.voiceOutput.readStatus()');
+    assert.equal(installedOutput.ok, true); assert.equal(installedOutput.value.ready, true);
+    assert.equal(installedOutput.value.enabled, false);
+    await until(() => evaluate(`Array.from(document.querySelectorAll('.chat-voice-output button')).some(button => button.textContent === 'Включить озвучку' && !button.disabled)`), 'Speech output control');
+    const outputBounds = await evaluate(`(() => { const rect=document.querySelector('.chat-voice-output').getBoundingClientRect(); return {bottom:rect.bottom,height:innerHeight}; })()`);
+    assert.ok(outputBounds.bottom <= outputBounds.height, 'Speech output controls must fit compact window');
+    await evaluate(`document.querySelector('.chat-voice-output button').click()`);
+    await until(() => evaluate(`document.querySelector('.chat-voice-output button').getAttribute('aria-pressed') === 'true'`), 'Enable speech output');
+    await evaluate(`document.querySelector('.chat-voice-output button').click()`);
+    await until(() => evaluate(`document.querySelector('.chat-voice-output button').getAttribute('aria-pressed') === 'false'`), 'Disable speech output');
+    record('voice-output-offline-model-and-controls', 'PASS', 'Verified model, typed IPC, default off, toggle and compact layout; no voice cloning');
     const { installVoiceSmoke } = require(path.resolve(__dirname, '../../dist-electron/main/voice-smoke.js'));
     const voiceSmoke = installVoiceSmoke(win.webContents, voiceContext);
     const noLease = await evaluate(`navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {

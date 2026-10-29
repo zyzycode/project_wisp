@@ -11,6 +11,18 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe('voice lifecycle', () => {
+  it('blocks capture and invalidates pending transcription throughout speech output', async () => {
+    const { service, adapter, command } = fixture(); service.enable(context); service.begin(context);
+    let finish!: (value: VoiceInputResult<string>) => void;
+    vi.mocked(adapter.transcribe).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    const pending = service.transcribe(command); service.setOutputBlocked(true);
+    expect(service.begin(context)).toEqual({ ok: false, code: 'busy' });
+    expect(await service.transcribe(command)).toEqual({ ok: false, code: 'busy' });
+    finish({ ok: true, value: 'Own voice' }); expect(await pending).toEqual({ ok: false, code: 'cancelled' });
+    service.setOutputBlocked(false); expect(service.begin(context).ok).toBe(true);
+    service.setOutputBlocked(true); service.disable(); service.setOutputBlocked(false);
+    expect(service.begin(context)).toEqual({ ok: false, code: 'cancelled' });
+  });
   it('bounds capture lease and rejects stale requests', () => {
     const { service } = fixture(); service.enable(context);
     expect(service.begin({ ...context, conversationId: 'stale' })).toEqual({ ok: false, code: 'stale_context' });

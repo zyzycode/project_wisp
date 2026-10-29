@@ -49,10 +49,10 @@ try {
     httpServer.listen(0, '127.0.0.1', resolve);
   }), 30_000, 'Vite startup');
   await run(compileElectron({
-    entry: { index: 'src/main/index.ts', 'memory-worker': 'src/infrastructure/memory/worker.ts', 'voice-worker': 'src/infrastructure/voice/worker.ts', 'voice-smoke': 'tests/smoke/voice-fixture.ts' },
+    entry: { index: 'src/main/index.ts', 'memory-worker': 'src/infrastructure/memory/worker.ts', 'voice-worker': 'src/infrastructure/voice/worker.ts', 'speech-worker': 'src/infrastructure/voice-output/worker.ts', 'voice-smoke': 'tests/smoke/voice-fixture.ts' },
     vite: { root: frontend, mode: 'development', envDir: false,
       build: { outDir: 'dist-electron/main', minify: false,
-        rolldownOptions: { external: ['electron', 'better-sqlite3', '@huggingface/transformers', /^node:/] } } },
+        rolldownOptions: { external: ['electron', 'better-sqlite3', '@huggingface/transformers', 'onnxruntime-node', /^node:/] } } },
   }), 60_000, 'Main dev compilation');
   controller.signal.throwIfAborted();
   await run(compileElectron({

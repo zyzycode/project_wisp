@@ -6,6 +6,7 @@ import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../s
 import { CharacterRenderer } from './Character/CharacterRenderer';
 import { MemoryCards } from './Chat/MemoryCards';
 import { VoiceInputControls } from './Chat/VoiceInputControls';
+import { VoiceOutputControls } from './Chat/VoiceOutputControls';
 import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { DebugHUD } from './Debug';
@@ -75,6 +76,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
       <div className="pet-voice-panel" style={{ left: labelAnchor.x, top: labelAnchor.y + 32 }}>
         <VoiceInputControls client={model.dialogue.voice} state={model.dialogue.voiceState}
           available={model.dialogue.voiceAvailable} contextReady={model.dialogue.voiceContextReady} />
+        <VoiceOutputControls client={model.dialogue.voiceOutput} state={model.dialogue.outputState}
+          available={model.dialogue.outputAvailable} />
       </div>
       <ContextMenu
         externalWindowSupport={model.bodySnapshot?.brain.externalWindowSupport}

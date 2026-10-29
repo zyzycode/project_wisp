@@ -38,10 +38,12 @@ it('cancels a partial download without publishing incomplete resources', async (
 it('ships exactly the pinned manifest files and revision in packaged resources', async () => {
   const source = await readFile(new URL('../../src/infrastructure/voice/model-manifest.ts', import.meta.url), 'utf8');
   const pinned = JSON.parse(source.match(/export const VOICE_MODEL = (\{[\s\S]*\}) as const;/u)[1]);
+  const speechSource = await readFile(new URL('../../src/infrastructure/voice-output/model-manifest.ts', import.meta.url), 'utf8');
+  const speech = ['TTS_MODEL', 'TTS_TOKENIZER'].map(name => JSON.parse(speechSource.match(new RegExp(`export const ${name} = (\\{[\\s\\S]*?\\}) as const;`, 'u'))[1]));
   const packageConfig = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'));
-  expect(packageConfig.build.extraResources).toEqual([{
-    from: `.cache/voice-models/${pinned.revision}`,
-    to: `voice-models/${pinned.revision}`,
-    filter: pinned.files.map(file => file.path),
-  }]);
+  expect(packageConfig.build.extraResources).toEqual([pinned, ...speech].map(model => ({
+    from: `.cache/voice-models/${model.revision}`,
+    to: `voice-models/${model.revision}`,
+    filter: model.files.map(file => file.path),
+  })));
 });

@@ -1,4 +1,5 @@
 import { parseVoiceCancel, parseVoiceContext, parseVoiceNull, parseVoiceRequest, parseVoiceResult, parseVoiceStatus, parseVoiceText, parseVoiceTranscribe } from '../shared/voice-input-validation';
+import { parseOutputNull, parseOutputResult, parseOutputStatus, parsePlayback, parsePlaybackAck, parseReplyIdentity, parseVoiceEnabled } from '../shared/voice-output-validation';
 import { parseRoutineStatus } from '../shared/routine-status-validation';
 import { parseAIConnectionCommand, parseAIConnectionRead, parseAIConnectionResult, parseAIConnectionStatus } from '../shared/ai-connection-validation';
 import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-facts-validation';
@@ -55,6 +56,18 @@ const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown):
 ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
+  voiceOutput: {
+    readStatus: async () => parseOutputResult(await ipcRenderer.invoke('wisp:voice-output-status'), parseOutputStatus),
+    configure: async command => parseOutputResult(await ipcRenderer.invoke('wisp:voice-output-configure', parseVoiceEnabled(command)), parseOutputStatus),
+    speak: async command => parseOutputResult(await ipcRenderer.invoke('wisp:voice-output-speak', parseReplyIdentity(command)), parsePlayback),
+    stop: async () => parseOutputResult(await ipcRenderer.invoke('wisp:voice-output-stop'), parseOutputNull),
+    acknowledge: async command => parseOutputResult(await ipcRenderer.invoke('wisp:voice-output-acknowledge', parsePlaybackAck(command)), parseOutputNull),
+    onRevoked: listener => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: unknown): void => { if (payload === null) listener(); };
+      ipcRenderer.on('wisp:voice-output-revoked', handler);
+      return () => ipcRenderer.removeListener('wisp:voice-output-revoked', handler);
+    },
+  },
   voiceInput: {
     enable: async context => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-enable', parseVoiceContext(context)), parseVoiceNull),
     disable: async () => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-disable'), parseVoiceNull),

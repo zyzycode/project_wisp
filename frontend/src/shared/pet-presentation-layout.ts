@@ -1,7 +1,7 @@
 import type { PetPresentationLayoutDTO } from './ipc-contracts';
 
 export const PET_PRESENTATION_LAYOUT: PetPresentationLayoutDTO = Object.freeze({
-  compactWindowSize: Object.freeze({ width: 280, height: 542 }),
+  compactWindowSize: Object.freeze({ width: 280, height: 600 }),
   expandedWindowSize: Object.freeze({ width: 1140, height: 620 }),
   characterRect: Object.freeze({ x: 20, y: 240, width: 240, height: 240 }),
   spriteViewport: Object.freeze({ width: 512, height: 512 }),

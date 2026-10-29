@@ -4,7 +4,7 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { VOICE_MODEL } from './model-manifest';
 
-type ModelFile = typeof VOICE_MODEL.files[number];
+type ModelFile = { readonly size: number; readonly sha256: string };
 export async function verifiedFile(filename: string, file: ModelFile): Promise<boolean> {
   try {
     if ((await stat(filename)).size !== file.size) return false;

@@ -240,7 +240,8 @@ Toggle в существующем меню не включает sleep и не 
 Контракты: [IVoiceInput](../../src/application/ports/voice-input.port.ts),
 [VoiceInputApiBridge и DTO](../../src/shared/ipc-contracts.ts). Непрерывный голосовой режим
 преобразует законченную фразу в обычный submit существующего Dialogue. Ответ остаётся
-текстовым; TTS, wake word и облачная отправка аудио в этот scope не входят.
+текстовым; озвучивание — отдельный выход (§ ниже), wake word и облачная отправка аудио
+в scope ввода не входят.
 
 - Клавиатура и микрофон — два источника текста одного интерфейса Dialogue.
   Оба вызывают один обработчик [DialogueCommandClient.send](../../src/renderer/dialogue-command-client.ts):
@@ -307,3 +308,65 @@ Toggle в существующем меню не включает sleep и не 
   после автоматического submit в явно включённом режиме; действуют существующие
   правила dialogue history/backend. Ошибки не раскрывают stack, пути, содержание речи
   или provider internals. Сетевые ошибки ответа не создают повторного voice submit.
+
+## Локальный голосовой вывод
+
+Текст и голос — способы представления одной готовой реплики, а не разные Dialogue
+use cases. Первый slice озвучивает только `dialogue.turn.phase=completed` с
+`outcome.kind=success`; ошибки, fallback, local acknowledgements, game/initiative/
+observation остаются текстовыми. TTS не дописывает ответ и не запускает LLM.
+
+- Renderer-local интерфейс вывода принимает неизменяемые identity и text одной
+  проекции; text adapter показывает ответ сразу, voice adapter запрашивает его
+  озвучивание отдельно. Общие `clear`/`dispose` снимают presentation, не историю.
+  Подключение voice adapter не должно менять выбор, dedupe или приоритет текста.
+- Пользователь явно включает звук; default выключен. Есть остановка текущей речи
+  и видимые состояния подготовки/озвучивания/недоступности. Включение не проигрывает
+  старый ответ. Остановка потребляет текущую identity: повторный snapshot её не
+  воспроизводит. Ошибка и недоступность TTS сохраняют полный текст.
+- Main/Application — единственный владелец текущего synthesis/playback request,
+  generation и разрешения на речь. Renderer передаёт только identity текущей реплики;
+  Main сверяет stream/conversation/request с текущим completed success и берёт
+  исходный text из Dialogue. Renderer не передаёт произвольный текст для TTS.
+- Разрешён локальный `Qwen3-TTS-12Hz-0.6B-CustomVoice`, speaker `ono_anna`, язык
+  Russian/English из locale. CPU inference выполняется в Main-owned Node worker
+  через существующий ONNX Runtime; tokenizer — существующий Transformers.js.
+  Qwen2 BPE разрешено собрать в памяти из pinned vocab/merges/config с исходными
+  special tokens; дополнительный BOS и remote tokenizer code не используются.
+  Qwen3-TTS не поддержан его готовым pipeline: multigraph inference — явный
+  Infrastructure adapter, а не использование обычного Qwen3 causal LM вместо TTS.
+- Поставка содержит pinned CPU-int4 ONNX graphs `text_embed`, `codec_embed`,
+  `talker_cache`, `code_predictor`, `residual_embed`, `tok_decoder` и pinned
+  tokenizer/config. Encoder и voice cloning не входят в slice. Подготовка до dev/
+  упаковки проверяет allowlist, revision, размеры и SHA256; runtime проверяет
+  ресурсы, не скачивает модели и не исполняет remote code. Обновление подготовки/
+  `extraResources` допустимо только для этого TTS ресурса. Нет Python helper,
+  server endpoint, cloud fallback, новой модели личности или новой графики.
+- Одновременно один запрос, очереди нет. Новый accepted user send, новый ответ,
+  stop/выключение звука, quiet, смена stream/conversation, reset/reload, session
+  revocation и dispose/quit отменяют synthesis и останавливают playback. После
+  каждого await проверяются generation и identity. Cancel/timeout завершают worker;
+  следующий запрос может создать новый. Resume/unquiet не воспроизводит старую речь.
+- Main передаёт только bounded finite mono PCM [-1,1] с sample rate 24000 и
+  identity. Preload проверяет exact shape и ограничения до Renderer playback.
+  Renderer владеет единственным audio playback handle, очищает его при revoke,
+  смене identity, unmount и dispose; late `ended` старого handle не снимает новый.
+  Никаких Node API/путей модели/произвольных URL в Renderer.
+- Identity ограничены 128 символами; исходная реплика — существующими 2000 UTF-16
+  units. Deadline inference, включая загрузку, — 120 s; максимум 1500 codec frames
+  и 2 880 000 PCM samples. Достижение frame cap без EOS — ошибка, не успешная
+  усечённая озвучка. Deadline подтверждения playback — длительность PCM + 2 s.
+- STT и playback не работают одновременно: при принятии голосового выхода Main
+  инвалидирует pending capture/transcription и блокирует новый `begin`, Renderer
+  сбрасывает VAD/PCM и приостанавливает capture. Возобновление возможно только после
+  подтверждения остановки/окончания того же playback и проверки действующего consent.
+  Forced cancellation и отсутствие ack отзывают режим микрофона; после них требуется
+  явное повторное включение, автоматическое возобновление запрещено.
+  Late transcript не отправляется; без подтверждённой остановки микрофон остаётся
+  заблокированным либо режим отзывается. Выключение звука само по себе не доказывает,
+  что Renderer уже остановил звук. Deadline/byte/sample/frame caps обязательны;
+  превышение даёт безопасную ошибку целиком, без молчаливого усечения реплики.
+- Текст для inference, codes и PCM живут только в RAM до окончания/отмены; без
+  файлов WAV, логирования речи, provider calls и дополнительных history/memory writes.
+  Качество русского Ono_Anna, время первого звука, CPU и peak RSS подтверждаются
+  отдельным реальным offline probe; mocked tests этого не доказывают.
