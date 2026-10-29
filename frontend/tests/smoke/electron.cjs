@@ -11,6 +11,7 @@ app.setPath('sessionData', profile);
 const report = { runId: process.env.WISP_SMOKE_RUN_ID, electron: process.versions.electron, checks: [] };
 const errors = [];
 let completed = false;
+let activeWindow;
 const record = (name, status, detail) => report.checks.push({ name, status, ...(detail ? { detail } : {}) });
 const save = () => fs.writeFileSync(path.join(output, 'electron.json'), JSON.stringify(report, null, 2));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -51,6 +52,7 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await app.whenReady();
     await until(() => BrowserWindow.getAllWindows().some(win => win.isVisible()), 'Visible window');
     const win = BrowserWindow.getAllWindows().find(candidate => candidate.isVisible());
+    activeWindow = win;
     const evaluate = expression => win.webContents.executeJavaScript(expression);
     await until(() => evaluate('Boolean(document.querySelector(".wisp-character-root") && window.wispAPI)'), 'Renderer and preload');
     assert.equal(app.getPath('userData'), profile);
@@ -68,8 +70,14 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     report.displays = screen.getAllDisplays().map(display => ({ bounds: display.bounds, scaleFactor: display.scaleFactor }));
     assert.ok(report.displays.every(display => display.scaleFactor > 0));
     record('display-scale-metadata', 'PASS');
-    const rect = await evaluate(`(() => { const r=document.querySelector('.wisp-character-root').getBoundingClientRect(); return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}; })()`);
     win.focus();
+    await until(() => win.isFocused(), 'Native window focus');
+    win.webContents.focus();
+    await until(() => evaluate('document.hasFocus()'), 'Renderer focus');
+    const rect = await evaluate(`(() => { const target=document.querySelector('.wisp-character-root'); const r=target.getBoundingClientRect(); const point={x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}; if(!target.contains(document.elementFromPoint(point.x,point.y))) throw new Error('Character centre is not hit-testable'); window.__smokeMouseEntered=false; target.addEventListener('mousemove',()=>{window.__smokeMouseEntered=true;},{once:true}); return point; })()`);
+    report.menuInput = { point: rect, bounds: win.getBounds(), focused: win.isFocused() };
+    win.webContents.sendInputEvent({ type: 'mouseMove', ...rect });
+    await until(() => evaluate('window.__smokeMouseEntered === true'), 'Mouse entered character');
     win.webContents.sendInputEvent({ type: 'mouseDown', button: 'right', clickCount: 1, ...rect });
     win.webContents.sendInputEvent({ type: 'mouseUp', button: 'right', clickCount: 1, ...rect });
     await until(() => evaluate('Boolean(document.querySelector(".wisp-context-menu"))'), 'Context menu');
@@ -101,6 +109,14 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await evaluate('window.wispAPI.closeApp()').catch(() => { /* Renderer closes during the real quit path. */ });
   } catch (error) {
     record('native-scenario', 'FAIL', error.message);
+    if (activeWindow && !activeWindow.isDestroyed()) {
+      report.failureWindow = { bounds: activeWindow.getBounds(), focused: activeWindow.isFocused() };
+      try {
+        const capture = await Promise.race([activeWindow.webContents.capturePage(),
+          sleep(2000).then(() => { throw new Error('Failure capture timeout'); })]);
+        fs.writeFileSync(path.join(output, 'failure-window.png'), capture.toPNG());
+      } catch { record('failure-capture', 'NOT RUN', 'Window capture unavailable'); }
+    }
     save();
     app.quit();
   }
