@@ -6,6 +6,10 @@
 
 Application владеет портом, сборкой `AIProviderRequest` и `ProviderResponseIntentMapper`; Infrastructure — provider implementations. Renderer/React/Render не знают provider-specific payload. Domain/Character не получают raw provider DTO.
 
+Источник текста (клавиатура или локальное распознавание голоса) не меняет выбранный
+provider и сборку контекста запроса. Единый путь отправки определён в
+[UI Spec — локальный голосовой ввод](UI_SPEC.md#локальный-голосовой-ввод).
+
 ## Карточка и свобода ответа модели
 
 Карточка — единственный авторский источник характера: [Character §6](CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122).
