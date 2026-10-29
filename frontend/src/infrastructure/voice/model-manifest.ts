@@ -1,17 +1,17 @@
-/** Immutable multilingual tiny q8 export; upstream OpenAI Whisper MIT, Transformers Apache-2.0. */
+/** Immutable multilingual base q8 export; upstream OpenAI Whisper MIT, Transformers Apache-2.0. */
 export const VOICE_MODEL = {
-  "model": "onnx-community/whisper-tiny",
-  "revision": "ff4177021cc41f7db950912b73ea4fdf7d01d8e7",
+  "model": "onnx-community/whisper-base",
+  "revision": "1846881b6b3a3024392c1eea3ad983695bc23925",
   "files": [
     {
       "path": "config.json",
       "size": 2243,
-      "sha256": "46aeea0a406afbeb563fc8e59ca10609203df4299af6a83f73752fef369efd2d"
+      "sha256": "f4d0608f7d918166da7edb3e188de5ef1bfe70d9802e785d271fd88111e9cf4b"
     },
     {
       "path": "generation_config.json",
-      "size": 3772,
-      "sha256": "f5c67e5a4f7102f8cb4d058bc95da276bbc19eeec997267c3bb0f25ef68facd1"
+      "size": 3832,
+      "sha256": "61070cf8de25b1e9256e8e102ded49d8d24a8369ed36ef84fdf21549e68125a0"
     },
     {
       "path": "preprocessor_config.json",
@@ -25,19 +25,19 @@ export const VOICE_MODEL = {
     },
     {
       "path": "tokenizer_config.json",
-      "size": 282683,
-      "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce"
+      "size": 282682,
+      "sha256": "2e036e4dbacfdeb7242c7d4ec4149f4a16e86026048f94d1637e3a8ee9c6a573"
     },
     {
       "path": "onnx/decoder_model_merged_quantized.onnx",
-      "size": 30719241,
-      "sha256": "25e807a962b6349356d0ea5d0dfe530b7e5bf0e2a484aeca0359d03143faddd3"
+      "size": 53693315,
+      "sha256": "fa3ef9902734ce5ae6f9ef2bdb2ba9a6c4b5785b09f4f420ce036573dc9d090b"
     },
     {
       "path": "onnx/encoder_model_quantized.onnx",
-      "size": 10124990,
-      "sha256": "2af4a414ca47aa30f61246017e5fe82b0a8d229281d1255ba666a2a7f6b84d19"
+      "size": 23201314,
+      "sha256": "5862993336bf33acd23736071aae2b32261d3b1b2f37780194460d4ef974dd46"
     }
   ],
-  "totalBytes": 43613734
+  "totalBytes": 79664191
 } as const;

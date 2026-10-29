@@ -27,9 +27,9 @@
 
 ## Модель и поставка
 
-Multilingual `onnx-community/whisper-tiny`, q8, revision
-`ff4177021cc41f7db950912b73ea4fdf7d01d8e7` входит в приложение. Размеры и SHA256:
-[model-manifest.ts](../src/infrastructure/voice/model-manifest.ts). Всего 43 613 734 байта.
+Multilingual `onnx-community/whisper-base`, q8, revision
+`1846881b6b3a3024392c1eea3ad983695bc23925` входит в приложение. Размеры и SHA256:
+[model-manifest.ts](../src/infrastructure/voice/model-manifest.ts). Всего 79 664 191 байта.
 Пользователь ничего не скачивает из интерфейса; runtime не обращается за моделью
 в сеть. При отсутствии или повреждении ресурса переустановите Wisp; текстовый ввод
 и локальный runtime персонажа продолжают работать.
@@ -67,11 +67,18 @@ macOS имеет microphone usage description и audio-input entitlement.
 Desktop smoke использует синтетический микрофон, реальные capture/VAD/IPC/permissions
 и тестовое распознавание. Реальный микрофон автоматически не записывается.
 
-CPU probe публичного [jfk.wav](https://github.com/ggml-org/whisper.cpp/blob/master/samples/jfk.wav)
-без сетевого доступа в одном worker дал успешное распознавание за ~1.43 s и ~0.66 s
-при повторе; таймер Main продолжал работать. Это результат одной Linux-машины,
-не гарантия задержки. Живой русский микрофон требует отдельной пользовательской проверки.
+CPU probe Base q8 на первых 4 s публичного
+[jfk.wav](https://github.com/ggml-org/whisper.cpp/blob/master/samples/jfk.wav),
+Linux / Ryzen 7 5800X, реальный worker с двумя intra-op потоками: первый запрос
+с загрузкой модели ~2.04 s, повторные ~0.83 s и ~0.79 s. Пиковый RSS отдельного
+Node probe-процесса с worker ~717 MiB, прирост относительно исходного RSS ~671 MiB
+(опрос каждые 10 ms). Это не измерение полного Electron и не гарантия максимума.
+Предварительные цели: дополнительный пиковый RAM ≤1 GB, два intra-op потока,
+тёплое распознавание короткой фразы ≤1 s; холодная загрузка в 1 s не укладывается.
+Пауза сегментации ~800 ms добавляется к задержке после последнего слова.
+Замер относится к одному английскому фрагменту на одной Linux-машине; русский
+микрофон, другие CPU и длительные сессии требуют отдельных проверок.
 
 Provenance: [OpenAI Whisper](https://github.com/openai/whisper) — MIT,
-[ONNX export](https://huggingface.co/onnx-community/whisper-tiny), Transformers — Apache-2.0,
+[ONNX export](https://huggingface.co/onnx-community/whisper-base), Transformers — Apache-2.0,
 ONNX Runtime — MIT.
