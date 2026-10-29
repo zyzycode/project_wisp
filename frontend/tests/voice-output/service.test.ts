@@ -14,13 +14,22 @@ function snapshot(): BrainStateDTO {
 }
 function fixture() {
   let resolve: (value: { sampleRate: 24000; samples: Float32Array }) => void = () => undefined;
-  const synthesizer = { ready: vi.fn(async () => true), dispose: vi.fn(async () => undefined), synthesize: vi.fn((_text: string, _language: 'ru' | 'en', signal: AbortSignal) => new Promise<{ sampleRate: 24000; samples: Float32Array }>((yes, no) => { resolve = yes; signal.addEventListener('abort', () => no(new Error('Cancelled')), { once: true }); })) };
+  let reject: () => void = () => undefined;
+  const synthesizer = { ready: vi.fn(async () => true), dispose: vi.fn(async () => undefined), synthesize: vi.fn((_text: string, _language: 'ru' | 'en', signal: AbortSignal) => new Promise<{ sampleRate: 24000; samples: Float32Array }>((yes, no) => { resolve = yes; reject = () => no(new Error('Synthetic failure')); signal.addEventListener('abort', () => no(new Error('Cancelled')), { once: true }); })) };
   let sequence = 0;
   const options = { synthesizer, createId: () => `playback-${++sequence}`, language: () => 'ru' as const, blockInput: vi.fn(), revokeInput: vi.fn(), revokePlayback: vi.fn() };
   const service = new VoiceOutputService(options);
-  return { service, options, complete: () => resolve({ sampleRate: 24000, samples: new Float32Array(2400).fill(0.1) }) };
+  return { service, options, fail: () => reject(), complete: () => resolve({ sampleRate: 24000, samples: new Float32Array(2400).fill(0.1) }) };
 }
 afterEach(() => vi.useRealTimers());
+it('reports synthesis failure without sending a playback cancellation that would suppress text fallback', async () => {
+  const { service, options, fail } = fixture(); await service.initialize(); service.configure(true); service.observe(snapshot());
+  const pending = service.speak(reply); fail();
+  expect(await pending).toEqual({ ok: false, code: 'synthesis_failed' });
+  expect(options.revokePlayback).not.toHaveBeenCalled();
+  expect(options.revokeInput).toHaveBeenCalledOnce(); expect(options.blockInput).toHaveBeenLastCalledWith(false);
+  await service.dispose();
+});
 it('uses canonical text, consumes identity once and releases STT only on matching playback ack', async () => {
   const { service, options, complete } = fixture(); await service.initialize(); service.configure(true); service.observe(snapshot());
   const pending = service.speak(reply);

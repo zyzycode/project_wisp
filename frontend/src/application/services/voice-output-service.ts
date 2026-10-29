@@ -66,7 +66,7 @@ export class VoiceOutputService {
     this.stop(); this.consumed = identity;
     const turn = this.current()?.dialogue.turn;
     if (turn?.phase !== 'completed') return { ok: false, code: 'stale' };
-    const active: Active = { id: this.options.createId(), reply: { ...reply }, abort: new AbortController(), timedOut: false, timer: setTimeout(() => { active.timedOut = true; this.stop(); }, 120_000) };
+    const active: Active = { id: this.options.createId(), reply: { ...reply }, abort: new AbortController(), timedOut: false, timer: setTimeout(() => { active.timedOut = true; this.failSynthesis(active); }, 120_000) };
     this.active = active;
     this.options.blockInput(true);
     try {
@@ -78,8 +78,14 @@ export class VoiceOutputService {
       return { ok: true, value: playback };
     } catch {
       if (this.active !== active) return { ok: false, code: active.timedOut ? 'timeout' : 'cancelled' };
-      this.stop(); return { ok: false, code: 'synthesis_failed' };
+      this.failSynthesis(active); return { ok: false, code: 'synthesis_failed' };
     }
+  }
+  private failSynthesis(active: Active): void {
+    if (this.active !== active) return;
+    clearTimeout(active.timer); active.abort.abort(); this.active = null;
+    // No PCM was delivered: report the failure without a playback-revoke race.
+    this.options.revokeInput(); this.options.blockInput(false);
   }
   public acknowledge(playbackId: string): VoiceOutputResult<null> {
     if (this.active?.id === playbackId) {

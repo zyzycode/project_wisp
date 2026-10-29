@@ -24,7 +24,7 @@ export function useDialogueLoop({ bridge, snapshot, setCurrentMessage, output }:
     const message = speech.current.accept(snapshot);
     const turn = snapshot.dialogue.turn;
     if (message && output && turn.phase === 'completed' && turn.outcome.kind === 'success' && message.id === `${snapshot.dialogue.conversationId}:${turn.requestId}`) {
-      output.submit({ streamId: snapshot.streamId, conversationId: snapshot.dialogue.conversationId, requestId: turn.requestId, text: turn.replyText, presentedAtMs: snapshot.sampledAtMs });
+      void output.submit({ streamId: snapshot.streamId, conversationId: snapshot.dialogue.conversationId, requestId: turn.requestId, text: turn.replyText, presentedAtMs: snapshot.sampledAtMs });
     } else if (message !== undefined) setCurrentMessage(message);
   }, [client, snapshot, setCurrentMessage, output]);
   return { replyTopic: transport.replyTopic, cancelTopic: client.cancelTopic, handleSendMessage: client.send, canSubmit: transport.canSubmit, error: transport.error, submissionMessage: transport.submissionMessage, isThinking: snapshot?.dialogue.turn.phase === 'thinking' };

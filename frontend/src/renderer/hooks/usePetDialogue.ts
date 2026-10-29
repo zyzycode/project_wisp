@@ -5,7 +5,7 @@ import { createChatMessage } from '../render-engine/chat-message-presentation';
 import { INTERACTION_REPLIES } from '../content/interaction-replies';
 import { ContinuousVoiceClient } from '../continuous-voice-client';
 import { useDialogueLoop } from './useDialogueLoop';
-import { ReplyOutputs, TextReplyOutput } from '../reply-output';
+import { ReplyOutputRouter, TextReplyOutput } from '../reply-output';
 import { VoiceReplyOutput } from '../voice-reply-output';
 
 export interface UsePetDialogueOptions {
@@ -22,7 +22,8 @@ export function usePetDialogue({
   const [chatOpen, setChatOpen] = useState(false);
   const voiceOutput = useMemo(() => new VoiceReplyOutput(bridge.voiceOutput), [bridge.voiceOutput]);
   const outputState = useSyncExternalStore(voiceOutput.subscribe, voiceOutput.getSnapshot, voiceOutput.getSnapshot);
-  const output = useMemo(() => new ReplyOutputs([new TextReplyOutput(setCurrentMessage), voiceOutput]), [voiceOutput]);
+  const output = useMemo(() => new ReplyOutputRouter({ text: new TextReplyOutput(setCurrentMessage), voice: voiceOutput,
+    voiceEnabled: () => voiceOutput.getSnapshot().enabled }), [voiceOutput]);
   const { handleSendMessage, canSubmit, error, submissionMessage, replyTopic, cancelTopic, isThinking } = useDialogueLoop({
     bridge,
     snapshot,

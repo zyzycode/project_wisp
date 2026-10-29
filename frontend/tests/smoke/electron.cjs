@@ -128,6 +128,44 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await evaluate(`document.querySelector('.chat-voice-output button').click()`);
     await until(() => evaluate(`document.querySelector('.chat-voice-output button').getAttribute('aria-pressed') === 'false'`), 'Disable speech output');
     record('voice-output-offline-model-and-controls', 'PASS', 'Verified model, typed IPC, default off, toggle and compact layout; no voice cloning');
+    const { installVoiceOutputSmoke } = require(path.resolve(__dirname, '../../dist-electron/main/voice-smoke.js'));
+    const outputSnapshot = await evaluate(`new Promise(resolve => {
+      const unsubscribe=window.wispAPI.onBrainState(snapshot => { queueMicrotask(() => unsubscribe()); resolve(snapshot); });
+    })`);
+    const outputSmoke = await installVoiceOutputSmoke(win.webContents, outputSnapshot);
+    await evaluate(`(() => {
+      window.__speechStarts=0;
+      const start=AudioBufferSourceNode.prototype.start;
+      AudioBufferSourceNode.prototype.start=function(...args) { window.__speechStarts++; return start.apply(this,args); };
+      document.querySelector('.chat-voice-output button').click();
+    })()`);
+    await until(() => evaluate(`document.querySelector('.chat-voice-output button').getAttribute('aria-pressed') === 'true'`), 'Speech output enabled');
+    await evaluate(`document.querySelector('.pet-label').click()`);
+    await until(() => evaluate(`Boolean(document.querySelector('.chat-input-field'))`), 'Composer for synthetic greeting');
+    await evaluate(`document.querySelector('.chat-input-field').focus()`);
+    await win.webContents.insertText('Привет');
+    await until(() => evaluate(`document.querySelector('.chat-send-btn')?.disabled === false`), 'Synthetic greeting ready to send');
+    await evaluate(`document.querySelector('.chat-input-form').requestSubmit()`);
+    try { await until(() => outputSmoke.getStats().syntheses === 1, 'Actual reply synthesis admission'); }
+    catch (error) { report.voiceOutputDiagnostic = outputSmoke.getStats(); throw error; }
+    await until(() => evaluate('window.__speechStarts === 1'), 'PCM across preload into actual Web Audio playback');
+    await until(() => outputSmoke.getStats().acknowledgements === 1, 'Matching playback acknowledgement');
+    await until(() => evaluate('!document.querySelector(".speech-text")'), 'Voice mode replaces reply bubble');
+    record('voice-output-reply-pcm-playback', 'PASS', 'Real successful mock Dialogue reply → output adapter → Main synthesis → Preload PCM → Web Audio start/end acknowledgement');
+    outputSmoke.failNext();
+    await evaluate(`if(!document.querySelector('.chat-input-field')) document.querySelector('.pet-label').click()`);
+    await until(() => evaluate(`Boolean(document.querySelector('.chat-input-field'))`), 'Composer for fallback');
+    await evaluate(`document.querySelector('.chat-input-field').focus()`);
+    await win.webContents.insertText('Привет');
+    await until(() => evaluate(`document.querySelector('.chat-send-btn')?.disabled === false`), 'Fallback greeting ready to send');
+    await evaluate(`document.querySelector('.chat-input-form').requestSubmit()`);
+    await until(() => outputSmoke.getStats().syntheses === 2, 'Synthetic synthesis failure');
+    await until(() => evaluate(`Boolean(document.querySelector('.speech-text')?.textContent && document.querySelector('.chat-voice-output [role="alert"]'))`), 'Voice failure shows text fallback');
+    assert.equal(await evaluate('window.__speechStarts'), 1);
+    record('voice-output-failed-synthesis-text-fallback', 'PASS', 'Failure returns the reply to text; cancellation cannot swallow fallback');
+    await evaluate(`document.querySelector('.chat-voice-output button').click()`);
+    await until(() => evaluate(`document.querySelector('.chat-voice-output button').getAttribute('aria-pressed') === 'false'`), 'Speech output disabled after playback');
+    await outputSmoke.dispose();
     const { installVoiceSmoke } = require(path.resolve(__dirname, '../../dist-electron/main/voice-smoke.js'));
     const voiceSmoke = installVoiceSmoke(win.webContents, voiceContext);
     const noLease = await evaluate(`navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {

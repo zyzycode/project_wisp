@@ -1,4 +1,4 @@
-import type { IReplyOutput, ReplyPresentation } from './reply-output';
+import type { IReplyOutput, ReplyPresentation, ReplyOutputOutcome } from './reply-output';
 import type { VoiceOutputBridge, VoicePlaybackDTO } from '../shared/voice-output-contracts';
 export interface VoiceReplyState {
   readonly enabled: boolean;
@@ -43,28 +43,32 @@ export class VoiceReplyOutput implements IReplyOutput {
       else this.update({ enabled: false, phase: 'off', error: 'Озвучка недоступна. Ответы останутся текстовыми.' });
     } catch { if (!this.disposed) this.update({ error: 'Не удалось включить озвучку.' }); }
   }
-  public submit(reply: ReplyPresentation): void {
-    if (!this.state.enabled || this.disposed || !this.bridge) return;
+  public async submit(reply: ReplyPresentation): Promise<ReplyOutputOutcome> {
+    if (!this.state.enabled || this.disposed || !this.bridge) return 'cancelled';
     this.cancel(true);
     const generation = ++this.generation;
     const abort = new AbortController(); this.abort = abort;
     this.update({ phase: 'preparing', error: null });
     const bridge = this.bridge;
-    void (async () => {
+    try {
       const result = await bridge.speak({ streamId: reply.streamId, conversationId: reply.conversationId, requestId: reply.requestId });
       if (!result.ok) {
-        if (generation === this.generation && !['cancelled', 'stale', 'consumed', 'disabled'].includes(result.code)) this.update({ error: 'Не удалось озвучить ответ. Текст доступен в чате.' });
-        return;
+        if (generation !== this.generation || ['cancelled', 'stale', 'consumed', 'disabled'].includes(result.code)) return 'cancelled';
+        this.update({ error: 'Не удалось озвучить ответ. Текст доступен в чате.' });
+        return 'failed';
       }
-      if (generation !== this.generation || this.disposed) { await bridge.acknowledge({ playbackId: result.value.playbackId }); return; }
+      if (generation !== this.generation || this.disposed) { await bridge.acknowledge({ playbackId: result.value.playbackId }); return 'cancelled'; }
       this.update({ phase: 'speaking' });
       try { await this.play(result.value, abort.signal); }
       finally { await bridge.acknowledge({ playbackId: result.value.playbackId }); }
-    })().catch(() => {
-      if (generation === this.generation) this.update({ error: 'Не удалось воспроизвести ответ. Текст доступен в чате.' });
-    }).finally(() => {
+      return generation === this.generation ? 'presented' : 'cancelled';
+    } catch {
+      if (generation !== this.generation || this.disposed) return 'cancelled';
+      this.update({ error: 'Не удалось воспроизвести ответ. Текст доступен в чате.' });
+      return 'failed';
+    } finally {
       if (generation === this.generation) { this.abort = undefined; this.update({ phase: this.state.enabled ? 'idle' : 'off' }); }
-    });
+    }
   }
   private cancel(notify: boolean): void {
     this.generation++; this.abort?.abort(); this.abort = undefined;
