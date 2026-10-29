@@ -53,7 +53,7 @@ def test_complete_provider_path(
             ]
             assert data["generationConfig"]["maxOutputTokens"] == cap
         assert estimate_input(data, len(messages) + 1) + cap <= 16384
-        assert "neutral" in system and "desktop owns all effects" in system
+        assert "neutral" in system and "desktop owns all effects" not in system
         profile = next(
             m["content"] for m in messages if m["content"].startswith("[Character card & current factual state]")
         )

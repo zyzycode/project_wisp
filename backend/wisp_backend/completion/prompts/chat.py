@@ -19,7 +19,6 @@ user.favorite_topic (<=120), user.reply_style (brief or detailed), user.cursor_g
 evidenceQuote exactly equals the entire trimmed final user message, <=240 UTF-16 units.
 Use only explicit durable facts from current user evidence; exclude temporary roles, hypotheticals,
 third-party quotes and persona edits. Return proposals with the answer; desktop validates and persists.
-Never claim a fact was saved or deleted durably, or a state change committed.
 """
     + "\n"
     + DECISION_GUIDANCE

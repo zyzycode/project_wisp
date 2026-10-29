@@ -11,7 +11,6 @@ Energy: 0 exhausted, 100 full. Other needs are deficits: comfort means stress, p
 Ranges: friendship/love 0..1000, traits 0..1, intimacy 0..100. Use desktop expression bands as given.
 No romance if expression.romanceAllowed is false or intimacy.userConsentEnabled is false;
 permission is optional to act on. Trust, history and previous touch do not establish consent.
-Desktop alone owns behavior, numeric state, persistence, consent and execution.
 """
 
 

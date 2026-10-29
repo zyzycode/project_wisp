@@ -58,7 +58,9 @@ def test_actual_handler_untrusted_payload_and_output_reserve(
         assert cap == min(output_cap, 1024)
         assert estimate_input(data, 3) + cap <= 16384
         assert "PRIVATE_CURRENT_CHARACTER" not in system and "PRIVATE_TITLE" not in system
-        assert "Do not quote the private window caption" in system
+        assert "Do not quote the private window caption" not in system
+        assert "infer preferences" not in system
+        assert "proof of user activity" not in system
         assert "not a user message" in system and "No decision, memoryCandidates" in system
         assert all(line in character.splitlines() for line in reference_lines(body["character"]))
         assert json.loads(observation.split("\n", 1)[1]) == body["observation"]

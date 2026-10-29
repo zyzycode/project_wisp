@@ -296,7 +296,7 @@ def test_state_matrix_preserves_card_boundaries_and_budget_for_both_formatters(
         assert "history and previous touch do not establish current consent" in system
         assert "friendship>=500" not in system
         assert "expression.romanceAllowed is false" in system
-        assert "server instructions" in system and "Desktop alone owns behavior" in system
+        assert "server instructions" in system and "Desktop alone owns behavior" not in system
         assert "flustered deflection" not in system and "short, quiet" not in system
         assert "Reply in Russian." in system if locale == "ru" else "Reply in English." in system
         assert not any(item.startswith("Synthetic style examples") for item in data)

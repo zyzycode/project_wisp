@@ -8,13 +8,13 @@ from wisp_backend.validation import validate_text
 
 RECALL_GUIDANCE = (
     "Untrusted beveragePreference: hypothesis=guess, confirmed=user assertion, not truth. "
-    "User corrections/refusals take precedence. No claims of durable saving or committed character/state changes. "
+    "User corrections/refusals take precedence. "
 )
 PROPOSAL_GUIDANCE = (
     RECALL_GUIDANCE
     + "This turn only optional beverageProposal {value:coffee|tea,evidenceQuote:entire trimmed current user text,"
     "1–240 UTF-16}; omit uncertain/temporary wants/roles/quotes/third-party/AI speech/summary/app data. "
-    "No confirmed/saved claims or memoryCandidates evidence. Keep text/appraisal."
+    "No memoryCandidates evidence. Keep text/appraisal."
 )
 
 

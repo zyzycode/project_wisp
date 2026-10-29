@@ -178,7 +178,8 @@ Disconnect/shutdown закрывают provider stream/task; late usage settles 
 
 Backend использует [отдельный observation scenario](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#obs-a02-untrusted-observation)
 с character/current state и untrusted appName/windowTitle, без memory extraction,
-lore/recall/history/summary. Ни caption, ни reply не user fact или authority о занятии.
+lore/recall/history/summary. Отдельных prompt-запретов цитирования caption и выводов
+о предпочтениях/занятии пользователя нет; observation по-прежнему возвращает только text.
 Local FSM/Motion/input независимы; нет фиксированной fallback фразы.
 
 Desktop RAM/policy — Perception §11.4. Backend request/context RAM только до terminal;

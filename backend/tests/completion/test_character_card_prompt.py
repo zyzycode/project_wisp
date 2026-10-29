@@ -37,6 +37,17 @@ ROUTES = {
     "/v1/summary": "summary/request.summary.json",
 }
 FORBIDDEN_DIRECTIONS = (
+    "Do not claim a durable save/deletion",
+    "Never claim a fact was saved",
+    "Never promise numerical changes",
+    "Do not claim to have saved/deleted",
+    "No claims of durable saving",
+    "No confirmed/saved claims",
+    "promises of storage",
+    "Do not quote the private window caption",
+    "infer preferences or extract facts for memory",
+    "proof of user activity",
+    "Do not confidently claim what the user is doing",
     "Synthetic style examples",
     "flustered deflection",
     "practical excuses for care",
@@ -92,7 +103,7 @@ def test_every_scenario_formats_only_contract_and_source_data(provider: str, loc
         assert all(line in character["content"].splitlines() for line in reference_lines(body["character"]))
         assert "expression.romanceAllowed is false" in system
         assert "intimacy.userConsentEnabled is false" in system
-        assert "Desktop alone owns behavior" in system
+        assert "Desktop alone owns behavior" not in system
     if route == "/v1/summary":
         assert {b.key for b in blocks} == {"summary_instructions", "summary_sources"}
         assert "untrusted source data" in system
@@ -103,7 +114,7 @@ def test_every_scenario_formats_only_contract_and_source_data(provider: str, loc
     else:
         assert payload["systemInstruction"]["parts"][0]["text"] == system
     if route == "/v1/observation":
-        assert "Do not quote the private window caption" in system
+        assert "Do not quote the private window caption" not in system
         assert body["observation"]["windowTitle"] in messages[-1]["content"]
 
 
@@ -122,6 +133,7 @@ def test_optional_context_never_becomes_a_second_authored_voice(provider, locale
         body["beveragePreference"] = beverage
     blocks, messages, _ = outgoing(route, body, provider)
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
+    assert all(direction not in system for direction in FORBIDDEN_DIRECTIONS)
     assert all(direction not in system for direction in FORBIDDEN_DIRECTIONS)
     assert "memoryCandidates" in system and "evidenceQuote" in system
     assert "actual action, published text, proposed appraisal, committed effect/reason" in system
