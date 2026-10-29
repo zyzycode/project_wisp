@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.completion.projection_archive import assert_projected_input, projected_factual_messages
 from tests.completion.test_prompt_deduplication import factual_messages, thaw
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
@@ -63,6 +64,7 @@ async def capture(case: dict, allowance: int) -> dict:
         messages = render_messages(selected)
         outgoing = payload(selected) if status == "ok" else None
         return {
+            "input": body,
             "input_sha256": digest(body),
             "settings": settings.model_dump(),
             "status": status,
@@ -105,7 +107,8 @@ def test_comparison_preserves_inputs_facts_budgets_and_explains_atomic_selection
         for row in rows:
             before, recorded = row["before"], row["after"]
             current = await capture(row["case"], before["budget"]["input_allowance"])
-            assert current["input_sha256"] == row["input_sha256"] == recorded["input_sha256"]
+            assert row["input_sha256"] == recorded["input_sha256"]
+            assert_projected_input(current["input"], row["input_sha256"], row["before_blocks"])
             for result in (current, recorded):
                 assert result["settings"] == before["settings"]
                 for key in ("context_window", "output_reserve", "input_allowance"):
@@ -116,7 +119,8 @@ def test_comparison_preserves_inputs_facts_budgets_and_explains_atomic_selection
                     old = original[block["key"]]
                     for key in ("source", "required", "priority", "order"):
                         assert block[key] == old[key]
-                    assert factual_messages(block) == factual_messages(old)
+                    expected = projected_factual_messages(old) if result is current else factual_messages(old)
+                    assert factual_messages(block) == expected
                 if result["status"] == "ok":
                     assert result["budget"]["selected_estimate"] <= result["budget"]["input_allowance"]
                     assert {b["key"] for b in result["blocks"] if b["required"]} <= set(result["selected_keys"])
@@ -144,7 +148,13 @@ def test_inspector_reports_active_annotations_schema_and_rendered_roles(provider
             assert attached == {"lore", "summary", "previous_initiative"}
             active = attached & set(report["selected_keys"])
             assert set(report["active_optional_instructions"]) == active
-            assert active == (attached if budget == "normal" else set())
+            if budget == "required_only":
+                assert active == set()
+            for key in attached:
+                block = next(b for b in report["blocks"] if b["key"] == key)
+                assert (key in active) == block["decision"]["included"]
+                if key in active:
+                    assert block["decision"]["reason"] == "selected"
             for block in report["blocks"]:
                 if block["key"] in attached:
                     assert block["roles"] == ["system", "user"]

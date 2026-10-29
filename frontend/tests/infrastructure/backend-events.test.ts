@@ -6,7 +6,7 @@ import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-a
 import { AIEventRuntime } from '../../src/application/services/ai-event-runtime';
 import { DialogueRuntime } from '../../src/application/services/dialogue-loop.service';
 import { emptyMemoryContext } from '../../src/application/services/memory-recall';
-import { providerRequest } from './backend-ai-fixture';
+import { localCharacterFixture, providerRequest } from './backend-ai-fixture';
 import type { BackendEventRequest, BackendEventAwareChatRequest } from '../../src/application/ports/backend-events-contract';
 
 function component(value: unknown) { if (!value || typeof value !== 'object') throw new Error('Expected fixture'); return Object.fromEntries(Object.entries(value).filter(([key]) => !["card", "effectPolicy", "appraisal"].includes(key))); }
@@ -17,10 +17,10 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(300000); });
 afterEach(() => vi.useRealTimers());
 it('matches all six common v1 fixtures without inventing a user message for events', () => {
   for (const request of [game, social]) {
-    const projected = projectEventRequest({ requestId: request.requestId, event: request.event, characterSnapshot: request.character, memoryContext: request.memory, locale: request.locale });
+    const projected = projectEventRequest({ requestId: request.requestId, event: request.event, characterSnapshot: localCharacterFixture(request.character), memoryContext: request.memory, locale: request.locale });
     expect(projected).toEqual(request); expect(projected).not.toHaveProperty('messages');
   }
-  expect(projectEventAwareChat({ ...providerRequest(), requestId: chat.requestId, characterSnapshot: chat.character, userMessage: { id: 'local', text: chat.messages.at(-1)!.content, createdAt: '' }, recentContext: [], memoryContext: chat.memory, previousInitiative: chat.previousInitiative })).toEqual(component(chat));
+  expect(projectEventAwareChat({ ...providerRequest(), requestId: chat.requestId, characterSnapshot: localCharacterFixture(chat.character), userMessage: { id: 'local', text: chat.messages.at(-1)!.content, createdAt: '' }, recentContext: [], memoryContext: chat.memory, previousInitiative: chat.previousInitiative })).toEqual(component(chat));
   expect(parseEventResponse(fixture('response.event.success.json'), game.requestId).replyText).toBeDefined();
   expect(parseEventError(fixture('response.error.json'), game.requestId, 503).requestId).toBe(game.requestId);
   expect(parseEventAwareChat(component(fixture('response.chat.success.json')), chat.requestId, chat.messages.at(-1)!.content)).toEqual(component(fixture('response.chat.success.json')));
@@ -29,7 +29,7 @@ it.each([{ decision: null }, { text: '' }, { text: 'x'.repeat(241) }, { requestI
   expect(() => parseEventResponse({ requestId: game.requestId, text: 'Привет', ...extra }, game.requestId)).toThrow();
 });
 it('does not expose source IDs or allow forged game outcomes/duration', () => {
-  const request = { requestId: game.requestId, event: game.event, characterSnapshot: game.character, memoryContext: game.memory, locale: game.locale };
+  const request = { requestId: game.requestId, event: game.event, characterSnapshot: localCharacterFixture(game.character), memoryContext: game.memory, locale: game.locale };
   expect(() => projectEventRequest({ ...request, event: { type: 'cursor_game_completed', outcome: 'caught', executedMs: 60001, occurredAt: '2026-09-18T00:00:00.000Z' } })).toThrow();
   const encoded = JSON.stringify(projectEventRequest(request)); expect(encoded).not.toContain('activityRunId'); expect(new TextEncoder().encode(encoded).byteLength).toBeLessThanOrEqual(32768);
 });
@@ -66,7 +66,7 @@ it('event transport aborts at3000ms without retries and rejects a later successf
 
   const fetcher = vi.fn<typeof fetch>(async (_url, init) => { init?.signal?.addEventListener('abort', () => { aborted = true; }); return new Promise(yes => { resolve = yes; }); });
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://example.com', development: false, now: Date.now, fetch: fetcher });
-  const pending = provider.generateEvent({ requestId: game.requestId, event: game.event, characterSnapshot: game.character, memoryContext: game.memory, locale: 'ru' });
+  const pending = provider.generateEvent({ requestId: game.requestId, event: game.event, characterSnapshot: localCharacterFixture(game.character), memoryContext: game.memory, locale: 'ru' });
   const rejected = expect(pending).rejects.toThrow(); await vi.advanceTimersByTimeAsync(3000); await rejected; expect(aborted).toBe(true);
   resolve(new Response(JSON.stringify(fixture('response.event.success.json')), { headers: { 'Content-Type': 'application/json' } })); await flush(); expect(fetcher).toHaveBeenCalledTimes(1);
 });

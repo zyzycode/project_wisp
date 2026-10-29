@@ -138,7 +138,7 @@ persistence. Внешний adapter строит одну bounded model/wire pro
 [API §2.1](../../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression):
 числовые факты, identity и consent остаются; synthesizedTone и четыре advisory
 bands expression исключаются, romanceAllowed вычисляет Domain из того же снимка.
-Это целевой contract delta отдельной совместной поставки, не текущая смена типов.
+Обе стороны используют эту форму без поддержки прежнего wire.
 Снимок фиксирует вход запроса, а не гарантирует неизменность состояния до ответа;
 существующие generation/deadline/sleep и interaction freshness gates сохраняются.
 Ни snapshot/IPC, ни локальная stale signature не сокращаются вслед за prompt.

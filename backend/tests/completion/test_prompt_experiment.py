@@ -42,7 +42,7 @@ def test_experiment_corpus_covers_missing_ru_en_comparison_cases() -> None:
         assert body["consent_revoked"]["character"]["intimacy"]["userConsentEnabled"] is False
         assert body["consent_revoked"]["character"]["expression"]["romanceAllowed"] is False
         assert len(body["state_changed"]["messages"]) >= 3
-        assert body["state_changed"]["character"]["expression"]["pace"] == "gentle"
+        assert body["state_changed"]["character"]["needs"]["energy"] <= 20
         assert body["state_changed"]["previousTouch"]["energyBand"] == "rested"
 
 

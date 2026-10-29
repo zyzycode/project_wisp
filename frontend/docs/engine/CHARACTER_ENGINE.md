@@ -294,9 +294,8 @@ friendship/love не проценты; traits — 0..1. Ответы разны�
 
 ### Проекция состояния для промпта
 
-Целевая проекция #145 для модели определена в [API §2.1](../../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
-Она внедряется отдельной совместной поставкой desktop/backend; текущие объявления
-wire и runtime до этой поставки не сокращаются. Локальный `CharacterSnapshot`, IPC,
+Проекция #145 для модели определена в [API §2.1](../../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
+Desktop/backend используют эту единую wire-форму. Локальный `CharacterSnapshot`, IPC,
 checkpoint, MockAIProvider и post-base stale signature сохраняют полный состав.
 
 Domain остаётся владельцем Needs, текущих traits, отношений и consent. Adapter

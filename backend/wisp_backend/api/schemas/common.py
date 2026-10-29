@@ -19,7 +19,6 @@ RequestId = Annotated[str, Field(pattern=UUID4_PATTERN)]
 Percent = Annotated[float, Field(strict=True, ge=0, le=100, allow_inf_nan=False)]
 Unit = Annotated[float, Field(strict=True, ge=0, le=1, allow_inf_nan=False)]
 Bond = Annotated[float, Field(strict=True, ge=0, le=1000, allow_inf_nan=False)]
-CharacterTone = Literal["shy", "sleepy", "playful", "curious", "neutral", "affectionate", "flustered"]
 
 
 def read_request_id(value: object) -> str | None:
@@ -78,10 +77,6 @@ class Intimacy(Contract):
 
 
 class Expression(Contract):
-    pace: Literal["gentle", "normal"]
-    trust: Literal["guarded", "familiar", "close"]
-    attention: Literal["high", "ordinary"]
-    play: Literal["high", "ordinary"]
     romanceAllowed: StrictBool
 
 
@@ -90,7 +85,6 @@ class CharacterContext(Contract):
     relationship: Relationship
     personality: Personality
     intimacy: Intimacy
-    synthesizedTone: CharacterTone
     expression: Expression
 
 

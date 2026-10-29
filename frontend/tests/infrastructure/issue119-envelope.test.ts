@@ -11,7 +11,9 @@ it('retains previous initiative and current user by evicting an optional episode
   const request: AIProviderRequest = { ...baseRequest, memoryContext: { facts: [{ key: 'user.display_name', value: '宇'.repeat(80) }, { key: 'user.preferred_address', value: '宇'.repeat(80) }, { key: 'user.favorite_topic', value: '宇'.repeat(120) }], episodes: [{ kind: 'dialogue', userText: '宇'.repeat(240), assistantText: '宇'.repeat(400), occurredAt: '2026-10-26T00:00:00.000Z' }, { kind: 'dialogue', userText: '宇'.repeat(240), assistantText: '宇'.repeat(400), occurredAt: '2026-10-26T00:00:00.000Z' }], characterPreferences: [] },
     previousInitiative: { kind: 'social_bid', text: '宇'.repeat(240), createdAt: '2026-10-26T00:00:00.000Z' } };
   const base = projectBackendMemoryRequest(request);
-  expect(new TextEncoder().encode(JSON.stringify(base)).byteLength).toBe(32565);
+  expect(base.memory.episodes).toHaveLength(2);
+  expect(new TextEncoder().encode(JSON.stringify(base)).byteLength).toBeLessThanOrEqual(32768);
+  expect(new TextEncoder().encode(JSON.stringify({ ...base, previousInitiative: request.previousInitiative })).byteLength).toBeGreaterThan(32768);
   const projected = projectEventAwareChat(request);
   expect(projected.messages).toHaveLength(21);
   expect(projected.memory.episodes).toHaveLength(1);

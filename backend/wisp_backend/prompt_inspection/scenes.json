@@ -41,12 +41,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -105,12 +100,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -171,12 +161,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -235,12 +220,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -301,12 +281,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -365,12 +340,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -431,12 +401,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -495,12 +460,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -561,12 +521,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -625,12 +580,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -691,12 +641,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -755,12 +700,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -822,12 +762,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -876,12 +811,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -931,12 +861,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1009,12 +934,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1089,12 +1009,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1166,12 +1081,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1245,12 +1155,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1341,12 +1246,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1439,12 +1339,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1503,12 +1398,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1569,12 +1459,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "familiar",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1633,12 +1518,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "familiar",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1702,12 +1582,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1758,12 +1633,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1816,12 +1686,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1872,12 +1737,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -1927,12 +1787,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -2007,12 +1862,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -2089,12 +1939,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -2167,12 +2012,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -2247,12 +2087,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -2311,12 +2146,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -2377,12 +2207,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -2455,12 +2280,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -2535,12 +2355,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": true
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": true
             }
           },
@@ -2607,12 +2422,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": true
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": true
             }
           },
@@ -2681,12 +2491,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -2753,12 +2558,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "playful",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "high",
               "romanceAllowed": false
             }
           },
@@ -2827,12 +2627,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -2913,12 +2708,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "sleepy",
             "expression": {
-              "pace": "gentle",
-              "trust": "guarded",
-              "attention": "high",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3001,12 +2791,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3065,12 +2850,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "close",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3131,12 +2911,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3203,12 +2978,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3277,12 +3047,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3349,12 +3114,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3423,12 +3183,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3495,12 +3250,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3569,12 +3319,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3641,12 +3386,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3715,12 +3455,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3787,12 +3522,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3861,12 +3591,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3925,12 +3650,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -3991,12 +3711,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -4063,12 +3778,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -4137,12 +3847,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },
@@ -4201,12 +3906,7 @@
               "romanticCharge": 0,
               "userConsentEnabled": false
             },
-            "synthesizedTone": "neutral",
             "expression": {
-              "pace": "normal",
-              "trust": "guarded",
-              "attention": "ordinary",
-              "play": "ordinary",
               "romanceAllowed": false
             }
           },

@@ -1,3 +1,4 @@
+import { localCharacterFixture } from './backend-ai-fixture';
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { AIProviderRequest } from '../../src/application/ports/ai-provider.interface';
@@ -13,13 +14,13 @@ const touchWire = fixture('request.touch.json') as BackendInteractionTouchReques
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 const client = (fetcher: typeof fetch) => new ExternalAIProviderClient({ baseUrl: 'https://example.com/api', development: false, now: Date.now, fetch: fetcher });
 function chatInput(wire = chatWire): AIProviderRequest {
-  return { requestId: wire.requestId, locale: wire.locale, characterSnapshot: wire.character, memoryContext: wire.memory,
+  return { requestId: wire.requestId, locale: wire.locale, characterSnapshot: localCharacterFixture(wire.character), memoryContext: wire.memory,
     recentContext: [], userMessage: { id: 'local-only', text: wire.messages.at(-1)!.content, createdAt: 'local-only' },
     previousInitiative: wire.previousInitiative, summary: wire.summary,
     interaction: { card: wire.card, effectPolicy: wire.effectPolicy, ...(Object.hasOwn(wire, 'previousTouch') ? { previousTouch: wire.previousTouch } : {}) } };
 }
 function touchInput(wire = touchWire): AIEventProviderRequest {
-  return { requestId: wire.requestId, locale: wire.locale, characterSnapshot: wire.character, event: { ...wire.event, occurredAt: 'local-only' },
+  return { requestId: wire.requestId, locale: wire.locale, characterSnapshot: localCharacterFixture(wire.character), event: { ...wire.event, occurredAt: 'local-only' },
     memoryContext: { facts: [], episodes: [], characterPreferences: [] }, interaction: { card: wire.card, effectPolicy: wire.effectPolicy } };
 }
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(0); });

@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
 import { parseObservationRequest } from '../../src/infrastructure/ai/backend-observation-validation';
 import { parseSummaryRequest } from '../../src/infrastructure/ai/backend-summary-validation';
-import { fixture, providerRequest } from './backend-ai-fixture';
+import { localCharacterFixture, fixture, providerRequest } from './backend-ai-fixture';
 const token = 'b'.repeat(64);
 
 it.each(['https://example.com', 'http://localhost:3456', 'http://127.0.0.1:3456/path', 'http://127.0.0.1:3456?key=value'])('refuses to send the local session token to %s', baseUrl => {
@@ -18,7 +18,7 @@ it('authenticates all five existing semantic operations without provider keys or
     ['touch', provider => provider.generateEvent({ ...eventRequest, event: { type: 'user_touch', variant: 'touch', occurredAt: '2026-10-29T00:00:00.000Z' } })],
     ['events', provider => provider.generateEvent({ ...eventRequest, event: { type: 'social_bid_started', occurredAt: '2026-10-29T00:00:00.000Z' } })],
     ['summary', provider => provider.generateSummary({ requestId: summary.requestId, pairs: summary.pairs, locale: summary.locale }, new AbortController().signal)],
-    ['observation', provider => provider.generateObservation({ requestId: observation.requestId, locale: observation.locale, characterSnapshot: observation.character, observation: observation.observation }, new AbortController().signal)],
+    ['observation', provider => provider.generateObservation({ requestId: observation.requestId, locale: observation.locale, characterSnapshot: localCharacterFixture(observation.character), observation: observation.observation }, new AbortController().signal)],
   ];
   for (const [name, operation] of operations) {
     const fetcher = vi.fn<typeof fetch>(async () => new Response('{"error":"unauthorized"}', { status: 401, headers: { 'Content-Type': 'application/json' } }));

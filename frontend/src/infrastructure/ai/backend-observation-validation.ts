@@ -31,7 +31,7 @@ export { parseBackendError as parseObservationError } from './backend-response-v
 export function parseObservationRequest(value: unknown) {
   const r = exactRecord(value, ['requestId', 'stream', 'locale', 'character', 'observation']);
   if (r.stream !== false) throw new TypeError('Invalid observation request');
-  const c = exactRecord(r.character, ['needs', 'relationship', 'personality', 'intimacy', 'synthesizedTone', 'expression']);
+  const c = exactRecord(r.character, ['needs', 'relationship', 'personality', 'intimacy', 'expression']);
   const expression = parseBackendExpression(c.expression);
   const needs = exactRecord(c.needs, ['energy', 'attention', 'play', 'comfort'], ['boredom']);
   const relationship = exactRecord(c.relationship, ['friendship', 'love', 'loveUnlocked']);
@@ -40,14 +40,15 @@ export function parseObservationRequest(value: unknown) {
   const intimacy = exactRecord(c.intimacy, ['flirtiness', 'romanticCharge', 'userConsentEnabled']);
   const flag = (v: unknown): boolean => { if (typeof v !== 'boolean') throw new TypeError('Invalid character flag'); return v; };
   const observation = exactRecord(r.observation, ['appName', 'windowTitle']);
-  const projected = projectObservationRequest({ requestId: backendRequestId(r.requestId), locale: enumValue(r.locale, ['ru', 'en']),
-    characterSnapshot: {
+  const projected = { stream: false as const, requestId: backendRequestId(r.requestId), locale: enumValue(r.locale, ['ru', 'en']),
+    character: {
       needs: { energy: finiteRange(needs.energy, 100), attention: finiteRange(needs.attention, 100), play: finiteRange(needs.play, 100), comfort: finiteRange(needs.comfort, 100), ...(needs.boredom === undefined ? {} : { boredom: finiteRange(needs.boredom, 100) }) },
       relationship: { friendship: finiteRange(relationship.friendship, 1000), love: finiteRange(relationship.love, 1000), loveUnlocked: flag(relationship.loveUnlocked) },
       personality: { presetId: plainText(personality.presetId, 128, true), aiSelfConcept: plainText(personality.aiSelfConcept, 500, true), traits: {
         shyness: finiteRange(traits.shyness, 1), playfulness: finiteRange(traits.playfulness, 1), sensitivity: finiteRange(traits.sensitivity, 1), boldness: finiteRange(traits.boldness, 1) } },
       intimacy: { flirtiness: finiteRange(intimacy.flirtiness, 100), romanticCharge: finiteRange(intimacy.romanticCharge, 100), userConsentEnabled: flag(intimacy.userConsentEnabled) },
-      synthesizedTone: enumValue(c.synthesizedTone, ['shy', 'sleepy', 'playful', 'curious', 'neutral', 'affectionate', 'flustered']) },
-    observation: { appName: observationMetadata(observation.appName, 80), windowTitle: observationMetadata(observation.windowTitle, 160, true) } });
-  return { ...projected, character: { ...projected.character, expression } };
+      expression },
+    observation: { appName: observationMetadata(observation.appName, 80), windowTitle: observationMetadata(observation.windowTitle, 160, true) } };
+  if (new TextEncoder().encode(JSON.stringify(projected)).byteLength > 32768) throw new TypeError('Observation request too large');
+  return projected;
 }

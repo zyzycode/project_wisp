@@ -5,7 +5,7 @@ import { parseBackendMemory, parseBackendMemoryError, parseBackendMemorySuccess,
 import { parseBackendSuccess } from '../../src/infrastructure/ai/backend-response-validation';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
 import { parseProviderResponse } from '../../src/application/services/dialogue-provider-result';
-import { providerRequest } from './backend-ai-fixture';
+import { localCharacterFixture, providerRequest } from './backend-ai-fixture';
 import type { BackendMemoryRequest } from '../../src/application/ports/backend-memory-contract';
 
 import { memoryTextLength } from '../../src/application/services/memory-recall';
@@ -13,7 +13,7 @@ import { memoryTextLength } from '../../src/application/services/memory-recall';
 function component(value: unknown) { if (!value || typeof value !== 'object') throw new Error('Expected fixture'); return Object.fromEntries(Object.entries(value).filter(([key]) => !["card", "effectPolicy", "appraisal"].includes(key))); }
 const fixture = (name: string): unknown => JSON.parse(readFileSync(path.join(process.cwd(), '../docs/contracts/fixtures/desktop-backend-v1/memory', name), 'utf8'));
 const request = fixture('request.valid.json') as BackendMemoryRequest;
-const semantic = () => ({ ...providerRequest(), requestId: request.requestId, userMessage: { id: 'local', text: request.messages.at(-1)!.content, createdAt: '2026-09-18T00:00:00.000Z' }, characterSnapshot: request.character, memoryContext: request.memory });
+const semantic = () => ({ ...providerRequest(), requestId: request.requestId, userMessage: { id: 'local', text: request.messages.at(-1)!.content, createdAt: '2026-09-18T00:00:00.000Z' }, characterSnapshot: localCharacterFixture(request.character), memoryContext: request.memory });
 afterEach(() => vi.useRealTimers());
 it('validates shared memory fixtures and the core response shape', () => {
   expect(projectBackendMemoryRequest(semantic())).toEqual(component(request));

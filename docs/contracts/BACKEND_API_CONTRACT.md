@@ -20,8 +20,7 @@
 
 Все числовые границы **включительные**, числа конечные; числовые строки, null, NaN/Infinity и выход за диапазон не принимаются. Boolean поля принимают только JSON boolean, не 0/1 или строки. Отсутствие допускается только для полей, помеченных optional в wire type.
 
-Целевой состав #145 ниже вводится одной отдельной поставкой по §2.1; текущие
-объявления в коде до неё сохраняют прежние tone/bands.
+Состав #145 по §2.1 общий для desktop/backend; прежние tone/bands не принимаются.
 
 | Поле character | Диапазон / тип |
 |---|---|
@@ -52,13 +51,12 @@ desktop не отправляет новый chat во сне и отбрасы�
 
 ### 2.1. Проекция expression
 
-Согласованная целевая форма #145: один `character` для `chat`, `touch`, `events`,
+Согласованная форма #145: один `character` для `chat`, `touch`, `events`,
 `observation`; summary character не передаёт. Состав — таблица §2, без
 `synthesizedTone`; объект `expression` содержит **только** `romanceAllowed`.
-Это архитектурный contract delta для отдельной реализации: TypeScript wire types,
-projection/validators, Python schemas/dispatch/prompts и active fixtures переключаются
-атомарно. До неё код содержит прежнюю форму; dual parsing, optional legacy поля,
-новая API version и fallback старого wire не допускаются.
+TypeScript wire types, projection/validators, Python schemas/dispatch/prompts и active
+fixtures используют одну форму. Dual parsing, optional legacy поля, новая API
+version и fallback старого wire не допускаются.
 
 #### Поля, источники и самостоятельная польза
 

@@ -9,7 +9,6 @@ from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.completion.policies import POLICIES
 from wisp_backend.completion.prompts.context import (
     DialogueTurn,
-    ExpressionContext,
     InteractionChatContext,
     InteractionContext,
     ObservationContext,
@@ -46,8 +45,6 @@ def test_observation_and_summary_cannot_receive_chat_payloads() -> None:
             "Editor",
             "Title",
             memory={},
-            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
-            user_consent_enabled=False,
         )
     with pytest.raises(TypeError):
         SummaryContext("ru", (), character={})
@@ -60,8 +57,6 @@ def test_chat_requires_memory_and_interaction_policy() -> None:
             "en",
             {},
             messages=messages,
-            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
-            user_consent_enabled=False,
             interaction=InteractionContext({}, "suppressed"),
         )
     with pytest.raises(TypeError):
@@ -70,8 +65,6 @@ def test_chat_requires_memory_and_interaction_policy() -> None:
             {},
             messages=messages,
             memory={},
-            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
-            user_consent_enabled=False,
         )
     assert (
         InteractionChatContext(
@@ -79,8 +72,6 @@ def test_chat_requires_memory_and_interaction_policy() -> None:
             {},
             messages=messages,
             memory={},
-            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
-            user_consent_enabled=False,
             interaction=InteractionContext({}, "suppressed"),
         ).memory
         == {}
@@ -103,7 +94,5 @@ def test_internal_chat_requires_alternating_pairs_and_current_user(messages: tup
             {},
             messages=messages,
             memory={},
-            expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
-            user_consent_enabled=False,
             interaction=InteractionContext({}, "suppressed"),
         )

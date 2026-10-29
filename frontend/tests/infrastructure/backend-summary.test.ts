@@ -1,3 +1,4 @@
+import { localCharacterFixture } from './backend-ai-fixture';
 import { projectInteractionChat } from '../../src/infrastructure/ai/backend-interaction-validation';
 import type { BackendPreviousTouchReaction } from '../../src/application/ports/backend-interaction-contract';
 import { DialogueRuntime } from '../../src/application/services/dialogue-loop.service';
@@ -21,10 +22,10 @@ const summaryInput = { requestId: summaryWire.requestId, locale: summaryWire.loc
 const json = (value: unknown, status = 200): Response => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 const success = (): Response => json(fixture('response.summary.success.json'));
 function chatInput(wire: BackendSummaryChatRequest = chatWire): AIProviderRequest {
-  return { interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: 'suppressed' }, requestId: wire.requestId, locale: wire.locale, characterSnapshot: wire.character, memoryContext: wire.memory, previousInitiative: wire.previousInitiative,
+  return { interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: 'suppressed' }, requestId: wire.requestId, locale: wire.locale, characterSnapshot: localCharacterFixture(wire.character), memoryContext: wire.memory, previousInitiative: wire.previousInitiative,
     recentContext: [], userMessage: { id: 'local', text: wire.messages.at(-1)!.content, createdAt: 'local' }, ...(Object.hasOwn(wire, 'summary') ? { summary: wire.summary } : {}) };
 }
-const eventInput = (touch = false): AIEventProviderRequest => ({ interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: 'suppressed' }, requestId: summaryWire.requestId, locale: 'ru', characterSnapshot: chatWire.character,
+const eventInput = (touch = false): AIEventProviderRequest => ({ interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: 'suppressed' }, requestId: summaryWire.requestId, locale: 'ru', characterSnapshot: localCharacterFixture(chatWire.character),
   memoryContext: chatWire.memory, event: touch ? { type: 'user_touch', variant: 'touch', occurredAt: '2026-10-17T00:00:00.000Z' } : { type: 'social_bid_started', occurredAt: '2026-10-17T00:00:00.000Z' } });
 const client = (fetcher: typeof fetch): ExternalAIProviderClient => new ExternalAIProviderClient({ baseUrl: 'https://example.com/api', development: false, now: Date.now, fetch: fetcher });
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };

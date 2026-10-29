@@ -11,19 +11,12 @@ export type BackendAITone =
 export type BackendAIMood =
   | 'neutral' | 'happy' | 'playful' | 'sleepy' | 'confused' | 'shy' | 'affectionate';
 
-export type BackendCharacterTone =
-  | 'shy' | 'sleepy' | 'playful' | 'curious' | 'neutral' | 'affectionate' | 'flustered';
-
 export interface BackendAIMessage {
   readonly role: 'user' | 'assistant';
   readonly content: string;
 }
 
 export interface BackendCharacterExpression {
-  readonly pace: 'gentle' | 'normal';
-  readonly trust: 'guarded' | 'familiar' | 'close';
-  readonly attention: 'high' | 'ordinary';
-  readonly play: 'high' | 'ordinary';
   readonly romanceAllowed: boolean;
 }
 
@@ -62,7 +55,6 @@ export interface BackendCharacterContext {
     readonly romanticCharge: number;
     readonly userConsentEnabled: boolean;
   };
-  readonly synthesizedTone: BackendCharacterTone;
   readonly expression: BackendCharacterExpression;
 }
 

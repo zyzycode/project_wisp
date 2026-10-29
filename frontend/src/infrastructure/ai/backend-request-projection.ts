@@ -1,7 +1,7 @@
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
 import type { BackendAIRequest, BackendCharacterContext, BackendCharacterExpression } from '../../application/ports/backend-ai-contract';
-import { projectCharacterExpression } from '../../domain/character/character-snapshot';
-import { enumValue, exactRecord, plainText } from '../../shared/dialogue-ipc-validation';
+import { canExpressFlirt } from '../../domain/character/intimacy-rules';
+import { exactRecord, plainText } from '../../shared/dialogue-ipc-validation';
 
 export function finiteRange(value: unknown, max: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max) throw new TypeError('Invalid backend range');
@@ -17,12 +17,8 @@ export function backendRequestId(value: unknown): string {
 }
 
 export function parseBackendExpression(value: unknown): BackendCharacterExpression {
-  const expression = exactRecord(value, ['pace', 'trust', 'attention', 'play', 'romanceAllowed']);
+  const expression = exactRecord(value, ['romanceAllowed']);
   return {
-    pace: enumValue(expression.pace, ['gentle', 'normal']),
-    trust: enumValue(expression.trust, ['guarded', 'familiar', 'close']),
-    attention: enumValue(expression.attention, ['high', 'ordinary']),
-    play: enumValue(expression.play, ['high', 'ordinary']),
     romanceAllowed: boolean(expression.romanceAllowed),
   };
 }
@@ -39,7 +35,6 @@ export function projectBackendRequest(request: AIProviderRequest): BackendAIRequ
       traits: { shyness: finiteRange(s.personality.traits.shyness, 1), playfulness: finiteRange(s.personality.traits.playfulness, 1),
         sensitivity: finiteRange(s.personality.traits.sensitivity, 1), boldness: finiteRange(s.personality.traits.boldness, 1) } },
     intimacy: { flirtiness: finiteRange(s.intimacy.flirtiness, 100), romanticCharge: finiteRange(s.intimacy.romanticCharge, 100), userConsentEnabled: boolean(s.intimacy.userConsentEnabled) },
-    synthesizedTone: enumValue(s.synthesizedTone, ['shy', 'sleepy', 'playful', 'curious', 'neutral', 'affectionate', 'flustered']),
   };
   if (request.recentContext.length > 20 || request.recentContext.length % 2 !== 0) throw new TypeError('Incomplete dialogue pair');
   const messages = request.recentContext.map((message, index) => {
@@ -51,5 +46,5 @@ export function projectBackendRequest(request: AIProviderRequest): BackendAIRequ
   messages.push({ role: 'user', content: plainText(request.userMessage.text, 240, true) });
   return { requestId: backendRequestId(request.requestId), event: { type: 'user_message' }, messages,
     stream: false, locale: request.locale === 'en' ? 'en' : 'ru',
-    character: { ...character, expression: parseBackendExpression(projectCharacterExpression(character)) } };
+    character: { ...character, expression: { romanceAllowed: canExpressFlirt(character) } } };
 }

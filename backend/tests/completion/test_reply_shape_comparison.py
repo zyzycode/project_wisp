@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.completion.projection_archive import assert_projected_input, projected_factual_messages
 from tests.helpers import CONTRACT_FIXTURES
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
@@ -92,6 +93,7 @@ async def capture(case: dict, allowance: int | None = None) -> dict:
         selected = select_context(job.inference.blocks, allowance, size, trace=trace)
         messages, outgoing = render_messages(selected), payload(selected)
         return {
+            "input": body,
             "input_sha256": digest(body),
             "settings": settings.model_dump(),
             "budget": {"window": window, "reserve": cap, "allowance": allowance},
@@ -131,13 +133,18 @@ def test_all_profiles_keep_inputs_facts_settings_and_budget_with_generated_reply
             before, archived = row["before"], row["after"]
             current = await capture(row["case"], before["budget"]["allowance"])
             for result in (archived, current):
-                assert result["input_sha256"] == before["input_sha256"]
+                if result is current:
+                    assert_projected_input(result["input"], before["input_sha256"], before["blocks"])
+                else:
+                    assert result["input_sha256"] == before["input_sha256"]
                 assert result["settings"] == before["settings"] and result["budget"] == before["budget"]
                 assert result["selected_estimate"] <= result["budget"]["allowance"]
                 old = {b["key"]: b for b in before["blocks"]}
                 assert old.keys() == {b["key"] for b in result["blocks"]}
                 for block in result["blocks"]:
-                    assert factual_messages(block) == factual_messages(old[block["key"]])
+                    original = old[block["key"]]
+                    expected = projected_factual_messages(original) if result is current else factual_messages(original)
+                    assert factual_messages(block) == expected
                     for key in ("source", "required", "priority", "order"):
                         assert block[key] == old[block["key"]][key]
             for saved in (before, archived):

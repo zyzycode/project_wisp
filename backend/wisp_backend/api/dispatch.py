@@ -4,7 +4,6 @@ from typing import TypeAlias, TypedDict
 
 from wisp_backend.api.endpoints import ENDPOINTS_BY_REQUEST
 from wisp_backend.api.responses import WireReplyEncoder
-from wisp_backend.api.schemas.common import CharacterContext
 from wisp_backend.api.schemas.events import EventRequest
 from wisp_backend.api.schemas.interaction import InteractionChatRequest, InteractionTouchRequest
 from wisp_backend.api.schemas.observation import ObservationRequest
@@ -15,7 +14,6 @@ from wisp_backend.completion.prompts.beverage import bounded_preference
 from wisp_backend.completion.prompts.context import (
     DialogueTurn,
     EventContext,
-    ExpressionContext,
     InteractionChatContext,
     InteractionContext,
     InteractionTouchContext,
@@ -39,13 +37,6 @@ class ChatInputs(TypedDict):
     character: Snapshot
     messages: tuple[DialogueTurn, ...]
     lore: LoreCatalogue | None
-    expression: ExpressionContext
-    user_consent_enabled: bool
-
-
-def expression_context(character: CharacterContext) -> ExpressionContext:
-    value = character.expression
-    return ExpressionContext(value.pace, value.trust, value.attention, value.play, value.romanceAllowed)
 
 
 def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | None) -> InteractionChatContext:
@@ -54,8 +45,6 @@ def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | Non
         "character": body.character.model_dump(exclude_unset=True),
         "messages": tuple(DialogueTurn(item.role, trim_text(item.content)) for item in body.messages),
         "lore": lore,
-        "expression": expression_context(body.character),
-        "user_consent_enabled": body.character.intimacy.userConsentEnabled,
     }
     return InteractionChatContext(
         **common,
@@ -84,8 +73,6 @@ def prepare_context(body: CompletionRequest, lore: LoreCatalogue | None = None) 
             body.locale,
             character,
             InteractionContext(body.card.model_dump(), body.effectPolicy),
-            expression=expression_context(body.character),
-            user_consent_enabled=body.character.intimacy.userConsentEnabled,
         )
     if isinstance(body, EventRequest):
         return EventContext(
@@ -93,8 +80,6 @@ def prepare_context(body: CompletionRequest, lore: LoreCatalogue | None = None) 
             character,
             body.memory.model_dump(),
             body.event.model_dump(),
-            expression=expression_context(body.character),
-            user_consent_enabled=body.character.intimacy.userConsentEnabled,
         )
     if isinstance(body, ObservationRequest):
         return ObservationContext(
@@ -102,8 +87,6 @@ def prepare_context(body: CompletionRequest, lore: LoreCatalogue | None = None) 
             character,
             body.observation.appName,
             body.observation.windowTitle,
-            expression=expression_context(body.character),
-            user_consent_enabled=body.character.intimacy.userConsentEnabled,
         )
     raise TypeError("Unsupported completion request")
 

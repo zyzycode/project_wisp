@@ -18,7 +18,6 @@ from wisp_backend.completion.interaction_replies import InteractionChatReply
 from wisp_backend.completion.prompts.chat import build_chat_blocks, chat_instructions
 from wisp_backend.completion.prompts.context import (
     DialogueTurn,
-    ExpressionContext,
     InteractionChatContext,
     InteractionContext,
     InteractionTouchContext,
@@ -92,15 +91,13 @@ def test_data_blocks_cannot_use_system_role(source: ContextSource) -> None:
 
 
 def test_fact_correction_and_current_state_survive_old_history_and_examples() -> None:
-    character = {"personality": {"aiSelfConcept": "I am Wisp"}, "synthesizedTone": "sleepy"}
+    character = {"personality": {"aiSelfConcept": "I am Wisp"}, "needs": {"energy": 10}}
     memory = {"facts": [{"key": "user.display_name", "value": "New"}], "episodes": [], "characterPreferences": []}
     context = InteractionChatContext(
         "en",
         character,
         messages=(DialogueTurn("user", "Old"), DialogueTurn("assistant", "Old"), DialogueTurn("user", "Call me New")),
         memory=memory,
-        expression=ExpressionContext("normal", "guarded", "ordinary", "ordinary", False),
-        user_consent_enabled=False,
         interaction=InteractionContext({}, "suppressed"),
     )
     blocks = build_chat_blocks(context)
@@ -113,7 +110,7 @@ def test_fact_correction_and_current_state_survive_old_history_and_examples() ->
         in messages[0]["content"]
     )
     assert 'personality.aiSelfConcept: "I am Wisp"' in messages[1]["content"]
-    assert 'synthesizedTone: "sleepy"' in messages[1]["content"]
+    assert "needs.energy: 10" in messages[1]["content"]
     assert 'Name: "New"' in messages[2]["content"]
     assert messages[-1]["content"] == "Call me New"
     assert "Old" not in json.dumps(messages[1:])
@@ -139,8 +136,6 @@ def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> 
             "en",
             {},
             InteractionContext({}, "suppressed"),
-            expression=ExpressionContext("gentle", "guarded", "ordinary", "ordinary", False),
-            user_consent_enabled=False,
         )
     )
     assert "Allowed behavior:" not in touch[0].messages[0].content

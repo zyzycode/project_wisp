@@ -1,3 +1,4 @@
+import { localCharacterFixture } from './backend-ai-fixture';
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { AIProviderRequest } from '../../src/application/ports/ai-provider.interface';
@@ -9,7 +10,7 @@ const fixture = (name: string): unknown => JSON.parse(readFileSync(`../docs/cont
 const followUp = fixture('request.follow-up.json') as BackendInteractionChatRequest;
 const invalid = fixture('invalid.json') as { requests: { name: string; value: BackendInteractionChatRequest }[] };
 function input(wire = followUp): AIProviderRequest {
-  return { requestId: wire.requestId, locale: wire.locale, characterSnapshot: wire.character, memoryContext: wire.memory,
+  return { requestId: wire.requestId, locale: wire.locale, characterSnapshot: localCharacterFixture(wire.character), memoryContext: wire.memory,
     recentContext: [], userMessage: { id: 'local', text: wire.messages.at(-1)!.content, createdAt: 'local' },
     previousInitiative: wire.previousInitiative, summary: wire.summary, dialogueTopic: wire.dialogueTopic,
     interaction: { card: wire.card, effectPolicy: wire.effectPolicy, previousTouch: wire.previousTouch } };

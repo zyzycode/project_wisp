@@ -26,10 +26,6 @@
       ],
       "character": {
         "expression": {
-          "pace": "gentle",
-          "trust": "guarded",
-          "attention": "ordinary",
-          "play": "ordinary",
           "romanceAllowed": false
         }
       }
@@ -195,12 +191,7 @@
           "romanticCharge": 0,
           "userConsentEnabled": false
         },
-        "synthesizedTone": "curious",
         "expression": {
-          "pace": "gentle",
-          "trust": "guarded",
-          "attention": "ordinary",
-          "play": "ordinary",
           "romanceAllowed": false
         }
       },
@@ -280,12 +271,7 @@
           "romanticCharge": 0,
           "userConsentEnabled": false
         },
-        "synthesizedTone": "curious",
         "expression": {
-          "pace": "gentle",
-          "trust": "guarded",
-          "attention": "ordinary",
-          "play": "ordinary",
           "romanceAllowed": false
         }
       },
@@ -368,12 +354,7 @@
           "romanticCharge": 0,
           "userConsentEnabled": false
         },
-        "synthesizedTone": "curious",
         "expression": {
-          "pace": "gentle",
-          "trust": "guarded",
-          "attention": "ordinary",
-          "play": "ordinary",
           "romanceAllowed": false
         }
       },

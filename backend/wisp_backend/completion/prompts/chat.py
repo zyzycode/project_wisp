@@ -17,7 +17,7 @@ Current user questions and bounded facts outrank other reference context.
 Recall accurately; past episodes do not prove current preferences or user participation.
 evidenceQuote exactly equals the entire trimmed final user message.
 Return proposals with the answer; desktop validates and persists.
-Decision tone/mood hints differ from character synthesizedTone.
+Decision tone/mood hints are proposals, not changes to character state.
 """
     + MEMORY_EVIDENCE_RULES
 )

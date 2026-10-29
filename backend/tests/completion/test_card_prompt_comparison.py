@@ -8,6 +8,8 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.completion.projection_archive import assert_selection_preserves_priority_and_history, project_character
+from wisp_backend.completion.prompts.narrative import reference_lines
 from wisp_backend.prompt_inspection.report import digest, encoded, inspect_scene
 from wisp_backend.prompt_inspection.scenes import SCENES_PATH
 
@@ -44,6 +46,7 @@ def test_before_evidence_is_lossless_and_inputs_change_only_by_the_approved_card
             if "card" in expected["body"]:
                 assert expected["body"]["card"]["revision"] == delta["before_revision"]
                 expected["body"]["card"]["revision"] = delta["after_revision"]
+            expected["body"]["character"] = project_character(expected["body"]["character"])
             assert current["scenes"][name][locale] == expected
     assert len(data["rows"]) == 120
     for row in data["rows"]:
@@ -69,6 +72,7 @@ def test_current_runtime_preserves_archived_budget_history_and_source_facts(monk
     monkeypatch.setattr(httpx.AsyncClient, "send", forbidden)
 
     async def run():
+        corpus = thaw(data["before_input_corpus"], data["text_pool"])
         for row in data["rows"]:
             report = await inspect_scene(**row["case"])
             after = row["after"]
@@ -82,9 +86,27 @@ def test_current_runtime_preserves_archived_budget_history_and_source_facts(monk
             archived_blocks = {block["key"]: block for block in after["blocks"]}
             assert current_blocks.keys() == archived_blocks.keys()
             for key, block in current_blocks.items():
-                if key != "instructions":
+                if key == "character_profile_state":
+                    character = copy.deepcopy(
+                        corpus["scenes"][row["case"]["scene_id"]][row["case"]["locale"]]["body"]["character"]
+                    )
+                    character["personality"]["aiSelfConcept"] += data["card_delta"]["append_ai_self_concept"]
+
+                    def messages(value):
+                        return [
+                            {
+                                "role": "user",
+                                "content": "\n".join(
+                                    ["[Character card & current factual state]", *reference_lines(value)]
+                                ),
+                            }
+                        ]
+
+                    assert digest(messages(character)) == archived_blocks[key]["messages_sha256"]
+                    assert block["data_messages_sha256"] == digest(messages(project_character(character)))
+                elif key != "instructions":
                     assert block["data_messages_sha256"] == archived_blocks[key]["messages_sha256"]
-            assert set(after["selected_keys"]) <= set(report["selected_keys"])
+            assert_selection_preserves_priority_and_history(after, report)
             assert report["budget"]["selected_estimate"] <= report["budget"]["input_allowance"]
             assert after["settings"] == row["before"]["settings"]
             for key in ("context_window", "output_reserve", "input_allowance"):

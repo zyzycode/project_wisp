@@ -115,9 +115,9 @@ Revision не является wire-version; обе стороны обновл�
 
 Energy — ресурс, остальные Needs — дефициты; высокий comfort означает стресс.
 Friendship/love — 0..1000, traits — 0..1; это факты, не предписание реакции.
-Целевая проекция #145 — [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression):
+Проекция #145 — [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression):
 без synthesizedTone и четырёх advisory bands; expression сохраняет romanceAllowed.
-Она внедряется отдельной совместной поставкой; backend не восстанавливает labels,
+Backend не восстанавливает labels,
 скрытый sleep/action или thresholds и не создаёт второй state store.
 Traits описывают текущие axes, а не заменяют identity. PreviousTouch — исторический
 trace действия, не текущий state: он сохраняется для объяснения реального outcome.

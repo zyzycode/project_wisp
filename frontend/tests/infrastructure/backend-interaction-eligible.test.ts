@@ -1,3 +1,4 @@
+import { localCharacterFixture } from './backend-ai-fixture';
 import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
 import type { AIProviderRequest } from '../../src/application/ports/ai-provider.interface';
@@ -10,7 +11,7 @@ const wire = fixture('request.chat.json') as BackendInteractionChatRequest;
 const neutral: BackendInteractionAppraisal = { category: 'neutral', intensity: 'low', confidence: 'clear' };
 const json = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
 function input(value: BackendInteractionChatRequest = { ...wire, effectPolicy: 'eligible' }): AIProviderRequest {
-  return { requestId: value.requestId, locale: value.locale, characterSnapshot: value.character, memoryContext: value.memory,
+  return { requestId: value.requestId, locale: value.locale, characterSnapshot: localCharacterFixture(value.character), memoryContext: value.memory,
     recentContext: value.messages.slice(0, -1).map(message => ({ role: message.role === 'user' ? 'user' : 'wisp', text: message.content, createdAt: 'local-only' })),
     userMessage: { id: 'local-only', text: value.messages.at(-1)!.content, createdAt: 'local-only' }, summary: value.summary, previousInitiative: value.previousInitiative,
     interaction: { card: value.card, effectPolicy: value.effectPolicy, ...(value.previousTouch ? { previousTouch: value.previousTouch } : {}) } };

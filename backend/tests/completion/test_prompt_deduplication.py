@@ -8,6 +8,11 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.completion.projection_archive import (
+    assert_projected_input,
+    assert_selection_preserves_priority_and_history,
+    projected_factual_messages,
+)
 from tests.helpers import CONTRACT_FIXTURES
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
@@ -84,6 +89,7 @@ async def capture(case: dict) -> dict:
         outgoing = payload(selected)
         system = "\n".join(message["content"] for message in messages if message["role"] == "system")
         return {
+            "input": body,
             "input_sha256": digest(body),
             "settings": settings.model_dump(),
             "budget": {"window": window, "reserve": cap, "allowance": window - cap},
@@ -160,19 +166,19 @@ def test_same_inputs_preserve_facts_settings_and_budget_with_smaller_instruction
             if archived["payload_bytes"] >= before["payload_bytes"]:
                 # A shorter system can admit additional complete history pairs.
                 assert set(before["selected_keys"]) < set(archived["selected_keys"])
-            assert after["input_sha256"] == before["input_sha256"]
+            assert_projected_input(after["input"], before["input_sha256"], before["blocks"])
             assert after["settings"] == before["settings"]
             assert after["budget"] == before["budget"]
             assert after["selected_estimate"] <= after["budget"]["allowance"]
-            assert set(before["selected_keys"]) <= set(after["selected_keys"])
+            assert_selection_preserves_priority_and_history(before, after)
             old = {block["key"]: block for block in before["blocks"]}
             assert old.keys() == {block["key"] for block in after["blocks"]}
             for block in after["blocks"]:
                 original = old[block["key"]]
                 for key in ("source", "required", "priority", "order"):
                     assert block[key] == original[key]
-                assert factual_messages(block) == factual_messages(original)
-                assert factual_messages(block) == factual_messages(
+                assert factual_messages(block) == projected_factual_messages(original)
+                assert factual_messages(block) == projected_factual_messages(
                     next(b for b in archived["blocks"] if b["key"] == block["key"])
                 )
 

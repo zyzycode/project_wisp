@@ -20,7 +20,10 @@ CASES = json.loads((CONTRACT_FIXTURES / "desktop-backend-v1/expression/invalid.j
 def test_expression_shared_invalid_values_are_rejected(case: dict) -> None:
     with pytest.raises(ValidationError) as error:
         ENDPOINTS[case["endpoint"]].request_type.model_validate(case["value"])
-    assert all(item["loc"][:2] == ("character", "expression") for item in error.value.errors())
+    assert all(
+        item["loc"][:2] in (("character", "expression"), ("character", "synthesizedTone"))
+        for item in error.value.errors()
+    )
 
 
 def test_missing_or_invalid_projection_never_reaches_admission_or_provider(app_factory: Callable[..., FastAPI]) -> None:
