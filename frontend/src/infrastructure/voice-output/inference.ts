@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { availableParallelism } from 'node:os';
 import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { createSpeechTokenizer } from './tokenizer';
 import { add, concat, floating, floats, integer, sample } from './tensors';
@@ -6,20 +7,33 @@ import { add, concat, floating, floats, integer, sample } from './tensors';
 const H = 1024;
 const names = ['text_embed', 'codec_embed', 'talker_cache', 'code_predictor', 'residual_embed', 'tok_decoder'] as const;
 type Graph = typeof names[number];
+/** Internal offline probe controls; never exposed through IPC or application settings. */
+export interface SpeechInferenceOptions {
+  readonly threads?: 1 | 2 | 4 | 8;
+  readonly spinning?: boolean;
+  readonly onGraphRun?: (graph: Graph, durationMs: number) => void;
+}
 /** Port of pinned ONNX reference inference: custom-voice prefill, KV-cache AR, 25-frame decoder. */
 export class OnoAnnaInference {
   private constructor(private readonly sessions: Readonly<Record<Graph, InferenceSession>>,
-    private readonly tokenizer: Awaited<ReturnType<typeof createSpeechTokenizer>>) {}
-  public static async create(modelRoot: string, tokenizerRoot: string): Promise<OnoAnnaInference> {
+    private readonly tokenizer: Awaited<ReturnType<typeof createSpeechTokenizer>>,
+    private readonly onGraphRun?: SpeechInferenceOptions['onGraphRun']) {}
+  public static async create(modelRoot: string, tokenizerRoot: string, options: SpeechInferenceOptions = {}): Promise<OnoAnnaInference> {
     const entries: [Graph, InferenceSession][] = [];
+    // Measured CPU cap; sleeping idle session pools avoid competing with the active graph.
+    const threads = options.threads ?? Math.min(8, availableParallelism());
+    const spinning = options.spinning ? '1' : '0';
     try {
-      for (const name of names) entries.push([name, await InferenceSession.create(path.join(modelRoot, 'cpu_int4', `${name}.onnx`), { executionProviders: ['cpu'], intraOpNumThreads: 2, interOpNumThreads: 1, logSeverityLevel: 3 })]);
-      return new OnoAnnaInference(Object.fromEntries(entries) as Record<Graph, InferenceSession>, await createSpeechTokenizer(tokenizerRoot));
+      for (const name of names) entries.push([name, await InferenceSession.create(path.join(modelRoot, 'cpu_int4', `${name}.onnx`), { executionProviders: ['cpu'], intraOpNumThreads: threads, interOpNumThreads: 1, logSeverityLevel: 3,
+        extra: { session: { intra_op: { allow_spinning: spinning }, inter_op: { allow_spinning: spinning } } } })]);
+      return new OnoAnnaInference(Object.fromEntries(entries) as Record<Graph, InferenceSession>, await createSpeechTokenizer(tokenizerRoot), options.onGraphRun);
     } catch (error) { await Promise.all(entries.map(([, session]) => session.release())); throw error; }
   }
   private async run(name: Graph, feed: Record<string, Tensor>): Promise<readonly Tensor[]> {
     const session = this.sessions[name];
+    const started = this.onGraphRun ? performance.now() : 0;
     const result = await session.run(feed);
+    this.onGraphRun?.(name, performance.now() - started);
     return session.outputNames.map(key => {
       const tensor = result[key]; if (!tensor) throw new Error('Missing model output'); return tensor;
     });

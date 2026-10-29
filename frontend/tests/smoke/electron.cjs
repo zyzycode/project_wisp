@@ -119,7 +119,7 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await evaluate(`Array.from(document.querySelectorAll('[role="tab"]')).find(b=>b.textContent==='Голос и звук').click()`);
     await until(() => evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), 'Audio settings section');
     await evaluate(`(() => {window.__speechStarts=0; window.__sinkIds=[];
-      const start=AudioBufferSourceNode.prototype.start; AudioBufferSourceNode.prototype.start=function(...args){window.__speechStarts++;return start.apply(this,args);};
+      const start=AudioBufferSourceNode.prototype.start; AudioBufferSourceNode.prototype.start=function(...args){window.__speechStarts++;window.__speechStartedAt=Date.now();return start.apply(this,args);};
       const route=AudioContext.prototype.setSinkId; if(typeof route!=='function') throw new Error('setSinkId unavailable');
       AudioContext.prototype.setSinkId=function(id){window.__sinkIds.push(id);return route.call(this,id).catch(e=>{window.__sinkError=e.name;throw e;});};})()`);
     await evaluate(`(() => {const toggle=document.querySelector('.audio-output-settings .voice-setting-toggle input'); if(!toggle.checked) toggle.click();})()`);
@@ -189,10 +189,17 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await evaluate(`document.querySelector('.chat-input-field').focus()`);
     await win.webContents.insertText('Привет');
     await until(() => evaluate(`document.querySelector('.chat-send-btn')?.disabled === false`), 'Synthetic greeting ready to send');
+    const submittedAt = Date.now();
+    let heartbeatTicks = 0, maxHeartbeatGapMs = 0, previousTick = performance.now();
+    const heartbeat = setInterval(() => { const now = performance.now(); maxHeartbeatGapMs = Math.max(maxHeartbeatGapMs, now - previousTick); previousTick = now; heartbeatTicks++; }, 10);
     await evaluate(`document.querySelector('.chat-input-form').requestSubmit()`);
     try { await until(() => outputSmoke.getStats().syntheses === 1, 'Actual reply synthesis admission'); }
     catch (error) { report.voiceOutputDiagnostic = outputSmoke.getStats(); throw error; }
     await until(() => evaluate('window.__speechStarts === 1'), 'PCM across preload into actual Web Audio playback', realTts ? 125000 : 10000);
+    clearInterval(heartbeat);
+    const firstSourceStartAt = await evaluate('window.__speechStartedAt');
+    const stats = outputSmoke.getStats();
+    report.voiceLatency = { submittedAt, firstSourceStartAt, mockProviderMs: stats.mockProviderMs, utilityMemory: app.getAppMetrics().filter(metric => metric.name === 'Wisp speech synthesis').map(metric => metric.memory), ...stats.timing, admissionWaitMs: stats.thinkingAt === null ? null : stats.thinkingAt - submittedAt, thinkingMs: stats.thinkingAt === null || stats.replyCompletedAt === null ? null : stats.replyCompletedAt - stats.thinkingAt, replyWaitMs: stats.replyCompletedAt === null ? null : stats.replyCompletedAt - submittedAt, replyToSourceStartMs: stats.replyCompletedAt === null ? null : firstSourceStartAt - stats.replyCompletedAt, submitToSourceStartMs: firstSourceStartAt - submittedAt, heartbeatTicks, maxHeartbeatGapMs, realTts };
     await until(() => outputSmoke.getStats().acknowledgements === 1, 'Matching playback acknowledgement', realTts ? 125000 : 10000);
     await until(() => evaluate('!document.querySelector(".speech-text")'), 'Voice mode replaces reply bubble');
     record('voice-output-reply-pcm-playback', 'PASS', 'Real successful mock Dialogue reply → output adapter → Main synthesis → Preload PCM → Web Audio start/end acknowledgement');

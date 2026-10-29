@@ -55,7 +55,8 @@ Startup-включение одноразовое: выключенный пол
 Main проверяет файлы и авторизует только identity текущего успешного ответа;
 Renderer не передаёт произвольный текст. ONNX исполняется в отдельном Main-owned
 Electron utility process, изолирующем native crash от процесса приложения,
-с двумя CPU потоками, ограничением 120 s, 1500 frames и 120 s PCM. Нет очереди,
+с числом intra-op CPU потоков `min(8, availableParallelism())`, inter-op=1 и
+выключенным spinning у session pools. Ограничения — 120 s, 1500 frames и 120 s PCM. Нет очереди,
 повторного озвучивания отменённого ответа, WAV-файлов и логирования текста/аудио.
 Токенизатор сверяется с official Python Qwen2Tokenizer 4.57.3 на RU/EN, числах,
 пунктуации, newline, emoji и Unicode NFC. Новых runtime-зависимостей нет.
@@ -82,7 +83,44 @@ Cancel/timeout/dispose прекращают дочерний процесс; н�
 CPU time ~99.44 s. Main heartbeat продолжал работать. Это измерение одного
 прогона, не замер памяти текущего utility process и не подтверждение качества на слух.
 Полный ответ синтезируется до начала playback: задержка может быть большой;
-длинный ответ при deadline останется только текстовым. Потоковая озвучка и
-ускорение не входят в этот slice.
+длинный ответ при deadline останется только текстовым. Потоковая озвучка не включена; CPU tuning текущего utility process описан ниже.
 
 Канонические границы: [UI Spec](engine/UI_SPEC.md#локальный-голосовой-вывод).
+
+
+## Воспроизводимые замеры CPU
+
+Из корня после обычной подготовки pinned ресурсов:
+
+```sh
+node frontend/scripts/benchmark-tts.mjs 2 1 full
+node frontend/scripts/benchmark-tts.mjs 8 0 full
+```
+
+`short` вместо `full` проверяет только приветствие; full добавляет вопрос и фразу
+из двух предложений. Каждая фраза повторяется дважды с seed=42 в отдельном
+процессе пробы; production sampling не меняется. Проба проверяет SHA256, не
+скачивает модель и не пишет PCM. Вывод: verification/load, synthesis/PCM duration,
+RTF, graph times/calls, CPU time, peak RSS и heartbeat тестового Node parent.
+Предел каждого этапа — 120 s, затем завершается только дочерний процесс пробы;
+незавершённый синтез не считается успешным и не получает выдуманный RTF.
+Это process-cold запуск с обычным файловым кешем ОС, не cold disk.
+
+Для настоящего utility process → выбранный аудиовыход → Web Audio start/end/ack:
+
+```sh
+WISP_TTS_NATIVE_PROBE=1 node scripts/wisp.mjs smoke:desktop /tmp/wisp-tts-latency
+```
+
+Native smoke использует отдельный профиль, synthetic microphone и фиксированный
+ответ, seed только в test-owned utility entry, без AI provider calls. `voiceLatency`
+отделяет mock-provider time, ожидание Dialogue, synthesis, PCM duration и первый
+`AudioBufferSourceNode.start()`, показывает Main heartbeat и память utility process.
+Вызов `start()` — программный onset, не акустический замер звука колонок.
+Числа реального AI-провайдера этим smoke не подтверждаются.
+
+На проверенном Ryzen 7 5800X/Linux увеличение CPU cap ускоряет короткий синтез
+примерно вдвое, но RTF остаётся выше 1; быстрого разговорного отклика это пока не
+обеспечивает. Результат других CPU требует собственной пробы. Streaming не включён:
+при RTF>1 ранний старт сам по себе не обеспечивает речь без пауз. Измерения и
+сравнение runtime/русских альтернатив публикуются в [#149](https://github.com/zyzycode/project_wisp/issues/149).

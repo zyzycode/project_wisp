@@ -7,23 +7,36 @@ import { registerVoiceOutputIpc } from '../../src/main/voice-output-ipc';
 import { parseBrainStateDTO } from '../../src/shared/brain-body-ipc-validation';
 import { LocalSpeechSynthesizer } from '../../src/infrastructure/voice-output/local-speech-synthesizer';
 import path from 'node:path';
+import { MockAIProvider } from '../../src/infrastructure/ai/mock-ai-provider';
 
 export function createNativeSpeechProbe(resources: string, entry: string) { return new LocalSpeechSynthesizer(resources, entry); }
 
 /** Exercises real output service, IPC, contextBridge and browser playback with synthetic PCM. */
 export async function installVoiceOutputSmoke(sender: WebContents, initial: unknown, real = false, deviceId = '') {
+  let mockProviderMs: number | null = null;
+  const originalGenerate = MockAIProvider.prototype.generateResponse;
+  MockAIProvider.prototype.generateResponse = async function (request) {
+    const started = performance.now();
+    try { return await originalGenerate.call(this, request); }
+    finally { mockProviderMs = performance.now() - started; }
+  };
   let syntheses = 0;
+  let thinkingAt: number | null = null;
+  let replyCompletedAt: number | null = null;
+  let timing: { startedAt: number; synthesisMs: number; pcmMs: number } | null = null;
   let acknowledgements = 0;
   let failNext = false;
   let lastPhase = 'idle';
   let lastOutcome: string | null = null;
-  const native = real ? new LocalSpeechSynthesizer(path.join(__dirname, '../..', '.cache'), path.join(__dirname, 'speech-worker.js')) : null;
+  const native = real ? new LocalSpeechSynthesizer(path.join(__dirname, '../..', '.cache'), path.join(__dirname, 'speech-seeded.js')) : null;
   const service = new VoiceOutputService({
     synthesizer: { ready: async () => native ? native.ready() : true, synthesize: async (text, language, signal) => {
       syntheses++;
       if (failNext) { failNext = false; throw new Error('Synthetic synthesis failure'); }
       if (native) {
+        const startedAt = Date.now();
         const speech = await native.synthesize(text, language, signal);
+        timing = { startedAt, synthesisMs: Date.now() - startedAt, pcmMs: speech.samples.length / 24 };
         if (!speech.samples.some(sample => Math.abs(sample) > 0.01)) throw new Error('Silent native speech');
         return speech;
       }
@@ -44,6 +57,8 @@ export async function installVoiceOutputSmoke(sender: WebContents, initial: unkn
         snapshot = { ...snapshot, dialogue: { ...snapshot.dialogue, turn: { ...snapshot.dialogue.turn, replyText: 'Привет!' } } };
         args[0] = snapshot;
       }
+      if (snapshot.dialogue.turn.phase === 'thinking' && lastPhase !== 'thinking') thinkingAt = Date.now();
+      if (snapshot.dialogue.turn.phase === 'completed' && lastPhase !== 'completed') replyCompletedAt = Date.now();
       lastPhase = snapshot.dialogue.turn.phase;
       lastOutcome = snapshot.dialogue.turn.phase === 'completed' ? snapshot.dialogue.turn.outcome.kind : null;
       service.observe(snapshot);
@@ -58,8 +73,8 @@ export async function installVoiceOutputSmoke(sender: WebContents, initial: unkn
       return handler(event, ...args);
     }), remove: channel => ipcMain.removeHandler(channel),
   });
-  return { getStats: () => ({ syntheses, acknowledgements, lastPhase, lastOutcome, status: service.status() }), failNext: () => { failNext = true; },
-    dispose: async () => { sender.send = send; unregister(); await service.dispose(); } };
+  return { getStats: () => ({ syntheses, acknowledgements, lastPhase, lastOutcome, mockProviderMs, thinkingAt, replyCompletedAt, timing, status: service.status() }), failNext: () => { failNext = true; },
+    dispose: async () => { MockAIProvider.prototype.generateResponse = originalGenerate; sender.send = send; unregister(); await service.dispose(); } };
 }
 
 /** Test bundle only: actual service, validation and permissions; synthetic model/inference. */
