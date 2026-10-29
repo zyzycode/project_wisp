@@ -385,7 +385,10 @@ export class MainAutonomyComposition {
   public invalidateSocialFollowup(): void { this.socialFollowup.invalidate(); this.dialoguePending = false; }
   public resetSocialFollowupMemory(): void { this.socialFollowup.reset(); this.dialoguePending = false; }
   public acceptUserContact(): void { this.socialFollowup.contact(); }
-  public acceptDialogueContact(): void { this.acceptUserContact(); this.dialoguePending = true; }
+  public acceptDialogueContact(): void {
+    this.acceptUserContact(); this.dialoguePending = true;
+    if (this.activity.getRuntime()?.activityId === 'social_bid') this.cancelActivity('user_interaction', true);
+  }
 
   public spendObservationBudget(atMs: number): boolean { return this.initiativeBudget.start(atMs); }
 

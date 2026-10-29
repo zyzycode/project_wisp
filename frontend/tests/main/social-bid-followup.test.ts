@@ -26,7 +26,11 @@ describe('SOC-A01 Main lifecycle and admission', () => {
     expect(f.main.getVisualEpisode().intent).toMatchObject({ kind: 'thinking_loop', expressionHint: 'curious', propHint: 'none' });
     expect(f.social).toHaveBeenCalledOnce(); expect(f.started).toHaveBeenCalledTimes(firstCalls);
     f.step(1200); expect(f.main.getActivityTimeline()).toMatchObject({ phaseId: 'wait' });
-    f.step(4000); expect(f.main.getActivityTimeline()).toBeNull();
+    f.step(4000); expect(f.main.getActivityTimeline()?.phaseId).toBe('disengage');
+    f.step(799); expect(f.main.getActivityTimeline()?.phaseId).toBe('disengage');
+    f.step(1); expect(f.main.getActivityTimeline()?.phaseId).toBe('settle');
+    f.step(599); expect(f.main.getActivityTimeline()?.phaseId).toBe('settle');
+    f.step(1); expect(f.main.getActivityTimeline()).toBeNull();
     expect(f.outcome.mock.calls.filter(([event]) => event.family === 'social_bid')).toHaveLength(1);
     f.step(30000); expect(f.main.spendObservationBudget(f.now())).toBe(false);
     f.step(120000); for (let i = 0; i < 8; i++) { f.pulse(); f.finish(); }

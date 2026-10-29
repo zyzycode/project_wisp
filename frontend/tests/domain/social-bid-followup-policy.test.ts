@@ -51,12 +51,21 @@ describe('SOC-A01 bounded second attempt', () => {
     const draw = vi.fn(() => 0); expect(p.evaluate(200000, true, true, draw)).toBeNull();
     expect(draw).not.toHaveBeenCalled(); expect(p.canStartFirst()).toBe(false);
   });
-  it('defines only curious stationary gesture then bounded wait, without wave or talking', () => {
+  it('defines curious gesture, bounded wait and a quiet ending without wave or talking', () => {
     const definition = createSocialBidActivity(9000, 'P4_autonomous', 'second');
     expect(definition.entryStepId).toBe('gesture');
     expect(definition.steps).toMatchObject([
       { type: 'animation', intent: { kind: 'thinking_loop', expressionHint: 'curious', propHint: 'none' }, completion: { durationMs: 1200 } },
-      { type: 'animation', intent: { kind: 'idle_blink' }, completion: { durationMs: 4000 } },
+      { type: 'animation', intent: { kind: 'idle_blink' }, completion: { durationMs: 4000 }, next: 'disengage' },
+      { type: 'animation', stage: 'exiting', intent: { kind: 'look_around' }, completion: { durationMs: 800 }, next: 'settle' },
+      { type: 'animation', stage: 'exiting', intent: { kind: 'settle' }, completion: { durationMs: 600 } },
     ]);
   });
+});
+
+it('preserves the short P3/system return invitation without the local ending', () => {
+  const definition = createSocialBidActivity(2400, 'P3_reactive');
+  expect(definition.steps.map(step => step.id)).toEqual(['notice', 'gesture', 'wait']);
+  expect(definition.steps.at(-1)).toMatchObject({ completion: { durationMs: 2400 } });
+  expect(definition.steps.at(-1)?.next).toBeUndefined();
 });
