@@ -51,7 +51,7 @@ Priority — входная подсказка: Character может повыс�
 | `wake` | Выйти из semantic sleep, если правила разрешают; quiet не меняется. | user, system |
 | `drag` | Зафиксировать прямое перетаскивание пользователем. | user |
 | `land` | Завершить drag movement и стабилизировать персонажа. | user, system |
-| `wander` | Ненавязчивое автономное перемещение. | timer |
+| `wander` | Перемещение; автономное Explore либо ограниченная прогулка по явной просьбе. | timer, user |
 | `idle` | Стабильное спокойное поведение без активной цели. | timer, system |
 | `quiet` | Подавить навязчивые автономные действия и реплики. | user, settings, system |
 
@@ -85,3 +85,11 @@ Provider hints не обходят cooldown/no-spam/sleep/quiet; unknown hints �
 Provider source не P1; допустимый provider выше local по [Autonomy §12](AUTONOMY_ENGINE.md#12-auto-a09-admission-и-владение-ai-занятием). Request/admission/start/terminal/ownership — отдельный [behavior-admission-port.ts](../../src/application/ports/behavior-admission-port.ts), без расширения provider DTO и asset/target fields BehaviorIntent. Reason — диагностика, не transport pose/gait/ownership/family.
 
 DTO остаётся pure Domain, без UI/assets/frames/FPS/OS descriptors/IPC channels; [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).
+
+## Просьбы о движении через чат
+
+[ChatMotion](../../src/application/ports/chat-motion.ts) — локальная Application boundary существующего dialogue/Activity runtime, не новый движок. В первом slice поддерживаются только экранные left/right и stop. Направление передаётся отдельной типизированной командой, никогда через `reason`, `replyText`, provider hint или новый public kind. Character разрешает candidate `wander/source=user`; только затем Brain строит направленную Activity. Stop отменяет принадлежащий чату run, не является `idle`/`quiet` и не меняет настройки.
+
+Application распознаёт полную текущую просьбу до вызова provider ограниченной RU/EN грамматикой: «иди влево», «пожалуйста, пройди немного налево», «можешь пойти вправо?», «стой», «остановись», «please walk left», «can you move right?», «stop». Это ограниченное понимание команд, не универсальный NLU. Совпадения слова внутри рассказа, цитаты, перевода, обсуждения команды и отрицания не исполняются. Противоречивое/неясное направление («иди туда», «иди влево или вправо») даёт локальное уточнение; смешанная просьба с неподдерживаемым действием не исполняется частично. Непохожие на команды сообщения остаются обычным диалогом.
+
+Распознанная просьба/уточнение не вызывает LLM и не использует `suggestedBehavior` из художественного ответа. Одинаковые команды работают при Mock, offline и недоступном backend. Новая семантика provider/wire для действий вне этого slice требует отдельного решения. Admission/отказ принадлежат [Character](CHARACTER_ENGINE.md#просьбы-о-движении-и-право-на-отказ), исполнение — [Activity](ACTIVITY_ENGINE.md#направленная-прогулка-по-просьбе).

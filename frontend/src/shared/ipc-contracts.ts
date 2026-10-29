@@ -387,6 +387,7 @@ export type DialogueFallbackReasonDTO =
 
 export type DialogueTurnPresentationDTO =
   | QuietSupportAcknowledgementDTO
+  | ChatMotionAcknowledgementDTO
   | { readonly phase: 'idle' }
   | { readonly phase: 'thinking'; readonly requestId: string }
   | {
@@ -417,6 +418,16 @@ export interface QuietSupportAcknowledgementDTO {
   readonly requestId: string;
   readonly replyText: string;
   readonly outcome: { readonly kind: 'local'; readonly reason: 'quiet_support' };
+}
+
+/** Local chat command acknowledgement; reply text describes authoritative execution facts. */
+export interface ChatMotionAcknowledgementDTO {
+  readonly memorySource?: never;
+  readonly interestThread?: never;
+  readonly phase: 'completed';
+  readonly requestId: string;
+  readonly replyText: string;
+  readonly outcome: { readonly kind: 'local'; readonly reason: 'chat_motion' };
 }
 
 export interface DialoguePresentationDTO {

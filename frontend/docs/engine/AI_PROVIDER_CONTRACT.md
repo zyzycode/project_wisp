@@ -216,6 +216,14 @@ Fake scheduler/deferred provider регрессии: duplicate/resend; timeout �
 
 ## Thinking и latency
 
+### Локальные команды движения
+
+До provider execution Application использует [ограниченную грамматику](BEHAVIOR_INTENTS.md#просьбы-о-движении-через-чат). Ветка ChatMotion возвращает существующий `completed` turn с локальным outcome `chat_motion`, без provider call, fallback, memory-confirmable source, topic claim или semantic appraisal. Обычный once-only user stimulus сохраняется. Пара user/local reply может сохраняться существующим `localOnly` путём, без model fact candidates; командный run/статус хранится только в RAM и не восстанавливается после restart.
+
+Ответ строится из локальной квитанции: «Иду влево» только после started; сон/усталость/перегруз/край/недоступность — конкретный отказ; no-op stop не утверждает остановку падения. Завершение/отмена обновляет текст только ещё актуального local command turn; оно не создаёт новый user turn/LLM-вызов, не меняет уже сохранённую пару и не перезаписывает последующий диалог. Текст старта в истории обозначает начало, не доказательство завершения. Различение исполнения опирается на [типизированные квитанции](../../src/application/ports/chat-motion.ts) и Runner/Motion, не RP-текст.
+
+Локальная квитанция освобождает dialogue single-flight сразу, не ждёт locomotion terminal: во время прогулки `canSubmit` позволяет stop/замену. Любое следующее принятое обычное сообщение отменяет chat run до начала provider turn. Provider single-flight, deadline и guard retired calls не ослабляются; зависший старый provider не разрешает новый обычный send. Reset/reload/dispose инвалидируют оба lifecycle. Provider text/suggestedBehavior никогда не запускают направленную прогулку этого slice.
+
 <a id="правила-1"></a>
 
 `idle → thinking → ok | fallback | error`. Mock latency локальна; UI получает provider-neutral presentation через Application/IPC. Direct drag/click всегда приоритетнее provider.

@@ -78,6 +78,16 @@ Guard читает immutable normalized context/event, не мутирует eng
 
 Cancel прекращает emissions и возвращает точный cleanup scope; доставленный physical fact не откатывается. Body применяет свои visual interrupt rules локально, Runner не подменяет их и не ждёт outcome.
 
+### Направленная прогулка по просьбе
+
+После [Character admission](CHARACTER_ENGINE.md#просьбы-о-движении-и-право-на-отказ) user `wander` выбирает одну детерминированную `chat_walk` Activity ранга P1: один locomotion step с gait=walk, без случайного Explore/inspection/прыжка/перелезания на другую опору. Application передаёт отдельно нормализованное направление из [ChatMotion](../../src/application/ports/chat-motion.ts); pure Domain planner вычисляет конечную цель из актуальных root position, collision range и текущей допустимой опоры. Геометрия не поступает из текста/provider.
+
+Первый slice: не более 160 DIP в сторону экранной X, обычная настроенная walk speed, deadline 7000 ms; конец раньше при достижении цели. Цель ограничивается пересечением collision range и диапазона корня на текущей опоре (`screen_floor` или fresh `window_top`), Y остаётся на ней. Отсутствие положительного доступного смещения → `edge`, отсутствие допустимой опоры → `no_support`. Нельзя превращать clamp в ход в противоположную сторону. Drag, queued drag, fall, climb/hang/traversal, disabled/menu pause/shutdown не запускают прогулку; недопустимое движение отклоняется без очереди. Смена/потеря/устаревание опоры отменяет run; физический исход остаётся Motion. Никакой записи позиции/телепорта из chat runtime.
+
+Одновременно одна chat-команда и один Runner. Каждая новая принятая chat-команда сначала отменяет прежнюю, затем проверяет новые gates и цель от фактической позиции. Stop прекращает chat locomotion; отсутствие такого run даёт честный no-op. Повтор направления начинает новый bounded run без очереди. Обычное принятое сообщение, прямой input, reset/reload/dispose, P0/P2 и invalid environment также отменяют run; обычный диалог не возобновляет его. Stop не останавливает падение/drag и не выключает последующую автономность.
+
+Recognition, admission/start, completed, cancelled и rejected — разные факты. `started` возвращается только после реального успешного старта Runner/Motion. Completion — authoritative target/Runner terminal, timeout — cancellation, не успех. Request/conversation/generation/run identity ограждают terminal callbacks; старые результаты не двигают персонажа и не перезаписывают новый ответ. Terminal cleanup выполняется once-only и только для своего run. Автономный старт в той же transaction не должен немедленно заменить принятую прогулку.
+
 ## 11. Cooldown
 
 `CooldownEntry { key, nextEligibleAtMs }` — hard gate по explicit monotonic time, отдельно от repetition. Zoomies/rare actions/Stretch/Swat имеют отдельные keys. `sleep_after_wake` обходит только P2 по Autonomy/Character. Durations — tuning data, новых значений здесь нет.

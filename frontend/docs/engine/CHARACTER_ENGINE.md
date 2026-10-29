@@ -56,6 +56,12 @@ stateDiagram-v2
 
 P2 sleep срабатывает после P0 physics/P1 input. Direct drag (P1) прерывает сон через `drag -> land -> settle`, без ожидания `wake_up`. Внутренние respond/think/play/timer idle/wander сами не будят. Если после wake условие sleep ещё истинно, новый sleep допустим после приоритетного взаимодействия. Пороги и прямой click/wake заданы FSM выше.
 
+### Просьбы о движении и право на отказ
+
+Явная chat-команда — добровольный user `wander`, а не forced drag: P1 ownership даёт приоритет над занятием, но не отменяет Character admission. Character проверяет актуальный snapshot после once-only user input: semantic sleeping → `sleeping`; иначе `energy <= 20` → `low_energy`; иначе `comfort >= 80` → `overloaded`; иначе прогулка допустима по Character. Используется тот же источник порогов, что `requiresVitalSleep`; копирование чисел в parser/adapter/UI запрещено. Команда не будит персонажа и не откладывается до пробуждения. Quiet сохраняется и не запрещает спокойную явную прогулку. Stop допустим независимо от Needs/sleep: это cleanup, а не просьба продолжить нагрузку.
+
+Во время прогулки пересечение vital sleep gate отменяет run с `critical_need`, затем продолжается штатный P2 sleep. Mood/tone и личность определяют формулировку локальной реплики, но не случайный отказ, новые friendship/consent пороги или изменение Needs. Прогулка не игра/автономное Explore: не выдаёт play/social/Explore completion rewards и не обучает предпочтения. Обычный once-only эффект принятого user message сохраняется; повторный callback и отказ не создают второй эффект. Physical availability/support проверяет Motion после Character, с отдельной фактической причиной отказа.
+
 <a id="22-устойчивый-quiet-auto-a09"></a>
 ## 2.2. Устойчивый тихий режим (Quiet Mode)
 
