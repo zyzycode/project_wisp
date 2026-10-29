@@ -67,6 +67,13 @@ export class AutonomyCharacterEngine {
     return this.sleepState;
   }
 
+  public chatMotionRejection(snapshot: CharacterAutonomySnapshot): 'sleeping' | 'low_energy' | 'overloaded' | null {
+    if (this.sleepState === 'sleeping') return 'sleeping';
+    if (snapshot.needs.energy <= SLEEP_ENERGY_MAX) return 'low_energy';
+    if (snapshot.needs.comfort >= SLEEP_COMFORT_MIN) return 'overloaded';
+    return null;
+  }
+
   public finishRest(): void { this.sleepState = 'awake'; }
 
   public wakeForSupportLoss(): void {
@@ -126,6 +133,7 @@ export class AutonomyCharacterEngine {
       this.sleepState = 'awake';
       return this.resolution(intent);
     }
+    if (intent.kind === 'wander' && intent.source === 'user' && this.chatMotionRejection(snapshot) === null) return this.resolution(intent);
     if ((intent.kind === 'play' || intent.kind === 'think') && this.sleepState === 'awake'
         && !requiresVitalSleep(snapshot)) {
       return this.resolution(intent);

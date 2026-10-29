@@ -321,6 +321,7 @@ function initializeAutonomyComposition(): void {
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState()),
+    onChatMotionTerminal: event => dialogueRuntime?.chatMotionTerminal(event),
     onActivityStarted: () => aiEventRuntime?.activityStarted(),
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
     onUnsolicitedBlocked: () => { aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); },
@@ -391,6 +392,7 @@ function initializeAutonomyComposition(): void {
     }
     beverageDialogue = memoryComposition?.beverage ? new BeverageDialogue({ runtime: () => memoryRuntime, createId: randomUUID, timestamp: () => new Date().toISOString(), now: () => brainStatePublisher.now(), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) : null;
     dialogueRuntime = new DialogueRuntime({ onAcceptedUserInput: () => autonomyComposition?.acceptDialogueContact(), onLifecycleReset: () => autonomyComposition?.invalidateSocialFollowup(), quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
+      chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
       memory: { ...(beverageDialogue ? { beverage: beverageDialogue } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,

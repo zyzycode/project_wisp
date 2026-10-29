@@ -363,6 +363,24 @@ describe('Application: ShimejiMotionOrchestrator', () => {
     expect(onVoluntaryMovementCompleted).toHaveBeenCalledOnce();
   });
 
+  it('returns only the completed horizontal activity identity after cancellation and replacement', () => {
+    let nowMs = 0;
+    const completed = vi.fn();
+    const orchestrator = new ShimejiMotionOrchestrator({ initialMotion: motion(), initialSurface,
+      motionEngine: new MotionEngine(), surfaceKinematics: new SurfaceKinematics(), environment: () => environment,
+      positionPort: { commitRootPosition: () => {} }, now: () => nowMs, onVoluntaryMovementCompleted: completed });
+    orchestrator.start();
+    orchestrator.requestVoluntaryMovement({ kind: 'horizontal_wander', targetRootPosition: { x: 200, y: 790 }, speedPxPerSec: 100,
+      activity: { runId: 'old', stepId: 'walk' } });
+    orchestrator.cancelVoluntaryMovement();
+    orchestrator.requestVoluntaryMovement({ kind: 'horizontal_wander', targetRootPosition: { x: 101, y: 790 }, speedPxPerSec: 1000,
+      activity: { runId: 'current', stepId: 'walk' } });
+    nowMs = 10; orchestrator.tick();
+    expect(orchestrator.getMotionState().position.x).toBe(101);
+    expect(completed).toHaveBeenCalledExactlyOnceWith({ runId: 'current', stepId: 'walk' });
+    nowMs = 20; orchestrator.tick(); expect(completed).toHaveBeenCalledOnce();
+  });
+
   it('validates voluntary commands and moves by at most speed times fixed-step', () => {
     let nowMs = 0;
     const result = createOrchestrator(() => nowMs, motion({ position: { x: 100, y: 500 } }));

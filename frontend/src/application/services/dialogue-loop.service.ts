@@ -1,3 +1,6 @@
+import { recognizeChatMotion } from './chat-motion-recognition';
+import { chatMotionReply, chatMotionTerminalReply } from './chat-motion-reply';
+import type { ChatMotionRecognition, ChatMotionTerminal } from '../ports/chat-motion';
 import { recognizeBeverageCorrection } from './beverage-preference';
 import type { BeverageCapture, BeverageCorrectionTurn } from '../ports/memory-beverage.interface';
 import { parseBeverageProposal } from '../../shared/beverage-validation';
@@ -19,6 +22,7 @@ interface Turn { readonly request: AIProviderRequest; readonly generation: numbe
 
 /** One instance per Main lifecycle, including while its window is closed. */
 export class DialogueRuntime {
+  private chatRun: { requestId: string; runId: string; generation: number; conversationId: string } | null = null;
   private readonly admission: DialogueAdmission;
   private pending: object | null = null;
   private lastOffered: InterestThreadRef | undefined;
@@ -85,6 +89,12 @@ export class DialogueRuntime {
     this.options.onAcceptedUserInput?.();
     this.options.memory?.beverage?.invalidateOffer();
     this.options.quietSupport?.resumeForUserDialogue();
+    const motion = recognizeChatMotion(command.text);
+    if (motion.kind !== 'none') {
+      this.acknowledgeMotion(command.text, motion);
+      return { status: 'accepted', conversationId: this.conversationId };
+    }
+    this.options.chatMotion?.cancel('user_input');
     if (!command.replyToInterestThread && this.supportEligible && isQuietSupportCue(command.text) && this.options.quietSupport) {
       this.acknowledgeSupport(command.text);
       return { status: 'accepted', conversationId: this.conversationId };
@@ -114,6 +124,42 @@ export class DialogueRuntime {
         }).catch(() => { if (this.pending === token) { this.pending = null; this.executing = false; if (correctionSensitive) this.correctionUnavailable(); else if (scopedRefusal) this.options.publish(); else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, false); } });
     } else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, true);
     return { status: 'accepted', conversationId: this.conversationId };
+  }
+  public chatMotionTerminal(event: ChatMotionTerminal): void {
+    const run = this.chatRun;
+    if (!run || this.disposed || this.streamId === null || run.requestId !== event.requestId || run.runId !== event.runId
+        || run.generation !== this.generation || run.conversationId !== this.conversationId) return;
+    this.chatRun = null;
+    if (this.turn.phase !== 'completed' || this.turn.requestId !== event.requestId || this.turn.outcome.kind !== 'local' || this.turn.outcome.reason !== 'chat_motion') return;
+    this.options.transaction(() => {
+      this.turn = { phase: 'completed', requestId: event.requestId, replyText: chatMotionTerminalReply(event, this.options.locale === 'en'), outcome: { kind: 'local', reason: 'chat_motion' } };
+      this.options.publish();
+    });
+  }
+  private acknowledgeMotion(text: string, recognition: Exclude<ChatMotionRecognition, { kind: 'none' }>): void {
+    this.options.transaction(() => {
+      this.supportEligible = false; this.lastOffered = undefined; this.sourceUserText = null;
+      this.options.observation?.invalidate(); this.options.events?.suppressUnsolicited?.();
+      const requestId = this.options.createId(), createdAt = this.options.timestamp();
+      this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text, createdAt });
+      let replyText: string;
+      if (recognition.kind === 'clarify') {
+        this.options.chatMotion?.cancel('user_input');
+        replyText = this.options.locale === 'en' ? 'Should I walk left, right, or stop?' : 'Уточни: идти влево, вправо или остановиться?';
+      } else {
+        const receipt = this.options.chatMotion?.submit({ requestId, conversationId: this.conversationId, generation: this.generation, command: recognition.command })
+          ?? { status: 'rejected' as const, requestId, reason: 'unavailable' as const };
+        replyText = chatMotionReply(receipt, recognition.command, this.options.locale === 'en');
+        this.chatRun = receipt.status === 'started' ? { requestId, runId: receipt.runId, generation: this.generation, conversationId: this.conversationId } : null;
+      }
+      const user = { id: this.options.createId(), text, createdAt };
+      const assistant = { id: this.options.createId(), text: replyText, createdAt };
+      this.turn = { phase: 'completed', requestId, replyText, outcome: { kind: 'local', reason: 'chat_motion' } };
+      this.context = boundMemoryContext([...this.context, { role: 'user', ...user, sourceMessageId: user.id }, { role: 'wisp', ...assistant, sourceMessageId: assistant.id }], this.options.memory?.contextLimits);
+      this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
+      this.options.publish();
+      this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
+    });
   }
   private correctionUnavailable(): void { this.turn = { phase: 'error', requestId: this.options.createId(), message: 'Не удалось безопасно исправить предпочтение. Обновите его в памяти и попробуйте снова.' }; this.options.publish(); }
   private acknowledgeSupport(text: string): void {
@@ -154,6 +200,7 @@ export class DialogueRuntime {
     });
   }
   private reset(): void {
+    this.chatRun = null; this.options.chatMotion?.cancel('reset');
     this.options.onLifecycleReset?.();
     if (this.pending) this.executing = false;
     this.options.memory?.beverage?.invalidateOffer();

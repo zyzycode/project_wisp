@@ -1,3 +1,4 @@
+import type { IChatMotion } from './chat-motion';
 import type { InteractionAppraisal, PreviousTouchReaction, InteractionReceipt } from './interaction-appraisal';
 import type { DialogueMemoryHooks } from './memory-runtime';
 import type { IAIProvider } from './ai-provider.interface';
@@ -19,6 +20,7 @@ export interface IQuietSupportRuntime {
 /** All effects are injected by Main; provider execution belongs to one app lifecycle. */
 export interface DialogueRuntimeOptions {
   readonly provider: IAIProvider;
+  readonly chatMotion?: IChatMotion;
   readonly onAcceptedUserInput?: () => void;
   readonly onLifecycleReset?: () => void;
   readonly quietSupport?: IQuietSupportRuntime;

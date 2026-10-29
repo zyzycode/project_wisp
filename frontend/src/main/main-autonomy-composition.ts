@@ -1,3 +1,6 @@
+import { ChatMotionRuntime } from '../application/services/chat-motion-runtime';
+import { planChatWalk } from '../domain/behavior/chat-walk';
+import type { ChatMotionRequest, ChatMotionTerminal, ChatMotionCancellation } from '../application/ports/chat-motion';
 import type { CursorGameResult } from '../application/ports/cursor-game-contract';
 import { CursorGamePresentation } from '../application/services/cursor-game-presentation';
 import type { IPlatformAdapter } from '../application/ports/platform-adapter.interface';
@@ -63,6 +66,7 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
+  readonly onChatMotionTerminal?: (event: ChatMotionTerminal) => void;
   readonly systemIdle?: SystemIdlePort;
   readonly routine?: ConstructorParameters<typeof MainSystemIdle>[0]['routine'];
   readonly routineCalendar?: ConstructorParameters<typeof MainSystemIdle>[0]['calendar'];
@@ -94,6 +98,7 @@ export interface MainAutonomyCompositionOptions {
 /** Main composition boundary for Character, Activity, cadence, and presentation. */
 export class MainAutonomyComposition {
   private readonly character = new AutonomyCharacterEngine();
+  private readonly chatMotion: ChatMotionRuntime;
   private readonly coordinator: AutonomyCoordinator;
   private readonly activity: BrainActivityRuntime;
   private readonly providerAdmission: ProviderBehaviorAdmission;
@@ -178,7 +183,7 @@ export class MainAutonomyComposition {
         if (request.traversal !== undefined) return options.movement.requestTraversal?.({
           runId: request.runId, stepId: request.stepId, action: request.traversal,
         }) ?? false;
-        return this.coordinator.requestActivityLocomotion(request.targetRootPosition, request.gait);
+        return this.coordinator.requestActivityLocomotion(request.targetRootPosition, request.gait, { runId: request.runId, stepId: request.stepId });
       },
       cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
@@ -197,6 +202,7 @@ export class MainAutonomyComposition {
           : result.status === 'cancelled' ? result.cancelledAtMs : result.failedAtMs);
         if (this.secondRunId === runId) this.secondRunId = null;
         this.providerAdmission?.terminated(runId, result);
+        this.chatMotion?.settled(runId, result);
       },
       onTerminated: (result) => {
         if (result.activityId === 'rest_spot_sleep' && result.status === 'completed') this.stableRestSpotSleep = true;
@@ -231,7 +237,30 @@ export class MainAutonomyComposition {
         return this.activity.getRuntime();
       },
     });
+    this.chatMotion = new ChatMotionRuntime({
+      now: () => options.clock.now(),
+      gate: () => this.character.chatMotionRejection(options.getCharacterSnapshot())
+        ?? (!this.started || this.disposed || !this.enabled || this.menuOpen ? 'unavailable'
+          : !options.movement.canAcceptVoluntaryMovement() || this.activity.isTraversalStep() ? 'forced_motion' : null),
+      environment: () => options.movement.getEnvironmentSnapshot(),
+      plan: direction => planChatWalk({ direction, root: options.movement.getRootPosition(),
+        environment: options.movement.getEnvironmentSnapshot(), collisionInsets: options.movement.getCollisionInsets(), nowMs: options.clock.now() }),
+      start: definition => {
+        const intent = this.character.resolveDirectIntent({ kind: 'wander', source: 'user', priority: 'high' }, options.getCharacterSnapshot()).resolvedIntent;
+        if (!intent) return null;
+        this.cancelActivity('user_interaction', false);
+        this.coordinator.noteUserActivity();
+        this.coordinator.suspendForReactiveActivity();
+        if (!this.activity.startChatWalk(definition, intent)) { this.coordinator.resumeAfterReactiveActivity(); return null; }
+        return this.activity.getRuntime()?.runId ?? null;
+      },
+      cancelRun: () => { this.cancelActivity('explicit_cancel', true); this.coordinator.resumeAfterReactiveActivity(); },
+      terminal: event => options.onChatMotionTerminal?.(event),
+    });
   }
+
+  public submitChatMotion(request: ChatMotionRequest) { return this.chatMotion.submit(request); }
+  public cancelChatMotion(reason: ChatMotionCancellation): void { this.chatMotion.cancel(reason); }
 
   public start(): void {
     if (this.disposed || this.started) return;
@@ -245,6 +274,7 @@ export class MainAutonomyComposition {
     this.invalidateSocialFollowup();
     this.options.onAIInvalidated?.();
     if (this.disposed) return;
+    this.chatMotion.cancel('disposed');
     this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
     this.started = false;
@@ -257,6 +287,7 @@ export class MainAutonomyComposition {
     this.socialFollowup.reset();
     this.options.onAIInvalidated?.();
     if (this.disposed) return;
+    this.chatMotion.cancel('disposed');
     this.providerAdmission.invalidate('disposed');
     this.cancelActivity('application_shutdown', false);
     this.disposed = true;
@@ -283,6 +314,7 @@ export class MainAutonomyComposition {
     this.expireCursorObservation(nowMs);
     const speechChanged = this.gamePresentation.tick();
     const needsChanged = this.tickNeeds(elapsedMs);
+    this.chatMotion.tick();
     if (this.character.getSemanticSleepState() === 'sleeping'
         && permitsAutomaticWake(this.options.getCharacterSnapshot())) {
       this.character.resolveDirectIntent({ kind: 'wake', source: 'system', priority: 'normal', reason: 'restored_energy' }, this.options.getCharacterSnapshot());
@@ -729,6 +761,7 @@ export class MainAutonomyComposition {
   }
 
   public notifyVoluntaryMovementCompleted(completed?: Pick<TraversalRequest, 'runId' | 'stepId'>): void {
+    if (this.activity.getRuntime()?.activityId === 'chat_walk' && completed === undefined) return;
     const previousRun = this.activity.getRuntime()?.runId;
     this.providerAdmission.tick();
     if (previousRun !== this.activity.getRuntime()?.runId) return;

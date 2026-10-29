@@ -36,3 +36,23 @@ it('validates exact projection shape, IDs, text and lifetime', () => {
     { ...value, speech: { ...value.speech, startedAtMs: NaN } },
     { ...value, speech: { ...value.speech, expiresAtMs: 500 } }]) expect(() => parseCursorGame(bad, 500)).toThrow();
 });
+it('publishes a changed local motion terminal once under the same request identity', () => {
+  const p = new SpeechProjection(), s = snapshot();
+  const started: BrainStateDTO = { ...s, cursorGame: null, dialogue: { ...s.dialogue,
+    turn: { phase: 'completed', requestId: 'motion', replyText: 'Иду влево.', outcome: { kind: 'local', reason: 'chat_motion' } } } };
+  const initial = p.accept(started);
+  const completed: BrainStateDTO = { ...started, sampledAtMs: 2000, dialogue: { ...started.dialogue,
+    turn: { phase: 'completed', requestId: 'motion', replyText: 'Закончила прогулку.', outcome: { kind: 'local', reason: 'chat_motion' } } } };
+  const terminal = p.accept(completed);
+  expect(terminal?.text).toBe('Закончила прогулку.');
+  expect(terminal?.id).not.toBe(initial?.id);
+  expect(p.accept({ ...completed, revision: 3 })).toBeUndefined();
+});
+it('keeps ordinary dialogue deduplication unchanged when text changes for one identity', () => {
+  const p = new SpeechProjection(), s = snapshot();
+  const first: BrainStateDTO = { ...s, cursorGame: null, dialogue: { ...s.dialogue,
+    turn: { phase: 'completed', requestId: 'reply', replyText: 'Hello', outcome: { kind: 'success' } } } };
+  expect(p.accept(first)?.text).toBe('Hello');
+  expect(p.accept({ ...first, dialogue: { ...first.dialogue,
+    turn: { phase: 'completed', requestId: 'reply', replyText: 'Changed', outcome: { kind: 'success' } } } })).toBeUndefined();
+});

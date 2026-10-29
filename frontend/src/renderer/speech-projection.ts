@@ -19,7 +19,7 @@ export class SpeechProjection {
       return changedStream ? null : undefined;
     }
     const dialogueKey = turn.phase === 'completed' || turn.phase === 'error'
-      ? `${snapshot.dialogue.conversationId}:${turn.requestId}` : null;
+      ? `${snapshot.dialogue.conversationId}:${turn.requestId}${turn.phase === 'completed' && turn.outcome.kind === 'local' && turn.outcome.reason === 'chat_motion' ? `:chat_motion:${turn.replyText}` : ''}` : null;
     if (dialogueKey !== null && this.dialogue !== dialogueKey) {
       this.dialogue = dialogueKey; this.owner = 'dialogue';
       return createChatMessage('pet', turn.phase === 'completed' ? turn.replyText : turn.phase === 'error' ? turn.message : '',

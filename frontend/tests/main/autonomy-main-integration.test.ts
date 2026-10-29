@@ -278,6 +278,7 @@ describe('Main integration: Brain runtime', () => {
     expect(fixture.requestVoluntaryMovement).toHaveBeenCalledWith({
       kind: 'horizontal_wander',
       targetRootPosition: plan?.targetRootPosition,
+      activity: { runId: '1:run-1', stepId: 'walk' },
       speedPxPerSec: 100,
     });
     expect(fixture.composition.getVisualEpisode().intent.kind).toBe('walk');

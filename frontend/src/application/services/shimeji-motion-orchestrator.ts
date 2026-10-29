@@ -82,6 +82,7 @@ export interface ShimejiMotionOrchestratorOptions {
 
 export type VoluntaryRootCommand =
   | {
+      readonly activity?: Pick<TraversalRequest, 'runId' | 'stepId'>;
       readonly kind: 'horizontal_wander';
       readonly targetRootPosition: Vector2Dto;
       readonly speedPxPerSec: number;
@@ -146,6 +147,7 @@ export class ShimejiMotionOrchestrator {
   private running = false;
   private generatedSessionCount = 0;
   private voluntaryCommand: VoluntaryRootCommand | undefined;
+  private completedVoluntary: Pick<TraversalRequest, 'runId' | 'stepId'> | undefined;
   private presentationDirty = false;
   private traversal: TraversalRequest | undefined;
   private traversalStarted = false;
@@ -280,7 +282,8 @@ export class ShimejiMotionOrchestrator {
         this.motion.velocityPxPerSec.x !== motionAtTickStart.velocityPxPerSec.x ||
         this.motion.velocityPxPerSec.y !== motionAtTickStart.velocityPxPerSec.y);
     if (presentationChanged) this.presentationRevision += 1;
-    const completed = this.completedTraversal;
+    const completed = this.completedTraversal ?? this.completedVoluntary;
+    this.completedVoluntary = undefined;
     this.completedTraversal = undefined;
     if (this.running && completed !== undefined) {
       this.options.onVoluntaryMovementCompleted?.(completed);
@@ -367,7 +370,7 @@ export class ShimejiMotionOrchestrator {
     ) return false;
     this.voluntaryCommand = command.kind === 'manual_root'
       ? { kind: 'manual_root', targetRootPosition }
-      : { kind: 'horizontal_wander', targetRootPosition, speedPxPerSec: command.speedPxPerSec };
+      : { kind: 'horizontal_wander', targetRootPosition, speedPxPerSec: command.speedPxPerSec, ...(command.activity ? { activity: { ...command.activity } } : {}) };
     return true;
   }
 
@@ -707,6 +710,7 @@ export class ShimejiMotionOrchestrator {
     if (this.surface.externalAttachment !== undefined) {
       if (this.externalWalkTarget !== undefined
           && Math.abs(this.surface.externalAttachment.localDistancePx - this.externalWalkTarget) < .001) {
+        this.completedVoluntary = this.voluntaryCommand?.kind === 'horizontal_wander' ? this.voluntaryCommand.activity : undefined;
         this.voluntaryCommand = undefined; this.externalWalkTarget = undefined;
         this.surface = { ...this.surface, locomotionVelocityPxPerSec: { x: 0, y: 0 } };
         this.motion = { ...this.motion, velocityPxPerSec: { x: 0, y: 0 } };
@@ -767,6 +771,7 @@ export class ShimejiMotionOrchestrator {
     };
     this.surface = { ...this.surface, locomotionVelocityPxPerSec: velocityPxPerSec };
     if (completed) {
+      this.completedVoluntary = command.kind === 'horizontal_wander' ? command.activity : undefined;
       this.voluntaryCommand = undefined;
       return true;
     }

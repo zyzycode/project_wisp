@@ -52,6 +52,7 @@ export interface VoluntaryMovementController {
   getCollisionInsets(): CollisionInsets;
   canAcceptVoluntaryMovement(): boolean;
   requestVoluntaryMovement(command: {
+    readonly activity?: { readonly runId: string; readonly stepId: string };
     readonly kind: 'horizontal_wander';
     readonly targetRootPosition: Vector2Dto;
     readonly speedPxPerSec: number;
@@ -221,9 +222,9 @@ export class AutonomyCoordinator {
     this.scheduleNextOpportunity();
   }
 
-  public requestActivityLocomotion(targetRootPosition?: Vector2Dto, gait: 'walk' | 'run' | 'crawl' = 'walk'): boolean {
+  public requestActivityLocomotion(targetRootPosition?: Vector2Dto, gait: 'walk' | 'run' | 'crawl' = 'walk', activity?: { readonly runId: string; readonly stepId: string }): boolean {
     if (this.disposed) return false;
-    return this.requestWander(targetRootPosition, gait);
+    return this.requestWander(targetRootPosition, gait, activity);
   }
 
   public noteUserActivity(): void {
@@ -337,7 +338,7 @@ export class AutonomyCoordinator {
     if (!this.options.onIntentResolved(resolved, { decisionSequence, opportunityAtMs })) this.scheduleNextOpportunity();
   }
 
-  private requestWander(targetRootPosition?: Vector2Dto, gait: 'walk' | 'run' | 'crawl' = 'walk'): boolean {
+  private requestWander(targetRootPosition?: Vector2Dto, gait: 'walk' | 'run' | 'crawl' = 'walk', activity?: { readonly runId: string; readonly stepId: string }): boolean {
     const start = this.options.movement.getRootPosition();
     const target = targetRootPosition === undefined
       ? wanderTargetPlanner({
@@ -354,6 +355,7 @@ export class AutonomyCoordinator {
         };
     return target.durationMs > 0 && this.options.movement.requestVoluntaryMovement({
       kind: 'horizontal_wander',
+      ...(activity ? { activity } : {}),
       targetRootPosition: target.target,
       speedPxPerSec: this.behaviorConfig().wanderSpeedPxPerSec * (gait === 'run' ? 2 : gait === 'crawl' ? .5 : 1),
     });

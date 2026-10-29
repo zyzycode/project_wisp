@@ -106,6 +106,11 @@ export class BrainActivityRuntime {
     return prepared !== null && this.startDefinition(prepared.definition, prepared.plan, this.options.clock.now(), intent);
   }
 
+  public startChatWalk(definition: ActivityDefinition, intent: BehaviorIntent): boolean {
+    return definition.id === 'chat_walk' && intent.kind === 'wander' && intent.source === 'user'
+      && this.startDefinition(definition, null, this.options.clock.now(), intent);
+  }
+
   private prepare(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog, preview = false): { definition: ActivityDefinition; plan: ExplorePlan | null } | null {
     const nowMs = this.options.clock.now();
     const selectionContext = {
@@ -341,7 +346,7 @@ export class BrainActivityRuntime {
       : definition.id === 'zoomies' ? 'play'
       : definition.tags?.includes('cursor') ? 'cursor_interest'
       : definition.id === 'social_bid' ? 'social_bid' : definition.id.startsWith('rest') ? 'rest' : 'calm';
-    this.options.onOutcome?.({ type: 'activity_outcome', eventId: `${runtime.runId}:terminal`,
+    if (definition.id !== 'chat_walk') this.options.onOutcome?.({ type: 'activity_outcome', eventId: `${runtime.runId}:terminal`,
       activityRunId: runtime.runId, atMs, family, outcome: result.status,
       participation: this.participation, executedMs: Math.max(0, atMs - runtime.startedAtMs),
       playCompleted: this.playCompleted });
