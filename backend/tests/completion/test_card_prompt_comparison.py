@@ -83,7 +83,7 @@ def test_current_runtime_preserves_archived_budget_history_and_source_facts(monk
             assert current_blocks.keys() == archived_blocks.keys()
             for key, block in current_blocks.items():
                 if key != "instructions":
-                    assert block["messages_sha256"] == archived_blocks[key]["messages_sha256"]
+                    assert block["data_messages_sha256"] == archived_blocks[key]["messages_sha256"]
             assert set(after["selected_keys"]) <= set(report["selected_keys"])
             assert report["budget"]["selected_estimate"] <= report["budget"]["input_allowance"]
             assert after["settings"] == row["before"]["settings"]

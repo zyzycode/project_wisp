@@ -184,11 +184,12 @@ def test_same_inputs_preserve_facts_settings_and_budget_with_smaller_instruction
             if "current_user" in after["selected_keys"]:
                 assert system.count(MEMORY_EVIDENCE_RULES) == 1
             if "interaction_policy" in after["selected_keys"]:
-                assert system.count(APPRAISAL_RULES) == 1
-                assert system.count("Judge only the current action") == 1
+                eligible = "effectPolicy is eligible" in system
+                assert system.count(APPRAISAL_RULES) == int(eligible)
+                assert system.count("Judge only the current action") == int(eligible)
                 if "effectPolicy is suppressed" in system:
                     assert '{"category":"neutral","intensity":"low","confidence":"clear"}' in system
-                if "current_touch" in after["selected_keys"]:
+                if "current_touch" in after["selected_keys"] and eligible:
                     assert "intensity MUST be low and category MUST NOT be hostile" in system
             for removed in (
                 "When userConsentEnabled is false, keep the remark non-romantic",

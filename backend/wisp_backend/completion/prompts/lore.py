@@ -149,4 +149,5 @@ def lore_block(catalogue: LoreCatalogue | None, text: str, locale: str) -> Conte
                 + json.dumps(payload, ensure_ascii=False),
             ),
         ),
+        server_instructions=("Author lore supplies world reference, separate from dialogue and user facts."),
     )

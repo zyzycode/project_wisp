@@ -60,10 +60,33 @@ priority отбора и order сериализации. Больший priority
 | Current user/event/observation | Всегда | 1000 / 100 | Соответствующий сценарий |
 | Summary source pairs | Весь диапазон обязателен | 1000 / 10 | Только `/v1/summary`, без character |
 
-Только server instructions могут иметь роль system; конструктор запрещает её
-другим источникам. JSON-снимки идут как user data, реальные assistant turns
-сохраняют роль. Данные не вставляются в системные инструкции. Это структурная
-граница доверия, не доказательство иммунитета LLM к prompt injection.
+В `ContextBlock.messages` роль system допустима только при source=server_instructions;
+конструктор запрещает её другим источникам. JSON-снимки идут как user data,
+реальные assistant turns сохраняют роль. Данные не вставляются в системные
+инструкции. Это структурная граница доверия, не доказательство иммунитета LLM к prompt injection.
+
+У блока может быть отдельная backend-authored аннотация `server_instructions`.
+Она содержит только технический текст builder, без интерполяции character/user/lore
+данных. Renderer контекста выводит её отдельным system message перед `messages`
+выбранного блока; она не меняет `source` данных и не разрешает system в их `messages`.
+Аннотация, данные и optional response schema — одна единица отбора с прежними
+required/priority/order: исключение блока удаляет все три части. Общие инструкции
+сохраняются независимо от optional; условные объяснения источника находятся у своего блока.
+Сюда относятся уникальные factual precedence источника и разрешения optional полей.
+Общие trust, consent и current-user evidence сохраняются всегда; перечень типов
+недоверенных источников в CHARACTER_RULES допустим как safeguard, без активации возможностей.
+Общий precedence «Current user questions and bounded facts outrank other reference context.»
+остаётся в chat.MEMORY_RULES без имён optional возможностей и не повторяется в annotations.
+Уникальное отношение, например original allowed dialogue выше summary, задаётся у источника.
+PreviousTouch обязателен при наличии, поэтому его инструкции допустимо включать по наличию.
+
+Каждый candidate estimate/count и финальный provider payload используют один
+`render_messages` и одну активную schema из выбранных блоков. Нет удаления текста
+после подсчёта, второго прохода выбора или изменения history suffix и mandatory overflow.
+Диагностика размеров/ролей учитывает аннотацию через тот же renderer; причины
+исключения относятся ко всему блоку. Режим appraisal выбирается только из проверенного
+policy enum: eligible получает классификацию, suppressed — точный neutral/low/clear
+без инструкций классификации; ограничение appraisal не меняет ответ по карточке.
 
 Приоритет фактов: текущая явная поправка пользователя → актуальные registry facts →
 recalled episodes. Summary — неподтверждённый пересказ; lore — авторский мир.

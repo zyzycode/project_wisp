@@ -112,7 +112,7 @@ def test_every_scenario_formats_only_contract_and_source_data(provider: str, loc
     if provider == "openai":
         assert payload["messages"] == messages and payload["store"] is False
     else:
-        assert payload["systemInstruction"]["parts"][0]["text"] == system
+        assert "\n".join(part["text"] for part in payload["systemInstruction"]["parts"]) == system
     if route == "/v1/observation":
         assert "Do not quote the private window caption" not in system
         assert body["observation"]["windowTitle"] in messages[-1]["content"]

@@ -12,8 +12,7 @@ from wisp_backend.completion.prompts.technical import DECISION_GUIDANCE, MEMORY_
 MEMORY_RULES = (
     """No undescribed response fields; text permits newline/tab, no other controls.
 Factual precedence: current explicit user correction/refusal > current registry facts > recalled episodes.
-Current user questions and bounded facts outrank lore, older AI phrases, topics, beverage context and unconfirmed summary.
-Original allowed dialogue outranks summary.
+Current user questions and bounded facts outrank other reference context.
 Recall accurately; past episodes do not prove current preferences or user participation.
 memoryCandidates: at most three objects with ONLY key, value, evidenceQuote.
 Keys: user.display_name, user.preferred_address (nonblank, <=80 UTF-16 units),
@@ -40,15 +39,7 @@ def build_chat_blocks(
     memory = context.memory
     previous_initiative = context.previous_initiative
     summary = context.summary
-    system = chat_instructions()
-    if previous_initiative is not None:
-        system += (
-            "\npreviousInitiative is a previously published AI phrase, not a user statement or proof of attention."
-        )
-    system += "\nAuthor lore supplies world reference, separate from dialogue and user facts."
-    if summary is not None:
-        system += "\nThe summary is an unconfirmed model retelling of older dialogue, not verified knowledge or state. "
-    blocks = common_blocks(context, system, memory=memory, additional_instructions=additional_instructions)
+    blocks = common_blocks(context, chat_instructions(), memory=memory, additional_instructions=additional_instructions)
     if summary is not None:
         blocks.append(
             ContextBlock(
@@ -62,6 +53,10 @@ def build_chat_blocks(
                         "user",
                         "Unconfirmed older-dialogue summary:\n" + json.dumps({"text": summary}, ensure_ascii=False),
                     ),
+                ),
+                server_instructions=(
+                    "The summary is an unconfirmed model retelling of older dialogue, not verified knowledge or state. "
+                    "Original allowed dialogue outranks summary."
                 ),
             )
         )
@@ -82,6 +77,9 @@ def build_chat_blocks(
                         "Previous published AI initiative (not user speech or proof of attention):\n"
                         + json.dumps(previous_initiative, ensure_ascii=False),
                     ),
+                ),
+                server_instructions=(
+                    "previousInitiative is a previously published AI phrase, not a user statement or proof of attention."
                 ),
             )
         )

@@ -75,7 +75,7 @@ def test_chat_handlers_start_with_empty_lore_and_output_reserve(
         assert estimate_input(data, len(parts) + 1) + cap <= CONTEXT_WINDOWS[(provider, model)]
         lore = [part for part in parts if part.startswith("Untrusted author lore_context")]
         assert not lore
-        assert "Author lore supplies world reference" in system
+        assert "Author lore supplies world reference" not in system
         assert "Wisp lives on the desktop." not in system
         assert parts[-1] == body["messages"][-1]["content"] and cap == 4096
         calls.append(parts)

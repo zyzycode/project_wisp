@@ -58,7 +58,7 @@ def _absent_optionals(route: str, blocks: tuple[ContextBlock, ...]) -> list[dict
         return absent
     absent.extend(
         {"key": key, "reason": "no_match" if key == "lore" else "input_absent"}
-        for key in ("summary", "lore", "previous_initiative", "previous_touch")
+        for key in ("summary", "lore", "previous_initiative", "previous_touch", "dialogue_topic", "beverage_preference")
         if key not in keys
     )
     if not any(key.startswith("history_") for key in keys):
@@ -140,7 +140,8 @@ async def inspect_scene(
         decisions = {decision.key: decision for decision in trace}
         details = []
         for block in sorted(blocks, key=lambda item: (item.order, item.key)):
-            content = "".join(message.content for message in block.messages)
+            rendered = render_messages((block,))
+            content = "".join(message["content"] for message in rendered)
             details.append(
                 {
                     "key": block.key,
@@ -148,12 +149,16 @@ async def inspect_scene(
                     "required": block.required,
                     "priority": block.priority,
                     "order": block.order,
-                    "roles": [message.role for message in block.messages],
+                    "roles": [message["role"] for message in rendered],
+                    "conditional_instructions": not block.required and any(m["role"] == "system" for m in rendered),
                     "utf8_bytes": len(content.encode("utf-8")),
                     "utf16_units": len(content.encode("utf-16-le")) // 2,
                     "standalone_estimate": size((block,)),
                     "decision": asdict(decisions[block.key]),
                     "messages_sha256": digest(render_messages((block,))),
+                    "data_messages_sha256": digest(
+                        [{"role": m.role, "content": m.content} for m in block.messages if m.role != "system"]
+                    ),
                 }
             )
         final_estimate = size(selected) if status == "ok" else None
@@ -186,6 +191,10 @@ async def inspect_scene(
         "blocks": details,
         "absent_optional": _absent_optionals(route, blocks),
         "selected_keys": [block.key for block in selected],
+        "active_optional_instructions": [
+            b.key for b in selected if not b.required and any(m["role"] == "system" for m in render_messages((b,)))
+        ],
+        "active_response_schema": response_schema_for(selected).name if response_schema_for(selected) else None,
         "messages": messages,
         "payload": payload,
         "messages_sha256": digest(messages),

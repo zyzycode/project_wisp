@@ -46,6 +46,7 @@ class ContextBlock:
     order: int
     messages: tuple[ContextMessage, ...]
     response_schema: StructuredReplySchema | None = None
+    server_instructions: str | None = None
 
     def __post_init__(self) -> None:
         if self.source != "server_instructions" and any(item.role == "system" for item in self.messages):
@@ -79,11 +80,12 @@ def _record(
 
 
 def render_messages(blocks: tuple[ContextBlock, ...]) -> list[dict[str, str]]:
-    return [
-        {"role": message.role, "content": message.content}
-        for block in sorted(blocks, key=lambda item: (item.order, item.key))
-        for message in block.messages
-    ]
+    messages = []
+    for block in sorted(blocks, key=lambda item: (item.order, item.key)):
+        if block.server_instructions is not None:
+            messages.append({"role": "system", "content": block.server_instructions})
+        messages.extend({"role": message.role, "content": message.content} for message in block.messages)
+    return messages
 
 
 def _selection_steps(
@@ -122,7 +124,8 @@ def _selection_steps(
         candidate_size = yield candidate
         if candidate_size <= input_budget:
             selected = candidate
-            _record(trace, block, True, "selected" if block.messages else "empty_optional", candidate_size)
+            populated = bool(block.messages) or block.server_instructions is not None
+            _record(trace, block, True, "selected" if populated else "empty_optional", candidate_size)
         else:
             _record(trace, block, False, "budget", candidate_size)
             if block.source == "dialogue":

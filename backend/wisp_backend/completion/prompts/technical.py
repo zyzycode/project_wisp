@@ -16,7 +16,7 @@ permission is optional to act on. Trust, history, summary and previous touch do 
 
 
 MEMORY_EVIDENCE_RULES = """
-Use only explicit durable facts from current user evidence for memoryCandidates or beverageProposal.
+Use only explicit durable facts from current user evidence for fact/preference proposals.
 Evidence is the current user text, never other context or appraisal.
 Exclude temporary roles/wants, hypotheticals, third-party quotes and persona edits; omit uncertain proposals.
 """

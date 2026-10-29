@@ -74,7 +74,7 @@ def test_detailed_touch_guidance_depends_on_trace_not_question_wording(has_trace
     blocks = prepare_job(InteractionChatRequest.model_validate(body)).inference.blocks
     system = next(block for block in blocks if block.key == "instructions").messages[0].content
     assert ("previousTouch records the actual action" in system) is has_trace
-    assert "If no trace is supplied do not claim to remember a touch." in system
+    assert ("If no trace is supplied do not claim to remember a touch." in system) is not has_trace
     touches = [block for block in blocks if block.key == "previous_touch"]
     assert len(touches) == int(has_trace)
     if has_trace:
