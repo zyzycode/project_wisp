@@ -13,8 +13,8 @@ export function stopChild(child) {
   }
 }
 
-export async function runProcesses(specs, { signal, spawnProcess = spawn, stop = stopChild } = {}) {
-  if (signal?.aborted) return 0;
+export async function runProcesses(specs, { signal, spawnProcess = spawn, stop = stopChild, abortExitCode = 0 } = {}) {
+  if (signal?.aborted) return abortExitCode;
   const children = [];
   let stopping = false;
   let result = 0;
@@ -24,7 +24,7 @@ export async function runProcesses(specs, { signal, spawnProcess = spawn, stop =
     result = code;
     for (const child of children) stop(child);
   };
-  const onAbort = () => shutdown(0);
+  const onAbort = () => shutdown(abortExitCode);
   signal?.addEventListener('abort', onAbort, { once: true });
   try {
     const exits = specs.map(spec => new Promise(resolve => {

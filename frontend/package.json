@@ -4,6 +4,7 @@
   "main": "dist-electron/main/index.js",
   "scripts": {
     "dev": "vite",
+    "smoke:desktop": "node scripts/smoke.mjs",
     "build": "npm run typecheck && vite build",
     "build:win:portable": "npm run build && electron-builder --win portable --x64",
     "test": "vitest run --config vitest.config.mjs --configLoader native",

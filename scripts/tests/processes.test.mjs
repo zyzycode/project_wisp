@@ -53,6 +53,16 @@ test('pre-aborted launch creates no processes', async () => {
   assert.equal(f.children.length, 0);
 });
 
+test('verification commands can fail on cancellation without changing dev shutdown semantics', async () => {
+  const f = fixture();
+  const controller = new AbortController();
+  const run = runProcesses(specs, { ...f, signal: controller.signal, abortExitCode: 1 });
+  controller.abort();
+  assert.equal(await run, 1);
+  assert.equal(f.stopped.length, 2);
+  assert.equal(await runProcesses(specs, { ...fixture(), signal: AbortSignal.abort(), abortExitCode: 1 }), 1);
+});
+
 test('standalone preserves operator settings; dev launches only desktop with trusted runtime paths', () => {
   const env = { WISP_BACKEND_PORT: '8001', WISP_PYTHON: 'custom-python', WISP_BACKEND_URL: 'http://operator-server' };
   const backend = backendCommand('dev', env);

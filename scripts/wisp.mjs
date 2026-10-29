@@ -6,6 +6,7 @@ if (mode === 'help') {
   console.log('Usage: node scripts/wisp.mjs <command> [test arguments]');
   console.log('Commands: dev, dev:frontend, dev:backend, typecheck, test, test:frontend,');
   console.log('          test:backend, test:python, test:tooling, check:backend, sprites:validate');
+  console.log('          smoke:desktop [output-directory]');
 } else {
   const controller = new AbortController();
   const stop = () => controller.abort();
@@ -18,7 +19,8 @@ if (mode === 'help') {
       process.exitCode = await runProcesses(specs, { signal: controller.signal });
     } else {
       for (const spec of specs) {
-        process.exitCode = await runProcesses([spec], { signal: controller.signal });
+        process.exitCode = await runProcesses([spec], { signal: controller.signal,
+          abortExitCode: mode === 'smoke:desktop' ? 1 : 0 });
         if (process.exitCode || controller.signal.aborted) break;
       }
     }

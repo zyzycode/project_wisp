@@ -97,7 +97,7 @@ export function wispCommands(mode, args = [], env = process.env) {
   if (mode === 'test') return [tooling(), frontendCommand('test', [], env),
     frontendCommand('test:python', [], env), backendCommand('check', env), backendCommand('test', env)];
   const frontendScripts = { 'dev:frontend': 'dev', 'test:frontend': 'test', 'test:python': 'test:python',
-    typecheck: 'typecheck', 'sprites:validate': 'sprites:validate' };
+    typecheck: 'typecheck', 'sprites:validate': 'sprites:validate', 'smoke:desktop': 'smoke:desktop' };
   if (Object.hasOwn(frontendScripts, mode)) return [frontendCommand(frontendScripts[mode], args, env)];
   throw new Error(`Unknown Wisp command: ${mode}`);
 }

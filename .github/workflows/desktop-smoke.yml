@@ -1,0 +1,50 @@
+name: Desktop smoke
+on:
+  push:
+    branches: [main]
+    paths: ['frontend/**', 'scripts/**', '.github/workflows/desktop-smoke.yml']
+  pull_request:
+    paths: ['frontend/**', 'scripts/**', '.github/workflows/desktop-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-smoke-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --prefix frontend --no-audit --no-fund
+      - name: Runner failure and cleanup tests
+        run: node --test scripts/tests/smoke.test.mjs
+      - name: Native Electron smoke
+        if: runner.os != 'Linux'
+        run: node scripts/wisp.mjs smoke:desktop "${{ runner.temp }}/wisp-smoke"
+      - name: Install virtual X11 desktop
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y xvfb openbox
+      - name: Electron smoke in virtual X11 (not Wayland or physical compositor acceptance)
+        if: runner.os == 'Linux'
+        env:
+          WISP_SMOKE_VIRTUAL_DISPLAY: 'true'
+          XDG_SESSION_TYPE: x11
+        run: xvfb-run -a sh -c 'openbox >/dev/null 2>&1 & node scripts/wisp.mjs smoke:desktop "$RUNNER_TEMP/wisp-smoke"'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-smoke-${{ matrix.os }}
+          path: ${{ runner.temp }}/wisp-smoke
+          if-no-files-found: warn
+          retention-days: 7
