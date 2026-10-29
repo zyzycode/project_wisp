@@ -38,7 +38,7 @@ it('omits suppressed pairs from hydration, recall and unified network projection
       if (!body || typeof body !== 'object' || !('requestId' in body)) throw new Error('missing request');
       return new Response(JSON.stringify({ appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' }, requestId: body.requestId, text: 'Северное сияние — незабываемая встреча' }), { headers: { 'content-type': 'application/json' } });
     } });
-  const runtime = new DialogueRuntime({ interactionEnabled: true, provider, memory: { generation: f.generation, recall: f.recall, completed: turn => { void f.history.completed(turn); } },
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, provider, memory: { generation: f.generation, recall: f.recall, completed: turn => { void f.history.completed(turn); } },
     now: Date.now, timestamp: () => date, createId: randomUUID, scheduler: { setTimeout, clearTimeout: h => clearTimeout(h as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: work => work(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('stream'); let sequence = 0;
@@ -79,7 +79,7 @@ it('aborts an in-flight chat on mutation and never republishes or persists its l
   const fetcher: typeof fetch = async (_url, init) => { signal = init?.signal; return new Promise(yes => { resolve = yes; }); };
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://fake.invalid', development: false, now: Date.now, fetch: fetcher });
   const completed = vi.fn(); let generation = 0;
-  const runtime = new DialogueRuntime({ interactionEnabled: true, provider, memory: { generation: () => generation, completed }, now: Date.now, timestamp: () => date, createId: randomUUID,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, provider, memory: { generation: () => generation, completed }, now: Date.now, timestamp: () => date, createId: randomUUID,
     scheduler: { setTimeout, clearTimeout: h => clearTimeout(h as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => providerRequest().characterSnapshot,
     applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: work => work(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('s'); runtime.receive({ type: 'send', sequence: 1, streamId: 's', conversationId: runtime.getPresentation().conversationId, text: 'old request' });

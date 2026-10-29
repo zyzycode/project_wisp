@@ -8,7 +8,7 @@ import { providerRequest } from './backend-ai-fixture';
 it('carries an early topic through seven desktop turns to the actual provider payload', async () => {
   const bridge = await backendIntegrationFixture();
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', development: false, now: Date.now, fetch: bridge.fetch });
-  const runtime = new DialogueRuntime({ provider, interactionEnabled: true, now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, interactionEnabled: true, now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => providerRequest().characterSnapshot, transaction: commit => commit(), applyStimulus: vi.fn(),
     beginThinking: vi.fn(), endThinking: vi.fn(), publish: vi.fn(), offerIntent: () => ({ status: 'rejected', reason: 'disabled' }) });

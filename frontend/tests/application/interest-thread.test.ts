@@ -26,7 +26,7 @@ function fixture(summary?: import('../../src/application/ports/summary').ISummar
   const topic = new InterestThreadDialogue({ runtime: () => memory, repository, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, notice, isTurnCurrent: requestId => runtime.isTopicRequestCurrent(requestId), isAdmissionCurrent: token => runtime.isAdmissionCurrent(token) });
   const provider = { supportsDialogueTopic: true as const, getStatus: vi.fn(async () => ({ kind: 'ready' as const })), generateResponse: vi.fn((_request: AIProviderRequest) => response.promise) };
   const completed = vi.fn();
-  runtime = new DialogueRuntime({ provider, ...(summary ? { summary } : {}), memory: { interestThread: topic, generation: () => generation, completed }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+  runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, ...(summary ? { summary } : {}), memory: { interestThread: topic, generation: () => generation, completed }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), offerIntent: vi.fn(), transaction: fn => fn(), publish: vi.fn() });
   runtime.replaceStream('stream');
   const send = (text = 'Привет', replyToInterestThread?: typeof ref) => runtime.receive({ type: 'send', text, sequence: ++id, conversationId: runtime.getPresentation().conversationId, streamId: 'stream', ...(replyToInterestThread ? { replyToInterestThread } : {}) });

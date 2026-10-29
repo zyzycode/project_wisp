@@ -48,7 +48,7 @@ it('hands the single HTTP slot to an accepted user only after aborted event fetc
   const events = new AIEventRuntime({ provider, recall: { recall: async () => ({ ok: true, value: emptyMemoryContext() }) }, now: Date.now, timestamp: () => new Date().toISOString(), createId,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, character: () => providerRequest().characterSnapshot,
     gate: () => ({ allowed: true, activeRunId: 'social', localSpeech: false, memoryGeneration: 0, identity: 'current' }), publish: vi.fn() });
-  const runtime = new DialogueRuntime({ interactionEnabled: true, provider, events, now: Date.now, timestamp: () => new Date().toISOString(), createId,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, provider, events, now: Date.now, timestamp: () => new Date().toISOString(), createId,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => providerRequest().characterSnapshot,
     applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: commit => commit(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('s'); events.socialStarted('social', Date.now()); await flush();

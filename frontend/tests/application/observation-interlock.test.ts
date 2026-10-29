@@ -15,7 +15,7 @@ function fixture() {
   f.canStartObservation.mockImplementation(() => provider.canStartObservation());
   f.generateObservation.mockImplementation((request, signal) => provider.generateObservation(request, signal));
   let id = 0;
-  const dialogue = new DialogueRuntime({ interactionEnabled: true, observation: f.runtime, provider, now: Date.now, timestamp: () => new Date().toISOString(),
+  const dialogue = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, observation: f.runtime, provider, now: Date.now, timestamp: () => new Date().toISOString(),
     createId: () => `00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => providerRequest().characterSnapshot,
     transaction: callback => callback(), applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), publish: vi.fn(), offerIntent: vi.fn() });

@@ -70,7 +70,7 @@ it('keeps local preference facts/corrections out of restored provider projection
   const restored = await open(filename), bridge = await backendIntegrationFixture();
   const completed = vi.fn();
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', development: false, now: Date.now, fetch: bridge.fetch });
-  const runtime = new DialogueRuntime({ interactionEnabled: true, provider,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, provider,
     memory: { generation: () => 0, recall: restored.recall, completed }, now: Date.now, timestamp: () => date, createId: randomUUID,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(),

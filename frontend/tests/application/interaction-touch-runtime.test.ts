@@ -64,7 +64,7 @@ it.each(['reset', 'dispose', 'memory', 'drag'])('silences late response after %s
 it('follow-up receives published trace repeatedly, suppressed chat appraisal gives no second reward', async () => {
   const f = fixture(); vi.setSystemTime(30000); f.touch(); await flush(); let id = 0;
   const generateResponse = vi.fn<IAIProvider['generateResponse']>(async r => ({ requestId: r.requestId, status: 'ok', confidence: 1, reply: { text: 'Я заметила твоё касание.' }, appraisal: neutral }));
-  const chat = new DialogueRuntime({ interactionEnabled: true, events: f.runtime, provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse },
+  const chat = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, events: f.runtime, provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse },
     now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `chat-${++id}`, scheduler,
     getCharacterSnapshot: () => f.character.getSnapshot(), applyStimulus: s => { f.character.applyStimulus(s); },
     beginThinking: vi.fn(), endThinking: vi.fn(), transaction: commit => commit(), publish: vi.fn(), offerIntent: vi.fn() });
@@ -90,7 +90,7 @@ it('follow-up refreshes TTL after waiting for transport settlement', async () =>
   const f = fixture(); let id = 0, release!: () => void;
   const settled = new Promise<void>(yes => { release = yes; });
   const generateResponse = vi.fn<IAIProvider['generateResponse']>(async r => ({ requestId: r.requestId, status: 'ok', confidence: 1, reply: { text: 'Да.' }, appraisal: neutral }));
-  const chat = new DialogueRuntime({ interactionEnabled: true, events: { invalidate: () => f.runtime.invalidate(), takePreviousInitiative: () => f.runtime.takePreviousInitiative(), getPreviousTouch: () => f.runtime.getPreviousTouch(), interruptForUser: () => settled },
+  const chat = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, events: { invalidate: () => f.runtime.invalidate(), takePreviousInitiative: () => f.runtime.takePreviousInitiative(), getPreviousTouch: () => f.runtime.getPreviousTouch(), interruptForUser: () => settled },
     provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `ttl-${++id}`, scheduler,
     getCharacterSnapshot: () => f.character.getSnapshot(), applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: commit => commit(), publish: vi.fn(), offerIntent: vi.fn() });
   chat.replaceStream('s'); vi.setSystemTime(30000); f.touch(); await flush(); vi.setSystemTime(629999);

@@ -18,7 +18,7 @@ function fixture(proposal: InteractionAppraisal = supportive, energy = 85, frien
   const generateResponse = vi.fn<IAIProvider['generateResponse']>(async request => ({ requestId: request.requestId, status: 'ok', confidence: 1, reply: { text: 'Ответ модели.' }, appraisal: request.interaction?.effectPolicy === 'suppressed' ? neutral : proposal }));
   const completed = vi.fn(), recall = vi.fn(async () => ({ ok: true as const, value: emptyMemoryContext() })), cancel = vi.fn(), offerIntent = vi.fn();
   const commit = vi.fn((receipt: Parameters<CharacterStateService['commitChat']>[0], appraisal?: InteractionAppraisal) => character.commitChat(receipt, appraisal));
-  const runtime = new DialogueRuntime({ provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse, cancel }, interactionEnabled: true,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse, cancel }, interactionEnabled: true,
     beginInteraction: () => character.beginChat(++sequence), commitInteraction: commit, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `r${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => character.getSnapshot(), applyStimulus: stimulus => { character.applyStimulus(stimulus); },
     beginThinking: vi.fn(), endThinking: vi.fn(), offerIntent, transaction: operation => operation(), publish: vi.fn(), memory: { generation: () => memoryGeneration, completed, recall: { recall } } });

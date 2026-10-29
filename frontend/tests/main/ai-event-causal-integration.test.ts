@@ -114,7 +114,7 @@ async function backendGameFixture(holdEvent = false) {
     events = new AIEventRuntime({ provider, recall, now: f.now, timestamp: () => toTimestamp(f.now()), createId: randomUUID, scheduler,
       character: () => f.character.getSnapshot(), gate: () => ({ ...f.main.getAIEventState(), memoryGeneration: 0, identity: dialogue?.getIdentity() ?? null }), publish: publication });
     history = new MemoryHistory({ ...repos, context: () => ({ generation: 0 }), createId: randomUUID, toTimestamp, onFailure: failure, gameObserver: events, onPersisted: (turn, context) => knowledge.persisted(turn, context) });
-    dialogue = new DialogueRuntime({ interactionEnabled: true, provider, events,
+    dialogue = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, provider, events,
       memory: { generation: () => 0, recall, completed: turn => { void history!.completed(turn); } }, now: f.now, timestamp: () => toTimestamp(f.now()), createId: randomUUID, scheduler,
       getCharacterSnapshot: () => f.character.getSnapshot(), applyStimulus: stimulus => f.character.applyStimulus(stimulus), beginThinking: () => {}, endThinking: () => {},
       transaction: commit => commit(), offerIntent: offer => f.main.offerDialogueIntent(offer),

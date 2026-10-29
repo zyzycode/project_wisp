@@ -63,6 +63,14 @@ export function isQuietCompatible(intent: BehaviorIntent, quiet: boolean): boole
 export class AutonomyCharacterEngine {
   private sleepState: SemanticSleepState = 'awake';
 
+  public constructor(private readonly onSleepStateChanged?: () => void) {}
+
+  private setSleepState(state: SemanticSleepState): void {
+    if (this.sleepState === state) return;
+    this.sleepState = state;
+    this.onSleepStateChanged?.();
+  }
+
   public getSemanticSleepState(): SemanticSleepState {
     return this.sleepState;
   }
@@ -74,10 +82,10 @@ export class AutonomyCharacterEngine {
     return null;
   }
 
-  public finishRest(): void { this.sleepState = 'awake'; }
+  public finishRest(): void { this.setSleepState('awake'); }
 
   public wakeForSupportLoss(): void {
-    this.sleepState = 'awake';
+    this.setSleepState('awake');
   }
 
   public isAutonomyEligible(): boolean {
@@ -102,7 +110,7 @@ export class AutonomyCharacterEngine {
         ...input.selection,
         canRest: input.selection.canRest && !permitsAutomaticWake(input.snapshot),
       }, input.prng.next());
-      if (selection.intent.kind === 'sleep') this.sleepState = 'sleeping';
+      if (selection.intent.kind === 'sleep') this.setSleepState('sleeping');
       return { ...this.resolution(selection.intent), selectionTrace: selection.trace };
     }
     const resolvedIntent = vitalSleep
@@ -117,7 +125,7 @@ export class AutonomyCharacterEngine {
           input.snapshot.needs
         );
 
-    if (resolvedIntent?.kind === 'sleep') this.sleepState = 'sleeping';
+    if (resolvedIntent?.kind === 'sleep') this.setSleepState('sleeping');
     return this.resolution(resolvedIntent);
   }
 
@@ -126,11 +134,11 @@ export class AutonomyCharacterEngine {
     snapshot: CharacterAutonomySnapshot
   ): CharacterAutonomyResolution {
     if (intent.kind === 'sleep' && intent.source === 'user' && this.sleepState === 'awake') {
-      this.sleepState = 'sleeping';
+      this.setSleepState('sleeping');
       return this.resolution(intent);
     }
     if (intent.kind === 'drag') {
-      this.sleepState = 'awake';
+      this.setSleepState('awake');
       return this.resolution(intent);
     }
     if (intent.kind === 'wander' && intent.source === 'user' && this.chatMotionRejection(snapshot) === null) return this.resolution(intent);
@@ -145,7 +153,7 @@ export class AutonomyCharacterEngine {
         snapshot.needs.attention >= WAKE_ATTENTION_MIN ||
         snapshot.needs.energy >= WAKE_ENERGY_MIN)
     ) {
-      this.sleepState = 'awake';
+      this.setSleepState('awake');
       return this.resolution(intent);
     }
     return this.resolution(null);
@@ -164,7 +172,7 @@ export class AutonomyCharacterEngine {
     if (['wake', 'drag', 'land', 'quiet'].includes(intent.kind)) return null;
     if (this.sleepState !== 'awake') return null;
     if (intent.kind === 'sleep') {
-      this.sleepState = 'sleeping'; return intent;
+      this.setSleepState('sleeping'); return intent;
     }
     if (requiresVitalSleep(snapshot)) return null;
     return intent;

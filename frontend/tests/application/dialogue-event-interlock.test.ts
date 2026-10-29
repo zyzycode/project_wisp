@@ -10,7 +10,7 @@ function fixture() {
   const prior = { kind: 'social_bid' as const, text: 'Поговорим?', createdAt: '2026-09-18T00:00:00.000Z' };
   const events = { takePreviousInitiative: vi.fn(() => prior), interruptForUser: vi.fn(() => settled), invalidate: vi.fn() };
   const generateResponse = vi.fn<IAIProvider['generateResponse']>(async request => ({ requestId: request.requestId, status: 'ok', confidence: 1, reply: { text: 'Ответ' } }));
-  const runtime = new DialogueRuntime({ provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse }, events, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id${++id}`,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse }, events, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => providerRequest().characterSnapshot,
     applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: commit => commit(), publish: vi.fn(), offerIntent: vi.fn() });
   runtime.replaceStream('s');

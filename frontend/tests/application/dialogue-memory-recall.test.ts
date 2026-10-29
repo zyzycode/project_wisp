@@ -10,7 +10,7 @@ function fixture(recall: ILocalMemoryRecall) {
   let id = 0, generation = 0;
   const generateResponse = vi.fn<IAIProvider['generateResponse']>(async request => ({ requestId: request.requestId, status: 'ok', confidence: 1, reply: { text: 'Ответ' } }));
   const completed = vi.fn();
-  const runtime = new DialogueRuntime({ provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse },
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse },
     memory: { generation: () => generation, recall, completed }, now: Date.now, timestamp: () => '2026-09-18T00:00:00.000Z', createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: h => clearTimeout(h as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => providerRequest().characterSnapshot,
     transaction: commit => commit(), applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), publish: vi.fn(), offerIntent: vi.fn() });

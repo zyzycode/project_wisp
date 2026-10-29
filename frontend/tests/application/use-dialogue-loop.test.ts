@@ -9,7 +9,7 @@ function fixture(provider: IAIProvider) {
   vi.useFakeTimers(); vi.setSystemTime(0); let id = 0;
   const character = new CharacterStateService({ now: Date.now });
   const apply = vi.spyOn(character, 'applyStimulus'); const offerIntent = vi.fn();
-  const runtime = new DialogueRuntime({ provider, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => character.getSnapshot(), applyStimulus: stimulus => { character.applyStimulus(stimulus); },
     offerIntent, beginThinking: () => {}, endThinking: () => {}, transaction: commit => commit(), publish: () => {} });

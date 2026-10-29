@@ -150,7 +150,7 @@ it('restores ordinary recall when valid Unicode context makes summary exceed the
   const summary: ISummaryRuntime = { preview: vi.fn(), confirm: vi.fn(), deleteSummary: vi.fn(), capture: vi.fn(async () => ({ text: summaryText, excludedMessageIds: ['covered-user', 'covered-assistant'], generation: 0 })), isCurrent: () => true, interrupt: vi.fn(), invalidate: vi.fn(), reset: vi.fn(), dispose: vi.fn() };
   const fetcher = vi.fn<typeof fetch>(async (_input, init) => { const body = JSON.parse(String(init?.body)); return json({ requestId: body.requestId, text: 'Ответ' }); });
   let id = 0;
-  const runtime = new DialogueRuntime({ interactionEnabled: true, provider: client(fetcher), summary,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, provider: client(fetcher), summary,
     events: { interruptForUser: async () => undefined, invalidate: vi.fn(), getPreviousTouch: () => previousTouch, takePreviousInitiative: () => previousInitiative },
     memory: { generation: () => 0, recall: { recall }, completed: vi.fn(), contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS }, now: Date.now, timestamp: () => '2026-10-17T00:00:00.000Z',
     createId: () => `00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}`, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },

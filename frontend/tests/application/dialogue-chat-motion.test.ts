@@ -21,7 +21,7 @@ function fixture(withMotion = true) {
   };
   const applyStimulus = vi.fn(), completed = vi.fn((_turn: CompletedDialogueMemoryTurn) => {});
   const offerIntent = vi.fn(() => ({ status: 'rejected' as const, reason: 'disabled' as const }));
-  const runtime = new DialogueRuntime({ provider, ...(withMotion ? { chatMotion: motion } : {}),
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, ...(withMotion ? { chatMotion: motion } : {}),
     now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus, offerIntent,

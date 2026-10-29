@@ -66,6 +66,7 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
+  readonly onSleepStateChanged?: () => void;
   readonly onChatMotionTerminal?: (event: ChatMotionTerminal) => void;
   readonly systemIdle?: SystemIdlePort;
   readonly routine?: ConstructorParameters<typeof MainSystemIdle>[0]['routine'];
@@ -97,7 +98,7 @@ export interface MainAutonomyCompositionOptions {
 
 /** Main composition boundary for Character, Activity, cadence, and presentation. */
 export class MainAutonomyComposition {
-  private readonly character = new AutonomyCharacterEngine();
+  private readonly character = new AutonomyCharacterEngine(() => this.options.onSleepStateChanged?.());
   private readonly chatMotion: ChatMotionRuntime;
   private readonly coordinator: AutonomyCoordinator;
   private readonly activity: BrainActivityRuntime;
@@ -462,6 +463,10 @@ export class MainAutonomyComposition {
       phaseStartedAtMs: runtime.stepStartedAtMs,
       phaseEndsAtMs: runtime.phaseEndsAtMs,
     };
+  }
+
+  public getSemanticSleepState(): 'awake' | 'sleeping' | 'unavailable' {
+    return this.disposed ? 'unavailable' : this.character.getSemanticSleepState();
   }
 
   public isSleepingForRecovery(): boolean {

@@ -7,13 +7,13 @@ import * as validation from '../../src/shared/dialogue-ipc-validation';
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (error: Error) => void;
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
-function fixture(statusPending = false) {
+function fixture(statusPending = false, sleepState: 'awake' | 'sleeping' = 'awake') {
   vi.useFakeTimers(); vi.setSystemTime(0); let id = 0;
   const status = deferred<AIProviderStatus>(), response = deferred<AIProviderResponse>();
   const provider = { getStatus: vi.fn(() => statusPending ? status.promise : Promise.resolve({ kind: 'ready' as const })), generateResponse: vi.fn((_request: AIProviderRequest) => response.promise) };
   const acceptedContact = vi.fn(), lifecycleReset = vi.fn();
   const applyStimulus = vi.fn(), offerIntent = vi.fn(), publish = vi.fn(), endThinking = vi.fn();
-  const runtime = new DialogueRuntime({ onAcceptedUserInput: acceptedContact, onLifecycleReset: lifecycleReset, provider, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => sleepState, onAcceptedUserInput: acceptedContact, onLifecycleReset: lifecycleReset, provider, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus, offerIntent, publish, beginThinking: vi.fn(), endThinking,
     transaction: commit => commit() });
@@ -110,4 +110,13 @@ it('signals accepted contact synchronously before provider awaits; rejects and r
   const { text: _text, ...meta } = f.command(3); f.runtime.receive({ ...meta, type: 'reset' });
   expect(f.acceptedContact).toHaveBeenCalledOnce(); expect(f.lifecycleReset).toHaveBeenCalledTimes(2);
   await flush(); f.runtime.dispose();
+});
+
+it('rejects sleeping send before contact or provider work', async () => {
+  const f = fixture(false, 'sleeping');
+  expect(f.runtime.receive(f.command())).toEqual({ status: 'rejected', reason: 'unavailable' });
+  await flush();
+  expect(f.acceptedContact).not.toHaveBeenCalled();
+  expect(f.provider.getStatus).not.toHaveBeenCalled();
+  expect(f.applyStimulus).not.toHaveBeenCalled();
 });

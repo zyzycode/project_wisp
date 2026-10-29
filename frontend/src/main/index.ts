@@ -317,7 +317,10 @@ function initializeAutonomyComposition(): void {
     },
     wallNow: Date.now,
     clock: { now: () => brainStatePublisher.now() },
-    scheduler: createMainAutonomyScheduler(),
+    scheduler: createMainAutonomyScheduler(callback => {
+      brainStatePublisher.beginTransaction();
+      try { callback(); } finally { brainStatePublisher.commitTransaction(); }
+    }),
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState()),
@@ -357,6 +360,7 @@ function initializeAutonomyComposition(): void {
     },
     createVisualEpisodeId: randomUUID,
     createActivityRunId: randomUUID,
+    onSleepStateChanged: () => dialogueRuntime?.notifySleepStateChanged(),
     onPresentationChanged: publishBrainState,
   });
   autonomyComposition.setQuietSupport(quietSupportRuntime.isActive());
@@ -391,7 +395,7 @@ function initializeAutonomyComposition(): void {
       });
     }
     beverageDialogue = memoryComposition?.beverage ? new BeverageDialogue({ runtime: () => memoryRuntime, createId: randomUUID, timestamp: () => new Date().toISOString(), now: () => brainStatePublisher.now(), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) : null;
-    dialogueRuntime = new DialogueRuntime({ onAcceptedUserInput: () => autonomyComposition?.acceptDialogueContact(), onLifecycleReset: () => autonomyComposition?.invalidateSocialFollowup(), quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
+    dialogueRuntime = new DialogueRuntime({ getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => autonomyComposition?.acceptDialogueContact(), onLifecycleReset: () => autonomyComposition?.invalidateSocialFollowup(), quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
@@ -413,7 +417,7 @@ function initializeAutonomyComposition(): void {
   }
 }
 
-function createMainAutonomyScheduler(): {
+function createMainAutonomyScheduler(run: (callback: () => void) => void = callback => callback()): {
   setTimeout(callback: () => void, delayMs: number): unknown;
   clearTimeout(handle: unknown): void;
 } {
@@ -423,7 +427,7 @@ function createMainAutonomyScheduler(): {
       let timer: ReturnType<typeof setTimeout>;
       timer = setTimeout(() => {
         timers.delete(timer);
-        callback();
+        run(callback);
       }, delayMs);
       timers.set(timer, timer);
       return timer;

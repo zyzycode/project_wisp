@@ -16,7 +16,7 @@ it('carries actual touch through Python/provider and published trace into v1 fol
   let dialogue: DialogueRuntime | undefined;
   const events = new AIEventRuntime({ provider, touchContext: trace, now: () => now, timestamp: () => new Date().toISOString(), createId: randomUUID,
     scheduler, character: () => character.getSnapshot(), gate: () => ({ identity: dialogue?.getIdentity() ?? null, allowed: true, memoryGeneration: 0, activeRunId: null, localSpeech: false }), publish: vi.fn(), transaction: commit => commit() });
-  const chat = new DialogueRuntime({ provider, events, interactionEnabled: true, beginInteraction: () => character.beginChat(++sequence), commitInteraction: (receipt, proposal) => character.commitChat(receipt, proposal), now: () => now, timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler,
+  const chat = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, events, interactionEnabled: true, beginInteraction: () => character.beginChat(++sequence), commitInteraction: (receipt, proposal) => character.commitChat(receipt, proposal), now: () => now, timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler,
     getCharacterSnapshot: () => character.getSnapshot(), applyStimulus: s => { character.applyStimulus(s); }, beginThinking: vi.fn(), endThinking: vi.fn(),
     transaction: commit => commit(), offerIntent: vi.fn(), publish: () => { if (dialogue) events.observeDialogue(dialogue.getPresentation()); } });
   dialogue = chat;

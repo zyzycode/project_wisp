@@ -37,6 +37,7 @@ export class DialogueRuntime {
   private generation = 0;
   private disposed = false;
   private executing = false;
+  private retiredAdmission = false;
   private active: Turn | null = null;
   private timer: unknown;
   private context: AIProviderContextMessage[] = [];
@@ -45,7 +46,7 @@ export class DialogueRuntime {
   private hasStartedStream = false;
   private hydrationAllowed = true;
   private turn: DialoguePresentationDTO['turn'] = { phase: 'idle' };
-  constructor(private readonly options: DialogueRuntimeOptions) { this.conversationId = options.createId(); this.admission = new DialogueAdmission(options.now, options.scheduler); }
+  constructor(private readonly options: DialogueRuntimeOptions) { this.conversationId = options.createId(); this.admission = new DialogueAdmission(options.now, options.scheduler, () => { this.retiredAdmission = false; if (!this.disposed && this.streamId !== null) this.options.transaction(() => this.options.publish()); }); }
 
   public hydrateInitialContext(messages: readonly AIProviderContextMessage[]): void {
     if (!this.hydrationAllowed || !this.options.memory?.contextLimits || this.disposed) return;
@@ -55,15 +56,38 @@ export class DialogueRuntime {
   public cancelForMemoryReset(): void { this.options.quietSupport?.resetMemory(); const context = this.context; const messageIds = this.contextMessageIds; this.options.transaction(() => { this.reset(); this.context = context; this.contextMessageIds = messageIds; this.options.publish(); }); }
   public clearMemoryContext(admissionToken?: object): void { const own = admissionToken !== undefined && this.pending === admissionToken; const pending = own ? this.pending : null; this.hydrationAllowed = false; this.initialContext = null; this.options.transaction(() => { this.reset(); if (own) { this.pending = pending; this.executing = true; } this.options.publish(); }); }
   public isTopicRequestCurrent(requestId: string): boolean { return this.active !== null && this.active.request.requestId === requestId && this.isCurrent(this.active); }
-  public isAdmissionCurrent(token: object): boolean { return !this.disposed && this.streamId !== null && this.pending === token; }
+  public isAdmissionCurrent(token: object): boolean { return this.options.getSemanticSleepState() === 'awake' && !this.disposed && this.streamId !== null && this.pending === token; }
   public confirmableSource(source: { userMessageId: string; assistantMessageId: string }, conversationId: string): string | null {
     const turn = this.turn;
     return conversationId === this.conversationId && turn.phase === 'completed' && turn.outcome.kind === 'success' && turn.memorySource?.userMessageId === source.userMessageId && turn.memorySource.assistantMessageId === source.assistantMessageId ? this.sourceUserText : null;
   }
   public getIdentity(): string | null { return this.streamId === null || this.disposed ? null : `${this.streamId}:${this.conversationId}:${this.generation}`; }
+  /** Main calls synchronously for every semantic transition, including transient sleep. */
+  public notifySleepStateChanged(): void {
+    if (this.disposed) return;
+    this.options.transaction(() => {
+      if (this.options.getSemanticSleepState() !== 'awake') {
+        this.generation++;
+        this.retiredAdmission = this.admission.isPending();
+        this.chatRun = null; this.supportEligible = false; this.sourceUserText = null;
+        const active = this.active;
+        if (this.pending) { this.pending = null; this.executing = false; this.turn = { phase: 'idle' }; }
+        if (active) {
+          this.active = null; this.turn = { phase: 'idle' }; this.cancelTimer();
+          this.options.setBehaviorContext?.(null);
+          this.options.endThinking(active.request.requestId);
+          try { this.options.provider.cancel?.(active.request.requestId); } catch { /* Cancellation is best-effort; the retired execution still owns its guard. */ }
+        }
+      }
+      if (this.streamId !== null) this.options.publish();
+    });
+  }
   public getPresentation(): DialoguePresentationDTO {
+    const bound = !this.disposed && this.streamId !== null;
+    const sleep = this.options.getSemanticSleepState();
     return parseDialoguePresentation({ conversationId: this.conversationId,
-      canSubmit: !this.disposed && this.streamId !== null && !this.executing, turn: this.turn });
+      canSubmit: bound && sleep === 'awake' && !this.executing && !this.retiredAdmission,
+      ...(bound && sleep === 'sleeping' ? { submissionMessage: this.options.locale === 'en' ? 'Wisp is sleeping' : 'Wisp спит' } : {}), turn: this.turn });
   }
   public replaceStream(streamId: string): void {
     if (this.disposed) return;
@@ -84,8 +108,9 @@ export class DialogueRuntime {
       this.options.transaction(() => { this.reset(); this.options.publish(); });
       return { status: 'accepted', conversationId: this.conversationId };
     }
+    if (this.options.getSemanticSleepState() !== 'awake') return { status: 'rejected', reason: 'unavailable' };
     this.options.summary?.interrupt();
-    if (this.executing) return { status: 'rejected', reason: 'busy' };
+    if (this.executing || this.retiredAdmission) return { status: 'rejected', reason: 'busy' };
     this.options.onAcceptedUserInput?.();
     this.options.memory?.beverage?.invalidateOffer();
     this.options.quietSupport?.resumeForUserDialogue();
@@ -109,19 +134,21 @@ export class DialogueRuntime {
       const scopedRefusal = !!(command.replyToInterestThread || this.lastOffered) && isTopicRefusal(command.text);
       const memoryGeneration = this.options.memory.generation();
       void this.admission.run(admissionDeadline, async (): Promise<import('../ports/memory-repository.interface').MemoryResult<{ kind: 'continue' | 'closed'; generation: number; correction?: Omit<BeverageCorrectionTurn, 'requestId' | 'userMessageId'> }>> => {
+        if (!this.isAdmissionCurrent(token)) return { ok: true, value: { kind: 'closed', generation: memoryGeneration } };
         const topic = this.options.memory?.interestThread ? await this.options.memory.interestThread.admit({ text: command.text,
           ...(command.replyToInterestThread ? { replyTo: command.replyToInterestThread } : {}), ...(this.lastOffered ? { lastOffered: this.lastOffered } : {}), deadlineMs: admissionDeadline, admissionToken: token }, { generation: memoryGeneration }) : { ok: true as const, value: { kind: 'continue' as const, generation: memoryGeneration } };
+        if (!this.isAdmissionCurrent(token)) return { ok: true, value: { kind: 'closed', generation: memoryGeneration } };
         if (!topic.ok || topic.value.kind === 'closed') return topic;
         const beverage = this.options.memory?.beverage ? await this.options.memory.beverage.admit({ text: command.text, replyToTopic: !!command.replyToInterestThread, deadlineMs: admissionDeadline, admissionToken: token }, { generation: topic.value.generation }) : { ok: true as const, value: { generation: topic.value.generation } };
         return beverage.ok ? { ok: true as const, value: { kind: 'continue' as const, ...beverage.value } } : beverage;
       })
         .then(result => {
-          if (this.pending !== token || this.disposed || this.streamId === null) return;
+          if (!this.isAdmissionCurrent(token)) return;
           if (result?.ok && result.value.generation !== this.options.memory?.generation()) { this.pending = null; this.executing = false; this.options.publish(); return; }
           this.pending = null; this.executing = false;
           if ((correctionSensitive && result?.ok !== true) || scopedRefusal || (result?.ok && result.value.kind === 'closed')) { if (correctionSensitive && result?.ok !== true) this.correctionUnavailable(); else this.options.publish(); return; }
           this.startTurn(command, requestedAtMs, deadline, admissionDeadline, result?.ok === true, result?.ok ? result.value.correction : undefined);
-        }).catch(() => { if (this.pending === token) { this.pending = null; this.executing = false; if (correctionSensitive) this.correctionUnavailable(); else if (scopedRefusal) this.options.publish(); else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, false); } });
+        }).catch(() => { if (this.isAdmissionCurrent(token)) { this.pending = null; this.executing = false; if (correctionSensitive) this.correctionUnavailable(); else if (scopedRefusal) this.options.publish(); else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, false); } });
     } else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, true);
     return { status: 'accepted', conversationId: this.conversationId };
   }
@@ -180,6 +207,7 @@ export class DialogueRuntime {
     });
   }
   private startTurn(command: Extract<import('../../shared/ipc-contracts').DialogueCommandDTO, { type: 'send' }>, requestedAtMs: number, deadline: number, admissionDeadline: number, enrich: boolean, correction?: Omit<BeverageCorrectionTurn, 'requestId' | 'userMessageId'>): void {
+    if (this.options.getSemanticSleepState() !== 'awake') { this.notifySleepStateChanged(); return; }
     this.options.observation?.invalidate();
     const previousTouch = this.options.interactionEnabled ? this.options.events?.getPreviousTouch?.() : undefined;
     const previousInitiative = this.options.events?.takePreviousInitiative();
@@ -217,8 +245,9 @@ export class DialogueRuntime {
     if (this.timer !== undefined) this.options.scheduler.clearTimeout(this.timer);
     this.timer = undefined;
   }
-  private isCurrent(turn: Turn): boolean { return !this.disposed && this.active === turn && this.generation === turn.generation && this.streamId !== null; }
+  private isCurrent(turn: Turn): boolean { return this.options.getSemanticSleepState() === 'awake' && !this.disposed && this.active === turn && this.generation === turn.generation && this.streamId !== null; }
   private mayContinue(turn: Turn): boolean {
+    if (this.active === turn && this.options.getSemanticSleepState() !== 'awake') this.notifySleepStateChanged();
     if (!this.isCurrent(turn)) return false;
     if (this.options.memory && this.options.memory.generation() !== turn.memoryGeneration) {
       this.options.transaction(() => { this.reset(); this.options.publish(); }); return false;
@@ -290,6 +319,7 @@ export class DialogueRuntime {
       if (beverageCapture && !this.options.memory?.beverage?.isCurrent(beverageCapture)) { this.finish(turn, 'degraded'); return; }
       // The transport reports whether its byte cap actually retained this optional block.
       if (request.beveragePreference && this.options.provider.canIncludeBeverage?.(request) !== false) this.dispatchedBeverage.add(turn);
+      if (!this.mayContinue(turn)) return;
       const responsePromise = this.options.provider.generateResponse(request);
       this.options.transaction(() => { this.options.publish(); });
       const rawResponse = await responsePromise;
@@ -308,6 +338,7 @@ export class DialogueRuntime {
     }
   }
   private finish(active: Turn, reason?: DialogueFallbackReasonDTO, response?: AIProviderResponse): void {
+    if (this.active === active && this.options.getSemanticSleepState() !== 'awake') this.notifySleepStateChanged();
     if (!this.isCurrent(active)) return;
     if (this.options.now() >= active.deadline) { reason = 'timeout'; response = undefined; }
     const capture = this.captures.get(active);

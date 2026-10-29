@@ -19,6 +19,8 @@ export interface IQuietSupportRuntime {
 
 /** All effects are injected by Main; provider execution belongs to one app lifecycle. */
 export interface DialogueRuntimeOptions {
+  /** Character-owned fact; unavailable never grants dialogue admission. */
+  readonly getSemanticSleepState: () => 'awake' | 'sleeping' | 'unavailable';
   readonly provider: IAIProvider;
   readonly chatMotion?: IChatMotion;
   readonly onAcceptedUserInput?: () => void;

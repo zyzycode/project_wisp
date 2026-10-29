@@ -18,7 +18,7 @@ function fixture(locale = 'ru', topic = false, eventRuntime?: DialogueRuntimeOpt
   const prepare = vi.fn<NonNullable<NonNullable<DialogueRuntimeOptions['memory']>['interestThread']>['prepare']>(async () => ({ ok: true, value: null }));
   const interestThread: NonNullable<NonNullable<DialogueRuntimeOptions['memory']>['interestThread']> = { admit, prepare, isCurrent: () => true };
   const events = { interruptForUser: vi.fn(async () => undefined), invalidate: vi.fn(), suppressUnsolicited: vi.fn(), takePreviousInitiative: vi.fn(() => undefined) };
-  const runtime = new DialogueRuntime({ onAcceptedUserInput: acceptedContact, provider, quietSupport, locale, events: eventRuntime ?? events, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', onAcceptedUserInput: acceptedContact, provider, quietSupport, locale, events: eventRuntime ?? events, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     memory: { generation: () => 0, completed, ...(topic ? { interestThread } : {}) },
     getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus, offerIntent: vi.fn(), publish: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: commit => commit() });

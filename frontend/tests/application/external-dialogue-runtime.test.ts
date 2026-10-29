@@ -16,7 +16,7 @@ function setup(fetcher?: typeof fetch) {
   const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.example', development: false, now: Date.now, fetch: transport });
   let id = 0;
   const applyStimulus = vi.fn(), offerIntent = vi.fn(), publish = vi.fn(), endThinking = vi.fn();
-  const runtime = new DialogueRuntime({ interactionEnabled: true, provider, now: Date.now, timestamp: () => new Date().toISOString(),
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, provider, now: Date.now, timestamp: () => new Date().toISOString(),
     createId: () => `00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus, offerIntent, publish,
