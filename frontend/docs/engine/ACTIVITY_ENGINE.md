@@ -199,3 +199,32 @@ Terminal transaction: run/locomotion cleanup → once-only feedback → history/
 Visual phases используют готовые intent/assets: notice/look_around, walk, cursor_play, happy_reaction, confused_reaction, settle. Новые спрайты и новые public visual kinds не требуются; Render/Animation сохраняют выбор clip и fallback. Отдельные авторские catch/miss sheets могут появиться позже через SPRITE_REQUESTS, а физический успех от них не зависит.
 
 Implementation consequences: заменить fixed-target episode на bounded legs в существующих Activity/Motion adapters без live retarget команды; нормализовать result и локальную speech projection, сохранить один owner/cooldown/budget. Проверки: caught/missed/lost/cancel, stale ровно после TTL, checkpoint ровно на deadline, 4-target/160-DIP/6000-ms caps, moving support, interrupted attempt до/после playCompleted, duplicate terminal и отсутствие LLM-вызовов. История между перезапусками и inference предпочтений — отдельная Memory-задача; этот runtime-контракт не задаёт новую persistence schema.
+
+## 18. Законченные сцены внимания (SCENE-A01)
+
+Сцена — наблюдаемая последовательность существующей Activity и принятого пользовательского ввода, не новый engine/executor или сохраняемая сущность. Первый набор содержит две сцены; выбор использует текущие Needs/отношения/traits и gates Character/Autonomy, без новых порогов или обхода quiet/sleep.
+
+| Сцена | Повод и уже существующий путь | Завершение и точный пробел |
+|---|---|---|
+| Игра с курсором | Fresh reachable dwell → notice → bounded approach/attempt → caught/missed/lost_target → reaction → settle (§17). Needs/отношения влияют на admission/выбор, не доказывают участие человека. | Полная цепочка уже реализована. Сохранить caps, реакции и once-only feedback; не создавать вторую игру или новое сближение. |
+| Приглашение к контакту | Обычный local P4 SocialBid → notice/wave → wait; одна допустимая second вместо wave использует curious head-tilt по [Autonomy §13.2](AUTONOMY_ENGINE.md#132-одна-дополнительная-попытка-после-молчания-soc-a01). | При молчании текущий wait сразу заканчивается idle. Целевое изменение: явное невербальное окончание ниже; при принятом контакте штатная P1 реакция заменяет приглашение сразу. |
+
+### 18.1. Окончание приглашения без ответа
+
+Только обычные local P4 first/second: после полного wait выполнить `disengage` с existing `look_around` 800 ms, затем `settle` 600 ms, затем terminal completed. Оба шага stage=exiting, bounded animation по Brain time, в том же run; первый шаг означает «огляделась и переключилась на свои дела», не обиду/отказ пользователя. Первый wait сохраняет переданный bounded wait, второй — максимум 4000 ms. Эти длительности — единый Domain tuning для этой сцены, не дополнительные timers. System/P3 return сохраняет прежний путь без этого хвоста.
+
+Existing `social-bid-activity.ts` владеет definition; Application/ActivityRunner публикует фазы, Main возобновляет обычный выбор после terminal. Никаких обязательного похода, гарантированного следующего занятия, нового public intent, очереди или дополнительного RNG draw. Семантический `settle` использует существующий `body_idle`; выразительное отличие даёт предшествующий `body_look_around`, а не само имя settle. При недоступном клипе действует текущий Render fallback, без влияния на timeline. Отдельный head-turn/relax арт вне этого slice.
+
+`unanswered` фиксируется только по completed после обоих шагов. Follow-up окно считается от этого настоящего terminal T; его условия, token/cooldown и silence latch остаются в Autonomy, третьей попытки нет. Переход wait→disengage или disengage→settle не вызывает новых onStarted/socialStarted, speech, provider, memory/learning, ActivityOutcome или Character stimulus. Final SocialBid по-прежнему не play и не имеет отдельной награды/штрафа (§16; Character activity feedback).
+
+### 18.2. Контакт, потеря цели и отмена
+
+Accepted direct chat/pet/P1 input к Wisp — фактический контакт; он закрывает pending social chain до async работы и немедленно отменяет current SocialBid, включая disengage/settle. Выполняется обычная реакция на этот input, без ожидания хвоста, дополнительного happy-gesture или второго reward. Ответная реакция зависит от текущего состояния и режима; отказанный/busy/duplicate send контактом не является. Молчание, пассивный курсор, provider reply, внешняя клавиатура/мышь и возврат пользователя не подтверждают внимание или удовольствие.
+
+Stationary SocialBid не имеет cursor target, поэтому потеря курсора не превращается в lost_target. В игре потеря fresh/reachable target и forced support loss обрабатываются по §17 и Motion. Quiet/quietSupport, menu/disable, сон/critical gate, drag/forced physics, lifecycle reset/dispose и смена владельца отменяют несовместимую сцену штатно: хвост не доигрывается и не возобновляется, stale callbacks не создают terminal/награду/новую инициативу. На совпавшем tick приоритет cancellation выше перехода фазы и completion. Existing правила Character/Autonomy сохраняют допускаемые спокойные занятия.
+
+### 18.3. Проверка наблюдаемого результата
+
+Deterministic проверки: полный first/second путь и точные границы фаз; отсутствие раннего terminal и duplicate effects; контакт в wait/disengage/settle; quiet/critical/forced/lifecycle interruption; follow-up от нового terminal T и отсутствие третьей попытки; system/P3 return без нового хвоста. Существующая игра покрывает caught/missed/lost/cancel и возврат к автономности без повторного implementation.
+
+Native Electron-сцены: (1) достижимый курсор → игра → видимая реакция → свои занятия; (2) приглашение без ответа → оглядывание → спокойное завершение; (3) контакт во время ожидания/окончания → немедленная обычная реакция, без отложенного оглядывания. Зафиксировать commit/OS/режим/использованные clips или fallback. Unit timeline доказывает последовательность, но не выразительность арта; недоступную native-проверку указывать NOT RUN. Для isolated первого slice mock/offline достаточен, новые AI-вызовы не нужны.
