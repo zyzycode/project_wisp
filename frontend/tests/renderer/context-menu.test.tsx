@@ -1,3 +1,4 @@
+import { cloneElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -31,7 +32,7 @@ describe('Renderer: ContextMenu', () => {
   });
 
   it('renders actions without theme or character size controls', () => {
-    const markup = renderToStaticMarkup(
+    const menu = (
       <ContextMenu
         isOpen
         activeTab="main"
@@ -41,6 +42,7 @@ describe('Renderer: ContextMenu', () => {
         debugHudEnabled
         debugContent={<div>Debug Telemetry</div>}
         isAlwaysOnTop={true}
+        voiceContent={<div>Audio device selector</div>}
         aiConnectionContent={<div>Подключение AI</div>}
         onClose={vi.fn()}
         onPet={vi.fn()}
@@ -62,6 +64,17 @@ describe('Renderer: ContextMenu', () => {
       />
     );
 
+    const markup = renderToStaticMarkup(menu);
+    const previewMarkup = renderToStaticMarkup(cloneElement(menu, { activeTab: 'animations' }));
+    const voiceMarkup = renderToStaticMarkup(cloneElement(menu, { activeTab: 'voice', debugHudEnabled: false }));
+    expect(markup).not.toContain('body_idle');
+    expect(markup).not.toContain('Audio device selector');
+    expect(previewMarkup).not.toContain('Подключение AI');
+    expect(voiceMarkup).toContain('Audio device selector');
+    expect(voiceMarkup).not.toContain('body_idle');
+    expect(voiceMarkup).not.toContain('Подключение AI');
+    expect(voiceMarkup).not.toContain('>Debug<');
+
     expect(markup).toContain('Wisp Companion');
     expect(markup).toContain('Подключение AI');
     expect(markup).toContain('Автономность приостановлена');
@@ -73,22 +86,22 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Усыпить');
     expect(markup).toContain('После закрытия: автономность ВКЛ');
     expect(markup).toContain('Анимации и позы');
-    expect(markup).toContain('body_surface_touch');
-    expect(markup).toContain('С начала');
-    expect(markup).toContain('Сбросить просмотр');
-    expect(markup).toContain('Повтор: ВКЛ');
-    expect(markup).toContain('Выражения лица');
-    expect(markup).toContain('face_happy');
-    expect(markup).toContain('face_sad');
-    expect(markup).toContain('face_angry');
-    expect(markup).toContain('body_idle');
-    expect(markup).toContain('body_walk');
-    expect(markup).toContain('body_petting');
-    expect(markup).toContain('body_thinking');
-    expect(markup).toContain('body_sit');
-    expect(markup).toContain('body_lie');
-    expect(markup).toContain('body_stand_up');
-    expect(markup).toContain('body_run');
+    expect(previewMarkup).toContain('body_surface_touch');
+    expect(previewMarkup).toContain('С начала');
+    expect(previewMarkup).toContain('Сбросить просмотр');
+    expect(previewMarkup).toContain('Повтор: ВКЛ');
+    expect(previewMarkup).toContain('Выражения лица');
+    expect(previewMarkup).toContain('face_happy');
+    expect(previewMarkup).toContain('face_sad');
+    expect(previewMarkup).toContain('face_angry');
+    expect(previewMarkup).toContain('body_idle');
+    expect(previewMarkup).toContain('body_walk');
+    expect(previewMarkup).toContain('body_petting');
+    expect(previewMarkup).toContain('body_thinking');
+    expect(previewMarkup).toContain('body_sit');
+    expect(previewMarkup).toContain('body_lie');
+    expect(previewMarkup).toContain('body_stand_up');
+    expect(previewMarkup).toContain('body_run');
     expect(markup).toContain('Сбросить позицию');
     expect(markup).toContain('Поверх окон: ВКЛ');
     expect(markup).toContain('Debug HUD: ВЫКЛ');

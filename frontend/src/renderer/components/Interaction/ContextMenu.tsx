@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
 
 import type { BrainStateDTO } from '../../../shared/ipc-contracts';
 
-export type ContextMenuTab = 'main' | 'debug';
+export type ContextMenuTab = 'main' | 'animations' | 'voice' | 'debug';
 
 export interface ContextMenuPosition {
   x: number;
@@ -137,6 +137,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onQuit,
 }) => {
   const [internalTab, setInternalTab] = useState<ContextMenuTab>('main');
+  const tabId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,7 +157,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   if (!isOpen) return null;
 
-  const currentTab = activeTab ?? internalTab;
+  const tabs: readonly { id: ContextMenuTab; label: string }[] = [
+    { id: 'main', label: 'Главное' },
+    ...(previewContent ? [{ id: 'animations' as const, label: 'Анимации и позы' }] : []),
+    ...(voiceContent ? [{ id: 'voice' as const, label: 'Голос и звук' }] : []),
+    ...(debugHudEnabled ? [{ id: 'debug' as const, label: 'Debug' }] : []),
+  ];
+  const selectedTab = activeTab ?? internalTab;
+  const currentTab = tabs.some(tab => tab.id === selectedTab) ? selectedTab : 'main';
 
   const handleTabSelect = (tab: ContextMenuTab) => {
     setInternalTab(tab);
@@ -180,7 +188,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   return (
     <div
       ref={menuRef}
-      className={`wisp-context-menu ${currentTab === 'debug' ? 'tab-debug' : 'tab-main'}`}
+      className={`wisp-context-menu tab-${currentTab}`}
       data-wisp-interactive="true"
       style={positionedStyle}
       onClick={(e) => e.stopPropagation()}
@@ -204,37 +212,33 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         Автономность приостановлена, пока открыто меню.
       </div>
 
-      {debugHudEnabled ? (
-        <div className="menu-tabs" role="tablist" aria-label="Menu sections">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={currentTab === 'main'}
-            className={`menu-tab-btn ${currentTab === 'main' ? 'active' : ''}`}
-            onClick={() => handleTabSelect('main')}
-          >
-            Главное
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={currentTab === 'debug'}
-            className={`menu-tab-btn ${currentTab === 'debug' ? 'active' : ''}`}
-            onClick={() => handleTabSelect('debug')}
-          >
-            Debug
-          </button>
-        </div>
-      ) : null}
+      <div className="menu-tabs" role="tablist" aria-label="Разделы меню"
+        onKeyDown={event => {
+          const index = tabs.findIndex(tab => tab.id === currentTab);
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+            : event.key === 'ArrowRight' ? (index + 1) % tabs.length
+            : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : null;
+          if (next === null) return;
+          event.preventDefault(); handleTabSelect(tabs[next]!.id);
+          event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+        }}>
+        {tabs.map(tab => <button key={tab.id} type="button" role="tab"
+          id={`${tabId}-${tab.id}`} aria-controls={`${tabId}-panel`}
+          aria-selected={currentTab === tab.id} tabIndex={currentTab === tab.id ? 0 : -1}
+          className={`menu-tab-btn ${currentTab === tab.id ? 'active' : ''}`}
+          onClick={() => handleTabSelect(tab.id)}>{tab.label}</button>)}
+      </div>
 
       {currentTab === 'debug' && debugHudEnabled ? (
-        <div className="telemetry-panel" role="tabpanel" aria-label="Debug telemetry">
+        <div className="telemetry-panel" role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-debug`}>
           {debugContent ?? <div className="debug-log-empty">Нет данных отладки</div>}
         </div>
+      ) : currentTab === 'animations' || currentTab === 'voice' ? (
+        <div className="menu-scroll-body" role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-${currentTab}`}>
+          {currentTab === 'animations' ? previewContent : voiceContent}
+        </div>
       ) : (
-        <div className="menu-scroll-body" role="tabpanel" aria-label="Main controls">
-          {voiceContent}
-          {previewContent}
+        <div className="menu-scroll-body" role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-main`}>
           <p role="status" style={{ fontSize: 12, margin: '8px 0' }}>
             {externalWindowSupport === 'available' ? 'Опоры на окнах доступны'
               : externalWindowSupport === 'initializing' ? 'Проверяем доступность окон…'

@@ -42,7 +42,7 @@ flowchart LR
 
 Просмотр анимаций использует каталог загруженного manifest и существующий локальный Skin inspector: выбор body/face, повтор с начала и переключатель зацикливания. Его время воспроизведения не зависит от Brain episode; просмотр не меняет semantic FSM/Needs/physics и не отправляет completion в Main. Закрытие меню сбрасывает просмотр; явные interactions/sleep/wake также снимают preview перед отправкой команды. «Подумать» оставляет меню открытым.
 
-Группы действий: interactions (погладить/кормить/играть/думать), `sleep`/`wake`, autonomy movement, theme/expression/scale, reset position/always-on-top/quit. Debug HUD требует явного `debugEnabled`; в production исключён из render, не скрыт CSS.
+Вкладки меню: «Главное» (действия и настройки AI), «Анимации и позы» (Skin preview), «Голос и звук» (микрофон, озвучка, аудиовыход); Debug доступен только при `debugEnabled`. Вкладки переключаются мышью и клавишами ←/→, Home/End. Группы действий: interactions (погладить/кормить/играть/думать), `sleep`/`wake`, autonomy movement, theme/expression/scale, reset position/always-on-top/quit. Debug HUD требует явного `debugEnabled`; в production исключён из render, не скрыт CSS.
 
 ## 5. Инварианты безопасности и приватности
 

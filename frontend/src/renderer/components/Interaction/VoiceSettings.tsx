@@ -12,8 +12,8 @@ export function VoiceSettings({ output, outputState, input, inputState, contextR
   const audio = useSyncExternalStore(output.audio.subscribe, output.audio.getSnapshot, output.audio.getSnapshot);
   const missing = audio.deviceId && !audio.devices.some(device => device.id === audio.deviceId);
   const active = outputState.phase === 'preparing' || outputState.phase === 'speaking';
-  return <details className="ai-connection-settings audio-output-settings menu-section">
-    <summary>Голос и звук</summary>
+  return <section className="ai-connection-settings audio-output-settings menu-section">
+    <div className="menu-section-title">Голос и звук</div>
     <p>Микрофон и озвучка включаются при запуске. Их можно выключить отдельно.</p>
     <label className="voice-setting-toggle"><input type="checkbox" checked={inputState.enabled} disabled={!inputState.enabled && !contextReady}
       onChange={event => { if (event.target.checked) void input.enableSelected(); else input.disable(); }} />Микрофон</label>
@@ -34,5 +34,5 @@ export function VoiceSettings({ output, outputState, input, inputState, contextR
       onClick={() => { void output.test(); }}>Проверить звук</button>
     {audio.busy && <p role="status">Сохраняем аудиовыход…</p>}
     {audio.error && <p role="alert">{audio.error}</p>}
-  </details>;
+  </section>;
 }
