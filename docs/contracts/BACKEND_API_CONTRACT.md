@@ -39,6 +39,12 @@ Request body ≤32 KiB, response body ≤16 KiB после декодирова�
 
 Модель предлагает одно semantic behavior; локальный Character проверяет актуальность, P0–P5, Needs, сон, quiet и cooldown. Confidence не даёт приоритет или право исполнения. Координаты, маршруты, клипы, длительности, изменение числовых traits/отношений, memory writes и команды ОС запрещены. Backend сам формирует envelope/requestId, не доверяет этим полям модельного вывода.
 
+Chat во время semantic sleep запрещён локальным [dialogue sleep gate](../../frontend/docs/engine/AI_PROVIDER_CONTRACT.md#локальный-sleep-gate-диалога):
+desktop не отправляет новый chat во сне и отбрасывает результат запроса, прерванного
+входом в сон. Backend не определяет сон по Needs/tone и не получает новую sleep/activity
+проекцию; текущий wire и provider budget сохраняются. Клиентский отказ от публикации
+не означает гарантированную отмену уже отправленного upstream-вызова.
+
 Некорректный decision при валидном тексте backend удаляет целиком и возвращает success без decision; desktop также отбрасывает некорректный decision. Невалидный обязательный envelope/text/requestId делает ответ целиком невалидным. Эта деградация hints не разрешает дополнительные поля верхнего уровня.
 
 ### 2.1. Проекция expression

@@ -56,7 +56,22 @@ stateDiagram-v2
 
 P2 sleep срабатывает после P0 physics/P1 input. Direct drag (P1) прерывает сон через `drag -> land -> settle`, без ожидания `wake_up`. Внутренние respond/think/play/timer idle/wander сами не будят. Если после wake условие sleep ещё истинно, новый sleep допустим после приоритетного взаимодействия. Пороги и прямой click/wake заданы FSM выше.
 
+### Диалог во время сна
+
+Семантический `sleeping` запрещает новый chat send и публикацию новой chat-реплики,
+включая локальные ACK/fallback. `sleepy` tone при `awake` диалог не блокирует;
+визуальный клип и recovery metabolism не заменяют semantic sleep state.
+Main читает факт сна из Character, Application применяет локальный dialogue gate;
+Renderer только показывает доступность и статус. Chat не будит персонажа,
+не откладывается до wake и не меняет пороги/частоту сна.
+
+Admission, отмена при входе в сон, once-only effects и статус заданы
+в [AI Provider: sleep gate](AI_PROVIDER_CONTRACT.md#локальный-sleep-gate-диалога).
+
 ### Просьбы о движении и право на отказ
+
+Ниже описан Character admission команды; chat send сначала проходит sleep gate.
+Во сне chat не выдаёт ACK отказа, а отдельный локальный stop/cleanup остаётся допустимым.
 
 Явная chat-команда — добровольный user `wander`, а не forced drag: P1 ownership даёт приоритет над занятием, но не отменяет Character admission. Character проверяет актуальный snapshot после once-only user input: semantic sleeping → `sleeping`; иначе `energy <= 20` → `low_energy`; иначе `comfort >= 80` → `overloaded`; иначе прогулка допустима по Character. Используется тот же источник порогов, что `requiresVitalSleep`; копирование чисел в parser/adapter/UI запрещено. Команда не будит персонажа и не откладывается до пробуждения. Quiet сохраняется и не запрещает спокойную явную прогулку. Stop допустим независимо от Needs/sleep: это cleanup, а не просьба продолжить нагрузку.
 

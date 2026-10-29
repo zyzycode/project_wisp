@@ -170,13 +170,50 @@ Exact-shape validation/copy из `unknown` — [UI §6](UI_SPEC.md#6-brain--body
 1. Trusted `webContents`, current stream/conversation; чужие IDs → stale.
 2. Sequence строго возрастает внутри stream; повтор → stale без provider/stimulus. Valid envelope потребляет sequence даже при busy. Retry только явным действием с новой sequence.
 3. Busy send немедленно rejected, без очереди. Admission генерирует requestId, фиксирует generation/text/deadline и атомарно публикует thinking; IPC promise provider не ждёт. Receipt/snapshot могут прийти в любом порядке: UI state только из возрастающих Brain revisions.
-4. Ровно один `user_message` stimulus на admission; `think` candidate проходит обычные gates. Отклонение visual reaction не отменяет текстовый запрос.
+4. Ровно один `user_message` stimulus на admission; `think` candidate проходит обычные gates. Отклонение visual reaction не отменяет текстовый запрос; semantic sleep отдельно блокирует диалог по sleep gate ниже.
 5. Result проверяется по форме/requestId/current conversation/generation. `now >= deadline` означает timeout даже до timer callback.
 6. Единственный terminal commit обновляет context/provider stimulus/candidate/dialogue в одной Brain transaction. Dialogue change — semantic, не motion-only coalescing; повтор snapshot не дублирует UI reply.
 
 UI блокирует resend до receipt, затем `canSubmit` берёт из snapshot. Reject сохраняет draft, accept может очистить текст, но не завершает thinking. Transport refusal снимает локальную блокировку без auto-retry (команда могла быть принята). Receipt старого stream игнорируется.
 
-`submissionMessage` — необязательное локализованное сообщение Application, plain text после trim 1–240 UTF-16 units, без controls кроме newline/tab; допустимо только при `canSubmit=false`. Runtime не публикует notices о квотах: локальных лимитов запросов нет. При in-flight/idle-unbound/disposed поле отсутствует.
+### Локальный sleep gate диалога
+
+Main предоставляет Application readonly-доступ к semantic sleep state Character
+и синхронно сообщает о входе в сон до публикации полного Brain snapshot.
+Это локальный порт в [DialogueRuntimeOptions](../../src/application/ports/dialogue-runtime.ts),
+без FSM/Activity данных в provider request, новых IPC каналов или wire-полей.
+Неизвестное/недоступное состояние не трактуется как `awake`: send недоступен.
+
+- При `sleeping` bound dialogue публикует `canSubmit=false` и отдельный
+  `submissionMessage`: RU «Wisp спит», EN “Wisp is sleeping”. Это статус ввода,
+  не speech/history/context. При disposed/unbound notice отсутствует.
+- Valid send во сне потребляет sequence и возвращает существующий
+  `rejected/unavailable` до accepted-contact, user stimulus, local ACK, memory
+  admission/recall и provider call. Reset остаётся разрешённым; сон не меняется.
+- Вход в сон инвалидирует pending admission и active turn, снимает только их
+  thinking/deadline/behavior context и переводит turn в `idle`, без fallback,
+  ошибки или assistant message. Completed history не удаляется. Принятый ранее
+  user effect не повторяется и не откатывается; appraisal, proposal, memory
+  completion/extraction и добавление context pair для отменённого turn запрещены.
+- Sleep gate проверяется перед admission, после async boundaries, перед provider
+  dispatch и атомарным terminal commit. Событие входа в сон навсегда инвалидирует
+  старую попытку, даже при sleep → wake до settlement или между async callbacks.
+  Сравнения только конечного boolean недостаточно.
+- In-flight adapter отменяется через существующий optional `cancel`; execution
+  guard сохраняется до фактического settlement, включая после wake/reset/reload.
+  Поздние success/rejection/timeout ничего не публикуют и не коммитят. Нового
+  provider call, retry, очереди или автоматического resend после wake нет.
+- Wake обновляет доступность в полном snapshot; `canSubmit=true` только после
+  освобождения существующих execution/admission guards. Локальные motion/support
+  ACK подчиняются тому же send gate; rejected send не исполняет команду.
+
+Main wiring проверяется с реальным semantic sleep owner; deferred-provider тесты
+покрывают сон до send, во время status/recall/generation, sleep → wake до settlement,
+timeout/reset/dispose, once-only cleanup и отсутствие history/provider effects.
+Обычный awake chat с `sleepy` tone сохраняется. Новое sleep/activity prompt
+описание и анализ текста ответа не требуются; качество живой речи mock не доказывает.
+
+`submissionMessage` — необязательное локализованное сообщение Application, plain text после trim 1–240 UTF-16 units, без controls кроме newline/tab; допустимо только при `canSubmit=false`. Runtime не публикует notices о квотах: локальных лимитов запросов нет. При обычном in-flight/idle-unbound/disposed поле отсутствует; после sleep cancellation bound dialogue сохраняет статус сна до wake, даже пока retired call не settled.
 
 После сотой фактической отправки runtime публикует notice вместе с `canSubmit=false`, даже если пользователь не пытается отправить 101-ю команду. Полученный сотый reply и его completed turn сохраняются; notice не заменяет reply/error, не становится SpeechBubble, history item, provider context или Character stimulus. Renderer показывает notice отдельно рядом с вводом. Cooldown expiry убирает notice и публикует snapshot; session cap сохраняется через dialogue reset/reload до Main restart. Validator, publisher и Renderer принимают это optional-поле согласованно, без нового IPC канала.
 
@@ -207,7 +244,7 @@ Cancellation API нет. Timeout/reset отменяют запрос **логи�
 - Reset допустим при thinking: новая conversationId/generation, пустой context, turn=idle, отмена deadline. Needs/relationship и уже применённый user_message не откатываются; execution guard ждёт settlement.
 - Reload/replacement webContents меняет stream и сбрасывает conversation/context как reset. Старые commands/receipts/results не переносятся. React remount только переподписывается, не сбрасывает Main.
 - Window close/shutdown → dispose: invalid generation, cleanup timers/subscriptions, остановка UI publication. Guard принадлежит Main lifecycle и переживает пересоздание окна; новый запрос ждёт settlement. App restart → idle.
-- Drag/fall/direct input не ждут provider: gates могут прервать thinking/talking animation, но текстовый запрос продолжается. Reply не восстанавливает прежнюю Activity и не обходит current gates; Skin completion в dialogue не участвует.
+- Drag/fall/direct input не ждут provider: gates могут прервать thinking/talking animation, но текстовый запрос продолжается, пока не инвалидирован sleep gate. Reply не восстанавливает прежнюю Activity и не обходит current gates; Skin completion в dialogue не участвует.
 
 ### Implementation consequences и проверка
 
