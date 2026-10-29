@@ -572,6 +572,8 @@ export interface AIConnectionApiBridge {
 }
 
 export interface WispApiBridge {
+  /** Optional capability until the local runtime and model are available. */
+  readonly voiceInput?: VoiceInputApiBridge;
   /** Declared before implementation; the settings UI requires this capability. */
   readonly aiConnection?: AIConnectionApiBridge;
   readonly interestThread?: InterestThreadApiBridge;
@@ -604,6 +606,42 @@ export interface WispApiBridge {
   clearDebugTelemetryLogs?: () => Promise<void>;
   onDebugTelemetry?: (listener: (telemetry: DebugTelemetryDTO) => void) => () => void;
   closeApp: () => Promise<void>;
+}
+
+export type VoiceInputErrorDTO =
+  | 'unavailable' | 'not_ready' | 'busy' | 'cancelled' | 'timeout'
+  | 'download_failed' | 'integrity_failed' | 'invalid_audio' | 'recognition_failed'
+  | 'invalid_request' | 'stale_context' | 'text_too_long' | 'empty_transcript';
+
+export type VoiceInputResultDTO<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly code: VoiceInputErrorDTO };
+
+export interface VoiceModelStatusDTO {
+  readonly state: 'not_installed' | 'downloading' | 'ready' | 'error';
+  readonly downloadedBytes: number;
+  readonly totalBytes: number;
+}
+
+export interface VoiceCaptureContextDTO {
+  readonly streamId: string;
+  readonly conversationId: string;
+}
+
+export interface VoiceTranscribeDTO extends VoiceCaptureContextDTO {
+  readonly requestId: string;
+  readonly language: 'ru' | 'en';
+  /** Dense finite samples in [-1, 1], mono 16 kHz; 1..480000 items. */
+  readonly samples: readonly number[];
+}
+
+/** Narrow invoke API; microphone capture itself remains browser user input. */
+export interface VoiceInputApiBridge {
+  readStatus(): Promise<VoiceInputResultDTO<VoiceModelStatusDTO>>;
+  prepare(): Promise<VoiceInputResultDTO<VoiceModelStatusDTO>>;
+  begin(context: VoiceCaptureContextDTO): Promise<VoiceInputResultDTO<{ readonly requestId: string }>>;
+  transcribe(command: VoiceTranscribeDTO): Promise<VoiceInputResultDTO<{ readonly text: string }>>;
+  cancel(command: { readonly requestId: string }): Promise<VoiceInputResultDTO<null>>;
 }
 
 /** Readonly projection; no observations, local identifiers or inferred schedule. */

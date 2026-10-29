@@ -234,3 +234,51 @@ Body проверяет immutable episode payload; Main — trusted current `web
 Один Main invoke `wisp:set-quiet-mode` через typed Preload: trusted sender, exact `{ enabled: boolean }` без coercion/extra keys, применение в Brain transaction. Response — authoritative mode; UI читает quiet из ordered snapshot, включая первый/reload. Отдельных mode-event очередей/renderer-owned state нет; повтор boolean идемпотентен, без новой opportunity; invalid payload не мутирует state.
 
 Toggle в существующем меню не включает sleep и не меняет autonomy enabled. Семантика/cancel — [Character §2.2](CHARACTER_ENGINE.md#22-устойчивый-quiet-auto-a09). Renderer не считает budget/cooldown/admission. Disable/menu pause — отдельные blockers, закрытие меню не снимает quiet. `dialogue.turn` отображает provider thinking без заморозки locomotion/Activity; AI ownership/trace внутренние, Renderer не меняет Brain lifecycle.
+
+## Локальный голосовой ввод (#150)
+
+Контракты: [IVoiceInput](../../src/application/ports/voice-input.port.ts),
+[VoiceInputApiBridge и DTO](../../src/shared/ipc-contracts.ts). Голос — альтернативный ввод
+черновика существующего чата, без новой команды Dialogue, TTS или облачной отправки аудио.
+
+- Renderer владеет явным start/stop, `getUserMedia({ audio: true })`, остановкой всех tracks,
+  mono PCM/resampling и состоянием черновика. Запись максимум 30 секунд, 16 kHz;
+  при лимите запись останавливается автоматически и начинается распознавание.
+  Нет фонового прослушивания, wake word, истории аудио или файлов записи.
+- Main создаёт Infrastructure adapter через Application port; загрузка — только этим adapter.
+  Inference исполняется в отдельном Main-owned Node worker, не в Renderer/Main event loop.
+  Worker получает только локальный путь проверенной модели и bounded PCM, не Electron API,
+  credentials, dialogue/history или сетевые полномочия SDK. Worker — изоляция вычислений,
+  а не sandbox для недоверенного кода. Загружается только поставленный код и pinned model.
+- Перед записью `begin` проверяет актуальные stream/conversation и создаёт один requestId.
+  Permission request/check handlers разрешают только microphone/audio для точных trusted
+  webContents, main frame и app origin с активной capture lease; camera, чужой frame/origin
+  и запрос без lease отклоняются. Существующая Electron isolation и CSP не ослабляются.
+  Lease до 45 секунд, при cancel/submit/reload/reset/window close/quit отзывается.
+- Единственная активная запись/транскрипция на окно; повтор begin возвращает busy.
+  Transcribe однократно потребляет requestId, повтор/foreign request не запускает worker.
+  Main проверяет exact shape, контекст, dense array длиной 1..480000 и finite [-1,1]
+  до копирования в Float32Array. Язык явный ru/en, задача transcribe, не translate.
+  Inference deadline 60 секунд, включая загрузку worker. Cancel/timeout прекращает worker;
+  поколение проверяется после каждого await. Поздний результат после смены контекста,
+  reset/dispose, закрытия или новой записи не возвращается как действующий transcript.
+- UI показывает подготовку модели, запись, распознавание и понятную локальную ошибку.
+  Полученный текст подставляется только при неизменном draft revision и capture generation.
+  Ручная правка, отправка или закрытие чата отменяют pending подстановку. Старый черновик
+  сохраняется при любой ошибке/отмене. Пустой результат/тишина не подставляются.
+  Текст длиннее существующего лимита 240 символов отклоняется с предложением короткой
+  записи; молчаливого truncate и auto-send нет. Отправка — обычной кнопкой пользователя.
+- Модель Whisper tiny multilingual q8 устанавливается явной кнопкой, не при старте приложения.
+  UI сообщает объём загрузки/прогресс и локальное выполнение. Offline после установки
+  не требует сервера. Ошибка модели не останавливает текстовый чат и runtime персонажа.
+  Независимая установка может продолжиться после закрытия чата; quit/dispose её отменяет.
+- Main хранит модель в отдельном userData cache по immutable revision, вне git/SQLite.
+  Manifest содержит allowlist имён, byte sizes и SHA256 **всех** файлов. Download: HTTPS
+  pinned revision, проверяемые HF/CDN redirects, без пользовательского URL/path, streaming
+  size cap по manifest, общий deadline 10 минут. Сначала temp, затем hash/size validation
+  и atomic rename. Частичные/повреждённые файлы не становятся ready; очистка допускает
+  повторную установку. Перед использованием cache integrity проверяется снова.
+  Worker отключает remote model access; скачивание отсутствующих файлов SDK запрещено.
+- Аудио и transcript живут только в памяти до завершения/отмены; не логируются и не
+  сохраняются адаптером. Сохранение/отправка текста начинается только обычным chat submit.
+  Ошибки наружу — разрешённые коды без stack, путей, provider internals или содержания речи.
