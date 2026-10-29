@@ -11,12 +11,12 @@ export default defineConfig({
     react(),
     electron({
       main: {
-        entry: { index: 'src/main/index.ts', 'memory-worker': 'src/infrastructure/memory/worker.ts' },
+        entry: { index: 'src/main/index.ts', 'memory-worker': 'src/infrastructure/memory/worker.ts', 'voice-worker': 'src/infrastructure/voice/worker.ts' },
         vite: {
           build: {
             outDir: 'dist-electron/main',
             rolldownOptions: {
-              external: ['electron', 'better-sqlite3', /^node:/],
+              external: ['electron', 'better-sqlite3', '@huggingface/transformers', /^node:/],
             },
           },
         },

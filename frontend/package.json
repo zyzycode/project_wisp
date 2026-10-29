@@ -44,8 +44,17 @@
       "artifactName": "${productName}-${version}-portable.${ext}"
     },
     "asarUnpack": [
-      "node_modules/better-sqlite3/**/*"
-    ]
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/onnxruntime-node/**/*",
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*"
+    ],
+    "mac": {
+      "entitlements": "packaging/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Wisp uses the microphone only when you record a voice message. Speech is recognized locally on this device."
+      }
+    }
   },
   "keywords": [
     "desktop-pet",
@@ -72,6 +81,7 @@
     "vitest": "^4.1.0"
   },
   "dependencies": {
+    "@huggingface/transformers": "4.3.2",
     "better-sqlite3": "13.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

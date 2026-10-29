@@ -6,6 +6,8 @@ const assert = require('node:assert/strict');
 const output = process.env.WISP_SMOKE_OUTPUT;
 const profile = process.env.WISP_SMOKE_PROFILE;
 if (!output || !profile) throw new Error('Run through scripts/wisp.mjs smoke:desktop');
+// Test-only Chromium device: never opens a physical microphone; permissions remain real.
+app.commandLine.appendSwitch('use-fake-device-for-media-stream');
 app.setPath('userData', profile);
 app.setPath('sessionData', profile);
 const report = { runId: process.env.WISP_SMOKE_RUN_ID, electron: process.versions.electron, checks: [] };
@@ -93,6 +95,56 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await evaluate(`window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1,button:0,screenX:360,screenY:260}))`);
     await until(() => evaluate('!document.querySelector(".pet-container.is-dragging")'), 'Drag release');
     record('drag-release-injected-pointer', 'PASS');
+    const voiceContext = await evaluate(`new Promise(resolve => {
+      const unsubscribe = window.wispAPI.onBrainState(snapshot => {
+        queueMicrotask(() => unsubscribe()); resolve({streamId:snapshot.streamId,conversationId:snapshot.dialogue.conversationId});
+      });
+    })`);
+    const { installVoiceSmoke } = require(path.resolve(__dirname, '../../dist-electron/main/voice-smoke.js'));
+    const voiceSmoke = installVoiceSmoke(win.webContents, voiceContext);
+    const noLease = await evaluate(`navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
+      stream.getTracks().forEach(track => track.stop()); return 'unexpected-access';
+    }, error => error.name)`);
+    assert.equal(noLease, 'NotAllowedError');
+    await evaluate(`(() => {
+      window.__voiceTracks = [];
+      window.__voiceTurns = [];
+      window.__voiceUnsubscribe = window.wispAPI.onBrainState(snapshot => {
+        if(snapshot.dialogue.turn.phase !== 'idle') window.__voiceTurns.push(snapshot.dialogue.turn.phase);
+      });
+      const capture = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getUserMedia = async constraints => {
+        const stream = await capture(constraints); window.__voiceTracks.push(...stream.getTracks()); return stream;
+      };
+      document.querySelector('.pet-label').click();
+    })()`);
+    await until(() => evaluate(`Array.from(document.querySelectorAll('.chat-voice button')).some(button => button.textContent === 'Записать' && !button.disabled)`), 'Voice ready control');
+    const clickVoice = async label => evaluate(`Array.from(document.querySelectorAll('.chat-voice button')).find(button => button.textContent === ${JSON.stringify(label)}).click()`);
+    await clickVoice('Записать');
+    await until(() => evaluate(`document.querySelector('.chat-voice-status')?.textContent.includes('Идёт запись')`), 'Fake microphone recording');
+    assert.equal(voiceSmoke.getStats().leased, true);
+    await sleep(400);
+    await clickVoice('Стоп');
+    await until(() => evaluate(`document.querySelector('.chat-input-field')?.value === 'Проверка голосового черновика'`), 'Voice draft');
+    assert.equal(await evaluate('window.__voiceTracks.length > 0 && window.__voiceTracks.every(track => track.readyState === "ended")'), true);
+    assert.equal(voiceSmoke.getStats().transcriptions, 1);
+    assert.ok(voiceSmoke.getStats().samples > 0 && voiceSmoke.getStats().samples <= 480000);
+    assert.equal(voiceSmoke.getStats().leased, false);
+    assert.equal(await evaluate(`Boolean(document.querySelector('.chat-input-form') && !document.querySelector('.chat-send-btn').disabled)`), true);
+    const voiceFrame = await win.webContents.capturePage();
+    fs.writeFileSync(path.join(output, 'voice-draft.png'), voiceFrame.toPNG());
+    await clickVoice('Записать');
+    await until(() => evaluate(`document.querySelector('.chat-voice-status')?.textContent.includes('Идёт запись')`), 'Second fake recording');
+    await clickVoice('Отмена');
+    await until(() => !voiceSmoke.getStats().leased, 'Cancel lease');
+    assert.equal(await evaluate(`document.querySelector('.chat-input-field').value`), 'Проверка голосового черновика');
+    assert.equal(await evaluate('window.__voiceTracks.every(track => track.readyState === "ended")'), true);
+    assert.equal(voiceSmoke.getStats().transcriptions, 1);
+    assert.deepEqual(await evaluate('window.__voiceTurns'), []);
+    await evaluate('window.__voiceUnsubscribe()');
+    record('voice-fake-microphone-draft-cancel', 'PASS', 'Real capture/IPC/permission service; synthetic inference; no message submit');
+    await voiceSmoke.dispose();
+    await evaluate(`document.querySelector('.chat-cancel-btn').click()`);
     const capture = await win.webContents.capturePage();
     assert.equal(capture.isEmpty(), false);
     fs.writeFileSync(path.join(output, 'window.png'), capture.toPNG());

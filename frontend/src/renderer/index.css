@@ -830,3 +830,21 @@ html, body {
 .memory-panel dd {
   margin: 0 0 4px;
 }
+
+/* Voice remains part of the compact, scrollable draft surface. */
+.chat-voice { margin-top: 6px; color: #e9d5ff; font-size: 11px; }
+.chat-voice-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.chat-voice-controls button, .chat-voice-controls select {
+  border: 1px solid #7e5b9c;
+  border-radius: 6px;
+  background: #30213f;
+  color: #f3e8ff;
+  padding: 4px 6px;
+  font: inherit;
+  cursor: pointer;
+}
+.chat-voice-controls button:hover:not(:disabled) { background: #513065; }
+.chat-voice-controls :disabled { color: #c4aed8; cursor: default; }
+.chat-voice-controls :focus-visible { outline: 2px solid #e9d5ff; outline-offset: 2px; }
+.chat-voice-status { margin-top: 4px; font-variant-numeric: tabular-nums; }
+.chat-voice-error { margin-top: 4px; color: #fecdd3; }

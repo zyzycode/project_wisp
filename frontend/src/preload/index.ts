@@ -1,3 +1,4 @@
+import { parseVoiceCancel, parseVoiceContext, parseVoiceNull, parseVoiceRequest, parseVoiceResult, parseVoiceStatus, parseVoiceText, parseVoiceTranscribe } from '../shared/voice-input-validation';
 import { parseRoutineStatus } from '../shared/routine-status-validation';
 import { parseAIConnectionCommand, parseAIConnectionRead, parseAIConnectionResult, parseAIConnectionStatus } from '../shared/ai-connection-validation';
 import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-facts-validation';
@@ -54,6 +55,13 @@ const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown):
 ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
+  voiceInput: {
+    readStatus: async () => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-status'), parseVoiceStatus),
+    prepare: async () => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-prepare'), parseVoiceStatus),
+    begin: async context => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-begin', parseVoiceContext(context)), parseVoiceRequest),
+    transcribe: async command => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-transcribe', parseVoiceTranscribe(command)), parseVoiceText),
+    cancel: async command => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-cancel', parseVoiceCancel(command)), parseVoiceNull),
+  },
   aiConnection: {
     read: async command => parseAIConnectionStatus(await ipcRenderer.invoke('wisp:ai-connection-read', parseAIConnectionRead(command))),
     configure: async command => parseAIConnectionResult(await ipcRenderer.invoke('wisp:ai-connection-configure', parseAIConnectionCommand(command))),

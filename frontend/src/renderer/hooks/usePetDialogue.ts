@@ -35,6 +35,8 @@ export function usePetDialogue({
 
   return {
     memoryCards: { bridge, snapshot },
+    voiceBridge: bridge.voiceInput,
+    voiceContext: snapshot ? { streamId: snapshot.streamId, conversationId: snapshot.dialogue.conversationId } : undefined,
     currentMessage,
     setCurrentMessage,
     chatOpen,

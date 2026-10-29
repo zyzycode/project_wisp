@@ -1,8 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react';
+import type { VoiceInputApiBridge, VoiceCaptureContextDTO } from '../../../shared/ipc-contracts';
+import { VoiceInputClient } from '../../voice-input-client';
+import { VoiceInputControls } from './VoiceInputControls';
 import { sanitizeUserMessage } from '../../../domain/chat/chat-message';
 
 export interface ChatInputProps {
   isOpen: boolean;
+  voiceBridge?: VoiceInputApiBridge;
+  voiceContext?: VoiceCaptureContextDTO;
   onSendMessage: (text: string) => Promise<boolean>;
   canSubmit: boolean;
   errorMessage?: string | null;
@@ -14,7 +19,7 @@ export interface ChatInputProps {
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
-  isOpen,
+  isOpen, voiceBridge, voiceContext,
   onSendMessage,
   onClose,
   canSubmit,
@@ -26,6 +31,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const latestText = useRef(text);
   latestText.current = text;
+  const voice = useMemo(() => new VoiceInputClient(voiceBridge, setText), [voiceBridge]);
+  const voiceState = useSyncExternalStore(voice.subscribe, voice.getSnapshot, voice.getSnapshot);
+  const streamId = voiceContext?.streamId;
+  const conversationId = voiceContext?.conversationId;
+  useEffect(() => {
+    if (isOpen) voice.activate(streamId && conversationId ? { streamId, conversationId } : null);
+    return () => voice.deactivate();
+  }, [voice, isOpen, streamId, conversationId]);
+  const close = () => { voice.cancel(); onClose(); };
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -45,15 +59,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    voice.cancel();
     const sanitized = sanitizeUserMessage(text);
     if (canSubmit && sanitized.length > 0 && await onSendMessage(sanitized) && latestText.current === text) {
       setText('');
-      onClose();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
       onClose();
     }
   };
@@ -64,6 +73,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       data-wisp-interactive="true"
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={e => { if (e.key === 'Escape') close(); }}
     >
       {replyTopic && <div role="status">Ответ по теме: {replyTopic}<button type="button" onClick={cancelTopic}>Отменить выбор темы</button></div>}
       <form onSubmit={handleSubmit} className="chat-input-form">
@@ -72,8 +82,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           type="text"
           className="chat-input-field"
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onChange={(e) => { voice.cancel(); setText(e.target.value); }}
           placeholder={placeholder}
           maxLength={240}
         />
@@ -87,11 +96,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <button
           type="button"
           className="chat-cancel-btn"
-          onClick={onClose}
+          onClick={close}
         >
           ✕
         </button>
       </form>
+      <VoiceInputControls client={voice} state={voiceState} available={Boolean(voiceBridge)} contextReady={Boolean(voiceContext)} />
       {submissionMessage ? <div role="status">{submissionMessage}</div> : null}
       {errorMessage ? <div role="alert">{errorMessage}</div> : null}
       <div className="chat-input-arrow" />
