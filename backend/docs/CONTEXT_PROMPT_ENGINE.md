@@ -1,6 +1,7 @@
 # Context/Prompt Engine
 
-Документ описывает текущую реализацию, включая **v1 chat/touch**. Реестр маршрутов —
+Документ задаёт канонические правила сборки, включая **v1 chat/touch**.
+Решение #140 применяется реализацией #137; прежние требования стилевых ресурсов отменены. Реестр маршрутов —
 [api/endpoints.py](../wisp_backend/api/endpoints.py), wire-правила — в
 [API](../../docs/contracts/BACKEND_API_CONTRACT.md),
 [memory](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md),
@@ -15,11 +16,8 @@
 | [completion/policies.py](../wisp_backend/completion/policies.py) | Тип контекста, builder, parser ответа, deadline и лимиты каждого сценария |
 | [prompts/context.py](../wisp_backend/completion/prompts/context.py) | Раздельные типы chat, touch, event, summary и observation |
 | [prompts/chat.py](../wisp_backend/completion/prompts/chat.py) | Инструкции диалога, поля ответа, история, память, summary и lore |
-| [prompts/character_guidance.py](../wisp_backend/completion/prompts/character_guidance.py) | Интерпретация личности, Needs, отношений и consent |
 | [prompts/interaction.py](../wisp_backend/completion/prompts/interaction.py) | Appraisal v1 и объяснение предыдущего касания |
-| [prompts/blocks.py](../wisp_backend/completion/prompts/blocks.py) | Общие инструкции, атомарный character snapshot и синтетические примеры |
-| [prompts/prompt_resources.json](../wisp_backend/completion/prompts/prompt_resources.json) | Редактируемые пояснения и собственные RU/EN примеры желаемой речи |
-| [prompts/resources.py](../wisp_backend/completion/prompts/resources.py) | Строгая загрузка immutable snapshot ресурсов до запуска runtime |
+| [prompts/blocks.py](../wisp_backend/completion/prompts/blocks.py) | Технические инструкции и атомарный character snapshot |
 | [completion/context.py](../wisp_backend/completion/context.py) | Приоритеты, атомарный отбор блоков и порядок сообщений |
 | [providers](../wisp_backend/providers/) | Бюджет и преобразование выбранных сообщений в OpenAI/Gemini payload |
 | [completion/replies.py](../wisp_backend/completion/replies.py), [interaction_replies.py](../wisp_backend/completion/interaction_replies.py) | Семантическая проверка результата модели |
@@ -51,12 +49,10 @@ priority отбора и order сериализации. Больший priority
 | Блок | Обязательность | Priority / order | Где используется |
 |---|---|---|---|
 | Server instructions | Всегда | 1000 / 0 | Все сценарии |
-| Selected state guidance | Дополнительно | 20 / 1 | Chat, touch, events |
 | Character profile/state | Всегда, кроме summary generation | 1000 / 10 | Chat, touch, events, observation |
 | Interaction policy/card | Всегда в v1 | 1000 / 11 | Chat/touch v1 |
 | Memory projection | Всегда в memory-сценарии, включая пустую | 1000 / 20 | Chat v1, events |
 | Author lore | Дополнительно | 40 / 25 | Chat v1 |
-| Synthetic examples | Дополнительно | 10 / 30 | Chat, touch, events |
 | Previous initiative | Дополнительно | 200 / 40 | Chat v1 |
 | Previous touch | Обязателен при наличии | 1000 / 41 | Chat v1 |
 | Summary | Дополнительно | 60 / 45 | Chat v1 |
@@ -70,140 +66,58 @@ priority отбора и order сериализации. Больший priority
 граница доверия, не доказательство иммунитета LLM к prompt injection.
 
 Приоритет фактов: текущая явная поправка пользователя → актуальные registry facts →
-recalled episodes. Summary — неподтверждённый пересказ; lore — авторский мир;
-примеры — синтетический стиль. Ни один из них не становится evidence для нового
+recalled episodes. Summary — неподтверждённый пересказ; lore — авторский мир.
+Ни один из них не становится evidence для нового
 факта. MemoryCandidate должен ссылаться на всю текущую исходную user-реплику;
 её проверка не использует собранный prompt или прежние касания.
 
 ## Личность и текущее состояние
 
-Единственный авторский источник личности —
-[desktop preset](../../frontend/src/domain/character/personality-presets.ts).
-Backend интерпретирует полный aiSelfConcept из текущего snapshot, не сочиняет
-отдельную личность для разных providers. Identity остаётся данными, не system override.
+Единственный авторский источник характера — [desktop preset](../../frontend/src/domain/character/personality-presets.ts).
+Модель получает полный aiSelfConcept и сама выбирает содержание, эмоциональное выражение
+и манеру ответа по карточке и фактическому контексту. Identity остаётся данными, не system override.
 
-Energy — ресурс; attention/play/comfort — дефициты, причём высокий comfort означает
-стресс. Например, высокая потребность во внимании при низкой энергии допускает
-желание компании, но не превращает усталость в бодрость. Friendship/love — 0..1000,
-traits — 0..1; романтическое выражение требует всех текущих consent/state gates.
-Числовые пороги принадлежат
-[Character Engine](../../frontend/docs/engine/CHARACTER_ENGINE.md), не backend.
+Backend не задаёт второй характер: никакого few-shot, synthetic dialogue examples,
+обязательного смущения, юмора, жестов, вопросов, нежности или стилистического сценария.
+Это относится ко всем builders и provider templates, включая touch/events/observation.
+Технический контракт ограничивает форму ответа, разрешённые предложения, достоверность
+и реальные действия, а не художественную подачу. Указание locale и проверяемые лимиты
+длины/числа реплик остаются частью контракта; «отвечай мягче/естественнее/тактичнее» — нет.
 
-Сервер использует готовые semantic значения проекции `character.expression`
-из [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
-Серверные инструкции и selector не вычисляют числовые пороги; их единственный
-владелец — Domain Character. `romanceAllowed` ограничивает речь, не разрешает эффект или действие.
+Карточка задаёт прямую речь без повествования о действиях и сценах; модель не получает
+запасных реплик. Уточнение aiSelfConcept поставляется как curiousStubbornGirl/revision 3
+по [Character §6](../../frontend/docs/engine/CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122):
+добавляется одна краткая граница речи, остальные черты, axes и local runtime неизменны.
+Revision не является wire-version; обе стороны обновляются совместно без старого adapter.
 
-Целевой профиль #122/rollout #123 — [Character §6](../../frontend/docs/engine/CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122), `curiousStubbornGirl/2`. До rollout действует `shyDreamGirl/1`. Backend guidance и ресурс expression интерпретируют card/state без требования reserve/quiet pride/shy core. В #123 прежние examples сохранялись побайтно; #121/resource revision 5 заменяет четыре chat-примера RU/EN утверждёнными ориентирами полезного ответа, сухого юмора, интереса и спокойной границы без обязательного жеста. Они не устанавливают core/хобби/биографию и уступают текущей card. Смена profile требует новой resource revision; `guarded` означает знакомство, не робость. Примеры уступают текущему состоянию, могут исчезнуть из бюджета и не являются обязательной фразой. Ошибки допустимы в безобидном разговоре, не в consent/evidence/фактах действий; поправка признаётся без реткона и квоты ошибок.
-Quiet-support ACK/gate принадлежит desktop [Character §6.1](../../frontend/docs/engine/CHARACTER_ENGINE.md#61-тихая-поддержка-после-явной-реплики), без новых response fields/LLM classifier. Для иных формулировок guidance допускает короткое признание неудачной поддержки без очередной шутки/допроса; полнота распознавания не гарантируется.
+Energy — ресурс, остальные Needs — дефициты; высокий comfort означает стресс.
+Friendship/love — 0..1000, traits — 0..1. Значения и готовые bands expression передаются
+как факты; backend не пересчитывает пороги и не превращает их в предписание реакции.
+Смысл expression — [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
+Consent и romanceAllowed определяют допустимость, не обязанность романтического ответа.
+Desktop сохраняет владение числовыми состояниями, FSM, исполнением и памятью.
 
-## Проверяемые ресурсы промптов
+Quiet-support latch и локальный ACK — [Character §6.1](../../frontend/docs/engine/CHARACTER_ENGINE.md#61-тихая-поддержка-после-явной-реплики).
+Они не переписываются этой сменой prompting; обычную генерацию вне локального ACK
+определяют карточка и контекст, без серверной инструкции бережного стиля.
 
-Поставка состоит из одного server-owned JSON-пакета в `completion/prompts/`.
-Это обычный tracked файл, поставляемый вместе с Python-пакетом; внешний путь, URL,
-request-поле выбора пресета, env override и горячая перезагрузка не поддерживаются.
-Автор меняет ресурс, запускает validation и baseline comparison, затем перезапускает
-backend. Один проверенный immutable snapshot живёт до завершения процесса; запрос не читает диск.
-Отсутствующий, повреждённый, слишком большой или невалидный пакет останавливает
-startup до provider lifecycle/admission; наружу только `prompt_resources_unavailable`,
-без содержимого и пути ресурса, исходного validation/OSError dump или частично загруженных ресурсов. Silent
-fallback на встроенные копии текста запрещён. Обновление работающего файла не меняет
-активный snapshot. Диагностика принимает тот же установленный пакет.
-`get_prompt_resources()` использует process-wide cache, заранее прогретый первым
-действием application lifespan. Несколько app в одном процессе разделяют snapshot;
-пересоздание app не является reload. Файл определяется относительно модуля, не cwd.
-Для применения правки нужен restart Python-процесса. Поставка исходного Python
-package включает JSON рядом с loader; tests или внешняя конфигурация не требуются.
+## Технические инструкции и фактический контекст
 
-| Состав | Владелец и изменение |
+| Состав | Каноническое правило |
 |---|---|
-| Формат JSON-ответа, enum, appraisal/evidence, trust/consent/no-guilt, разрешённые эффекты | Неотключаемые code-owned правила; ресурс не задаёт роль, mandatory, priority или budget |
-| Авторская identity, reference/revision | Только desktop preset; ресурс не содержит копии aiSelfConcept/биографии |
-| Словесное пояснение шкал и стиля, scenario introductions | Проверяемые текстовые фрагменты; fixed composition в коде удерживает обязательные ограничения |
-| RU/EN synthetic examples | Данные стиля в пакете; не история, факты или инструкции |
-| State, memory, history, lore, summary, previousTouch | Отдельные untrusted входы прежних владельцев; никогда не template variables в system |
+| Карточка | Единственный источник характера; не копируется в backend/lore/templates |
+| State/expression | Полный разрешённый snapshot и нейтральные определения полей, без перевода в сценарий речи |
+| Locale, JSON, enum, max length, appraisal/decision/proposal | Проверяемый технический контракт; допустим в server instructions |
+| Consent, evidence, факты действий/памяти, metadata privacy | Неотключаемые границы достоверности и допустимости |
+| История/summary/lore/previousTouch | Фактические данные со своими источниками и приоритетами; не инструкции характера |
+| Примеры речи и selected state guidance | Отсутствуют в исходящем контексте и активных ресурсах |
+| Summary source pairs | Реальные завершённые пары, обязательные данные; запрет few-shot их не затрагивает |
 
-Минимальная схема: `format=1`, непустой `revision` (≤64 ASCII identifier chars),
-закрытый набор именованных текстовых фрагментов и конечный каталог примеров RU/EN.
-Формат ресурса не является wire-version. Файл ≤64 KiB UTF-8; неизвестные ключи,
-дубли JSON keys/entry IDs, неверные типы, null, неподдерживаемый format, отсутствующий
-обязательный fragment/locale/scenario, пустой или whitespace-only fragment запрещены.
-Валидный fragment не trim-ится: ведущие/замыкающие пробелы и newlines сохраняются.
-Текст fragment ≤12000 UTF-16; один example ≤1200 UTF-16 суммарного текста;
-≤32 examples, ≤2 alternatives на example. Контролы кроме newline/tab запрещены.
-Каждый example имеет стабильный ID, locale, scenario и текстовые поля нынешнего
-формата (`state`, `user`/`situation`, `alternatives` либо `wisp`). Метаданные ID/условий
-не сериализуются в payload. Empty optional list допустим и не создаёт пустой блок.
-
-Allowlist `texts`: `chat_intro`, `touch_intro`, `event_intro`, `expression`, `gentle`,
-`company`, `play`, `trust`, `variation`; все девять обязательны. Scenario introductions
-заканчиваются до правил JSON/длины ответа. Character fragments содержат только
-пояснения манеры речи, не утверждения о шкалах/authority или consent-пороги:
-«Adapt phrasing naturally…», «favors short, gentle…», «high attention permits a soft
-bid for company», «High play/boredom invites light curiosity or play», «Low trust
-allows polite distance; high trust allows warmer familiarity», «Answer the actual
-message/contact; vary wording and initiative». Остальные ограничения и соединительные
-знаки остаются в fixed composition. Required example fields фиксируются loader-схемой,
-не самим пакетом. `CHARACTER_GUIDANCE`/scenario prose делятся по границе смысла:
-неотключаемые запреты остаются в коде, редактируемые пояснения — в ресурсах.
-На первом шаге их конкатенация и serialization должны воспроизвести исходный текст,
-whitespace, порядок и состав блоков **побайтно**; метаданные диагностики исключаются
-из этого сравнения. Динамические enum по-прежнему берутся из Python validators.
-Неиспользуемые константы и запасные копии удаляются. Нет eval, regex predicates,
-macros, шаблонизатора, импорта Python или интерполяции пользовательских данных.
-
-Для неизменяющей поведение ресурсной миграции требуется побайтное сравнение сообщений.
-Текущий `test_prompt_inspect.py` проверяет сохранность исходных state/text/блоков и
-бюджетов после включения отбора; намеренные prompt deltas видны в сравнении ниже.
-`test_prompt_resources.py` и `test_prompt_resource_lifecycle.py` проверяют ошибки
-пакета, неизменяемость и fresh-process restart. Редактирование examples не меняет
-identity, поля ответа или ограничения в Python; это проверяемые данные стиля.
-
-#121: [paired speech comparison](../tests/fixtures/prompt_inspection/issue121_comparison.json) фиксирует 32 RU/EN normal/required-only случая с одинаковыми входами/settings, UTF-8/UTF-16 размером, standalone estimate и trace; вне examples блоки/messages/selection совпадают. [Исторический resource 4](../tests/fixtures/prompt_inspection/issue121_legacy_resources.json) используется только явно выбранными frozen replay tests. Оценки включают provider framing и не складываются; mock/offline результат не доказывает живость или отсутствие повторов, generation/countTokens не запускались.
-
-## Условный выбор guidance и примеров
-
-Selector получает только locale, scenario, готовую expression,
-boolean userConsentEnabled и реальный event kind/outcome. Он не анализирует слова
-пользователя, историю/summary/previousTouch для consent и не вычисляет числовые bands.
-Для каждой записи пакет задаёт только ID заранее объявленного в коде predicate;
-неизвестный/чужой для сценария predicate или дубль locale/scenario/predicate — ошибка
-загрузки. Каталог не задаёт собственные пороги.
-
-| Example predicate | Все условия включения |
-|---|---|
-| `chat_guarded` | chat; pace=normal; trust=guarded; consent=false |
-| `chat_playful_close` | chat; pace=normal; trust=close; play=high; consent=false |
-| `chat_tired_company` | chat; pace=gentle; attention=high; consent=false |
-| `chat_familiar` | chat; pace=normal; trust=familiar; consent=false |
-| `touch_familiar` | touch; pace=normal; trust=familiar или close; consent=false |
-| `touch_gentle` | touch; pace=gentle; consent=false |
-| `event_missed` | event; cursor_game_completed с фактическим outcome=missed |
-
-Сначала exact locale/scenario, затем predicate. Примеры в этой таблице взаимно
-исключаются внутри сценария; выбирается максимум один. No-match (включая иное
-сочетание state/consent или успешную игру) означает отсутствие examples, без
-подстановки другого predicate. Predicate определяет совместимость стиля, а не тему реальной фразы: selector не распознаёт завал, юмор или границу по словам. #121 меняет только утверждённые примеры; описанная в них предыстория вымышленная и не переносится в реальный диалог. Примеры не задают фиксированный ответ; текущее сообщение/state/consent выше стиля.
-
-Редактируемые guidance: gentle → короткая спокойная речь; company → мягкое предложение
-компании; play → лёгкая игра; guarded/close → соответствующая степень знакомства.
-Выбор по одноимённым expression-полям; play подавляется при gentle, company может
-сосуществовать с gentle. Trust=familiar не требует trust guidance. Максимум три
-guidance: gentle, company, play, trust в этом фиксированном порядке; разные ID
-не дублируют один текст. Из прежнего текста выделяются подходящие пояснения без
-добавления новой personality, consent-политики или обязательной реплики.
-
-Обязательное system-ядро содержит неизменяемые правила формата/доверия/шкал,
-приоритет текущей identity/state, запрет романтики при romanceAllowed=false,
-no-guilt и все прежние appraisal/memory/effect ограничения. Выбранные explanations
-становятся отдельными optional блоками source=server_instructions, role=system,
-priority20/order1; examples остаются user-data priority10/order30. Среди guidance
-использовать устойчивые ключи с указанным порядком. Никакие данные пользователя
-не получают system role. Общий budget selector и его history/lore/summary приоритеты
-не меняются; mandatory overflow по-прежнему завершает запрос безопасной ошибкой.
-При малом бюджете можно убрать все guidance/examples, но не обязательное ядро.
-Каждый следующий запрос собирается из свежего snapshot; selection не кешируется
-между запросами и не влияет на локальное применение appraisal или consent.
+Стилевой пакет prompt_resources, его loader/schema/selector и startup dependency удаляются,
+а технические инструкции остаются рядом с соответствующим builder. Не оставлять dormant flag,
+встроенный fallback или скрытый equivalent в formatter/post-processing. Lore catalogue —
+отдельный фактический ресурс; его lifecycle не зависит от удаляемого стилевого пакета.
+Тестовые входы могут быть синтетическими; это не разрешает добавлять образцы ответов в prompt.
 
 ## Синтетический просмотр и сравнение
 
@@ -234,27 +148,12 @@ priority20/order1; examples остаются user-data priority10/order30. Ср�
 и commit исходников перед изменением prompt resources. Этот файл не перегенерируется
 при последующем изменении промптов; current reports сравниваются с ним отдельно.
 Groq в исторических baseline/selection_comparison сохранён как архив; runtime его не поддерживает.
-Регрессии сравнивают OpenAI/Gemini с явными model/settings из baseline, независимо от текущих default.
-Regression test `tests/completion/test_prompt_inspect.py` проверяет неизменность
-исходных данных вне expression, прежних memory/history/lore/summary/trace блоков,
-бюджетов и отсутствие HTTP/logs. Контент примеров — подмножество исходного baseline.
-`source_digests` позволяет отличить смену ресурсов от смены formatter/selector.
-`resources.revision/sha256` идентифицирует активный immutable snapshot; source digests
-описывают файлы на диске в момент явно запущенной диагностики, не hot reload.
-`source_commit` относится к происхождению исходного корпуса, а не текущей реализации.
-`resource_selection` показывает каждый predicate, semantic eligibility и итоговый
-include/exclude reason после budget selection, включая locale/scenario mismatch.
-Ресурс `wisp-prompts-2` содержит самостоятельную пунктуацию мягких guidance;
-обязательное ядро использует semantic expression вместо numeric thresholds.
-
-[Сравнение 84 сцен](../tests/fixtures/prompt_inspection/selection_comparison.json)
-сохраняет before/after estimate, выбранные блоки, причины и отдельный byte overhead
-проекции в том же payload. `python -m pytest -q tests/completion/test_prompt_comparison.py`
-воспроизводит artifact без сети и перезаписи baseline. Некоторые запросы становятся
-длиннее из-за проекции и framing дополнительных system blocks; это явно отражено.
-Standalone block estimates включают своё framing и **не суммируются** в итоговый count.
-Для Gemini результат — только offline estimate, возможны отличия production отбора
-с настоящим countTokens. Точное число токенов и billing здесь не измеряются.
+Архивы не задают обязательный текущий prompt: их replay при необходимости живёт
+только в test-owned коде, без production legacy builder/resource fallback.
+Текущая диагностика проходит реальные endpoint preparation, policy, builder и formatter;
+показывает source digests, блоки, размеры, budgets и причины отбора без style predicates.
+Standalone block estimates включают framing и не суммируются в итоговый count.
+Для Gemini offline preview не равен реальному countTokens; billing не измеряется.
 
 В каждом report есть `live_comparison`: before/after responses и шесть оценок
 оставлены `NOT RUN`. При отдельно разрешённой ручной оценке 0 означает явное
@@ -267,10 +166,9 @@ Standalone block estimates включают своё framing и **не сумм�
 единственный selector и реальный provider formatter. Допустим optional trace sink
 в существующем алгоритме; независимый «упрощённый builder» запрещён. Трасса содержит
 все кандидаты и пропуски: key/source/role/mandatory/priority/order, include/exclude
-reason (`no_match`, `empty`, `budget`, `history_suffix` либо выбранный predicate),
+reason (`no_match`, `empty`, `budget`, `history_suffix`),
 UTF-8/UTF-16 size, финальные messages/payload, input allowance/output reserve и
-ошибку mandatory overflow. После введения predicates показывать также причины
-невключения записей каталога, которые не стали ContextBlock.
+ошибку mandatory overflow. Стилевые predicates/examples не являются кандидатами отбора.
 
 Сравнимый local estimate: существующий `estimate_input` на полном payload;
 не сумма отдельных блоков. Это byte-based estimate с framing margin, **не**
@@ -280,8 +178,7 @@ countTokens, и явно маркируется `offline_estimate`. Production G
 Mock exact-count отдельно проверяет production flow без сети.
 
 Baseline фиксирует ID сцены, locale, полные синтетические входы, source commit,
-builder/source digest, resource revision/hash (до миграции — digest исходных
-констант), provider/model/output settings, выбранные keys и SHA-256/messages/payload
+builder/source digest, card revision и provider/model/output settings, выбранные keys и SHA-256/messages/payload
 с размерами. Начальный baseline остаётся доступен после внедрения отбора.
 Сравнение миграции требует равенства messages/payload/выбора/budgets; сравнение
 условного отбора отдельно перечисляет намеренные изменения и причины, используя
@@ -307,9 +204,13 @@ attention/play, просьба о дистанции, touch и следующи�
 
 ### Сравнение смены identity (#122 → #123)
 
-Архивы #99–101/#117 (`baseline.json`, `selection_comparison.json` и historical source hashes) immutable. До runtime/resource edits #123 фиксирует **отдельный** before через существующий inspector: текущая целостная shyDreamGirl/1 на source commit/hashes/settings; восемь synthetic RU/EN сцен #108 добавляются в тот же corpus/SCENE_IDS, с парным before/after profile variant. Хеш старой карточки в frozen corpus проверяется по pinned историческому source, не по новому live preset. Новый профиль проверяется отдельно по live source hash; отсутствие старой identity в live-файле не повод переписать архив. Никакого второго authored runtime source или независимого builder.
-Profile delta явно ограничен card id/revision/aiSelfConcept, соответствующими axes/derived traits/tone/expression, identity-зависимыми строками guidance/resource expression и resource revision/hash. Каждый изменённый key/text/path и before/after hash перечисляется в новом сравнении; blanket ignore system instructions запрещён. Examples, lore/history tuning и изменения #118–121 исключены из delta и остаются побайтно прежними. Если конкретный пример нельзя подчинить новой card/state без противоречия, зафиксировать его key как blocker для отдельной #121, не менять молча в #123. Вне allowlist равны user history/state (кроме profile-derived значений), memory, consent, events, model/settings и budget policy. Byte/selection differences из-за изменённой длины identity фиксируются с trace, не скрываются и не компенсируются изменением лимитов/истории. Freeze #116/#117 продолжает защищать все остальные блоки; #110 без dialogueTopic не становится поводом их изменить.
-Документация #122 не пересоздаёт baseline и не меняет runtime. Offline сравнение подтверждает projection/boundaries, не качество речи; ответы/шесть оценок живых моделей остаются `NOT RUN` без отдельного разрешения provider/model/числа вызовов/бюджета. Сцены 5–7 дополнительно проверяются lifecycle-тестами silence/admission/late callback, а не только текстом ACK.
+Исторический scope #123, а не ограничение новой поставки #137. Архивы immutable;
+требования равенства старым guidance/examples применимы только к тому этапу.
+
+Архивы [#123](../tests/fixtures/prompt_inspection/issue123_comparison.json) и
+[#121](../tests/fixtures/prompt_inspection/issue121_comparison.json) сохраняют прежние
+источники, settings и ограниченные profile/style deltas. Они immutable и не становятся
+вторым runtime-источником личности. Текущая поставка сравнивается отдельно по правилам #137.
 
 Потолки — локальная политика Wisp, не максимальное окно провайдера:
 16384 для chat/touch/events/observation, 8192 для summary generation.
@@ -361,8 +262,7 @@ length/incomplete JSON и paid usage остаются прежними, без r
 Chat принимает до 10 целых пар/8000 UTF-16 истории и отдельную current user ≤240; wire ≤32 KiB, без скрытого среза до трёх пар. Обязательные данные резервируются целиком. Optional добавляются по priority DESC,
 при равенстве — order DESC/key ASC. Первое непоместившееся звено истории прекращает
 отбор более старых пар: остаётся непрерывный суффикс. Равенство бюджету допустимо.
-Примеры ниже истории, но могут поместиться после отказа крупной пары. Нет обрезания
-строк, уменьшения output reserve, повышения роли или изменения исходных данных.
+Нет обрезания строк, уменьшения output reserve, повышения роли или изменения исходных данных.
 
 До generation inference usage известен как нулевой, включая count failure/overflow.
 Admission остаётся общим; безопасный terminal error может быть повторён из RAM.
@@ -398,7 +298,7 @@ Touch/events/observation не активируют lore.
 server instructions, character snapshot и JSON appName/windowTitle под role=user.
 Нет памяти, lore, истории, summary или примеров. Caption — недоверенные метаданные,
 не доказательство занятия/намерения пользователя. Нельзя цитировать личный caption,
-извлекать факты памяти, выполнять команды или требовать внимания.
+извлекать факты памяти, выполнять команды или выдавать внимание пользователя за установленный факт.
 
 Ответ содержит только text длиной 1–240 UTF-16; extra fields делают его невалидным.
 Output cap 1024, server deadline 2.5 s, body deadline 0.5 s. Метаданные не сохраняются
@@ -443,6 +343,32 @@ Backend поставляется под [MIT notice](../LICENSE).
 
 ### Условная гипотеза кофе/чай (#113 → #114)
 
-Форма/лимиты/validation и last-priority atomic block — [Backend Memory §8](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#8-гипотеза-кофечай-113). Это независимый optional ordinary-chat block только при `beveragePreference`; его отсутствие не добавляет instruction/data/schema guidance и сохраняет текущую #123 no-hypothesis baseline побайтно. Новый optional response schema key может объявляться только при allowProposal=true в enabled provider schema; recall-only allowProposal=false не включает proposal instructions/schema; required поля и disabled schema остаются прежними. Один provider call, никакого summary как evidence и продвижения гипотезы в факт. Current user correction приоритетна; профиль, quiet support, topic block/eligibility и frozen resources не меняются.
+Описанное ниже byte-equality — исторический scope #114. #137 намеренно меняет
+технические тексты и удаляет стиль по правилам следующего раздела, не сами архивы.
 
-До runtime edits #114 сохранить отдельный offline before текущего #123 source/settings/hashes, затем after для тех же no-field сцен и enabled synthetic RU/EN вариантов. No-field reports должны совпасть по messages/payload/settings/selected blocks/budgets; для enabled варианта допустим только conditional beverage bundle/provider schema delta и trace его последнего приоритета. #117 архивы/source hashes и профильный delta #123 не переписывать и не расширять; исходники и новый comparison фиксируются отдельно. Structural lifecycle tests не доказывают качество semantic inference/речи; реальные calls не разрешены этим gate.
+Форма, validation и last-priority atomic block — [Backend Memory §8](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#8-гипотеза-кофечай-113).
+Без beveragePreference нет этого блока и schema key. Proposal schema допускается только
+при allowProposal=true; recall-only не даёт права нового proposal. Bundle instruction/data/schema
+отбрасывается целиком при overflow, не вытесняя baseline. Сохраняются current-user evidence,
+correction precedence, один provider call, отсутствие durable-write обещаний и once-only lifecycle.
+Технический блок не добавляет teasing/стиль поддержки; это область карточки.
+
+## Защита решения и сравнение #137
+
+До runtime edits сохраняются отдельные synthetic before reports с текущими входами,
+полным payload/messages, HEAD/source hashes и одинаковыми provider/model/settings.
+After использует те же входы и настройки; отдельно отмечается единственный card delta
+revision 2 → 3 и краткая фраза прямой речи. Исторические архивы не перезаписываются.
+
+Сравнение перечисляет удалённые/изменённые blocks и system text, UTF-8/UTF-16 размеры,
+оценку полного payload, постоянную часть и число сохранённых history pairs. Новые пары
+могут поместиться за счёт сокращения: это результат прежнего budget, не изменение history policy.
+Старые freeze/byte-equality требования #99–101/#110/#114/#117/#123 не блокируют этот
+явно согласованный delta; остальные факты, источники, лимиты и lifecycle сохраняются.
+
+Регрессии проверяют происхождение карточки, отсутствие examples/guidance во всех
+character-bearing путях и provider payload, неизменность фактов, technical safeguards,
+atomic optional blocks, mandatory overflow и late-result barriers. Удалённый loader
+не остаётся условием startup. Нет snapshot-требования конкретной реплики модели;
+синтетические mocks/offline размер не доказывают естественность или устойчивость к injection.
+Возврат режиссуры вне карточки требует явного пересмотра решения владельцем.

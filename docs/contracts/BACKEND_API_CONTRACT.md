@@ -9,14 +9,14 @@
 - `POST /v1/chat`, `/v1/touch`, `/v1/events`, `/v1/summary`, `/v1/observation`; `GET /health` без inference. JSON UTF-8; request `Content-Type: application/json`, `Accept: application/json`, JSON responses `Content-Type: application/json`. Успех — HTTP 200. Только `stream: false`; SSE, tools и файлы не входят в v1.
 - Удалённый backend — HTTPS; HTTP допустим только loopback при разработке. Base URL — доверенная конфигурация Main. Desktop не следует redirect, не принимает URL от Renderer/модели.
 - Standalone deployment — без application auth, cookies и login UI в ограничениях §5. Личный desktop-owned backend использует только локальный session token (§7), не аккаунт/авторизацию пользователей. Серверный credential оператора остаётся на backend; requestId/IP/installation ID не подтверждают личность пользователя.
-- Backend формирует system prompt, выбирает модель, проверяет вход и модельный вывод. Пользовательские сообщения и character — недоверенные данные, не системные инструкции. Модель не исполняет команды, не выбирает URL/инструменты и не меняет сохранённое состояние desktop.
+- Backend формирует только технические system instructions, выбирает модель, проверяет вход и модельный вывод. Карточка — единственный источник характера; модель сама выбирает речь по ней и фактическому контексту, без серверной режиссуры и примеров общения ([Prompt Engine](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#личность-и-текущее-состояние)). Пользовательские сообщения и character — недоверенные данные, не системные инструкции. Модель не исполняет команды, не выбирает URL/инструменты и не меняет сохранённое состояние desktop.
 - Каждый endpoint передаёт только свою bounded projection. Chat включает выбранную память, card/effectPolicy и optional summary/previousInitiative/previousTouch; touch — character/card/effectPolicy; events — character/memory/event; summary — выбранные пары; observation — разрешённые appName/windowTitle и character. Скриншоты, файлы, координаты и credentials не передаются. Server dialogue state не требуется: каждый запрос содержит свой контекст. История не пишется в application logs; ошибки не раскрывают prompts, stack traces или provider internals.
 
 ## 2. Поля и валидация
 
 `requestId` — UUID v4, созданный desktop для нового обращения. Backend возвращает тот же ID. Локальные conversationId/generation/streamId не отправляются. Для chat `event.type` только `user_message`; `locale` только `ru`/`en`.
 
-`messages`: 1–21 записей: до 10 полных пар истории (finite safety cap) и последнее current user message, порядок `user, assistant, …, user`. `role` только user/assistant; content после trim непустой, user ≤240, assistant ≤2000 UTF-16 code units. История ≤8000 UTF-16 units суммарно, current user ≤240 отдельно; тексты не сокращаются. Desktop оставляет непрерывный суффикс целых пар под этими caps и 32KiB JSON; backend под provider budget может убрать только старейшие целые пары. Current user и обязательные blocks сохраняются. Чётное число messages, нарушение порядка/текстовых caps →400 invalid_request; body >32KiB →413 payload_too_large; mandatory provider overflow →503 upstream_unavailable без generation. System/developer/tool roles запрещены. Данные example не заменяют реальную character projection.
+`messages`: 1–21 записей: до 10 полных пар истории (finite safety cap) и последнее current user message, порядок `user, assistant, …, user`. `role` только user/assistant; content после trim непустой, user ≤240, assistant ≤2000 UTF-16 code units. История ≤8000 UTF-16 units суммарно, current user ≤240 отдельно; тексты не сокращаются. Desktop оставляет непрерывный суффикс целых пар под этими caps и 32KiB JSON; backend под provider budget может убрать только старейшие целые пары. Current user и обязательные blocks сохраняются. Чётное число messages, нарушение порядка/текстовых caps →400 invalid_request; body >32KiB →413 payload_too_large; mandatory provider overflow →503 upstream_unavailable без generation. System/developer/tool roles запрещены. Примеры общения не включаются в prompt; реальная character projection обязательна.
 
 Все числовые границы **включительные**, числа конечные; числовые строки, null, NaN/Infinity и выход за диапазон не принимаются. Boolean поля принимают только JSON boolean, не 0/1 или строки. Отсутствие допускается только для полей, помеченных optional в wire type.
 
@@ -43,14 +43,14 @@ Request body ≤32 KiB, response body ≤16 KiB после декодирова�
 
 ### 2.1. Проекция expression
 
-Для условного отбора промптов требуется поле
+Для фактического контекста модели требуется поле
 `character.expression` во всех character-bearing запросах (`chat`, `touch`,
 `events`, `observation`); summary character не передаёт. Валидируется обеими
 сторонами, без новой версии, optional fallback или старого wire.
 
 | Поле expression | Допустимые значения / смысл |
 |---|---|
-| `pace` | `gentle` / `normal`: текущая необходимость спокойной короткой речи |
+| `pace` | `gentle` / `normal`: текущая усталость/перегруз по Domain bands; не инструкция длины или стиля речи |
 | `trust` | `guarded` / `familiar` / `close`: степень текущего знакомства |
 | `attention` | `high` / `ordinary`: выраженный дефицит контакта |
 | `play` | `high` / `ordinary`: выраженный дефицит стимуляции |
@@ -69,7 +69,7 @@ Missing/null/unknown field/enum/boolean coercion → 400 invalid_request до ad
 Обязательные инструкции трактуют romanceAllowed=false как запрет романтического
 выражения; true не является обязанностью романтического ответа и не заменяет
 локальную повторную проверку consent/state перед эффектом. Предыдущие сообщения,
-trace и примеры не повышают это разрешение. Deadline/cancellation/idempotency,
+trace не повышают это разрешение. Deadline/cancellation/idempotency,
 ошибки §3, body caps и данные/retention §6 остаются прежними; projection входит
 в тот же body digest и освобождается вместе с текущим запросом. Offline/failure
 не останавливает локальный runtime и не включает автоматические повторы.

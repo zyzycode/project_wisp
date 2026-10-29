@@ -99,7 +99,19 @@ Soft lock допускает лишь краткий выход при силь�
 
 ## 6. Авторский профиль Wisp (revision 2, gate #122)
 
-Целевой preset `curiousStubbornGirl`, card revision `2`; до атомарного rollout #123 runtime использует `shyDreamGirl/1`. Единственный authored source остаётся [personality-presets.ts](../../src/domain/character/personality-presets.ts), без копии личности в backend/lore/resources. Смысл профиля согласован в [#108](https://github.com/zyzycode/project_wisp/issues/108#issuecomment-6403891113): обычная девушка 21 года, глуповатая, упрямая, инициативная и любопытная к человеку. Есть ситуативное мнение, возможны реальные бытовые/безобидные фактические промахи с признанием поправки. Нет закреплённых хобби, любимых вещей, придуманной биографии или обязательного смущения. Возраст не создаёт consent.
+Preset `curiousStubbornGirl` введён поставкой #123 как card revision `2`; уточнение речи #137 поставляет revision `3` по правилу ниже. Единственный authored source остаётся [personality-presets.ts](../../src/domain/character/personality-presets.ts), без копии личности в backend/lore/resources. Смысл профиля согласован в [#108](https://github.com/zyzycode/project_wisp/issues/108#issuecomment-6403891113): обычная девушка 21 года, глуповатая, упрямая, инициативная и любопытная к человеку. Есть ситуативное мнение, возможны реальные бытовые/безобидные фактические промахи с признанием поправки. Нет закреплённых хобби, любимых вещей, придуманной биографии или обязательного смущения. Возраст не создаёт consent.
+
+Архитектурное решение #140, поставка #137: карточка — единственный источник характера
+для LLM. Модель сама выбирает содержание, эмоциональное выражение и манеру ответа
+по карточке, фактическим state/памяти/истории. Серверные примеры речи, few-shot и
+подсказки обязательного смущения/юмора/жестов/нежности/вопросов запрещены.
+Технический контракт формата, достоверности и допустимости действий сохраняется;
+детали сборки — [Prompt Engine](../../../backend/docs/CONTEXT_PROMPT_ENGINE.md#личность-и-текущее-состояние).
+Прямая речь без повествования о действиях/сценах задаётся одной краткой фразой карточки,
+без каталога образцовых ответов. Это уточнение aiSelfConcept повышает card revision до 3;
+preset id, остальные черты/оси, dynamic checkpoints и локальные правила не меняются.
+Revision 2 — предыдущая поставка #123; обе стороны reference обновляются совместно,
+без миграционного adapter или поддержки old+new. Не раздувать карточку удалённой режиссурой.
 
 Ошибки возможны, но не обязательны: нет квоты ложных ответов, реткона «я специально», подделки evidence или фактов исполненных действий. Достоверные сведения о пользователе, consent, source of truth памяти и правила действий имеют приоритет. Своя позиция не разрешает давление, жестокость, бесконечный спор или продолжение после «стоп». Новые занятия, повторная инициативная отправка и долговременное обучение стилю поддержки не вводятся.
 
@@ -127,7 +139,7 @@ Support cue без явного `replyToInterestThread` обрабатывает
 
 Latch подавляет новые/поздние SocialBid, cursor approach/игровые приглашения, unsolicited game/event/observation speech и follow-up инициативы; отменяет несовместимый текущий run через существующие lifecycle hooks. До recall, transport и commit все эти пути проверяют latch как quiet-compatible gate. Разрешены P0/P1/P2, sleep/wake, спокойные Rest/Explore, ненавязчивое собственное занятие. Нет нового таймера, очереди, budget refill, увеличения Need deficit или ручного quiet toggle. Прямое user play/touch проходит свои текущие gates и не снимает latch; пассивный курсор/AFK-return/restore/provider/tick тоже не снимают.
 
-Следующий принятый user chat send сначала снимает latch, затем проходит обычный dialogue pipeline; он может снова включить latch только при новом eligible previous reply. Dialogue reset/detach/replaceStream и Renderer reload сохраняют latch в Main session; eligibility прошлого reply очищается, старый ACK не восстанавливается. Full memory reset, Main restart и dispose очищают latch/eligibility и инвалидируют pending ACK; manual quiet сохраняет свой lifecycle. Late results не снимают/не обходят latch. Порт [IQuietSupportRuntime](../../src/application/ports/dialogue-runtime.ts) — локальный, без wire/IPC/SQLite поля. Неизвестные парафразы остаются обычным диалогом с инструкцией бережной поддержки: полнота NLP-распознавания здесь не заявляется.
+Следующий принятый user chat send сначала снимает latch, затем проходит обычный dialogue pipeline; он может снова включить latch только при новом eligible previous reply. Dialogue reset/detach/replaceStream и Renderer reload сохраняют latch в Main session; eligibility прошлого reply очищается, старый ACK не восстанавливается. Full memory reset, Main restart и dispose очищают latch/eligibility и инвалидируют pending ACK; manual quiet сохраняет свой lifecycle. Late results не снимают/не обходят latch. Порт [IQuietSupportRuntime](../../src/application/ports/dialogue-runtime.ts) — локальный, без wire/IPC/SQLite поля. Неизвестные парафразы остаются обычным диалогом по карточке и фактическому контексту, без отдельной серверной инструкции стиля поддержки: полнота NLP-распознавания здесь не заявляется.
 
 ## 7. Intimacy & Romantic Charge
 
@@ -251,7 +263,7 @@ Source дедуплицируется **до** проверки gate: пропу
 
 Спецификация семантической оценки взаимодействий. Единственный авторский
 source общей карточки — [personality-presets.ts](../../src/domain/character/personality-presets.ts):
-`curiousStubbornGirl`, revision `2` после rollout §6; до него `shyDreamGirl/1`. Все пользователи получают одинаковые aiSelfConcept, base,
+`curiousStubbornGirl`, revision `3` в поставке #137 по §6 (предыдущая поставка #123 — revision `2`). Все пользователи получают одинаковые aiSelfConcept, base,
 soft/hard limits и plasticity. Правка авторской identity требует повышения revision;
 provider switch, checkpoint, разговор и learning revision не меняют. Старые динамические
 checkpoints восстанавливаются поверх установленной карточки по Memory §4; редактора нет.
@@ -280,18 +292,18 @@ FSM, числа, persistence или IPC. Application/Infrastructure получа
 | play=high | play≥70; иначе ordinary, существующая граница playful tone |
 | romanceAllowed | существующий `canExpressFlirt`: все текущие consent/state gates §7 |
 
-Эти bands нужны только для уместности речи: high attention не будит персонажа,
+Эти bands описывают состояние для модели: high attention не будит персонажа,
 high play не запускает игру, close не создаёт consent. Комбинация gentle/high
-attention/high play сохраняет все три признака; спокойный темп ограничивает
-игривую речь, но не стирает потребность в компании. `ordinary` не означает нулевую
+attention/high play сохраняет все три факта. Модель самостоятельно выбирает их
+выражение в речи, без предписанного темпа, жеста или приглашения. `ordinary` не означает нулевую
 потребность. Boredom и traits остаются описательными полями исходного snapshot.
 
 Использовать существующие Domain thresholds; допустимо вынести их в экспортируемые
 константы существующих файлов и сузить вход `canExpressFlirt` до нужного structural
 Pick без изменения функции. Не копировать числовые правила в Infrastructure/Python.
 Обязательная wire-проекция и strict validation — [API §2.1](../../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
-Backend выбирает объяснения/примеры по готовым значениям; обязательные инструкции
-не содержат второго набора числовых consent/Needs thresholds. Текущий локальный
+Backend передаёт готовые значения и нейтральные определения их смысла, без
+подбора примеров/стилевых подсказок и второго набора consent/Needs thresholds. Текущий локальный
 stale signature и повторная проверка перед commit остаются независимыми.
 
 ### Факт, proposal и порядок

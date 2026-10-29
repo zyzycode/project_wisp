@@ -6,6 +6,18 @@
 
 Application владеет портом, сборкой `AIProviderRequest` и `ProviderResponseIntentMapper`; Infrastructure — provider implementations. Renderer/React/Render не знают provider-specific payload. Domain/Character не получают raw provider DTO.
 
+## Карточка и свобода ответа модели
+
+Карточка — единственный авторский источник характера: [Character §6](CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122).
+State/expression, память, история и события — фактический контекст. Модель сама выбирает
+содержание, эмоциональное выражение и манеру ответа; все реальные state writes и действия
+остаются за desktop. Backend/direct adapter не добавляют примеры общения или режиссуру
+через system prompts, formatter и post-processing. Technical instructions ограничены
+форматом, достоверностью и допустимостью действий; locale и max lengths сохраняются.
+[Prompt Engine](../../../backend/docs/CONTEXT_PROMPT_ENGINE.md#личность-и-текущее-состояние)
+задаёт единые правила для всех character-bearing сценариев. Локальные fallback/ACK
+не являются prompt examples и сохраняют существующее отдельное назначение.
+
 ## Форма интерфейса
 
 `getStatus()` — status/debug/fallback для Application, без network setup/login/user configuration. `generateResponse()` — один semantic response; streaming требует отдельного Architect review.
