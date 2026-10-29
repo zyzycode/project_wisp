@@ -30,6 +30,7 @@
     "src/shared/**/*.ts",
     "src/domain/**/*.ts",
     "src/application/**/*.ts",
-    "src/infrastructure/**/*.ts"
+    "src/infrastructure/**/*.ts",
+    "tests/renderer/render-pipeline-integration.test.tsx"
   ]
 }
