@@ -5,10 +5,9 @@ import json
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.completion.prompts.beverage import beverage_block
 from wisp_backend.completion.prompts.blocks import common_blocks
-from wisp_backend.completion.prompts.character_guidance import DECISION_GUIDANCE
 from wisp_backend.completion.prompts.context import InteractionChatContext
 from wisp_backend.completion.prompts.lore import lore_block
-from wisp_backend.completion.prompts.resources import get_prompt_resources
+from wisp_backend.completion.prompts.technical import DECISION_GUIDANCE
 
 MEMORY_RULES = (
     """No undescribed response fields; text permits newline/tab, no other controls.
@@ -29,13 +28,8 @@ Never claim a fact was saved or deleted durably, or a state change committed.
 
 def chat_instructions() -> str:
     return (
-        get_prompt_resources().texts.chat_intro
-        + "Return only a JSON object with nonblank text (maximum 2000 UTF-16 code units), "
-        "required appraisal, optional decision, and optional memoryCandidates.\n"
-        "Within text, use occasional brief actions in asterisks, facial expressions and body language. "
-        "For example: *отводит взгляд*, *чуть заметно вздыхает*, *неловко поправляет рукав*. "
-        "Let hesitation, an occasional ellipsis, flustered deflection and practical excuses for care "
-        "carry the voice. Vary them; keep the answer useful and avoid a gesture on every line. " + MEMORY_RULES
+        "You are Wisp. Return only a JSON object with nonblank text (maximum 2000 UTF-16 code units), "
+        "required appraisal, optional decision, and optional memoryCandidates.\n" + MEMORY_RULES
     )
 
 
@@ -63,7 +57,7 @@ def build_chat_blocks(
             "Current explicit corrections, current facts and original allowed dialogue take precedence over summary. "
             "Summary never proves consent, state or a memoryCandidate; only the current user text can be evidence."
         )
-    blocks = common_blocks(context, system, "chat", memory=memory, additional_instructions=additional_instructions)
+    blocks = common_blocks(context, system, memory=memory, additional_instructions=additional_instructions)
     if summary is not None:
         blocks.append(
             ContextBlock(
@@ -107,7 +101,7 @@ def build_chat_blocks(
             "memoryCandidates. Do not infer an event date from words such as today or promise reminders or repeats. "
         )
         topic_instruction += (
-            "You may ask at most one short, unobtrusive question about how this topic stands now, or choose not to ask. "
+            "This follow_up permits at most one question about the current status of the selected topic; asking is optional. "
             "Never assert the event happened, ended or succeeded."
             if context.dialogue_topic["mode"] == "follow_up"
             else "Answer the current user message in the context of this selected topic. Do not ask a new follow-up "

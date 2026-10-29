@@ -7,7 +7,6 @@ import httpx
 from fastapi import FastAPI
 from wisp_backend.api.setup import install_api
 from wisp_backend.completion.prompts.lore import load_catalogue
-from wisp_backend.completion.prompts.resources import get_prompt_resources
 from wisp_backend.config.loader import load_logging_settings, load_settings
 from wisp_backend.config.settings import Settings
 from wisp_backend.logging import get_logger
@@ -26,7 +25,6 @@ def create_app(
         try:
             configure_logging(settings.logging if settings is not None else load_logging_settings())
             configured = True
-            get_prompt_resources()
             config = settings if settings is not None else load_settings()
             logger.info("application_starting")
             app.state.lore_catalogue = load_catalogue()

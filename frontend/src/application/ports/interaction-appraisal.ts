@@ -1,7 +1,7 @@
 /** Target #87 semantic contracts; implementation is delivered by #89/#90. */
 export interface CharacterCardReference {
   readonly id: 'curiousStubbornGirl';
-  readonly revision: 2;
+  readonly revision: 3;
 }
 
 /** A proposal about this interaction, never a user fact or numeric write. */

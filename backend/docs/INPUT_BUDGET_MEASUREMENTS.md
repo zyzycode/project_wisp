@@ -3,8 +3,10 @@
 Канонические правила — [Prompt Engine](CONTEXT_PROMPT_ENGINE.md#openai-ограничение-точности).
 Сравнение #118 — [fixture](../tests/fixtures/prompt_inspection/issue118_comparison.json),
 исторические измерения — [calibration](../tests/fixtures/prompt_inspection/issue118_calibration.json).
-Все новые результаты получены offline из одного текущего post-#120 корпуса и одинаковых
+Результаты #118 получены offline из одного post-#120 корпуса и одинаковых
 settings. Окна остаются 16384/8192; wire byte/UTF-16 caps не меняются.
+
+Сокращение промпта #137 измеряется отдельно в [comparison fixture](../tests/fixtures/prompt_inspection/issue137_comparison.json): исходные payloads сохранены с дедупликацией текста, after строится по тем же входам/settings с явно указанным card delta. Эти offline размеры и оценки не являются новым provider usage.
 
 ## Что измерено
 

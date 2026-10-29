@@ -46,7 +46,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "eligible",
         "event": {
@@ -102,7 +102,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2,
+          "revision": 3,
           "extra": 1
         },
         "effectPolicy": "eligible",
@@ -323,7 +323,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "eligible",
         "event": {
@@ -378,7 +378,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "event": {
           "type": "user_touch",
@@ -432,7 +432,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "yes",
         "event": {
@@ -487,7 +487,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "eligible",
         "event": {
@@ -542,7 +542,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "eligible",
         "event": {
@@ -641,7 +641,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -751,7 +751,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2,
+          "revision": 3,
           "extra": 1
         },
         "effectPolicy": "suppressed",
@@ -1188,7 +1188,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -1297,7 +1297,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "previousTouch": {
           "action": "touch",
@@ -1405,7 +1405,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "yes",
         "previousTouch": {
@@ -1514,7 +1514,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -1623,7 +1623,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -1688,7 +1688,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "eligible",
         "event": {
@@ -1743,7 +1743,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "eligible",
         "event": {
@@ -1799,7 +1799,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "eligible",
         "event": {
@@ -1872,7 +1872,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -1981,7 +1981,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -2090,7 +2090,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -2199,7 +2199,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -2309,7 +2309,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": null
@@ -2405,7 +2405,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -2514,7 +2514,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {
@@ -2623,7 +2623,7 @@
         },
         "card": {
           "id": "curiousStubbornGirl",
-          "revision": 2
+          "revision": 3
         },
         "effectPolicy": "suppressed",
         "previousTouch": {

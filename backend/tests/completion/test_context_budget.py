@@ -77,12 +77,12 @@ def test_history_is_a_contiguous_suffix_of_complete_pairs() -> None:
 
 def test_omitting_optional_context_is_valid() -> None:
     current = block("current", "important", required=True, order=100)
-    optional = replace(block("examples", "x" * 1000), source="server_examples")
+    optional = replace(block("examples", "x" * 1000), source="lore")
     assert select_context((optional, current), cost((current,)), cost) == (current,)
 
 
 @pytest.mark.parametrize(
-    "source", ["desktop_character", "desktop_memory", "server_examples", "previous_ai", "dialogue", "desktop_event"]
+    "source", ["desktop_character", "desktop_memory", "lore", "previous_ai", "dialogue", "desktop_event"]
 )
 def test_data_blocks_cannot_use_system_role(source: ContextSource) -> None:
     with pytest.raises(ValueError, match="Only server instructions"):
@@ -145,7 +145,7 @@ def test_async_counts_preserve_selection_order_history_suffix_and_equality() -> 
         block("old", "a", order=50),
         block("middle", "x" * 1000, order=52),
         block("new", "Последняя пара", order=54),
-        replace(block("examples", "пример", priority=10), source="server_examples"),
+        replace(block("examples", "пример", priority=10), source="lore"),
     )
 
     async def run() -> None:

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from wisp_backend.api.dispatch import prepare_context, prepare_job
+from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.completion.context import (
     ContextBlock,
@@ -17,8 +17,6 @@ from wisp_backend.completion.context import (
     response_schema_for,
     select_context,
 )
-from wisp_backend.completion.prompts.resources import get_prompt_resources
-from wisp_backend.completion.prompts.selection import select_prompt_resources
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.prompt_inspection.scenes import load_scene
 from wisp_backend.providers.context_budget import CONTEXT_WINDOWS
@@ -53,9 +51,9 @@ def _deny_network(request: httpx.Request) -> httpx.Response:
     raise RuntimeError("Offline inspection cannot use HTTP")
 
 
-def _absent_optionals(route: str, blocks: tuple[ContextBlock, ...], *, empty_examples: bool) -> list[dict[str, str]]:
+def _absent_optionals(route: str, blocks: tuple[ContextBlock, ...]) -> list[dict[str, str]]:
     keys = {block.key for block in blocks}
-    absent = [] if "examples" in keys else [{"key": "examples", "reason": "empty" if empty_examples else "no_match"}]
+    absent: list[dict[str, str]] = []
     if route != "/v1/chat":
         return absent
     absent.extend(
@@ -107,11 +105,7 @@ async def inspect_scene(
             raise ValueError("Unsupported synthetic beverage case")
         body = {**body, "beveragePreference": variants[beverage_case]}
         metadata = {**metadata, "beverage_case": beverage_case}
-    resources = get_prompt_resources()
     validated = ENDPOINTS[route].request_type.model_validate(body)
-    context = prepare_context(validated, lore)
-    mode = {"/v1/chat": "chat", "/v1/touch": "touch", "/v1/events": "event"}[route]
-    semantic_selection = select_prompt_resources(context, mode)
     job = prepare_job(validated, lore)
     blocks = job.inference.blocks
     cap = min(settings.max_output_tokens, job.inference.max_output_tokens or settings.max_output_tokens)
@@ -163,24 +157,9 @@ async def inspect_scene(
                 }
             )
         final_estimate = size(selected) if status == "ok" else None
-        selected_keys = {block.key for block in selected}
-        resource_selection = [
-            {
-                **asdict(decision),
-                "eligible": decision.included,
-                "included": decision.included and decision.block_key in selected_keys,
-                "semantic_reason": decision.reason,
-                "reason": (
-                    decisions[decision.block_key].reason
-                    if decision.included and decision.block_key not in selected_keys
-                    else decision.reason
-                ),
-            }
-            for decision in semantic_selection.decisions
-        ]
+
     return {
         "synthetic": True,
-        "resources": {"revision": resources.revision, "sha256": resources.sha256},
         **metadata,
         "scene_id": scene_id,
         "locale": locale,
@@ -205,12 +184,7 @@ async def inspect_scene(
             "selected_estimate": final_estimate,
         },
         "blocks": details,
-        "absent_optional": _absent_optionals(
-            route,
-            blocks,
-            empty_examples=not any(entry.locale == locale and entry.scenario == mode for entry in resources.examples),
-        ),
-        "resource_selection": resource_selection,
+        "absent_optional": _absent_optionals(route, blocks),
         "selected_keys": [block.key for block in selected],
         "messages": messages,
         "payload": payload,

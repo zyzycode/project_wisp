@@ -16,7 +16,7 @@ export function projectCharacterMemory(state: CharacterState, updatedAt: string)
   if (state.personality.id !== 'curiousStubbornGirl') throw new TypeError('Invalid active preset');
   const a = state.personality.axes;
   return { snapshotVersion: 2, updatedAt, state: {
-    presetId: 'curiousStubbornGirl', cardRevision: 2,
+    presetId: 'curiousStubbornGirl', cardRevision: 3,
     needs: { energy: state.needs.energy, attention: state.needs.attention, play: state.needs.play, comfort: state.needs.comfort, boredom: state.needs.boredom ?? 15 },
     relationship: { ...state.relationship }, intimacy: { ...state.intimacy },
     currentAxes: { openness: a.openness.current, extraversion: a.extraversion.current, agreeableness: a.agreeableness.current, sensitivity: a.sensitivity.current, playfulness: a.playfulness.current, boldness: a.boldness.current, independence: a.independence.current },
@@ -27,7 +27,7 @@ export function restoreCharacterMemory(snapshot: PersistedCharacterStateSnapshot
   const legacy = snapshot.snapshotVersion === 1;
   if (!legacy && snapshot.snapshotVersion !== 2) throw new TypeError('Unsupported snapshot');
   const state = exactRecord(snapshot.state, ['presetId', 'needs', 'relationship', 'intimacy', 'currentAxes', 'preferences', ...(legacy ? [] : ['cardRevision'])]);
-  if (state.presetId !== (legacy ? 'shyDreamGirl' : 'curiousStubbornGirl') || (!legacy && state.cardRevision !== 2)) throw new TypeError('Invalid preset');
+  if (state.presetId !== (legacy ? 'shyDreamGirl' : 'curiousStubbornGirl') || (!legacy && state.cardRevision !== 2 && state.cardRevision !== 3)) throw new TypeError('Invalid preset');
   const needs = exactRecord(state.needs, ['energy', 'attention', 'play', 'comfort', 'boredom']);
   const relationship = exactRecord(state.relationship, ['friendship', 'love', 'loveUnlocked']);
   const intimacy = exactRecord(state.intimacy, ['flirtiness', 'romanticCharge', 'userConsentEnabled', 'boundariesKnown']);

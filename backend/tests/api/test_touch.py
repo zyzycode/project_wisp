@@ -24,10 +24,14 @@ def test_touch_prompt_and_text_only_response(client_factory, body, chat_completi
     def upstream(request):
         calls.append(request)
         messages = json.loads(request.content)["messages"]
-        assert sum(item["role"] != "system" for item in messages) == 4
+        assert sum(item["role"] != "system" for item in messages) == 3
         assert "240 UTF-16" in messages[0]["content"]
         assert '"variant":"touch"' in messages[-1]["content"]
-        character = next(item["content"] for item in messages if item["content"].startswith("[Current State & Mood]"))
+        character = next(
+            item["content"]
+            for item in messages
+            if item["content"].startswith("[Character card & current factual state]")
+        )
         assert body["messages"][-1]["content"] not in character
         return httpx.Response(
             200,

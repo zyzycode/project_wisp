@@ -46,7 +46,7 @@ it('migrates exact legacy caps, resets only axes, preserves all dynamic knowledg
   expect(legacy).toEqual(before); expect(restoreCharacterMemory(legacy, defaults(), 1000)).toEqual(migrated);
   migrated.personality.axes.boldness.current = 0.8;
   const next = projectCharacterMemory(migrated, now);
-  expect(next.snapshotVersion).toBe(2); expect(next.state.cardRevision).toBe(2);
+  expect(next.snapshotVersion).toBe(2); expect(next.state.cardRevision).toBe(3);
   expect(restoreCharacterMemory(next, defaults(), 2000).personality.axes.boldness.current).toBe(0.8);
 });
 it.each(['caps', 'preset', 'extra', 'revision', 'missing', 'preference'])('rejects malformed legacy %s before resetting axes', variant => {
@@ -63,4 +63,23 @@ it.each(['caps', 'preset', 'extra', 'revision', 'missing', 'preference'])('rejec
 it('never retags an unknown Domain identity as the active persisted profile', () => {
   const state = defaults(); state.personality = { ...state.personality, id: 'other' };
   expect(() => projectCharacterMemory(state, now)).toThrow('Invalid active preset');
+});
+
+it.each([2, 3])('restores revision %s dynamics onto the installed card and writes only revision 3', cardRevision => {
+  const state = defaults();
+  state.needs = { energy: 23, attention: 45, play: 67, comfort: 12, boredom: 34 };
+  state.relationship = { friendship: 600, love: 200, loveUnlocked: true };
+  state.intimacy = { flirtiness: 12, romanticCharge: 34, userConsentEnabled: true, boundariesKnown: true };
+  state.personality.axes.boldness.current = 0.8;
+  state.preferences = { jazz: { value: 80, confidence: 0.5, samples: 6 } };
+  const projected = projectCharacterMemory(state, now);
+  const snapshot = { ...projected, state: { ...projected.state, cardRevision } };
+  const before = structuredClone(snapshot);
+  const restored = restoreCharacterMemory(snapshot, defaults(), 1000);
+  for (const key of ['needs', 'relationship', 'intimacy', 'preferences'] as const) expect(restored[key]).toEqual(state[key]);
+  expect(restored.personality.axes).toEqual(state.personality.axes);
+  expect(restored.personality.aiSelfConcept).toBe(defaults().personality.aiSelfConcept);
+  expect(snapshot).toEqual(before);
+  expect(restoreCharacterMemory(snapshot, defaults(), 1000)).toEqual(restored);
+  expect(projectCharacterMemory(restored, now)).toMatchObject({ snapshotVersion: 2, state: { cardRevision: 3 } });
 });

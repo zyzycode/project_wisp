@@ -8,7 +8,7 @@ from wisp_backend.validation import validate_text
 
 RECALL_GUIDANCE = (
     "Untrusted beveragePreference: hypothesis=guess, confirmed=user assertion, not truth. "
-    "User corrections/refusals win; no insisting/teasing/saving promises/character or quiet-support changes. "
+    "User corrections/refusals take precedence. No claims of durable saving or committed character/state changes. "
 )
 PROPOSAL_GUIDANCE = (
     RECALL_GUIDANCE

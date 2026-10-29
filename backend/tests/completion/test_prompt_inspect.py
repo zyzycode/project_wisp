@@ -11,7 +11,8 @@ from pathlib import Path
 
 import httpx
 import pytest
-from tests.completion.test_prompt_selection import scene_context
+from wisp_backend.api.dispatch import prepare_context
+from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.completion.context import (
     ContextBlock,
     ContextMessage,
@@ -22,7 +23,7 @@ from wisp_backend.completion.context import (
 )
 from wisp_backend.completion.prompts.narrative import reference_lines
 from wisp_backend.prompt_inspection.report import inspect_scene
-from wisp_backend.prompt_inspection.scenes import SCENE_IDS, SCENES_PATH
+from wisp_backend.prompt_inspection.scenes import SCENE_IDS, SCENES_PATH, load_scene
 
 BASELINE = Path(__file__).parents[1] / "fixtures/prompt_inspection/baseline.json"
 
@@ -44,7 +45,7 @@ def test_synthetic_states_preserve_the_canonical_public_author_identity() -> Non
                 assert scene["body"]["card"]["revision"] == source["card_revision"]
 
 
-def test_full_synthetic_corpus_preserves_data_and_budgets_while_selecting_resources(
+def test_full_synthetic_corpus_preserves_facts_and_budgets_without_speech_resources(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     async def forbidden(*args: object, **kwargs: object) -> None:
@@ -52,55 +53,28 @@ def test_full_synthetic_corpus_preserves_data_and_budgets_while_selecting_resour
 
     monkeypatch.setattr(httpx.AsyncClient, "send", forbidden)
     monkeypatch.setenv("OPENAI_API_KEY", "SYNTHETIC_SECRET_MUST_NOT_APPEAR")
-    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
-    assert baseline["synthetic"] is True
-    historical_scenes = {report["scene_id"] for report in baseline["reports"]}
-    assert len(historical_scenes) == 14
-    assert historical_scenes <= set(SCENE_IDS)
-    assert len(baseline["reports"]) == len(historical_scenes) * 2 * 3
-    # Preserve the historical corpus, including the retired provider. Compare
-    # active providers with the model/settings captured then, not today's defaults.
-    active_reports = [
-        report for report in baseline["reports"] if report["settings"]["provider"] in {"openai", "gemini"}
-    ]
-    assert len(active_reports) == len(historical_scenes) * 2 * 2
 
     async def run() -> None:
-        for expected in active_reports:
-            settings = expected["settings"]
-            report = await inspect_scene(
-                expected["scene_id"],
-                expected["locale"],
-                settings["provider"],
-                settings["model"],
-                max_output_tokens=settings["max_output_tokens"],
-                temperature=settings["temperature"],
-                thinking_level=settings["thinking_level"],
-            )
-            assert report["settings"] == expected["settings"]
-            for key in ("context_window", "output_reserve", "input_allowance"):
-                assert report["budget"][key] == expected["budget"][key]
-            original_blocks = {block["key"]: block for block in expected["blocks"]}
-            current_blocks = {block["key"]: block for block in report["blocks"]}
-            assert set(original_blocks) - set(current_blocks) <= {"examples"}
-            for key, original in original_blocks.items():
-                if key not in {"instructions", "character_profile_state", "interaction_policy", "examples", "memory"}:
-                    assert current_blocks[key]["messages_sha256"] == original["messages_sha256"]
-            character = scene_context(expected["scene_id"], expected["locale"]).character
-            rendered = next(
-                item["content"] for item in report["messages"] if item["content"].startswith("[Current State & Mood]")
-            )
-            assert all(line in rendered.splitlines() for line in reference_lines(character))
-            assert (
-                len([item for item in report["resource_selection"] if item["kind"] == "example" and item["included"]])
-                <= 1
-            )
-            assert len([key for key in report["selected_keys"] if key.startswith("guidance_")]) <= 3
-            assert report["measurement"]["provider_count"] == "NOT RUN"
-            assert report["live_comparison"]["status"] == "NOT RUN"
-            assert "SYNTHETIC_SECRET_MUST_NOT_APPEAR" not in json.dumps(report)
-            assert report["budget"]["selected_estimate"] <= report["budget"]["input_allowance"]
-            assert report["payload"] is not None
+        for provider in ("openai", "gemini"):
+            for locale in ("ru", "en"):
+                for scene in SCENE_IDS:
+                    report = await inspect_scene(scene, locale, provider)
+                    route, body, lore, _ = load_scene(scene, locale)
+                    context = prepare_context(ENDPOINTS[route].request_type.model_validate(body), lore)
+                    rendered = next(
+                        item["content"]
+                        for item in report["messages"]
+                        if item["content"].startswith("[Character card & current factual state]")
+                    )
+                    assert all(line in rendered.splitlines() for line in reference_lines(context.character))
+                    assert "resources" not in report and "resource_selection" not in report
+                    assert all(b["source"] != "server_examples" for b in report["blocks"])
+                    assert all(not key.startswith("guidance_") for key in report["selected_keys"])
+                    assert report["measurement"]["provider_count"] == "NOT RUN"
+                    assert report["live_comparison"]["status"] == "NOT RUN"
+                    assert "SYNTHETIC_SECRET_MUST_NOT_APPEAR" not in json.dumps(report)
+                    assert report["budget"]["selected_estimate"] <= report["budget"]["input_allowance"]
+                    assert report["payload"] is not None
 
     asyncio.run(run())
     assert not caplog.records
@@ -116,10 +90,8 @@ def test_required_boundary_and_overflow_are_explained(provider: str) -> None:
     overflow = asyncio.run(inspect_scene("touch_followup", "ru", provider, budget_case="overflow"))
     assert overflow["status"] == "required_overflow"
     assert overflow["payload"] is None and overflow["messages"] == []
-    assert {block["decision"]["reason"] for block in overflow["blocks"]} == {
-        "required_overflow",
-        "not_evaluated_overflow",
-    }
+    for block in overflow["blocks"]:
+        assert block["decision"]["reason"] == ("required_overflow" if block["required"] else "not_evaluated_overflow")
     assert overflow["budget"]["output_reserve"] == boundary["budget"]["output_reserve"] == 4096
 
 
@@ -129,7 +101,7 @@ def test_trace_explains_history_suffix_and_empty_optionals_without_changing_sele
         ContextBlock("old", "dialogue", False, 100, 50, (ContextMessage("user", "x"),)),
         ContextBlock("middle", "dialogue", False, 100, 52, (ContextMessage("user", "xxxx"),)),
         ContextBlock("new", "dialogue", False, 100, 54, (ContextMessage("user", "x"),)),
-        ContextBlock("empty", "server_examples", False, 10, 30, ()),
+        ContextBlock("empty", "lore", False, 10, 30, ()),
     )
 
     def size(candidate: tuple[ContextBlock, ...]) -> int:

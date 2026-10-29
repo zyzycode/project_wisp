@@ -42,7 +42,7 @@ export type CharacterMemorySnapshotV1 = {
 /** Active persisted dynamic projection; authored identity/caps stay in Domain. */
 export type CharacterMemoryStateV2 = Omit<CharacterMemoryStateV1, 'presetId'> & {
   readonly presetId: 'curiousStubbornGirl';
-  readonly cardRevision: 2;
+  readonly cardRevision: 3;
 };
 
 export type CharacterMemorySnapshotV2 = {

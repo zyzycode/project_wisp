@@ -81,8 +81,13 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.options.character.replaceRestoredState(candidate);
     if (this.status.mode !== 'volatile') {
       this.status = { mode: 'persistent', characterRestore: restore };
-      // Legacy migration must remain dirty until the v2 write is acknowledged.
-      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 2) this.savedSignature = JSON.stringify(projectCharacterMemory(candidate, this.options.timestamp()).state);
+      // Identity migrations remain dirty until the current card revision is acknowledged.
+      const loadedState = snapshot.ok ? snapshot.value?.state : null;
+      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 2
+        && loadedState && typeof loadedState === 'object' && !Array.isArray(loadedState)
+        && 'cardRevision' in loadedState && loadedState.cardRevision === 3) {
+        this.savedSignature = JSON.stringify(projectCharacterMemory(candidate, this.options.timestamp()).state);
+      }
       if (this.options.localMock) this.options.hydrate(context);
     }
     if (this.phase !== 'initializing') return;

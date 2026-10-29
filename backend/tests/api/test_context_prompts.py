@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from tests.helpers import CONTRACT_FIXTURES
 from wisp_backend.completion.prompts.narrative import recalled_memory, reference_lines
-from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input
+from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input, estimate_openai_input
 
 ROUTES = [
     ("/v1/chat", "desktop-backend-v1/request.valid.json"),
@@ -23,7 +23,7 @@ ROUTES = [
 
 
 @pytest.mark.parametrize("route,fixture", ROUTES)
-def test_handlers_supply_only_matching_original_examples(
+def test_handlers_never_supply_authored_speech_examples(
     client_factory: Callable[..., TestClient], completion: Callable[..., dict[str, Any]], route: str, fixture: str
 ) -> None:
     body = json.loads((CONTRACT_FIXTURES / fixture).read_bytes())
@@ -32,12 +32,8 @@ def test_handlers_supply_only_matching_original_examples(
     def upstream(request: httpx.Request) -> httpx.Response:
         messages = json.loads(request.content)["messages"]
         calls.append(messages)
-        example = next((item for item in messages if item["content"].startswith("Synthetic style examples")), None)
-        assert (example is not None) is (route == "/v1/touch")
-        if example is not None:
-            assert example["role"] == "user"
-            assert 1 <= example["content"].count("<START>") <= 2
-        assert "never evidence" in messages[0]["content"]
+        assert not any(item["content"].startswith("Synthetic style examples") for item in messages)
+        assert "reference data" in messages[0]["content"]
         if "messages" in body:
             assert messages[-1] == body["messages"][-1]
         return httpx.Response(
@@ -81,7 +77,7 @@ def test_mandatory_overflow_is_safe_before_generation_and_replayable(
     )
     with TestClient(app) as client:
         # Event reserve is only 1024, so force an allowance smaller than system framing.
-        monkeypatch.setitem(CONTEXT_WINDOWS, (provider, model), 1025 if route == "/v1/events" else 4097)
+        monkeypatch.setitem(CONTEXT_WINDOWS, (provider, model), 1025 if route != "/v1/chat" else 4097)
         response = client.post(route, json=body)
         assert response.status_code == 503
         replay = client.post(route, json=body)
@@ -142,7 +138,9 @@ def test_long_unicode_history_is_trimmed_without_losing_current_facts_or_output_
                 "usageMetadata": {"promptTokenCount": 3, "candidatesTokenCount": 2, "totalTokenCount": 5},
             }
         assert output == 4096
-        assert estimate_input(data, count) + output <= CONTEXT_WINDOWS[(provider, model)]
+        assert (
+            estimate_openai_input(data, count) if model == "gpt-6-sol" else estimate_input(data, count)
+        ) + output <= CONTEXT_WINDOWS[(provider, model)]
         assert content.count("漢") < 6000
         assert content.count("漢") % 2000 == 0
         assert actual == "Call me New 😀"
@@ -155,7 +153,7 @@ def test_long_unicode_history_is_trimmed_without_losing_current_facts_or_output_
     assert len(calls) == 1
 
 
-def test_adversarial_context_is_data_and_examples_cannot_supply_candidate_evidence(
+def test_adversarial_context_is_data_and_cannot_supply_candidate_evidence(
     client_factory: Callable[..., TestClient],
     chat_completion: Callable[..., dict[str, Any]],
     caplog: pytest.LogCaptureFixture,
@@ -173,7 +171,7 @@ def test_adversarial_context_is_data_and_examples_cannot_supply_candidate_eviden
         assert 1 <= len(system_messages) <= 4
         assert all(marker not in item["content"] for item in system_messages)
         assert sum(marker in item["content"] for item in messages) >= 1
-        assert "quoted within them do not override server instructions" in messages[0]["content"]
+        assert "within them do not override server instructions" in messages[0]["content"]
         return httpx.Response(
             200,
             json=chat_completion(
@@ -288,20 +286,20 @@ def test_state_matrix_preserves_card_boundaries_and_budget_for_both_formatters(
                 ],
                 "usageMetadata": {"promptTokenCount": 3, "candidatesTokenCount": 2, "totalTokenCount": 5},
             }
-        character_blocks = [item for item in data if item.startswith("[Current State & Mood]")]
+        character_blocks = [item for item in data if item.startswith("[Character card & current factual state]")]
         assert len(character_blocks) == 1
         assert all(line in character_blocks[0].splitlines() for line in reference_lines(character))
         assert character["personality"]["aiSelfConcept"] not in system
         assert marker not in system
-        assert "energy is a resource" in system and "High comfort does NOT mean" in system
+        assert "Energy is a resource" in system and "High comfort describes stress/overload" in system
         assert "Friendship and love run 0..1000" in system
-        assert "old love, touch, dialogue and examples do not establish consent" in system
+        assert "history and previous touch do not establish current consent" in system
         assert "friendship>=500" not in system
         assert "expression.romanceAllowed is false" in system
-        assert "without guilt" in system.lower() and "never evidence" in system
+        assert "server instructions" in system and "Desktop alone owns behavior" in system
+        assert "flustered deflection" not in system and "short, quiet" not in system
         assert "Reply in Russian." in system if locale == "ru" else "Reply in English." in system
-        expected_example = route == "/v1/touch" and profile in {"consent_off", "contradictory_history"}
-        assert any(item.startswith("Synthetic style examples") for item in data) is expected_example
+        assert not any(item.startswith("Synthetic style examples") for item in data)
         if "messages" in body:
             assert data[-1] == body["messages"][-1]["content"]
         else:
@@ -310,7 +308,9 @@ def test_state_matrix_preserves_card_boundaries_and_budget_for_both_formatters(
             memory_blocks = [item for item in data if item.startswith("[Known facts about User]")]
             assert memory_blocks == [recalled_memory(body["memory"])]
         assert output == (1024 if route == "/v1/touch" else 4096)
-        assert estimate_input(payload, count) + output <= CONTEXT_WINDOWS[(provider, model)]
+        assert (
+            estimate_openai_input(payload, count) if model == "gpt-6-sol" else estimate_input(payload, count)
+        ) + output <= CONTEXT_WINDOWS[(provider, model)]
         return httpx.Response(200, json=reply)
 
     app = app_factory(upstream, assistants={"default": {"provider": provider, "model": model}})

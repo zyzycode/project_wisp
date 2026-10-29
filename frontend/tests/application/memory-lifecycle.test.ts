@@ -109,7 +109,7 @@ it.each([false, true])('legacy restore remains dirty until acknowledged checkpoi
   await f.lifecycle.initialize(); expect(f.storage.character.save).not.toHaveBeenCalled();
   if (fail) f.storage.character.save.mockResolvedValueOnce({ ok: false, code: 'busy' });
   await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(1);
-  expect(f.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2, state: { presetId: 'curiousStubbornGirl', cardRevision: 2 } });
+  expect(f.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2, state: { presetId: 'curiousStubbornGirl', cardRevision: 3 } });
   await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
   await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
   await f.lifecycle.shutdown();
@@ -129,6 +129,27 @@ it('failed migration save leaves the source v1 available for a clean restart', a
   expect(restarted.storage.character.save).toHaveBeenCalledTimes(1);
   expect(restarted.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2 });
   await restarted.lifecycle.shutdown();
+});
+
+it.each([false, true])('revision 2 restore stays dirty until revision 3 checkpoint is acknowledged: %s', async fail => {
+  const f = fixture(); const saved = f.character.getState(); saved.personality.axes.boldness.current = 0.8;
+  const projected = projectCharacterMemory(saved, new Date().toISOString());
+  const source = { ...projected, state: { ...projected.state, cardRevision: 2 } };
+  const before = structuredClone(source);
+  f.storage.character.load.mockResolvedValue({ ok: true, value: source });
+  await f.lifecycle.initialize();
+  expect(f.character.getState().personality.axes.boldness.current).toBe(0.8);
+  expect(f.storage.character.save).not.toHaveBeenCalled();
+  if (fail) f.storage.character.save.mockResolvedValueOnce({ ok: false, code: 'busy' });
+  await f.lifecycle.checkpoint();
+  expect(f.storage.character.save).toHaveBeenCalledTimes(1);
+  expect(f.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2, state: { cardRevision: 3 } });
+  await f.lifecycle.checkpoint();
+  expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
+  await f.lifecycle.checkpoint();
+  expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
+  expect(source).toEqual(before);
+  await f.lifecycle.shutdown();
 });
 
 it('invalidates summary again after acknowledged same-generation beverage correction append', async () => {

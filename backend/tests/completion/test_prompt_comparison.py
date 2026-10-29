@@ -1,142 +1,35 @@
-"""Preserve the historical comparison while checking stable current invariants."""
+"""Preserve historical comparison evidence without replaying a removed prompt policy."""
 
-import asyncio
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
-
-from tests.completion.test_prompt_selection import scene_context
-from wisp_backend.prompt_inspection.report import encoded, inspect_scene
 
 ROOT = Path(__file__).parents[1] / "fixtures/prompt_inspection"
-BASELINE = ROOT / "baseline.json"
-COMPARISON = ROOT / "selection_comparison.json"
 
 
-def _replace_text(value: Any, original: str, replacement: str) -> Any:
-    if isinstance(value, str):
-        return replacement if value == original else value
-    if isinstance(value, list):
-        return [_replace_text(item, original, replacement) for item in value]
-    if isinstance(value, dict):
-        return {key: _replace_text(item, original, replacement) for key, item in value.items()}
-    return value
-
-
-def comparison_record(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
-    character_message = next(
-        message["content"] for message in after["messages"] if message["content"].startswith("[Current State & Mood]")
-    )
-    expression = scene_context(after["scene_id"], after["locale"]).character["expression"]
-    reference = character_message.split("[Character card & supporting state]", 1)[1]
-    without_expression = _replace_text(after["payload"], character_message, reference)
-    overhead = len(encoded(after["payload"])) - len(encoded(without_expression))
-    before_size = before["budget"]["selected_estimate"]
-    after_size = after["budget"]["selected_estimate"]
-    return {
-        "scene": after["scene_id"],
-        "locale": after["locale"],
-        "provider": after["settings"]["provider"],
-        "expression": expression,
-        "before_estimate": before_size,
-        "after_estimate": after_size,
-        "estimate_delta": after_size - before_size,
-        "projection_utf8_payload_bytes": overhead,
-        "prompt_and_selection_estimate_delta": after_size - before_size - overhead,
-        "before_selected_keys": before["selected_keys"],
-        "after_selected_keys": after["selected_keys"],
-        "resources": after["resource_selection"],
-        "blocks": [
-            {
-                "key": block["key"],
-                "selected": block["key"] in after["selected_keys"],
-                "reason": block["decision"]["reason"],
-                "utf8_bytes": block["utf8_bytes"],
-            }
-            for block in after["blocks"]
-        ],
-        "live_comparison": after["live_comparison"],
-    }
-
-
-async def comparison_artifact() -> dict[str, Any]:
-    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
-    records = []
-    resources = None
-    for before in baseline["reports"]:
-        settings = before["settings"]
-        if settings["provider"] not in {"openai", "gemini"}:
-            continue
-        after = await inspect_scene(
-            before["scene_id"],
-            before["locale"],
-            settings["provider"],
-            settings["model"],
-            max_output_tokens=settings["max_output_tokens"],
-            temperature=settings["temperature"],
-            thinking_level=settings["thinking_level"],
+def test_archived_selection_comparison_retains_baseline_and_budget_arithmetic() -> None:
+    baseline_path = ROOT / "baseline.json"
+    baseline = json.loads(baseline_path.read_text())
+    comparison = json.loads((ROOT / "selection_comparison.json").read_text())
+    assert hashlib.sha256(baseline_path.read_bytes()).hexdigest() == comparison["baseline_sha256"]
+    assert baseline["source_commit"] == comparison["baseline_source_commit"]
+    assert len(comparison["records"]) == len(baseline["reports"]) == 84
+    for row, original in zip(comparison["records"], baseline["reports"], strict=True):
+        assert row["scene"] == original["scene_id"]
+        assert row["locale"] == original["locale"]
+        assert row["provider"] == original["settings"]["provider"]
+        assert row["before_estimate"] == original["budget"]["selected_estimate"]
+        assert row["before_selected_keys"] == original["selected_keys"]
+        assert row["estimate_delta"] == row["after_estimate"] - row["before_estimate"]
+        assert row["prompt_and_selection_estimate_delta"] == (
+            row["estimate_delta"] - row["projection_utf8_payload_bytes"]
         )
-        resources = after["resources"]
-        records.append(comparison_record(before, after))
-    return {
-        "synthetic": True,
-        "baseline_sha256": hashlib.sha256(BASELINE.read_bytes()).hexdigest(),
-        "baseline_source_commit": baseline["source_commit"],
-        "resources": resources,
-        "method": "offline UTF-8 payload JSON bytes + 256 + 64 * message count; not tokenizer or billing",
-        "projection_note": "Projection bytes are measured in the same formatted payload with the narrative state cues removed; no HTTP or compatibility path.",
-        "quality": "NOT RUN; byte changes do not establish live response quality.",
-        "records": records,
-    }
-
-
-def test_archived_reports_preserve_data_and_selection_with_legacy_speech(legacy_speech_resources) -> None:
-    expected = json.loads(COMPARISON.read_text(encoding="utf-8"))
-    assert len(expected["records"]) == 84
-    archived = [record for record in expected["records"] if record["provider"] in {"openai", "gemini"}]
-    current = asyncio.run(comparison_artifact())
-    assert len(current["records"]) == len(archived) == 56
-    assert {key: value for key, value in current.items() if key not in {"records", "resources"}} == {
-        key: value for key, value in expected.items() if key not in {"records", "resources"}
-    }
-    assert legacy_speech_resources.revision == "wisp-prompts-4"
-    rollout = json.loads((ROOT / "issue123_comparison.json").read_text())
-    assert current["resources"] == rollout["resources"]["after"]
-    assert expected["resources"] == rollout["resources"]["before"]
-    # The JSON stays an archive of the earlier prompt experiment. Instruction
-    # bytes and consequent optional budget selection may change; data, voice,
-    # resource eligibility and the measurement formulas must remain comparable.
-    for record, original in zip(current["records"], archived, strict=True):
-        for key in (
-            "scene",
-            "locale",
-            "provider",
-            "expression",
-            "before_estimate",
-            "before_selected_keys",
-            "projection_utf8_payload_bytes",
-            "live_comparison",
-        ):
-            assert record[key] == original[key]
-        assert len(record["blocks"]) == len(original["blocks"])
-        for block, old in zip(record["blocks"], original["blocks"], strict=True):
-            assert block["key"] == old["key"]
-            if block["key"] in {"instructions", "character_profile_state", "interaction_policy"}:
-                # Exact changed texts/hashes are checked by test_profile_rollout.
-                assert block["utf8_bytes"] > 0
-                assert block["selected"] is True and block["reason"] == "required"
-            else:
-                assert block["utf8_bytes"] == old["utf8_bytes"]
-            assert block["selected"] == (block["key"] in record["after_selected_keys"])
-        assert len(record["resources"]) == len(original["resources"])
-        for resource, old in zip(record["resources"], original["resources"], strict=True):
-            assert {key: value for key, value in resource.items() if key not in {"included", "reason"}} == {
-                key: value for key, value in old.items() if key not in {"included", "reason"}
-            }
-        assert record["estimate_delta"] == record["after_estimate"] - record["before_estimate"]
-        assert record["prompt_and_selection_estimate_delta"] == (
-            record["estimate_delta"] - record["projection_utf8_payload_bytes"]
-        )
-        assert record["projection_utf8_payload_bytes"] > 0
-        assert record["live_comparison"]["status"] == "NOT RUN"
+        assert row["projection_utf8_payload_bytes"] > 0
+        assert row["live_comparison"]["status"] == "NOT RUN"
+        for block in row["blocks"]:
+            assert block["selected"] == (block["key"] in row["after_selected_keys"])
+            if block["reason"] == "required":
+                assert block["selected"]
+        for resource in row["resources"]:
+            if resource["included"]:
+                assert resource["block_key"] in row["after_selected_keys"]

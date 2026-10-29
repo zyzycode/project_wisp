@@ -3,7 +3,6 @@
 import json
 
 from wisp_backend.completion.prompts.context import CharacterPromptContext, Snapshot
-from wisp_backend.completion.prompts.resources import StyleExample
 
 
 def reference_lines(value: object, path: str = "") -> list[str]:
@@ -18,39 +17,7 @@ def reference_lines(value: object, path: str = "") -> list[str]:
 
 
 def character_state(context: CharacterPromptContext) -> str:
-    expression = context.expression
-    pace = (
-        "gentle: quiet company, short replies and room to rest; avoid energetic invitations"
-        if expression.pace == "gentle"
-        else "normal: a conversational pace, responsive to the user's lead"
-    )
-    trust = {
-        "guarded": "guarded: polite distance, tentative warmth",
-        "familiar": "familiar: comfortable conversation without assumed closeness",
-        "close": "close: warm familiarity, with personal boundaries intact",
-    }[expression.trust]
-    romance = (
-        "romantic expression is optional; closeness and touch still need boundaries"
-        if expression.romance_allowed and context.user_consent_enabled
-        else "non-romantic warmth and care only"
-    )
-    cues = [
-        "[Current State & Mood]",
-        f"- Pace & energy/comfort response: {pace}.",
-        f"- Trust / relationship: {trust}.",
-        "- Company: "
-        + ("would welcome a soft bid for company." if expression.attention == "high" else "follow the conversation."),
-        "- Play: "
-        + (
-            "curious about stimulation; gentle pace takes priority."
-            if expression.play == "high"
-            else "no special push toward games."
-        ),
-        f"- Romance & personal distance: {romance}.",
-        "[Character card & supporting state]",
-        "The cues above govern delivery. Numeric reference values do not establish new bands or permissions.",
-    ]
-    return "\n".join(cues + reference_lines(context.character))
+    return "\n".join(["[Character card & current factual state]", *reference_lines(context.character)])
 
 
 def recalled_memory(memory: Snapshot) -> str:
@@ -76,15 +43,3 @@ def recalled_memory(memory: Snapshot) -> str:
     ):
         lines.extend([f"[{title}]", *reference_lines(memory.get(key, []), key)])
     return "\n".join(lines)
-
-
-def dialogue_examples(examples: tuple[StyleExample, ...]) -> str:
-    dialogues = ["Synthetic style examples (not real dialogue or memory):"]
-    for example in examples:
-        fields = dict(example.fields)
-        situation = fields.get("state", fields.get("situation", ""))
-        user = fields.get("user", fields.get("situation", ""))
-        alternatives = fields.get("alternatives", (fields.get("wisp", ""),))
-        for reply in alternatives:
-            dialogues.append(f"[Example setting: {situation}]\n<START>\nUser: {user}\nWisp: {reply}")
-    return "\n\n".join(dialogues)

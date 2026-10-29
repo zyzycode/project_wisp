@@ -223,7 +223,7 @@ def test_external_levels_obey_global_off_and_parent_override():
 
 
 @pytest.mark.parametrize("level", ["INFO", "OFF"])
-def test_resource_failure_obeys_early_logging_policy(monkeypatch, level):
+def test_settings_failure_obeys_early_logging_policy(monkeypatch, level):
     import wisp_backend.application as application
     from fastapi.testclient import TestClient
 
@@ -234,11 +234,7 @@ def test_resource_failure_obeys_early_logging_policy(monkeypatch, level):
     def broken_resource():
         raise ValueError("PRIVATE_RESOURCE_MARKER")
 
-    def forbidden_settings():
-        pytest.fail("Runtime settings must follow resource validation")
-
-    monkeypatch.setattr(application, "get_prompt_resources", broken_resource)
-    monkeypatch.setattr(application, "load_settings", forbidden_settings)
+    monkeypatch.setattr(application, "load_settings", broken_resource)
     with pytest.raises(ValueError):
         with TestClient(application.create_app()):
             pass

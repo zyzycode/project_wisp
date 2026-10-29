@@ -9,7 +9,6 @@ ContextSource = Literal[
     "server_instructions",
     "desktop_character",
     "desktop_memory",
-    "server_examples",
     "desktop_event",
     "desktop_interaction",
     "previous_ai",

@@ -1,19 +1,12 @@
 """Current strict profile and paired offline construction; never claim model quality."""
 
-import asyncio
 import hashlib
 import json
 from pathlib import Path
 
-import httpx
 import pytest
 from pydantic import ValidationError
-from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.api.schemas.interaction import CharacterCard
-from wisp_backend.prompt_inspection.report import digest, inspect_scene
-from wisp_backend.prompt_inspection.scenes import SCENE_IDS
-from wisp_backend.providers.http_provider import HTTPProvider
-from wisp_backend.providers.openai import OpenAIProvider
 
 FIXTURES = Path(__file__).parents[1] / "fixtures/prompt_inspection"
 BEFORE_HASH = "dd93ddb72e89e0508821f1914ce4874163ec3a16348253628e37b5731550ce65"
@@ -21,11 +14,18 @@ EXAMPLES_HASH = "ef7918df3f035dcda6370c42e024f4b02fd69e4c628eb1db87eaf63c2b21191
 PROFILE_BLOCKS = {"instructions", "character_profile_state", "interaction_policy"}
 
 
+def digest(value: object) -> str:
+    raw = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+
 @pytest.mark.parametrize(
     "card",
     [
         {"id": "shyDreamGirl", "revision": 1},
         {"id": "curiousStubbornGirl", "revision": 1},
+        {"id": "curiousStubbornGirl", "revision": 2},
+        {"id": "curiousStubbornGirl", "revision": 3.0},
         {"id": "shyDreamGirl", "revision": 2},
         {"id": "curiousStubbornGirl", "revision": True},
         {"id": "curiousStubbornGirl", "revision": 2.0},
@@ -34,14 +34,13 @@ PROFILE_BLOCKS = {"instructions", "character_profile_state", "interaction_policy
 def test_only_new_card_is_accepted_without_negotiation(card: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         CharacterCard.model_validate(card)
-    assert CharacterCard.model_validate({"id": "curiousStubbornGirl", "revision": 2}).revision == 2
+    assert CharacterCard.model_validate({"id": "curiousStubbornGirl", "revision": 3}).revision == 3
 
 
-def test_profile_rollout_preserves_examples_bytes_and_all_archives(legacy_speech_resources) -> None:
+def test_archived_profile_rollout_preserves_examples_bytes_and_all_archives() -> None:
     comparison = json.loads((FIXTURES / "issue123_comparison.json").read_text())
     for name, expected in comparison["preserved_archives"].items():
         assert hashlib.sha256((FIXTURES / name).read_bytes()).hexdigest() == expected
-    assert legacy_speech_resources.revision == "wisp-prompts-4"
     resources = (FIXTURES / "issue121_legacy_resources.json").read_text()
     assert hashlib.sha256(resources[resources.index('  "examples":') :].encode()).hexdigest() == EXAMPLES_HASH
     assert json.loads(resources)["revision"] == "wisp-prompts-4"
@@ -69,7 +68,7 @@ def test_profile_comparison_enumerates_every_changed_message_and_source() -> Non
         "api/schemas/interaction.py",
     }
     assert len(before["reports"]) == len(after["reports"]) == len(comparison["records"]) == 120
-    assert len([key for key in SCENE_IDS if key.startswith("profile_")]) == 8
+    assert len({row["scene_id"] for row in after["reports"] if row["scene_id"].startswith("profile_")}) == 8
     for index, (old, new, row) in enumerate(
         zip(before["reports"], after["reports"], comparison["records"], strict=True)
     ):
@@ -100,67 +99,3 @@ def test_profile_comparison_enumerates_every_changed_message_and_source() -> Non
     assert comparison["live_quality"]["status"] == "NOT RUN"
     assert comparison["live_quality"]["provider_calls"] == 0
     assert set(comparison["live_quality"]["scores_0_to_2"].values()) == {"NOT RUN"}
-
-
-def test_archived_profile_replays_with_legacy_budget_without_http(
-    monkeypatch: pytest.MonkeyPatch, legacy_speech_resources
-) -> None:
-    async def forbidden(*args: object, **kwargs: object) -> None:
-        pytest.fail("Offline comparison must not call provider/count APIs")
-
-    monkeypatch.setattr(httpx.AsyncClient, "send", forbidden)
-    monkeypatch.setattr(OpenAIProvider, "estimate_payload", HTTPProvider.estimate_payload)
-    monkeypatch.setattr(OpenAIProvider, "estimate_method", HTTPProvider.estimate_method)
-    after = json.loads((FIXTURES / "issue123_after.json").read_text())
-
-    async def run() -> None:
-        for expected in after["reports"]:
-            settings = expected["settings"]
-            actual = await inspect_scene(
-                expected["scene_id"],
-                expected["locale"],
-                settings["provider"],
-                settings["model"],
-                max_output_tokens=settings["max_output_tokens"],
-                temperature=settings["temperature"],
-                thinking_level=settings["thinking_level"],
-                budget_case=expected["budget_case"],
-            )
-            # #114 changes tracked source provenance only on the no-field route.
-            current = json.loads((FIXTURES / "issue114_after.json").read_text())
-            # #120 empties the shipped catalogue; archived scenes keep synthetic lore.
-            lore_path = "completion/prompts/lore.json"
-            lore_file = Path(__file__).parents[2] / "wisp_backend" / lore_path
-            assert json.loads(lore_file.read_text()) == {"formatVersion": 1, "revision": 2, "entries": []}
-            lore_hash = hashlib.sha256(lore_file.read_bytes()).hexdigest()
-            assert lore_hash == "381a8e3f5a9ecf90bee09e9d0438db6be2ede789b7fd4ebe2ef0c0bc7bca773d"
-            sources = {**current["reports"][0]["source_digests"], lore_path: lore_hash}
-            changes = json.loads((FIXTURES / "issue118_comparison.json").read_text())["source_changes"]
-            assert set(changes) == {
-                "providers/context_budget.py",
-                "providers/http_provider.py",
-                "providers/openai.py",
-                "prompt_inspection/report.py",
-            }
-            for path, delta in changes.items():
-                assert sources.get(path) == delta["before"]
-                sources[path] = delta["after"]
-            # #119 changes only the bounded chat schema source; old scene bytes stay frozen.
-            history = json.loads((FIXTURES / "issue119_comparison.json").read_text())["source_changes"]
-            assert set(history) == {"api/schemas/chat.py"}
-            for path, delta in history.items():
-                assert sources[path] == delta["before"]
-                sources[path] = delta["after"]
-            resource_delta = json.loads((FIXTURES / "issue121_comparison.json").read_text())["source_changes"]
-            assert set(resource_delta) == {"completion/prompts/prompt_resources.json"}
-            for path, delta in resource_delta.items():
-                assert sources[path] == delta["before"]
-                sources[path] = delta["after"]
-            assert actual["source_digests"] == sources
-            assert {key: value for key, value in actual.items() if key != "source_digests"} == {
-                key: value for key, value in expected.items() if key != "source_digests"
-            }
-            # The same API schemas admit all active synthetic chat/touch inputs.
-            assert expected["route"] in ENDPOINTS
-
-    asyncio.run(run())

@@ -39,6 +39,17 @@ const invalid = fixture('invalid.json') as {
   requests: readonly { name: string; endpoint: string; value: unknown }[];
   responses: readonly { name: string; endpoint: string; effectPolicy: 'eligible' | 'suppressed'; value: unknown }[];
 };
+it('accepts only revision 3 on the wire, independent of local checkpoint compatibility', () => {
+  const withRevision = (revision: unknown) => Object.assign(chatInput(), {
+    interaction: { ...chatInput().interaction, card: { id: 'curiousStubbornGirl', revision } },
+  });
+  for (const revision of [1, 2, 4, true, '3', null]) expect(() => projectInteractionChat(withRevision(revision))).toThrow('Invalid interaction card');
+  expect(projectInteractionChat(withRevision(3)).card).toEqual({ id: 'curiousStubbornGirl', revision: 3 });
+  expect(() => projectInteractionTouch(Object.assign(touchInput(), {
+    interaction: { ...touchInput().interaction, card: { id: 'curiousStubbornGirl', revision: 2 } },
+  }))).toThrow('Invalid interaction card');
+  expect(projectInteractionTouch(touchInput()).card).toEqual({ id: 'curiousStubbornGirl', revision: 3 });
+});
 it.each(invalid.responses)('rejects the entire shared invalid response $name', entry => {
   expect(() => entry.endpoint.endsWith('touch')
     ? parseInteractionTouchResponse(entry.value, touchWire.requestId, entry.effectPolicy)

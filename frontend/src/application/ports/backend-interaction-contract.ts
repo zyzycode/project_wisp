@@ -20,7 +20,7 @@ export interface BackendPreviousTouchReaction {
 }
 
 export interface BackendInteractionPolicy {
-  readonly card: { readonly id: 'curiousStubbornGirl'; readonly revision: 2 };
+  readonly card: { readonly id: 'curiousStubbornGirl'; readonly revision: 3 };
   readonly effectPolicy: 'eligible' | 'suppressed';
 }
 

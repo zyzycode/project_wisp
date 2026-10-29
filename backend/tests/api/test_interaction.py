@@ -54,7 +54,9 @@ def test_complete_provider_path(
             assert data["generationConfig"]["maxOutputTokens"] == cap
         assert estimate_input(data, len(messages) + 1) + cap <= 16384
         assert "neutral" in system and "desktop owns all effects" in system
-        profile = next(m["content"] for m in messages if m["content"].startswith("[Current State & Mood]"))
+        profile = next(
+            m["content"] for m in messages if m["content"].startswith("[Character card & current factual state]")
+        )
         assert all(line in profile.splitlines() for line in reference_lines(body["character"]))
         policy = next(m["content"] for m in messages if m["content"].startswith("Untrusted interaction_policy"))
         assert json.loads(policy.split("\n", 1)[1]) == {"card": body["card"], "effectPolicy": body["effectPolicy"]}

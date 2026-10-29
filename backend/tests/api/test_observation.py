@@ -17,6 +17,7 @@ from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import OBSERVATION
 from wisp_backend.api.schemas.observation import ObservationRequest
 from wisp_backend.completion.context import ContextMessage, ContextOverflow, render_messages, select_context
+from wisp_backend.completion.prompts.narrative import reference_lines
 from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input
 
 
@@ -59,7 +60,7 @@ def test_actual_handler_untrusted_payload_and_output_reserve(
         assert "PRIVATE_CURRENT_CHARACTER" not in system and "PRIVATE_TITLE" not in system
         assert "Do not quote the private window caption" in system
         assert "not a user message" in system and "No decision, memoryCandidates" in system
-        assert json.loads(character.split("\n", 1)[1]) == body["character"]
+        assert all(line in character.splitlines() for line in reference_lines(body["character"]))
         assert json.loads(observation.split("\n", 1)[1]) == body["observation"]
         assert 0 < request.extensions["timeout"]["read"] <= 2.5
         return httpx.Response(200, json=reply)
