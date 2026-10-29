@@ -27,6 +27,7 @@ export interface ContextMenuProps {
   previewContent?: React.ReactNode;
   aiConnectionContent?: React.ReactNode;
   observationContent?: React.ReactNode;
+  voiceContent?: React.ReactNode;
   onTabChange?: (tab: ContextMenuTab) => void;
   onClose: () => void;
   onPet: () => void;
@@ -121,6 +122,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   previewContent,
   aiConnectionContent,
   observationContent,
+  voiceContent,
   onTabChange,
   onClose,
   onPet,
@@ -231,6 +233,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         </div>
       ) : (
         <div className="menu-scroll-body" role="tabpanel" aria-label="Main controls">
+          {voiceContent}
           {previewContent}
           <p role="status" style={{ fontSize: 12, margin: '8px 0' }}>
             {externalWindowSupport === 'available' ? 'Опоры на окнах доступны'

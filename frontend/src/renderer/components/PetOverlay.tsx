@@ -7,6 +7,7 @@ import { CharacterRenderer } from './Character/CharacterRenderer';
 import { MemoryCards } from './Chat/MemoryCards';
 import { VoiceInputControls } from './Chat/VoiceInputControls';
 import { VoiceOutputControls } from './Chat/VoiceOutputControls';
+import { VoiceSettings } from './Interaction/VoiceSettings';
 import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { DebugHUD } from './Debug';
@@ -93,6 +94,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         debugContent={debugHud}
         aiConnectionContent={<AIConnectionSettings bridge={window.wispAPI?.aiConnection} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
         observationContent={<ObservationSettings bridge={window.wispAPI?.observationCommand} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
+        voiceContent={<VoiceSettings output={model.dialogue.voiceOutput} outputState={model.dialogue.outputState}
+          input={model.dialogue.voice} inputState={model.dialogue.voiceState} contextReady={model.dialogue.voiceContextReady} />}
         previewContent={<AnimationPreviewControls
           bodyKeys={model.manifestAnimations.bodyKeys}
           faceKeys={model.manifestAnimations.faceKeys}

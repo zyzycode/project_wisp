@@ -1,6 +1,6 @@
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
 import type { VoiceOutputService } from '../application/services/voice-output-service';
-import { parsePlaybackAck, parseReplyIdentity, parseVoiceEnabled } from '../shared/voice-output-validation';
+import { parseOutputDevice, parsePlaybackAck, parseReplyIdentity, parseVoiceEnabled } from '../shared/voice-output-validation';
 interface Options {
   readonly register: (channel: string, handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>) => void;
   readonly remove: (channel: string) => void;
@@ -9,14 +9,18 @@ interface Options {
   readonly service: VoiceOutputService;
 }
 export function registerVoiceOutputIpc(options: Options): () => void {
-  const actions = ['status', 'configure', 'speak', 'stop', 'acknowledge'] as const;
+  const actions = ['status', 'startup', 'read-device', 'select-device', 'test', 'configure', 'speak', 'stop', 'acknowledge'] as const;
   for (const action of actions) options.register(`wisp:voice-output-${action}`, async (event, ...args) => {
     const sender = options.getSender();
     if (!sender || event.sender !== sender || event.senderFrame !== sender.mainFrame || !options.trustedUrl(event.senderFrame.url)) return { ok: false, code: 'invalid_request' };
     try {
-      if (args.length !== (action === 'status' || action === 'stop' ? 0 : 1)) return { ok: false, code: 'invalid_request' };
+      if (args.length !== (['status', 'stop', 'startup', 'read-device', 'test'].includes(action) ? 0 : 1)) return { ok: false, code: 'invalid_request' };
       switch (action) {
         case 'status': return options.service.status();
+        case 'startup': return options.service.configureAtStartup();
+        case 'read-device': return await options.service.readDevice();
+        case 'select-device': return await options.service.selectDevice(parseOutputDevice(args[0]).deviceId);
+        case 'test': return options.service.testOutput();
         case 'configure': return options.service.configure(parseVoiceEnabled(args[0]).enabled);
         case 'speak': return await options.service.speak(parseReplyIdentity(args[0]));
         case 'stop': return options.service.stop();

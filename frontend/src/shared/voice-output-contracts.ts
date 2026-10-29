@@ -13,9 +13,13 @@ export interface VoicePlaybackDTO {
   readonly sampleRate: 24000;
   readonly samples: Float32Array;
 }
-export type VoiceOutputError = 'invalid_request' | 'unavailable' | 'disabled' | 'stale' | 'consumed' | 'cancelled' | 'timeout' | 'synthesis_failed';
+export type VoiceOutputError = 'invalid_request' | 'unavailable' | 'disabled' | 'stale' | 'consumed' | 'cancelled' | 'timeout' | 'synthesis_failed' | 'storage_error';
 export type VoiceOutputResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly code: VoiceOutputError };
 export interface VoiceOutputBridge {
+  configureAtStartup(): Promise<VoiceOutputResult<VoiceOutputStatusDTO>>;
+  readDevice(): Promise<VoiceOutputResult<{ readonly deviceId: string }>>;
+  selectDevice(command: { readonly deviceId: string }): Promise<VoiceOutputResult<{ readonly deviceId: string }>>;
+  test(): Promise<VoiceOutputResult<VoicePlaybackDTO>>;
   readStatus(): Promise<VoiceOutputResult<VoiceOutputStatusDTO>>;
   configure(command: { readonly enabled: boolean }): Promise<VoiceOutputResult<VoiceOutputStatusDTO>>;
   speak(command: ReplyIdentityDTO): Promise<VoiceOutputResult<VoicePlaybackDTO>>;

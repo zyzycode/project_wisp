@@ -18,6 +18,11 @@ export function parseVoiceEnabled(value: unknown): { readonly enabled: boolean }
   if (typeof r.enabled !== 'boolean') throw new TypeError('Invalid voice setting');
   return { enabled: r.enabled };
 }
+export function parseOutputDevice(value: unknown): { readonly deviceId: string } {
+  const r = record(value, ['deviceId']);
+  if (typeof r.deviceId !== 'string' || r.deviceId.length > 512 || /[\u0000-\u001f\u007f]/u.test(r.deviceId)) throw new TypeError('Invalid audio device');
+  return { deviceId: r.deviceId };
+}
 export function parsePlaybackAck(value: unknown): { readonly playbackId: string } {
   return { playbackId: id(record(value, ['playbackId']).playbackId) };
 }
@@ -32,7 +37,7 @@ export function parsePlayback(value: unknown): VoicePlaybackDTO {
   return { playbackId: id(r.playbackId), sampleRate: 24000, samples: r.samples };
 }
 export function parseOutputNull(value: unknown): null { if (value !== null) throw new TypeError('Invalid voice result'); return null; }
-const errors: readonly VoiceOutputError[] = ['invalid_request', 'unavailable', 'disabled', 'stale', 'consumed', 'cancelled', 'timeout', 'synthesis_failed'];
+const errors: readonly VoiceOutputError[] = ['invalid_request', 'unavailable', 'disabled', 'stale', 'consumed', 'cancelled', 'timeout', 'synthesis_failed', 'storage_error'];
 export function parseOutputResult<T>(value: unknown, parse: (value: unknown) => T): VoiceOutputResult<T> {
   if (!value || typeof value !== 'object' || !('ok' in value)) throw new TypeError('Invalid voice result');
   if (value.ok === true) return { ok: true, value: parse(record(value, ['ok', 'value']).value) };

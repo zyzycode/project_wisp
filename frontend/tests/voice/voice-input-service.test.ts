@@ -11,6 +11,18 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe('voice lifecycle', () => {
+  it('authorizes startup only once and cannot auto-resume after explicit off or revocation', () => {
+    const { service } = fixture();
+    expect(service.enableAtStartup(context)).toEqual({ ok: true, value: null });
+    service.disable();
+    expect(service.enableAtStartup(context)).toEqual({ ok: false, code: 'cancelled' });
+    expect(service.enable(context)).toEqual({ ok: true, value: null });
+  });
+  it('revocation before the first startup request consumes the pending grant', () => {
+    const { service } = fixture(); service.disable();
+    expect(service.enableAtStartup(context)).toEqual({ ok: false, code: 'cancelled' });
+    expect(service.hasCaptureLease()).toBe(false);
+  });
   it('blocks capture and invalidates pending transcription throughout speech output', async () => {
     const { service, adapter, command } = fixture(); service.enable(context); service.begin(context);
     let finish!: (value: VoiceInputResult<string>) => void;

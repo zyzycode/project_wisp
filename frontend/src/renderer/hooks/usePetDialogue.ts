@@ -38,12 +38,19 @@ export function usePetDialogue({
   useEffect(() => {
     voice.setContext(streamId && conversationId ? { streamId, conversationId } : null);
   }, [voice, streamId, conversationId]);
+  useEffect(() => {
+    let active = true;
+    if (streamId && conversationId) queueMicrotask(() => { if (active) { void voice.enableAtStartup(); void voiceOutput.configureAtStartup(); } });
+    return () => { active = false; };
+  }, [voice, voiceOutput, streamId, conversationId]);
   useEffect(() => { voice.setCanSubmit(canSubmit); }, [voice, canSubmit]);
   useEffect(() => { voice.setOutputBlocked(outputState.phase === 'preparing' || outputState.phase === 'speaking'); }, [voice, outputState.phase]);
   useEffect(() => { void voiceOutput.initialize(); return () => voiceOutput.dispose(); }, [voiceOutput]);
   useEffect(() => {
-    return () => { voiceOutput.clear(); void voiceOutput.configure(false); };
+    if (!streamId || !conversationId) return;
+    return () => voiceOutput.clear();
   }, [voiceOutput, streamId, conversationId]);
+  useEffect(() => { if (voiceState.phase === 'listening') void voiceOutput.audio.refresh(); }, [voiceOutput, voiceState.phase]);
   useEffect(() => () => voice.disable(), [voice]);
 
   useEffect(() => {

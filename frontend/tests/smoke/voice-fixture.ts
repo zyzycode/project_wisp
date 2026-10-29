@@ -11,7 +11,7 @@ import path from 'node:path';
 export function createNativeSpeechProbe(resources: string, entry: string) { return new LocalSpeechSynthesizer(resources, entry); }
 
 /** Exercises real output service, IPC, contextBridge and browser playback with synthetic PCM. */
-export async function installVoiceOutputSmoke(sender: WebContents, initial: unknown, real = false) {
+export async function installVoiceOutputSmoke(sender: WebContents, initial: unknown, real = false, deviceId = '') {
   let syntheses = 0;
   let acknowledgements = 0;
   let failNext = false;
@@ -33,7 +33,8 @@ export async function installVoiceOutputSmoke(sender: WebContents, initial: unkn
     blockInput: () => undefined, revokeInput: () => sender.send('wisp:voice-disabled', null),
     revokePlayback: () => sender.send('wisp:voice-output-revoked', null),
   });
-  await service.initialize(); service.observe(parseBrainStateDTO(initial));
+  await service.initialize(); await service.selectDevice(deviceId); service.observe(parseBrainStateDTO(initial));
+  installVoicePermissions(sender, { hasCaptureLease: () => false }, url => new URL(url).origin === new URL(sender.getURL()).origin, () => service.hasSelectedPlaybackLease());
   const send = sender.send.bind(sender);
   sender.send = (channel: string, ...args: unknown[]): void => {
     if (channel === 'wisp:brain-state') {
@@ -49,7 +50,7 @@ export async function installVoiceOutputSmoke(sender: WebContents, initial: unkn
     }
     send(channel, ...args);
   };
-  for (const action of ['status', 'configure', 'speak', 'stop', 'acknowledge']) ipcMain.removeHandler(`wisp:voice-output-${action}`);
+  for (const action of ['status', 'startup', 'read-device', 'select-device', 'test', 'configure', 'speak', 'stop', 'acknowledge']) ipcMain.removeHandler(`wisp:voice-output-${action}`);
   const unregister = registerVoiceOutputIpc({ service,
     trustedUrl: url => new URL(url).origin === new URL(sender.getURL()).origin, getSender: () => sender,
     register: (channel, handler) => ipcMain.handle(channel, async (event, ...args: unknown[]) => {
@@ -81,7 +82,7 @@ export function installVoiceSmoke(sender: WebContents, context: VoiceCaptureCont
     schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
   });
   const trustedUrl = (url: string) => new URL(url).origin === new URL(sender.getURL()).origin;
-  for (const action of ['status', 'prepare', 'enable', 'disable', 'begin', 'transcribe', 'cancel']) ipcMain.removeHandler(`wisp:voice-${action}`);
+  for (const action of ['status', 'prepare', 'enable', 'startup', 'disable', 'begin', 'transcribe', 'cancel']) ipcMain.removeHandler(`wisp:voice-${action}`);
   const unregister = registerVoiceInputIpc({ service, trustedUrl, getSender: () => sender,
     register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel) });
   installVoicePermissions(sender, service, trustedUrl);

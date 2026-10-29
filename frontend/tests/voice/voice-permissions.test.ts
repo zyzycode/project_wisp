@@ -12,7 +12,8 @@ it('allows only audio on trusted main frame during explicit capture lease', () =
   } as WebContents;
   const service = new VoiceInputService({ context: () => ({ streamId: 's', conversationId: 'c' }), createId: () => 'r', schedule: () => () => undefined,
     adapter: { getStatus: () => ({ state: 'ready', downloadedBytes: 1, totalBytes: 1 }), prepare: async () => ({ ok: true, value: undefined }), transcribe: async () => ({ ok: true, value: '' }), dispose: async () => undefined } });
-  installVoicePermissions(sender, service, url => url === 'file:///app/index.html');
+  let outputLease = false;
+  installVoicePermissions(sender, service, url => url === 'file:///app/index.html', () => outputLease);
   const callback = vi.fn();
   const details = { requestingUrl: 'file:///app/index.html', isMainFrame: true, mediaTypes: ['audio'] };
   request(sender, 'media', callback, details); expect(callback).toHaveBeenLastCalledWith(false);
@@ -25,4 +26,14 @@ it('allows only audio on trusted main frame during explicit capture lease', () =
   expect(check(sender, 'media', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true, mediaType: 'audio' })).toBe(true);
   expect(check(sender, 'media', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true, mediaType: 'unknown' })).toBe(false);
   service.disable(); request(sender, 'media', callback, details); expect(callback).toHaveBeenLastCalledWith(false);
+  request(sender, 'speaker-selection', callback, details); expect(callback).toHaveBeenLastCalledWith(false);
+  outputLease = true;
+  request(sender, 'speaker-selection', callback, details); expect(callback).toHaveBeenLastCalledWith(true);
+  request(sender, 'speaker-selection', callback, { ...details, isMainFrame: false }); expect(callback).toHaveBeenLastCalledWith(false);
+  request(sender, 'speaker-selection', callback, { ...details, requestingUrl: 'https://evil.test' }); expect(callback).toHaveBeenLastCalledWith(false);
+  // Electron 43 emits speaker-selection CHECK despite its declaration omitting it.
+  expect(Reflect.apply(check, undefined, [sender, 'speaker-selection', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true }])).toBe(true);
+  expect(check(sender, 'media', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true, mediaType: 'audio' })).toBe(false);
+  outputLease = false;
+  expect(Reflect.apply(check, undefined, [sender, 'speaker-selection', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true }])).toBe(false);
 });

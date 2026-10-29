@@ -2,7 +2,9 @@ import type { ISpeechSynthesizer } from '../ports/reply-output.port';
 import type { BrainStateDTO } from '../../shared/ipc-contracts';
 import type { ReplyIdentityDTO, VoiceOutputResult, VoiceOutputStatusDTO, VoicePlaybackDTO } from '../../shared/voice-output-contracts';
 import { parsePlayback } from '../../shared/voice-output-validation';
+import type { IAudioOutputPreferences } from '../ports/audio-output-preferences';
 interface Options {
+  readonly preferences?: IAudioOutputPreferences;
   readonly synthesizer: ISpeechSynthesizer;
   readonly createId: () => string;
   readonly language: () => 'ru' | 'en';
@@ -13,7 +15,7 @@ interface Options {
 }
 interface Active {
   readonly id: string;
-  readonly reply: ReplyIdentityDTO;
+  readonly reply: ReplyIdentityDTO | null;
   readonly abort: AbortController;
   timer: ReturnType<typeof setTimeout>;
   timedOut: boolean;
@@ -27,6 +29,8 @@ export class VoiceOutputService {
   private disposed = false;
   private active: Active | null = null;
   private consumed: string | null = null;
+  private startupPending = true;
+  private deviceId = '';
   private current() { return this.options.current ? this.options.current() : this.snapshot; }
   constructor(private readonly options: Options) {}
   public async initialize(): Promise<void> {
@@ -37,6 +41,7 @@ export class VoiceOutputService {
     return this.disposed ? { ok: false, code: 'unavailable' } : { ok: true, value: { enabled: this.enabled, ready: this.ready, active: this.active !== null } };
   }
   public configure(enabled: boolean): VoiceOutputResult<VoiceOutputStatusDTO> {
+    this.startupPending = false;
     if (this.disposed) return { ok: false, code: 'unavailable' };
     if (enabled && !this.ready) return { ok: false, code: 'unavailable' };
     this.enabled = enabled;
@@ -46,12 +51,38 @@ export class VoiceOutputService {
     if (snapshot?.dialogue.turn.phase === 'completed') this.consumed = key({ streamId: snapshot.streamId, conversationId: snapshot.dialogue.conversationId, requestId: snapshot.dialogue.turn.requestId });
     return this.status();
   }
+  public configureAtStartup(): VoiceOutputResult<VoiceOutputStatusDTO> {
+    if (!this.startupPending) return { ok: false, code: 'cancelled' };
+    this.startupPending = false;
+    return this.configure(true);
+  }
+  public async readDevice(): Promise<VoiceOutputResult<{ readonly deviceId: string }>> {
+    const result = await this.options.preferences?.read();
+    if (result && !result.ok) return { ok: false, code: 'storage_error' };
+    if (result?.ok) this.deviceId = result.deviceId;
+    return { ok: true, value: { deviceId: this.deviceId } };
+  }
+  public async selectDevice(deviceId: string): Promise<VoiceOutputResult<{ readonly deviceId: string }>> {
+    const result = await this.options.preferences?.write(deviceId);
+    if (result && !result.ok) return { ok: false, code: 'storage_error' };
+    this.deviceId = deviceId; return { ok: true, value: { deviceId } };
+  }
+  public hasSelectedPlaybackLease(): boolean { return !this.disposed && this.active !== null && this.deviceId !== ''; }
+  public testOutput(): VoiceOutputResult<VoicePlaybackDTO> {
+    if (this.disposed) return { ok: false, code: 'unavailable' };
+    this.stop();
+    const id = this.options.createId();
+    this.active = { id, reply: null, abort: new AbortController(), timedOut: false, timer: setTimeout(() => this.stop(), 2250) };
+    this.options.blockInput(true);
+    const samples = Float32Array.from({ length: 6000 }, (_, i) => 0.12 * Math.sin(2 * Math.PI * 440 * i / 24000) * Math.min(1, i / 240, (5999 - i) / 240));
+    return { ok: true, value: { playbackId: id, sampleRate: 24000, samples } };
+  }
   public observe(snapshot: BrainStateDTO): void {
     const previous = this.snapshot;
     this.snapshot = snapshot;
     if (previous && (previous.streamId !== snapshot.streamId || previous.dialogue.conversationId !== snapshot.dialogue.conversationId)) { this.enabled = false; this.consumed = null; this.stop(); }
     const active = this.active;
-    if (active && !this.matches(active.reply)) this.stop();
+    if (active?.reply && !this.matches(active.reply)) this.stop();
   }
   private matches(reply: ReplyIdentityDTO): boolean {
     const s = this.current();
@@ -103,6 +134,6 @@ export class VoiceOutputService {
     }
     return { ok: true, value: null };
   }
-  public reset(): void { this.enabled = false; this.stop(); this.snapshot = null; this.consumed = null; }
+  public reset(): void { this.startupPending = false; this.enabled = false; this.stop(); this.snapshot = null; this.consumed = null; }
   public async dispose(): Promise<void> { this.disposed = true; this.reset(); await this.options.synthesizer.dispose(); }
 }

@@ -11,6 +11,10 @@ function fixture() {
   let resolve!: (value: Awaited<ReturnType<VoiceOutputBridge['speak']>>) => void;
   let revoke = () => undefined;
   const bridge: VoiceOutputBridge = {
+    configureAtStartup: async () => ({ ok: true, value: { enabled: true, ready: true, active: false } }),
+    readDevice: async () => ({ ok: true, value: { deviceId: '' } }),
+    selectDevice: async ({ deviceId }) => ({ ok: true, value: { deviceId } }),
+    test: async () => ({ ok: true, value: speech }),
     readStatus: async () => ({ ok: true, value: { enabled: false, ready: true, active: false } }),
     configure: async ({ enabled }) => ({ ok: true, value: { enabled, ready: true, active: false } }),
     speak: vi.fn(() => new Promise(done => { resolve = done; })),

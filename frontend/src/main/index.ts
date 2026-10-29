@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import { VoiceOutputService } from '../application/services/voice-output-service';
 import { LocalSpeechSynthesizer } from '../infrastructure/voice-output/local-speech-synthesizer';
+import { FileAudioOutputPreferences } from '../infrastructure/voice-output/audio-output-preferences';
 import { registerVoiceOutputIpc } from './voice-output-ipc';
 import { VoiceInputService } from '../application/services/voice-input-service';
 import { LocalVoiceInput } from '../infrastructure/voice/voice-input-adapter';
@@ -166,9 +167,11 @@ const appLogger = new AppLogger({
   buffer: debugLogBuffer,
   sink: () => publishDebugTelemetry(),
 });
+let voiceStreamStarted = false;
+let voiceNavigationSeen = false;
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); beverageCommands.replaceStream(id); return id; },
+  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); voiceStreamStarted = true; clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); beverageCommands.replaceStream(id); return id; },
   prepareSnapshot: () => {
     observationRuntime?.tick();
     aiEventRuntime?.tick();
@@ -282,16 +285,14 @@ function cancelActiveBodyDrag(): void {
 }
 
 function beginBrainStream(): void {
-  voiceOutput?.reset();
-  voiceInput?.disable();
+  if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); }
   cancelActiveBodyDrag();
   if (memoryRuntime?.isRunning()) autonomyComposition?.tick();
   brainStatePublisher.replaceStream();
 }
 
 function clearBrainStream(): void {
-  voiceOutput?.reset();
-  voiceInput?.disable();
+  if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); }
   autonomyComposition?.resetSystemIdle();
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
@@ -408,7 +409,7 @@ function initializeAutonomyComposition(): void {
       });
     }
     beverageDialogue = memoryComposition?.beverage ? new BeverageDialogue({ runtime: () => memoryRuntime, createId: randomUUID, timestamp: () => new Date().toISOString(), now: () => brainStatePublisher.now(), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) : null;
-    dialogueRuntime = new DialogueRuntime({ getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { voiceOutput?.reset(); voiceInput?.disable(); autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
+    dialogueRuntime = new DialogueRuntime({ getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
@@ -737,12 +738,15 @@ function createWindow(): void {
     },
   });
 
-  if (voiceInput) installVoicePermissions(mainWindow.webContents, voiceInput, trustedVoiceUrl);
+  if (voiceInput) installVoicePermissions(mainWindow.webContents, voiceInput, trustedVoiceUrl, () => voiceOutput?.hasSelectedPlaybackLease() ?? false);
 
   // Apply platform-specific overlay configuration
   platformAdapter.configureOverlayWindow(mainWindow);
   initializeShimejiMotionLoop(initialPos);
-  mainWindow.webContents.on('did-start-loading', clearBrainStream);
+  mainWindow.webContents.on('did-start-loading', () => {
+    if (voiceNavigationSeen) { voiceOutput?.reset(); voiceInput?.disable(); }
+    voiceNavigationSeen = true; clearBrainStream();
+  });
   mainWindow.webContents.on('did-finish-load', beginBrainStream);
 
   // Prevent desktop minimization from hiding overlay
@@ -820,7 +824,7 @@ if (!gotTheLock) {
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
       shutdownCapture: () => routineCapture?.shutdown() ?? Promise.resolve(),
       pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { routineCapture?.invalidate(); beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
-      resetCommitted: () => { routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); beverageCommands.clearReceipts(); },
+      resetCommitted: () => { voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); beverageCommands.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
     routineCapture = new RoutineCapture({ repository: memoryComposition.routine,
@@ -836,6 +840,7 @@ if (!gotTheLock) {
       schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
     });
     voiceOutput = new VoiceOutputService({
+      preferences: new FileAudioOutputPreferences(userData),
       synthesizer: new LocalSpeechSynthesizer(app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..', '.cache'), path.join(__dirname, 'speech-worker.js')),
       createId: randomUUID, language: () => 'ru',
       current: () => summaryStream && dialogueRuntime && autonomyComposition ? { streamId: summaryStream, dialogue: dialogueRuntime.getPresentation(), autonomy: autonomyComposition.getAutonomyMode() } : null,

@@ -638,6 +638,7 @@ export interface VoiceTranscribeDTO extends VoiceCaptureContextDTO {
 
 /** Narrow invoke API; microphone capture itself remains browser user input. */
 export interface VoiceInputApiBridge {
+  enableAtStartup(context: VoiceCaptureContextDTO): Promise<VoiceInputResultDTO<null>>;
   readStatus(): Promise<VoiceInputResultDTO<VoiceModelStatusDTO>>;
   prepare(): Promise<VoiceInputResultDTO<VoiceModelStatusDTO>>;
   /** Explicit microphone mode for this dialogue context; independent of chat visibility. */

@@ -22,6 +22,31 @@ function fixture() {
   return { service, options, fail: () => reject(), complete: () => resolve({ sampleRate: 24000, samples: new Float32Array(2400).fill(0.1) }) };
 }
 afterEach(() => vi.useRealTimers());
+it('uses a bounded test tone lease and pauses STT until matching acknowledgement', async () => {
+  const { service, options } = fixture();
+  expect(service.hasSelectedPlaybackLease()).toBe(false);
+  await service.selectDevice('selected-speaker');
+  expect(service.hasSelectedPlaybackLease()).toBe(false);
+  const result = service.testOutput(); expect(result.ok).toBe(true);
+  expect(service.hasSelectedPlaybackLease()).toBe(true);
+  expect(options.synthesizer.synthesize).not.toHaveBeenCalled(); expect(options.blockInput).toHaveBeenLastCalledWith(true);
+  if (result.ok) { expect(result.value.samples.length).toBe(6000); service.acknowledge(result.value.playbackId); }
+  expect(service.hasSelectedPlaybackLease()).toBe(false);
+  expect(options.blockInput).toHaveBeenLastCalledWith(false); await service.dispose();
+});
+it('enables sound once at startup without overriding a subsequent explicit off', async () => {
+  const { service } = fixture(); await service.initialize();
+  expect(service.configureAtStartup()).toMatchObject({ ok: true, value: { enabled: true } });
+  service.configure(false);
+  expect(service.configureAtStartup()).toEqual({ ok: false, code: 'cancelled' });
+  service.configure(true); service.reset();
+  expect(service.configureAtStartup()).toEqual({ ok: false, code: 'cancelled' });
+  await service.dispose();
+});
+it('never grants startup sound after lifecycle revocation before the first request', async () => {
+  const { service } = fixture(); service.reset(); await service.initialize();
+  expect(service.configureAtStartup()).toEqual({ ok: false, code: 'cancelled' }); await service.dispose();
+});
 it('reports synthesis failure without sending a playback cancellation that would suppress text fallback', async () => {
   const { service, options, fail } = fixture(); await service.initialize(); service.configure(true); service.observe(snapshot());
   const pending = service.speak(reply); fail();

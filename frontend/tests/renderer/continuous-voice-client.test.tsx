@@ -10,6 +10,7 @@ function fixture(start?: StartContinuousVoiceCapture) {
   let disabled: () => void = () => undefined;
   const cancel = vi.fn();
   const bridge = {
+    enableAtStartup: vi.fn<VoiceInputApiBridge['enableAtStartup']>().mockResolvedValue({ ok: true, value: null }),
     readStatus: vi.fn<VoiceInputApiBridge['readStatus']>().mockResolvedValue({ ok: true, value: { state: 'ready', downloadedBytes: 1, totalBytes: 1 } }),
     prepare: vi.fn<VoiceInputApiBridge['prepare']>(),
     enable: vi.fn<VoiceInputApiBridge['enable']>().mockResolvedValue({ ok: true, value: null }),
@@ -27,6 +28,11 @@ function fixture(start?: StartContinuousVoiceCapture) {
   return { client, bridge, submit, cancel, feed, phrase, fail: () => failed(), remoteDisable: () => disabled() };
 }
 afterEach(() => vi.restoreAllMocks());
+it('uses the one-shot Main startup grant instead of explicit enable', async () => {
+  const f = fixture(); await f.client.enableAtStartup();
+  expect(f.bridge.enableAtStartup).toHaveBeenCalledOnce(); expect(f.bridge.enable).not.toHaveBeenCalled();
+  expect(f.client.getSnapshot().enabled).toBe(true); f.client.disable();
+});
 it('drops speech output feedback, invalidates a pending transcript and resumes only with retained consent', async () => {
   const f = fixture(); const result = deferred<Awaited<ReturnType<VoiceInputApiBridge['transcribe']>>>();
   f.bridge.transcribe.mockReturnValue(result.promise); await f.client.enable('ru'); f.phrase();
