@@ -55,3 +55,20 @@ it('sends explicit beverage proposal permission once and allows cancelling it be
   f.client.requestBeverageProposal(); f.client.cancelBeverageProposal(); expect(f.client.getState()).not.toHaveProperty('beverageProposal');
 });
 it('drops queued beverage permission on stream/conversation replacement', () => { const f = fixture(); f.client.requestBeverageProposal(); f.client.accept({ ...snapshot(2), dialogue: { conversationId: 'reset', canSubmit: true, turn: { phase: 'idle' } } }); expect(f.client.getState()).not.toHaveProperty('beverageProposal'); f.client.requestBeverageProposal(); f.client.accept(snapshot(1, 'new')); expect(f.client.getState()).not.toHaveProperty('beverageProposal'); });
+
+it('exposes one stable send function for keyboard and recognized speech with shared normalization', async () => {
+  const f = fixture();
+  f.postDialogueCommand.mockResolvedValue({ status: 'accepted', conversationId: 'c' });
+  const send = f.client.send;
+  expect(await send('  Одна общая реплика  ')).toBe(true);
+  expect(f.postDialogueCommand).toHaveBeenCalledExactlyOnceWith({ type: 'send', text: 'Одна общая реплика', streamId: 'stream', conversationId: 'c', sequence: 1 });
+  expect(f.client.send).toBe(send);
+});
+it.each(['  ', 'x'.repeat(241), 'bad\u0000text'])('rejects invalid input at the common send boundary without IPC or truncation', async text => {
+  const f = fixture();
+  f.postDialogueCommand.mockResolvedValue({ status: 'accepted', conversationId: 'c' });
+  expect(await f.client.send(text)).toBe(false);
+  expect(f.postDialogueCommand).not.toHaveBeenCalled();
+  expect(f.client.getState().error).toBeTruthy();
+  expect(f.client.getState().canSubmit).toBe(true);
+});

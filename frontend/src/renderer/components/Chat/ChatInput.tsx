@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { sanitizeUserMessage } from '../../../domain/chat/chat-message';
 
 export interface ChatInputProps {
   isOpen: boolean;
@@ -46,8 +45,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const sanitized = sanitizeUserMessage(text);
-    if (canSubmit && sanitized.length > 0 && await onSendMessage(sanitized) && latestText.current === text) {
+    if (canSubmit && text.trim().length > 0 && await onSendMessage(text) && latestText.current === text) {
       setText('');
       onClose();
     }

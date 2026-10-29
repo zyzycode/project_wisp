@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { BrainStateDTO, WispApiBridge } from '../../shared/ipc-contracts';
 import type { ChatMessage } from '../../domain/chat/chat-message';
 import { SpeechProjection } from '../speech-projection';
@@ -22,6 +22,5 @@ export function useDialogueLoop({ bridge, snapshot, setCurrentMessage }: UseDial
     const message = speech.current.accept(snapshot);
     if (message !== undefined) setCurrentMessage(message);
   }, [client, snapshot, setCurrentMessage]);
-  const handleSendMessage = useCallback((text: string) => client.send(text), [client]);
-  return { replyTopic: transport.replyTopic, cancelTopic: client.cancelTopic, handleSendMessage, canSubmit: transport.canSubmit, error: transport.error, submissionMessage: transport.submissionMessage, isThinking: snapshot?.dialogue.turn.phase === 'thinking' };
+  return { replyTopic: transport.replyTopic, cancelTopic: client.cancelTopic, handleSendMessage: client.send, canSubmit: transport.canSubmit, error: transport.error, submissionMessage: transport.submissionMessage, isThinking: snapshot?.dialogue.turn.phase === 'thinking' };
 }

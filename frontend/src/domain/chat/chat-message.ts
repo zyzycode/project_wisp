@@ -1,5 +1,5 @@
 /**
- * Chat message contracts and user input normalization
+ * Chat message contracts
  * Pure deterministic definitions shared by dialogue presentation.
  */
 
@@ -11,12 +11,4 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   durationMs?: number;
-}
-
-/**
- * Sanitizes input text from the user.
- */
-export function sanitizeUserMessage(rawText: string, maxLength = 240): string {
-  if (!rawText) return '';
-  return rawText.trim().substring(0, maxLength);
 }

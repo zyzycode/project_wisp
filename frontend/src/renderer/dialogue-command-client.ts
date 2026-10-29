@@ -1,5 +1,5 @@
 import type { BrainStateDTO, WispApiBridge, InterestThreadRefDTO } from '../shared/ipc-contracts';
-import { parseDialogueReceipt } from '../shared/dialogue-ipc-validation';
+import { parseDialogueReceipt, plainText } from '../shared/dialogue-ipc-validation';
 
 type Bridge = Pick<WispApiBridge, 'postDialogueCommand'>;
 /** Document-local command ordering and transport state; all dialogue state comes from Brain. */
@@ -34,9 +34,17 @@ export class DialogueCommandClient {
     if (snapshot.dialogue.conversationId !== this.snapshot?.dialogue.conversationId) { this.beverageProposal = false; this.topic = null; this.pending = null; this.error = null; }
     this.snapshot = snapshot; this.notify();
   }
-  public async send(text: string): Promise<boolean> {
+  /** Shared admission and normalization for keyboard text and recognized speech. */
+  public send = async (input: string): Promise<boolean> => {
     const snapshot = this.snapshot;
     if (!snapshot || !this.getState().canSubmit) return false;
+    let text: string;
+    try { text = plainText(input, 240, true); }
+    catch {
+      this.error = 'Сообщение должно содержать от 1 до 240 символов без управляющих знаков.';
+      this.notify();
+      return false;
+    }
     const token = {}; this.pending = token; this.error = null; this.notify();
     try {
       const receipt = parseDialogueReceipt(await this.bridge.postDialogueCommand({ type: 'send', text, ...(this.beverageProposal ? { requestBeverageProposal: true as const } : {}), ...(this.topic ? { replyToInterestThread: this.topic.ref } : {}),
@@ -51,7 +59,7 @@ export class DialogueCommandClient {
     } finally {
       if (this.pending === token) { this.pending = null; this.notify(); }
     }
-  }
+  };
   private notify(): void { for (const listener of this.listeners) listener(); }
 }
 const clients = new WeakMap<Bridge, DialogueCommandClient>();
