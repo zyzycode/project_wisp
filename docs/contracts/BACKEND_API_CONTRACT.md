@@ -20,6 +20,9 @@
 
 Все числовые границы **включительные**, числа конечные; числовые строки, null, NaN/Infinity и выход за диапазон не принимаются. Boolean поля принимают только JSON boolean, не 0/1 или строки. Отсутствие допускается только для полей, помеченных optional в wire type.
 
+Целевой состав #145 ниже вводится одной отдельной поставкой по §2.1; текущие
+объявления в коде до неё сохраняют прежние tone/bands.
+
 | Поле character | Диапазон / тип |
 |---|---|
 | `needs.energy`, `attention`, `play`, `comfort` | `[0, 100]`, обязательны |
@@ -31,7 +34,7 @@
 | `intimacy.userConsentEnabled` | boolean |
 | `personality.presetId` | непустая строка, ≤128 code units |
 | `personality.aiSelfConcept` | непустая строка, ≤500 code units |
-| `synthesizedTone` | отдельный wire enum `BackendCharacterTone` |
+| `expression.romanceAllowed` | обязательный strict boolean, Domain permission |
 
 Request body ≤32 KiB, response body ≤16 KiB после декодирования; превышение прекращает чтение. Неизвестные ключи/неверная форма отклоняются, в том числе произвольные needs keys; исключение для необязательных response hints описано ниже. Текст plain text, контролы кроме newline/tab запрещены. Длины строк считаются в UTF-16 code units на обеих сторонах; нормализация не делает out-of-range значение допустимым.
 
@@ -49,36 +52,72 @@ desktop не отправляет новый chat во сне и отбрасы�
 
 ### 2.1. Проекция expression
 
-Для фактического контекста модели требуется поле
-`character.expression` во всех character-bearing запросах (`chat`, `touch`,
-`events`, `observation`); summary character не передаёт. Валидируется обеими
-сторонами, без новой версии, optional fallback или старого wire.
+Согласованная целевая форма #145: один `character` для `chat`, `touch`, `events`,
+`observation`; summary character не передаёт. Состав — таблица §2, без
+`synthesizedTone`; объект `expression` содержит **только** `romanceAllowed`.
+Это архитектурный contract delta для отдельной реализации: TypeScript wire types,
+projection/validators, Python schemas/dispatch/prompts и active fixtures переключаются
+атомарно. До неё код содержит прежнюю форму; dual parsing, optional legacy поля,
+новая API version и fallback старого wire не допускаются.
 
-| Поле expression | Допустимые значения / смысл |
-|---|---|
-| `pace` | `gentle` / `normal`: текущая усталость/перегруз по Domain bands; не инструкция длины или стиля речи |
-| `trust` | `guarded` / `familiar` / `close`: степень текущего знакомства |
-| `attention` | `high` / `ordinary`: выраженный дефицит контакта |
-| `play` | `high` / `ordinary`: выраженный дефицит стимуляции |
-| `romanceAllowed` | strict boolean: разрешено ли сейчас романтическое выражение |
+#### Поля, источники и самостоятельная польза
 
-Это bounded производная существующих данных, не новые пользовательские сведения.
-Её вычисляет [Domain Character](../../frontend/docs/engine/CHARACTER_ENGINE.md#проекция-состояния-для-промпта)
-из того же snapshot перед сериализацией; Infrastructure лишь валидирует и
-отображает независимый wire type. Raw needs/traits и identity сохраняются.
-Missing/null/unknown field/enum/boolean coercion → 400 invalid_request до admission;
-на desktop невозможность получить корректную проекцию отклоняется до HTTP.
-Сервер не пересчитывает пороги по числам и не исправляет несовпадения самостоятельно.
-Согласованность чисел и проекции проверяется shared fixtures и desktop tests;
-это описание клиента, не доказательство аутентичности или полномочие исполнить эффект.
+Числа строк ниже — число листовых значений в контексте, не оценка токенов.
+Источник всех текущих числовых фактов — desktop Character; backend не вычисляет их.
 
-Обязательные инструкции трактуют romanceAllowed=false как запрет романтического
-выражения; true не является обязанностью романтического ответа и не заменяет
-локальную повторную проверку consent/state перед эффектом. Предыдущие сообщения,
-trace не повышают это разрешение. Deadline/cancellation/idempotency,
-ошибки §3, body caps и данные/retention §6 остаются прежними; projection входит
-в тот же body digest и освобождается вместе с текущим запросом. Offline/failure
-не останавливает локальный runtime и не включает автоматические повторы.
+| Поле → решение | Первичный источник / derivation owner | Потребитель, польза и цена контекста |
+|---|---|---|
+| `needs.energy` → оставить | Character resource | Модель: степень усталости; 1 число, не доказательство сна |
+| `needs.attention` → оставить | Character deficit | Модель: нехватка контакта, независимо от усталости; 1 число |
+| `needs.play` → оставить | Character deficit | Модель: нехватка стимуляции, не счастье; 1 число |
+| `needs.comfort` → оставить | Character deficit | Модель: перегруз/стресс, не комфорт; 1 число |
+| `needs.boredom` → оставить optional | Character monotony | Монотонность не доказанный дубль play; 0–1 число |
+| `relationship.friendship`, `love` → оставить | Character relationship | Знакомство и накопленное чувство различны; 2 числа 0..1000, не проценты |
+| `relationship.loveUnlocked` → оставить | Character latch | Историческое открытие love, не выводится из текущего friendship; 1 boolean |
+| `personality.presetId` → оставить | Установленная карточка | Backend сверяет с interaction.card.id; 1 bounded ID |
+| `personality.aiSelfConcept` → оставить целиком | Авторская карточка | Единственный источник identity; ≤500 UTF-16, без расширения ради удалённых hints |
+| `traits.shyness` → оставить | Domain calculateShyness(current axes) | Текущая динамика; включает отсутствующую в wire extraversion; 1 число 0..1 |
+| `traits.playfulness/sensitivity/boldness` → оставить | Character axes.*.current | 3 динамических факта 0..1, не повтор статичного текста карточки |
+| `intimacy.flirtiness`, `romanticCharge` → оставить | Character intimacy | Два текущих состояния, не тождественны love/consent; 2 числа 0..100 |
+| `intimacy.userConsentEnabled` → оставить | Локальная пользовательская настройка | Техническая граница и самостоятельная причина недопустимости; 1 boolean |
+| `synthesizedTone` → убрать из wire/model | Domain synthesizeEmotionalTone | Потеря численной детализации при повторной классификации уже имеющихся фактов; −1 enum; локальные Mock/signature остаются |
+| `expression.pace/trust/attention/play` → убрать | Domain bands из Needs/friendship | Advisory-классификации без независимого факта/серверного branch consumer; −4 enum; не объявляются конфликтом состояния |
+| `expression.romanceAllowed` → оставить | Domain canExpressFlirt того же snapshot | Итог текущего gate; backend не восстанавливает его по числам; 1 boolean, не обязанность романтики |
+| `card`, `effectPolicy` → сохранить вне character | Установленная revision; Character admission | Техническая идентичность и допустимость appraisal, не второй характер |
+| `previousTouch` → сохранить optional вне character | Зафиксированный touch trace desktop | Исторические pre-base bands, опубликованный текст, proposed/committed effect/reason объясняют why-answer; не дубль текущего snapshot |
+| sleep/action → не добавлять | Character sleep gate; фактические event outcomes | #136 блокирует chat во сне; tone/Needs не заменяют факт сна/занятия. Текущая Activity вне этого контракта |
+
+`traits.*` в таблице означает `personality.traits.*`. Raw факты сохраняют больше
+информации, чем bands; traits/интимность/монотонность не удаляются без доказанного
+дублирования. Сохраняется числовая динамика, а не инструкции эмоционального ответа.
+Backend сериализует ровно разрешённую проекцию и нейтральные определения шкал;
+не вычисляет удалённые labels и не выводит из них скрытый state.
+
+#### Валидация, отсутствие и актуальность
+
+Все сохранённые ranges/caps §2 прежние; `expression` обязателен с одним strict
+boolean. Missing/null/unknown keys, включая удалённые tone/bands, →400 invalid_request
+до admission; desktop отклоняет невозможную проекцию до HTTP. Missing boredom
+означает «не передано», не ноль; отсутствие previousTouch — отсутствие актуального
+trace, не «касания не было». Для остальных обязательных полей unknown/unavailable
+не кодируются default/нулём: запрос не отправляется либо отклоняется. Новых unknown
+enums, timestamps или freshness-полей нет. Временный lifecycle state не сохраняется.
+
+Снимок фиксирует факты на момент запроса (post-base при interaction), не вечную
+истину. Desktop сохраняет sleep/generation/reset/dispose/deadline barriers и полный
+локальный interaction signature из [Character](../../frontend/docs/engine/CHARACTER_ENGINE.md#проекция-состояния-для-промпта),
+включая локальные tone/traits. Не каждое изменение числа отменяет chat: действуют
+существующие gates, без новой freshness-policy для awake Activity. PreviousTouch
+сохраняет собственные TTL/generation/commit rules [AI Events §10](AI_EVENTS_CONTRACT.md#10-interaction-a01-семантическое-взаимодействие-v1).
+Модель не может достоверно объяснить отсутствующий outcome по текущим Needs.
+
+romanceAllowed=false или userConsentEnabled=false запрещают романтическое выражение;
+true не требует его и не заменяет повторную локальную проверку перед эффектом.
+При несовпадении чисел и готового permission backend не пересчитывает пороги;
+согласованность обеспечивает desktop projection и fixtures, не доверие к клиенту.
+Deadline/cancellation/idempotency, ошибки §3, caps/retention §6 и отсутствие retry
+неизменны. Projection входит в прежний body digest и живёт только с запросом;
+offline/failure не останавливает локальный runtime. Нового state store нет.
 
 ## 3. HTTP и ошибки
 

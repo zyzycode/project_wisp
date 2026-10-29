@@ -131,6 +131,18 @@ deployment сохраняются. При отсутствии доверенн�
 
 Это контракт **валидного** Domain state: `Needs` имеет открытый индекс, фабрика shallow-copy и не валидирует traits ranges. Для будущих untrusted inputs Application обязан валидировать известные поля/finite/ranges и исключать произвольные вложения; assertion/`JSON.stringify` недостаточны. Изменение структуры Needs и реализация внешних валидаторов являются отдельной ответственностью.
 
+### Model projection после #145
+
+Полный локальный snapshot выше сохраняется для Mock, UI, Character freshness и
+persistence. Внешний adapter строит одну bounded model/wire projection по
+[API §2.1](../../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression):
+числовые факты, identity и consent остаются; synthesizedTone и четыре advisory
+bands expression исключаются, romanceAllowed вычисляет Domain из того же снимка.
+Это целевой contract delta отдельной совместной поставки, не текущая смена типов.
+Снимок фиксирует вход запроса, а не гарантирует неизменность состояния до ответа;
+существующие generation/deadline/sleep и interaction freshness gates сохраняются.
+Ни snapshot/IPC, ни локальная stale signature не сокращаются вслед за prompt.
+
 ## Dialogue runtime и IPC
 
 Runtime размещён в Main/Application. DTO: [ipc-contracts.ts](../../src/shared/ipc-contracts.ts) — `DialogueCommandDTO`, `DialogueCommandReceiptDTO`, `DialoguePresentationDTO`, `BrainStateDTO`, `WispApiBridge`.

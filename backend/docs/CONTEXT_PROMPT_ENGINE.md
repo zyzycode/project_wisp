@@ -114,9 +114,13 @@ Backend не задаёт второй характер: никакого few-sh
 Revision не является wire-version; обе стороны обновляются совместно без старого adapter.
 
 Energy — ресурс, остальные Needs — дефициты; высокий comfort означает стресс.
-Friendship/love — 0..1000, traits — 0..1. Значения и готовые bands expression передаются
-как факты; backend не пересчитывает пороги и не превращает их в предписание реакции.
-Смысл expression — [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
+Friendship/love — 0..1000, traits — 0..1; это факты, не предписание реакции.
+Целевая проекция #145 — [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression):
+без synthesizedTone и четырёх advisory bands; expression сохраняет romanceAllowed.
+Она внедряется отдельной совместной поставкой; backend не восстанавливает labels,
+скрытый sleep/action или thresholds и не создаёт второй state store.
+Traits описывают текущие axes, а не заменяют identity. PreviousTouch — исторический
+trace действия, не текущий state: он сохраняется для объяснения реального outcome.
 Consent и romanceAllowed определяют допустимость, не обязанность романтического ответа.
 Desktop сохраняет владение числовыми состояниями, FSM, исполнением и памятью.
 
@@ -129,7 +133,7 @@ Quiet-support latch и локальный ACK — [Character §6.1](../../fronte
 | Состав | Каноническое правило |
 |---|---|
 | Карточка | Единственный источник характера; не копируется в backend/lore/templates |
-| State/expression | Полный разрешённый snapshot и нейтральные определения полей, без перевода в сценарий речи |
+| State/expression | Одна разрешённая model projection по API §2.1 и нейтральные определения, без сценария речи |
 | Locale, JSON, enum, max length, appraisal/decision/proposal | Проверяемый технический контракт; допустим в server instructions |
 | Consent, evidence | Границы согласия и проверки предложений памяти |
 | История/summary/lore/previousTouch | Фактические данные со своими источниками и приоритетами; не инструкции характера |
@@ -251,8 +255,8 @@ builder/source digest, card revision и provider/model/output settings, выбр
 с размерами. Начальный baseline остаётся доступен после внедрения отбора.
 Сравнение миграции требует равенства messages/payload/выбора/budgets; сравнение
 условного отбора отдельно перечисляет намеренные изменения и причины, используя
-те же исходные тексты/state и метод оценки. Новая expression-проекция добавляется
-к сцене детерминированно, исходные значения для «улучшения» результата не меняются.
+те же исходные тексты/state и метод оценки. Contract delta проекции применяется
+детерминированно; исходные факты для «улучшения» результата не меняются.
 
 Одинаковые RU/EN сцены: приветствия guarded/close, похвала, усталость с высокой
 attention/play, просьба о дистанции, touch и следующий why-question с trace,

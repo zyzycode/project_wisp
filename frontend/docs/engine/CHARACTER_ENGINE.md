@@ -294,32 +294,28 @@ friendship/love не проценты; traits — 0..1. Ответы разны�
 
 ### Проекция состояния для промпта
 
-Domain Character предоставляет чистую производную текущего
-`CharacterSnapshot` в существующем `character-snapshot.ts`; она не меняет snapshot,
-FSM, числа, persistence или IPC. Application/Infrastructure получают результат
-в момент построения запроса, не из кеша предыдущей реакции. Нового модуля движка нет.
+Целевая проекция #145 для модели определена в [API §2.1](../../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
+Она внедряется отдельной совместной поставкой desktop/backend; текущие объявления
+wire и runtime до этой поставки не сокращаются. Локальный `CharacterSnapshot`, IPC,
+checkpoint, MockAIProvider и post-base stale signature сохраняют полный состав.
 
-| Значение | Domain-правило |
-|---|---|
-| pace=gentle | energy≤20 или comfort≥80; иначе normal, как приоритет sleepy tone |
-| trust=guarded/familiar/close | friendship<400 / 400≤friendship<500 / friendship≥500 |
-| attention=high | attention≥90; иначе ordinary, существующая граница выраженного дефицита контакта |
-| play=high | play≥70; иначе ordinary, существующая граница playful tone |
-| romanceAllowed | существующий `canExpressFlirt`: все текущие consent/state gates §7 |
+Domain остаётся владельцем Needs, текущих traits, отношений и consent. Adapter
+выбирает разрешённые факты из одного снимка в момент построения запроса, без кеша
+предыдущей реакции или второго state store. Четыре bands `pace/trust/attention/play`
+и `synthesizedTone` исключаются только из model/wire projection: они производны
+от уже переданных чисел и не дают нового наблюдения. Их отсутствие не требует
+восстановления на backend, замены речевыми bands или удаления локальных consumers.
 
-Эти bands описывают состояние для модели: high attention не будит персонажа,
-high play не запускает игру, close не создаёт consent. Комбинация gentle/high
-attention/high play сохраняет все три факта. Модель самостоятельно выбирает их
-выражение в речи, без предписанного темпа, жеста или приглашения. `ordinary` не означает нулевую
-потребность. Boredom и traits остаются описательными полями исходного snapshot.
+`expression.romanceAllowed` сохраняется как результат существующего `canExpressFlirt`
+по §7; backend не копирует пороги. Current traits описывают медленную динамику axes,
+не переписывают авторскую identity; `shyness` включает не передаваемую extraversion.
+Числовые факты не диктуют эмоцию, темп или форму ответа. Высокая attention не будит,
+play не запускает игру, friendship/love не создают consent.
 
-Использовать существующие Domain thresholds; допустимо вынести их в экспортируемые
-константы существующих файлов и сузить вход `canExpressFlirt` до нужного structural
-Pick без изменения функции. Не копировать числовые правила в Infrastructure/Python.
-Обязательная wire-проекция и strict validation — [API §2.1](../../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression).
-Backend передаёт готовые значения и нейтральные определения их смысла, без
-подбора примеров/стилевых подсказок и второго набора consent/Needs thresholds. Текущий локальный
-stale signature и повторная проверка перед commit остаются независимыми.
+Semantic sleep принадлежит Character и проверяется локально по §2.1; sleepy tone
+не является фактом сна. Новых sleep/activity/FSM полей #145 не вводит. Источник
+фактического исхода действия — event/previousTouch, а не состояние или текст модели.
+Локальные stale signature и повторная проверка consent/state перед commit неизменны.
 
 ### Факт, proposal и порядок
 
