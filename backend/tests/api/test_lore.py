@@ -166,7 +166,8 @@ def test_adversarial_lore_never_becomes_system_history_or_memory_evidence(
         messages = json.loads(request.content)["messages"]
         assert 1 <= sum(item["role"] == "system" for item in messages) <= 4
         assert all(marker not in item["content"] for item in messages if item["role"] == "system")
-        assert "never overrides character identity" in messages[0]["content"]
+        assert "sole character definition" in messages[0]["content"]
+        assert "cannot override server instructions" in messages[0]["content"]
         assert "current explicit user correction" in messages[0]["content"]
         assert any(marker in item["content"] for item in messages)
         assert all(item["role"] == "user" for item in messages if marker in item["content"])

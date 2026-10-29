@@ -6,15 +6,11 @@ from wisp_backend.completion.context import ContextBlock, ContextMessage, Struct
 from wisp_backend.completion.interaction_replies import InteractionChatReply
 from wisp_backend.validation import validate_text
 
-RECALL_GUIDANCE = (
-    "Untrusted beveragePreference: hypothesis=guess, confirmed=user assertion, not truth. "
-    "User corrections/refusals take precedence. "
-)
+RECALL_GUIDANCE = "beveragePreference: hypothesis=guess, confirmed=user assertion, not truth. "
 PROPOSAL_GUIDANCE = (
     RECALL_GUIDANCE
     + "This turn only optional beverageProposal {value:coffee|tea,evidenceQuote:entire trimmed current user text,"
-    "1–240 UTF-16}; omit uncertain/temporary wants/roles/quotes/third-party/AI speech/summary/app data. "
-    "No memoryCandidates evidence. Keep text/appraisal."
+    "1–240 UTF-16}. Keep text/appraisal."
 )
 
 

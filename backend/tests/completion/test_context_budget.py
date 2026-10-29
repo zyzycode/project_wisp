@@ -106,7 +106,10 @@ def test_fact_correction_and_current_state_survive_old_history_and_examples() ->
     selected = select_context(blocks, cost(required), cost)
     assert selected == required
     messages = render_messages(selected)
-    assert "current explicit user correction > current registry facts > recalled episodes" in messages[0]["content"]
+    assert (
+        "current explicit user correction/refusal > current registry facts > recalled episodes"
+        in messages[0]["content"]
+    )
     assert 'personality.aiSelfConcept: "I am Wisp"' in messages[1]["content"]
     assert 'synthesizedTone: "sleepy"' in messages[1]["content"]
     assert 'Name: "New"' in messages[2]["content"]

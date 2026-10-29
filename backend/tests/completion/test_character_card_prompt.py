@@ -134,13 +134,12 @@ def test_optional_context_never_becomes_a_second_authored_voice(provider, locale
     blocks, messages, _ = outgoing(route, body, provider)
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
     assert all(direction not in system for direction in FORBIDDEN_DIRECTIONS)
-    assert all(direction not in system for direction in FORBIDDEN_DIRECTIONS)
     assert "memoryCandidates" in system and "evidenceQuote" in system
     assert "actual action, published text, proposed appraisal, committed effect/reason" in system
     assert "at most one question" in system if mode == "follow_up" else "Do not ask a new follow-up" in system
     if beverage is not None:
         assert "hypothesis=guess, confirmed=user assertion, not truth" in system
-        assert "corrections/refusals take precedence" in system
+        assert "current explicit user correction/refusal > current registry facts" in system
     assert all(b.key != "examples" and not b.key.startswith("guidance_") for b in blocks)
 
 

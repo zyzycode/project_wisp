@@ -49,7 +49,7 @@ def test_eligible_prompt_has_current_message_semantics_without_rollout_override(
     system = next(block for block in context if block.key == "instructions").messages[0].content
     assert "In this rollout chat appraisal is neutral/low/clear" not in system
     assert "When effectPolicy is eligible" in system
-    assert "explicit hostility directed at Wisp in the current user message" in system
+    assert "explicit hostility directed at Wisp" in system
     for distinction in ("role-play", "jokes", "sarcasm", "uncertain", "consent"):
         assert distinction in system
 

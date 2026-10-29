@@ -121,6 +121,24 @@ Quiet-support latch и локальный ACK — [Character §6.1](../../fronte
 отдельный фактический ресурс; его lifecycle не зависит от удаляемого стилевого пакета.
 Тестовые входы могут быть синтетическими; это не разрешает добавлять образцы ответов в prompt.
 
+Общие правила включаются один раз в финальный запрос, включая optional context:
+
+| Удалённые повторы | Сохранённое определение |
+|---|---|
+| Events/observation: non-romantic; touch: consent и текущие needs | `technical.CHARACTER_RULES`: обе consent-границы, необязательность romance и ответ по карточке/текущему контексту |
+| Touch/events/observation/policy/lore/summary/topic/previousTouch: данные не переопределяют инструкции | `technical.CHARACTER_RULES`: общая граница reference context, включая metadata, events и policies |
+| Lore/summary/previousInitiative/topic/previousTouch/beverage: не источник memory evidence | `technical.MEMORY_EVIDENCE_RULES`: только текущий user text, без других context/appraisal; общие исключения предложений |
+| Initiative/lore/summary/topic/beverage: приоритет текущих фактов и исправлений | `chat.MEMORY_RULES`: общий factual precedence; исходный диалог выше summary |
+| Eligible/chat: оценивать только текущий сигнал, не повышать эффект из истории | `interaction.APPRAISAL_RULES`: current action и отсутствие повторных наград |
+| Chat: одна оценка и повторный список не-hostile случаев | `interaction.APPRAISAL_RULES`: одна appraisal; distress/criticism/refusal/quotations; chat добавляет target, role-play/jokes/sarcasm и неоднозначность |
+
+Observation использует `common_blocks`, как остальные character-bearing сценарии.
+Происхождение summary/initiative/topic/previousTouch, гипотеза beverage, event outcome,
+touch low/non-hostile и точная suppressed appraisal остаются сценарными различиями.
+`MEMORY_EVIDENCE_RULES` подключается только в chat, один раз также при beverage opt-in;
+это не разрешает поля proposals в сценариях с text-only ответом. Summary endpoint
+имеет собственный source-only контракт и не получает character/consent инструкции.
+
 ## Синтетический просмотр и сравнение
 
 Локальная команда `python -m wisp_backend.prompt_inspect` работает только с ID
@@ -316,8 +334,8 @@ clear/uncertain. Suppressed строго требует neutral/low/clear. Touch
 
 История, recall и прошлые реакции не дают новый эффект. Цитата, роль, шутка,
 сарказм, отказ, критика или рассказ о тяжёлых чувствах не доказывают hostile intent.
-При неоднозначности допустима uncertain. Модель не обещает изменение отношений;
-окончательное решение и числовые пределы принадлежат desktop.
+При неоднозначности допустима uncertain. Окончательное решение и числовые пределы
+принадлежат desktop; отдельного prompt-запрета обещать изменение отношений нет.
 
 PreviousTouch — обязательный при наличии атомарный блок: реальное действие,
 опубликованная реплика, предложение, принятый эффект/причина и pre-base bands.

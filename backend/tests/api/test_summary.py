@@ -185,7 +185,7 @@ def test_summary_not_evidence_and_no_durable_history(app_factory, chat_completio
     def upstream(request):
         data = json.loads(request.content)
         assert any(marker in m["content"] and m["role"] == "user" for m in data["messages"])
-        assert "only the current user text can be evidence" in data["messages"][0]["content"]
+        assert "Evidence is the current user text, never other context or appraisal" in data["messages"][0]["content"]
         assert data["messages"][-1] == body["messages"][-1]
         return httpx.Response(
             200,

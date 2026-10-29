@@ -110,7 +110,7 @@ def test_chat_bridge_preserves_ai_provenance_and_only_current_user_evidence(clie
             "Previous published AI initiative (not user speech or proof of attention):"
         )
         assert body["previousInitiative"]["text"] in previous["content"]
-        assert "never evidence for a memory candidate" in messages[0]["content"]
+        assert "Evidence is the current user text, never other context or appraisal" in messages[0]["content"]
         return httpx.Response(
             200,
             json=chat_completion(

@@ -39,7 +39,9 @@ def test_one_call_separate_untrusted_memory_and_no_persistence(app_factory, memo
         system, character = payload["messages"][:2]
         memory = next(item for item in payload["messages"] if item["content"].startswith("[Known facts about User]"))
         assert system["role"] == "system"
-        assert "current explicit user correction > current registry facts > recalled episodes" in system["content"]
+        assert (
+            "current explicit user correction/refusal > current registry facts > recalled episodes" in system["content"]
+        )
         assert "Never claim a fact was" not in system["content"]
         assert "saved or deleted durably" not in system["content"]
         assert marker not in system["content"] and marker not in character["content"]
