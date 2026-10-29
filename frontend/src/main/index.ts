@@ -1,4 +1,8 @@
 import { registerWindowIpc } from './window-ipc-registration';
+import { AIConnectionController, type PersonalAIRoute } from './ai-connection-controller';
+import { registerAIConnectionIpc } from './ai-connection-ipc-registration';
+import { ProtectedUserAIKeyStore } from '../infrastructure/platform/protected-user-ai-key-store';
+import { ManagedLocalAIBackend } from '../infrastructure/platform/managed-local-ai-backend';
 import { RoutineCapture } from '../application/services/routine-capture';
 import { MemoryFactsReader } from '../application/services/memory-facts-reader';
 import { BeverageCommands } from '../application/services/beverage-commands';
@@ -28,7 +32,7 @@ import type { ExternalWindowSurfacesPort } from '../application/ports/external-w
 import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type {
   PetPositionDTO,
   DebugTelemetryDTO,
@@ -101,6 +105,10 @@ const defaultCharacterInteractionUseCase = new CharacterInteractionUseCase(defau
 let mainWindow: BrowserWindow | null = null;
 let memoryComposition: ReturnType<typeof createMainMemoryComposition> | null = null;
 let memoryShutdownComplete = false;
+let shutdownStarted = false;
+let aiConnection: AIConnectionController | null = null;
+let aiRoute: PersonalAIRoute = {};
+let unregisterAIConnection: (() => void) | null = null;
 let memoryRuntime: MemoryLifecycle | null = null;
 let routineCapture: RoutineCapture | null = null;
 let unregisterMemory: (() => void) | null = null;
@@ -111,7 +119,7 @@ let unregisterObservation: (() => void) | null = null;
 let summaryRuntime: SummaryRuntime | null = null;
 let summaryGenerating = false;
 let summaryStream: string | null = null;
-const localMock = !process.env.WISP_BACKEND_URL?.trim();
+let localMock = true;
 let beverageDialogue: BeverageDialogue | null = null;
 const beverageCommands = new BeverageCommands({ runtime: () => memoryRuntime, dialogue: () => beverageDialogue, timestamp: () => new Date().toISOString() });
 const memoryCards = new MemoryCards(() => memoryRuntime, () => new Date().toISOString());
@@ -353,7 +361,7 @@ function initializeAutonomyComposition(): void {
   autonomyComposition.setQuietSupport(quietSupportRuntime.isActive());
   if (memoryRuntime?.isRunning() && mainWindow !== null && !mainWindow.isDestroyed()) autonomyComposition.start();
   if (dialogueRuntime === null) {
-    const ai = createMainAIProvider({ backendUrl: process.env.WISP_BACKEND_URL, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
+    const ai = createMainAIProvider({ backendUrl: aiRoute.backendUrl, sessionToken: aiRoute.sessionToken, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
     const recall = !localMock && memoryComposition
       ? new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
     observationManagement = createActiveApplicationObservation();
@@ -605,6 +613,8 @@ function registerIpcHandlers(): void {
   });
   unregisterSummary = registerSummaryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
+  if (aiConnection) unregisterAIConnection = registerAIConnectionIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
+    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection });
   unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands, beverage: beverageCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
@@ -749,7 +759,16 @@ if (!gotTheLock) {
     }
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    const userData = app.getPath('userData');
+    aiConnection = new AIConnectionController({ externalUrl: process.env.WISP_BACKEND_URL, store: new ProtectedUserAIKeyStore(userData),
+      backend: new ManagedLocalAIBackend({ python: process.env.WISP_PYTHON, directory: process.env.WISP_LOCAL_BACKEND_DIR, onUnavailable: () => aiConnection?.backendUnavailable() }),
+      ledgerPath: path.join(userData, 'personal-ai-usage.sqlite3'), createSessionToken: () => randomBytes(32).toString('hex'),
+      scheduleRestart: () => { setTimeout(() => { if (!shutdownStarted) { app.relaunch(); app.quit(); } }, 0); },
+    });
+    aiRoute = await aiConnection.initialize();
+    if (shutdownStarted) return;
+    localMock = !aiRoute.backendUrl;
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
     memoryRuntime = new MemoryLifecycle({ summary: {
@@ -795,11 +814,15 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', event => {
-  if (!memoryShutdownComplete && memoryComposition !== null) {
+  if (!memoryShutdownComplete && (memoryComposition !== null || aiConnection !== null)) {
     event.preventDefault();
-    void (memoryRuntime?.shutdown() ?? memoryComposition.close(0)).then(() => { memoryShutdownComplete = true; app.quit(); });
+    if (!shutdownStarted) {
+      shutdownStarted = true;
+      void Promise.allSettled([memoryRuntime?.shutdown() ?? memoryComposition?.close(0), aiConnection?.stop()])
+        .then(() => { memoryShutdownComplete = true; app.quit(); });
+    }
   }
-  observationRuntime?.dispose(); unregisterObservation?.(); aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.();
+  observationRuntime?.dispose(); unregisterObservation?.(); aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.(); unregisterAIConnection?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();

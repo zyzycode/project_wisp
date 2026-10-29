@@ -16,7 +16,9 @@ from wisp_backend.logging.output import configure_logging
 from wisp_backend.runtime import open_runtime
 
 
-def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: Settings | None = None) -> FastAPI:
+def create_app(
+    transport: httpx.AsyncBaseTransport | None = None, *, settings: Settings | None = None, expose_docs: bool = True
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         configured = False
@@ -40,6 +42,13 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None, *, settings: S
         finally:
             logger.info("application_stopped")
 
-    app = FastAPI(title="Wisp API", version="1.0.0", lifespan=lifespan)
+    app = FastAPI(
+        title="Wisp API",
+        version="1.0.0",
+        lifespan=lifespan,
+        docs_url="/docs" if expose_docs else None,
+        redoc_url="/redoc" if expose_docs else None,
+        openapi_url="/openapi.json" if expose_docs else None,
+    )
     install_api(app)
     return app

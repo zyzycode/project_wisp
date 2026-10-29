@@ -592,6 +592,63 @@ html, body {
   margin-bottom: 2px;
 }
 
+.ai-connection-settings summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-connection-settings p {
+  margin: 6px 0;
+  line-height: 1.4;
+}
+
+.ai-connection-settings fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.ai-connection-settings input,
+.ai-connection-settings button {
+  box-sizing: border-box;
+  max-width: 100%;
+  color: inherit;
+  font: inherit;
+  background: #25314a;
+  border: 1px solid #64748b;
+  border-radius: 5px;
+  padding: 6px 8px;
+}
+
+.ai-connection-settings input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.ai-connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ai-connection-settings button {
+  cursor: pointer;
+}
+
+.ai-connection-settings :disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ai-connection-settings :focus-visible {
+  outline: 2px solid #c084fc;
+  outline-offset: 2px;
+}
+
 .menu-btn-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

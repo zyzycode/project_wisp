@@ -14,6 +14,8 @@ interface ExternalAIProviderOptions {
   readonly development: boolean;
   readonly now: () => number;
   readonly fetch?: typeof fetch;
+  /** Private Main-owned loopback transport credential, never a provider key. */
+  readonly sessionToken?: string;
 }
 class ProtocolError extends Error {}
 class TransportTimeout extends Error {}
@@ -67,9 +69,14 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
   private eventAbort: { id: string; controller: AbortController } | undefined;
   private readonly urls: Readonly<Record<'chat' | 'touch' | 'events' | 'summary' | 'observation', URL>>;
   private readonly fetch: typeof fetch;
+  private readonly headers: Readonly<Record<string, string>>;
   private activeRequestId: string | undefined;
   constructor(private readonly options: ExternalAIProviderOptions) {
-    this.urls = { chat: endpoint(options.baseUrl, options.development, 'chat'), touch: endpoint(options.baseUrl, options.development, 'touch'), events: endpoint(options.baseUrl, options.development, 'events'), summary: endpoint(options.baseUrl, options.development, 'summary'), observation: endpoint(options.baseUrl, options.development, 'observation') };
+    const local = options.sessionToken !== undefined;
+    if (local && (!/^[a-f0-9]{64}$/u.test(options.sessionToken!) || !/^http:\/\/127\.0\.0\.1:[0-9]{1,5}$/u.test(options.baseUrl))) throw new TypeError('Invalid local backend configuration');
+    this.headers = { 'Content-Type': 'application/json', Accept: 'application/json', ...(local ? { Authorization: `Bearer ${options.sessionToken}` } : {}) };
+    const development = options.development || local;
+    this.urls = { chat: endpoint(options.baseUrl, development, 'chat'), touch: endpoint(options.baseUrl, development, 'touch'), events: endpoint(options.baseUrl, development, 'events'), summary: endpoint(options.baseUrl, development, 'summary'), observation: endpoint(options.baseUrl, development, 'observation') };
     this.fetch = options.fetch ?? globalThis.fetch;
   }
   public canIncludeBeverage(request: AIProviderRequest): boolean { return projectInteractionChat(request).beveragePreference !== undefined; }
@@ -98,7 +105,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     try {
       const operation = async () => {
         try {
-        const response = await this.fetch(this.urls.chat, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        const response = await this.fetch(this.urls.chat, { method: 'POST', body, headers: this.headers,
           redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         const value = await readBoundedJson(response, controller.signal);
         return { response, value };
@@ -152,7 +159,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
       const url = touch ? this.urls.touch : this.urls.events;
       const operation = async () => {
         try {
-        const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
+        const response = await this.fetch(url, { method: 'POST', body, headers: this.headers, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         return { response, value: await readBoundedJson(response, controller.signal) };
         } finally { settled = true; if (completed && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
       };
@@ -184,7 +191,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
       const operation = async () => {
         try {
         const url = this.urls.summary;
-        const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
+        const response = await this.fetch(url, { method: 'POST', body, headers: this.headers, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         const value = await readBoundedJson(response, controller.signal);
         if (signal.aborted || controller.signal.aborted) throw new TransportTimeout();
         if (response.status !== 200) { parseSummaryError(value, request.requestId, response.status); throw new ProtocolError('Summary failed'); }
@@ -211,7 +218,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
       const operation = async () => {
         try {
         const url = this.urls.observation;
-        const response = await this.fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        const response = await this.fetch(url, { method: 'POST', body, headers: this.headers,
           redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         const value = await readBoundedJson(response, controller.signal);
         if (controller.signal.aborted || this.options.now() - startedAt >= 3000) throw new TransportTimeout();

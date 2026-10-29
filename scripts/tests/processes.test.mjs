@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runProcesses } from '../processes.mjs';
@@ -52,14 +53,26 @@ test('pre-aborted launch creates no processes', async () => {
   assert.equal(f.children.length, 0);
 });
 
-test('backend port and interpreter are explicit; frontend uses the same endpoint', () => {
-  const env = { WISP_BACKEND_PORT: '8001', WISP_PYTHON: 'custom-python', WISP_BACKEND_URL: 'http://wrong-server' };
-  const [backend, frontend] = devCommands(env);
+test('standalone preserves operator settings; dev launches only desktop with trusted runtime paths', () => {
+  const env = { WISP_BACKEND_PORT: '8001', WISP_PYTHON: 'custom-python', WISP_BACKEND_URL: 'http://operator-server' };
+  const backend = backendCommand('dev', env);
+  const [frontend, other] = devCommands({ ...env, WISP_PYTHON: process.execPath,
+    WISP_LOCAL_BACKEND_DIR: '/untrusted-override' });
   assert.equal(backend.command, 'custom-python');
   assert.equal(backend.args.at(-1), '8001');
-  assert.equal(frontend.env.WISP_BACKEND_URL, 'http://127.0.0.1:8001');
+  assert.equal(other, undefined);
+  assert.equal(frontend.env.WISP_BACKEND_URL, 'http://operator-server');
+  assert.equal(frontend.env.WISP_PYTHON, process.execPath);
+  assert.equal(frontend.env.WISP_LOCAL_BACKEND_DIR, path.join(path.dirname(frontend.cwd), 'backend'));
   assert.equal(frontend.env.WISP_BACKEND_API_VERSION, undefined);
   assert.equal(frontend.env.WISP_AI_EVENTS_ENABLED, 'false');
+});
+
+test('dev has no implicit external backend and missing runtime leaves offline startup available', () => {
+  const [frontend] = devCommands({ WISP_PYTHON: '/nonexistent/wisp-python', WISP_BACKEND_PORT: 'invalid' });
+  assert.equal(frontend.env.WISP_BACKEND_URL, undefined);
+  assert.equal(frontend.env.WISP_PYTHON, undefined);
+  assert.equal(frontend.name, 'frontend');
 });
 
 test('invalid ports and modes fail before spawning', () => {
@@ -70,14 +83,16 @@ test('invalid ports and modes fail before spawning', () => {
 });
 
 test('server credentials and profile configuration are not inherited by desktop', () => {
-  const [backend, frontend] = devCommands({ GROQ_API_KEY: 'server-key', token_api: 'legacy-key',
+  const env = { GROQ_API_KEY: 'server-key', token_api: 'legacy-key',
     GEMINI_API_KEY: 'gemini-key', gemini_api_key: 'lowercase-key',
     OPENAI_API_KEY: 'openai-key', openai_api_key: 'lowercase-openai-key',
     WISP_AI_PROVIDER: 'gemini', WISP_AI_MODEL: 'gemini-3.5-flash-lite',
     WISP_AI_BASE_URL: 'https://example.com/', WISP_AI_MAX_OUTPUT_TOKENS: '512',
     WISP_AI_TEMPERATURE: '0.5', WISP_AI_THINKING_LEVEL: 'low',
     WISP_AI_REQUEST_TIMEOUT: '8', WISP_AI_CONNECT_TIMEOUT: '2', WISP_AI_POOL_TIMEOUT: '1',
-    ASSISTANTS_JSON: '{}', WISP_UPSTREAM_TRUST_ENV: 'true', PATH: 'host-path' });
+    ASSISTANTS_JSON: '{}', WISP_UPSTREAM_TRUST_ENV: 'true', PATH: 'host-path' };
+  const backend = backendCommand('dev', env);
+  const [frontend] = devCommands(env);
   assert.equal(backend.env.GROQ_API_KEY, 'server-key');
   assert.equal(backend.env.GEMINI_API_KEY, 'gemini-key');
   assert.equal(backend.env.OPENAI_API_KEY, 'openai-key');

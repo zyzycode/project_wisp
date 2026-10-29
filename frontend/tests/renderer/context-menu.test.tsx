@@ -41,6 +41,7 @@ describe('Renderer: ContextMenu', () => {
         debugHudEnabled
         debugContent={<div>Debug Telemetry</div>}
         isAlwaysOnTop={true}
+        aiConnectionContent={<div>Подключение AI</div>}
         onClose={vi.fn()}
         onPet={vi.fn()}
         onPlay={vi.fn()}
@@ -62,6 +63,7 @@ describe('Renderer: ContextMenu', () => {
     );
 
     expect(markup).toContain('Wisp Companion');
+    expect(markup).toContain('Подключение AI');
     expect(markup).toContain('Автономность приостановлена');
     expect(markup).toContain('Нежное');
     expect(markup).toContain('Погладить');

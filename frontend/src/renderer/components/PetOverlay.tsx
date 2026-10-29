@@ -1,4 +1,5 @@
 import { ObservationSettings } from './Interaction/ObservationSettings';
+import { AIConnectionSettings } from './Interaction/AIConnectionSettings';
 import React, { useState } from 'react';
 import type { RenderPresentationState } from '../render-engine';
 import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../shared/pet-presentation-layout';
@@ -82,6 +83,7 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         debugHudVisible={model.debugHudVisible}
         isAlwaysOnTop={model.isAlwaysOnTop}
         debugContent={debugHud}
+        aiConnectionContent={<AIConnectionSettings bridge={window.wispAPI?.aiConnection} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
         observationContent={<ObservationSettings bridge={window.wispAPI?.observationCommand} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
         previewContent={<AnimationPreviewControls
           bodyKeys={model.manifestAnimations.bodyKeys}

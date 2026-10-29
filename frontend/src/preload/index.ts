@@ -1,4 +1,5 @@
 import { parseRoutineStatus } from '../shared/routine-status-validation';
+import { parseAIConnectionCommand, parseAIConnectionRead, parseAIConnectionResult, parseAIConnectionStatus } from '../shared/ai-connection-validation';
 import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-facts-validation';
 import { parseBeverageCommand, parseBeverageRead, parseBeverageReadResult, parseBeverageMutationResult } from '../shared/beverage-validation';
 import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
@@ -53,6 +54,10 @@ const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown):
 ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
+  aiConnection: {
+    read: async command => parseAIConnectionStatus(await ipcRenderer.invoke('wisp:ai-connection-read', parseAIConnectionRead(command))),
+    configure: async command => parseAIConnectionResult(await ipcRenderer.invoke('wisp:ai-connection-configure', parseAIConnectionCommand(command))),
+  },
   observationCommand: async command => parseObservationSettings(await ipcRenderer.invoke('wisp:observation-command', parseObservationCommand(command))),
   beveragePreference: {
     read: async command => parseBeverageReadResult(await ipcRenderer.invoke('wisp:read-beverage', parseBeverageRead(command))),

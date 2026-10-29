@@ -25,6 +25,7 @@ export interface ContextMenuProps {
   isAlwaysOnTop?: boolean;
   debugContent?: React.ReactNode;
   previewContent?: React.ReactNode;
+  aiConnectionContent?: React.ReactNode;
   observationContent?: React.ReactNode;
   onTabChange?: (tab: ContextMenuTab) => void;
   onClose: () => void;
@@ -118,6 +119,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   isAlwaysOnTop = false,
   debugContent,
   previewContent,
+  aiConnectionContent,
   observationContent,
   onTabChange,
   onClose,
@@ -237,6 +239,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               : externalWindowSupport === 'unavailable' ? 'Окна недоступны — используются границы экрана'
               : 'Доступность окон пока неизвестна'}
           </p>
+          {aiConnectionContent}
           {observationContent}
           {/* Actions */}
           <div className="menu-section">

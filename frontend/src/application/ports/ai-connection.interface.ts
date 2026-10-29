@@ -7,6 +7,8 @@ export type UserAIKeyStoreResult<T> =
 /** Plaintext is Main-only, transient, never returned through a read IPC method. */
 export interface IUserAIKeyStore {
   isAvailable(): Promise<boolean>;
+  /** Presence metadata remains readable when decryption/keychain access fails. */
+  hasSavedKey(): Promise<UserAIKeyStoreResult<boolean>>;
   load(): Promise<UserAIKeyStoreResult<string | null>>;
   save(apiKey: string): Promise<UserAIKeyStoreResult<void>>;
   remove(): Promise<UserAIKeyStoreResult<void>>;

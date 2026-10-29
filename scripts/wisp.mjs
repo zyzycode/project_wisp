@@ -14,7 +14,7 @@ if (mode === 'help') {
   try {
     const specs = wispCommands(mode, process.argv.slice(3));
     if (mode === 'dev') {
-      console.log('Starting backend and frontend. Ctrl+C stops both.');
+      console.log('Starting Wisp. Personal AI is managed from the application. Ctrl+C stops Wisp.');
       process.exitCode = await runProcesses(specs, { signal: controller.signal });
     } else {
       for (const spec of specs) {
