@@ -338,7 +338,8 @@ observation остаются текстовыми. TTS не дописывает
   Main сверяет stream/conversation/request с текущим completed success и берёт
   исходный text из Dialogue. Renderer не передаёт произвольный текст для TTS.
 - Разрешён локальный `Qwen3-TTS-12Hz-0.6B-CustomVoice`, speaker `ono_anna`, язык
-  Russian/English из locale. CPU inference выполняется в Main-owned Node worker
+  Russian/English из locale. CPU inference выполняется в Main-owned Electron
+  `utilityProcess`, созданном после `app.ready`, в отдельном адресном пространстве
   через существующий ONNX Runtime; tokenizer — существующий Transformers.js.
   Qwen2 BPE разрешено собрать в памяти из pinned vocab/merges/config с исходными
   special tokens; дополнительный BOS и remote tokenizer code не используются.
@@ -354,8 +355,20 @@ observation остаются текстовыми. TTS не дописывает
 - Одновременно один запрос, очереди нет. Новый accepted user send, новый ответ,
   stop/выключение звука, quiet, смена stream/conversation, reset/reload, session
   revocation и dispose/quit отменяют synthesis и останавливают playback. После
-  каждого await проверяются generation и identity. Cancel/timeout завершают worker;
+  каждого await проверяются generation и identity. Cancel/timeout завершают child;
   следующий запрос может создать новый. Resume/unquiet не воспроизводит старую речь.
+- Native ORT синтеза речи не исполняется в `worker_threads` Main-процесса: принудительный teardown
+  его Node environment не должен обрушать desktop. Main владеет одним utility child
+  через существующий synthesis port; публичные IPC, admission и playback не меняются.
+  Приватный init содержит только проверенные локальные пути, запрос — id/text/locale,
+  ответ — id и bounded PCM. Child не получает credentials/history или Renderer port;
+  нет произвольных executable/model paths, remote endpoints и новых dependencies.
+- Child exit/error/native crash завершает pending запрос один раз безопасной ошибкой;
+  fallback текста проверяет актуальность реплики. При retirement Main сразу снимает
+  право публикации, посылает kill и ждёт exit перед заменой child. После 2 s допустим
+  hard kill того же ещё живого child; срок retirement — 3 s. Без подтверждённого exit
+  новый child не создаётся: adapter недоступен, владение старым process сохраняется.
+  Dispose/quit используют тот же bounded retirement; повторные callbacks идемпотентны.
 - Main передаёт только bounded finite mono PCM [-1,1] с sample rate 24000 и
   identity. Preload проверяет exact shape и ограничения до Renderer playback.
   Renderer владеет единственным audio playback handle, очищает его при revoke,

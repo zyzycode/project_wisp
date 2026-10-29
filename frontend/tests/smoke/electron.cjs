@@ -30,8 +30,8 @@ let activeWindow;
 const record = (name, status, detail) => report.checks.push({ name, status, ...(detail ? { detail } : {}) });
 const save = () => fs.writeFileSync(path.join(output, 'electron.json'), JSON.stringify(report, null, 2));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-async function until(predicate, label) {
-  const deadline = Date.now() + 10_000;
+async function until(predicate, label, timeout = 10_000) {
+  const deadline = Date.now() + timeout;
   while (Date.now() < deadline) { if (await predicate()) return; await sleep(50); }
   throw new Error(`${label} timeout`);
 }
@@ -132,7 +132,8 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     const outputSnapshot = await evaluate(`new Promise(resolve => {
       const unsubscribe=window.wispAPI.onBrainState(snapshot => { queueMicrotask(() => unsubscribe()); resolve(snapshot); });
     })`);
-    const outputSmoke = await installVoiceOutputSmoke(win.webContents, outputSnapshot);
+    const realTts = process.env.WISP_TTS_NATIVE_PROBE === '1';
+    const outputSmoke = await installVoiceOutputSmoke(win.webContents, outputSnapshot, realTts);
     await evaluate(`(() => {
       window.__speechStarts=0;
       const start=AudioBufferSourceNode.prototype.start;
@@ -148,10 +149,11 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await evaluate(`document.querySelector('.chat-input-form').requestSubmit()`);
     try { await until(() => outputSmoke.getStats().syntheses === 1, 'Actual reply synthesis admission'); }
     catch (error) { report.voiceOutputDiagnostic = outputSmoke.getStats(); throw error; }
-    await until(() => evaluate('window.__speechStarts === 1'), 'PCM across preload into actual Web Audio playback');
-    await until(() => outputSmoke.getStats().acknowledgements === 1, 'Matching playback acknowledgement');
+    await until(() => evaluate('window.__speechStarts === 1'), 'PCM across preload into actual Web Audio playback', realTts ? 125000 : 10000);
+    await until(() => outputSmoke.getStats().acknowledgements === 1, 'Matching playback acknowledgement', realTts ? 125000 : 10000);
     await until(() => evaluate('!document.querySelector(".speech-text")'), 'Voice mode replaces reply bubble');
     record('voice-output-reply-pcm-playback', 'PASS', 'Real successful mock Dialogue reply → output adapter → Main synthesis → Preload PCM → Web Audio start/end acknowledgement');
+    if (realTts) record('voice-output-real-onnx-playback', 'PASS', 'Actual Ono_Anna model in utility process, fixed synthetic reply, real Preload/Web Audio, Main survived');
     outputSmoke.failNext();
     await evaluate(`if(!document.querySelector('.chat-input-field')) document.querySelector('.pet-label').click()`);
     await until(() => evaluate(`Boolean(document.querySelector('.chat-input-field'))`), 'Composer for fallback');

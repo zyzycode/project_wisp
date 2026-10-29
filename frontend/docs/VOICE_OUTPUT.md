@@ -35,11 +35,14 @@
 платформ; Windows/macOS требуют отдельного native smoke.
 
 Main проверяет файлы и авторизует только identity текущего успешного ответа;
-Renderer не передаёт произвольный текст. ONNX исполняется в отдельном worker,
+Renderer не передаёт произвольный текст. ONNX исполняется в отдельном Main-owned
+Electron utility process, изолирующем native crash от процесса приложения,
 с двумя CPU потоками, ограничением 120 s, 1500 frames и 120 s PCM. Нет очереди,
 повторного озвучивания отменённого ответа, WAV-файлов и логирования текста/аудио.
 Токенизатор сверяется с official Python Qwen2Tokenizer 4.57.3 на RU/EN, числах,
 пунктуации, newline, emoji и Unicode NFC. Новых runtime-зависимостей нет.
+Cancel/timeout/dispose прекращают дочерний процесс; новый запускается только после
+подтверждённого exit. Ограничения retirement и состав приватного IPC заданы в UI Spec.
 
 ## Проверка и ограничения
 
@@ -48,10 +51,18 @@ Renderer не передаёт произвольный текст. ONNX исп�
 `WISP_TTS_PROBE=1 node scripts/wisp.mjs test:frontend tests/voice-output/model-probe.test.ts`.
 Обычные unit gates не загружают и не исполняют настоящую TTS-модель.
 
-В одном Linux CPU probe скомпилированный worker сгенерировал 159360 samples
+Сквозная проверка настоящей модели в Electron вплоть до Web Audio playback и ack:
+`WISP_TTS_NATIVE_PROBE=1 node scripts/wisp.mjs smoke:desktop /tmp/wisp-tts-native`.
+Используются отдельный профиль, фиксированная синтетическая реплика и реальный TTS;
+физический микрофон и provider calls не нужны. Проверяется ненулевой PCM.
+В том же launcher значения `cancel-load`, `cancel-run` и `crash` вместо `1`
+проверяют отмену с последующим новым синтезом, warm dispose и изоляцию аварии child.
+
+В предварительном standalone Linux CPU probe прежний скомпилированный Node worker
+сгенерировал 159360 samples
 (6.64 s PCM) за 47.91 s с холодного старта, peak RSS всего процесса 1600300 KiB,
 CPU time ~99.44 s. Main heartbeat продолжал работать. Это измерение одного
-прогона, не гарантия скорости и не подтверждение качества произношения на слух.
+прогона, не замер памяти текущего utility process и не подтверждение качества на слух.
 Полный ответ синтезируется до начала playback: задержка может быть большой;
 длинный ответ при deadline останется только текстовым. Потоковая озвучка и
 ускорение не входят в этот slice.

@@ -14,6 +14,9 @@ const output = path.resolve(process.argv[2] || path.join(tmpdir(), `wisp-smoke-$
 const profile = await mkdtemp(path.join(tmpdir(), 'wisp-smoke-profile-'));
 await mkdir(output, { recursive: true });
 const environment = smokeEnvironment(process.env, profile, output);
+const nativeMode = process.env.WISP_TTS_NATIVE_PROBE;
+const nativeRegression = ['cancel-load', 'cancel-run', 'complete', 'crash'].includes(nativeMode);
+if (nativeMode === '1' || nativeRegression) environment.WISP_TTS_NATIVE_PROBE = nativeMode;
 const runId = randomUUID();
 environment.WISP_SMOKE_RUN_ID = runId;
 const report = { commit: 'unknown',
@@ -62,13 +65,13 @@ try {
   }), 60_000, 'Preload dev compilation');
   environment.VITE_DEV_SERVER_URL = `http://127.0.0.1:${httpServer.address().port}/`;
   controller.signal.throwIfAborted();
-  child = spawn(require('electron'), [path.join(frontend, 'tests/smoke/electron.cjs')], {
+  child = spawn(require('electron'), [path.join(frontend, 'tests/smoke', nativeRegression ? 'voice-native-regression.cjs' : 'electron.cjs'), ...(nativeRegression ? [nativeMode] : [])], {
     cwd: frontend, env: environment, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'],
   });
   // Only bounded diagnostic output from the isolated, mock-only profile is retained.
   for (const stream of [child.stdout, child.stderr]) stream.on('data', data => { log = (log + data).slice(-32_768); });
   closed = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
-  const code = await run(closed, 60_000, 'Electron smoke');
+  const code = await run(closed, environment.WISP_TTS_NATIVE_PROBE ? 240_000 : 60_000, 'Electron smoke');
   const native = JSON.parse(await readFile(path.join(output, 'electron.json'), 'utf8'));
   if (native.runId !== runId) throw new Error('Missing current Electron receipt (old output directory)');
   Object.assign(report, native);

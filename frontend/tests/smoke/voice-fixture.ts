@@ -5,20 +5,30 @@ import type { VoiceCaptureContextDTO } from '../../src/shared/ipc-contracts';
 import { VoiceOutputService } from '../../src/application/services/voice-output-service';
 import { registerVoiceOutputIpc } from '../../src/main/voice-output-ipc';
 import { parseBrainStateDTO } from '../../src/shared/brain-body-ipc-validation';
+import { LocalSpeechSynthesizer } from '../../src/infrastructure/voice-output/local-speech-synthesizer';
+import path from 'node:path';
+
+export function createNativeSpeechProbe(resources: string, entry: string) { return new LocalSpeechSynthesizer(resources, entry); }
 
 /** Exercises real output service, IPC, contextBridge and browser playback with synthetic PCM. */
-export async function installVoiceOutputSmoke(sender: WebContents, initial: unknown) {
+export async function installVoiceOutputSmoke(sender: WebContents, initial: unknown, real = false) {
   let syntheses = 0;
   let acknowledgements = 0;
   let failNext = false;
   let lastPhase = 'idle';
   let lastOutcome: string | null = null;
+  const native = real ? new LocalSpeechSynthesizer(path.join(__dirname, '../..', '.cache'), path.join(__dirname, 'speech-worker.js')) : null;
   const service = new VoiceOutputService({
-    synthesizer: { ready: async () => true, synthesize: async () => {
+    synthesizer: { ready: async () => native ? native.ready() : true, synthesize: async (text, language, signal) => {
       syntheses++;
       if (failNext) { failNext = false; throw new Error('Synthetic synthesis failure'); }
+      if (native) {
+        const speech = await native.synthesize(text, language, signal);
+        if (!speech.samples.some(sample => Math.abs(sample) > 0.01)) throw new Error('Silent native speech');
+        return speech;
+      }
       return { sampleRate: 24000, samples: new Float32Array(2400) };
-    }, dispose: async () => undefined },
+    }, dispose: async () => { await native?.dispose(); } },
     createId: () => `smoke-output-${syntheses + 1}`, language: () => 'ru',
     blockInput: () => undefined, revokeInput: () => sender.send('wisp:voice-disabled', null),
     revokePlayback: () => sender.send('wisp:voice-output-revoked', null),
@@ -27,7 +37,12 @@ export async function installVoiceOutputSmoke(sender: WebContents, initial: unkn
   const send = sender.send.bind(sender);
   sender.send = (channel: string, ...args: unknown[]): void => {
     if (channel === 'wisp:brain-state') {
-      const snapshot = parseBrainStateDTO(args[0]);
+      let snapshot = parseBrainStateDTO(args[0]);
+      // Fixed synthetic reply bounds the explicit real-model probe; both contexts see identical text.
+      if (real && snapshot.dialogue.turn.phase === 'completed' && snapshot.dialogue.turn.outcome.kind === 'success') {
+        snapshot = { ...snapshot, dialogue: { ...snapshot.dialogue, turn: { ...snapshot.dialogue.turn, replyText: 'Привет!' } } };
+        args[0] = snapshot;
+      }
       lastPhase = snapshot.dialogue.turn.phase;
       lastOutcome = snapshot.dialogue.turn.phase === 'completed' ? snapshot.dialogue.turn.outcome.kind : null;
       service.observe(snapshot);
