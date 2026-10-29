@@ -18,13 +18,16 @@ class TouchAppraisal(InteractionAppraisal):
     intensity: Literal["low"]
 
 
+SUPPRESSED_APPRAISAL = {"category": "neutral", "intensity": "low", "confidence": "clear"}
+
+
 class AppraisedReply(Contract):
     appraisal: InteractionAppraisal
 
     @model_validator(mode="after")
     def enforce_effect_policy(self, info: ValidationInfo) -> "AppraisedReply":
         if isinstance(info.context, dict) and info.context.get("effect_policy") == "suppressed":
-            if self.appraisal.model_dump() != {"category": "neutral", "intensity": "low", "confidence": "clear"}:
+            if self.appraisal.model_dump() != SUPPRESSED_APPRAISAL:
                 raise ValueError("Suppressed effects require a neutral appraisal")
         return self
 

@@ -14,6 +14,7 @@ from wisp_backend.completion.context import (
     select_context,
     select_context_async,
 )
+from wisp_backend.completion.interaction_replies import InteractionChatReply
 from wisp_backend.completion.prompts.chat import build_chat_blocks, chat_instructions
 from wisp_backend.completion.prompts.context import (
     DialogueTurn,
@@ -23,6 +24,7 @@ from wisp_backend.completion.prompts.context import (
     InteractionTouchContext,
 )
 from wisp_backend.completion.prompts.interaction import build_interaction_touch_blocks
+from wisp_backend.completion.prompts.response_format import describe_field
 from wisp_backend.completion.replies import Decision
 from wisp_backend.providers.context_budget import estimate_input
 
@@ -122,9 +124,12 @@ def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> 
     instructions = chat_instructions()
     schema = Decision.model_json_schema()
     assert set(schema["required"]) == {"behavior", "confidence"}
-    assert "requires behavior and numeric confidence (0..1)" in instructions
+    assert describe_field(InteractionChatReply, "decision") in instructions
+    assert "confidence:number>=0<=1" in instructions
     for field in ("behavior", "tone", "mood"):
-        described = instructions.split(f"Allowed {field}: ", 1)[1].split(".", 1)[0].split(", ")
+        described = schema["properties"][field]["enum"]
+        marker = field + ("?:" if field != "behavior" else ":")
+        assert marker + "|".join(json.dumps(value) for value in described) in instructions
         assert described == schema["properties"][field]["enum"]
         for value in described:
             assert Decision.model_validate({"behavior": "respond", "confidence": 0.5, field: value})
@@ -139,7 +144,8 @@ def test_prompt_decision_contract_matches_the_validator_not_character_tone() -> 
         )
     )
     assert "Allowed behavior:" not in touch[0].messages[0].content
-    assert "markdown, decision or memoryCandidates" in touch[0].messages[0].content
+    assert "decision?:" not in touch[0].messages[0].content
+    assert "memoryCandidates?:" not in touch[0].messages[0].content
 
 
 def test_async_counts_preserve_selection_order_history_suffix_and_equality() -> None:

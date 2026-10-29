@@ -61,7 +61,9 @@ def test_actual_handler_untrusted_payload_and_output_reserve(
         assert "Do not quote the private window caption" not in system
         assert "infer preferences" not in system
         assert "proof of user activity" not in system
-        assert "not a user message" in system and "No decision, memoryCandidates" in system
+        assert "not a user message" in system
+        assert "decision?:" not in system and "memoryCandidates?:" not in system
+        assert "Return only JSON {text:text<=240}" in system
         assert all(line in character.splitlines() for line in reference_lines(body["character"]))
         assert json.loads(observation.split("\n", 1)[1]) == body["observation"]
         assert 0 < request.extensions["timeout"]["read"] <= 2.5

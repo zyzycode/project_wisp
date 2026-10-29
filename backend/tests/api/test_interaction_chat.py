@@ -29,7 +29,7 @@ def test_current_policy_is_explicit_in_server_instructions(kind, schema, policy)
     blocks = prepare_job(schema.model_validate(body)).inference.blocks
     system = next(block for block in blocks if block.key == "instructions").messages[0].content
     assert f"For this request, effectPolicy is {policy}." in system
-    forced = 'Return appraisal exactly as {"category":"neutral","intensity":"low","confidence":"clear"}.'
+    forced = '{"category":"neutral","intensity":"low","confidence":"clear"}'
     assert (forced in system) == (policy == "suppressed")
 
 
@@ -57,7 +57,7 @@ def test_eligible_prompt_has_current_message_semantics_without_rollout_override(
 def test_chat_output_contract_requires_appraisal() -> None:
     blocks = prepare_job(InteractionChatRequest.model_validate(CASES[0]["request"])).inference.blocks
     instructions = next(block for block in blocks if block.key == "instructions").messages[0].content
-    assert "required appraisal, optional decision, and optional memoryCandidates." in instructions
+    assert "appraisal:" in instructions and "decision?:" in instructions and "memoryCandidates?:" in instructions
     assert "Use only explicit durable facts from current user evidence" in instructions
 
 

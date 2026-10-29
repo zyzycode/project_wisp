@@ -153,7 +153,7 @@ Quiet-support latch и локальный ACK — [Character §6.1](../../fronte
 | Lore/summary/previousInitiative/topic/previousTouch/beverage: не источник memory evidence | `technical.MEMORY_EVIDENCE_RULES`: только текущий user text, без других context/appraisal; общие исключения предложений |
 | Initiative/lore/summary/topic/beverage: приоритет текущих фактов и исправлений | `chat.MEMORY_RULES`: общий factual precedence; исходный диалог выше summary |
 | Eligible/chat: оценивать только текущий сигнал, не повышать эффект из истории | `interaction.APPRAISAL_RULES`: current action и отсутствие повторных наград |
-| Chat: одна оценка и повторный список не-hostile случаев | `interaction.APPRAISAL_RULES`: одна appraisal; distress/criticism/refusal/quotations; chat добавляет target, role-play/jokes/sarcasm и неоднозначность |
+| Chat: одна оценка и повторный список не-hostile случаев | Форма appraisal выводится из reply type; `interaction.APPRAISAL_RULES` сохраняет distress/criticism/refusal/quotations; chat добавляет target, role-play/jokes/sarcasm и неоднозначность |
 
 Observation использует `common_blocks`, как остальные character-bearing сценарии.
 Происхождение summary/initiative/topic/previousTouch, гипотеза beverage, event outcome,
@@ -161,6 +161,32 @@ touch low/non-hostile и точная suppressed appraisal остаются сц
 `MEMORY_EVIDENCE_RULES` подключается только в chat, один раз также при beverage opt-in;
 это не разрешает поля proposals в сценариях с text-only ответом. Summary endpoint
 имеет собственный source-only контракт и не получает character/consent инструкции.
+
+## Единый источник формы ответа
+
+[response_format](../wisp_backend/completion/prompts/response_format.py) строит компактное
+описание из Pydantic reply types: поля, required/omittable, refs, enums/const и диапазоны.
+Описание не задаёт характер; значения и wire/reply behavior остаются прежними.
+
+| Удалённая ручная копия | Канонический источник |
+|---|---|
+| Chat/touch/events/observation/summary: поля и лимит text | Соответствующие reply types и `validation.text_type` |
+| Decision/appraisal: поля, enums, confidence и touch-ограничения формы | `replies.Decision`, `interaction_replies.InteractionAppraisal`/`TouchAppraisal` |
+| Memory: ключи, value по ключу, quote и число candidates | `FactKey`, `FACT_VALUE_TYPES` с TypeAdapter, `MemoryCandidate`, `MEMORY_CANDIDATE_LIMIT` в replies |
+| Точная suppressed appraisal | `interaction_replies.SUPPRESSED_APPRAISAL`: validator и описание используют одно значение |
+| Beverage: поля, value и quote | `replies.BeverageProposal`; описание поля и provider schema производны от reply type |
+
+`text_type` передаёт тот же UTF-16 cap через `x-wisp-utf16-max`; это локальная metadata,
+не стандартный JSON Schema maxLength в Unicode code points. Общие пояснения сохраняют
+nonblank/plain text и ограничения controls. Optional означает omitted, а не explicit null.
+Source/evidence, exact quote attribution, current-only и смысл категорий не выводятся из схемы.
+Contextual validators/sanitation и malformed/truncated-output errors остаются обязательными.
+
+Обычные сценарии используют прежний JSON mode и generated description. Base chat не
+описывает beverageProposal: право поля и прежняя non-strict provider schema включаются
+только выбранным opt-in bundle. Provider projection удаляет `x-wisp-*` metadata;
+сервер по-прежнему проверяет UTF-16 и условные значения. Новые structured/strict возможности
+model profiles не включаются; mock-проверки не подтверждают live-совместимость модели.
 
 ## Синтетический просмотр и сравнение
 

@@ -3,33 +3,31 @@
 import json
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage
+from wisp_backend.completion.interaction_replies import InteractionChatReply
 from wisp_backend.completion.prompts.beverage import beverage_block
 from wisp_backend.completion.prompts.blocks import common_blocks
 from wisp_backend.completion.prompts.context import InteractionChatContext
 from wisp_backend.completion.prompts.lore import lore_block
-from wisp_backend.completion.prompts.technical import DECISION_GUIDANCE, MEMORY_EVIDENCE_RULES
+from wisp_backend.completion.prompts.response_format import describe_reply
+from wisp_backend.completion.prompts.technical import MEMORY_EVIDENCE_RULES
 
 MEMORY_RULES = (
-    """No undescribed response fields; text permits newline/tab, no other controls.
-Factual precedence: current explicit user correction/refusal > current registry facts > recalled episodes.
+    """Factual precedence: current explicit user correction/refusal > current registry facts > recalled episodes.
 Current user questions and bounded facts outrank other reference context.
 Recall accurately; past episodes do not prove current preferences or user participation.
-memoryCandidates: at most three objects with ONLY key, value, evidenceQuote.
-Keys: user.display_name, user.preferred_address (nonblank, <=80 UTF-16 units),
-user.favorite_topic (<=120), user.reply_style (brief or detailed), user.cursor_game (like or dislike).
-evidenceQuote exactly equals the entire trimmed final user message, <=240 UTF-16 units.
+evidenceQuote exactly equals the entire trimmed final user message.
 Return proposals with the answer; desktop validates and persists.
+Decision tone/mood hints differ from character synthesizedTone.
 """
     + MEMORY_EVIDENCE_RULES
-    + "\n"
-    + DECISION_GUIDANCE
 )
 
 
-def chat_instructions() -> str:
+def chat_instructions(*, suppressed: bool = False) -> str:
     return (
-        "You are Wisp. Return only a JSON object with nonblank text (maximum 2000 UTF-16 code units), "
-        "required appraisal, optional decision, and optional memoryCandidates.\n" + MEMORY_RULES
+        "You are Wisp. "
+        + describe_reply(InteractionChatReply, exclude=("beverageProposal",), suppressed=suppressed)
+        + MEMORY_RULES
     )
 
 
@@ -39,7 +37,12 @@ def build_chat_blocks(
     memory = context.memory
     previous_initiative = context.previous_initiative
     summary = context.summary
-    blocks = common_blocks(context, chat_instructions(), memory=memory, additional_instructions=additional_instructions)
+    blocks = common_blocks(
+        context,
+        chat_instructions(suppressed=context.interaction.effect_policy == "suppressed"),
+        memory=memory,
+        additional_instructions=additional_instructions,
+    )
     if summary is not None:
         blocks.append(
             ContextBlock(

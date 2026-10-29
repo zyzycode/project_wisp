@@ -3,8 +3,8 @@
 from collections import Counter
 from typing import Annotated, Literal, TypeAlias
 
-from pydantic import Field, ValidationError, ValidationInfo, field_validator, model_validator
-from wisp_backend.validation import Contract, omittable, text_type, trim_text, validate_text
+from pydantic import Field, TypeAdapter, ValidationError, ValidationInfo, field_validator, model_validator
+from wisp_backend.validation import Contract, omittable, text_type, trim_text
 
 Unit = Annotated[float, Field(strict=True, ge=0, le=1, allow_inf_nan=False)]
 Behavior = Literal[
@@ -47,21 +47,27 @@ FactKey = Literal[
     "user.display_name", "user.preferred_address", "user.favorite_topic", "user.reply_style", "user.cursor_game"
 ]
 
+FACT_VALUE_TYPES = {
+    "user.display_name": TypeAdapter(text_type(80)),
+    "user.preferred_address": TypeAdapter(text_type(80)),
+    "user.favorite_topic": TypeAdapter(text_type(120)),
+    "user.reply_style": TypeAdapter(Literal["brief", "detailed"]),
+    "user.cursor_game": TypeAdapter(Literal["like", "dislike"]),
+}
+MEMORY_CANDIDATE_LIMIT = 3
+
+
+def _fact_value_schema(schema: dict[str, object]) -> None:
+    schema["x-wisp-values-by-key"] = {key: adapter.json_schema() for key, adapter in FACT_VALUE_TYPES.items()}
+
 
 class MemoryFact(Contract):
     key: FactKey
-    value: str
+    value: str = Field(json_schema_extra=_fact_value_schema)
 
     @model_validator(mode="after")
     def registry_value(self) -> "MemoryFact":
-        if self.key == "user.reply_style":
-            if self.value not in ("brief", "detailed"):
-                raise ValueError("Invalid reply style")
-        elif self.key == "user.cursor_game":
-            if self.value not in ("like", "dislike"):
-                raise ValueError("Invalid cursor preference")
-        else:
-            validate_text(self.value, 120 if self.key == "user.favorite_topic" else 80)
+        FACT_VALUE_TYPES[self.key].validate_python(self.value)
         return self
 
 
@@ -70,7 +76,7 @@ class MemoryCandidate(MemoryFact):
 
 
 class MemoryModelReply(ModelReply):
-    memoryCandidates: list[MemoryCandidate] = omittable()
+    memoryCandidates: Annotated[list[MemoryCandidate], Field(max_length=MEMORY_CANDIDATE_LIMIT)] = omittable()
 
     @model_validator(mode="before")
     @classmethod
@@ -79,7 +85,7 @@ class MemoryModelReply(ModelReply):
             return value
         candidates = value["memoryCandidates"]
         clean = {key: item for key, item in value.items() if key != "memoryCandidates"}
-        if not isinstance(candidates, list) or len(candidates) > 3:
+        if not isinstance(candidates, list) or len(candidates) > MEMORY_CANDIDATE_LIMIT:
             return clean
         counts = Counter(
             item.get("key") for item in candidates if isinstance(item, dict) and isinstance(item.get("key"), str)

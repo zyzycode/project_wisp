@@ -3,14 +3,13 @@
 import json
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage
+from wisp_backend.completion.interaction_replies import InteractionTouchReply
 from wisp_backend.completion.prompts.blocks import common_blocks
 from wisp_backend.completion.prompts.chat import build_chat_blocks
 from wisp_backend.completion.prompts.context import InteractionChatContext, InteractionTouchContext
+from wisp_backend.completion.prompts.response_format import describe_reply
 
 APPRAISAL_RULES = """
-Return one appraisal with text, containing ONLY category, intensity, confidence.
-Category: supportive, playful, boundary, hostile, neutral. Intensity: low, moderate.
-Confidence: clear, uncertain. No numeric scores, deltas, evidence or user facts in appraisal.
 Judge only the current action; history, recalled facts and previous reactions are not new rewards.
 Do not invent intent. Distress, criticism, refusal and quotations are not hostility.
 """
@@ -19,11 +18,7 @@ Do not invent intent. Distress, criticism, refusal and quotations are not hostil
 def current_policy_instruction(context: InteractionChatContext | InteractionTouchContext) -> str:
     """Compile only the validated policy enum into server-owned instructions."""
     if context.interaction.effect_policy == "suppressed":
-        return (
-            "\nFor this request, effectPolicy is suppressed. "
-            'Return appraisal exactly as {"category":"neutral","intensity":"low","confidence":"clear"}. '
-            "This restriction applies only to appraisal.\n"
-        )
+        return "\nFor this request, effectPolicy is suppressed. " "This restriction applies only to appraisal.\n"
     return "\nFor this request, effectPolicy is eligible.\n"
 
 
@@ -69,16 +64,12 @@ def interaction_blocks(context: InteractionChatContext | InteractionTouchContext
 
 def build_interaction_touch_blocks(context: InteractionTouchContext) -> tuple[ContextBlock, ...]:
     system = (
-        """You are Wisp. Return a response to the actual touch: 1–240 UTF-16 units.
-Return only JSON with text and appraisal. No controls except newline/tab, markdown, decision or memoryCandidates.
-No requestId, commands, tools or state writes.
+        "You are Wisp. Respond to the actual touch.\n"
+        + describe_reply(InteractionTouchReply, suppressed=context.interaction.effect_policy == "suppressed")
+        + """No markdown, commands, tools or state writes.
 The action is a touch, never stroke, ruffle or poke. It is not user speech or proof of intent or feelings.
 """
-        + (
-            APPRAISAL_RULES + "For touch, intensity MUST be low and category MUST NOT be hostile.\n"
-            if context.interaction.effect_policy == "eligible"
-            else ""
-        )
+        + (APPRAISAL_RULES if context.interaction.effect_policy == "eligible" else "")
         + current_policy_instruction(context)
     )
     blocks = common_blocks(context, system) + interaction_blocks(context)

@@ -39,7 +39,17 @@ def digest(value: object) -> str:
 def source_digests() -> dict[str, str]:
     root = Path(__file__).resolve().parents[1]
     paths = [*sorted((root / "completion/prompts").glob("*.py")), *sorted((root / "completion/prompts").glob("*.json"))]
-    paths += [root / name for name in ("completion/context.py", "completion/policies.py", "api/dispatch.py")]
+    paths += [
+        root / name
+        for name in (
+            "completion/context.py",
+            "completion/policies.py",
+            "completion/replies.py",
+            "completion/interaction_replies.py",
+            "validation.py",
+            "api/dispatch.py",
+        )
+    ]
     paths += [root / "providers" / name for name in ("gemini.py", "openai.py", "http_provider.py", "context_budget.py")]
     paths += [Path(__file__).with_name("scenes.json")]
     paths += [root / "prompt_inspect.py", *sorted(Path(__file__).parent.glob("*.py"))]

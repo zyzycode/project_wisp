@@ -25,7 +25,7 @@ def test_touch_prompt_and_text_only_response(client_factory, body, chat_completi
         calls.append(request)
         messages = json.loads(request.content)["messages"]
         assert sum(item["role"] != "system" for item in messages) == 3
-        assert "240 UTF-16" in messages[0]["content"]
+        assert "text:text<=240" in messages[0]["content"] and "UTF-16" in messages[0]["content"]
         assert '"variant":"touch"' in messages[-1]["content"]
         character = next(
             item["content"]

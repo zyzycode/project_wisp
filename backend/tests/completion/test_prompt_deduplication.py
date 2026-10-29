@@ -190,7 +190,7 @@ def test_same_inputs_preserve_facts_settings_and_budget_with_smaller_instruction
                 if "effectPolicy is suppressed" in system:
                     assert '{"category":"neutral","intensity":"low","confidence":"clear"}' in system
                 if "current_touch" in after["selected_keys"] and eligible:
-                    assert "intensity MUST be low and category MUST NOT be hostile" in system
+                    assert 'intensity:"low"' in system and '"hostile"' not in system
             for removed in (
                 "When userConsentEnabled is false, keep the remark non-romantic",
                 "Classify only the current interaction",

@@ -2,15 +2,18 @@
 
 import json
 
+from pydantic import TypeAdapter
 from wisp_backend.completion.context import ContextBlock, ContextMessage, StructuredReplySchema
 from wisp_backend.completion.interaction_replies import InteractionChatReply
-from wisp_backend.validation import validate_text
+from wisp_backend.completion.prompts.response_format import compact_provider_schema, describe_field
+from wisp_backend.completion.replies import BeverageProposal
+
+_EVIDENCE_TYPE = TypeAdapter(BeverageProposal.model_fields["evidenceQuote"].rebuild_annotation())
 
 RECALL_GUIDANCE = "beveragePreference: hypothesis=guess, confirmed=user assertion, not truth. "
 PROPOSAL_GUIDANCE = (
-    RECALL_GUIDANCE
-    + "This turn only optional beverageProposal {value:coffee|tea,evidenceQuote:entire trimmed current user text,"
-    "1–240 UTF-16}. Keep text/appraisal."
+    RECALL_GUIDANCE + "This turn also permits " + describe_field(InteractionChatReply, "beverageProposal") + ". "
+    "Its evidenceQuote must equal the entire trimmed current user text."
 )
 
 
@@ -47,23 +50,14 @@ def proposal_schema(blocks: tuple[ContextBlock, ...]) -> bool:
 def provider_reply_schema() -> dict[str, object]:
     """Provider guidance only; contextual and optional sanitation remain independent."""
 
-    def compact(value: object) -> object:
-        if isinstance(value, dict):
-            return {key: compact(item) for key, item in value.items() if key not in ("title", "description")}
-        if isinstance(value, list):
-            return [compact(item) for item in value]
-        return value
-
-    schema = compact(InteractionChatReply.model_json_schema())
-    assert isinstance(schema, dict)
-    return schema
+    return compact_provider_schema(InteractionChatReply)
 
 
 def bounded_preference(value: dict[str, object] | None, quote: str) -> dict[str, object] | None:
     if value is None or value["allowProposal"] is not True:
         return value
     try:
-        validate_text(quote, 240)
+        _EVIDENCE_TYPE.validate_python(quote)
     except ValueError:
         return {"allowProposal": False, "current": value["current"]} if "current" in value else None
     return value

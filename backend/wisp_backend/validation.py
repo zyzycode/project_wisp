@@ -32,7 +32,10 @@ def text_type(limit: int) -> object:
     return Annotated[
         str,
         AfterValidator(lambda value: validate_text(value, limit)),
-        Field(description=f"Nonblank plain text, at most {limit} UTF-16 code units; no controls except newline/tab."),
+        Field(
+            description=f"Nonblank plain text, at most {limit} UTF-16 code units; no controls except newline/tab.",
+            json_schema_extra={"x-wisp-utf16-max": limit},
+        ),
     ]
 
 
