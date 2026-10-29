@@ -28,6 +28,8 @@ Runner использует Vite dev server и одноразовую dev-ком
 
 Workflow `desktop-smoke.yml` запускает Windows/macOS runners и Linux в Xvfb/Openbox. Linux-результат помечен `virtualDisplay: true`: это реальный Electron в виртуальном X11, не доказательство работы Wayland или физического композитора. Недоступность desktop session на runner не превращается в PASS. Артефакты сохраняются и после ошибки.
 
+На временном Linux CI runner workflow сначала материализует загружаемый Electron binary, затем настраивает поставляемый `chrome-sandbox` как root:root с mode 4755 и проверяет права. Это требуется SUID sandbox при ограниченных user namespaces; sandbox, AppArmor и системные ограничения не отключаются. Первый CI-прогон #147 обнаружил именно ненастроенный helper, поэтому эта подготовка выполняется до запуска Electron.
+
 Для native Linux запустить из графической X11 или Wayland-сессии. Для Wayland отдельно зафиксировать фактически использованный Electron backend (Wayland/XWayland); переменная XDG_SESSION_TYPE сама по себе его не доказывает. Windows/macOS запускать из пользовательского графического сеанса. Эта задача не вводит новую tray-функцию и не исправляет известные дефекты опор #97/#130.
 
 Ручная запись: commit, OS/version/session, Electron, monitor/DPI, сценарий, ожидаемый/фактический результат, PASS/FAIL/NOT RUN с причиной. Windows MVP: [чеклист](WINDOWS_MVP_CHECKLIST.md). Разовые #43/#51/#60 сохраняют собственный scope и не закрываются зелёным smoke.
