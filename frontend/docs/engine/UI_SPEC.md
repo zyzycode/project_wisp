@@ -305,23 +305,29 @@ mount state и не в persistence. Новый обычный процесс п�
   предел 1..480000 samples до Float32Array; Renderer ограничивает фразу 15 s при 16 kHz.
   Язык явный ru/en, задача transcribe, не translate. Deadline inference 60 s; generation
   проверяется после каждого await. Cancel/timeout прекращает вычисление в worker.
-- Main создаёт Infrastructure adapter через Application port. CPU inference выполняется
-  в Main-owned Node worker, вне Main event loop и Renderer. Допустим тёплый worker с
-  одной моделью и последовательными запросами; после cancel/timeout worker завершается,
-  следующий запрос создаёт новый. Worker получает только путь проверенной модели и PCM,
-  без Electron API, credentials, dialogue/history и сетевых полномочий SDK.
-- Распознанный текст отправляется через существующий валидированный Dialogue submit,
-  сохраняя его admission, request IDs, cancellation, errors и лимит 240 символов.
-  Тишина/пустой transcript не отправляются; превышение лимита не обрезается и показывается
-  как ошибка с предложением более короткой фразы. Неподтверждённый текущим контекстом
-  или поздний transcript после disable/reset/dispose не отправляется. Ручной текстовый
-  ввод остаётся доступен; голос не затирает черновик и не создаёт второй Dialogue path.
-- Pinned Whisper base multilingual q8 входит в поставку приложения отдельным ресурсом.
-  Подготовка модели выполняется tooling до dev-запуска/упаковки, с manifest allowlist,
-  размерами и SHA256 всех файлов; неполная подготовка блокирует готовность поставки.
-  Runtime проверяет локальные ресурсы, не скачивает модель и не предлагает пользователю
-  загрузку. Повреждение/отсутствие модели возвращает безопасную ошибку; текстовый чат
-  и локальный runtime персонажа продолжают работу. SDK remote model access отключён.
+- Main создаёт общий STT/TTS [VoiceInferenceCoordinator](../../src/infrastructure/voice/inference-coordinator.ts).
+  CPU snapshot: N=availableParallelism(), B=max(1,min(8,N−1)); STT=min(2,B), TTS=min(8,B),
+  inter-op=1, spinning выключен. Это лимит потоков, не резерв/поиск свободных ядер.
+  Main передаёт проверенный threads=1..8 в STT workerData/TTS private input;
+  конфигурация неизменна весь срок тёплого worker/child; Renderer IPC прежний.
+- До native load/run — единственный общий lease и один pending request на адаптер,
+  без очереди аудио. Отменяемое ожидание входит в deadline STT 60 s/TTS 120 s;
+  cancel/timeout waiter исключают поздний старт. Release — после success native результата
+  либо подтверждённого exit при cancel/failure; missing exit/ошибка terminate блокируют
+  конкурирующий inference. Consent/ack и guards identity/generation сохраняются.
+- STT через Application port работает в Main-owned Node worker вне Main/Renderer event loop;
+  одна тёплая модель, последовательные запросы. Retirement/dispose ждёт exit не более 3 s;
+  без exit worker/retiring/lease сохраняются: timeout/settlement terminate не разрешают замену.
+  Только проверенный путь, threads и PCM, без Electron API, credentials, history и сети SDK.
+- Transcript проходит существующий Dialogue submit с admission, IDs, cancellation,
+  errors и лимитом 240 символов; превышение — ошибка с предложением короткой фразы,
+  без усечения. Тишина, пустой/stale/late transcript после disable/reset/dispose не
+  отправляются. Ручной ввод доступен; голос не затирает черновик и не создаёт второй path.
+- Pinned Whisper base multilingual q8 поставляется отдельным ресурсом. До dev/упаковки
+  tooling проверяет manifest allowlist, размеры/SHA256; неполная подготовка блокирует
+  поставку. Runtime проверяет локальные файлы без загрузки/предложения скачать;
+  SDK remote access отключён. Отсутствие/повреждение даёт безопасную ошибку,
+  текстовый чат и локальный runtime персонажа продолжают работу.
 - Аудио и transcript существуют только в памяти до окончания/отмены, не логируются
   и не сохраняются адаптером. Разрешённый состав передачи — только обычный текст
   после автоматического submit в явно включённом режиме; действуют существующие
@@ -330,10 +336,9 @@ mount state и не в persistence. Новый обычный процесс п�
 
 ## Локальный голосовой вывод
 
-Текст и голос — способы представления одной готовой реплики, а не разные Dialogue
-use cases. Первый slice озвучивает только `dialogue.turn.phase=completed` с
-`outcome.kind=success`; ошибки, fallback, local acknowledgements, game/initiative/
-observation остаются текстовыми. TTS не дописывает ответ и не запускает LLM.
+Текст/голос представляют одну готовую реплику Dialogue: TTS — только
+`completed` + `outcome.kind=success`, без дописывания/LLM. Ошибки, fallback,
+local acknowledgements, game/initiative/observation остаются текстовыми.
 
 - Renderer-local интерфейс вывода принимает неизменяемые identity и text одной
   проекции. Координатор выбирает один adapter по режиму при поступлении реплики:
@@ -377,37 +382,32 @@ observation остаются текстовыми. TTS не дописывает
   revocation и dispose/quit отменяют synthesis и останавливают playback. После
   каждого await проверяются generation и identity. Cancel/timeout завершают child;
   следующий запрос может создать новый. Resume/unquiet не воспроизводит старую речь.
-- Native ORT синтеза речи не исполняется в `worker_threads` Main-процесса: принудительный teardown
-  его Node environment не должен обрушать desktop. Main владеет одним utility child
-  через существующий synthesis port; публичные IPC, admission и playback не меняются.
-  Приватный init содержит только проверенные локальные пути, запрос — id/text/locale,
-  ответ — id и bounded PCM. Child не получает credentials/history или Renderer port;
-  нет произвольных executable/model paths, remote endpoints и новых dependencies.
+- Native TTS не исполняется в `worker_threads` Main: teardown Node environment не
+  должен обрушать desktop. Main владеет одним utility child через synthesis port;
+  публичные IPC, admission/playback прежние. Private input — проверенные локальные
+  пути/threads и id/text/locale, ответ — id/bounded PCM. Без credentials/history,
+  Renderer port, произвольных executable/model paths, endpoints и новых dependencies.
 - Child exit/error/native crash завершает pending запрос один раз безопасной ошибкой;
   fallback текста проверяет актуальность реплики. При retirement Main сразу снимает
   право публикации, посылает kill и ждёт exit перед заменой child. После 2 s допустим
   hard kill того же ещё живого child; срок retirement — 3 s. Без подтверждённого exit
   новый child не создаётся: adapter недоступен, владение старым process сохраняется.
   Dispose/quit используют тот же bounded retirement; повторные callbacks идемпотентны.
-- Main передаёт только bounded finite mono PCM [-1,1] с sample rate 24000 и
-  identity. Preload проверяет exact shape и ограничения до Renderer playback.
-  Renderer владеет единственным audio playback handle, очищает его при revoke,
-  смене identity, unmount и dispose; late `ended` старого handle не снимает новый.
-  Никаких Node API/путей модели/произвольных URL в Renderer.
+- Main передаёт bounded finite mono PCM [-1,1], 24000 Hz и identity; Preload
+  проверяет exact shape/лимиты. Renderer очищает единственный playback handle при
+  revoke/смене identity/unmount/dispose; late `ended` не снимает новый handle.
+  Node API, пути модели и произвольные URL в Renderer запрещены.
 - Identity ограничены 128 символами; исходная реплика — существующими 2000 UTF-16
   units. Deadline inference, включая загрузку, — 120 s; максимум 1500 codec frames
   и 2 880 000 PCM samples. Достижение frame cap без EOS — ошибка, не успешная
   усечённая озвучка. Deadline подтверждения playback — длительность PCM + 2 s.
-- STT и playback не работают одновременно: при принятии голосового выхода Main
-  инвалидирует pending capture/transcription и блокирует новый `begin`, Renderer
-  сбрасывает VAD/PCM и приостанавливает capture. Возобновление возможно только после
-  подтверждения остановки/окончания того же playback и проверки действующего consent.
-  Forced cancellation и отсутствие ack отзывают режим микрофона; после них требуется
-  явное повторное включение, автоматическое возобновление запрещено.
-  Late transcript не отправляется; без подтверждённой остановки микрофон остаётся
-  заблокированным либо режим отзывается. Выключение звука само по себе не доказывает,
-  что Renderer уже остановил звук. Deadline/byte/sample/frame caps обязательны;
-  превышение даёт безопасную ошибку целиком, без молчаливого усечения реплики.
+- STT/playback взаимно исключены: Main отменяет pending capture/transcription,
+  блокирует `begin`; Renderer сбрасывает VAD/PCM и приостанавливает capture. Resume —
+  после ack остановки/окончания того же playback и проверки consent; forced cancel/missing
+  ack отзывают микрофон до явного включения, без auto-resume. Late transcript запрещён;
+  без подтверждения остановки микрофон заблокирован/отозван. Выключение звука не доказывает
+  остановку Renderer. Общий native lease (§ выше) исключает перекрытие STT/TTS load/run,
+  включая retirement. Deadline/byte/sample/frame caps обязательны; превышение — ошибка целиком.
 - Текст для inference, codes и PCM живут только в RAM до окончания/отмены; без
   файлов WAV, логирования речи, provider calls и дополнительных history/memory writes.
   Качество русского Ono_Anna, время первого звука, CPU и peak RSS подтверждаются

@@ -4,6 +4,7 @@ import { LocalSpeechSynthesizer } from '../infrastructure/voice-output/local-spe
 import { FileAudioOutputPreferences } from '../infrastructure/voice-output/audio-output-preferences';
 import { registerVoiceOutputIpc } from './voice-output-ipc';
 import { VoiceInputService } from '../application/services/voice-input-service';
+import { VoiceInferenceCoordinator } from '../infrastructure/voice/inference-coordinator';
 import { LocalVoiceInput } from '../infrastructure/voice/voice-input-adapter';
 import { installVoicePermissions, registerVoiceInputIpc } from './voice-input-ipc';
 import { subscribeVoiceRevocation } from '../infrastructure/platform/voice-lifecycle';
@@ -830,8 +831,9 @@ if (!gotTheLock) {
     routineCapture = new RoutineCapture({ repository: memoryComposition.routine,
       context: () => memoryRuntime?.context() ?? null,
       storageMode: () => memoryRuntime?.getStatus().mode ?? 'initializing', now: () => brainStatePublisher.now(), createId: randomUUID, appRunId: randomUUID() });
+    const voiceInference = new VoiceInferenceCoordinator();
     const voiceAdapter = new LocalVoiceInput(userData, path.join(__dirname, 'voice-worker.js'),
-      app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..', '.cache'));
+      app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..', '.cache'), voiceInference);
     voiceInput = new VoiceInputService({ adapter: voiceAdapter, createId: randomUUID,
       onDisabled: () => {
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('wisp:voice-disabled', null);
@@ -841,7 +843,7 @@ if (!gotTheLock) {
     });
     voiceOutput = new VoiceOutputService({
       preferences: new FileAudioOutputPreferences(userData),
-      synthesizer: new LocalSpeechSynthesizer(app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..', '.cache'), path.join(__dirname, 'speech-worker.js')),
+      synthesizer: new LocalSpeechSynthesizer(app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..', '.cache'), path.join(__dirname, 'speech-worker.js'), voiceInference),
       createId: randomUUID, language: () => 'ru',
       current: () => summaryStream && dialogueRuntime && autonomyComposition ? { streamId: summaryStream, dialogue: dialogueRuntime.getPresentation(), autonomy: autonomyComposition.getAutonomyMode() } : null,
       blockInput: blocked => voiceInput?.setOutputBlocked(blocked),

@@ -15,7 +15,7 @@ const profile = await mkdtemp(path.join(tmpdir(), 'wisp-smoke-profile-'));
 await mkdir(output, { recursive: true });
 const environment = smokeEnvironment(process.env, profile, output);
 const nativeMode = process.env.WISP_TTS_NATIVE_PROBE;
-const nativeRegression = ['cancel-load', 'cancel-run', 'complete', 'crash'].includes(nativeMode);
+const nativeRegression = ['cancel-load', 'cancel-run', 'complete', 'crash', 'coordination'].includes(nativeMode);
 if (nativeMode === '1' || nativeRegression) environment.WISP_TTS_NATIVE_PROBE = nativeMode;
 const runId = randomUUID();
 environment.WISP_SMOKE_RUN_ID = runId;
@@ -65,7 +65,7 @@ try {
   }), 60_000, 'Preload dev compilation');
   environment.VITE_DEV_SERVER_URL = `http://127.0.0.1:${httpServer.address().port}/`;
   controller.signal.throwIfAborted();
-  child = spawn(require('electron'), [path.join(frontend, 'tests/smoke', nativeRegression ? 'voice-native-regression.cjs' : 'electron.cjs'), ...(nativeRegression ? [nativeMode] : [])], {
+  child = spawn(require('electron'), [path.join(frontend, 'tests/smoke', nativeMode === 'coordination' ? 'voice-coordination.cjs' : nativeRegression ? 'voice-native-regression.cjs' : 'electron.cjs'), ...(nativeRegression ? [nativeMode] : [])], {
     cwd: frontend, env: environment, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'],
   });
   // Only bounded diagnostic output from the isolated, mock-only profile is retained.

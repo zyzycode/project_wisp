@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { availableParallelism } from 'node:os';
+import { voiceCpuBudget, voiceSessionOptions } from '../voice/inference-coordinator';
 import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { createSpeechTokenizer } from './tokenizer';
 import { add, concat, floating, floats, integer, sample } from './tensors';
@@ -9,7 +9,7 @@ const names = ['text_embed', 'codec_embed', 'talker_cache', 'code_predictor', 'r
 type Graph = typeof names[number];
 /** Internal offline probe controls; never exposed through IPC or application settings. */
 export interface SpeechInferenceOptions {
-  readonly threads?: 1 | 2 | 4 | 8;
+  readonly threads?: number;
   readonly spinning?: boolean;
   readonly onGraphRun?: (graph: Graph, durationMs: number) => void;
 }
@@ -21,11 +21,10 @@ export class OnoAnnaInference {
   public static async create(modelRoot: string, tokenizerRoot: string, options: SpeechInferenceOptions = {}): Promise<OnoAnnaInference> {
     const entries: [Graph, InferenceSession][] = [];
     // Measured CPU cap; sleeping idle session pools avoid competing with the active graph.
-    const threads = options.threads ?? Math.min(8, availableParallelism());
-    const spinning = options.spinning ? '1' : '0';
+    const threads = options.threads ?? voiceCpuBudget().ttsThreads;
+    const sessionOptions = voiceSessionOptions(threads, options.spinning);
     try {
-      for (const name of names) entries.push([name, await InferenceSession.create(path.join(modelRoot, 'cpu_int4', `${name}.onnx`), { executionProviders: ['cpu'], intraOpNumThreads: threads, interOpNumThreads: 1, logSeverityLevel: 3,
-        extra: { session: { intra_op: { allow_spinning: spinning }, inter_op: { allow_spinning: spinning } } } })]);
+      for (const name of names) entries.push([name, await InferenceSession.create(path.join(modelRoot, 'cpu_int4', `${name}.onnx`), { executionProviders: ['cpu'], ...sessionOptions, logSeverityLevel: 3 })]);
       return new OnoAnnaInference(Object.fromEntries(entries) as Record<Graph, InferenceSession>, await createSpeechTokenizer(tokenizerRoot), options.onGraphRun);
     } catch (error) { await Promise.all(entries.map(([, session]) => session.release())); throw error; }
   }

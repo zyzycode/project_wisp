@@ -2,10 +2,11 @@ import { EventEmitter } from 'node:events';
 import { afterEach, expect, it, vi } from 'vitest';
 import { LocalVoiceInput } from '../../src/infrastructure/voice/voice-input-adapter';
 const harness = vi.hoisted(() => ({ workers: [] as EventEmitter[], postMessage: vi.fn(), terminate: vi.fn<() => Promise<number>>(), verify: vi.fn(async () => true) }));
-vi.mock('node:worker_threads', () => ({ Worker: class extends EventEmitter { constructor() { super(); harness.workers.push(this); } postMessage(value: unknown) { harness.postMessage(value); } terminate() { return harness.terminate(); } } }));
+vi.mock('node:worker_threads', () => ({ Worker: class extends EventEmitter { constructor() { super(); harness.workers.push(this); } postMessage(value: unknown) { harness.postMessage(value); } terminate() { return harness.terminate().then(code => { this.emit('exit', code); return code; }); } } }));
 vi.mock('../../src/infrastructure/voice/model-cache', () => ({ VoiceModelCache: class { directory = '/verified'; verify = harness.verify; } }));
 afterEach(() => { vi.useRealTimers(); harness.workers.length = 0; harness.verify.mockResolvedValue(true); harness.postMessage.mockClear(); harness.terminate.mockReset().mockResolvedValue(0); });
 it('returns cancel promptly while native termination is pending, remains busy', async () => {
+  vi.useFakeTimers();
   harness.terminate.mockImplementation(() => new Promise(() => undefined));
   const adapter = new LocalVoiceInput('/cache', '/worker'); const abort = new AbortController();
   const audio = { samples: new Float32Array([0.1]), sampleRate: 16000 as const, language: 'en' as const };
@@ -73,6 +74,7 @@ it('recreates a terminated worker after cancellation without accepting its late 
   const audio = { samples: new Float32Array([0.2]), sampleRate: 16000 as const, language: 'en' as const };
   const first = adapter.transcribe(audio, abort.signal); await Promise.resolve(); abort.abort();
   expect(await first).toEqual({ ok: false, code: 'cancelled' });
+  harness.workers[0]?.emit('exit', 0);
   await Promise.resolve(); await Promise.resolve();
   const second = adapter.transcribe(audio, new AbortController().signal); await Promise.resolve();
   expect(harness.workers).toHaveLength(2);

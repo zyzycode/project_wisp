@@ -7,7 +7,14 @@ import { registerVoiceOutputIpc } from '../../src/main/voice-output-ipc';
 import { parseBrainStateDTO } from '../../src/shared/brain-body-ipc-validation';
 import { LocalSpeechSynthesizer } from '../../src/infrastructure/voice-output/local-speech-synthesizer';
 import path from 'node:path';
+import { VoiceInferenceCoordinator } from '../../src/infrastructure/voice/inference-coordinator';
+import { LocalVoiceInput } from '../../src/infrastructure/voice/voice-input-adapter';
 import { MockAIProvider } from '../../src/infrastructure/ai/mock-ai-provider';
+
+export function createCoordinatedVoiceProbe(resources: string, inputEntry: string, outputEntry: string) {
+  const coordinator = new VoiceInferenceCoordinator();
+  return { input: new LocalVoiceInput(resources, inputEntry, resources, coordinator), output: new LocalSpeechSynthesizer(resources, outputEntry, coordinator) };
+}
 
 export function createNativeSpeechProbe(resources: string, entry: string) { return new LocalSpeechSynthesizer(resources, entry); }
 

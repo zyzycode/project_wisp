@@ -55,8 +55,11 @@ Startup-включение одноразовое: выключенный пол
 Main проверяет файлы и авторизует только identity текущего успешного ответа;
 Renderer не передаёт произвольный текст. ONNX исполняется в отдельном Main-owned
 Electron utility process, изолирующем native crash от процесса приложения,
-с числом intra-op CPU потоков `min(8, availableParallelism())`, inter-op=1 и
-выключенным spinning у session pools. Ограничения — 120 s, 1500 frames и 120 s PCM. Нет очереди,
+с числом intra-op CPU потоков `max(1, min(8, availableParallelism()-1))`, inter-op=1 и
+выключенным spinning у session pools. Main передаёт неизменный budget и использует
+общий с STT native lease: новый inference ждёт завершения прежней работы, при
+отмене — подтверждённого exit. Ожидание входит в deadline, отмена не допускает
+позднего старта; при неподтверждённом exit сохраняется текстовый fallback. Ограничения — 120 s, 1500 frames и 120 s PCM. Нет очереди,
 повторного озвучивания отменённого ответа, WAV-файлов и логирования текста/аудио.
 Токенизатор сверяется с official Python Qwen2Tokenizer 4.57.3 на RU/EN, числах,
 пунктуации, newline, emoji и Unicode NFC. Новых runtime-зависимостей нет.

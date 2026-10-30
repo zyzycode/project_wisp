@@ -51,8 +51,12 @@ Electron-builder переносит ровно семь manifest-файлов в
 из ресурса, без копирования в userData и без скрытого сетевого fallback.
 
 `@huggingface/transformers@4.3.2` и prebuilt `onnxruntime-node` исполняют CPU inference
-в отдельном Main-owned worker с двумя intra-op потоками. Worker сохраняет модель
-между репликами; отмена/таймаут завершают его. Main остаётся отзывчивым.
+в отдельном Main-owned worker с максимум двумя intra-op потоками, inter-op=1
+и выключенным spinning. Общий Main coordinator ограничивает число потоков
+доступным параллелизмом с запасом и не допускает одновременный native STT/TTS. Worker сохраняет модель
+между репликами; отмена/таймаут завершают его. Пока exit не подтверждён,
+CPU admission остаётся занятым; ожидание конкурирующего запроса отменяемо и
+входит в его deadline. Это не резервирование ядра и не измеритель свободных CPU. Main остаётся отзывчивым.
 Remote model access и FS cache SDK выключены, `ORT_DISABLE_TELEMETRY=1`
 устанавливается до загрузки native runtime. Аудио и transcript не сохраняются и
 не логируются адаптером; автоматически отправленный текст подчиняется обычным
@@ -87,3 +91,27 @@ Node probe-процесса с worker ~717 MiB, прирост относите�
 Provenance: [OpenAI Whisper](https://github.com/openai/whisper) — MIT,
 [ONNX export](https://huggingface.co/onnx-community/whisper-base), Transformers — Apache-2.0,
 ONNX Runtime — MIT.
+
+
+## CPU policy и воспроизводимая проба
+
+Общие инварианты заданы один раз в [UI_SPEC](engine/UI_SPEC.md#локальный-голосовой-ввод).
+При малом числе доступных потоков cap снижается; Main не меняет affinity/priority
+системы. Нормальный playback ack и microphone consent продолжают действовать.
+
+```sh
+node frontend/scripts/benchmark-stt.mjs
+WISP_TTS_NATIVE_PROBE=coordination node scripts/wisp.mjs smoke:desktop /tmp/wisp-voice-cpu
+```
+
+Standalone probe создаёт в RAM одинаковое synthetic RU/EN PCM через pinned Ono_Anna
+с seed=42, затем проверяет Whisper на 1/2/4/8 threads со spinning on/off. Отдельные
+процессы и 120 s budget; verification/load, первый и warm inference, PCM duration,
+CPU time, RSS, transcript hash и matchesExpected. Аудио/транскрипты не пишутся;
+нет микрофона, provider calls и runtime downloads. Первый RU запрос process-cold,
+EN запросы используют уже тёплую модель; кеш диска ОС не очищается.
+`matchesExpected=false` требует разбора качества, даже если hash стабилен и скорость
+выше. Loopback через TTS не отделяет ошибки произношения от ошибок ASR.
+Native coordination smoke использует подтверждённую EN fixture, настоящие модели
+и Main heartbeat; проверяет, что private TTS post следует после native STT result.
+Результаты и ограничения фиксируются в [#149](https://github.com/zyzycode/project_wisp/issues/149).
