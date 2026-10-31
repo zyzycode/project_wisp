@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { ContinuousVoiceClient } from '../../src/renderer/continuous-voice-client';
 import type { StartContinuousVoiceCapture } from '../../src/renderer/continuous-voice-capture';
-import type { VoiceInputApiBridge } from '../../src/shared/ipc-contracts';
+import type { AIConnectionApiBridge, VoiceInputApiBridge } from '../../src/shared/ipc-contracts';
 const context = { streamId: 's', conversationId: 'c' };
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 function fixture(start?: StartContinuousVoiceCapture) {
@@ -10,7 +10,6 @@ function fixture(start?: StartContinuousVoiceCapture) {
   let disabled: () => void = () => undefined;
   const cancel = vi.fn();
   const bridge = {
-    enableAtStartup: vi.fn<VoiceInputApiBridge['enableAtStartup']>().mockResolvedValue({ ok: true, value: null }),
     readStatus: vi.fn<VoiceInputApiBridge['readStatus']>().mockResolvedValue({ ok: true, value: { state: 'ready', downloadedBytes: 1, totalBytes: 1 } }),
     prepare: vi.fn<VoiceInputApiBridge['prepare']>(),
     enable: vi.fn<VoiceInputApiBridge['enable']>().mockResolvedValue({ ok: true, value: null }),
@@ -21,18 +20,16 @@ function fixture(start?: StartContinuousVoiceCapture) {
     onDisabled: vi.fn((listener: () => void) => { disabled = listener; return vi.fn(); }),
   };
   const submit = vi.fn(async (_text: string) => true);
-  const client = new ContinuousVoiceClient(bridge, submit, start ?? (async (_signal, onSamples, onError) => { samples = onSamples; failed = onError; return { cancel }; }));
+  const capture = vi.fn<StartContinuousVoiceCapture>(start ?? (async (_signal, onSamples, onError) => { samples = onSamples; failed = onError; return { cancel }; }));
+  const read = vi.fn<AIConnectionApiBridge['read']>().mockResolvedValue({ mode: 'offline', hasSavedKey: false, secureStorageAvailable: true, failure: null });
+  const confirm = vi.fn((_message: string) => true);
+  const client = new ContinuousVoiceClient(bridge, submit, capture, { connection: { read, configure: vi.fn() }, confirm });
   client.setContext(context); client.setCanSubmit(true);
   const feed = (count: number, amplitude: number) => { for (let i = 0; i < count; i++) samples(new Float32Array(320).fill(amplitude)); };
   const phrase = () => { feed(20, 0.1); feed(40, 0); };
-  return { client, bridge, submit, cancel, feed, phrase, fail: () => failed(), remoteDisable: () => disabled() };
+  return { client, bridge, submit, cancel, feed, phrase, read, confirm, capture, fail: () => failed(), remoteDisable: () => disabled() };
 }
 afterEach(() => vi.restoreAllMocks());
-it('uses the one-shot Main startup grant instead of explicit enable', async () => {
-  const f = fixture(); await f.client.enableAtStartup();
-  expect(f.bridge.enableAtStartup).toHaveBeenCalledOnce(); expect(f.bridge.enable).not.toHaveBeenCalled();
-  expect(f.client.getSnapshot().enabled).toBe(true); f.client.disable();
-});
 it('drops speech output feedback, invalidates a pending transcript and resumes only with retained consent', async () => {
   const f = fixture(); const result = deferred<Awaited<ReturnType<VoiceInputApiBridge['transcribe']>>>();
   f.bridge.transcribe.mockReturnValue(result.promise); await f.client.enable('ru'); f.phrase();
@@ -141,4 +138,49 @@ it('releases the mode even if browser capture teardown throws', async () => {
   const f = fixture(async () => ({ cancel: () => { throw new Error('browser teardown'); } }));
   await f.client.enable('ru'); expect(() => f.client.disable()).not.toThrow();
   expect(f.client.getSnapshot().enabled).toBe(false); expect(f.bridge.disable).toHaveBeenCalledOnce();
+});
+
+it.each(['offline', 'unavailable', 'ready', 'external'] as const)('requires an explained explicit confirmation in %s mode', async mode => {
+  const f = fixture();
+  f.read.mockResolvedValue({ mode, hasSavedKey: false, secureStorageAvailable: true, failure: null });
+  expect(f.read).not.toHaveBeenCalled(); expect(f.capture).not.toHaveBeenCalled();
+  f.confirm.mockReturnValueOnce(false);
+  await f.client.requestEnable('en');
+  expect(f.confirm).toHaveBeenCalledOnce();
+  expect(f.confirm.mock.calls[0]?.[0]).toContain('Звук распознаётся локально');
+  expect(f.confirm.mock.calls[0]?.[0]).toContain('автоматически отправляется');
+  expect(f.confirm.mock.calls[0]?.[0]).toContain(mode === 'ready' || mode === 'external' ? 'внешний AI' : 'офлайн-режим');
+  expect(f.bridge.enable).not.toHaveBeenCalled(); expect(f.capture).not.toHaveBeenCalled();
+  expect(f.client.getSnapshot().phase).toBe('off');
+  await f.client.requestEnable('en');
+  expect(f.bridge.enable).toHaveBeenCalledOnce(); expect(f.capture).toHaveBeenCalledOnce();
+  f.client.disable();
+});
+it.each(['off', 'context', 'remote'] as const)('discards a consent status read after %s', async reason => {
+  const f = fixture(); const status = deferred<Awaited<ReturnType<AIConnectionApiBridge['read']>>>();
+  f.read.mockReturnValue(status.promise);
+  const pending = f.client.enableSelected();
+  if (reason === 'off') f.client.disable();
+  if (reason === 'context') f.client.setContext({ ...context, conversationId: 'new' });
+  if (reason === 'remote') f.remoteDisable();
+  status.resolve({ mode: 'ready', hasSavedKey: true, secureStorageAvailable: true, failure: null });
+  await pending;
+  expect(f.confirm).not.toHaveBeenCalled(); expect(f.capture).not.toHaveBeenCalled();
+  expect(f.bridge.enable).not.toHaveBeenCalled();
+});
+it('fails closed when connection status is unavailable without exposing internals', async () => {
+  const f = fixture(); f.read.mockRejectedValue(new Error('private provider internals'));
+  await f.client.enableSelected();
+  expect(f.confirm).not.toHaveBeenCalled(); expect(f.capture).not.toHaveBeenCalled();
+  expect(f.client.getSnapshot()).toMatchObject({ phase: 'off', error: expect.stringContaining('Микрофон выключен') });
+  expect(f.client.getSnapshot().error).not.toContain('private');
+});
+it('does not retry OS denial on readiness, reply output or context changes', async () => {
+  const f = fixture(async () => { throw new DOMException('Denied', 'NotAllowedError'); });
+  await f.client.requestEnable();
+  expect(f.client.getSnapshot()).toMatchObject({ enabled: false, phase: 'off' });
+  f.client.setCanSubmit(false); f.client.setOutputBlocked(true);
+  f.client.setCanSubmit(true); f.client.setOutputBlocked(false); f.client.setContext({ ...context, conversationId: 'new' });
+  expect(f.capture).toHaveBeenCalledOnce(); expect(f.bridge.enable).toHaveBeenCalledOnce();
+  expect(f.submit).not.toHaveBeenCalled();
 });

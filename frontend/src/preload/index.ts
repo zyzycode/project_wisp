@@ -73,7 +73,6 @@ const api: WispApiBridge = {
     },
   },
   voiceInput: {
-    enableAtStartup: async context => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-startup', parseVoiceContext(context)), parseVoiceNull),
     enable: async context => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-enable', parseVoiceContext(context)), parseVoiceNull),
     disable: async () => parseVoiceResult(await ipcRenderer.invoke('wisp:voice-disable'), parseVoiceNull),
     onDisabled: listener => {

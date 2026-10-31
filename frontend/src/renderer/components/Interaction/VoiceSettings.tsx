@@ -14,7 +14,7 @@ export function VoiceSettings({ output, outputState, input, inputState, contextR
   const active = outputState.phase === 'preparing' || outputState.phase === 'speaking';
   return <section className="ai-connection-settings audio-output-settings menu-section">
     <div className="menu-section-title">Голос и звук</div>
-    <p>Микрофон и озвучка включаются при запуске. Их можно выключить отдельно.</p>
+    <p>Микрофон выключен при запуске. Включение потребует подтверждения. Озвучка включается отдельно.</p>
     <label className="voice-setting-toggle"><input type="checkbox" checked={inputState.enabled} disabled={!inputState.enabled && !contextReady}
       onChange={event => { if (event.target.checked) void input.enableSelected(); else input.disable(); }} />Микрофон</label>
     <label className="voice-setting-toggle"><input type="checkbox" checked={outputState.enabled} disabled={!outputState.ready && !outputState.enabled}

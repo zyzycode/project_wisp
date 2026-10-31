@@ -31,7 +31,7 @@ export function usePetDialogue({
     output,
   });
 
-  const voice = useMemo(() => new ContinuousVoiceClient(bridge.voiceInput, handleSendMessage), [bridge.voiceInput, handleSendMessage]);
+  const voice = useMemo(() => new ContinuousVoiceClient(bridge.voiceInput, handleSendMessage, undefined, { connection: bridge.aiConnection, confirm: message => window.confirm(message) }), [bridge.voiceInput, bridge.aiConnection, handleSendMessage]);
   const voiceState = useSyncExternalStore(voice.subscribe, voice.getSnapshot, voice.getSnapshot);
   const streamId = snapshot?.streamId;
   const conversationId = snapshot?.dialogue.conversationId;
@@ -40,9 +40,9 @@ export function usePetDialogue({
   }, [voice, streamId, conversationId]);
   useEffect(() => {
     let active = true;
-    if (streamId && conversationId) queueMicrotask(() => { if (active) { void voice.enableAtStartup(); void voiceOutput.configureAtStartup(); } });
+    if (streamId && conversationId) queueMicrotask(() => { if (active) { void voiceOutput.configureAtStartup(); } });
     return () => { active = false; };
-  }, [voice, voiceOutput, streamId, conversationId]);
+  }, [voiceOutput, streamId, conversationId]);
   useEffect(() => { voice.setCanSubmit(canSubmit); }, [voice, canSubmit]);
   useEffect(() => { voice.setOutputBlocked(outputState.phase === 'preparing' || outputState.phase === 'speaking'); }, [voice, outputState.phase]);
   useEffect(() => { void voiceOutput.initialize(); return () => voiceOutput.dispose(); }, [voiceOutput]);

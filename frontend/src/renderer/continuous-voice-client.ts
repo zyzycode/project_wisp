@@ -1,4 +1,4 @@
-import type { VoiceCaptureContextDTO, VoiceInputApiBridge, VoiceInputErrorDTO } from '../shared/ipc-contracts';
+import type { AIConnectionApiBridge, VoiceCaptureContextDTO, VoiceInputApiBridge, VoiceInputErrorDTO } from '../shared/ipc-contracts';
 import { startContinuousVoiceCapture, type ContinuousVoiceCapture, type StartContinuousVoiceCapture } from './continuous-voice-capture';
 import { VoiceActivityDetector } from './voice-activity-detector';
 
@@ -33,7 +33,8 @@ export class ContinuousVoiceClient {
   private unsubscribe?: () => void;
   constructor(private readonly bridge: VoiceInputApiBridge | undefined,
     private readonly submit: (text: string) => Promise<boolean>,
-    private readonly startCapture: StartContinuousVoiceCapture = startContinuousVoiceCapture) {}
+    private readonly startCapture: StartContinuousVoiceCapture = startContinuousVoiceCapture,
+    private readonly consent?: { readonly connection?: AIConnectionApiBridge; readonly confirm: (message: string) => boolean }) {}
 
   public getSnapshot = (): ContinuousVoiceState => this.state;
   public subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
@@ -63,9 +64,26 @@ export class ContinuousVoiceClient {
     if (!canSubmit) this.cancelUtterance();
     if (this.state.phase !== 'transcribing' || !canSubmit) this.update({ phase: canSubmit ? 'listening' : 'paused' });
   }
-  public enableAtStartup(): Promise<void> { return this.enable('ru', true); }
-  public enableSelected(): Promise<void> { return this.enable(this.language); }
-  public async enable(language: 'ru' | 'en' = 'ru', startup = false): Promise<void> {
+  public enableSelected(): Promise<void> { return this.requestEnable(this.language); }
+  public async requestEnable(language: 'ru' | 'en' = this.language): Promise<void> {
+    if (this.state.enabled || !this.context || !this.consent) return;
+    const generation = ++this.generation;
+    const context = this.context;
+    const unsubscribe = this.bridge?.onDisabled(() => this.stop(false));
+    try {
+      if (!this.consent.connection) throw new Error('Connection status unavailable');
+      const status = await this.consent.connection.read({ streamId: context.streamId });
+      if (generation !== this.generation || context !== this.context) return;
+      if (!['ready', 'external', 'offline', 'unavailable'].includes(status.mode)) throw new Error('Unknown AI mode');
+      const mode = status.mode === 'ready' || status.mode === 'external'
+        ? 'Сейчас используется внешний AI: текст и предусмотренный контекст диалога передаются выбранному провайдеру.'
+        : 'Сейчас офлайн-режим: диалог обрабатывается локально.';
+      if (this.consent.confirm('Включить микрофон?\n\nЗвук распознаётся локально. Каждая завершённая фраза автоматически отправляется в текущий диалог вместе с его контекстом, историей и разрешённой памятью.\n\n' + mode + '\n\nМикрофон работает и при закрытом чате. Его можно выключить кнопкой под Wisp.')) await this.enable(language);
+    } catch {
+      if (generation === this.generation) this.fail('Не удалось проверить режим AI. Микрофон выключен. Попробуйте включить его снова.');
+    } finally { unsubscribe?.(); }
+  }
+  public async enable(language: 'ru' | 'en' = 'ru'): Promise<void> {
     if (this.state.enabled || !this.bridge || !this.context) return;
     const generation = ++this.generation;
     this.language = language;
@@ -79,13 +97,13 @@ export class ContinuousVoiceClient {
       if (!status.ok || status.value.state !== 'ready') {
         this.fail(errorMessage(status.ok ? 'not_ready' : status.code)); return;
       }
-      const result = await (startup ? this.bridge.enableAtStartup(this.context) : this.bridge.enable(this.context));
+      const result = await this.bridge.enable(this.context);
       if (generation !== this.generation) {
         // A delayed acknowledgement must not leave an off session authorized in Main.
         if (result.ok && !this.state.enabled) void this.bridge.disable().catch(() => undefined);
         return;
       }
-      if (!result.ok) { if (startup && result.code === 'cancelled') this.stop(false); else this.fail(errorMessage(result.code)); return; }
+      if (!result.ok) { this.fail(errorMessage(result.code)); return; }
       const capture = await this.startCapture(signal, samples => {
         if (generation === this.generation) this.accept(samples);
       }, () => {

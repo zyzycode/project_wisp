@@ -11,17 +11,15 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe('voice lifecycle', () => {
-  it('authorizes startup only once and cannot auto-resume after explicit off or revocation', () => {
-    const { service } = fixture();
-    expect(service.enableAtStartup(context)).toEqual({ ok: true, value: null });
-    service.disable();
-    expect(service.enableAtStartup(context)).toEqual({ ok: false, code: 'cancelled' });
-    expect(service.enable(context)).toEqual({ ok: true, value: null });
-  });
-  it('revocation before the first startup request consumes the pending grant', () => {
-    const { service } = fixture(); service.disable();
-    expect(service.enableAtStartup(context)).toEqual({ ok: false, code: 'cancelled' });
-    expect(service.hasCaptureLease()).toBe(false);
+  it('starts off in every process, including after a previous enabled session', () => {
+    const previous = fixture().service;
+    previous.enable(context);
+    expect(previous.hasCaptureLease()).toBe(true);
+    const current = fixture().service;
+    expect(current.hasCaptureLease()).toBe(false);
+    expect(current.begin(context)).toEqual({ ok: false, code: 'cancelled' });
+    previous.disable();
+    expect(fixture().service.hasCaptureLease()).toBe(false);
   });
   it('blocks capture and invalidates pending transcription throughout speech output', async () => {
     const { service, adapter, command } = fixture(); service.enable(context); service.begin(context);
@@ -88,7 +86,7 @@ describe('continuous voice permission', () => {
     expect(service.hasCaptureLease()).toBe(true);
     service.disable();
   });
-  it('notifies once and rejects pending transcription after disable', async () => {
+  it('notifies revocation even when off and rejects pending transcription after disable', async () => {
     const notify = vi.fn();
     let finish!: (result: VoiceInputResult<string>) => void;
     const f = fixture();
@@ -99,6 +97,6 @@ describe('continuous voice permission', () => {
     const pending = service.transcribe(f.command);
     service.disable(); service.disable(); finish({ ok: true, value: 'Late' });
     expect(await pending).toEqual({ ok: false, code: 'cancelled' });
-    expect(notify).toHaveBeenCalledOnce();
+    expect(notify).toHaveBeenCalledTimes(2);
   });
 });

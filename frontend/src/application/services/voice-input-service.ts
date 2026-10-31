@@ -21,7 +21,6 @@ export class VoiceInputService {
   private disposed = false;
   private session: VoiceCaptureContextDTO | null = null;
   private outputBlocked = false;
-  private startupPending = true;
   constructor(private readonly options: Options) {}
   private current(context: VoiceCaptureContextDTO): boolean {
     const current = this.options.context();
@@ -30,7 +29,6 @@ export class VoiceInputService {
   public hasCaptureLease(): boolean { return this.session !== null && this.current(this.session); }
   public setOutputBlocked(blocked: boolean): void { this.outputBlocked = blocked; if (blocked) this.invalidate(); }
   public enable(context: VoiceCaptureContextDTO): VoiceInputResultDTO<null> {
-    this.startupPending = false;
     if (!this.current(context)) return { ok: false, code: 'stale_context' };
     if (this.preparing) return { ok: false, code: 'busy' };
     if (this.options.adapter.getStatus().state !== 'ready') return { ok: false, code: 'not_ready' };
@@ -38,17 +36,10 @@ export class VoiceInputService {
     return { ok: true, value: null };
   }
   public disable(): VoiceInputResultDTO<null> {
-    this.startupPending = false;
-    const active = this.session !== null;
     this.session = null;
     this.invalidate();
-    if (active) this.options.onDisabled?.();
+    this.options.onDisabled?.();
     return { ok: true, value: null };
-  }
-  public enableAtStartup(context: VoiceCaptureContextDTO): VoiceInputResultDTO<null> {
-    if (!this.startupPending) return { ok: false, code: 'cancelled' };
-    this.startupPending = false;
-    return this.enable(context);
   }
   public readStatus(): VoiceInputResultDTO<VoiceModelStatusDTO> {
     return this.disposed ? { ok: false, code: 'unavailable' } : { ok: true, value: this.options.adapter.getStatus() };

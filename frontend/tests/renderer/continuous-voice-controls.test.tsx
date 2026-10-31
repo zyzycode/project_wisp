@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
 import { VoiceInputControls } from '../../src/renderer/components/Chat/VoiceInputControls';
-const client = { enable: vi.fn(async () => undefined), disable: vi.fn() };
+const client = { requestEnable: vi.fn(async () => undefined), disable: vi.fn() };
 it('exposes voice mode outside the composer with no model download or record/stop actions', () => {
   const markup = renderToStaticMarkup(<VoiceInputControls client={client} state={{ enabled: false, phase: 'off', error: null }} available contextReady />);
   expect(markup).toContain('Включить микрофон');
-  expect(markup).toContain('После паузы');
+  expect(markup).toContain('Микрофон выключен');
   expect(markup).not.toMatch(/Загрузить|Записать|Стоп/u);
   expect(markup).toContain('aria-pressed="false"');
 });

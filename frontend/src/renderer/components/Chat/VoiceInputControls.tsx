@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import type { ContinuousVoiceState } from '../../continuous-voice-client';
 interface Props {
-  readonly client: { enable(language: 'ru' | 'en'): Promise<void>; disable(): void };
+  readonly client: { requestEnable(language: 'ru' | 'en'): Promise<void>; disable(): void };
   readonly state: ContinuousVoiceState;
   readonly available: boolean;
   readonly contextReady: boolean;
 }
 const status: Record<ContinuousVoiceState['phase'], string> = {
-  off: 'После паузы реплика отправится сама',
+  off: 'Микрофон выключен',
   starting: 'Ожидаем доступ к микрофону…',
   listening: 'Микрофон включён · слушаю',
   transcribing: 'Микрофон включён · распознаю…',
@@ -22,7 +22,7 @@ export function VoiceInputControls({ client, state, available, contextReady }: P
     <div className="chat-voice-controls">
       <button type="button" aria-pressed={state.enabled}
         disabled={!state.enabled && !contextReady}
-        onClick={() => { if (state.enabled) client.disable(); else void client.enable(language); }}>
+        onClick={() => { if (state.enabled) client.disable(); else void client.requestEnable(language); }}>
         {state.enabled ? 'Выключить микрофон' : 'Включить микрофон'}
       </button>
       <select aria-label="Язык распознавания" value={language} disabled={state.enabled}

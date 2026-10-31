@@ -9,7 +9,7 @@ interface Options {
   readonly service: VoiceInputService;
 }
 export function registerVoiceInputIpc(options: Options): () => void {
-  const channels = ['status', 'prepare', 'enable', 'startup', 'disable', 'begin', 'transcribe', 'cancel'] as const;
+  const channels = ['status', 'prepare', 'enable', 'disable', 'begin', 'transcribe', 'cancel'] as const;
   for (const action of channels) options.register(`wisp:voice-${action}`, async (event, ...args) => {
     const sender = options.getSender();
     if (!sender || event.sender !== sender || event.senderFrame !== sender.mainFrame || !options.trustedUrl(event.senderFrame.url)) return { ok: false, code: 'invalid_request' };
@@ -19,7 +19,6 @@ export function registerVoiceInputIpc(options: Options): () => void {
         case 'status': return options.service.readStatus();
         case 'prepare': return await options.service.prepare();
         case 'enable': return options.service.enable(parseVoiceContext(args[0]));
-        case 'startup': return options.service.enableAtStartup(parseVoiceContext(args[0]));
         case 'disable': return options.service.disable();
         case 'begin': return options.service.begin(parseVoiceContext(args[0]));
         case 'transcribe': return await options.service.transcribe(parseVoiceTranscribe(args[0]));

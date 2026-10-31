@@ -69,7 +69,6 @@ it('sends voice and keyboard through the same Dialogue pipeline with identical c
       else {
         let onSamples: (samples: Float32Array) => void = () => undefined;
         const voiceBridge: VoiceInputApiBridge = {
-          enableAtStartup: async () => ({ ok: true, value: null }),
           readStatus: async () => ({ ok: true, value: { state: 'ready', downloadedBytes: 1, totalBytes: 1 } }),
           prepare: async () => { throw new Error('Runtime model download must not run'); },
           enable: async () => ({ ok: true, value: null }), disable: async () => ({ ok: true, value: null }),

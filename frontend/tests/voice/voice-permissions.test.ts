@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import type { Session, WebContents } from 'electron';
-import { installVoicePermissions } from '../../src/main/voice-input-ipc';
+import { installVoicePermissions, registerVoiceInputIpc } from '../../src/main/voice-input-ipc';
 import { VoiceInputService } from '../../src/application/services/voice-input-service';
 it('allows only audio on trusted main frame during explicit capture lease', () => {
   let request!: NonNullable<Parameters<Session['setPermissionRequestHandler']>[0]>;
@@ -36,4 +36,12 @@ it('allows only audio on trusted main frame during explicit capture lease', () =
   expect(check(sender, 'media', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true, mediaType: 'audio' })).toBe(false);
   outputLease = false;
   expect(Reflect.apply(check, undefined, [sender, 'speaker-selection', 'file://', { requestingUrl: details.requestingUrl, isMainFrame: true }])).toBe(false);
+});
+
+it('never registers an automatic microphone startup capability', () => {
+  const register = vi.fn();
+  registerVoiceInputIpc({ register, remove: vi.fn(), getSender: () => null, trustedUrl: () => true,
+    service: new VoiceInputService({ context: () => null, createId: () => 'r', schedule: () => () => undefined,
+      adapter: { getStatus: () => ({ state: 'ready', downloadedBytes: 1, totalBytes: 1 }), prepare: async () => ({ ok: true, value: undefined }), transcribe: async () => ({ ok: true, value: '' }), dispose: async () => undefined } }) });
+  expect(register.mock.calls.map(([channel]) => channel)).not.toContain('wisp:voice-startup');
 });
