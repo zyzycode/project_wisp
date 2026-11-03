@@ -264,11 +264,15 @@ export class AutonomyCoordinator {
       config
     );
     const scheduledGeneration = this.generation;
-    this.timerHandle = this.options.scheduler.setTimeout(() => {
+    let consumed = false;
+    const handle = this.options.scheduler.setTimeout(() => {
+      if (consumed || this.timerHandle !== handle || scheduledGeneration !== this.generation) return;
+      consumed = true;
       this.timerHandle = undefined;
-      if (scheduledGeneration !== this.generation || !this.isCadenceEligible()) return;
+      if (!this.isCadenceEligible()) return;
       this.runOpportunity();
     }, Math.max(0, delayMs));
+    this.timerHandle = handle;
   }
 
   private runOpportunity(): void {
