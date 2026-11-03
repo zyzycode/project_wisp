@@ -1,6 +1,6 @@
 # Контракт AI Provider
 
-`IAIProvider` генерирует текст и semantic hints по Character context; финальные behavior decisions и UI ему не принадлежат. Default — локальный offline `MockAIProvider`. `ExternalAIProviderClient` обращается к backend либо напрямую к LLM через Infrastructure adapter в Main; выбор маршрута не меняет семантический порт. Общая граница backend — [AGENTS.md](../../../AGENTS.md#2-архитектура-и-контракты).
+`IAIProvider` генерирует текст и semantic hints по Character context; финальные behavior decisions и UI ему не принадлежат. Default — локальный offline `MockAIProvider`. `ExternalAIProviderClient` обращается к backend через Infrastructure adapter в Main; прямой LLM-адаптер архитектурно допустим, но не реализован. Общая граница backend — [AGENTS.md](../../../AGENTS.md#2-архитектура-и-контракты).
 
 ## Владение
 
@@ -257,8 +257,6 @@ timeout/reset/dispose, once-only cleanup и отсутствие history/provide
 описание и анализ текста ответа не требуются; качество живой речи mock не доказывает.
 
 `submissionMessage` — необязательное локализованное сообщение Application, plain text после trim 1–240 UTF-16 units, без controls кроме newline/tab; допустимо только при `canSubmit=false`. Runtime не публикует notices о квотах: локальных лимитов запросов нет. При обычном in-flight/idle-unbound/disposed поле отсутствует; после sleep cancellation bound dialogue сохраняет статус сна до wake, даже пока retired call не settled.
-
-После сотой фактической отправки runtime публикует notice вместе с `canSubmit=false`, даже если пользователь не пытается отправить 101-ю команду. Полученный сотый reply и его completed turn сохраняются; notice не заменяет reply/error, не становится SpeechBubble, history item, provider context или Character stimulus. Renderer показывает notice отдельно рядом с вводом. Cooldown expiry убирает notice и публикует snapshot; session cap сохраняется через dialogue reset/reload до Main restart. Validator, publisher и Renderer принимают это optional-поле согласованно, без нового IPC канала.
 
 ### Deadline, fallback и физически незавершённые вызовы
 
