@@ -24,6 +24,34 @@ Runner использует Vite dev server и одноразовую dev-ком
 
 `report.json` содержит commit, OS/session, Electron, дисплеи и отдельные PASS/FAIL/NOT RUN. `electron.log` ограничен 32 KiB; `window.png` — только окно Wisp с временным mock-профилем. Нет снимка всего рабочего стола. Любая обязательная ошибка, timeout, прерывание или ошибка cleanup даёт ненулевой exit code; непроверенные ручные пункты остаются NOT RUN даже при коде 0.
 
+## Ограниченный LIFE soak и синтетическая история
+
+Обычный smoke после voice cleanup включает десять реальных секунд локальной автономности.
+`report.json.lifeSoak` сохраняет машину, фактическую длительность, начальные/конечные
+Main RSS/heap, Electron process CPU/RAM, размеры SQLite/WAL/SHM, Main active-resource
+и app/webContents listener counts, Main CPU time, p50/p95/max typed IPC ping и heartbeat gaps.
+Это dev-профиль с mock AI и synthetic voice inference: ping — proxy отзывчивости,
+не время Domain tick, а Node resource counts не покрывают все native/Chromium ресурсы.
+PASS означает завершение измерения и успешные IPC ответы; численного общего бюджета
+CPU/RAM/latency нет. Короткий soak не подтверждает многодневную native устойчивость.
+Состояние новых планов, привычек и других ещё не реализованных зависимостей #196
+проверяется после их отдельных implementation gates.
+
+Ускоренные сценарии ядра запускаются отдельно из корня:
+
+```sh
+node scripts/wisp.mjs test:frontend tests/main/life-autonomy.test.ts tests/application/life-memory.test.ts --reporter=json --outputFile=/tmp/wisp-life.json
+```
+
+В JSON metadata тестов: `life` — семь simulated days с управляемыми clock/RNG,
+bounded cadence/trace, stale/duplicate callback и stall decay; `lifeMemory` — семь
+simulated days, 1008 synthetic dialogue pairs и game episodes, их exact replay,
+реальные SQLite worker crash/restart/reset и bounded recall. Измерения CPU/RSS
+Vitest включают тестовый процесс и worker; сравнивать их с Electron RSS нельзя.
+DB retention до reset разрешает рост истории: общего disk cap нет по
+[Memory Engine](engine/MEMORY_ENGINE.md), поэтому рост файла сам по себе не утечка.
+Ни эти тесты, ни smoke не читают product DB и не вызывают платных провайдеров.
+
 ## Платформы и CI
 
 Workflow `desktop-smoke.yml` запускает Windows/macOS runners и Linux в Xvfb/Openbox. Linux-результат помечен `virtualDisplay: true`: это реальный Electron в виртуальном X11, не доказательство работы Wayland или физического композитора. Недоступность desktop session на runner не превращается в PASS. Артефакты сохраняются и после ошибки.
