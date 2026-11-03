@@ -97,8 +97,8 @@ recalled episodes. Summary — неподтверждённый пересказ
 ## Личность и текущее состояние
 
 Единственный авторский источник характера — [desktop preset](../../frontend/src/domain/character/personality-presets.ts).
-Модель получает полный aiSelfConcept и сама выбирает содержание, эмоциональное выражение
-и манеру ответа по карточке и фактическому контексту. Identity остаётся данными, не system override.
+Модель получает полный aiSelfConcept и в обычном диалоге выбирает содержание, эмоциональное выражение
+и манеру; CE-A01/#161 — узкое исключение: проверенное локальное causal решение [API §2.2](../../docs/contracts/BACKEND_API_CONTRACT.md#22-ce-a01-причинная-проекция) она лишь формулирует, без второго характера. Identity остаётся данными, не system override.
 
 Backend не задаёт второй характер: никакого few-shot, synthetic dialogue examples,
 обязательного смущения, юмора, жестов, вопросов, нежности или стилистического сценария.
@@ -116,7 +116,7 @@ Revision не является wire-version; обе стороны обновл�
 Energy — ресурс, остальные Needs — дефициты; высокий comfort означает стресс.
 Friendship/love — 0..1000, traits — 0..1; это факты, не предписание реакции.
 Проекция #145 — [API §2.1](../../docs/contracts/BACKEND_API_CONTRACT.md#21-проекция-expression):
-без synthesizedTone и четырёх advisory bands; expression сохраняет romanceAllowed.
+без synthesizedTone и четырёх advisory bands; expression сохраняет romanceAllowed и только optional causal §2.2 после rollout #161.
 Backend не восстанавливает labels,
 скрытый sleep/action или thresholds и не создаёт второй state store.
 Traits описывают текущие axes, а не заменяют identity. PreviousTouch — исторический
@@ -444,4 +444,4 @@ character-bearing путях и provider payload, неизменность фа�
 atomic optional blocks, mandatory overflow и late-result barriers. Удалённый loader
 не остаётся условием startup. Нет snapshot-требования конкретной реплики модели;
 синтетические mocks/offline размер не доказывают естественность или устойчивость к injection.
-Возврат режиссуры вне карточки требует явного пересмотра решения владельцем.
+CE-A01/#153 согласует только обязательный при наличии causal JSON block (priority1000/order12,≤512bytes): intent/emotion/intensity/target/cause/deferredInvitation/ownGameInterest по API §2.2. Unknown/absent cause не синтезируется backend; ordinary chat без блока прежний. Это факт local decision, не guidance/examples: технические инструкции требуют формулировать его без выдуманного намерения пользователя, без numeric state writes/нового inference. Causal touch suppressed даёт прежний neutral/low/clear appraisal. Deadline/auth/idempotency/consent/size/no-storage неизменны; source deletion/reset снимает future projection, desktop отбрасывает stale reply. Прочая новая режиссура требует отдельного решения.

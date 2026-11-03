@@ -128,6 +128,8 @@ Character clamp-ит шкалы/синтезирует tone. Новый selectio
 
 ## 14. Изоляция
 
+CE-A01/#154 расширяет существующий terminal feedback, не вводя второй recorder в Renderer: единственный recordTerminal публикует фактический outcome, reason, activity identity, executedMs/participation и trusted source binding. Main выдаёт accepted input sequence до вызова cancel; rejected activity admission не terminal. Raw reason без такого binding не доказывает user interruption; cause unknown сохраняется явно. Cancel до play phase не completed и не получает play reward; старая game_episodes строка и новый causal episode одного appRun/activityRun — две проекции одного факта, не два независимых evidence. Application нормализует [causal-life port](../../src/application/ports/causal-life.interface.ts) и пишет через существующий worker, не блокируя Runner или ввод. Указанное — целевой delta #153, реализацию приносит #154.
+
 Brain/Runner — чистые `frontend/src/domain/behavior/`, [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture). Renderer не выбирает/не исполняет Activity; Application оркестрирует normalized time/events/completion.
 
 ## 15. Проверяемые свойства

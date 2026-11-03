@@ -13,6 +13,7 @@ declare module 'vitest' {
       readonly traceRows: number;
       readonly realElapsedMs: number;
       readonly providerRequests: number;
+      readonly tickMs: Readonly<Record<'active' | 'stall', { readonly samples: number; readonly p50: number; readonly p95: number; readonly max: number }>>;
     };
   }
 }
@@ -52,12 +53,21 @@ describe('LIFE-I01 autonomous lifetime', () => {
     const started = performance.now();
     const f = scenario();
     const families = new Set<string>();
+    const activeTicks: number[] = [], stallTicks: number[] = [];
+    const distribution = (samples: number[]) => {
+      const sorted = [...samples].sort((a, b) => a - b);
+      return { samples: sorted.length, p50: sorted[Math.floor(sorted.length * .5)]!,
+        p95: sorted[Math.floor(sorted.length * .95)]!, max: sorted.at(-1)! };
+    };
     let peakTimers = 0;
     let opportunities = 0;
     try {
       while (f.now() < 7 * DAY_MS) {
         f.setRandom([.95, .05, .25, .55][opportunities % 4]!);
         f.pulse();
+        const activeAt = performance.now();
+        f.main.tick();
+        activeTicks.push(performance.now() - activeAt);
         const timeline = f.main.getActivityTimeline();
         if (timeline) families.add(timeline.activityId);
         f.finish();
@@ -74,7 +84,9 @@ describe('LIFE-I01 autonomous lifetime', () => {
         const before = f.character.getState().needs;
         const currentTone = f.character.getSnapshot().synthesizedTone;
         const tone = f.main.isSleepingForRecovery() ? 'sleepy' : currentTone === 'sleepy' ? 'neutral' : currentTone;
+        const stallAt = performance.now();
         f.advance(5 * 60_000);
+        stallTicks.push(performance.now() - stallAt);
         const expected = metabolizeNeeds(before, 60_000, tone);
         const actual = f.character.getState().needs;
         for (const key of ['energy', 'attention', 'play', 'comfort', 'boredom'] as const) {
@@ -99,7 +111,8 @@ describe('LIFE-I01 autonomous lifetime', () => {
       expect(f.character.getState()).toEqual(state);
       task.meta.life = { simulatedMs: f.now() - 30 * DAY_MS,
         opportunities, families: [...families], peakTimers, traceRows: f.main.getDecisionTrace().length,
-        realElapsedMs: performance.now() - started, providerRequests: 0 };
+        realElapsedMs: performance.now() - started, providerRequests: 0,
+        tickMs: { active: distribution(activeTicks), stall: distribution(stallTicks) } };
     } finally { f.main.dispose(); }
   });
 });

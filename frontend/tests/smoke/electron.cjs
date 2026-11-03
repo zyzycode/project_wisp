@@ -263,7 +263,7 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await voiceSmoke.dispose();
     const { measureLifeSoak } = require('./life-soak.cjs');
     report.lifeSoak = await measureLifeSoak({ app, win, profile, evaluate });
-    record('life-bounded-native-soak', 'PASS', 'Ten real seconds of autonomy and IPC sampling; measurements in lifeSoak, no performance threshold assigned');
+    record('life-bounded-native-soak', 'PASS', `${report.lifeSoak.realElapsedMs.toFixed(0)} real ms of autonomy and IPC sampling; measurements in lifeSoak, no performance threshold assigned`);
     const capture = await win.webContents.capturePage();
     assert.equal(capture.isEmpty(), false);
     fs.writeFileSync(path.join(output, 'window.png'), capture.toPNG());

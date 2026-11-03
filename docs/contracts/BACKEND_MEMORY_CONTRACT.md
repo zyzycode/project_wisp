@@ -112,3 +112,5 @@ consent, atomic drop и once-only lifecycle — техническая сема�
 «Коротко/ненавязчиво/не подшучивай» не добавляются как отдельный стиль ответа;
 модель определяет подачу по карточке и контексту. Точные границы вопроса и источников
 памяти остаются обязательными, включая не более одного follow-up в разрешённом режиме.
+
+CE-A01/#153: causal_life_episodes и durable invitation остаются локальными по [Memory](../../frontend/docs/engine/MEMORY_ENGINE.md#ce-a01-собственные-события-и-отложенное-приглашение). #161 передаёт лишь exact optional expression.causal по [API §2.2](BACKEND_API_CONTRACT.md#22-ce-a01-причинная-проекция), не raw source IDs/историю/relationship facets. OwnGameInterest — derived band с source revalidation, не новый факт пользователя или memoryCandidate. Event-source recall/cross-day summary требуют своих gates #171/#175; этот delta не включает их автоматически и не меняет consent/retention прежней memory projection.

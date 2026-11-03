@@ -68,8 +68,6 @@ Upsert по key сохраняет исходные id/created_at, заменя�
 
 ### `game_episodes`
 
-Минимальный структурированный первичный опыт, без LLM-текста, importance или inferred preference.
-
 | Колонка | SQLite type | Правило |
 |---|---|---|
 | `app_run_id`, `activity_run_id` | `TEXT` | not null; составной primary key |
@@ -79,33 +77,37 @@ Upsert по key сохраняет исходные id/created_at, заменя�
 | `executed_ms` | `REAL` | not null, CHECK >= 0; finite на границе |
 | `ended_at` | `TEXT` | not null; UTC время terminal |
 
-Источник — [CursorGameResult](../../src/application/ports/cursor-game-contract.ts) из единственного terminal callback Activity. Сохранять только `playCompleted=true`, включая cancelled/lost_target **после** подтверждённой play phase; до неё записи нет. Не превращать cancelled в caught и не выводить исход из UI/реплики/анимации. Application конвертирует явное atMs через согласованную Main clock mapping в UTC; монотонное время не трактовать как epoch.
+Первичный опыт без LLM-текста/importance/inferred preference; источник — [CursorGameResult](../../src/application/ports/cursor-game-contract.ts) из единственного terminal callback Activity. Сохранять только `playCompleted=true`, включая cancelled/lost_target **после** подтверждённой play phase; до неё записи нет. Не превращать cancelled в caught и не выводить исход из UI/реплики/анимации. Application конвертирует явное atMs через согласованную Main clock mapping в UTC; монотонное время не трактовать как epoch.
 
 Составной ключ защищает от повторного terminal, перезапуска и повторного использования activityRunId. Идентичный повтор — no-op; отличный payload того же ключа — `conflict`, первая запись сохраняется. `IGameEpisodeRepository.append` — единственный необходимый порт; recall/list подключается вместе с его потребителем. Ошибка сохранения не отменяет уже применённый play effect и не повторяет его.
 
 ### `character_state`
 
-| Колонка | SQLite type | Правило |
-|---|---|---|
-| `id` | `TEXT` | primary key, not null, CHECK = 'singleton' |
-| `snapshot_json` | `TEXT` | not null; конверт `{ snapshotVersion, state }` |
-| `updated_at` | `TEXT` | not null; время checkpoint |
+`id TEXT PRIMARY KEY NOT NULL CHECK(id='singleton')`; `snapshot_json TEXT NOT NULL` хранит `{ snapshotVersion, state }`; `updated_at TEXT NOT NULL` — время checkpoint.
 
 Формы v1/v2 заданы в [character-memory-snapshot.ts](../../src/application/ports/character-memory-snapshot.ts), версия envelope независима от schema; v2 хранит cardRevision при presetId=curiousStubbornGirl; #137 пишет 3 (раньше 2). Сохраняются Needs, Relationship, Intimacy, current axes и preferences. Без копии base/soft/hard limits, plasticity, displayName/self-concept. Нет FSM/Activity/Motion, окон, stream/request IDs, pending provider, quiet/quietSupport, cooldowns или lastUpdated системных часов. Адаптер проверяет JSON/envelope, Application мигрирует state, Domain проверяет значения относительно установленного preset (§4).
 
 ### `schema_migrations`
 
-| Колонка | SQLite type | Правило |
-|---|---|---|
-| `version` | `INTEGER` | primary key, positive |
-| `name` | `TEXT` | not null; неизменное имя миграции |
-| `applied_at` | `TEXT` | not null |
+`version INTEGER PRIMARY KEY` positive; `name TEXT NOT NULL` — неизменное имя миграции; `applied_at TEXT NOT NULL`.
 
 `PRAGMA user_version` и непрерывный журнал обязаны совпадать. Каждая последовательная миграция обновляет DDL/data, журнал и user_version в одной транзакции. Уже применённый SQL не редактировать; новые изменения — новая версия. Непустая БД без известной версии, разрыв журнала или несовпадение имени — `corrupt`, будущая версия — `unsupported_version`. Нет down-migration, неявного DROP/recreate или автоматического исправления журнала.
 
 ### Retention и расширение
 
 MVP хранит подтверждённые сообщения, текущие факты, игровые эпизоды и один checkpoint до явного полного reset. Нет TTL/автоудаления истории по лимиту AI context; при заполнении диска — §4. Локальные записи не экспортируются в telemetry; логи содержат код операции/ошибки без текста, snapshot, SQL и пути. Обобщённые `memories`, summary, FTS/vector tables, ranking/expiry и их порты из прежнего черновика **не входят в schema v1**: актуальных use cases на этом этапе нет. Игровой эпизод имеет реальный потребитель записи. Будущий recall читает исходные записи через Application ports; index является производным, с устойчивой ссылкой на источник, обновлением/удалением и перестроением. Потеря индекса не означает потерю памяти. Формат и миграция индекса — отдельный gate, пустые providers/adapters не создавать.
+
+### CE-A01: собственные события и отложенное приглашение
+
+CE-A01/#154 добавляет следующей additive миграцией causal_life_episodes в тот же worker: immutable revision1, unique(app_run_id,sequence), secondary unique(app_run_id,activity_run_id) только для terminal; shape — [causal-life.interface.ts](../../src/application/ports/causal-life.interface.ts).
+
+IDs≤128 UTF-16, sequence/triggerSequence — positive safe integer; triggerSequence<sequence и принадлежит тому же appRun, иначе invalid_data. UTC occurredAt календарно валиден; executedMs finite0..600000. terminalReason сохраняет исходный закрытый Activity reason илиnull при отсутствии; cause — нормализованная причина, не подмена reason. Contact: activity/run/outcome/terminalReason=null, cause=contact, executedMs=0, participation=none, source=user. Terminal: activity=cursor_game, non-null run, outcome required; completed↔cause completed; cancelled/failed не completed; user_interrupted требует source=user+trusted trigger. Quiet/menu/disable/critical sleep/preemption сохраняются с cause other и outcome cancelled, без пользовательской вины; отсутствующая reason/source остаётся unknown; payload содержит только enums/числа/opaque IDs/UTC, без текста/координат.
+
+Повтор exact identity+payload no-op, другой payload conflict; worker проверяет generation.
+
+Source truth verified observed terminal позволяет local appraisal до ack; durable interest/invitation требует committed ack. Append не применяет Character effects и не восстанавливает их при чтении. Legacy game_episodes сохраняются: для одного appRun/activityRun это equivalent source, не дополнительное evidence; старые rows не backfill-ятся как новые causal memories. Нет replay при restart и догрузки volatile history; queue≤100 с прежней деградацией. Retention до full reset; прочитать indexed insertion suffix1..100, без full scan/count на tick.
+
+Отдельная таблица deferred_game_invitation хранит максимум один current row; source FK и consumed marker на source episode защищают повтор после замены terminal row, create/claim/finish source validation — в одной SQL transaction. Lifetime/claim/crash semantics — [Autonomy §15](AUTONOMY_ENGINE.md#15-ce-a01-одно-долговременное-приглашение-159). Full reset удаляет обе таблицы/markers одной прежней transaction; mutation barrier инвалидирует pending consumers до SQL, failure не возвращает callbacks. Future source deletion должна CAS-инвалидировать invitation/derived interest той же transaction; произвольный transcript editor и event edit сейчас не вводятся.
 
 ## 3. Connection, операции и ошибки
 
@@ -126,7 +128,7 @@ Application мигрирует только известные версии чи
 
 V1→v2 сохраняет Needs, Relationship, Intimacy (включая consent/loveUnlocked) и **все** валидные preferences с value/confidence/samples; заменяет presetId/cardRevision и только currentAxes на base новой карточки. Накопленный offset axes не переносится: это динамика прежнего архетипа без отдельного доказательства намерения пользователя; перенос мог бы восстановить shy core вопреки смене identity. Подтверждённые пользовательские знания/предпочтения не являются этим offset. Messages, facts, episodes, items, receipts, topic и summary rows не переписываются/не переизвлекаются; consent не создаётся заново. Новая карточка не получает унаследованных authored hobbies.
 
-V2 restore принимает curiousStubbornGirl/cardRevision=2 или 3; #137 переносит rev2→3 без изменения Needs/Relationship/Intimacy/currentAxes/preferences, так как меняется только текст речи. Writer сохраняет только revision3 при прежнем snapshotVersion=2; неизвестные revisions отклоняются. Это локальная односторонняя миграция, не wire compatibility: сетевые guards принимают только3. CurrentAxes проверяются относительно неизменных caps установленной карточки. Из immutable preset создаётся state; накладываются только разрешённые dynamic поля. Runtime timers/cooldowns/Activity/quiet/quietSupport/FSM строятся заново, tone пересчитывает Character; lastUpdated=current clock, без offline decay/replay stimuli. Успешная чистая миграция идемпотентна: штатный checkpoint атомарно сохраняет v2, последующие restore не сбрасывают его axes. Migration оставляет checkpoint dirty: saved signature новой projection устанавливается только после успешного save, не сразу после restore. До подтверждённого checkpoint на диске остаётся целый v1; при crash migration повторяется без двойных effects. Запись v2 не поддерживает downgrade к старому клиенту.
+V2 restore принимает curiousStubbornGirl/cardRevision=2 или 3; #137 переносит rev2→3 без изменения Needs/Relationship/Intimacy/currentAxes/preferences, так как меняется только текст речи. Writer сохраняет только revision3 при прежнем snapshotVersion=2; неизвестные revisions отклоняются. Это локальная односторонняя миграция, не wire compatibility: сетевые guards принимают только3. CurrentAxes проверяются относительно неизменных caps установленной карточки. Из immutable preset создаётся state; накладываются только разрешённые dynamic поля. Runtime timers/cooldowns/Activity/quiet/quietSupport/FSM строятся заново, tone пересчитывает Character; lastUpdated=current clock, без offline decay/replay stimuli. Успешная чистая миграция идемпотентна: штатный checkpoint атомарно сохраняет v2, последующие restore не сбрасывают его axes. Migration оставляет checkpoint dirty: saved signature новой projection устанавливается только после успешного save, не сразу после restore. До подтверждённого checkpoint на диске остаётся целый v1; при crash migration повторяется без двойных effects. Запись v2 не поддерживает downgrade к старому клиенту. CE-A01/#156 вводит snapshotVersion3 с relationship facets и ownGameInterestSources≤20 exact refs по [causal-life.interface.ts](../../src/application/ports/causal-life.interface.ts) и [Character §12](CHARACTER_ENGINE.md#12-ce-a01-причинная-жизнь-архитектурная-цель-153); V1→V2→V3 — чистая односторонняя migration, старые envelope остаются допустимым input, writer только3 после rollout. Все прежние данные сохраняются по mapping; legacy ownGameInterestSources=[] без replay; causal affect/satiation/habituation/monotonic high-water не checkpoint-ятся. Episode commit и async Character checkpoint не обещают единую transaction: crash может потерять последний effect/sample, но restart не replay-ит sources, не создаёт двойной reward/новые IDs. Source-linked interest projection без валидных sources omitted, receipt восстановленного effect не пересоздаётся.
 
 Пустой snapshot → defaults и обычный checkpoint. Corrupt/unsupported snapshot → defaults и characterRestore status; исходная строка остаётся неперезаписываемой до успешного явного reset или поддерживающей версии. Остальные валидные таблицы доступны; ошибка restore не объявляет всю БД повреждённой. Migration/write failure сохраняет действующую деградацию memory lifecycle; локальный runtime работает, ложного сохранения нет.
 

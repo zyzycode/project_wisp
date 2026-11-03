@@ -27,6 +27,9 @@ Runner использует Vite dev server и одноразовую dev-ком
 ## Ограниченный LIFE soak и синтетическая история
 
 Обычный smoke после voice cleanup включает десять реальных секунд локальной автономности.
+Для непрерывного пятиминутного прогона: `WISP_LIFE_SOAK_MS=300000 node scripts/wisp.mjs smoke:desktop /tmp/wisp-life-native`.
+Параметр принимает только целое число 10000..300000 ms; deadline runner учитывает dwell.
+Объём samples ограничен этой длительностью; флаг не меняет product runtime или AI-настройки.
 `report.json.lifeSoak` сохраняет машину, фактическую длительность, начальные/конечные
 Main RSS/heap, Electron process CPU/RAM, размеры SQLite/WAL/SHM, Main active-resource
 и app/webContents listener counts, Main CPU time, p50/p95/max typed IPC ping и heartbeat gaps.
