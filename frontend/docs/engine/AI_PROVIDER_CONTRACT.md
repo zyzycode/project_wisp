@@ -19,8 +19,35 @@ State/expression, память, история и события — факти�
 через system prompts, formatter и post-processing. Technical instructions ограничены
 форматом, достоверностью и допустимостью действий; locale и max lengths сохраняются.
 [Prompt Engine](../../../backend/docs/CONTEXT_PROMPT_ENGINE.md#личность-и-текущее-состояние)
-задаёт единые правила для всех character-bearing сценариев. Локальные fallback/ACK
-не являются prompt examples и сохраняют существующее отдельное назначение.
+задаёт единые правила для всех character-bearing сценариев. Исключения локальной речи
+определены ниже; они не являются prompt examples или вторым профилем характера.
+
+### Владельцы речи и локальные подтверждения
+
+Desktop владеет смыслом фактической квитанции и допустимостью публикации. Модель
+выбирает свободную формулировку обычного ответа по карточке в единственном существующем
+provider call; Application валидирует и публикует его. ACK не отправляется модели на
+перефразирование, не превращается в synthetic user message и не вызывает вторую реплику.
+
+| Путь | Формулировка и основание | Публикация и история |
+|---|---|---|
+| Обычный chat, topic follow-up/reply, beverage | Provider по карточке и разрешённому фактическому контексту | Один dialogue turn; capture, source suppression и commit — по Memory |
+| Motion start/refusal/clarification/stop/terminal | Локальный технический текст из ChatMotion receipt/terminal, без tone/trait/style selector | Правила [локальных команд](#локальные-команды-движения); terminal не переписывает сохранённый start |
+| Quiet-support | Единственный фиксированный ACK [Character §6.1](CHARACTER_ENGINE.md#61-тихая-поддержка-после-явной-реплики), не генератор сочувствия | Latch до ACK, localOnly/non-confirmable pair; без повторной AI-реплики |
+| Offline/provider failure/timeout | Детерминированный безопасный fallback текущего dialogue turn | Показанная пара по [lifecycle](#deadline-fallback-и-физически-незавершённые-вызовы), без успешного appraisal/intent |
+| Topic refusal, memory mutation, sleep/busy/error notice | Локальный статус соответствующего use case, не речь персонажа | Существующий status/receipt/UI path; не создавать assistant pair ради уведомления |
+
+Локальные технические тексты RU/EN сообщают только подтверждённый результат,
+недоступность или необходимое уточнение; не симулируют новый разговор, настроение или
+событие. Quiet-support остаётся точным исключением с прежним текстом/latch. Отдельные
+Mock и игровая речь сохраняют свои существующие ограниченные каталоги, без расширения
+на содержательный offline-диалог или серверные examples.
+
+Motion/quiet-support ACK публикуется в текущей Main transaction без status/recall/network
+ожидания; history write асинхронен. Нет второго deadline, retry, фонового paraphrase или
+call на terminal. Sleep gate, identity/generation и reset/dispose проверяются до публикации;
+stop/cleanup и Character admission не ждут формулировки модели. Provider timeout не
+откатывает уже исполненное локальное действие; инвалидированный dialogue turn не получает поздний ACK.
 
 ## Форма интерфейса
 
