@@ -179,15 +179,8 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   async mutateItem(command: MemoryItemMutation): Promise<MemoryResult<MemoryItemReceipt>> {
     const items = this.options.storage.items;
-    if (!items || this.phase !== 'running' || !this.context()) return { ok: false, code: 'unavailable' };
-    this.phase = 'mutating'; this.generation++; this.stopTimer();
-    const generation = this.generation;
-    // Abort dialogue/events and drop volatile projections synchronously, including on rollback.
-    // Local Character FSM, motion, and ordinary input keep running.
-    this.options.summary?.invalidate();
-    this.options.invalidateMemory?.();
-    const result = await this.safe(() => {
-      const context = { generation };
+    if (!items) return { ok: false, code: 'unavailable' };
+    return this.mutateMemory(context => {
       switch (command.kind) {
         case 'confirm': return items.confirm(command, context);
         case 'update': return items.update(command, context);
@@ -195,10 +188,6 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
         case 'delete': return items.delete({ ...command, kind: 'delete' }, context);
       }
     });
-    if (this.phase !== 'mutating' || generation !== this.generation) return { ok: false, code: 'stale' };
-    if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
-    this.phase = 'running'; this.scheduleCheckpoint();
-    return result;
   }
   async readBeverage() {
     const c = this.context(), repository = this.options.storage.beverage;
@@ -208,14 +197,8 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   async mutateBeverage(command: import('../ports/memory-beverage.interface').BeverageMutation, admissionToken?: object) {
     const repository = this.options.storage.beverage;
-    if (!repository || !this.context() || this.phase !== 'running') return { ok: false as const, code: 'unavailable' as const };
-    this.phase = 'mutating'; this.generation++; this.stopTimer();
-    const generation = this.generation;
-    this.options.summary?.invalidate(); this.options.invalidateMemory?.(admissionToken);
-    const result = await this.safe(() => repository.mutate(command, { generation }));
-    if (this.phase !== 'mutating' || this.generation !== generation) return { ok: false as const, code: 'stale' as const };
-    if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
-    this.phase = 'running'; this.scheduleCheckpoint(); return result;
+    if (!repository) return { ok: false as const, code: 'unavailable' as const };
+    return this.mutateMemory(context => repository.mutate(command, context), admissionToken);
   }
   async readInterestThread() {
     const c = this.context(), repository = this.options.storage.interestThread;
@@ -225,12 +208,17 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   async mutateInterestThread(command: import('../ports/interest-thread.interface').InterestThreadMutation, admissionToken?: object) {
     const repository = this.options.storage.interestThread;
-    if (!repository || !this.context() || this.phase !== 'running') return { ok: false as const, code: 'unavailable' as const };
+    if (!repository) return { ok: false as const, code: 'unavailable' as const };
+    return this.mutateMemory(context => repository.mutate(command, context), admissionToken);
+  }
+  private async mutateMemory<T>(operation: (context: MemoryOperationContext) => Promise<MemoryResult<T>>, admissionToken?: object): Promise<MemoryResult<T>> {
+    if (!this.context() || this.phase !== 'running') return { ok: false, code: 'unavailable' };
     this.phase = 'mutating'; this.generation++; this.stopTimer();
     const generation = this.generation;
+    // Drop volatile projections even on rollback; local Character, motion and input keep running.
     this.options.summary?.invalidate(); this.options.invalidateMemory?.(admissionToken);
-    const result = await this.safe(() => repository.mutate(command, { generation }));
-    if (this.phase !== 'mutating' || this.generation !== generation) return { ok: false as const, code: 'stale' as const };
+    const result = await this.safe(() => operation({ generation }));
+    if (this.phase !== 'mutating' || this.generation !== generation) return { ok: false, code: 'stale' };
     if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
     this.phase = 'running'; this.scheduleCheckpoint(); return result;
   }
@@ -240,13 +228,16 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.phase = 'resetting'; this.generation++; this.stopTimer(); this.options.pause();
     const generation = this.generation;
     const summaryReset = this.options.summary ? await this.options.summary.reset() : undefined;
+    if (this.phase !== 'resetting' || this.generation !== generation) return { ok: false, code: 'stale' };
     const cleared = await this.safe(() => this.options.storage.clear.clearUserMemory({ generation }));
     const result = summaryReset && !summaryReset.ok && cleared.ok ? { ok: false as const, code: 'io_error' as const } : cleared;
     if (this.phase !== 'resetting' || this.generation !== generation) return { ok: false, code: 'stale' };
-    if (result.ok) {
+    // A committed database reset must also clear RAM, even if summary cleanup failed.
+    if (cleared.ok) {
       this.options.character.resetToDefaults(); this.history.reset(); this.knowledge.reset(); this.savedSignature = null; this.snapshotWritable = true;
       this.status = { mode: 'persistent', characterRestore: 'default' }; this.options.resetCommitted();
-    } else if (result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
+    }
+    if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
     this.phase = 'running'; this.options.resume(); this.scheduleCheckpoint();
     return result;
   }

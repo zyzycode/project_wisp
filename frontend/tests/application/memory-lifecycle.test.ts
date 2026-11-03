@@ -3,7 +3,7 @@ import { MemoryLifecycle } from '../../src/application/services/memory-lifecycle
 import { CharacterStateService } from '../../src/application/services/character-state.service';
 import { projectCharacterMemory } from '../../src/application/services/character-memory-snapshot';
 import type { MemoryRepositories } from '../../src/application/ports/memory-runtime';
-import type { MemoryResult, PersistedCharacterStateSnapshot } from '../../src/application/ports/memory-repository.interface';
+import type { MemoryOperationContext, MemoryResult, PersistedCharacterStateSnapshot } from '../../src/application/ports/memory-repository.interface';
 
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes; }); return { promise, resolve }; }
 function fixture(summary?: Pick<import('../../src/application/ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>, shutdownCapture?: () => Promise<void>) {
@@ -18,9 +18,9 @@ function fixture(summary?: Pick<import('../../src/application/ports/summary').IS
     clear: { clearUserMemory: vi.fn<MemoryRepositories['clear']['clearUserMemory']>(async () => ({ ok: true, value: undefined })) },
     close: vi.fn(async () => {}), abort: vi.fn(async () => {}),
   };
-  const start = vi.fn(), pause = vi.fn(), resume = vi.fn(), resetCommitted = vi.fn(), hydrate = vi.fn();
-  const lifecycle = new MemoryLifecycle({ shutdownCapture, ...(summary ? { summary } : {}), storage, character, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, toTimestamp: ms => new Date(ms).toISOString(), localMock: true, start, pause, resume, resetCommitted, hydrate });
-  return { lifecycle, storage, character, start, pause, resume, resetCommitted, hydrate };
+  const start = vi.fn(), pause = vi.fn(), resume = vi.fn(), resetCommitted = vi.fn(), hydrate = vi.fn(), invalidateMemory = vi.fn();
+  const lifecycle = new MemoryLifecycle({ shutdownCapture, ...(summary ? { summary } : {}), storage, character, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, toTimestamp: ms => new Date(ms).toISOString(), localMock: true, start, pause, resume, resetCommitted, hydrate, invalidateMemory });
+  return { lifecycle, storage, character, start, pause, resume, resetCommitted, hydrate, invalidateMemory };
 }
 afterEach(() => vi.useRealTimers());
 it('restores once before start, hydrates Mock and checkpoints only dirty state at five-second cadence', async () => {
@@ -71,6 +71,73 @@ it('rollback retains character data while advancing the generation and invalidat
   const f = fixture(); await f.lifecycle.initialize(); f.character.applyStimulus({ type: 'user_message', source: 'user', createdAt: new Date().toISOString(), text: 'hi' }); const before = f.character.getState();
   f.storage.clear.clearUserMemory.mockResolvedValue({ ok: false, code: 'conflict' }); expect(await f.lifecycle.reset()).toEqual({ ok: false, code: 'conflict' });
   expect(f.character.getState()).toEqual(before); expect(f.lifecycle.currentGeneration()).toBe(1); expect(f.resetCommitted).not.toHaveBeenCalled(); expect(f.lifecycle.getStatus().mode).toBe('persistent'); await f.lifecycle.shutdown();
+});
+it('clears runtime after a committed database reset even when summary deletion fails', async () => {
+  const summary = { invalidate: vi.fn(), reset: vi.fn(async () => ({ ok: false as const, code: 'unavailable' as const })), dispose: vi.fn() };
+  const f = fixture(summary); await f.lifecycle.initialize();
+  const previous = f.character.getState(); previous.relationship.friendship = 321;
+  f.character.replaceRestoredState(previous);
+  expect(f.character.getState().relationship.friendship).toBeGreaterThan(0);
+  const historyReset = vi.spyOn(f.lifecycle.history, 'reset');
+  f.resume.mockImplementation(() => {
+    expect(f.character.getState().relationship.friendship).toBe(0);
+    expect(historyReset).toHaveBeenCalledOnce(); expect(f.resetCommitted).toHaveBeenCalledOnce();
+  });
+  expect(await f.lifecycle.reset()).toEqual({ ok: false, code: 'io_error' });
+  expect(f.storage.clear.clearUserMemory).toHaveBeenCalledWith({ generation: 1 });
+  expect(f.lifecycle.getStatus()).toEqual({ mode: 'volatile', reason: 'io_error' });
+  expect(f.storage.abort).toHaveBeenCalledOnce(); expect(f.resume).toHaveBeenCalledOnce();
+  await vi.advanceTimersByTimeAsync(5000); await f.lifecycle.shutdown();
+  expect(f.storage.character.save).not.toHaveBeenCalled();
+});
+it.each(['conflict', 'io_error'] as const)('preserves runtime on database %s even when summary deletion also fails', async code => {
+  const summary = { invalidate: vi.fn(), reset: vi.fn(async () => ({ ok: false as const, code: 'unavailable' as const })), dispose: vi.fn() };
+  const f = fixture(summary); await f.lifecycle.initialize();
+  const previous = f.character.getState(); previous.relationship.friendship = 321;
+  f.character.replaceRestoredState(previous);
+  const before = f.character.getState(), historyReset = vi.spyOn(f.lifecycle.history, 'reset');
+  f.storage.clear.clearUserMemory.mockResolvedValue({ ok: false, code });
+  expect(await f.lifecycle.reset()).toEqual({ ok: false, code });
+  expect(f.character.getState()).toEqual(before); expect(historyReset).not.toHaveBeenCalled();
+  expect(f.resetCommitted).not.toHaveBeenCalled(); expect(f.resume).toHaveBeenCalledOnce();
+  expect(f.lifecycle.getStatus().mode).toBe(code === 'conflict' ? 'persistent' : 'volatile');
+  await f.lifecycle.shutdown();
+});
+it('does not clear the database when summary reset finishes after shutdown', async () => {
+  const pending = deferred<Awaited<ReturnType<import('../../src/application/ports/summary').ISummaryRuntime['reset']>>>();
+  const summary = { invalidate: vi.fn(), reset: vi.fn(() => pending.promise), dispose: vi.fn() };
+  const f = fixture(summary); await f.lifecycle.initialize();
+  const resetting = f.lifecycle.reset(); expect(summary.reset).toHaveBeenCalledOnce();
+  await f.lifecycle.shutdown();
+  pending.resolve({ ok: true, value: undefined });
+  expect(await resetting).toEqual({ ok: false, code: 'stale' });
+  expect(f.storage.clear.clearUserMemory).not.toHaveBeenCalled();
+  expect(f.resetCommitted).not.toHaveBeenCalled(); expect(f.resume).not.toHaveBeenCalled();
+});
+it.each([
+  ['beverage', 'conflict'], ['beverage', 'io_error'],
+  ['interestThread', 'conflict'], ['interestThread', 'io_error'],
+] as const)('preserves admission, generation and checkpoint rules for %s mutation with %s', async (repository, code) => {
+  const summary = { invalidate: vi.fn(), reset: vi.fn(async () => ({ ok: true as const, value: undefined })), dispose: vi.fn() };
+  const f = fixture(summary); await f.lifecycle.initialize();
+  const pending = deferred<MemoryResult<never>>();
+  const mutate = vi.fn((_command: unknown, _context: MemoryOperationContext) => pending.promise);
+  Object.assign(f.storage, { [repository]: { mutate } });
+  const admissionToken = {};
+  const writing = repository === 'beverage'
+    ? f.lifecycle.mutateBeverage({ kind: 'delete', commandId: 'c', expected: { itemId: 'i', revision: 1 }, updatedAt: new Date().toISOString() }, admissionToken)
+    : f.lifecycle.mutateInterestThread({ kind: 'delete', commandId: 'c', expected: { threadId: 't', revision: 1 } }, admissionToken);
+  expect(f.lifecycle.currentGeneration()).toBe(1); expect(f.lifecycle.admitInput()).toBe(true);
+  expect(summary.invalidate).toHaveBeenCalledOnce(); expect(f.invalidateMemory).toHaveBeenCalledExactlyOnceWith(admissionToken);
+  expect(mutate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ commandId: 'c' }), { generation: 1 });
+  expect(await f.lifecycle.reset()).toEqual({ ok: false, code: 'unavailable' });
+  await vi.advanceTimersByTimeAsync(5000); expect(f.storage.character.save).not.toHaveBeenCalled();
+  pending.resolve({ ok: false, code }); expect(await writing).toEqual({ ok: false, code });
+  expect(f.lifecycle.isRunning()).toBe(true);
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(f.storage.character.save).toHaveBeenCalledTimes(code === 'conflict' ? 1 : 0);
+  expect(f.lifecycle.getStatus().mode).toBe(code === 'conflict' ? 'persistent' : 'volatile');
+  await f.lifecycle.shutdown();
 });
 it('cannot claim clearing a volatile unavailable database', async () => {
   const f = fixture(); f.lifecycle.admitInput(); expect(await f.lifecycle.reset()).toEqual({ ok: false, code: 'unavailable' }); expect(f.storage.clear.clearUserMemory).not.toHaveBeenCalled(); await f.lifecycle.shutdown();
