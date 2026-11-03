@@ -2,7 +2,7 @@ import type {
   BeverageMutation, BeveragePreference, BeveragePreferenceRef, BeverageReceipt,
   BeverageTurnUse, BeverageCorrectionTurn,
 } from '../../application/ports/memory-beverage.interface';
-import { record, text, integer, timestamp, MemoryDataError } from './validation';
+import { record, text, integer, timestamp, MemoryDataError } from './validation-primitives';
 
 export function beverageRef(value: unknown): BeveragePreferenceRef {
   const input = record(value, ['itemId', 'revision']);

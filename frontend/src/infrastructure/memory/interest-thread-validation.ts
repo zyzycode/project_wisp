@@ -1,6 +1,6 @@
 import type { AIProviderDialogueTopic, InterestThread, InterestThreadCapture, InterestThreadMutation, InterestThreadReceipt, InterestThreadRef, InterestThreadTurnUse } from '../../application/ports/interest-thread.interface';
 import { enumValue, plainText } from '../../shared/dialogue-ipc-validation';
-import * as v from './validation';
+import * as v from './validation-primitives';
 
 function id(input: unknown): string { const s = plainText(input, 128); if (s !== s.trim()) throw new v.MemoryDataError('invalid_data'); return s; }
 export function topicText(input: unknown): string {

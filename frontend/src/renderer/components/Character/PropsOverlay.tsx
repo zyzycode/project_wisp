@@ -1,6 +1,6 @@
 import React from 'react';
 import type { VisibleRenderLayerDef } from '../../render-engine/types';
-import { resolveSpriteSource } from './SpriteRenderer';
+import { resolveSpriteSource } from '../../render-engine/sprite-source';
 
 export interface PropsOverlayProps {
   layers: readonly VisibleRenderLayerDef[];

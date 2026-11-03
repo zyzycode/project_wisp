@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { resolveSpriteSource, SpriteRenderer } from '../../src/renderer/components/Character/SpriteRenderer';
+import { SpriteRenderer } from '../../src/renderer/components/Character/SpriteRenderer';
+import { resolveSpriteSource } from '../../src/renderer/render-engine/sprite-source';
 import {
   AnchorVisualizer,
   BASE_CHARACTER_SIZE,
