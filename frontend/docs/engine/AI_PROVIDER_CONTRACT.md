@@ -13,10 +13,10 @@ provider и сборку контекста запроса. Единый пут�
 ## Карточка и свобода ответа модели
 
 Карточка — единственный авторский источник характера: [Character §6](CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122).
-State/expression, память, история и события — фактический контекст. Модель сама выбирает
-содержание, эмоциональное выражение и манеру ответа; все реальные state writes и действия
+State/expression, память, история и события — фактический контекст. В обычном диалоге модель выбирает
+содержание, эмоциональное выражение и манеру; CE-A01/#161 добавляет узкое исключение: актуальное локальное causal решение по [API §2.2](../../../docs/contracts/BACKEND_API_CONTRACT.md#22-ce-a01-причинная-проекция) она только формулирует. Все state writes и действия
 остаются за desktop. Backend/direct adapter не добавляют примеры общения или режиссуру
-через system prompts, formatter и post-processing. Technical instructions ограничены
+через system prompts, formatter и post-processing. Causal semantic intent — проверенный факт решения desktop, не серверный сценарий характера. Technical instructions ограничены
 форматом, достоверностью и допустимостью действий; locale и max lengths сохраняются.
 [Prompt Engine](../../../backend/docs/CONTEXT_PROMPT_ENGINE.md#личность-и-текущее-состояние)
 задаёт единые правила для всех character-bearing сценариев. Локальные fallback/ACK

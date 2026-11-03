@@ -53,7 +53,7 @@ desktop не отправляет новый chat во сне и отбрасы�
 
 Согласованная форма #145: один `character` для `chat`, `touch`, `events`,
 `observation`; summary character не передаёт. Состав — таблица §2, без
-`synthesizedTone`; объект `expression` содержит **только** `romanceAllowed`.
+`synthesizedTone`; объект `expression` содержит `romanceAllowed`; единственное расширение CE-A01/#161 — optional `causal` по §2.2, без возврата старых bands/tone.
 TypeScript wire types, projection/validators, Python schemas/dispatch/prompts и active
 fixtures используют одну форму. Dual parsing, optional legacy поля, новая API
 version и fallback старого wire не допускаются.
@@ -93,8 +93,8 @@ Backend сериализует ровно разрешённую проекци�
 
 #### Валидация, отсутствие и актуальность
 
-Все сохранённые ranges/caps §2 прежние; `expression` обязателен с одним strict
-boolean. Missing/null/unknown keys, включая удалённые tone/bands, →400 invalid_request
+Все сохранённые ranges/caps §2 прежние; `expression` обязателен с strict
+romanceAllowed и только явно заданным optional causal §2.2. Missing/null/unknown keys, включая удалённые tone/bands, →400 invalid_request
 до admission; desktop отклоняет невозможную проекцию до HTTP. Missing boredom
 означает «не передано», не ноль; отсутствие previousTouch — отсутствие актуального
 trace, не «касания не было». Для остальных обязательных полей unknown/unavailable
@@ -116,6 +116,14 @@ true не требует его и не заменяет повторную ло
 Deadline/cancellation/idempotency, ошибки §3, caps/retention §6 и отсутствие retry
 неизменны. Projection входит в прежний body digest и живёт только с запросом;
 offline/failure не останавливает локальный runtime. Нового state store нет.
+
+### 2.2. CE-A01: причинная проекция
+
+Архитектурная цель #153, совместный rollout desktop/backend/fixtures в #161; до него текущие guards не принимают новое поле. `expression.causal` ([target TS declaration](../../frontend/src/application/ports/causal-life.interface.ts)) — optional exact object из доверенного локального решения, только chat/touch/events; observation его не принимает. Ровно семь полей: `intent` enum respond/acknowledge/give_space/continue_activity; `emotion` content/curious/irritated; `intensity` low/moderate; `target` user/environment/self; `cause` contact/completed/user_interrupted/environment_lost/timeout; `deferredInvitation` strict boolean; `ownGameInterest` none/emerging/established. Null/unknown/missing nested fields →400; размер compact JSON≤512 UTF-8 bytes. No raw event IDs, sequences, timestamps, transcript, facet numbers, current route/coordinates, arbitrary reason text. Mood/style bands #145 не возвращаются. `intensity=moderate` означает локальную causal intensity≥0.2, иначе low; при очищенном affect/unknown cause блок отсутствует. DeferredInvitation означает только current pending local record, не обещание исполнения. Interest band — проверенная derived projection Character §12; none означает отсутствие доступного проверенного вывода, не доказанный нулевой интерес. Это не preference пользователя или permission.
+
+Backend не пересчитывает affect/relationships и не выбирает локальный intent; техническое правило требует формулировать переданное решение без приписывания человеку скрытого мотива, а карточка определяет естественные слова. Сервер не добавляет собственную эмоцию/темп/просодию, примеры речи или действия. Ordinary chat без causal сохраняет свободу #140/#137; response envelope/hints/appraisal прежние, в causal touch effectPolicy=suppressed и exact neutral/low/clear. Решение provider не заменяет local expression или semantic owner. Запрос, body digest, auth, memory consent, body32KiB, response16KiB и исходный deadline/retry/no-storage правила прежние; нового inference/capability negotiation/API version нет. Блок mandatory при наличии с priority1000/order12; невозможность вместить mandatory context даёт существующую budget error, не удаление cause.
+
+Desktop фиксирует causal signature и absolute deadline≤5s до call; после reset/dispose/смены current cause/owner/consent или deadline весь stale reply отвергается, включая text/expression/effects, без автоматического второго запроса. Удаление/недоступность source снимает optional derived interest/invitation до capture; уже отправленные provider данные нельзя отозвать локальным reset. Блок живёт только request/RAM context по §6, не server history, telemetry или provider internals. Обязательны TS/Python exact fixtures для absent/full/unknown/null/invalid enum и fake-provider cases ordinary vs causal, outage/auth/timeout/malformed/late result. Форма намеренно не принимает художественный free-text style от desktop.
 
 ## 3. HTTP и ошибки
 

@@ -217,7 +217,7 @@ Main включает interaction capability для настроенного в�
 Единственная TypeScript wire форма — [backend-interaction-contract.ts](../../frontend/src/application/ports/backend-interaction-contract.ts).
 Независимые Python schemas реализует #89; нельзя импортировать TS/Domain types.
 v1 touch request — exact requestId/stream/locale/character/event/card/effectPolicy.
-Character и UUIDv4/locale/stream:false как v1; event строго user_touch/variant:touch.
+Character и UUIDv4/locale/stream:false как v1; optional character.expression.causal вводится только совместным #161 rollout по [API §2.2](BACKEND_API_CONTRACT.md#22-ce-a01-причинная-проекция); causal touch всегда effectPolicy=suppressed, model appraisal neutral/low/clear; event строго user_touch/variant:touch.
 Card exact id=curiousStubbornGirl/revision=3 в поставке #137 по решению #140;
 id обязан совпадать с character.personality.presetId. Предыдущая поставка #123 — revision2,
 не совместимый runtime-вариант: content/reference/mappers/chat/touch/shared fixtures
@@ -225,7 +225,7 @@ id обязан совпадать с character.personality.presetId. Преды
 Источник и восстановление — [Character §6/9.2](../../frontend/docs/engine/CHARACTER_ENGINE.md#6-авторский-профиль-wisp-revision-2-gate-122), [Memory §4](../../frontend/docs/engine/MEMORY_ENGINE.md#restore-snapshot).
 Неизвестная revision/card →400 invalid_request до inference, не молчаливый другой profile.
 EffectPolicy eligible/suppressed — решение desktop о доступности numerical effect,
-не server authority. Никаких времени касания/координат/истории/memory/local IDs в touch.
+не server authority. Никаких времени касания/координат/истории/memory/local IDs в touch; causal enums не разрешают передавать raw episodes или локальные sequence.
 
 Chat включает messages/memory, optional summary/previousInitiative, обязательные card/effectPolicy и optional
 previousTouch. Все старые v1 caps и validation memory/messages/summary/previousInitiative
