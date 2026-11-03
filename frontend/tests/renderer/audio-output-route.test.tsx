@@ -10,7 +10,8 @@ function fixture() {
   const bridge = { readDevice: async () => ({ ok: true, value: { deviceId: 'speaker' } }), selectDevice: async ({ deviceId }: { deviceId: string }) => ({ ok: true, value: { deviceId } }) } as VoiceOutputBridge;
   const play = vi.fn<PlaySpeech>(async () => undefined);
   const route = new AudioOutputRoute(bridge, media as MediaDevices, play);
-  return { route, play, disconnect: async () => { devices = []; changed(); await route.refresh(); } };
+  const changeDevices = async (next: string[]) => { devices = next; changed(); await route.refresh(); };
+  return { route, play, changeDevices, disconnect: () => changeDevices([]) };
 }
 it('waits for saved preferences and uses only the explicitly selected device', async () => {
   const f = fixture(); await expect(f.route.play(speech, new AbortController().signal)).rejects.toThrow(); expect(f.play).not.toHaveBeenCalled();
@@ -35,6 +36,27 @@ it('interrupts playback as a failure if the selected device disconnects', async 
   const pending = f.route.play(speech, new AbortController().signal); const rejected = expect(pending).rejects.toThrow();
   await vi.waitFor(() => expect(f.play).toHaveBeenCalledOnce()); await f.disconnect(); await rejected;
   expect(f.play).toHaveBeenCalledTimes(1); f.route.dispose();
+});
+it.each([
+  ['microphone changes', ['speaker'], ['speaker']],
+  ['another audio output connects', ['speaker'], ['speaker', 'headphones']],
+  ['another audio output disconnects', ['speaker', 'headphones'], ['speaker']],
+  ['permissions keep the selected output hidden', [], []],
+])('keeps playback running when %s', async (_description, initialDevices, devices) => {
+  const f = fixture(); await f.route.initialize();
+  await f.changeDevices(initialDevices);
+  let finish: () => void = () => undefined;
+  f.play.mockImplementation((_speech, signal) => new Promise<void>(resolve => {
+    finish = resolve;
+    signal.addEventListener('abort', () => resolve(), { once: true });
+  }));
+  const pending = f.route.play(speech, new AbortController().signal);
+  // Observe rejection immediately so the regression does not create an unhandled rejection.
+  const outcome = pending.then(() => 'completed', () => 'failed');
+  await vi.waitFor(() => expect(f.play).toHaveBeenCalledOnce());
+  await f.changeDevices(devices);
+  expect(f.play.mock.calls[0]?.[1].aborted).toBe(false);
+  finish(); expect(await outcome).toBe('completed'); f.route.dispose();
 });
 it('rejects unsupported explicit output selection instead of using system default', async () => {
   const close = vi.fn(async () => undefined);

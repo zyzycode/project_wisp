@@ -41,8 +41,16 @@ export class AudioOutputRoute {
     } catch { if (generation === this.generation) this.update({ error: 'Не удалось получить список аудиовыходов.' }); }
   };
   private deviceChanged = (): void => {
-    if (this.abort) { this.disconnected = true; this.abort.abort(); }
-    void this.refresh();
+    const abort = this.abort;
+    const generation = this.generation;
+    const wasMissing = this.missing;
+    void this.refresh().then(() => {
+      // devicechange also covers microphones and unrelated outputs. Only a newly
+      // missing selected output can invalidate this playback, never a later one.
+      if (abort && this.abort === abort && generation === this.generation && !wasMissing && this.missing) {
+        this.disconnected = true; abort.abort();
+      }
+    });
   };
   public async select(deviceId: string): Promise<void> {
     const generation = ++this.generation;
