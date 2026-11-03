@@ -13,6 +13,8 @@ const distribution = values => {
 // Measurement only: no invented CPU/RAM/latency acceptance thresholds. The existing
 // runner owns the outer timeout, profile isolation, network guard and process cleanup.
 exports.measureLifeSoak = async ({ app, win, profile, evaluate }) => {
+  const requestedMs = Number(process.env.WISP_LIFE_SOAK_MS ?? 10_000);
+  assert.ok(Number.isSafeInteger(requestedMs) && requestedMs >= 10_000 && requestedMs <= 300_000);
   const databaseBytes = () => Object.fromEntries(['', '-wal', '-shm'].map(suffix => {
     try { return [suffix || 'db', fs.statSync(path.join(profile, 'memory', `wisp.sqlite3${suffix}`)).size]; }
     catch (error) { if (error.code === 'ENOENT') return [suffix || 'db', 0]; throw error; }
@@ -40,8 +42,8 @@ exports.measureLifeSoak = async ({ app, win, profile, evaluate }) => {
   let previous = performance.now();
   const heartbeat = setInterval(() => { const now = performance.now(); heartbeatGaps.push(now - previous); previous = now; }, 10);
   try {
-    // Real ten-second dwell; 7-day fake-time histories are measured in separate tests.
-    while (performance.now() - started < 10_000) {
+    // Bounded real dwell; 7-day fake-time histories are measured in separate tests.
+    while (performance.now() - started < requestedMs) {
       const at = performance.now();
       assert.ok(await evaluate('window.wispAPI.ping("life-soak")'));
       latency.push(performance.now() - at);
@@ -50,7 +52,7 @@ exports.measureLifeSoak = async ({ app, win, profile, evaluate }) => {
     const elapsedMs = performance.now() - started;
     const used = process.cpuUsage(cpu);
     clearInterval(heartbeat);
-    return { startedAt, realElapsedMs: elapsedMs, simulatedDays: 0,
+    return { startedAt, requestedMs, realElapsedMs: elapsedMs, simulatedDays: 0,
       environment: { node: process.versions.node, electron: process.versions.electron,
         os: `${os.type()} ${os.release()}`, arch: process.arch, cpu: os.cpus()[0]?.model,
         logicalCpus: os.cpus().length, totalMemoryBytes: os.totalmem() },
@@ -61,7 +63,7 @@ exports.measureLifeSoak = async ({ app, win, profile, evaluate }) => {
         'Ping round-trip and Main heartbeat are responsiveness proxies, not Domain tick latency.',
         'Resource counts cover Main Node handles and Electron listeners, not all Chromium/native owners.',
         'STT/TTS inference here uses existing smoke fixtures; no native inference performance claim.',
-        'Ten seconds does not establish long-term native stability; pending LIFE dependencies remain unverified.'] };
+        'A bounded soak does not establish multi-day native stability; pending LIFE dependencies remain unverified.'] };
   } finally {
     clearInterval(heartbeat);
     await evaluate('window.wispAPI.setAutonomyEnabled({enabled:false})');

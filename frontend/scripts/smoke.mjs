@@ -31,6 +31,11 @@ const run = (promise, duration, label) => bounded(promise, duration, label, cont
 process.on('SIGINT', abort);
 process.on('SIGTERM', abort);
 try {
+  const lifeSoakMs = Number(process.env.WISP_LIFE_SOAK_MS ?? 10_000);
+  if (!Number.isSafeInteger(lifeSoakMs) || lifeSoakMs < 10_000 || lifeSoakMs > 300_000) {
+    throw new Error('WISP_LIFE_SOAK_MS must be an integer between 10000 and 300000');
+  }
+  environment.WISP_LIFE_SOAK_MS = String(lifeSoakMs);
   report.commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: frontend, encoding: 'utf8', timeout: 5000 }).trim();
   report.dirty = execFileSync('git', ['status', '--porcelain'], { cwd: frontend, encoding: 'utf8', timeout: 5000 }).trim().length > 0;
   if (process.platform === 'linux' && !environment.DISPLAY && !environment.WAYLAND_DISPLAY) {
@@ -71,7 +76,10 @@ try {
   // Only bounded diagnostic output from the isolated, mock-only profile is retained.
   for (const stream of [child.stdout, child.stderr]) stream.on('data', data => { log = (log + data).slice(-32_768); });
   closed = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
-  const code = await run(closed, environment.WISP_TTS_NATIVE_PROBE ? 240_000 : 60_000, 'Electron smoke');
+  const smokeDeadlineMs = environment.WISP_TTS_NATIVE_PROBE
+    ? 240_000 + (nativeRegression ? 0 : lifeSoakMs - 10_000)
+    : 50_000 + lifeSoakMs;
+  const code = await run(closed, smokeDeadlineMs, 'Electron smoke');
   const native = JSON.parse(await readFile(path.join(output, 'electron.json'), 'utf8'));
   if (native.runId !== runId) throw new Error('Missing current Electron receipt (old output directory)');
   Object.assign(report, native);
