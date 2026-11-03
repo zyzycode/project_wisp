@@ -19,17 +19,21 @@ interface ExternalAIProviderOptions {
 }
 class ProtocolError extends Error {}
 class TransportTimeout extends Error {}
-function boundedCancellation(signal: AbortSignal) {
+type BackendOperation = 'chat' | 'touch' | 'events' | 'summary' | 'observation';
+function boundedCancellation(signal: AbortSignal, graceMs: number | undefined) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let rejectCancellation: (() => void) | undefined;
   const promise = new Promise<never>((_resolve, reject) => { rejectCancellation = () => reject(new TransportTimeout()); });
-  const abort = () => { timer = setTimeout(() => rejectCancellation?.(), 3000); };
+  const abort = () => {
+    if (graceMs === 0) rejectCancellation?.();
+    else if (graceMs !== undefined) timer = setTimeout(() => rejectCancellation?.(), graceMs);
+  };
   signal.addEventListener('abort', abort, { once: true });
   return { promise, dispose: () => { clearTimeout(timer); signal.removeEventListener('abort', abort); } };
 }
 
 /** Trusted Main configuration only; redirects, cookies and provider secrets are forbidden. */
-function endpoint(baseUrl: string, development: boolean, operation: 'chat' | 'touch' | 'events' | 'summary' | 'observation'): URL {
+function endpoint(baseUrl: string, development: boolean, operation: BackendOperation): URL {
   const url = new URL(baseUrl);
   const loopback = url.hostname === 'localhost' || url.hostname === '[::1]' || /^127(?:\.\d{1,3}){3}$/u.test(url.hostname);
   if ((url.protocol !== 'https:' && !(development && loopback && url.protocol === 'http:')) || url.username || url.password || url.search || url.hash) throw new TypeError('Invalid backend URL');
@@ -65,9 +69,8 @@ async function readBoundedJson(response: Response, signal: AbortSignal): Promise
 
 export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, ISummaryGenerator, IObservationProvider {
   public readonly supportsDialogueTopic = true as const;
-  private chatAbort: { id: string; controller: AbortController } | undefined;
-  private eventAbort: { id: string; controller: AbortController } | undefined;
-  private readonly urls: Readonly<Record<'chat' | 'touch' | 'events' | 'summary' | 'observation', URL>>;
+  private cancellableRequest: { id: string; controller: AbortController } | undefined;
+  private readonly urls: Readonly<Record<BackendOperation, URL>>;
   private readonly fetch: typeof fetch;
   private readonly headers: Readonly<Record<string, string>>;
   private activeRequestId: string | undefined;
@@ -93,141 +96,102 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     if (new TextEncoder().encode(body).byteLength > 32 * 1024) throw new TypeError('Request too large');
     if (this.activeRequestId) throw new Error('Transport unavailable');
     const startedAt = this.options.now();
-    const controller = new AbortController();
-    const cancellation = boundedCancellation(controller.signal);
-    let settled = false, completed = false;
-    this.chatAbort = { id: request.requestId, controller };
-    this.activeRequestId = request.requestId;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => { reject(new TransportTimeout()); controller.abort(); }, DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs);
-    });
     try {
-      const operation = async () => {
-        try {
-        const response = await this.fetch(this.urls.chat, { method: 'POST', body, headers: this.headers,
-          redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
-        const value = await readBoundedJson(response, controller.signal);
-        return { response, value };
-        } finally { settled = true; if (completed && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
-      };
-      const { response, value } = await Promise.race([operation(), timeout, cancellation.promise]);
-      if (controller.signal.aborted || this.options.now() - startedAt >= DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs) throw new TransportTimeout();
-      if (response.status !== 200) {
-        try { parseInteractionError(value, request.requestId, response.status); }
-        catch { throw new ProtocolError('Invalid backend error'); }
-        const reason = response.status === 504 ? 'timeout' : [429, 503].includes(response.status) ? 'provider_unavailable' : 'unexpected_error';
-        return this.fallback(request.requestId, reason, startedAt);
-      }
-      let result;
-      try { result = parseInteractionChatResponse(value, request.requestId, request.userMessage.text, projected.effectPolicy, projected.beveragePreference?.allowProposal === true); }
-      catch { throw new ProtocolError('Invalid backend success'); }
-      const decision = result.decision;
-      return { requestId: result.requestId, status: 'ok',
-        ...('beverageProposal' in result ? { beverageProposal: result.beverageProposal } : {}),
-        ...('appraisal' in result ? { appraisal: result.appraisal } : {}),
-        ...('memoryCandidates' in result ? { memoryCandidates: result.memoryCandidates } : {}), reply: { text: result.text, ...(decision?.tone === undefined ? {} : { tone: decision.tone }) },
-        suggestedBehavior: decision?.behavior ?? 'respond', confidence: decision?.confidence ?? 1,
-        ...(decision?.mood === undefined || decision.mood === 'playful' ? {} : { suggestedMood: decision.mood }),
-        diagnostics: { provider: 'external', latencyMs: Math.max(0, this.options.now() - startedAt) } };
+      return await this.post<AIProviderResponse>('chat', request.requestId, body, (response, value) => {
+        if (response.status !== 200) {
+          try { parseInteractionError(value, request.requestId, response.status); }
+          catch { throw new ProtocolError('Invalid backend error'); }
+          const reason = response.status === 504 ? 'timeout' : [429, 503].includes(response.status) ? 'provider_unavailable' : 'unexpected_error';
+          return this.fallback(request.requestId, reason, startedAt);
+        }
+        let result;
+        try { result = parseInteractionChatResponse(value, request.requestId, request.userMessage.text, projected.effectPolicy, projected.beveragePreference?.allowProposal === true); }
+        catch { throw new ProtocolError('Invalid backend success'); }
+        const decision = result.decision;
+        return { requestId: result.requestId, status: 'ok',
+          ...('beverageProposal' in result ? { beverageProposal: result.beverageProposal } : {}),
+          ...('appraisal' in result ? { appraisal: result.appraisal } : {}),
+          ...('memoryCandidates' in result ? { memoryCandidates: result.memoryCandidates } : {}), reply: { text: result.text, ...(decision?.tone === undefined ? {} : { tone: decision.tone }) },
+          suggestedBehavior: decision?.behavior ?? 'respond', confidence: decision?.confidence ?? 1,
+          ...(decision?.mood === undefined || decision.mood === 'playful' ? {} : { suggestedMood: decision.mood }),
+          diagnostics: { provider: 'external', latencyMs: Math.max(0, this.options.now() - startedAt) } };
+      }, undefined, startedAt);
     } catch (error) {
-      controller.abort();
       if (error instanceof ProtocolError) throw error;
       return this.fallback(request.requestId, error instanceof TransportTimeout ? 'timeout' : 'provider_unavailable', startedAt);
-    } finally {
-      completed = true;
-      clearTimeout(timer);
-      cancellation.dispose();
-      if (this.chatAbort?.id === request.requestId) this.chatAbort = undefined;
-      if (settled && this.activeRequestId === request.requestId) this.activeRequestId = undefined;
     }
   }
-  public cancel(requestId: string): void { if (this.chatAbort?.id === requestId) this.chatAbort.controller.abort(); if (this.eventAbort?.id === requestId) this.eventAbort.controller.abort(); }
+  public cancel(requestId: string): void { if (this.cancellableRequest?.id === requestId) this.cancellableRequest.controller.abort(); }
   public async generateEvent(request: AIEventProviderRequest): Promise<AIEventProviderResponse> {
     const touch = request.event.type === 'user_touch';
     const projected = touch ? projectInteractionTouch(request) : projectEventRequest(request);
     const body = JSON.stringify(projected);
     if (this.activeRequestId) throw new Error('Events unavailable');
-    const controller = new AbortController(), startedAt = this.options.now();
-    const cancellation = boundedCancellation(controller.signal);
-    let settled = false, completed = false;
-    this.activeRequestId = request.requestId; this.eventAbort = { id: request.requestId, controller };
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeoutMs = touch ? DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs : 3000;
-    const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => { controller.abort(); reject(new TransportTimeout()); }, timeoutMs); });
-    try {
-      const url = touch ? this.urls.touch : this.urls.events;
-      const operation = async () => {
-        try {
-        const response = await this.fetch(url, { method: 'POST', body, headers: this.headers, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
-        return { response, value: await readBoundedJson(response, controller.signal) };
-        } finally { settled = true; if (completed && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
-      };
-      const { response, value } = await Promise.race([operation(), timeout, cancellation.promise]);
-      if (controller.signal.aborted || this.options.now() - startedAt >= timeoutMs) throw new TransportTimeout();
+    return this.post(touch ? 'touch' : 'events', request.requestId, body, (response, value) => {
       if (response.status !== 200) {
         touch ? parseInteractionError(value, request.requestId, response.status) : parseEventError(value, request.requestId, response.status);
         throw new Error('Event unavailable');
       }
       return touch ? parseInteractionTouchResponse(value, request.requestId, 'effectPolicy' in projected ? projected.effectPolicy : 'suppressed') : parseEventResponse(value, request.requestId);
-    } catch (error) {
-      controller.abort(); throw error;
-    } finally { completed = true; clearTimeout(timer); cancellation.dispose(); this.eventAbort = undefined; if (settled && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+    });
   }
   public async generateSummary(request: Parameters<ISummaryGenerator['generateSummary']>[0], signal: AbortSignal): Promise<string> {
     if (this.activeRequestId || signal.aborted) throw new Error('Summary unavailable');
     const body = JSON.stringify(parseSummaryRequest({ ...request, stream: false }));
-    const controller = new AbortController(); this.activeRequestId = request.requestId;
-    let settled = false, completed = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let rejectAbort: (() => void) | undefined;
-    const abort = () => { controller.abort(); rejectAbort?.(); };
-    signal.addEventListener('abort', abort, { once: true });
-    try {
-      const cancelled = new Promise<never>((_resolve, reject) => {
-        rejectAbort = () => reject(new TransportTimeout());
-        timer = setTimeout(abort, 12000);
-      });
-      const operation = async () => {
-        try {
-        const url = this.urls.summary;
-        const response = await this.fetch(url, { method: 'POST', body, headers: this.headers, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
-        const value = await readBoundedJson(response, controller.signal);
-        if (signal.aborted || controller.signal.aborted) throw new TransportTimeout();
-        if (response.status !== 200) { parseSummaryError(value, request.requestId, response.status); throw new ProtocolError('Summary failed'); }
-        return parseSummaryResponse(value, request.requestId).text;
-        } finally { settled = true; if (completed && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
-      };
-      return await Promise.race([operation(), cancelled]);
-    } finally { completed = true; clearTimeout(timer); controller.abort(); signal.removeEventListener('abort', abort); if (settled && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+    return this.post('summary', request.requestId, body, (response, value) => {
+      if (response.status !== 200) { parseSummaryError(value, request.requestId, response.status); throw new ProtocolError('Summary failed'); }
+      return parseSummaryResponse(value, request.requestId).text;
+    }, signal);
   }
   public canStartObservation(): boolean { return this.activeRequestId === undefined; }
   public async generateObservation(request: ObservationProviderRequest, signal: AbortSignal): Promise<string> {
     if (this.activeRequestId || signal.aborted) throw new Error('Observation unavailable');
     const body = JSON.stringify(projectObservationRequest(request));
-    const controller = new AbortController(), startedAt = this.options.now();
-    this.activeRequestId = request.requestId;
-    let settled = false;
+    return this.post('observation', request.requestId, body, (response, value) => {
+      if (response.status !== 200) { parseObservationError(value, request.requestId, response.status); throw new ProtocolError('Observation unavailable'); }
+      return parseObservationResponse(value, request.requestId);
+    }, signal);
+  }
+  private async post<T>(operation: BackendOperation, requestId: string, body: string,
+    parse: (response: Response, value: unknown) => T, signal?: AbortSignal, startedAt = this.options.now()): Promise<T> {
+    const timeoutMs = operation === 'summary' ? 12000
+      : operation === 'events' || operation === 'observation' ? 3000 : DEFAULT_AI_REQUEST_POLICY.transportTimeoutMs;
+    // Summary cancels immediately; observation keeps its original deadline; chat/events allow draining grace.
+    const graceMs = operation === 'summary' ? 0 : operation === 'observation' ? undefined : 3000;
+    const controller = new AbortController();
+    const cancellation = boundedCancellation(controller.signal, graceMs);
+    this.activeRequestId = requestId;
+    if (!signal) this.cancellableRequest = { id: requestId, controller };
+    let settled = false, completed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const abort = () => controller.abort();
-    signal.addEventListener('abort', abort, { once: true });
-    try {
-      const timeout = new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => { controller.abort(); reject(new TransportTimeout()); }, 3000);
-      });
-      const operation = async () => {
-        try {
-        const url = this.urls.observation;
-        const response = await this.fetch(url, { method: 'POST', body, headers: this.headers,
+    signal?.addEventListener('abort', abort, { once: true });
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => { reject(new TransportTimeout()); controller.abort(); }, timeoutMs);
+    });
+    const release = () => { if (this.activeRequestId === requestId) this.activeRequestId = undefined; };
+    const exchange = async () => {
+      try {
+        const response = await this.fetch(this.urls[operation], { method: 'POST', body, headers: this.headers,
           redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
         const value = await readBoundedJson(response, controller.signal);
-        if (controller.signal.aborted || this.options.now() - startedAt >= 3000) throw new TransportTimeout();
-        if (response.status !== 200) { parseObservationError(value, request.requestId, response.status); throw new ProtocolError('Observation unavailable'); }
-        return parseObservationResponse(value, request.requestId);
-        } finally { settled = true; if (this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
-      };
-      return await Promise.race([operation(), timeout]);
-    } finally { clearTimeout(timer); controller.abort(); signal.removeEventListener('abort', abort); if (settled && this.activeRequestId === request.requestId) this.activeRequestId = undefined; }
+        if (controller.signal.aborted || (operation !== 'summary' && this.options.now() - startedAt >= timeoutMs)) throw new TransportTimeout();
+        return parse(response, value);
+      } finally {
+        settled = true;
+        // Public timeout/cancel can finish first; do not admit another fetch until this one settles.
+        if (completed) release();
+      }
+    };
+    try { return await Promise.race([exchange(), timeout, cancellation.promise]); }
+    catch (error) { controller.abort(); throw error; }
+    finally {
+      completed = true; clearTimeout(timer); cancellation.dispose();
+      signal?.removeEventListener('abort', abort);
+      if (signal) controller.abort();
+      if (this.cancellableRequest?.controller === controller) this.cancellableRequest = undefined;
+      if (settled) release();
+    }
   }
   private fallback(requestId: string, fallbackReason: AIProviderFallbackReason, startedAt: number): AIProviderResponse {
     return { requestId, status: 'fallback', reply: { text: DIALOGUE_FALLBACK }, confidence: 0,

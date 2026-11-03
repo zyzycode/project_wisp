@@ -41,15 +41,17 @@ it.each(['offline', '503'] as const)('silently rejects %s without retry/probe/do
   const provider = client(fetcher); await expect(provider.generateObservation(input, new AbortController().signal)).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(1); expect(await provider.getStatus()).toEqual({ kind: 'ready' });
 });
-it('bounds public timeout by3s but retains draining slot until actual fetch settlement', async () => {
+it('keeps the original3s deadline after delayed cancellation and drains until actual fetch settlement', async () => {
   let resolve!: (response: Response) => void;
   const fetcher = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(yes => { resolve = yes; })).mockImplementation(async () => json({ requestId: providerRequest().requestId, text: 'Chat reply', appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' } }));
   const provider = client(fetcher), controller = new AbortController();
   const pending = provider.generateObservation(input, controller.signal); const rejection = expect(pending).rejects.toThrow();
-  controller.abort(); await flush(); expect(await provider.getStatus()).toEqual({ kind: 'thinking', activeRequestId: wire.requestId });
+  let completed = false; void pending.then(() => { completed = true; }, () => { completed = true; });
+  await vi.advanceTimersByTimeAsync(1000); controller.abort(); await flush(); expect(await provider.getStatus()).toEqual({ kind: 'thinking', activeRequestId: wire.requestId });
+  expect(completed).toBe(false);
   await expect(provider.generateResponse(providerRequest())).rejects.toThrow(); expect(fetcher).toHaveBeenCalledTimes(1);
-  await vi.advanceTimersByTimeAsync(2999); expect(await provider.getStatus()).toMatchObject({ kind: 'thinking' });
-  await vi.advanceTimersByTimeAsync(1); await rejection; expect(await provider.getStatus()).toMatchObject({ kind: 'thinking' });
+  await vi.advanceTimersByTimeAsync(1999); expect(completed).toBe(false); expect(await provider.getStatus()).toMatchObject({ kind: 'thinking' });
+  await vi.advanceTimersByTimeAsync(1); await rejection; expect(completed).toBe(true); expect(await provider.getStatus()).toMatchObject({ kind: 'thinking' });
   await expect(provider.generateResponse(providerRequest())).rejects.toThrow(); expect(fetcher).toHaveBeenCalledTimes(1);
   resolve(json(fixture('response.success.json'))); await flush(); expect(await provider.getStatus()).toEqual({ kind: 'ready' });
   await provider.generateResponse(providerRequest()); expect(fetcher).toHaveBeenCalledTimes(2);

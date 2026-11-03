@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ExternalAIProviderClient } from '../../src/infrastructure/ai/external-ai-provider-client';
+import { emptyMemoryContext } from '../../src/application/services/memory-recall';
 import { fixture, providerRequest, wire } from './backend-ai-fixture';
 
 function json(value: unknown, status = 200): Response { return new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } }); }
@@ -88,4 +89,40 @@ it.each([false, true])('aborts and settles after 12s even with stalled %s transp
   await expect(request).resolves.toMatchObject({ diagnostics: { fallbackReason: 'timeout' } }); expect(signal?.aborted).toBe(true);
   resolve(json(fixture('response.success.json'))); await vi.advanceTimersByTimeAsync(60_000);
   expect(fetcher).toHaveBeenCalledTimes(1); await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' });
+});
+it('bounds ignored chat cancellation by its three-second grace and retains the draining slot', async () => {
+  let resolve!: (response: Response) => void;
+  const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
+  const f = setup(fetcher); const request = providerRequest();
+  const pending = f.provider.generateResponse(request);
+  let completed = false; void pending.then(() => { completed = true; }, () => { completed = true; });
+  await vi.advanceTimersByTimeAsync(1000); f.provider.cancel('unrelated');
+  expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+  f.provider.cancel(request.requestId);
+  expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+  await vi.advanceTimersByTimeAsync(2999); expect(completed).toBe(false);
+  await vi.advanceTimersByTimeAsync(1);
+  await expect(pending).resolves.toMatchObject({ status: 'fallback', diagnostics: { fallbackReason: 'timeout' } });
+  await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'thinking', activeRequestId: request.requestId });
+  await expect(f.provider.generateResponse(request)).rejects.toThrow(); expect(fetcher).toHaveBeenCalledOnce();
+  resolve(json(fixture('response.success.json'))); await vi.advanceTimersByTimeAsync(0);
+  await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' }); expect(vi.getTimerCount()).toBe(0);
+});
+it('retains the twelve-second touch deadline rather than the three-second event deadline', async () => {
+  let resolve!: (response: Response) => void;
+  const fetcher = vi.fn<typeof fetch>(() => new Promise(yes => { resolve = yes; }));
+  const f = setup(fetcher), request = providerRequest();
+  const pending = f.provider.generateEvent({ requestId: request.requestId, locale: 'ru', characterSnapshot: request.characterSnapshot,
+    memoryContext: request.memoryContext ?? emptyMemoryContext(), interaction: request.interaction,
+    event: { type: 'user_touch', variant: 'touch', occurredAt: '2026-10-17T00:00:00.000Z' } });
+  const rejected = expect(pending).rejects.toThrow();
+  let completed = false; void pending.then(() => { completed = true; }, () => { completed = true; });
+  expect(String(fetcher.mock.calls[0]?.[0])).toBe('https://backend.example/v1/touch');
+  await vi.advanceTimersByTimeAsync(3000); expect(completed).toBe(false);
+  await vi.advanceTimersByTimeAsync(8999); expect(completed).toBe(false);
+  await vi.advanceTimersByTimeAsync(1); await rejected;
+  expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+  await expect(f.provider.getStatus()).resolves.toMatchObject({ kind: 'thinking' });
+  resolve(json({})); await vi.advanceTimersByTimeAsync(0);
+  await expect(f.provider.getStatus()).resolves.toEqual({ kind: 'ready' }); expect(fetcher).toHaveBeenCalledOnce();
 });
