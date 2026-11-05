@@ -432,17 +432,18 @@ Additive migration4 транзакционно перестраивает memory
 
 Source correction/delete/reset синхронно инвалидируют capture/context/late results перед worker barrier; postings удаляются вместе с canonical source, CAS revision/generation повторно проверяются перед dispatch/публикацией. Full reset удаляет index/build cursor/canonical rows одной transaction. Recall memory не попадает в durable assistant-derived knowledge/summary как новое evidence; существующие suppression/source rules сохраняются. Уже отправленный provider payload физически не отзывается локальным delete; серверного event storage/delete endpoint нет. Диагностика содержит counts/code/coverage/latency, без частных текстов, prompts и source IDs.
 
-**Фиксированный synthetic corpus #172.** A=последний user_interrupted cursor_game≥1000ms; B=timeout, C=environment_lost, D=completed/user_engaged, E=completed/solitary, F=contact; разные appRun/run identities и валидные sources. Добавить более старый тот же A-key,1000 поздних unrelated dialogue pairs и1000 unrelated causal events в других buckets; timestamps одинакового уровня не меняют insertion tie. Для generic game ожидание — newest terminal по insertion order. Каждая строка ниже — два отдельных RU/EN запроса с одним ожидаемым source, четыре negatives отдельно; всего20 queries. Prefix dictionary выше применяется без LLM.
+**Контроль качества.** Неизменённый baseline20 #172 и целевой языковой delta #174, источники/метрики/resource caps — единый [контрольный corpus](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md#causal-recall-quality). Query-stage bucket selection не подменяет actual retrieval; ambiguous «не закончили/round cut short» не доказывает user interruption.
 
-| RU | EN | Ожидание |
-|---|---|---|
-| помнишь прерванную игру | remember when I interrupted the game | A |
-| тебе помешали поиграть | remember when you were stopped while playing | A |
-| игра завершилась по таймауту | the game timed out | B |
-| игра потеряла опору | the game lost its support | C |
-| мы завершили игру | we completed a game | D |
-| ты одна закончила игру | you finished a game alone | E |
-| я коснулся тебя | I touched you | F |
-| помнишь игру | remember a game | newest terminal |
+## 18. MEMORY-A02: ограниченное языковое сопоставление (#173)
 
-Negatives: «чай на столе», “a window title”, «я не прерывал игру», “the game was interrupted and timed out” → no causal query/result (прежний non-causal baseline допускается). Measured baseline report: causal precision@1 и recall@1 на16 positives, no-match false positives на4 negatives, поязыковые результаты и paraphrase subset отдельно; target100%/100%/0 только для этого закрытого корпуса, не general semantic quality. Дополнительно deleted/stale/source-generation rows никогда не возвращаются, examined/fetched≤16/turn, memory deadline≤200ms; замерить p50/p95/максимум времени/работы на указанной машине, таймауты считать omission, не успешным поиском. Если real elapsed выходит из200ms, зафиксировать фактический fail; не расширять threshold ради pass. Эти измерения и сохранённые lexical misses — вход #173, не основание объявить embeddings обязательными заранее.
+Целевой delta #174 расширяет только pure Domain нормализацию query перед прежним indexed reader §17. Выбран finite phrase matcher с явными actor/target guards; новых моделей/embeddings, language service, индекса, packages и provider calls нет. Измеренные misses находятся до SQL: словарь не распознаёт положительную конструкцию «не дал закончить», а явный иной actor сейчас ошибочно выбирает user_interrupted. Index truncation и отсутствие evidence не лечатся языковой догадкой; ограничения §17 сохраняются.
+
+**Порядок.** Для текущего plain-text query≤240 UTF-16 — NFC/lowercase/trim, collapse spaces и не более одного конечного `.`, `!`, `?`. Сначала явный несовместимый actor/target, quotation, compound correction или contradiction дают no causal query. Затем распознаются только whole-query positive templates ниже. Остальные запросы проходят прежние closed-key/8-token/negation rules §17; нет free-form classifier, выбора hidden intent или inferred emotion. Unknown/other trusted causal situation по-прежнему приоритетнее текста и даёт omission.
+
+**RU templates → game.user_interrupted:** «я не дал/дала/позволил/позволила тебе закончить игру»; «я оборвал/оборвала твою игру».
+
+**EN templates → game.user_interrupted:** “i did not let you finish the game”; “i cut your game short”; “i prevented/kept you from finishing the game”.
+
+Direct active interruption clause с `мою игру/my game` либо `твою игру/your game` и явно иным actor (не я/мы/i/we; одно Unicode слово≤64, например он/Anna) несовместим с локальным событием пользователя→Wisp и даёт omission. Это поверхностный guard заданного clause, не распознавание личности/намерений. Quotes, несколько clauses с correction/contradiction, generic denial «я не прерывал/I did not interrupt» не получают positive exception. «Мы не закончили игру», чужое занятие и неопределённое «развлечение оборвалось» не доказывают пользователя как причину и не расширяются до user_interrupted.
+
+Matcher лишь выбирает один существующий key; canonical source/revision/generation/suppression, indexed caps, no-match, cancellation и бюджет §17 неизменны. Запрос не experience, подтверждение события или permission; lookup/model reply не обновляют Character/память. Нового state/index lifecycle нет: при повреждённом существующем индексе только прежний safe omission/rebuild, источники не меняются. Runtime offline независим от retrieval.

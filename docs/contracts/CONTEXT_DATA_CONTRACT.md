@@ -196,3 +196,52 @@ once-only usage на OpenAI и Gemini mocks. Live качество/цену эт
 даёт обычный safe failure, без повторного inference. #78 и #79 независимы по
 runtime, но первый перенёсший upstream код выполняет общий license/source gate
 [Context/Prompt Engine](../../backend/docs/CONTEXT_PROMPT_ENGINE.md#алгоритмы-lore-и-summary).
+
+<a id="causal-recall-quality"></a>
+## 6. Контрольный корпус causal recall (#171/#173)
+
+Это приёмка локального отбора по [Memory §17–18](../../frontend/docs/engine/MEMORY_ENGINE.md#17-memory-a01-indexed-causal-recall-171), не новый wire context, lore или summary source. Synthetic sources/queries не содержат частных диалогов; baseline source commit `615ade1` (#172). Нормализация query и реальная выдача — разные измерения, их результаты не подменяют друг друга.
+
+### 6.1. Сохранённый baseline #172
+
+**Фиксированный synthetic corpus #172.** A=последний user_interrupted cursor_game≥1000ms; B=timeout, C=environment_lost, D=completed/user_engaged, E=completed/solitary, F=contact; разные appRun/run identities и валидные sources. Добавить более старый тот же A-key,1000 поздних unrelated dialogue pairs и1000 unrelated causal events в других buckets; timestamps одинакового уровня не меняют insertion tie. Для generic game ожидание — newest terminal по insertion order. Каждая строка ниже — два отдельных RU/EN запроса с одним ожидаемым source, четыре negatives отдельно; всего20 queries. Prefix dictionary из [Memory §17](../../frontend/docs/engine/MEMORY_ENGINE.md#17-memory-a01-indexed-causal-recall-171) применяется без LLM.
+
+| RU | EN | Ожидание |
+|---|---|---|
+| помнишь прерванную игру | remember when I interrupted the game | A |
+| тебе помешали поиграть | remember when you were stopped while playing | A |
+| игра завершилась по таймауту | the game timed out | B |
+| игра потеряла опору | the game lost its support | C |
+| мы завершили игру | we completed a game | D |
+| ты одна закончила игру | you finished a game alone | E |
+| я коснулся тебя | I touched you | F |
+| помнишь игру | remember a game | newest terminal |
+
+Negatives: «чай на столе», “a window title”, «я не прерывал игру», “the game was interrupted and timed out” → no causal query/result (прежний non-causal baseline допускается). Measured baseline report: causal precision@1 и recall@1 на16 positives, no-match false positives на4 negatives, поязыковые результаты и paraphrase subset отдельно; target100%/100%/0 только для этого закрытого корпуса, не general semantic quality. Дополнительно deleted/stale/source-generation rows никогда не возвращаются, examined/fetched≤16/turn, memory deadline≤200ms; замерить p50/p95/максимум времени/работы на указанной машине, таймауты считать omission, не успешным поиском. Если real elapsed выходит из200ms, зафиксировать фактический fail; не расширять threshold ради pass. Эти измерения и сохранённые lexical misses — вход #173, не основание объявить embeddings обязательными заранее.
+
+### 6.2. Языковой delta #174
+
+Дополнить **тот же** набор A–F/старый A/1000 pairs/1000 noise events следующими20 запросами; expected `A` означает именно source user_interrupted, не любой game. `omission` означает отсутствие causal query/result; прежний non-causal baseline разрешён. Все baseline20 сохраняются побуквенно. Каждая RU/EN ячейка — отдельный query. Новая матрица содержит8 positive,8 negative и4 ambiguous; это закрытый проверяемый scope, не обещание общего понимания RU/EN.
+
+| RU | EN | Ожидание |
+|---|---|---|
+| я не дал тебе закончить игру | I did not let you finish the game | A |
+| я не дала тебе закончить игру | I cut your game short | A |
+| я оборвал твою игру | I prevented you from finishing the game | A |
+| я не позволил тебе закончить игру | I kept you from finishing the game | A |
+| я не прерывал твою игру | I did not interrupt your game | omission |
+| ты прервала мою игру | you interrupted my game | omission |
+| он прервал твою игру | Anna interrupted your game | omission |
+| не игра, а чай | not a game, a book | omission |
+| мы не закончили игру | we did not finish the game | omission: причина/actor неизвестны |
+| вспомни как наше развлечение оборвалось | remember when our round was cut short | omission: нет однозначной causal группы |
+
+Read-only измерение существующего normalizer `615ade1` на этих20 queries:0/8 positives выбрали user_interrupted (4 no-query,4 game.any);4/8 negatives дали несовместимый user_interrupted bucket;4/4 ambiguous дали omission. Это **query-stage observations**, не measured retrieval precision/recall: actual source selection/latency новых20 в #173 не измерены. Полная #172 приёмка исходных20 отдельно дала16/16 positive matches и0/4 negative causal matches; эти результаты не распространяются на новый набор.
+
+До реализации #174 фиксируется минимальный полезный delta: прежние16 positives/4 negatives без регрессий; новые8/8 positives выбирают A,8/8 negatives и4/4 ambiguous дают omission. Precision@1/recall@1 на всех24 positives целевого набора100%; false causal inclusion на всех12 negatives и4 ambiguous —0. Отдельно дать RU/EN, исходный/paraphrase subset, все улучшившиеся/ухудшившиеся case IDs. Если выбранный matcher не проходит пределы, не объявлять upgrade принятым и не поднимать thresholds ради pass.
+
+#174 сохраняет baseline outputs как данные общего synthetic fixture и воспроизводит baseline на source commit `615ade1`; затем измеряет actual whole recall на тех же40 queries и источниках, включая restart/1000 noise history. Отрицание, quoted/compound correction, несовместимый actor/target, stale/deleted/suppressed source и неоднозначность проверяются отдельно; похожие слова не подтверждают факт/мотив. Не писать копию прежнего runtime или отдельный benchmark framework ради сравнения.
+
+Ресурсная приёмка: один прежний read group≤200ms, causal examined/fetched≤16, card postings/payload≤96, прежние2 slots/2400 units/32KiB; без новых reads/индекса/worker job/model. Измерить query-stage и whole-recall p50/p95/max на указанной машине; каждый elapsed>200ms — omission/fail, не successful match. Новые persistent index bytes/startup/rebuild work равны0; статические phrase/guard tables≤4KiB UTF-8, mutable cache/retained query state отсутствует, дополнительная нормализация ограничена240 UTF-16 текущей реплики. Общий RAM/disk existing индексов и их source invalidation не меняются. Crash/corruption/rebuild/missing source используют прежний safe omission #172; unsupported query использует прежний baseline, явный несовместимый clause — только omission. Живое качество речи и generalized semantic quality этими fixtures не подтверждаются.
+
+**Выбор #173.** Альтернативы: baseline сохраняет измеренные phrase/subject ошибки; локальное ограниченное сопоставление адресует их без нового resource lifecycle. Hybrid/semantic retrieval не измерены на этом наборе и не объявлены лучше; similarity сама не разрешает отрицание/actor/source validity, поэтому новый model/store не обоснован. Более широкие перефразирования остаются неподтверждёнными; отдельная технология требует новых measured misses и нового решения. #174 реализует только Domain matcher/guards и существующие quality/lifecycle tests, без wire/schema/CRUD/retention/UI изменений; точные заранее установленные quality/resource acceptance — в corpus.
