@@ -35,13 +35,25 @@ export interface MotivationRecord {
 }
 
 export interface IMotivationRepository {
-  read(context: MemoryOperationContext): Promise<MemoryResult<MotivationRecord | null>>;
+  read(now: string, context: MemoryOperationContext): Promise<MemoryResult<MotivationRecord | null>>;
   /** Claims, finish and replacement use one compare-and-set operation. */
   replace(
     value: MotivationRecord,
     expectedRevision: number | null,
     context: MemoryOperationContext,
   ): Promise<MemoryResult<void>>;
+}
+
+/** Local optional consumer of the existing cadence and factual Activity lifecycle. */
+export interface IOwnGoalsRuntime {
+  restore(): Promise<void>;
+  opportunity(): void;
+  selectedGoalKind(): OwnGoalKind | null;
+  activityStarted(runId: string, activityId: string): void;
+  activityOutcome(runId: string, result: 'completed' | 'cancelled' | 'failed'): void;
+  cancel(): Promise<void>;
+  invalidate(): void;
+  dispose(): void;
 }
 
 /** Bounded factual transition evidence in the existing Character checkpoint. */

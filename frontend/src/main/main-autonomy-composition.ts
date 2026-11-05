@@ -1,4 +1,5 @@
 import { ChatMotionRuntime } from '../application/services/chat-motion-runtime';
+import type { IOwnGoalsRuntime } from '../application/ports/motivation.interface';
 import { planChatWalk } from '../domain/behavior/chat-walk';
 import type { ChatMotionRequest, ChatMotionTerminal, ChatMotionCancellation } from '../application/ports/chat-motion';
 import type { CursorGameResult } from '../application/ports/cursor-game-contract';
@@ -66,6 +67,7 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
+  readonly ownGoals?: Pick<IOwnGoalsRuntime, 'opportunity' | 'selectedGoalKind' | 'cancel' | 'invalidate'>;
   readonly deferredInvitation?: {
     opportunity(): boolean;
     activityStarted(runId: string): void;
@@ -158,10 +160,12 @@ export class MainAutonomyComposition {
       beforeLocalOpportunity: () => {
         const previous = this.initiativeStartSequence;
         this.drainSocialAdmission();
-        return this.initiativeStartSequence !== previous || (options.deferredInvitation?.opportunity() ?? false);
+        const consumed = this.initiativeStartSequence !== previous || (options.deferredInvitation?.opportunity() ?? false);
+        if (!consumed) options.ownGoals?.opportunity();
+        return consumed;
       },
       getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
-        quiet: this.quiet || this.quietSupport,
+        quiet: this.quiet || this.quietSupport, ownGoal: options.ownGoals?.selectedGoalKind(),
         canSocial: this.socialFollowup.canStartFirst() && !this.systemIdle.isBlocked() && this.initiativeBudget.available(options.clock.now()),
         canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
         canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
@@ -273,7 +277,11 @@ export class MainAutonomyComposition {
     });
   }
 
-  public submitChatMotion(request: ChatMotionRequest) { return this.chatMotion.submit(request); }
+  public submitChatMotion(request: ChatMotionRequest) {
+    const receipt = this.chatMotion.submit(request);
+    if (receipt.status !== 'rejected') void this.options.ownGoals?.cancel();
+    return receipt;
+  }
   public cancelChatMotion(reason: ChatMotionCancellation): void { this.chatMotion.cancel(reason); }
 
   public start(): void {
@@ -285,6 +293,7 @@ export class MainAutonomyComposition {
   }
 
   public stop(): void {
+    this.options.ownGoals?.invalidate();
     this.invalidateSocialFollowup();
     this.options.onAIInvalidated?.();
     if (this.disposed) return;
@@ -298,6 +307,7 @@ export class MainAutonomyComposition {
   }
 
   public dispose(): void {
+    this.options.ownGoals?.invalidate();
     this.socialFollowup.reset();
     this.options.onAIInvalidated?.();
     if (this.disposed) return;
@@ -449,6 +459,7 @@ export class MainAutonomyComposition {
   }
 
   public setEnabled(enabled: boolean): void {
+    if (!enabled) void this.options.ownGoals?.cancel();
     this.systemIdle.setEnabled(enabled);
     this.resetCursorInterest();
     if (!enabled) { this.options.deferredInvitation?.cancel(); this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
@@ -815,6 +826,15 @@ export class MainAutonomyComposition {
 
   public canRetainDeferredInvitation(): boolean {
     return this.started && !this.disposed && this.enabled && !this.quiet && !this.quietSupport;
+  }
+  public canInfluenceOwnGoals(): boolean {
+    return this.started && !this.disposed && this.enabled && !this.quiet && !this.quietSupport && !this.menuOpen
+      && this.getSemanticSleepState() === 'awake' && this.character.isAutonomyEligible()
+      && !requiresVitalSleep(this.options.getCharacterSnapshot()) && !this.dialoguePending
+      && this.options.clock.now() >= this.dialogueGuardUntilMs && !this.deferredUserInteractionResume
+      && this.activity.getRuntime() === null && !this.providerAdmission.hasPending()
+      && this.providerAdmission.getOwnedRun() === null && this.coordinator.canAcceptReactiveOpportunity()
+      && this.options.movement.canAcceptVoluntaryMovement();
   }
   public canStartDeferredInvitation(): boolean {
     const intent: BehaviorIntent = { kind: 'play', source: 'memory', priority: 'normal', activityFamily: 'social_bid' };

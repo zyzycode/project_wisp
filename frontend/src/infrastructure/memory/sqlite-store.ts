@@ -1,4 +1,5 @@
 import { DeferredInvitationStore } from './deferred-invitation-store';
+import { MotivationStore } from './motivation-store';
 import { SocialInterpretationStore } from './social-interpretation-store';
 import { CausalLifeStore } from './causal-life-store';
 import { CausalRecallStore } from './causal-recall-store';
@@ -61,6 +62,8 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'readMotivation': return new MotivationStore(this.db).read(c.payload);
+      case 'replaceMotivation': return new MotivationStore(this.db).replace(c.payload);
       case 'readSocialInterpretation': return new SocialInterpretationStore(this.db).read(c.payload);
       case 'replaceSocialInterpretation': return new SocialInterpretationStore(this.db).replace(c.payload);
       case 'clearSocialInterpretation': return new SocialInterpretationStore(this.db).clear(c.payload);
@@ -112,7 +115,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 3, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { new MotivationStore(this.db).clear(); new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }

@@ -1,4 +1,5 @@
 import { DeferredGameInvitationRuntime } from '../application/services/deferred-game-invitation-runtime';
+import { OwnGoalsRuntime } from '../application/services/own-goals-runtime';
 import { CausalExpressionRuntime } from '../application/services/causal-expression-runtime';
 import { causalVisualExpression } from '../domain/character/causal-director';
 import { canExpressFlirt } from '../domain/character/intimacy-rules';
@@ -125,6 +126,7 @@ let aiRoute: PersonalAIRoute = {};
 let unregisterAIConnection: (() => void) | null = null;
 let memoryRuntime: MemoryLifecycle | null = null;
 let deferredInvitationRuntime: DeferredGameInvitationRuntime | null = null;
+let ownGoalsRuntime: OwnGoalsRuntime | null = null;
 let causalOwnerSequence = 0;
 let routineCapture: RoutineCapture | null = null;
 let unregisterMemory: (() => void) | null = null;
@@ -332,6 +334,7 @@ function stopShimejiMotionLoop(): void {
 }
 
 function disposeAutonomyComposition(): void {
+  ownGoalsRuntime?.dispose(); ownGoalsRuntime = null;
   void deferredInvitationRuntime?.dispose(); deferredInvitationRuntime = null;
   autonomyComposition?.dispose();
   autonomyComposition = null;
@@ -344,7 +347,16 @@ function initializeAutonomyComposition(): void {
   if (orchestrator === null) return;
   const prng = new SeededPrng(AUTONOMY_SEED);
   const memoryGeneration = memoryRuntime?.currentGeneration() ?? 0;
+  ownGoalsRuntime = new OwnGoalsRuntime({ repository: memoryComposition?.motivation,
+    context: () => memoryRuntime?.context() ?? null, wallNow: Date.now,
+    getNeeds: () => defaultCharacterStateService.getState().needs,
+    eligible: () => autonomyComposition?.canInfluenceOwnGoals() ?? false,
+    createId: () => randomUUID(), onFailure: code => memoryRuntime?.failure(code) });
   autonomyComposition = new MainAutonomyComposition({
+    ownGoals: {
+      opportunity: () => ownGoalsRuntime?.opportunity(), selectedGoalKind: () => ownGoalsRuntime?.selectedGoalKind() ?? null,
+      cancel: () => ownGoalsRuntime?.cancel() ?? Promise.resolve(), invalidate: () => ownGoalsRuntime?.invalidate(),
+    },
     deferredInvitation: {
       opportunity: () => deferredInvitationRuntime?.opportunity() ?? false,
       activityStarted: runId => deferredInvitationRuntime?.activityStarted(runId),
@@ -371,7 +383,7 @@ function initializeAutonomyComposition(): void {
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState(), defaultCharacterStateService.getCursorGameSatiation(), defaultCharacterStateService.getCausalEmotion(), defaultCharacterStateService.getOwnGameInterest().multiplier),
     onChatMotionTerminal: event => dialogueRuntime?.chatMotionTerminal(event),
-    onActivityCommitted: (_runId, activityId) => { causalOwnerSequence++; if (activityId === 'cursor_interest') memoryRuntime?.socialInterpretation.gameStarted(); },
+    onActivityCommitted: (runId, activityId) => { causalOwnerSequence++; ownGoalsRuntime?.activityStarted(runId, activityId); if (activityId === 'cursor_interest') memoryRuntime?.socialInterpretation.gameStarted(); },
     onActivityStarted: () => aiEventRuntime?.activityStarted(),
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
     onUnsolicitedBlocked: () => { aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); },
@@ -382,6 +394,7 @@ function initializeAutonomyComposition(): void {
       causalOwnerSequence++;
       memoryRuntime?.history.causal.outcome(event);
       if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
+      ownGoalsRuntime?.activityOutcome(event.activityRunId, event.outcome);
       aiEventRuntime?.outcome(event);
       const stimulus = shimejiStimulusMapper.map(event, { createdAtIso: new Date().toISOString(),
         landingThresholds: DEFAULT_MOTION_CONSTRAINTS });
@@ -413,6 +426,7 @@ function initializeAutonomyComposition(): void {
     onPresentationChanged: publishBrainState,
   });
   if (memoryComposition) {
+    void ownGoalsRuntime.restore();
     const composition = autonomyComposition;
     deferredInvitationRuntime = new DeferredGameInvitationRuntime({ repository: memoryComposition.deferredInvitation,
       context: () => memoryRuntime?.context() ?? null, wallNow: Date.now, monotonicNow: () => brainStatePublisher.now(), createId: randomUUID,
@@ -876,7 +890,7 @@ if (!gotTheLock) {
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
       shutdownCapture: () => Promise.all([routineCapture?.shutdown(), deferredInvitationRuntime?.dispose()]).then(() => undefined),
-      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
+      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
       resetCommitted: () => { voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); beverageCommands.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });

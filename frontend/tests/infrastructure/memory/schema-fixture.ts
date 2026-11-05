@@ -16,6 +16,7 @@ export function schema3(db:Database.Database):void {
 
 /** Remove only the additive v9 feature before a fixture exercises an older migration. */
 export function dropSocialInterpretation(db: Database.Database): void {
+ db.exec('DROP TABLE IF EXISTS own_motivation; DELETE FROM schema_migrations WHERE version=10;');
  db.exec(`DROP TRIGGER IF EXISTS social_report_deleted; DROP TRIGGER IF EXISTS social_report_corrected;
  DROP TRIGGER IF EXISTS social_session_corrected; DROP TRIGGER IF EXISTS social_episode_corrected;
  DROP TABLE IF EXISTS social_interpretation_reports; DROP TABLE IF EXISTS social_interpretation;

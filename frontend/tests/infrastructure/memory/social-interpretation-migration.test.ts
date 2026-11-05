@@ -19,7 +19,7 @@ it('additively migrates a populated v8 with atomic schema/journal/trigger rollba
   expect(db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'social_%'").all()).toEqual([]);
   expect(db.prepare('SELECT fact_value FROM user_facts').get()).toEqual({ fact_value: 'Test' });
   db.exec('DROP TRIGGER reject_v9'); initializeSchema(db, now);
-  expect(db.pragma('user_version', { simple: true })).toBe(9);
+  expect(db.pragma('user_version', { simple: true })).toBe(10);
   expect(db.prepare("SELECT name FROM schema_migrations WHERE version=9").get()).toEqual({ name: 'social_interpretation_v9' });
   expect(db.pragma('foreign_key_check')).toEqual([]); db.close();
   const store = SqliteMemoryStore.open(filename, now);

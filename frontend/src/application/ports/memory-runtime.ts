@@ -29,6 +29,7 @@ export interface MemoryScheduler {
 export interface InitialDialogueContext { readonly messages: readonly AIProviderContextMessage[] }
 
 export interface MemoryRepositories {
+  readonly motivation?: import('./motivation.interface').IMotivationRepository;
   readonly socialInterpretation?: import('./social-interpretation.interface').ISocialInterpretationRepository;
   readonly causalLife?: import('./causal-life.interface').ICausalLifeRepository;
   readonly beverage?: import('./memory-beverage.interface').IBeveragePreferencesRepository;
