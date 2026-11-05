@@ -340,36 +340,26 @@ User off, lock/suspend/session deactivation, reset/reload, forced cancellation �
 `completed` + `outcome.kind=success`, без дописывания/LLM. Ошибки, fallback,
 local acknowledgements, game/initiative/observation остаются текстовыми.
 
-- Renderer-local интерфейс вывода принимает неизменяемые identity и text одной
-  проекции. Координатор выбирает один adapter по режиму при поступлении реплики:
-  звук выключен — text сразу; включён — voice вместо текстового пузыря. Перед
-  voice прежний пузырь снимается; во время подготовки виден статус, не текст ответа.
-  Адаптер сообщает presented/failed/cancelled. При failed synthesis/PCM/playback
-  координатор показывает исходную реплику через text adapter, только если её
-  identity/generation ещё актуальны. Отмена, stale/consumed/disabled, quiet, stop,
-  reset и dispose не возвращают старый текст. Общие `clear`/`dispose` снимают
-  presentation, не историю; выбор канала не меняет selection/dedupe реплик.
-- Начальное включение звука — по § «Первичный запуск голосовых режимов»; после
-  отзыва повторное включение явное. Есть остановка текущей речи
-  и видимые состояния подготовки/озвучивания/недоступности. Включение не проигрывает
-  старый ответ. Остановка потребляет текущую identity: повторный snapshot её не
-  воспроизводит. Переключение действует на следующие реплики; выключение отменяет
-  текущий voice без повторной публикации старого ответа. Ошибка и недоступность TTS
-  дают полный текст той же актуальной реплики как fallback. Текст в истории диалога
-  сохраняется независимо от выбранного канала. Истечение срока текстового пузыря
-  не является lifecycle clear голосового вывода и не отменяет playback.
-- Main/Application — единственный владелец текущего synthesis/playback request,
-  generation и разрешения на речь. Renderer передаёт только identity текущей реплики;
-  Main сверяет stream/conversation/request с текущим completed success и берёт
-  исходный text из Dialogue. Renderer не передаёт произвольный текст для TTS.
+- Renderer-local вывод принимает неизменяемые identity/text одной проекции. При поступлении
+  реплики координатор выбирает один adapter: звук выключен — text сразу; включён — voice
+  вместо пузыря. Перед voice прежний пузырь снимается; подготовка показывает статус, не ответ.
+  Adapter сообщает presented/failed/cancelled; failed synthesis/PCM/playback показывает полный
+  исходный text, только пока identity/generation актуальны. Отмена/stale/consumed/disabled,
+  quiet/stop/reset/dispose не возвращают старый текст. Общие clear/dispose снимают presentation,
+  не историю; выбор канала не меняет selection/dedupe. Срок пузыря не отменяет playback.
+- Начальное включение звука — по § «Первичный запуск голосовых режимов»; после отзыва
+  повторное включение явное. Подготовка/озвучивание/недоступность видимы, остановка доступна.
+  Включение не проигрывает старый ответ; stop потребляет identity, повторный snapshot её
+  не воспроизводит. Переключение действует на следующие реплики; выключение отменяет voice
+  без повторной публикации ответа. История содержит text независимо от канала и ошибок TTS.
+- Main/Application владеют synthesis/playback request, generation и разрешением на речь.
+  Renderer передаёт только identity; Main сверяет stream/conversation/request с текущим completed success и берёт исходный text из Dialogue. Произвольный text для TTS из Renderer запрещён.
 - Разрешён локальный `Qwen3-TTS-12Hz-0.6B-CustomVoice`, speaker `ono_anna`, язык
   Russian/English из locale. CPU inference выполняется в Main-owned Electron
   `utilityProcess`, созданном после `app.ready`, в отдельном адресном пространстве
   через существующий ONNX Runtime; tokenizer — существующий Transformers.js.
-  Qwen2 BPE разрешено собрать в памяти из pinned vocab/merges/config с исходными
-  special tokens; дополнительный BOS и remote tokenizer code не используются.
-  Qwen3-TTS не поддержан его готовым pipeline: multigraph inference — явный
-  Infrastructure adapter, а не использование обычного Qwen3 causal LM вместо TTS.
+  Qwen2 BPE собирается в памяти из pinned vocab/merges/config с исходными special tokens, без дополнительного BOS/remote tokenizer code.
+  Qwen3-TTS не поддержан готовым pipeline: multigraph inference — явный Infrastructure adapter, не обычный Qwen3 causal LM вместо TTS.
 - Поставка содержит pinned CPU-int4 ONNX graphs `text_embed`, `codec_embed`,
   `talker_cache`, `code_predictor`, `residual_embed`, `tok_decoder` и pinned
   tokenizer/config. Encoder и voice cloning не входят в slice. Подготовка до dev/
@@ -412,6 +402,16 @@ local acknowledgements, game/initiative/observation остаются текст�
   файлов WAV, логирования речи, provider calls и дополнительных history/memory writes.
   Качество русского Ono_Anna, время первого звука, CPU и peak RSS подтверждаются
   отдельным реальным offline probe; mocked tests этого не доказывают.
+
+### Подача речи и capability gate
+
+Текущий [synthesis port](../../src/application/ports/reply-output.port.ts) принимает только text/language/signal; [pinned inference](../../src/infrastructure/voice-output/inference.ts) не имеет style/rate/intensity входов. Разрешена только нейтральная озвучка: calm/tired/mild irritation неподдерживаемы и не превращаются в другую эмоцию. Semantic expression принадлежит Character/Director #161; голос не меняет смысл/identity или исходный reply и не создаёт новый ответ.
+
+[Официальный Qwen wrapper](https://github.com/QwenLM/Qwen3-TTS/blob/main/qwen_tts/inference/qwen3_tts_model.py) в `generate_custom_voice` отключает instruct для `0b6`; [capability table](https://github.com/QwenLM/Qwen3-TTS#released-models-description-and-download) относит instruction control к 1.7B. Общая model-card формулировка не доказывает поддержку в закреплённых 0.6B graphs. SSML, prompts, текстовые префиксы, изменение пунктуации, sampling/pitch/rate не подменяют доказанную эмоциональную подачу. Действующие rate/intensity controls отсутствуют; это не настройка, которую можно включить UI.
+
+Новый model/runtime/cloud path требует повторного [BODY-A02 / #184](https://github.com/zyzycode/project_wisp/issues/184) gate до изменения ports/DTO/dependencies. Нейтральный fallback не завершает #185. При будущем go Main связывает immutable expression и completed reply одной identity; закрытые style enums и bounded controls разрешаются по фактическим capabilities, а Infrastructure отображает их в конкретный синтезатор. Arbitrary instruction/SSML/URL/model path из Renderer запрещены. Пока новый путь не утверждён, остаётся прежний offline adapter, без backend/cloud fallback и новых передач данных.
+
+Цели повторного performance gate — **TARGETS, не измеренные возможности**: synthetic RU/EN фразы ≤120 chars, warm reply→software audio onset p95 ≤2 s, RTF ≤1, utility RSS ≤2 GiB; Main heartbeat gap p95 ≤20 ms/p99 ≤50 ms; software stop playback ≤100 ms. Native retirement не обязан завершаться за audio stop budget и сохраняет прежние пределы. Проверять отдельно cold load/native lease wait/warm synthesis/PCM duration, ≥20 fixtures на style/language cell, отмену/late result/ack/consent и human RU/EN разборчивость/подачу. Mocks/ASR loopback и advertised provider latency не доказывают услышанную эмоцию или акустический onset; недоступная проверка — NOT RUN. Новые цели не ослабляют действующие hard caps, RAM-only policy и startup/consent/resume #149/#152.
 
 ## Настройки устройства вывода
 
