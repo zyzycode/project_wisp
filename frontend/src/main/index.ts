@@ -897,7 +897,7 @@ if (!gotTheLock) {
     localMock = !aiRoute.backendUrl;
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
-    memoryRuntime = new MemoryLifecycle({ causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { defaultCharacterStateService.observeCausalEpisode(episode, atMs); copingRuntime?.observed(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
+    memoryRuntime = new MemoryLifecycle({ causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { copingRuntime?.observed(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
       invalidate: () => { if (summaryRuntime) summaryRuntime.invalidate(); else void memoryComposition?.summaryCache.clear(false, false); },
       reset: async () => {
         if (summaryRuntime) return summaryRuntime.reset();

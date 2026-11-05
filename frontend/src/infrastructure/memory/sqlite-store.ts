@@ -116,9 +116,9 @@ export class SqliteMemoryStore {
       }
       case 'saveSnapshot': {
         const snapshot = v.snapshot(c.payload);
-        if (snapshot.snapshotVersion !== 3) throw new v.MemoryDataError('invalid_data');
+        if (snapshot.snapshotVersion !== 4) throw new v.MemoryDataError('invalid_data');
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
-          .run(JSON.stringify({ snapshotVersion: 3, state: snapshot.state }), snapshot.updatedAt); return;
+          .run(JSON.stringify({ snapshotVersion: 4, state: snapshot.state }), snapshot.updatedAt); return;
       }
       case 'clear': return this.db.transaction(() => { new MotivationStore(this.db).clear(); new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new LifeHistoryStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM life_derived_turns; DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;

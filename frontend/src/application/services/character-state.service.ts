@@ -1,3 +1,4 @@
+import { emptyRepairCheckpoint, restoreRepairClock, advanceRepairClock, acknowledgeRepairInterruption, canRepair, matchesRepairProof, repairSource, type RepairClock, type RepairEpisode } from '../../domain/character/relationship-repair';
 import { applyInteractionProposal, interactionSignature, isNonzeroProposal } from '../../domain/character/interaction-effects';
 import type { InteractionAppraisal, PreviousTouchReaction, InteractionReceipt, TouchInteractionReceipt } from '../ports/interaction-appraisal';
 import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '../ports/memory-knowledge.interface';
@@ -62,6 +63,9 @@ function cloneCharacterState(state: CharacterState): CharacterState {
     preferences: Object.fromEntries(
       Object.entries(state.preferences).map(([key, preference]) => [key, { ...preference }])
     ),
+    relationshipRepair: { ...state.relationshipRepair,
+      lastInterruptionSource: state.relationshipRepair.lastInterruptionSource ? { ...state.relationshipRepair.lastInterruptionSource } : null,
+      lastRepairSource: state.relationshipRepair.lastRepairSource ? { ...state.relationshipRepair.lastRepairSource } : null },
     ownGameInterestSources: state.ownGameInterestSources.map(source => ({ ...source })),
     lastUpdated: state.lastUpdated,
   };
@@ -83,6 +87,7 @@ function createDefaultCharacterState(now: () => number): CharacterState {
       boundariesKnown: false,
     },
     preferences: {},
+    relationshipRepair: emptyRepairCheckpoint(),
     ownGameInterestSources: [],
     lastUpdated: now(),
   };
@@ -107,6 +112,9 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   private readonly observedSources = new Set<string>();
   private causalAffect = createCausalAffectState();
   private activityExposure = createActivityExposure();
+  private repairClock: RepairClock;
+  private repairProof: RepairEpisode | null = null;
+  private pendingRepair: { readonly episode: RepairEpisode; readonly deltas: ReturnType<typeof causalRelationshipDeltas> } | null = null;
   private ownInterestGate: OwnInterestGate;
   private ownInterestProof: readonly CausalSourceReference[] | null = null;
 
@@ -121,6 +129,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
       options.initialState !== undefined
         ? cloneCharacterState(options.initialState)
         : createDefaultCharacterState(this.now);
+    this.repairClock = restoreRepairClock(this.state.relationshipRepair, this.now(), this.monotonicNow());
   }
 
   public replaceRestoredState(state: CharacterState): void { this.state = cloneCharacterState(state); this.resetTransientLearning(); }
@@ -135,16 +144,50 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
     return createCharacterSnapshot(this.state);
   }
 
-  public observeCausalEpisode(episode: CausalObservedEvent, atMs: number): void {
+  public observeCausalEpisode(episode: CausalObservedEvent, atMs: number, repairEpisode?: RepairEpisode): boolean {
     const previousSequence = this.causalAffect.highWaterSequence;
     const exposure = recoverActivityExposure(this.activityExposure, atMs);
     this.causalAffect = appraiseCausalEvent(this.causalAffect, episode, atMs, exposure.habituation);
-    if (this.causalAffect.highWaterSequence <= previousSequence) return;
+    if (this.causalAffect.highWaterSequence <= previousSequence) return false;
     this.activityExposure = observeActivityExposure(exposure, episode, atMs);
     const deltas = causalRelationshipDeltas(episode, this.causalAffect.interruptionTimes.length >= 2);
-    if (!deltas || atMs < this.nextAppraisalAt) return;
-    this.state = { ...this.state, relationship: shiftRelationshipFacets(this.state.relationship, deltas) };
+    if (!deltas || atMs < this.nextAppraisalAt) return false;
     this.nextAppraisalAt = atMs + 30000;
+    this.repairClock = advanceRepairClock(this.repairClock, this.now(), atMs);
+    if (repairEpisode && !this.pendingRepair && canRepair(this.state.relationshipRepair, this.repairClock, this.repairProof,
+      repairEpisode, this.state.relationship.resentment, this.now(), atMs)) {
+      this.pendingRepair = { episode: repairEpisode, deltas }; return true;
+    }
+    this.state = { ...this.state, relationship: shiftRelationshipFacets(this.state.relationship, deltas) };
+    return false;
+  }
+  public restoreRelationshipRepair(savedWall = this.now()): void {
+    this.pendingRepair = null; this.repairProof = null;
+    this.repairClock = restoreRepairClock(this.state.relationshipRepair, this.now(), this.monotonicNow(), savedWall);
+  }
+  public invalidateRelationshipRepair(): void { this.finishRelationshipRepair(); this.repairProof = null; }
+  public setRelationshipRepairProof(episode: RepairEpisode): void {
+    if (matchesRepairProof(this.state.relationshipRepair, episode)) this.repairProof = episode;
+  }
+  public acknowledgeRelationshipInterruption(episode: RepairEpisode, atMs: number): void {
+    this.invalidateRelationshipRepair();
+    const next = acknowledgeRepairInterruption(this.state.relationshipRepair, episode, atMs, this.now(), this.monotonicNow());
+    this.state = { ...this.state, relationshipRepair: next.checkpoint }; this.repairClock = next.clock;
+    this.setRelationshipRepairProof(episode);
+  }
+  public finishRelationshipRepair(acknowledged?: RepairEpisode): void {
+    const pending = this.pendingRepair; this.pendingRepair = null;
+    if (!pending?.deltas) return;
+    const mono = this.monotonicNow(), wall = this.now();
+    this.repairClock = advanceRepairClock(this.repairClock, wall, mono);
+    const paid = acknowledged && JSON.stringify(acknowledged) === JSON.stringify(pending.episode)
+      && canRepair(this.state.relationshipRepair, this.repairClock, this.repairProof, pending.episode,
+        this.state.relationship.resentment, wall, mono);
+    const deltas = { ...pending.deltas, ...(paid ? { trust: (pending.deltas.trust ?? 0) + 1, resentment: -1 } : {}) };
+    this.state = { ...this.state, relationship: shiftRelationshipFacets(this.state.relationship, deltas),
+      ...(paid ? { relationshipRepair: { ...this.state.relationshipRepair, lastRepairAt: new Date(wall).toISOString(),
+        lastRepairSource: repairSource(pending.episode) } } : {}) };
+    if (paid) this.repairClock = { ...this.repairClock, repairReady: mono + 300000 };
   }
   public getCausalEmotion(): CausalEmotion | null {
     return this.causalAffect.emotion ? { ...this.causalAffect.emotion } : null;
@@ -238,6 +281,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
     this.state = { ...this.state, preferences: learned.preferences }; this.preferenceGate = learned.gate;
   }
   private resetTransientLearning(): void {
+    this.restoreRelationshipRepair();
     this.causalAffect = createCausalAffectState();
     this.activityExposure = createActivityExposure();
     this.ownInterestGate = createOwnInterestGate(this.monotonicNow()); this.ownInterestProof = null;

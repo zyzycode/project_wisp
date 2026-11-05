@@ -310,6 +310,7 @@ export function processStimulus(state: CharacterState, stimulus: CharacterStimul
     },
     intimacy,
     preferences,
+    relationshipRepair: { ...state.relationshipRepair },
     ownGameInterestSources: state.ownGameInterestSources.map(source => ({ ...source })),
     lastUpdated,
   };

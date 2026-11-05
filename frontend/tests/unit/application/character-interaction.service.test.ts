@@ -1,3 +1,4 @@
+import { emptyRepairCheckpoint } from '../../../src/domain/character/relationship-repair';
 import { createRelationship } from '../../../src/domain/character/relationship-facets';
 import { describe, expect, it } from 'vitest';
 import { CharacterInteractionUseCase } from '../../../src/application/services/character-interaction.use-case';
@@ -21,7 +22,7 @@ function createState(): CharacterState {
       userConsentEnabled: false,
       boundariesKnown: false,
     },
-    preferences: {}, ownGameInterestSources: [],
+    preferences: {}, relationshipRepair: emptyRepairCheckpoint(), ownGameInterestSources: [],
     lastUpdated: 1000,
   };
 }

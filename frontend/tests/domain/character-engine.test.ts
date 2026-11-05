@@ -1,3 +1,4 @@
+import { emptyRepairCheckpoint } from '../../src/domain/character/relationship-repair';
 import { createRelationship } from '../../src/domain/character/relationship-facets';
 import { describe, it, expect } from 'vitest';
 import {
@@ -39,7 +40,7 @@ function createState(overrides: Omit<Partial<CharacterState>, 'relationship'> & 
       ...overrides.intimacy,
     },
     preferences: overrides.preferences ?? {},
-    ownGameInterestSources: overrides.ownGameInterestSources ?? [],
+    relationshipRepair: emptyRepairCheckpoint(), ownGameInterestSources: overrides.ownGameInterestSources ?? [],
     lastUpdated: overrides.lastUpdated ?? 0,
   };
 }

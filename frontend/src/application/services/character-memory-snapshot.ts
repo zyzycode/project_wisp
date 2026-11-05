@@ -1,8 +1,9 @@
+import { emptyRepairCheckpoint, type RepairCheckpoint } from '../../domain/character/relationship-repair';
 import type { CharacterState, PersonalityAxis } from '../../domain/character';
 import type { CausalSourceReference } from '../../domain/character/types';
 import { createRelationship, RELATIONSHIP_FACET_KEYS } from '../../domain/character/relationship-facets';
 import { validDynamicCharacterState } from '../../domain/character/state-validation';
-import type { CharacterMemorySnapshotV3 } from '../ports/causal-life.interface';
+import type { CharacterMemorySnapshotV4 } from '../ports/causal-life.interface';
 import type { PersistedCharacterStateSnapshot } from '../ports/memory-repository.interface';
 import { exactRecord } from '../../shared/dialogue-ipc-validation';
 
@@ -27,24 +28,36 @@ function sourceReferences(value: unknown): readonly CausalSourceReference[] {
     return { appRunId: ref.appRunId, sequence: ref.sequence, revision: 1 };
   });
 }
-export function projectCharacterMemory(state: CharacterState, updatedAt: string): CharacterMemorySnapshotV3 {
+function repairCheckpoint(value: unknown): RepairCheckpoint {
+  const c = exactRecord(value, ['lastInterruptionAt', 'lastInterruptionSource', 'lastRepairAt', 'lastRepairSource']);
+  const pair = (at: unknown, ref: unknown) => {
+    if (at === null && ref === null) return { at: null, ref: null };
+    if (typeof at !== 'string' || !Number.isFinite(Date.parse(at)) || new Date(at).toISOString() !== at || ref === null) throw new TypeError('Invalid repair marker');
+    return { at, ref: sourceReferences([ref])[0]! };
+  };
+  const interruption = pair(c.lastInterruptionAt, c.lastInterruptionSource), repair = pair(c.lastRepairAt, c.lastRepairSource);
+  return { lastInterruptionAt: interruption.at, lastInterruptionSource: interruption.ref, lastRepairAt: repair.at, lastRepairSource: repair.ref };
+}
+export function projectCharacterMemory(state: CharacterState, updatedAt: string): CharacterMemorySnapshotV4 {
   if (state.personality.id !== 'curiousStubbornGirl') throw new TypeError('Invalid active preset');
   if (!validDynamicCharacterState(state)) throw new TypeError('Invalid character state');
   const a = state.personality.axes;
-  return { snapshotVersion: 3, updatedAt, state: {
+  return { snapshotVersion: 4, updatedAt, state: {
     presetId: 'curiousStubbornGirl', cardRevision: 3,
     needs: { energy: state.needs.energy, attention: state.needs.attention, play: state.needs.play, comfort: state.needs.comfort, boredom: state.needs.boredom ?? 15 },
     relationship: { ...state.relationship }, intimacy: { ...state.intimacy },
     currentAxes: { openness: a.openness.current, extraversion: a.extraversion.current, agreeableness: a.agreeableness.current, sensitivity: a.sensitivity.current, playfulness: a.playfulness.current, boldness: a.boldness.current, independence: a.independence.current },
     preferences: Object.fromEntries(Object.entries(state.preferences).map(([key, value]) => [key, { ...value }])),
+    relationshipRepair: repairCheckpoint(state.relationshipRepair),
     ownGameInterestSources: sourceReferences(state.ownGameInterestSources),
   } };
 }
 export function restoreCharacterMemory(snapshot: PersistedCharacterStateSnapshot, defaults: CharacterState, now: number): CharacterState {
   const legacy = snapshot.snapshotVersion === 1;
-  const current = snapshot.snapshotVersion === 3;
+  const repair = snapshot.snapshotVersion === 4;
+  const current = snapshot.snapshotVersion === 3 || repair;
   if (!legacy && !current && snapshot.snapshotVersion !== 2) throw new TypeError('Unsupported snapshot');
-  const state = exactRecord(snapshot.state, ['presetId', 'needs', 'relationship', 'intimacy', 'currentAxes', 'preferences', ...(legacy ? [] : ['cardRevision']), ...(current ? ['ownGameInterestSources'] : [])]);
+  const state = exactRecord(snapshot.state, ['presetId', 'needs', 'relationship', 'intimacy', 'currentAxes', 'preferences', ...(legacy ? [] : ['cardRevision']), ...(current ? ['ownGameInterestSources'] : []), ...(repair ? ['relationshipRepair'] : [])]);
   if (state.presetId !== (legacy ? 'shyDreamGirl' : 'curiousStubbornGirl') || (!legacy && state.cardRevision !== 2 && state.cardRevision !== 3)) throw new TypeError('Invalid preset');
   const needs = exactRecord(state.needs, ['energy', 'attention', 'play', 'comfort', 'boredom']);
   if (current && state.cardRevision !== 3) throw new TypeError('Invalid card revision');
@@ -64,7 +77,7 @@ export function restoreCharacterMemory(snapshot: PersistedCharacterStateSnapshot
       if (!key.trim() || key.length > 128) throw new TypeError('Invalid preference key');
       const track = exactRecord(value, ['value', 'confidence', 'samples']);
       return [key, { value: number(track.value), confidence: number(track.confidence), samples: number(track.samples) }];
-    })), ownGameInterestSources: current ? sourceReferences(state.ownGameInterestSources) : [], lastUpdated: now,
+    })), relationshipRepair: repair ? repairCheckpoint(state.relationshipRepair) : emptyRepairCheckpoint(), ownGameInterestSources: current ? sourceReferences(state.ownGameInterestSources) : [], lastUpdated: now,
   };
   for (const axis of axes) {
     const current = number(currentAxes[axis]);

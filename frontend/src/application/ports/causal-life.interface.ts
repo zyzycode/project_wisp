@@ -97,3 +97,9 @@ export interface IDeferredGameInvitationRepository {
 export interface ICausalLifeCommitObserver {
   committed(episode: CausalLifeEpisode, context: MemoryOperationContext, atMs: number): void;
 }
+
+export interface CharacterMemorySnapshotV4 {
+  readonly snapshotVersion: 4;
+  readonly updatedAt: string;
+  readonly state: CharacterMemorySnapshotV3['state'] & { readonly relationshipRepair: import('./relationship-repair.interface').RelationshipRepairCheckpoint };
+}
