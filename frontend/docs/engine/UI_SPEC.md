@@ -46,7 +46,7 @@ flowchart LR
 
 ## 5. Инварианты безопасности и приватности
 
-Общие Electron/security правила — [frontend/AGENTS.md](../../AGENTS.md#3-безопасность-electron-и-ipc). Renderer не получает файлы, SQLite, system prompts, API-ключи или полный memory snapshot. User actions идут semantic DTO через `window.wispAPI`, без прямой мутации engines.
+Общие Electron/security правила — [frontend/AGENTS.md](../../AGENTS.md#3-безопасность-electron-и-ipc). Renderer не получает файлы, SQLite, system prompts, API-ключи или полный memory snapshot. User actions идут semantic DTO через `window.wispAPI`, без прямой мутации engines. WORLD-A01 controls/status/withdrawal в existing observation settings и Memory overview определены [Autonomy§18](AUTONOMY_ENGINE.md#18-world-a01-текущая-возможность-и-осторожный-распорядок-187); отдельные session opt-ins не расширяют друг друга, не передают app metadata в Domain и не включают source/helper неявно.
 
 <a id="6-brain--body-ipc"></a>
 ## 6. Brain → Body IPC

@@ -402,6 +402,10 @@ API источники: [GetForegroundWindow](https://learn.microsoft.com/en-us/
 Access denied → fallback без elevation. Dependency Review §10 сохраняется: 0 новых
 packages/transitives/toolchains, существующий системный bridge; geometry helper без правок.
 
+### 11.5. WORLD-A01: нормализованный текущий контекст (#187)
+
+Отдельный session opt-in может передать только foreground settling/stable/unknown и существующий presence для opportunity #159; это не новый local-only observer и не определение занятости. Сетевое согласие/allowlist/backend requirement и TTL §11 сохраняются. [Autonomy§18](AUTONOMY_ENGINE.md#18-world-a01-текущая-возможность-и-осторожный-распорядок-187) задаёт единственный consumer/3s settling/lifecycle и отдельно opt-in передачи гипотезы из локальных routine aggregates; title/sourceToken change не behavioral evidence. Raw metadata не входит в Domain.
+
 ## 12. Экспериментальный анализ содержимого экрана
 
 План будущего отдельного эксперимента; не является разрешением захвата/анализа текущего рабочего стола.
