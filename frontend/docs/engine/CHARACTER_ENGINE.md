@@ -436,6 +436,10 @@ Facets изменяются только один раз на принятый e
 
 **Director/expression (#161).** До provider call Domain выбирает один semantic intent respond/acknowledge/give_space/continue_activity и affect. При intensity≥0.2 irritation — give_space; иначе current cause — acknowledge; без cause — обычный respond. Application фиксирует decision sequence/generation/active run, semantic bands и≤5s absolute deadline; смена cause/owner/consent, reset/dispose/timeout отбрасывает поздний text+expression без второго запроса. Одно решение формулируется моделью по [API §2.2](../../../docs/contracts/BACKEND_API_CONTRACT.md#22-ce-a01-причинная-проекция); оно не меняет локальный affect/deltas. Body использует existing pout/curious/happy либо idle fallback, props none; P0–P3/forced motion/critical sleep сильнее expression. TTS передаёт только реально поддержанные controls: нейтральная подача без обещания эмоциональной просодии; cancel/reset останавливает речь. Offline/unavailable provider сохраняет жизнь/состояние, без обязательной новой реплики/второго AI cycle.
 
+## 13. MIND-A01: пересматриваемое объяснение и repair (#163)
+
+Domain/Character владеет event-scoped интерпретацией, переоценкой текущего affect и evidence-based repair, отдельно от CE-A01 фактов/facets. Полные локальные правила и lifecycle — [Autonomy §16](AUTONOMY_ENGINE.md#16-mind-a01-объяснение-прерывания-coping-и-восстановление-163); attributed report не доказательство мотива и не consent. Это цель slices #164–166, без нового AI-loop или изменения authored личности.
+
 ## Архитектурные границы
 
 Чистый Domain `frontend/src/domain/character/`; [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).
