@@ -20,9 +20,12 @@ from wisp_backend.completion.context import (
 )
 from wisp_backend.completion.prompts.lore import parse_catalogue
 from wisp_backend.config.settings import AssistantSettings
-from wisp_backend.prompt_inspection.report import encoded
 from wisp_backend.providers.gemini import GeminiProvider
 from wisp_backend.providers.openai import OpenAIProvider
+
+
+def encoded(value: object) -> bytes:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
 
 
 def context_with_optionals(locale: str = "ru"):

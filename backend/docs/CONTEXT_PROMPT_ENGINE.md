@@ -190,98 +190,7 @@ Contextual validators/sanitation и malformed/truncated-output errors остаю
 догадки о напитке удалён. Новые structured/strict возможности model profiles этим
 изменением не включаются; mock-проверки не подтверждают live-совместимость модели.
 
-## Синтетический просмотр и сравнение
-
-Локальная команда `python -m wisp_backend.prompt_inspect` работает только с ID
-встроенных явно синтетических fixtures и allowlisted provider/model settings.
-Нет ввода текста, stdin/file payload, чтения ledger/checkpoint/env secrets, HTTP,
-публичного route, вызовов countTokens/generation или журналирования prompts.
-Результат печатается только по явному запуску команды; это synthetic report,
-который можно перенаправить в локальный файл. Production logging не подключается.
-
-Из корня репозитория перейти в `backend/` и запустить:
-```sh
-.venv/bin/python -m wisp_backend.prompt_inspect --scene tired --locale ru --provider openai --model gpt-6-sol
-.venv/bin/python -m wisp_backend.prompt_inspect --scene long_context --locale en --provider gemini
-.venv/bin/python -m wisp_backend.prompt_inspect --scene touch_followup --locale ru --budget-case overflow
-```
-На Windows используется `.venv/Scripts/python.exe`; при активированном окружении — `python`.
-`--help` перечисляет закрытые scene/provider/model/settings; `--budget-case required_only`
-проверяет точное равенство обязательному ядру, `overflow` — бюджет на единицу меньше.
-Это диагностические бюджеты, production ceilings и reserve не меняются.
-Команда не принимает пользовательский текст или путь к файлу и не читает stdin.
-Она использует [встроенный corpus](../wisp_backend/prompt_inspection/scenes.json),
-поэтому работает из другого cwd при доступном Python package, без каталога tests.
-
-[Исходный baseline](../tests/fixtures/prompt_inspection/baseline.json) содержит 84
-полных synthetic результата: 14 одинаковых сцен на RU/EN для Groq, Gemini и OpenAI.
-Зафиксированы payload/messages, selected keys, причины, бюджеты, настройки, хеши
-и commit исходников перед изменением prompt resources. Этот файл не перегенерируется
-при последующем изменении промптов; current reports сравниваются с ним отдельно.
-Groq в исторических baseline/selection_comparison сохранён как архив; runtime его не поддерживает.
-Архивы не задают обязательный текущий prompt: их replay при необходимости живёт
-только в test-owned коде, без production legacy builder/resource fallback.
-Текущая диагностика проходит реальные endpoint preparation, policy, builder и formatter;
-показывает source digests, блоки, размеры, budgets и причины отбора без style predicates.
-Standalone block estimates включают framing и не суммируются в итоговый count.
-Для Gemini offline preview не равен реальному countTokens; billing не измеряется.
-
-В каждом report есть `live_comparison`: before/after responses и шесть оценок
-оставлены `NOT RUN`. При отдельно разрешённой ручной оценке 0 означает явное
-нарушение критерия, 1 — частичное соответствие, 2 — соответствие; для каждого
-балла записывается конкретное наблюдение. State/границы проверяются по текущему
-снимку, memory — по переданным фактам/поправке, appraisal — по текущему действию.
-Не выдавать синтетические mock-реплики или размер запроса за результат этой оценки.
-
-Путь сборки — реальные endpoint preparation/CompletionJob/policy/builder,
-единственный selector и реальный provider formatter. Допустим optional trace sink
-в существующем алгоритме; независимый «упрощённый builder» запрещён. Трасса содержит
-все кандидаты и пропуски: key/source/role/mandatory/priority/order, include/exclude
-reason (`no_match`, `empty`, `budget`, `history_suffix`),
-UTF-8/UTF-16 size, финальные messages/payload, input allowance/output reserve и
-ошибку mandatory overflow. Стилевые predicates/examples не являются кандидатами отбора.
-
-Сравнимый local estimate: существующий `estimate_input` на полном payload;
-не сумма отдельных блоков. Это byte-based estimate с framing margin, **не**
-tokenizer/provider count и не billing usage. Для Gemini offline preview применяет
-этот же оценщик только для анализа: он не обещает тот же отбор, что реальный
-countTokens, и явно маркируется `offline_estimate`. Production Gemini unchanged.
-Mock exact-count отдельно проверяет production flow без сети.
-
-Baseline фиксирует ID сцены, locale, полные синтетические входы, source commit,
-builder/source digest, card revision и provider/model/output settings, выбранные keys и SHA-256/messages/payload
-с размерами. Начальный baseline остаётся доступен после внедрения отбора.
-Сравнение миграции требует равенства messages/payload/выбора/budgets; сравнение
-условного отбора отдельно перечисляет намеренные изменения и причины, используя
-те же исходные тексты/state и метод оценки. Contract delta проекции применяется
-детерминированно; исходные факты для «улучшения» результата не меняются.
-
-Одинаковые RU/EN сцены: приветствия guarded/close, похвала, усталость с высокой
-attention/play, просьба о дистанции, touch и следующий why-question с trace,
-исправление факта, длинные history/lore/summary, инструкция-подмена. Дополнительно
-проверяются no-match, пустые optional списки, budget equality/mandatory overflow,
-смена state и consent, successful/missed event. Входы снабжаются явной synthetic
-маркировкой и не копируются из реальных журналов.
-
-Рубрика живых ответов (RU/EN, шкала 0–2 с пояснением): узнаваемость character,
-связность, отсутствие повторов, соответствие state/границам, корректность памяти,
-уместность appraisal. Нарушение consent/evidence/формата — отдельный hard failure,
-не компенсируется средним баллом. Таблица before/after содержит scene/model/settings,
-ответы и оценки; без отдельного разрешения модели/числа вызовов/бюджета значения
-остаются `NOT RUN`. Mock tests доказывают сборку и lifecycle, сокращение байтов
-не доказывает улучшение живой речи. Новых generation calls не появляется.
-
 ## Бюджет и ошибка
-
-### Сравнение смены identity (#122 → #123)
-
-Исторический scope #123, а не ограничение новой поставки #137. Архивы immutable;
-требования равенства старым guidance/examples применимы только к тому этапу.
-
-Архивы [#123](../tests/fixtures/prompt_inspection/issue123_comparison.json) и
-[#121](../tests/fixtures/prompt_inspection/issue121_comparison.json) сохраняют прежние
-источники, settings и ограниченные profile/style deltas. Они immutable и не становятся
-вторым runtime-источником личности. Текущая поставка сравнивается отдельно по правилам #137.
 
 Потолки — локальная политика Wisp, не максимальное окно провайдера:
 16384 для chat/touch/events/observation, 8192 для summary generation.
@@ -325,8 +234,6 @@ reasoning modes сохраняют legacy bytes + 256 + 64 × messages. Нет c
 короткие случайные ASCII words могут недооцениваться, запас не гарантирует отсутствие
 provider overflow. Mandatory overflow по оценке отклоняется до сети; provider errors,
 length/incomplete JSON и paid usage остаются прежними, без retry/тихой обрезки.
-[Метод, модельные ограничения и резерв](INPUT_BUDGET_MEASUREMENTS.md) отделяют
-исторический endpoint usage от текущих offline RU/EN comparisons; новые calls не выполнялись.
 
 ### Общие инварианты отбора
 
@@ -416,21 +323,9 @@ Backend поставляется под [MIT notice](../LICENSE).
 
 По решению пользователя от 2026-11-06 специальный сценарий удалён: нет
 `beveragePreference`/`beverageProposal`, opt-in bundle и conditional provider schema.
-Прежние synthetic отчёты #114 сохраняются как исторические данные, не active API.
 Предпочтения обсуждаются в обычном диалоге; новый extractor или storage не вводится.
 
-## Защита решения и сравнение #137
-
-До runtime edits сохраняются отдельные synthetic before reports с текущими входами,
-полным payload/messages, HEAD/source hashes и одинаковыми provider/model/settings.
-After использует те же входы и настройки; отдельно отмечается единственный card delta
-revision 2 → 3 и краткая фраза прямой речи. Исторические архивы не перезаписываются.
-
-Сравнение перечисляет удалённые/изменённые blocks и system text, UTF-8/UTF-16 размеры,
-оценку полного payload, постоянную часть и число сохранённых history pairs. Новые пары
-могут поместиться за счёт сокращения: это результат прежнего budget, не изменение history policy.
-Старые freeze/byte-equality требования #99–101/#110/#114/#117/#123 не блокируют этот
-явно согласованный delta; остальные факты, источники, лимиты и lifecycle сохраняются.
+## Проверки сборки контекста
 
 Регрессии проверяют происхождение карточки, отсутствие examples/guidance во всех
 character-bearing путях и provider payload, неизменность фактов, technical safeguards,

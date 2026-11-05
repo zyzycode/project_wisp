@@ -1,7 +1,6 @@
 """The character card is the only authored voice in outgoing model context."""
 
 import asyncio
-import copy
 import json
 
 import httpx
@@ -12,22 +11,11 @@ from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.completion.context import render_messages, select_context
 from wisp_backend.completion.prompts.narrative import reference_lines
 from wisp_backend.config.settings import AssistantSettings
-from wisp_backend.prompt_inspection.report import PROVIDERS, inspect_scene
-from wisp_backend.prompt_inspection.scenes import load_scene
 from wisp_backend.providers.context_budget import CONTEXT_WINDOWS
+from wisp_backend.providers.gemini import GeminiProvider
+from wisp_backend.providers.openai import OpenAIProvider
 
-
-@pytest.mark.parametrize("provider", ["openai", "gemini"])
-@pytest.mark.parametrize("scene", ["greeting_low_trust", "tired", "touch", "event_missed"])
-def test_outgoing_context_has_no_authored_examples_or_state_to_style_guidance(provider: str, scene: str) -> None:
-    report = asyncio.run(inspect_scene(scene, "ru", provider))
-    assert all(block["source"] != "server_examples" for block in report["blocks"])
-    assert all(not block["key"].startswith("guidance_") for block in report["blocks"])
-    assert "examples" not in report["selected_keys"]
-    text = "\n".join(message["content"] for message in report["messages"])
-    for forbidden in ("Synthetic style examples", "flustered deflection", "quiet company, short replies"):
-        assert forbidden not in text
-
+PROVIDERS = {"openai": OpenAIProvider, "gemini": GeminiProvider}
 
 ROUTES = {
     "/v1/chat": "interaction/request.chat.json",
@@ -122,8 +110,9 @@ def test_every_scenario_formats_only_contract_and_source_data(provider: str, loc
 @pytest.mark.parametrize("locale", ["ru", "en"])
 @pytest.mark.parametrize("mode", ["follow_up", "reply"])
 def test_optional_context_never_becomes_a_second_authored_voice(provider, locale, mode) -> None:
-    route, original, _, _ = load_scene("touch_followup", locale)
-    body = copy.deepcopy(original)
+    route = "/v1/chat"
+    body = json.loads((CONTRACT_FIXTURES / "desktop-backend-v1" / ROUTES[route]).read_bytes())
+    body["locale"] = locale
     body["dialogueTopic"] = {"mode": mode, "text": "Synthetic topic", "statedAt": "2026-10-29T00:00:00.000Z"}
     blocks, messages, _ = outgoing(route, body, provider)
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
