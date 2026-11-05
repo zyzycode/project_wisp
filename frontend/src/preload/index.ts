@@ -3,7 +3,6 @@ import { parseOutputDevice, parseOutputNull, parseOutputResult, parseOutputStatu
 import { parseRoutineStatus } from '../shared/routine-status-validation';
 import { parseAIConnectionCommand, parseAIConnectionRead, parseAIConnectionResult, parseAIConnectionStatus } from '../shared/ai-connection-validation';
 import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-facts-validation';
-import { parseBeverageCommand, parseBeverageRead, parseBeverageReadResult, parseBeverageMutationResult } from '../shared/beverage-validation';
 import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
 import { parseObservationCommand, parseObservationSettings } from '../shared/observation-ipc-validation';
 import { parseSummaryPreviewCommand, parseSummaryCommand, parseSummaryConfirm, parseSummaryDeleteResult, parseSummaryPreviewResult, parseSummaryTextResult } from '../shared/summary-ipc-validation';
@@ -102,10 +101,6 @@ const api: WispApiBridge = {
     decline: async command => parseWindowHelpResult(await ipcRenderer.invoke('wisp:window-help-decline', parseWindowHelpDecline(command))),
   },
   observationCommand: async command => parseObservationSettings(await ipcRenderer.invoke('wisp:observation-command', parseObservationCommand(command))),
-  beveragePreference: {
-    read: async command => parseBeverageReadResult(await ipcRenderer.invoke('wisp:read-beverage', parseBeverageRead(command))),
-    mutate: async command => parseBeverageMutationResult(await ipcRenderer.invoke('wisp:mutate-beverage', parseBeverageCommand(command))),
-  },
   interestThread: {
     read: async command => parseInterestThreadReadResult(await ipcRenderer.invoke('wisp:read-interest-thread', parseInterestThreadRead(command))),
     mutate: async command => parseInterestThreadMutationResult(await ipcRenderer.invoke('wisp:mutate-interest-thread', parseInterestThreadCommand(command))),

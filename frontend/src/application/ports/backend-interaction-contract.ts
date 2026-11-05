@@ -31,16 +31,6 @@ export interface BackendDialogueTopic {
   readonly statedAt: string;
 }
 
-/** Conditional ordinary-chat context; wire-only, no local IDs. */
-export interface BackendBeveragePreference {
-  readonly allowProposal: boolean;
-  readonly current?: { readonly value: 'coffee' | 'tea'; readonly validity: 'hypothesis' | 'confirmed' };
-}
-export interface BackendBeverageProposal {
-  readonly value: 'coffee' | 'tea';
-  readonly evidenceQuote: string;
-}
-
 export interface BackendInteractionTouchRequest extends BackendInteractionPolicy {
   readonly requestId: string;
   readonly stream: false;
@@ -61,12 +51,10 @@ export type BackendInteractionChatRequest = BackendSummaryChatRequest &
     readonly lifeReflection?: import('./backend-life-history-contract').BackendLifeReflection;
     readonly previousTouch?: BackendPreviousTouchReaction;
     readonly dialogueTopic?: BackendDialogueTopic;
-    readonly beveragePreference?: BackendBeveragePreference;
   };
 
 export type BackendInteractionChatResponse = BackendSummaryChatResponse & {
   readonly appraisal: BackendInteractionAppraisal;
-  readonly beverageProposal?: BackendBeverageProposal;
 };
 
 export interface BackendInteractionErrorResponse {

@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '../../../src/infrastructure/memory/schema';
 import { afterEach, expect, it, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { musicFixture } from '../../application/music-interest-fixture';
@@ -14,7 +15,7 @@ it('migrates populated schema11 atomically, retains source rows and adds neutral
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'music_%'").all()).toEqual([]);
     expect(db.prepare('SELECT id,content,created_at FROM messages ORDER BY sequence').all()).toEqual(before);
     db.exec('DROP TRIGGER reject_v12');initializeSchema(db,f.timestamp());
-    expect(db.pragma('user_version',{simple:true})).toBe(13);
+    expect(db.pragma('user_version',{simple:true})).toBe(SCHEMA_VERSION);
     expect(db.prepare('SELECT music_intention,music_sample_digest,music_preference_consumed FROM messages').all()).toEqual(before.map(()=>({music_intention:0,music_sample_digest:null,music_preference_consumed:0})));
     db.close();
   }finally{await f.dispose();}

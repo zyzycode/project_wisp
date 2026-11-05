@@ -41,13 +41,13 @@ provider output limit и целиком вычитается из локальн
 
 | Scenario | gpt-6-sol/none | gpt-4.1-mini | gpt-6-astra/low | Основание и неизвестное |
 |---|---:|---:|---:|---|
-| Chat | 4096 | 4096 | 4096 | text до 2000 UTF-16, JSON/appraisal/decision, до 3 memory quotes и beverage proposal; Astra cap включает hidden reasoning |
+| Chat | 4096 | 4096 | 4096 | text до 2000 UTF-16, JSON/appraisal/decision, до 3 memory quotes; Astra cap включает hidden reasoning |
 | Touch/event/observation | 1024 | 1024 | 1024 | text до 240 UTF-16 плюс JSON/appraisal; observation и reasoning не измерены |
 | Summary generation | 512 | 512 | 512 | Сохранён существующий cap, до 1200 UTF-16 semantic text; нет samples, нет гарантии размещения предельного ответа |
 
 Исторические output tokens: chat n75 median81/p95 114.3/max163;
 touch n4 median44.5/max46; event n8 median22/max28. Нет summary/observation samples,
-вариативности длинных ответов, текущего profile/beverage quality или Astra reasoning.
+вариативности длинных ответов, текущего profile quality или Astra reasoning.
 Output usage отражает весь reported output, не только длину `text`; raw breakdown
 не сохранён и не считается нулём. Значения cap не гарантируют, что любой валидный
 ответ максимальной длины поместится. `finish_reason=length` остаётся безопасной
@@ -64,8 +64,6 @@ payload, equality и mandatory overflow без сети. Existing provider tests
 длинный/incomplete output, JSON/schema, paid usage, deadline и cancellation.
 Gemini runtime использует прежний countTokens с исходным deadline; offline preview
 по-прежнему byte-based и не называется модельным count.
-Conditional beverage JSON schema учитывается в финальном payload; её token usage
-не измерялся в #117 и здесь проверяется только offline.
 Архивы #117/#123/#114 не перезаписываются. Их replay явно использует legacy estimator;
 актуальный runtime и новый выбор контекста проверяются отдельно. Нет новых provider
 calls, tokenizer dependency, увеличения окна, history capacity или prompt voice edits.

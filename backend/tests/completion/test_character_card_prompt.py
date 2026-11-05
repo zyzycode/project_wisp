@@ -9,7 +9,7 @@ import pytest
 from tests.helpers import CONTRACT_FIXTURES
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
-from wisp_backend.completion.context import render_messages, response_schema_for, select_context
+from wisp_backend.completion.context import render_messages, select_context
 from wisp_backend.completion.prompts.narrative import reference_lines
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.prompt_inspection.report import PROVIDERS, inspect_scene
@@ -72,13 +72,13 @@ def outgoing(route: str, body: dict, provider: str):
 
             def cost(blocks):
                 messages = render_messages(blocks)
-                payload = formatter.request(messages, settings, cap, response_schema=response_schema_for(blocks))[1]
+                payload = formatter.request(messages, settings, cap)[1]
                 return formatter.estimate_payload(payload, len(messages))
 
             window = min(CONTEXT_WINDOWS[provider, settings.model], job.inference.context_window or 16384)
             selected = select_context(job.inference.blocks, window - cap, cost)
             messages = render_messages(selected)
-            payload = formatter.request(messages, settings, cap, response_schema=response_schema_for(selected))[1]
+            payload = formatter.request(messages, settings, cap)[1]
             return job.inference.blocks, messages, payload
 
     return asyncio.run(format_context())
@@ -121,25 +121,16 @@ def test_every_scenario_formats_only_contract_and_source_data(provider: str, loc
 @pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize("locale", ["ru", "en"])
 @pytest.mark.parametrize("mode", ["follow_up", "reply"])
-@pytest.mark.parametrize(
-    "beverage",
-    [None, {"allowProposal": True}, {"allowProposal": False, "current": {"value": "tea", "validity": "confirmed"}}],
-)
-def test_optional_context_never_becomes_a_second_authored_voice(provider, locale, mode, beverage) -> None:
+def test_optional_context_never_becomes_a_second_authored_voice(provider, locale, mode) -> None:
     route, original, _, _ = load_scene("touch_followup", locale)
     body = copy.deepcopy(original)
     body["dialogueTopic"] = {"mode": mode, "text": "Synthetic topic", "statedAt": "2026-10-29T00:00:00.000Z"}
-    if beverage is not None:
-        body["beveragePreference"] = beverage
     blocks, messages, _ = outgoing(route, body, provider)
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
     assert all(direction not in system for direction in FORBIDDEN_DIRECTIONS)
     assert "memoryCandidates" in system and "evidenceQuote" in system
     assert "actual action, published text, proposed appraisal, committed effect/reason" in system
     assert "at most one question" in system if mode == "follow_up" else "Do not ask a new follow-up" in system
-    if beverage is not None:
-        assert "hypothesis=guess, confirmed=user assertion, not truth" in system
-        assert "current explicit user correction/refusal > current registry facts" in system
     assert all(b.key != "examples" and not b.key.startswith("guidance_") for b in blocks)
 
 

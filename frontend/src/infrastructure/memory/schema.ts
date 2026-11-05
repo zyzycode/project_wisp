@@ -1,3 +1,4 @@
+import { removeBeveragePreferences } from './remove-beverage-schema';
 import { migrateMusic } from './music-schema';
 import { LIFE_DERIVED_SCHEMA } from './life-derived-turn-store';
 import { DEFERRED_INVITATION_SCHEMA } from './deferred-invitation-store';
@@ -14,9 +15,9 @@ import { MEMORY_ITEMS_SCHEMA, MEMORY_ITEM_TABLES } from './item-schema';
 import type Database from 'better-sqlite3';
 import { MemoryDataError, record, timestamp } from './validation';
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 const migrationName = 'local_memory_v1';
-const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3', 'beverage_preference_v4', 'routine_observations_v5', 'causal_life_v6', 'causal_recall_v7', 'deferred_game_invitation_v8', 'social_interpretation_v9', 'own_motivation_v10', 'causal_history_v11', 'music_discussion_v12', 'book_activity_v13'];
+const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3', 'beverage_preference_v4', 'routine_observations_v5', 'causal_life_v6', 'causal_recall_v7', 'deferred_game_invitation_v8', 'social_interpretation_v9', 'own_motivation_v10', 'causal_history_v11', 'music_discussion_v12', 'book_activity_v13', 'remove_beverage_preference_v14'];
 const schema = `
 CREATE TABLE conversation_sessions (id TEXT PRIMARY KEY NOT NULL, app_run_id TEXT NOT NULL UNIQUE, started_at TEXT NOT NULL, ended_at TEXT);
 CREATE TABLE messages (sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, conversation_session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE RESTRICT, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -126,6 +127,7 @@ export function initializeSchema(db: Database.Database, now: string): void {
     db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(13, migrationNames[12], now);
     db.pragma('user_version = 13');
   }).immediate();
+  if (version < 14) removeBeveragePreferences(db, now);
   const foreignKeyErrors: unknown = db.pragma('foreign_key_check');
   if (!Array.isArray(foreignKeyErrors) || foreignKeyErrors.length !== 0) throw new MemoryDataError('corrupt');
 }

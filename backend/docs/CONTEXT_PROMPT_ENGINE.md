@@ -154,15 +154,15 @@ synthetic user input/examples. Обычную генерацию определ�
 |---|---|
 | Events/observation: non-romantic; touch: consent и текущие needs | `technical.CHARACTER_RULES`: обе consent-границы, необязательность romance и ответ по карточке/текущему контексту |
 | Touch/events/observation/policy/lore/summary/topic/previousTouch: данные не переопределяют инструкции | `technical.CHARACTER_RULES`: общая граница reference context, включая metadata, events и policies |
-| Lore/summary/previousInitiative/topic/previousTouch/beverage: не источник memory evidence | `technical.MEMORY_EVIDENCE_RULES`: только текущий user text, без других context/appraisal; общие исключения предложений |
-| Initiative/lore/summary/topic/beverage: приоритет текущих фактов и исправлений | `chat.MEMORY_RULES`: общий factual precedence; исходный диалог выше summary |
+| Lore/summary/previousInitiative/topic/previousTouch: не источник memory evidence | `technical.MEMORY_EVIDENCE_RULES`: только текущий user text, без других context/appraisal; общие исключения предложений |
+| Initiative/lore/summary/topic: приоритет текущих фактов и исправлений | `chat.MEMORY_RULES`: общий factual precedence; исходный диалог выше summary |
 | Eligible/chat: оценивать только текущий сигнал, не повышать эффект из истории | `interaction.APPRAISAL_RULES`: current action и отсутствие повторных наград |
 | Chat: одна оценка и повторный список не-hostile случаев | Форма appraisal выводится из reply type; `interaction.APPRAISAL_RULES` сохраняет distress/criticism/refusal/quotations; chat добавляет target, role-play/jokes/sarcasm и неоднозначность |
 
 Observation использует `common_blocks`, как остальные character-bearing сценарии.
-Происхождение summary/initiative/topic/previousTouch, гипотеза beverage, event outcome,
+Происхождение summary/initiative/topic/previousTouch, event outcome,
 touch low/non-hostile и точная suppressed appraisal остаются сценарными различиями.
-`MEMORY_EVIDENCE_RULES` подключается только в chat, один раз также при beverage opt-in;
+`MEMORY_EVIDENCE_RULES` подключается только в chat, один раз;
 это не разрешает поля proposals в сценариях с text-only ответом. Summary endpoint
 имеет собственный source-only контракт и не получает character/consent инструкции.
 
@@ -178,7 +178,6 @@ touch low/non-hostile и точная suppressed appraisal остаются сц
 | Decision/appraisal: поля, enums, confidence и touch-ограничения формы | `replies.Decision`, `interaction_replies.InteractionAppraisal`/`TouchAppraisal` |
 | Memory: ключи, value по ключу, quote и число candidates | `FactKey`, `FACT_VALUE_TYPES` с TypeAdapter, `MemoryCandidate`, `MEMORY_CANDIDATE_LIMIT` в replies |
 | Точная suppressed appraisal | `interaction_replies.SUPPRESSED_APPRAISAL`: validator и описание используют одно значение |
-| Beverage: поля, value и quote | `replies.BeverageProposal`; описание поля и provider schema производны от reply type |
 
 `text_type` передаёт тот же UTF-16 cap через `x-wisp-utf16-max`; это локальная metadata,
 не стандартный JSON Schema maxLength в Unicode code points. Общие пояснения сохраняют
@@ -186,11 +185,10 @@ nonblank/plain text и ограничения controls. Optional означае�
 Source/evidence, exact quote attribution, current-only и смысл категорий не выводятся из схемы.
 Contextual validators/sanitation и malformed/truncated-output errors остаются обязательными.
 
-Обычные сценарии используют прежний JSON mode и generated description. Base chat не
-описывает beverageProposal: право поля и прежняя non-strict provider schema включаются
-только выбранным opt-in bundle. Provider projection удаляет `x-wisp-*` metadata;
-сервер по-прежнему проверяет UTF-16 и условные значения. Новые structured/strict возможности
-model profiles не включаются; mock-проверки не подтверждают live-совместимость модели.
+Сценарии используют JSON mode и generated description; сервер проверяет UTF-16,
+допустимые поля и условные значения. Специальный conditional provider schema для
+догадки о напитке удалён. Новые structured/strict возможности model profiles этим
+изменением не включаются; mock-проверки не подтверждают live-совместимость модели.
 
 ## Синтетический просмотр и сравнение
 
@@ -414,17 +412,12 @@ recursive summaries, автоматические triggers и внешние з�
 Backend поставляется под [MIT notice](../LICENSE).
 
 
-### Условная гипотеза кофе/чай (#113 → #114)
+### Удалённый сценарий кофе/чай (#113 → #114)
 
-Описанное ниже byte-equality — исторический scope #114. #137 намеренно меняет
-технические тексты и удаляет стиль по правилам следующего раздела, не сами архивы.
-
-Форма, validation и last-priority atomic block — [Backend Memory §8](../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#8-гипотеза-кофечай-113).
-Без beveragePreference нет этого блока и schema key. Proposal schema допускается только
-при allowProposal=true; recall-only не даёт права нового proposal. Bundle instruction/data/schema
-отбрасывается целиком при overflow, не вытесняя baseline. Сохраняются current-user evidence,
-correction precedence, один provider call, отсутствие durable-write обещаний и once-only lifecycle.
-Технический блок не добавляет teasing/стиль поддержки; это область карточки.
+По решению пользователя от 2026-11-06 специальный сценарий удалён: нет
+`beveragePreference`/`beverageProposal`, opt-in bundle и conditional provider schema.
+Прежние synthetic отчёты #114 сохраняются как исторические данные, не active API.
+Предпочтения обсуждаются в обычном диалоге; новый extractor или storage не вводится.
 
 ## Защита решения и сравнение #137
 

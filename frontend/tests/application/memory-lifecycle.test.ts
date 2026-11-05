@@ -116,7 +116,6 @@ it('does not clear the database when summary reset finishes after shutdown', asy
   expect(f.resetCommitted).not.toHaveBeenCalled(); expect(f.resume).not.toHaveBeenCalled();
 });
 it.each([
-  ['beverage', 'conflict'], ['beverage', 'io_error'],
   ['interestThread', 'conflict'], ['interestThread', 'io_error'],
 ] as const)('preserves admission, generation and checkpoint rules for %s mutation with %s', async (repository, code) => {
   const summary = { invalidate: vi.fn(), reset: vi.fn(async () => ({ ok: true as const, value: undefined })), dispose: vi.fn() };
@@ -125,9 +124,7 @@ it.each([
   const mutate = vi.fn((_command: unknown, _context: MemoryOperationContext) => pending.promise);
   Object.assign(f.storage, { [repository]: { mutate } });
   const admissionToken = {};
-  const writing = repository === 'beverage'
-    ? f.lifecycle.mutateBeverage({ kind: 'delete', commandId: 'c', expected: { itemId: 'i', revision: 1 }, updatedAt: new Date().toISOString() }, admissionToken)
-    : f.lifecycle.mutateInterestThread({ kind: 'delete', commandId: 'c', expected: { threadId: 't', revision: 1 } }, admissionToken);
+  const writing = f.lifecycle.mutateInterestThread({ kind: 'delete', commandId: 'c', expected: { threadId: 't', revision: 1 } }, admissionToken);
   expect(f.lifecycle.currentGeneration()).toBe(1); expect(f.lifecycle.admitInput()).toBe(true);
   expect(summary.invalidate).toHaveBeenCalledOnce(); expect(f.invalidateMemory).toHaveBeenCalledExactlyOnceWith(admissionToken);
   expect(mutate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ commandId: 'c' }), { generation: 1 });
@@ -221,16 +218,6 @@ it.each([false, true])('revision 2 restore stays dirty until revision 3 checkpoi
   await f.lifecycle.shutdown();
 });
 
-it('invalidates summary again after acknowledged same-generation beverage correction append', async () => {
-  const summary = { invalidate: vi.fn(), reset: vi.fn(async () => ({ ok: true as const, value: undefined })), dispose: vi.fn() };
-  const f = fixture(summary); await f.lifecycle.initialize();
-  const pending = deferred<MemoryResult<void>>(); f.storage.history.appendTurn.mockReturnValueOnce(pending.promise);
-  const completed = f.lifecycle.history.completed({ memoryGeneration: 0, memoryConfirmable: true, beverageCorrection: { expected: { itemId: 'item', revision: 2 }, value: 'tea', requestId: 'r', userMessageId: 'u' }, user: { id: 'u', text: 'Нет, предпочитаю чай', createdAt: new Date().toISOString() }, assistant: { id: 'a', text: 'Поняла', createdAt: new Date().toISOString() } });
-  await Promise.resolve(); expect(summary.invalidate).not.toHaveBeenCalled();
-  pending.resolve({ ok: true, value: undefined }); expect(await completed).toBe(true);
-  expect(summary.invalidate).toHaveBeenCalledTimes(1); expect(f.lifecycle.currentGeneration()).toBe(0);
-  expect(f.storage.facts.upsert).not.toHaveBeenCalled(); await f.lifecycle.shutdown();
-});
 it('reads all five public facts despite extra local preferences and returns no storage identities', async () => {
   const f = fixture(); await f.lifecycle.initialize();
   const entries = [['user.cursor_game', 'like'], ['user.display_name', 'Анна'], ['user.explore', 'like'], ['user.favorite_topic', 'music'], ['user.preferred_address', 'Аня'], ['user.reply_style', 'brief'], ['user.social_bid', 'dislike']];

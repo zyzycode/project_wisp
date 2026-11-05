@@ -31,7 +31,7 @@ provider call; Application валидирует и публикует его. AC
 
 | Путь | Формулировка и основание | Публикация и история |
 |---|---|---|
-| Обычный chat, topic follow-up/reply, beverage | Provider по карточке и разрешённому фактическому контексту | Один dialogue turn; capture, source suppression и commit — по Memory |
+| Обычный chat, topic follow-up/reply | Provider по карточке и разрешённому фактическому контексту | Один dialogue turn; capture, source suppression и commit — по Memory |
 | Motion start/refusal/clarification/stop/terminal | Локальный технический текст из ChatMotion receipt/terminal, без tone/trait/style selector | Правила [локальных команд](#локальные-команды-движения); terminal не переписывает сохранённый start |
 | Quiet-support | Единственный фиксированный ACK [Character §6.1](CHARACTER_ENGINE.md#61-тихая-поддержка-после-явной-реплики), не генератор сочувствия | Latch до ACK, localOnly/non-confirmable pair; без повторной AI-реплики |
 | Offline/provider failure/timeout | Детерминированный безопасный fallback текущего dialogue turn | Показанная пара по [lifecycle](#deadline-fallback-и-физически-незавершённые-вызовы), без успешного appraisal/intent |

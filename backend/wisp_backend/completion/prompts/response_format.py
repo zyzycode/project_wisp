@@ -71,20 +71,3 @@ def describe_field(reply_type: type[BaseModel], field: str) -> str:
     schema = reply_type.model_json_schema()
     optional = "" if field in schema.get("required", ()) else "?"
     return f"{field}{optional}:{_shape(schema['properties'][field], schema)}"
-
-
-def compact_provider_schema(reply_type: type[BaseModel]) -> dict[str, Any]:
-    """Preserve the existing non-strict schema seam, excluding local UTF-16 annotations."""
-
-    def compact(value: Any) -> Any:
-        if isinstance(value, dict):
-            return {
-                key: compact(item)
-                for key, item in value.items()
-                if key not in ("title", "description") and not key.startswith("x-wisp-")
-            }
-        if isinstance(value, list):
-            return [compact(item) for item in value]
-        return value
-
-    return compact(reply_type.model_json_schema())

@@ -88,7 +88,6 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
   public readonly supportsMusicTopic = true as const;
   public canIncludeMusicTopic(request: AIProviderRequest): boolean { return projectInteractionChat(request).musicTopic !== undefined; }
   public canIncludeLifeReflection(request: AIProviderRequest): boolean { return projectInteractionChat(request).lifeReflection !== undefined; }
-  public canIncludeBeverage(request: AIProviderRequest): boolean { return projectInteractionChat(request).beveragePreference !== undefined; }
   public canIncludeSummary(request: AIProviderRequest): boolean {
     return projectInteractionChat(request).summary !== undefined;
   }
@@ -111,11 +110,10 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
           return this.fallback(request.requestId, reason, startedAt);
         }
         let result;
-        try { result = parseInteractionChatResponse(value, request.requestId, request.userMessage.text, projected.effectPolicy, projected.beveragePreference?.allowProposal === true); }
+        try { result = parseInteractionChatResponse(value, request.requestId, request.userMessage.text, projected.effectPolicy); }
         catch { throw new ProtocolError('Invalid backend success'); }
         const decision = result.decision;
         return { requestId: result.requestId, status: 'ok',
-          ...('beverageProposal' in result ? { beverageProposal: result.beverageProposal } : {}),
           ...('appraisal' in result ? { appraisal: result.appraisal } : {}),
           ...('memoryCandidates' in result ? { memoryCandidates: result.memoryCandidates } : {}), reply: { text: result.text, ...(decision?.tone === undefined ? {} : { tone: decision.tone }) },
           suggestedBehavior: decision?.behavior ?? 'respond', confidence: decision?.confidence ?? 1,

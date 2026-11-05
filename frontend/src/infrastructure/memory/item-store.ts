@@ -1,4 +1,3 @@
-import { BeverageStore } from './beverage-store';
 import { InterestThreadStore } from './interest-thread-store';
 import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -32,14 +31,13 @@ export class MemoryItemStore {
         if (storedDigest !== hash) throw new MemoryDataError('conflict');
         return itemReceipt(receipt);
       }
-      const row = this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ? AND category!='beverage_preference'`).get(c.itemId);
+      const row = this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ?`).get(c.itemId);
       const current = row === undefined ? null : parseRow(row);
       if (c.kind === 'confirm' && this.db.prepare('SELECT 1 FROM memory_mutation_receipts WHERE item_id = ? LIMIT 1').get(c.itemId)) throw new MemoryDataError('conflict');
       if (c.kind === 'confirm' ? current !== null : current === null || current.revision !== c.expectedRevision) throw new MemoryDataError('conflict');
       const revision = (current?.revision ?? 0) + 1;
       if (current) {
         new InterestThreadStore(this.db).invalidateCardSource(c.itemId);
-        new BeverageStore(this.db).invalidateCardSource(c.itemId);
       }
       if (c.kind === 'confirm' || c.kind === 'update') {
         this.validateSource(c);
@@ -51,7 +49,7 @@ export class MemoryItemStore {
         this.db.prepare('INSERT OR IGNORE INTO memory_item_sources VALUES (?, ?, ?)').run(c.itemId, c.source.userMessageId, c.source.assistantMessageId);
         this.db.prepare('INSERT OR IGNORE INTO memory_suppressed_pairs VALUES (?, ?)').run(c.source.userMessageId, c.source.assistantMessageId);
         this.db.prepare('DELETE FROM memory_item_terms WHERE item_id = ?').run(c.itemId);
-        const item = parseRow(this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ? AND category!='beverage_preference'`).get(c.itemId));
+        const item = parseRow(this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ?`).get(c.itemId));
         // The receipt inserted below receives this private rowid in the same serialized transaction.
         const order = integer(record(this.db.prepare('SELECT coalesce(max(rowid),0)+1 AS ordinal FROM memory_mutation_receipts').get()).ordinal, 1);
         const insert = this.db.prepare('INSERT INTO memory_item_terms VALUES (?, ?, ?)');
@@ -67,7 +65,7 @@ export class MemoryItemStore {
   }
   list(input: unknown): MemoryItemPage {
     const q = itemListQuery(input);
-    const rows = this.db.prepare(`SELECT ${columns}, insertion_order FROM memory_items WHERE category!='beverage_preference' AND (? IS NULL OR insertion_order < ?) ORDER BY insertion_order DESC LIMIT ?`).all(q.cursor, q.cursor, q.limit + 1);
+    const rows = this.db.prepare(`SELECT ${columns}, insertion_order FROM memory_items WHERE (? IS NULL OR insertion_order < ?) ORDER BY insertion_order DESC LIMIT ?`).all(q.cursor, q.cursor, q.limit + 1);
     const page = rows.slice(0, q.limit);
     const items = page.map(row => { const { insertion_order: _order, ...rest } = record(row); return parseRow(rest); });
     const last = page[page.length - 1];

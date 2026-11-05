@@ -145,7 +145,6 @@ def test_optional_absence_and_provider_formatting_are_visible() -> None:
         "previous_touch",
         "history",
         "dialogue_topic",
-        "beverage_preference",
     }
     assert openai["payload"]["messages"] == openai["messages"]
     assert openai["payload"]["store"] is False

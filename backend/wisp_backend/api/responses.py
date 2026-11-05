@@ -44,19 +44,15 @@ class WireReplyEncoder:
     response_type: type[BaseModel]
     evidence_quote: str | None = None
     effect_policy: str | None = None
-    beverage_proposal_allowed: bool = False
 
     def success(self, text: str) -> Outcome:
         try:
-            reply = self.policy.parse_reply(
-                text, self.evidence_quote, self.effect_policy, self.beverage_proposal_allowed
-            )
+            reply = self.policy.parse_reply(text, self.evidence_quote, self.effect_policy)
             response = self.response_type.model_validate(
                 {"requestId": self.request_id, **reply.model_dump(exclude_none=True)},
                 context={
                     "evidence_quote": self.evidence_quote,
                     "effect_policy": self.effect_policy,
-                    "beverage_proposal_allowed": self.beverage_proposal_allowed,
                 },
             )
             outcome = Outcome(200, JSONResponse(response.model_dump(exclude_none=True)).body)

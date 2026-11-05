@@ -4,7 +4,6 @@ import json
 
 from wisp_backend.completion.context import ContextBlock, ContextMessage
 from wisp_backend.completion.interaction_replies import InteractionChatReply
-from wisp_backend.completion.prompts.beverage import beverage_block
 from wisp_backend.completion.prompts.blocks import common_blocks
 from wisp_backend.completion.prompts.context import InteractionChatContext
 from wisp_backend.completion.prompts.lore import lore_block
@@ -24,11 +23,7 @@ Decision tone/mood hints are proposals, not changes to character state.
 
 
 def chat_instructions(*, suppressed: bool = False) -> str:
-    return (
-        "You are Wisp. "
-        + describe_reply(InteractionChatReply, exclude=("beverageProposal",), suppressed=suppressed)
-        + MEMORY_RULES
-    )
+    return "You are Wisp. " + describe_reply(InteractionChatReply, suppressed=suppressed) + MEMORY_RULES
 
 
 def build_chat_blocks(
@@ -43,12 +38,7 @@ def build_chat_blocks(
         memory=memory,
         additional_instructions=additional_instructions,
     )
-    if (
-        context.music_topic is not None
-        and context.dialogue_topic is None
-        and context.beverage_preference is None
-        and context.life_reflection is None
-    ):
+    if context.music_topic is not None and context.dialogue_topic is None and context.life_reflection is None:
         blocks.append(
             ContextBlock(
                 "music_topic",
@@ -184,9 +174,6 @@ def build_chat_blocks(
                 ),
             )
         )
-    beverage = beverage_block(context.beverage_preference)
-    if beverage is not None:
-        blocks.append(beverage)
     # Wire validation guarantees user/assistant pairs followed by the current user.
     for index in range(0, len(context.messages) - 1, 2):
         pair = context.messages[index : index + 2]

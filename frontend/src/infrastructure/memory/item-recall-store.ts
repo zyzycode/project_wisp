@@ -31,7 +31,6 @@ export class MemoryItemRecallStore {
       let next = integer(state.cursor);
       for (const row of rows) {
         const { insertion_order, ...data } = record(row); next = integer(insertion_order, 1);
-        if (data.category === 'beverage_preference') continue;
         const { item, commandId } = itemRow(data);
         this.db.prepare('DELETE FROM memory_item_terms WHERE item_id=?').run(item.id);
         const receipt = this.db.prepare('SELECT rowid AS ordinal FROM memory_mutation_receipts WHERE command_id=?').get(commandId);
@@ -57,7 +56,7 @@ export class MemoryItemRecallStore {
       }
       const candidates: MemoryItemRecallPage['candidates'][number][] = [];
       for (const id of ids) {
-        const row = this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id=? AND category!='beverage_preference'`).get(id);
+        const row = this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id=?`).get(id);
         if (!row) continue;
         const { item, commandId } = itemRow(row);
         if (item.status !== 'active' || !this.sourceExists(item)) continue;

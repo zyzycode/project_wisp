@@ -42,11 +42,6 @@ export interface ConversationSession {
 /** A completed, displayed turn; session creation and both messages commit together. */
 export interface CompletedChatTurn {
   readonly lifeDerivedUse?: import('./life-history.interface').LifeDerivedContextUse;
-  readonly beverageProposalSource?: true;
-  /** Suppress all derived output pairs of an actually dispatched current preference projection. */
-  readonly beverageUse?: import('./memory-beverage.interface').BeverageTurnUse;
-  /** Atomically applies a previously admitted explicit coffee/tea correction after source append. */
-  readonly beverageCorrection?: import('./memory-beverage.interface').BeverageCorrectionTurn;
   /** Suppress the whole pair; a successful reply also atomically closes the matching topic as answered. */
   readonly interestThread?: import('./interest-thread.interface').InterestThreadTurnUse;
   /** Only a displayed successful result can be selected for explicit confirmation. */

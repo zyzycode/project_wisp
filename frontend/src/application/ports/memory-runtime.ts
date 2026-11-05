@@ -4,9 +4,6 @@ import type { ChatContextLimits } from './memory-repository.interface';
 export interface CompletedDialogueMemoryTurn {
   readonly musicReceipt?: import('./music-interest.interface').MusicPublishedReceipt;
   readonly lifeDerivedUse?: import('./life-history.interface').LifeDerivedContextUse;
-  readonly beverageUse?: import('./memory-beverage.interface').BeverageTurnUse;
-  readonly beverageCorrection?: import('./memory-beverage.interface').BeverageCorrectionTurn;
-  readonly beverageProposalSource?: true;
   readonly interestThread?: import('./interest-thread.interface').InterestThreadTurnUse;
   readonly memoryConfirmable?: boolean;
   /** Local acknowledgement is history only, never fact extraction or learning. */
@@ -18,7 +15,6 @@ export interface CompletedDialogueMemoryTurn {
 export interface DialogueMemoryHooks {
   readonly music?: import('./music-interest.interface').IMusicInterestRuntime;
   readonly lifeReflection?: import('./life-history.interface').ILifeReflectionRuntime;
-  readonly beverage?: import('./memory-beverage.interface').IBeverageDialogue;
   readonly interestThread?: import('./interest-thread.interface').IInterestThreadDialogue;
   readonly generation: () => number;
   readonly recall?: import('./memory-knowledge.interface').ILocalMemoryRecall;
@@ -38,7 +34,6 @@ export interface MemoryRepositories {
   readonly motivation?: import('./motivation.interface').IMotivationRepository;
   readonly socialInterpretation?: import('./social-interpretation.interface').ISocialInterpretationRepository;
   readonly causalLife?: import('./causal-life.interface').ICausalLifeRepository;
-  readonly beverage?: import('./memory-beverage.interface').IBeveragePreferencesRepository;
   readonly interestThread?: import('./interest-thread.interface').IInterestThreadRepository;
   readonly items?: import('./memory-items.interface').IMemoryItemsRepository;
   readonly history: import('./memory-repository.interface').IChatHistoryRepository;

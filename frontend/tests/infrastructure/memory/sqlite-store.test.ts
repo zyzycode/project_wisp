@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '../../../src/infrastructure/memory/schema';
 import { projectRelationship } from '../../../src/domain/character/relationship-facets';
 import { CharacterStateService } from '../../../src/application/services/character-state.service';
 import { projectCharacterMemory, restoreCharacterMemory } from '../../../src/application/services/character-memory-snapshot';
@@ -38,8 +39,8 @@ describe('SQLite memory', () => {
     const reopened = SqliteMemoryStore.open(filename, later); stores.push(reopened);
     const db = new Database(filename);
     expect(db.prepare('SELECT sqlite_version() AS version').get()).toEqual({ version: '3.53.4' });
-    expect(db.prepare('SELECT count(*) AS count FROM schema_migrations').get()).toEqual({ count: 13 });
-    expect(db.pragma('user_version', { simple: true })).toBe(13);
+    expect(db.prepare('SELECT count(*) AS count FROM schema_migrations').get()).toEqual({ count: SCHEMA_VERSION });
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
     expect(db.pragma('journal_mode', { simple: true })).toBe('wal');
     expect(db.prepare('SELECT ended_at FROM conversation_sessions').get()).toEqual({ ended_at: later }); db.close();
     expect(run(reopened, 'getRecent', 2)).toEqual({ ok: true, value: [turn().user, turn().assistant] });
@@ -96,7 +97,7 @@ describe('SQLite memory', () => {
     expect(run(store, 'getRecent', 10, 1)).toEqual({ ok: true, value: [] });
     expect(run(store, 'loadSnapshot', null, 1)).toEqual({ ok: true, value: null });
     const db = new Database(filename); for (const table of ['conversation_sessions', 'messages', 'user_facts', 'game_episodes', 'character_state']) expect(db.prepare(`SELECT count(*) AS n FROM ${table}`).get()).toEqual({ n: 0 });
-    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 13 }); db.close();
+    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: SCHEMA_VERSION }); db.close();
   });
   it('retains the generation barrier and every row when reset rolls back', () => {
     const { store, filename } = fixture(); run(store, 'appendTurn', turn()); run(store, 'upsertFact', fact);
@@ -111,7 +112,7 @@ describe('SQLite memory', () => {
     if (kind === 'journal') db.exec("UPDATE schema_migrations SET name = 'changed'");
     if (kind === 'unknown') db.pragma('user_version = 0');
     db.close(); expect(() => SqliteMemoryStore.open(filename, now)).toThrow(kind === 'future' ? 'unsupported_version' : 'corrupt');
-    const check = new Database(filename); expect(check.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 13 }); check.close();
+    const check = new Database(filename); expect(check.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: SCHEMA_VERSION }); check.close();
   });
   it('rolls back first migration DDL and user_version together on storage denial', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'wisp-migration-')); directories.push(directory);

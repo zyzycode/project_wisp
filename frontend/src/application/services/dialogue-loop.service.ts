@@ -4,9 +4,6 @@ import type { LifeReflectionCapture } from '../ports/life-history.interface';
 import { recognizeChatMotion } from './chat-motion-recognition';
 import { chatMotionReply, chatMotionTerminalReply } from './chat-motion-reply';
 import type { ChatMotionRecognition, ChatMotionTerminal } from '../ports/chat-motion';
-import { recognizeBeverageCorrection } from './beverage-preference';
-import type { BeverageCapture, BeverageCorrectionTurn } from '../ports/memory-beverage.interface';
-import { parseBeverageProposal } from '../../shared/beverage-validation';
 import { isQuietSupportCue } from './quiet-support-runtime';
 import { recognizeInterruptionReport } from '../../domain/character/social-interpretation';
 import { localDialogueText } from './dialogue-local-text';
@@ -24,7 +21,7 @@ import { parseDialogueCommand, parseDialoguePresentation } from '../../shared/di
 import { parseProviderResponse, parseProviderStatus, fallbackReason } from './dialogue-provider-result';
 import { mapProviderResponseToBehaviorIntent } from './provider-response-intent-mapper';
 
-interface Turn { readonly musicAdmission?: MusicTurnAdmission; readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; readonly memoryGeneration: number; readonly interactionReceipt?: InteractionReceipt; readonly admissionDeadline: number; readonly replyTo?: InterestThreadRef; readonly requestBeverageProposal?: true; readonly beverageCorrection?: Omit<BeverageCorrectionTurn, 'requestId' | 'userMessageId'>; }
+interface Turn { readonly musicAdmission?: MusicTurnAdmission; readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; readonly memoryGeneration: number; readonly interactionReceipt?: InteractionReceipt; readonly admissionDeadline: number; readonly replyTo?: InterestThreadRef; }
 
 /** One instance per Main lifecycle, including while its window is closed. */
 export class DialogueRuntime {
@@ -38,12 +35,10 @@ export class DialogueRuntime {
   private lastOffered: InterestThreadRef | undefined;
   private sourceUserText: string | null = null;
   private supportEligible = false;
-  private readonly beverageCaptures = new WeakMap<Turn, BeverageCapture>();
   private readonly lifeSummaryCaptures = new WeakMap<Turn, SummaryCapture>();
   private readonly dispatchedLifeSummary = new WeakSet<Turn>();
   private readonly lifeCaptures = new WeakMap<Turn, LifeReflectionCapture>();
   private readonly dispatchedLife = new WeakSet<Turn>();
-  private readonly dispatchedBeverage = new WeakSet<Turn>();
   private readonly captures = new WeakMap<Turn, InterestThreadCapture>();
   private readonly causalCaptures = new WeakMap<Turn, CausalExpressionCapture>();
   private publishedCausal: CausalExpressionCapture | undefined;
@@ -140,7 +135,6 @@ export class DialogueRuntime {
     this.pendingMusicAdmission = this.options.memory?.music?.beginTurn(this.conversationId, command.text);
     this.publishedMusic = undefined;
     this.publishedCausal = undefined;
-    this.options.memory?.beverage?.invalidateOffer();
     this.options.quietSupport?.resumeForUserDialogue();
     const motion = recognizeChatMotion(command.text);
     if (motion.kind !== 'none') {
@@ -156,27 +150,24 @@ export class DialogueRuntime {
     const requestedAtMs = this.options.now();
     const deadline = requestedAtMs + 15000;
     const admissionDeadline = requestedAtMs + 200;
-    if (this.options.memory?.interestThread || this.options.memory?.beverage) {
+    if (this.options.memory?.interestThread) {
       const token = {}; this.pending = token; this.executing = true; this.options.publish();
-      const correctionSensitive = !!this.options.memory?.beverage && !command.replyToInterestThread && recognizeBeverageCorrection(command.text) !== null;
       const scopedRefusal = !!(command.replyToInterestThread || this.lastOffered) && isTopicRefusal(command.text);
       const memoryGeneration = this.options.memory.generation();
-      void this.admission.run(admissionDeadline, async (): Promise<import('../ports/memory-repository.interface').MemoryResult<{ kind: 'continue' | 'closed'; generation: number; correction?: Omit<BeverageCorrectionTurn, 'requestId' | 'userMessageId'> }>> => {
+      void this.admission.run(admissionDeadline, async (): Promise<import('../ports/memory-repository.interface').MemoryResult<{ kind: 'continue' | 'closed'; generation: number }>> => {
         if (!this.isAdmissionCurrent(token)) return { ok: true, value: { kind: 'closed', generation: memoryGeneration } };
         const topic = this.options.memory?.interestThread ? await this.options.memory.interestThread.admit({ text: command.text,
           ...(command.replyToInterestThread ? { replyTo: command.replyToInterestThread } : {}), ...(this.lastOffered ? { lastOffered: this.lastOffered } : {}), deadlineMs: admissionDeadline, admissionToken: token }, { generation: memoryGeneration }) : { ok: true as const, value: { kind: 'continue' as const, generation: memoryGeneration } };
         if (!this.isAdmissionCurrent(token)) return { ok: true, value: { kind: 'closed', generation: memoryGeneration } };
-        if (!topic.ok || topic.value.kind === 'closed') return topic;
-        const beverage = this.options.memory?.beverage ? await this.options.memory.beverage.admit({ text: command.text, replyToTopic: !!command.replyToInterestThread, deadlineMs: admissionDeadline, admissionToken: token }, { generation: topic.value.generation }) : { ok: true as const, value: { generation: topic.value.generation } };
-        return beverage.ok ? { ok: true as const, value: { kind: 'continue' as const, ...beverage.value } } : beverage;
+        return topic;
       })
         .then(result => {
           if (!this.isAdmissionCurrent(token)) return;
           if (result?.ok && result.value.generation !== this.options.memory?.generation()) { this.pending = null; this.executing = false; this.options.publish(); return; }
           this.pending = null; this.executing = false;
-          if ((correctionSensitive && result?.ok !== true) || scopedRefusal || (result?.ok && result.value.kind === 'closed')) { if (correctionSensitive && result?.ok !== true) this.correctionUnavailable(); else this.options.publish(); return; }
-          this.startTurn(command, requestedAtMs, deadline, admissionDeadline, result?.ok === true, result?.ok ? result.value.correction : undefined);
-        }).catch(() => { if (this.isAdmissionCurrent(token)) { this.pending = null; this.executing = false; if (correctionSensitive) this.correctionUnavailable(); else if (scopedRefusal) this.options.publish(); else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, false); } });
+          if (scopedRefusal || (result?.ok && result.value.kind === 'closed')) { this.options.publish(); return; }
+          this.startTurn(command, requestedAtMs, deadline, admissionDeadline, result?.ok === true);
+        }).catch(() => { if (this.isAdmissionCurrent(token)) { this.pending = null; this.executing = false; if (scopedRefusal) this.options.publish(); else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, false); } });
     } else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, true);
     return { status: 'accepted', conversationId: this.conversationId };
   }
@@ -216,7 +207,6 @@ export class DialogueRuntime {
       this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
     });
   }
-  private correctionUnavailable(): void { this.turn = { phase: 'error', requestId: this.options.createId(), message: localDialogueText('correction_error', this.options.locale) }; this.options.publish(); }
   private acknowledgeSupport(text: string): void {
     this.options.transaction(() => {
       this.supportEligible = false; this.lastOffered = undefined; this.sourceUserText = null;
@@ -234,7 +224,7 @@ export class DialogueRuntime {
       this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
     });
   }
-  private startTurn(command: Extract<import('../../shared/ipc-contracts').DialogueCommandDTO, { type: 'send' }>, requestedAtMs: number, deadline: number, admissionDeadline: number, enrich: boolean, correction?: Omit<BeverageCorrectionTurn, 'requestId' | 'userMessageId'>): void {
+  private startTurn(command: Extract<import('../../shared/ipc-contracts').DialogueCommandDTO, { type: 'send' }>, requestedAtMs: number, deadline: number, admissionDeadline: number, enrich: boolean): void {
     if (this.options.getSemanticSleepState() !== 'awake') { this.notifySleepStateChanged(); return; }
     this.options.observation?.invalidate();
     const previousTouch = this.options.interactionEnabled ? this.options.events?.getPreviousTouch?.() : undefined;
@@ -249,7 +239,7 @@ export class DialogueRuntime {
       if (!interactionReceipt) this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
       const request: AIProviderRequest = { ...(this.options.interactionEnabled ? { interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: interactionReceipt?.effectPolicy ?? 'suppressed', ...(previousTouch ? { previousTouch } : {}) } } : {}), requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };
-      const active: Turn = { ...(this.pendingMusicAdmission ? { musicAdmission: this.pendingMusicAdmission } : {}), ...(command.requestBeverageProposal ? { requestBeverageProposal: true } : {}), ...(correction ? { beverageCorrection: correction } : {}), ...(interactionReceipt ? { interactionReceipt } : {}), request, generation: this.generation, deadline, requestedAtMs, admissionDeadline: enrich ? admissionDeadline : requestedAtMs, ...(command.replyToInterestThread ? { replyTo: command.replyToInterestThread } : {}), memoryGeneration: this.options.memory?.generation() ?? 0 };
+      const active: Turn = { ...(this.pendingMusicAdmission ? { musicAdmission: this.pendingMusicAdmission } : {}), ...(interactionReceipt ? { interactionReceipt } : {}), request, generation: this.generation, deadline, requestedAtMs, admissionDeadline: enrich ? admissionDeadline : requestedAtMs, ...(command.replyToInterestThread ? { replyTo: command.replyToInterestThread } : {}), memoryGeneration: this.options.memory?.generation() ?? 0 };
       this.active = active; this.turn = { phase: 'thinking', requestId };
       this.timer = this.options.scheduler.setTimeout(() => this.finish(active, 'timeout'), Math.max(0, deadline - this.options.now()));
       this.options.setBehaviorContext?.({ requestId, conversationId: this.conversationId, generation: this.generation, requestedAtMs });
@@ -263,7 +253,6 @@ export class DialogueRuntime {
     this.chatRun = null; this.options.chatMotion?.cancel('reset');
     this.options.onLifecycleReset?.();
     if (this.pending) this.executing = false;
-    this.options.memory?.beverage?.invalidateOffer();
     this.pending = null; this.lastOffered = undefined; this.sourceUserText = null; this.supportEligible = false;
     this.options.observation?.reset();
     this.options.events?.invalidate();
@@ -310,7 +299,7 @@ export class DialogueRuntime {
       const status = parseProviderStatus(rawStatus);
       if (status.kind === 'offline') { this.executing = false; this.finish(turn, 'offline'); return; }
       if (status.kind !== 'ready' && status.kind !== 'degraded') { this.executing = false; this.finish(turn, 'provider_error'); return; }
-      const needsEnrichment = !!this.options.memory?.music || !!this.options.memory?.lifeReflection || !!this.options.memory?.beverage || !!this.options.summary || !!this.options.memory?.recall || !!((this.options.provider.supportsDialogueTopic || turn.replyTo) && this.options.memory?.interestThread);
+      const needsEnrichment = !!this.options.memory?.music || !!this.options.memory?.lifeReflection || !!this.options.summary || !!this.options.memory?.recall || !!((this.options.provider.supportsDialogueTopic || turn.replyTo) && this.options.memory?.interestThread);
       const enriched = needsEnrichment ? await this.admission.run(turn.admissionDeadline, async () => {
         let request = turn.request;
         const reflectionPending = this.options.memory?.lifeReflection?.capture(request.userMessage.text);
@@ -342,11 +331,6 @@ export class DialogueRuntime {
             this.captures.set(turn, prepared.value); if (this.options.provider.supportsDialogueTopic) request = { ...request, dialogueTopic: prepared.value.topic };
           }
         }
-        if (this.options.memory?.beverage) {
-          const prepared = await this.options.memory.beverage.prepare({ requestId: request.requestId, userMessageId: request.userMessage.id, allowProposal: turn.requestBeverageProposal === true && !turn.beverageCorrection && !turn.replyTo }, { generation: turn.memoryGeneration });
-          if (!alive()) return undefined;
-          if (prepared.ok && prepared.value && this.options.memory.beverage.isCurrent(prepared.value)) { this.beverageCaptures.set(turn, prepared.value); request = { ...request, beveragePreference: prepared.value.context }; }
-        }
         if (summary && !this.options.summary?.isCurrent(summary)) { const { summary: _staleSummary, ...withoutSummary } = request; request = { ...withoutSummary, memoryContext: emptyMemoryContext() }; }
         const reflection = await reflectionPending;
         if (reflection && !(request.summary && 'sourceKind' in request.summary) && alive() && this.options.memory?.lifeReflection?.isCurrent(reflection)) {
@@ -355,7 +339,7 @@ export class DialogueRuntime {
         }
         if (this.options.provider.supportsMusicTopic && turn.musicAdmission && this.options.memory?.music) {
           const music = await this.options.memory.music.prepare(turn.musicAdmission, turn.memoryGeneration, {
-            causal: !!causal, otherBundle: !!request.dialogueTopic || !!request.beveragePreference || !!request.lifeReflection || this.captures.has(turn), deadlineMs: turn.admissionDeadline,
+            causal: !!causal, otherBundle: !!request.dialogueTopic || !!request.lifeReflection || this.captures.has(turn), deadlineMs: turn.admissionDeadline,
           });
           if (music && alive() && this.options.memory.music.isCurrent(music)) { this.musicCaptures.set(turn, music); request = { ...request, musicTopic: { ...music.context, ...(music.context.userPreference ? { userPreference: { ...music.context.userPreference } } : {}) } }; }
         }
@@ -375,10 +359,6 @@ export class DialogueRuntime {
         const previousTouch = this.options.events?.getPreviousTouch?.();
         request = { ...request, interaction: { card: request.interaction.card, effectPolicy: request.interaction.effectPolicy, ...(previousTouch ? { previousTouch } : {}) } };
       }
-      const beverageCapture = this.beverageCaptures.get(turn);
-      if (beverageCapture && !this.options.memory?.beverage?.isCurrent(beverageCapture)) { this.finish(turn, 'degraded'); return; }
-      // The transport reports whether its byte cap actually retained this optional block.
-      if (request.beveragePreference && this.options.provider.canIncludeBeverage?.(request) !== false) this.dispatchedBeverage.add(turn);
       if (!this.mayContinue(turn)) return;
       if (request.lifeReflection) {
         if (this.options.provider.canIncludeLifeReflection?.(request) === true) this.dispatchedLife.add(turn);
@@ -455,11 +435,11 @@ export class DialogueRuntime {
       this.publishedCausal = causal;
       this.publishedMusic = this.dispatchedMusic.has(active) ? this.musicCaptures.get(active) : undefined;
       this.supportEligible = reason === undefined;
-      this.sourceUserText = reason === undefined && !capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active) && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) && !this.dispatchedMusic.has(active) ? active.request.userMessage.text : null;
+      this.sourceUserText = reason === undefined && !capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) && !this.dispatchedMusic.has(active) ? active.request.userMessage.text : null;
       this.lastOffered = reason === undefined ? capture?.use.ref : undefined;
       const createdAt = this.options.timestamp();
       const pair: AIProviderContextMessage[] = [{ role: 'user', text: active.request.userMessage.text, createdAt: active.request.userMessage.createdAt, sourceMessageId: active.request.userMessage.id }, { role: 'wisp', text: replyText, createdAt, sourceMessageId: assistantId }];
-      this.context = capture || active.beverageCorrection || this.dispatchedBeverage.has(active) || this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) || this.dispatchedMusic.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
+      this.context = capture || this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) || this.dispatchedMusic.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
       if (reason === undefined && response && !causal) {
         const tone = response.reply.tone;
         this.options.applyStimulus({ type: 'provider_response', source: 'provider', text: replyText, requestId, createdAt,
@@ -472,25 +452,13 @@ export class DialogueRuntime {
         }
       }
       this.options.publish();
-      if (!capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active) && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) && !this.dispatchedMusic.has(active)) this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
-      const beverage = this.dispatchedBeverage.has(active) ? this.beverageCaptures.get(active) : undefined;
-      let proposal;
-      if (reason === undefined && !capture && !active.beverageCorrection && beverage?.context.allowProposal && !beverage.use && response?.beverageProposal) try { proposal = parseBeverageProposal(response.beverageProposal, active.request.userMessage.text); } catch { /* Attribution is independent of the semantic model guess. */ }
+      if (!capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) && !this.dispatchedMusic.has(active)) this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
       const musicCapture = this.musicCaptures.get(active);
       const musicReceipt = active.musicAdmission ? { admission: active.musicAdmission, success: reason === undefined,
         dispatched: this.dispatchedMusic.has(active), intention: this.dispatchedMusic.has(active) && musicCapture?.context.intention === 'ask_music_detail',
-        discussionAllowed: !causal && !capture && !beverage && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) } : undefined;
-      const persisted = this.options.memory?.completed({ ...(musicReceipt ? { musicReceipt } : {}), ...(this.dispatchedMusic.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: 'music_topic' as const, ...(musicReceipt?.intention ? { musicIntention: 'ask_music_detail' as const } : {}) } } : {}), ...(this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: this.dispatchedLifeSummary.has(active) ? 'life_summary' as const : 'reflection' as const } } : {}), ...(capture ? { interestThread: capture.use } : {}), ...(beverage?.use ? { beverageUse: beverage.use } : {}), ...(active.beverageCorrection ? { beverageCorrection: { ...active.beverageCorrection, requestId, userMessageId: active.request.userMessage.id } } : {}), ...(proposal ? { beverageProposalSource: true as const } : {}), user: active.request.userMessage,
+        discussionAllowed: !causal && !capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) } : undefined;
+      this.options.memory?.completed({ ...(musicReceipt ? { musicReceipt } : {}), ...(this.dispatchedMusic.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: 'music_topic' as const, ...(musicReceipt?.intention ? { musicIntention: 'ask_music_detail' as const } : {}) } } : {}), ...(this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: this.dispatchedLifeSummary.has(active) ? 'life_summary' as const : 'reflection' as const } } : {}), ...(capture ? { interestThread: capture.use } : {}), user: active.request.userMessage,
         assistant: { id: assistantId, text: replyText, createdAt }, memoryConfirmable: reason === undefined, memoryGeneration: active.memoryGeneration });
-      const source = { userMessageId: active.request.userMessage.id, assistantMessageId: assistantId };
-      if (proposal && persisted) {
-        const captured = proposal, identity = this.getIdentity();
-        void persisted.then(ok => {
-          if (!ok || this.getIdentity() !== identity || this.executing || this.turn.phase !== 'completed' || this.turn.requestId !== requestId) return;
-          const offer = this.options.memory?.beverage?.offer(captured, source, active.memoryGeneration);
-          if (offer && this.turn.phase === 'completed') { this.turn = { ...this.turn, beverageOffer: { offerId: offer.offerId, ...captured } }; this.options.publish(); }
-        });
-      }
     });
   }
   private discardCausal(active: Turn): void {

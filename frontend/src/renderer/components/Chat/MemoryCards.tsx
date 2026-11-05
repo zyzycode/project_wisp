@@ -1,16 +1,14 @@
 import { MemoryOverview, supportsMemoryOverview } from './MemoryOverview';
 import { consumeMemoryClearRefresh, getMemoryOperationStatus } from '../../memory-operation-status';
 import { getMemoryOverviewClient } from '../../memory-overview-client';
-import { getBeverageClient } from '../../beverage-client';
 import { getInterestThreadClient } from '../../interest-thread-client';
-import { BeverageControls } from './BeverageControls';
 import { InterestThreadControls } from './InterestThreadControls';
 import { SummaryControls } from './SummaryControls';
 import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import type { BrainStateDTO, MemoryCardContentDTO, MemoryCardDTO, MemoryCardSourceDTO, WispApiBridge } from '../../../shared/ipc-contracts';
 import { getMemoryCardClient } from '../../memory-card-client';
 
-interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary' | 'interestThread' | 'beveragePreference'> & Partial<Pick<WispApiBridge, 'postDialogueCommand' | 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'>>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
+interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary' | 'interestThread'> & Partial<Pick<WispApiBridge, 'postDialogueCommand' | 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'>>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
 function supportsDialogue(bridge: Props['bridge']): bridge is Props['bridge'] & Pick<WispApiBridge, 'postDialogueCommand'> { return typeof bridge.postDialogueCommand === 'function'; }
 const noSubscribe = () => () => {};
 const noReset = () => 0;
@@ -29,12 +27,10 @@ export function MemoryCards({ bridge, snapshot }: Props) {
   const cleared = useSyncExternalStore(overview?.subscribe ?? noSubscribe, overview ? () => overview.getState().cleared : noReset, noReset);
   useEffect(() => {
     client.acceptStream(streamId); client.invalidateProjection(); setDraft(null); setRemoval(null);
-    if (bridge.beveragePreference) { const beverage = getBeverageClient(bridge.beveragePreference); beverage.invalidateAfterReset(); if (open) void beverage.read(); }
     if (bridge.interestThread) { const topic = getInterestThreadClient(bridge.interestThread); topic.invalidateAfterReset(); if (open) void topic.read(); }
   }, [client, streamId, conversationId, bridge]);
   useEffect(() => {
     if (!supportsMemoryOverview(bridge) || !consumeMemoryClearRefresh(bridge, streamId, conversationId)) return;
-    if (open && bridge.beveragePreference) void getBeverageClient(bridge.beveragePreference).read();
     if (open && bridge.interestThread) void getInterestThreadClient(bridge.interestThread).read();
   }, [client, cleared, bridge]);
   useEffect(() => { if (open) void client.list(); }, [client, streamId, conversationId, cleared, open]);
@@ -79,7 +75,6 @@ export function MemoryCards({ bridge, snapshot }: Props) {
       <button type="button" disabled={locked} onClick={() => { void client.list(); }}>Обновить список</button>
       {state.nextCursor !== null && <button type="button" disabled={locked} onClick={() => { void client.list(state.nextCursor); }}>Следующие 20</button>}
     </>}
-    {bridge.beveragePreference && <BeverageControls bridge={bridge.beveragePreference} {...(supportsDialogue(bridge) ? { dialogueBridge: bridge } : {})} snapshot={snapshot} visible={open} />}
     {bridge.interestThread && <InterestThreadControls bridge={bridge.interestThread} {...(supportsDialogue(bridge) ? { dialogueBridge: bridge } : {})} snapshot={snapshot} visible={open} />}
     {bridge.summary && <SummaryControls bridge={bridge.summary} snapshot={snapshot} visible={open} />}
   </>;

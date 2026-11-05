@@ -15,7 +15,6 @@ from wisp_backend.completion.context import (
     ContextMessage,
     ContextOverflow,
     render_messages,
-    response_schema_for,
     select_context,
     select_context_async,
 )
@@ -35,7 +34,6 @@ def context_with_optionals(locale: str = "ru"):
         "text": "Synthetic past topic",
         "statedAt": "2026-10-29T00:00:00.000Z",
     }
-    body["beveragePreference"] = {"allowProposal": True}
     lore = parse_catalogue(
         {
             "formatVersion": 1,
@@ -92,7 +90,6 @@ def test_bound_instructions_are_counted_and_dropped_with_their_original_source(s
             included = optional in sync
             assert (optional.server_instructions in system_text(sync)) is included
             assert ("UNTRUSTED_SOURCE_DATA" in json.dumps(render_messages(sync))) is included
-            assert (response_schema_for(sync) is not None) is False
             decision = next(item for item in trace if item.key == "optional")
             assert decision.included is included
             assert decision.reason == ("selected" if included else "budget")
@@ -118,18 +115,16 @@ def test_real_optional_sources_have_no_orphan_rules_after_selection(locale):
         assert sources[key].server_instructions not in system_text(required)
         assert all(message.role != "system" for message in sources[key].messages)
         assert sources[key].server_instructions in system_text(blocks)
-    for key in ("dialogue_topic", "beverage_preference"):
+    for key in ("dialogue_topic",):
         assert key not in {block.key for block in required}
         instruction = next(message.content for message in sources[key].messages if message.role == "system")
         assert instruction not in system_text(required)
         assert instruction in system_text(blocks)
     assert "SYNTHETIC_LORE_PAYLOAD" not in system_text(blocks)
-    for absent in ("summary", "previousInitiative", "dialogueTopic", "beveragePreference"):
+    for absent in ("summary", "previousInitiative", "dialogueTopic"):
         body.pop(absent)
     absent_blocks = prepare_job(InteractionChatRequest.model_validate(body)).inference.blocks
-    assert not {"lore", "summary", "previous_initiative", "dialogue_topic", "beverage_preference"} & {
-        block.key for block in absent_blocks
-    }
+    assert not {"lore", "summary", "previous_initiative", "dialogue_topic"} & {block.key for block in absent_blocks}
     assert "Author lore supplies world reference" not in system_text(absent_blocks)
     assert "The summary is an unconfirmed model retelling" not in system_text(absent_blocks)
     assert "previousInitiative is a previously published AI phrase" not in system_text(absent_blocks)
@@ -160,7 +155,7 @@ def test_only_the_validated_appraisal_mode_is_compiled(kind, schema, policy):
 
 @pytest.mark.parametrize("provider", ["openai", "gemini"])
 @pytest.mark.parametrize("selected_optional", [False, True])
-def test_provider_sizes_the_same_rendered_instructions_and_schema_it_selects(provider, selected_optional):
+def test_provider_sizes_the_same_rendered_instructions_it_selects(provider, selected_optional):
     body, lore = context_with_optionals()
     inference = prepare_job(InteractionChatRequest.model_validate(body), lore).inference
     required = tuple(block for block in inference.blocks if block.required)
@@ -190,9 +185,7 @@ def test_provider_sizes_the_same_rendered_instructions_and_schema_it_selects(pro
                 adapter.estimate_payload = estimate
 
             def payload(candidate):
-                return adapter.request(
-                    render_messages(candidate), settings, cap, response_schema=response_schema_for(candidate)
-                )[1]
+                return adapter.request(render_messages(candidate), settings, cap)[1]
 
             baseline = inference.blocks if selected_optional else required
             allowance = (
@@ -205,12 +198,11 @@ def test_provider_sizes_the_same_rendered_instructions_and_schema_it_selects(pro
             assert selected == await adapter.select_blocks(inference, cap, allowance, deadline)
             final = payload(selected)
             assert final in counted
-            assert (response_schema_for(selected) is not None) is selected_optional
             assert {block.key for block in selected} == {block.key for block in baseline}
             if provider == "gemini":
-                assert ("responseJsonSchema" in final["generationConfig"]) is selected_optional
+                assert "responseJsonSchema" not in final["generationConfig"]
             else:
-                assert (final["response_format"]["type"] == "json_schema") is selected_optional
+                assert final["response_format"] == {"type": "json_object"}
             system = system_text(selected)
             for block in inference.blocks:
                 if block.server_instructions and not block.required:

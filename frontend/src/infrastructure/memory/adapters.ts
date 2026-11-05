@@ -14,8 +14,6 @@ import { causalRecallPage } from './causal-recall-validation';
 import { causalEpisode } from './causal-life-validation';
 import type { IRoutineObservationRepository } from '../../application/ports/routine-observation.port';
 import { routineIdentity, routineStatus } from './routine-validation';
-import type { IBeveragePreferencesRepository } from '../../application/ports/memory-beverage.interface';
-import { beverageRead, beverageReceipt } from './beverage-validation';
 import type { IInterestThreadRepository } from '../../application/ports/interest-thread.interface';
 import { topicRead, topicReceipt, topicCapture } from './interest-thread-validation';
 import type { ISummarySourceReader } from '../../application/ports/summary';
@@ -43,7 +41,6 @@ export interface MemoryAdapters {
   readonly itemRecall: IMemoryItemRecallReader;
   readonly causalLife: ICausalLifeRepository;
   readonly routine: IRoutineObservationRepository;
-  readonly beverage: IBeveragePreferencesRepository;
   readonly interestThread: IInterestThreadRepository;
   readonly summarySources: ISummarySourceReader;
   readonly items: IMemoryItemsRepository;
@@ -83,7 +80,6 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     itemRecall: { find: (tokens, c) => call('findMemoryItems', tokens, c, itemCandidates) },
     causalLife: { append: (episode, c) => call('appendCausalLife', episode, c, nothing), getRecent: (limit, c) => call('recentCausalLife', limit, c, value => list(value, causalEpisode)), resolveSources: (sources, c) => call('resolveCausalLife', sources, c, value => list(value, causalEpisode)) },
     routine: { begin: (input,c) => call('beginRoutine',input,c,routineIdentity), append: (input,c) => call('appendRoutine',input,c,nothing), readStatus: c => call('readRoutineStatus',null,c,routineStatus) },
-    beverage: { read: c => call('readBeverage', null, c, beverageRead), mutate: (command, c) => call('mutateBeverage', command, c, beverageReceipt) },
     interestThread: {
       read: c => call('readInterestThread', null, c, topicRead),
       mutate: (command, c) => call('mutateInterestThread', command, c, topicReceipt),

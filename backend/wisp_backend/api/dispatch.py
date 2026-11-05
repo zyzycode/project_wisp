@@ -11,7 +11,6 @@ from wisp_backend.api.schemas.observation import ObservationRequest
 from wisp_backend.api.schemas.summary import SummaryRequest
 from wisp_backend.completion.contracts import CompletionJob, InferenceRequest
 from wisp_backend.completion.policies import POLICIES
-from wisp_backend.completion.prompts.beverage import bounded_preference
 from wisp_backend.completion.prompts.context import (
     DialogueTurn,
     EventContext,
@@ -65,10 +64,6 @@ def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | Non
         dialogue_topic=body.dialogueTopic.model_dump() if body.dialogueTopic is not None else None,
         music_topic=body.musicTopic.model_dump(exclude_none=True) if body.musicTopic is not None else None,
         life_reflection=body.lifeReflection.model_dump() if body.lifeReflection is not None else None,
-        beverage_preference=bounded_preference(
-            body.beveragePreference.model_dump(exclude_none=True) if body.beveragePreference is not None else None,
-            trim_text(body.messages[-1].content),
-        ),
     )
 
 
@@ -129,8 +124,5 @@ def prepare_job(body: CompletionRequest, lore: LoreCatalogue | None = None) -> C
             endpoint.response_type,
             quote,
             effect_policy,
-            isinstance(context, InteractionChatContext)
-            and context.beverage_preference is not None
-            and context.beverage_preference["allowProposal"] is True,
         ),
     )

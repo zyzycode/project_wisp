@@ -64,7 +64,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.socialInterpretation = new SocialInterpretationRuntime({ repository: options.storage.socialInterpretation, character: options.character,
       context: () => this.context(), appRunId: () => this.history.currentAppRunId(), now: options.monotonicNow ?? options.now,
       timestamp: options.timestamp, scheduler: options.scheduler });
-    this.history = new MemoryHistory({ onUserMessagePersisted: (message, context) => this.socialInterpretation.persisted(message, context), causalCommitObserver: { committed: (episode, context, atMs) => { this.ownGameInterest.committed(episode, context, atMs); this.socialInterpretation.committed(episode, context, atMs); this.relationshipRepair.committed(episode, context, atMs); options.causalCommitObserver?.committed(episode, context, atMs); } }, causalObserver: (episode, atMs) => { this.relationshipRepair.observed(episode, atMs); options.causalObserver?.(episode, atMs); }, generation: () => this.generation, ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: async (turn, context, source) => { if (turn.beverageCorrection) options.summary?.invalidate(); await this.knowledge.persisted(turn, context); await this.music.persisted(turn, source, context); }, ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
+    this.history = new MemoryHistory({ onUserMessagePersisted: (message, context) => this.socialInterpretation.persisted(message, context), causalCommitObserver: { committed: (episode, context, atMs) => { this.ownGameInterest.committed(episode, context, atMs); this.socialInterpretation.committed(episode, context, atMs); this.relationshipRepair.committed(episode, context, atMs); options.causalCommitObserver?.committed(episode, context, atMs); } }, causalObserver: (episode, atMs) => { this.relationshipRepair.observed(episode, atMs); options.causalObserver?.(episode, atMs); }, generation: () => this.generation, ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: async (turn, context, source) => { await this.knowledge.persisted(turn, context); await this.music.persisted(turn, source, context); }, ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
     this.relationshipRepair = new RelationshipRepairRuntime({ character: options.character, repository: options.storage.causalLife,
       context: () => this.context(), appRunId: () => this.history.currentAppRunId(), now: options.monotonicNow ?? options.now,
       scheduler: options.scheduler, barrier: this.history.causal });
@@ -214,17 +214,6 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
         case 'delete': return items.delete({ ...command, kind: 'delete' }, context);
       }
     });
-  }
-  async readBeverage() {
-    const c = this.context(), repository = this.options.storage.beverage;
-    if (!c || !repository || this.phase !== 'running') return { ok: false as const, code: 'unavailable' as const };
-    const result = await this.safe(() => repository.read(c));
-    return this.context()?.generation === c.generation ? result : { ok: false as const, code: 'stale' as const };
-  }
-  async mutateBeverage(command: import('../ports/memory-beverage.interface').BeverageMutation, admissionToken?: object) {
-    const repository = this.options.storage.beverage;
-    if (!repository) return { ok: false as const, code: 'unavailable' as const };
-    return this.mutateMemory(context => repository.mutate(command, context), admissionToken);
   }
   async readInterestThread() {
     const c = this.context(), repository = this.options.storage.interestThread;

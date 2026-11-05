@@ -11,7 +11,7 @@ from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
 from wisp_backend.api.schemas.music_interest import MusicTopicContext
 from wisp_backend.api.schemas.touch import TouchEvent, TouchFields
 from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply, TouchAppraisal
-from wisp_backend.completion.replies import BeverageProposal, SummaryModelReply
+from wisp_backend.completion.replies import SummaryModelReply
 from wisp_backend.validation import Contract, omittable, text_type, trim_text
 
 
@@ -90,22 +90,6 @@ class DialogueTopic(Contract):
         return value
 
 
-class BeverageCurrent(Contract):
-    value: Literal["coffee", "tea"]
-    validity: Literal["hypothesis", "confirmed"]
-
-
-class BeveragePreference(Contract):
-    allowProposal: bool
-    current: BeverageCurrent = omittable()
-
-    @model_validator(mode="after")
-    def meaningful_context(self) -> "BeveragePreference":
-        if not self.allowProposal and "current" not in self.model_fields_set:
-            raise ValueError("Recall-only context requires current preference")
-        return self
-
-
 class InteractionChatRequest(ChatFields, InteractionPolicy):
     musicTopic: MusicTopicContext = omittable()
     lifeReflection: LifeReflection = omittable()
@@ -114,7 +98,6 @@ class InteractionChatRequest(ChatFields, InteractionPolicy):
     summary: SummaryModelReply | LifeSummaryContext = omittable()
     previousTouch: PreviousTouch = omittable()
     dialogueTopic: DialogueTopic = omittable()
-    beveragePreference: BeveragePreference = omittable()
 
     @model_validator(mode="after")
     def card_matches(self) -> "InteractionChatRequest":
@@ -131,4 +114,3 @@ class InteractionTouchResponse(InteractionTouchReply):
 
 class InteractionChatResponse(InteractionChatReply):
     requestId: RequestId
-    beverageProposal: BeverageProposal = omittable()

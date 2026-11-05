@@ -8,13 +8,12 @@ from typing import Annotated, Literal, get_args
 import httpx
 import pytest
 from pydantic import Field, ValidationError
-from wisp_backend.completion.context import StructuredReplySchema
 from wisp_backend.completion.interaction_replies import (
     SUPPRESSED_APPRAISAL,
     InteractionChatReply,
     InteractionTouchReply,
 )
-from wisp_backend.completion.prompts.response_format import compact_provider_schema, describe_field, describe_reply
+from wisp_backend.completion.prompts.response_format import describe_field, describe_reply
 from wisp_backend.completion.replies import (
     FACT_VALUE_TYPES,
     MEMORY_CANDIDATE_LIMIT,
@@ -82,8 +81,8 @@ def test_utf16_description_and_original_length_validation_share_the_same_limit(r
 def test_optional_sanitation_and_required_null_rejection_are_unchanged() -> None:
     value = {"text": "Hello", "appraisal": SUPPRESSED_APPRAISAL}
     result = InteractionChatReply.model_validate(
-        {**value, "decision": None, "memoryCandidates": None, "beverageProposal": None},
-        context={"beverage_proposal_allowed": True, "evidence_quote": "Hello"},
+        {**value, "decision": None, "memoryCandidates": None},
+        context={"evidence_quote": "Hello"},
     )
     assert result.model_dump(exclude_unset=True) == value
     with pytest.raises(ValidationError):
@@ -130,12 +129,10 @@ def test_fact_value_metadata_drives_descriptions_and_candidate_sanitation() -> N
     assert wrong_evidence.memoryCandidates == []
 
 
-def test_suppressed_shape_and_beverage_projection_do_not_broaden_the_reply() -> None:
-    base = describe_reply(InteractionChatReply, exclude=("beverageProposal",))
+def test_suppressed_shape_does_not_broaden_the_reply() -> None:
+    base = describe_reply(InteractionChatReply)
     assert "beverageProposal" not in base
-    enabled = describe_field(InteractionChatReply, "beverageProposal")
-    assert 'beverageProposal?:{value:"coffee"|"tea",evidenceQuote:text<=240}' == enabled
-    suppressed = describe_reply(InteractionChatReply, exclude=("beverageProposal",), suppressed=True)
+    suppressed = describe_reply(InteractionChatReply, suppressed=True)
     match = re.search(r"appraisal:(\{[^}]+\})", suppressed)
     assert match is not None and json.loads(match.group(1)) == SUPPRESSED_APPRAISAL
     for unavailable in ('"supportive"', '"hostile"', '"moderate"', "beverageProposal"):
@@ -148,27 +145,16 @@ def test_suppressed_shape_and_beverage_projection_do_not_broaden_the_reply() -> 
 
 
 @pytest.mark.parametrize("provider,model", list(CONTEXT_WINDOWS))
-def test_existing_provider_schema_modes_stay_non_strict_and_local_metadata_stays_local(provider, model) -> None:
-    document = compact_provider_schema(InteractionChatReply)
-    encoded = json.dumps(document)
-    assert "x-wisp-" not in encoded and '"title"' not in encoded and '"description"' not in encoded
-    assert document["required"] == ["appraisal", "text"]
-    assert "beverageProposal" in document["properties"]
-    schema = StructuredReplySchema("beverage_proposal", encoded)
-
+def test_provider_formats_keep_the_normal_json_reply_mode(provider, model) -> None:
     async def run():
         settings = AssistantSettings(provider=provider, model=model)
         async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: pytest.fail("Unexpected HTTP"))) as client:
             adapter = (OpenAIProvider if provider == "openai" else GeminiProvider)(client, settings)
             messages = [{"role": "system", "content": describe_reply(InteractionChatReply)}]
-            base = adapter.request(messages, settings, 4096)[1]
-            enabled = adapter.request(messages, settings, 4096, response_schema=schema)[1]
+            payload = adapter.request(messages, settings, 4096)[1]
             if provider == "openai":
-                assert base["response_format"] == {"type": "json_object"}
-                assert enabled["response_format"]["json_schema"]["strict"] is False
-                assert enabled["response_format"]["json_schema"]["schema"] == document
+                assert payload["response_format"] == {"type": "json_object"}
             else:
-                assert "responseJsonSchema" not in base["generationConfig"]
-                assert enabled["generationConfig"]["responseJsonSchema"] == document
+                assert "responseJsonSchema" not in payload["generationConfig"]
 
     asyncio.run(run())

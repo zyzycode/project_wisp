@@ -1,4 +1,3 @@
-import { beverageUse, beverageCorrection } from './beverage-validation';
 import { topicUse } from './interest-thread-validation';
 import type { CompletedChatTurn, ConversationSession, GameEpisode, JsonValue, PersistedCharacterStateSnapshot, PersistedChatMessage, UserFact } from '../../application/ports/memory-repository.interface';
 import { plainText } from '../../shared/dialogue-ipc-validation';
@@ -17,9 +16,8 @@ export function message(value: unknown): PersistedChatMessage {
 }
 export function turn(value: unknown): CompletedChatTurn {
   const raw = record(value);
-  const v = record(value, ['session', 'user', 'assistant', ...(Object.hasOwn(raw, 'memoryConfirmable') ? ['memoryConfirmable'] : []), ...(Object.hasOwn(raw, 'interestThread') ? ['interestThread'] : []), ...['lifeDerivedUse','beverageUse','beverageCorrection','beverageProposalSource'].filter(key => Object.hasOwn(raw,key))]);
+  const v = record(value, ['session', 'user', 'assistant', ...(Object.hasOwn(raw, 'memoryConfirmable') ? ['memoryConfirmable'] : []), ...(Object.hasOwn(raw, 'interestThread') ? ['interestThread'] : []), ...['lifeDerivedUse'].filter(key => Object.hasOwn(raw,key))]);
   if (v.memoryConfirmable !== undefined && typeof v.memoryConfirmable !== 'boolean') throw new MemoryDataError('invalid_data');
-  if (Object.hasOwn(raw,'beverageProposalSource') && v.beverageProposalSource !== true) throw new MemoryDataError('invalid_data');
   let lifeDerivedUse: CompletedChatTurn['lifeDerivedUse'];
   if (Object.hasOwn(raw, 'lifeDerivedUse')) {
     const rawUse = record(v.lifeDerivedUse);
@@ -30,7 +28,7 @@ export function turn(value: unknown): CompletedChatTurn {
   }
   const s = session(v.session), u = message(v.user), a = message(v.assistant);
   if (u.role !== 'user' || a.role !== 'assistant' || u.id === a.id || u.conversationSessionId !== s.id || a.conversationSessionId !== s.id || s.endedAt !== null) throw new MemoryDataError('invalid_data');
-  return { ...(lifeDerivedUse ? { lifeDerivedUse } : {}), ...(v.beverageProposalSource === true ? { beverageProposalSource: true as const } : {}), ...(Object.hasOwn(raw,'beverageUse') ? { beverageUse: beverageUse(v.beverageUse) } : {}), ...(Object.hasOwn(raw,'beverageCorrection') ? { beverageCorrection: beverageCorrection(v.beverageCorrection) } : {}), ...(Object.hasOwn(raw, 'interestThread') ? { interestThread: topicUse(v.interestThread) } : {}), ...(v.memoryConfirmable === undefined ? {} : { memoryConfirmable: v.memoryConfirmable }), session: s, user: { ...u, role: 'user' }, assistant: { ...a, role: 'assistant' } };
+  return { ...(lifeDerivedUse ? { lifeDerivedUse } : {}), ...(Object.hasOwn(raw, 'interestThread') ? { interestThread: topicUse(v.interestThread) } : {}), ...(v.memoryConfirmable === undefined ? {} : { memoryConfirmable: v.memoryConfirmable }), session: s, user: { ...u, role: 'user' }, assistant: { ...a, role: 'assistant' } };
 }
 export function fact(value: unknown): UserFact {
   const v = record(value, ['id', 'factKey', 'factValue', 'confidence', 'sourceMessageId', 'createdAt', 'updatedAt']);

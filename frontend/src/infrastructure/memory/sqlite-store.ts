@@ -9,7 +9,6 @@ import { CausalLifeStore } from './causal-life-store';
 import { CausalRecallStore } from './causal-recall-store';
 import { MemoryItemRecallStore } from './item-recall-store';
 import { RoutineStore } from './routine-store';
-import { BeverageStore } from './beverage-store';
 import { InterestThreadStore } from './interest-thread-store';
 import { readSummarySources, summarySources } from './summary-source-reader';
 import { MemoryItemStore } from './item-store';
@@ -46,7 +45,7 @@ export class SqliteMemoryStore {
     try {
       const c = command(input);
       if (c.operation === 'close') { this.db.close(); this.unavailable = true; return { ok: true, value: undefined }; }
-      if ((c.operation === 'clear' || c.operation === 'mutateMemoryItem' || c.operation === 'mutateInterestThread' || c.operation === 'mutateBeverage')) {
+      if ((c.operation === 'clear' || c.operation === 'mutateMemoryItem' || c.operation === 'mutateInterestThread')) {
         if (c.generation !== this.generation + 1) return { ok: false, code: 'stale' };
         // The barrier survives rollback: old callbacks never regain write access.
         this.generation = c.generation;
@@ -86,8 +85,6 @@ export class SqliteMemoryStore {
       case 'beginRoutine': return new RoutineStore(this.db).begin(c.payload);
       case 'appendRoutine': return new RoutineStore(this.db).append(c.payload);
       case 'readRoutineStatus': return new RoutineStore(this.db).read();
-      case 'readBeverage': return new BeverageStore(this.db).read();
-      case 'mutateBeverage': return new BeverageStore(this.db).mutate(c.payload);
       case 'readInterestThread': return new InterestThreadStore(this.db).read();
       case 'mutateInterestThread': return new InterestThreadStore(this.db).mutate(c.payload);
       case 'claimInterestThread': return new InterestThreadStore(this.db).capture(c.payload, c.generation, true);
@@ -136,10 +133,10 @@ export class SqliteMemoryStore {
   private appendTurn(payload: unknown): void {
     const t = v.turn(payload);
     this.db.transaction(() => {
-      const topics = new InterestThreadStore(this.db), beverage = new BeverageStore(this.db);
+      const topics = new InterestThreadStore(this.db);
       const derived = new LifeDerivedTurnStore(this.db);
-      const derivedReplay = derived.check(t), topicReplay = topics.checkTurn(t), beverageReplay = beverage.checkTurn(t);
-      if (derivedReplay === 'replay' || topicReplay === 'replay' || beverageReplay === 'replay') return;
+      const derivedReplay = derived.check(t), topicReplay = topics.checkTurn(t);
+      if (derivedReplay === 'replay' || topicReplay === 'replay') return;
       const existing = this.db.prepare(`SELECT ${sessionColumns} FROM conversation_sessions WHERE id = ? OR app_run_id = ?`).all(t.session.id, t.session.appRunId);
       const messages = this.db.prepare(`SELECT ${messageColumns} FROM messages WHERE id IN (?, ?) ORDER BY sequence`).all(t.user.id, t.assistant.id).map(v.message);
       if (existing.length > 1) throw new v.MemoryDataError('conflict');
@@ -161,7 +158,6 @@ export class SqliteMemoryStore {
       const insert = this.db.prepare('INSERT INTO messages (id, conversation_session_id, role, content, created_at, memory_confirmable) VALUES (?, ?, ?, ?, ?, ?)');
       for (const m of [t.user, t.assistant]) insert.run(m.id, m.conversationSessionId, m.role, m.content, m.createdAt, t.memoryConfirmable === true ? 1 : 0);
       topics.commitTurn(t);
-      beverage.commitTurn(t);
       derived.commit(t);
       if (t.lifeDerivedUse?.origin === 'music_topic' && t.lifeDerivedUse.musicIntention === 'ask_music_detail') this.db.prepare('UPDATE messages SET music_intention=1 WHERE id=?').run(t.user.id);
     }).immediate();

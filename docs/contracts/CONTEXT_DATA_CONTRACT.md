@@ -357,7 +357,7 @@ Life cache capture разрешён только ordinary chat при current ga
 
 Любой turn, которому фактически dispatch-нут lifeReflection или life summary, получает Main-owned `LifeDerivedContextUse`. Append пары+suppress этой пары для
 future raw recall/summary/extraction — одна прежняя worker transaction, включая fallback output. Request/user/assistant binding/digest препятствуют
-bound/unbound replay, как existing topic/beverage use; не выводить use из текста LLM/Renderer. Current явная user-реплика сохраняет прежний recognizer, но model
+bound/unbound replay, как existing topic use; не выводить use из текста LLM/Renderer. Current явная user-реплика сохраняет прежний recognizer, но model
 paraphrase/новый summary не становятся causal source или новым подтверждением pattern. Это flat use/suppression, не новый source graph. Уже показанная
 историческая реплика не считается новым событием/актуальным cache.
 

@@ -1,7 +1,6 @@
 import { parseMusicTopic } from './backend-music-interest';
 import { parseLifeReflection } from './backend-life-reflection';
 import { fitChatRequestBytes } from './backend-history-budget';
-import { parseBeverageProposal } from '../../shared/beverage-validation';
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
 import type { AIEventProviderRequest } from '../../application/ports/ai-event-provider.interface';
 import type { BackendDialogueTopic, BackendInteractionAppraisal, BackendInteractionPolicy, BackendInteractionChatRequest, BackendInteractionTouchRequest, BackendPreviousTouchReaction } from '../../application/ports/backend-interaction-contract';
@@ -77,14 +76,6 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
     const withTopic = { ...result, dialogueTopic: parseDialogueTopic(request.dialogueTopic) };
     if (bytes(withTopic) <= 32768) result = withTopic;
   }
-  if (request.beveragePreference !== undefined) {
-    const raw = exactRecord(request.beveragePreference, ['allowProposal'], ['current']);
-    if (typeof raw.allowProposal !== 'boolean' || (!raw.allowProposal && raw.current === undefined)) throw new TypeError('Invalid preference opt-in');
-    let current;
-    if (Object.hasOwn(raw, 'current')) { const c = exactRecord(raw.current, ['value', 'validity']); current = { value: enumValue(c.value, ['coffee', 'tea']), validity: enumValue(c.validity, ['hypothesis', 'confirmed']) }; }
-    const enabled = { ...result, beveragePreference: { allowProposal: raw.allowProposal, ...(current ? { current } : {}) } };
-    if (bytes(enabled) <= 32768) result = enabled;
-  }
   if (request.lifeReflection !== undefined && !(result.summary && 'sourceKind' in result.summary)) {
     const r = exactRecord(request.lifeReflection, ['kind','fromDateUTC','throughDateUTC','completedCount','interruptedCount','completedUtcDays']);
     const lifeReflection = parseLifeReflection({ scope: 'observed_utc_window', validity: 'tentative', kind: r.kind, fromDate: r.fromDateUTC, throughDate: r.throughDateUTC, completedCount: r.completedCount, interruptedCount: r.interruptedCount, completedDays: r.completedUtcDays });
@@ -93,7 +84,7 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
   }
   if (request.musicTopic !== undefined) {
     const musicTopic = parseMusicTopic(request.musicTopic);
-    if (!request.causalExpression && !result.dialogueTopic && !result.beveragePreference && !result.lifeReflection) {
+    if (!request.causalExpression && !result.dialogueTopic && !result.lifeReflection) {
       const enabled = { ...result, musicTopic };
       if (bytes(enabled) <= 32768) result = enabled;
     }
@@ -105,12 +96,10 @@ export function parseInteractionTouchResponse(value: unknown, requestId: string,
   if (r.requestId !== requestId) throw new TypeError('Invalid interaction envelope');
   return { requestId, replyText: text(r.text, 240), appraisal: parseInteractionAppraisal(r.appraisal, true, effectPolicy) };
 }
-export function parseInteractionChatResponse(value: unknown, requestId: string, userText: string, effectPolicy: BackendInteractionPolicy['effectPolicy'], allowBeverageProposal = false) {
-  const r = exactRecord(value, ['requestId', 'text', 'appraisal'], ['decision', 'memoryCandidates', 'beverageProposal']);
+export function parseInteractionChatResponse(value: unknown, requestId: string, userText: string, effectPolicy: BackendInteractionPolicy['effectPolicy']) {
+  const r = exactRecord(value, ['requestId', 'text', 'appraisal'], ['decision', 'memoryCandidates']);
   const appraisal = parseInteractionAppraisal(r.appraisal, false, effectPolicy);
-  const { appraisal: _appraisal, beverageProposal: rawProposal, ...base } = r;
-  let beverageProposal;
-  if (allowBeverageProposal && rawProposal !== undefined) try { beverageProposal = parseBeverageProposal(rawProposal, userText); } catch { /* Invalid optional proposal never breaks text/appraisal. */ }
-  return { ...(beverageProposal ? { beverageProposal } : {}), ...parseSummaryChatResponse({ ...base, text: text(r.text, 2000) }, requestId, userText), appraisal };
+  const { appraisal: _appraisal, ...base } = r;
+  return { ...parseSummaryChatResponse({ ...base, text: text(r.text, 2000) }, requestId, userText), appraisal };
 }
 export { parseBackendError as parseInteractionError } from './backend-response-validation';

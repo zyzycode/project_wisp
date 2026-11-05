@@ -54,14 +54,12 @@ class CompletionPolicy(Generic[ContextInput]):
         text: str,
         evidence_quote: str | None,
         effect_policy: str | None = None,
-        beverage_proposal_allowed: bool = False,
     ) -> CompletionReply:
         return self.reply_type.model_validate(
             decode_json(text),
             context={
                 "evidence_quote": evidence_quote,
                 "effect_policy": effect_policy,
-                "beverage_proposal_allowed": beverage_proposal_allowed,
             },
         )
 

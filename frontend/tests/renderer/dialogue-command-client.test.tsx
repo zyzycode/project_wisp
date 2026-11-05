@@ -45,16 +45,6 @@ it('keeps the newest policy notice without allowing stale snapshots to clear it 
   f.client.accept(snapshot(4)); expect(f.client.getState().submissionMessage).toBeUndefined();
 });
 
-it('sends explicit beverage proposal permission once and allows cancelling it before send', async () => {
-  const f = fixture(); f.client.requestBeverageProposal(); expect(f.client.getState()).toHaveProperty('beverageProposal', true);
-  const first = f.client.send('Чай'); expect(f.postDialogueCommand.mock.calls[0]?.[0]).toMatchObject({ type: 'send', requestBeverageProposal: true });
-  f.settle({ status: 'accepted', conversationId: 'c' }); await first;
-  expect(f.client.getState()).not.toHaveProperty('beverageProposal');
-  const next = f.client.send('А теперь о другом'); expect(f.postDialogueCommand.mock.calls[1]?.[0]).not.toHaveProperty('requestBeverageProposal');
-  f.settle({ status: 'accepted', conversationId: 'c' }); await next;
-  f.client.requestBeverageProposal(); f.client.cancelBeverageProposal(); expect(f.client.getState()).not.toHaveProperty('beverageProposal');
-});
-it('drops queued beverage permission on stream/conversation replacement', () => { const f = fixture(); f.client.requestBeverageProposal(); f.client.accept({ ...snapshot(2), dialogue: { conversationId: 'reset', canSubmit: true, turn: { phase: 'idle' } } }); expect(f.client.getState()).not.toHaveProperty('beverageProposal'); f.client.requestBeverageProposal(); f.client.accept(snapshot(1, 'new')); expect(f.client.getState()).not.toHaveProperty('beverageProposal'); });
 
 it('exposes one stable send function for keyboard and recognized speech with shared normalization', async () => {
   const f = fixture();

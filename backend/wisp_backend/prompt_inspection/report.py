@@ -14,7 +14,6 @@ from wisp_backend.completion.context import (
     ContextOverflow,
     SelectionDecision,
     render_messages,
-    response_schema_for,
     select_context,
 )
 from wisp_backend.config.settings import AssistantSettings
@@ -68,7 +67,7 @@ def _absent_optionals(route: str, blocks: tuple[ContextBlock, ...]) -> list[dict
         return absent
     absent.extend(
         {"key": key, "reason": "no_match" if key == "lore" else "input_absent"}
-        for key in ("summary", "lore", "previous_initiative", "previous_touch", "dialogue_topic", "beverage_preference")
+        for key in ("summary", "lore", "previous_initiative", "previous_touch", "dialogue_topic")
         if key not in keys
     )
     if not any(key.startswith("history_") for key in keys):
@@ -86,7 +85,6 @@ async def inspect_scene(
     temperature: float | None = None,
     thinking_level: str | None = None,
     budget_case: str = "normal",
-    beverage_case: str | None = None,
 ) -> dict[str, Any]:
     """No arbitrary text/path/env input; only finite scenes, models and diagnostic budgets."""
     if provider not in PROVIDERS or budget_case not in ("normal", "required_only", "overflow"):
@@ -105,16 +103,6 @@ async def inspect_scene(
     if settings.model == "gpt-6-astra" and settings.temperature is not None:
         raise ValueError("Unsupported inspection temperature")
     route, body, lore, metadata = load_scene(scene_id, locale)
-    if beverage_case is not None:
-        variants = {
-            "opt_in": {"allowProposal": True},
-            "hypothesis": {"allowProposal": False, "current": {"value": "coffee", "validity": "hypothesis"}},
-            "confirmed": {"allowProposal": False, "current": {"value": "tea", "validity": "confirmed"}},
-        }
-        if route != "/v1/chat" or beverage_case not in variants:
-            raise ValueError("Unsupported synthetic beverage case")
-        body = {**body, "beveragePreference": variants[beverage_case]}
-        metadata = {**metadata, "beverage_case": beverage_case}
     validated = ENDPOINTS[route].request_type.model_validate(body)
     job = prepare_job(validated, lore)
     blocks = job.inference.blocks
@@ -127,7 +115,7 @@ async def inspect_scene(
         def size(candidate: tuple[ContextBlock, ...]) -> int:
             messages = render_messages(candidate)
             return formatter.estimate_payload(
-                formatter.request(messages, settings, cap, response_schema=response_schema_for(candidate))[1],
+                formatter.request(messages, settings, cap)[1],
                 len(messages),
             )
 
@@ -142,11 +130,7 @@ async def inspect_scene(
         except ContextOverflow:
             status = "required_overflow"
         messages = render_messages(selected)
-        payload = (
-            formatter.request(messages, settings, cap, response_schema=response_schema_for(selected))[1]
-            if status == "ok"
-            else None
-        )
+        payload = formatter.request(messages, settings, cap)[1] if status == "ok" else None
         decisions = {decision.key: decision for decision in trace}
         details = []
         for block in sorted(blocks, key=lambda item: (item.order, item.key)):
@@ -204,7 +188,6 @@ async def inspect_scene(
         "active_optional_instructions": [
             b.key for b in selected if not b.required and any(m["role"] == "system" for m in render_messages((b,)))
         ],
-        "active_response_schema": response_schema_for(selected).name if response_schema_for(selected) else None,
         "messages": messages,
         "payload": payload,
         "messages_sha256": digest(messages),

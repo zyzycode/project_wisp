@@ -3,7 +3,6 @@ export const LOCAL_DIALOGUE_TEXT = {
   support_quiet_ack: { ru: 'Поняла. Я рядом.', en: "I understand. I'm here." },
   fallback: { ru: 'Сейчас ответ недоступен. Попробуйте позже.', en: 'A reply is unavailable right now. Please try again later.' },
   sleeping: { ru: 'Wisp спит', en: 'Wisp is sleeping' },
-  correction_error: { ru: 'Не удалось безопасно исправить предпочтение. Обновите его в памяти и попробуйте снова.', en: 'The preference could not be safely corrected. Update it in memory and try again.' },
   topic_error: { ru: 'Не удалось связать ответ с темой. Обновите тему в памяти и попробуйте снова.', en: 'The reply could not be linked to the topic. Update the topic in memory and try again.' },
   publication_error: { ru: 'Не удалось показать ответ. Попробуй позже.', en: 'The reply could not be displayed. Please try again later.' },
   motion_clarify: { ru: 'Уточни: идти влево, вправо или остановиться?', en: 'Should I walk left, right, or stop?' },

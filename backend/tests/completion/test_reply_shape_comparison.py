@@ -1,6 +1,7 @@
 """Full payload comparison for CTX-I10 across every configured model profile."""
 
 import asyncio
+import hashlib
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -11,7 +12,7 @@ from tests.completion.projection_archive import assert_projected_input, projecte
 from tests.helpers import CONTRACT_FIXTURES
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
-from wisp_backend.completion.context import render_messages, response_schema_for, select_context
+from wisp_backend.completion.context import render_messages, select_context
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.prompt_inspection.report import PROVIDERS, digest, encoded
 from wisp_backend.prompt_inspection.scenes import load_scene
@@ -26,9 +27,6 @@ VARIANTS = (
     "events",
     "observation",
     "summary",
-    "beverage_opt_in",
-    "beverage_recall",
-    "beverage_drop",
     "long_context",
 )
 
@@ -58,12 +56,6 @@ async def capture(case: dict, allowance: int | None = None) -> dict:
         route, body, lore, _ = load_scene(scene, locale)
     if variant.endswith(("eligible", "suppressed")):
         body["effectPolicy"] = variant.rsplit("_", 1)[1]
-    if variant.startswith("beverage_"):
-        body["beveragePreference"] = (
-            {"allowProposal": False, "current": {"value": "tea", "validity": "confirmed"}}
-            if variant == "beverage_recall"
-            else {"allowProposal": True}
-        )
     job = prepare_job(ENDPOINTS[route].request_type.model_validate(body), lore)
     settings = AssistantSettings(provider=case["provider"], model=case["model"])
     cap = min(settings.max_output_tokens, job.inference.max_output_tokens)
@@ -76,19 +68,13 @@ async def capture(case: dict, allowance: int | None = None) -> dict:
         adapter = PROVIDERS[settings.provider](client, settings)
 
         def payload(blocks):
-            return adapter.request(render_messages(blocks), settings, cap, response_schema=response_schema_for(blocks))[
-                1
-            ]
+            return adapter.request(render_messages(blocks), settings, cap)[1]
 
         def size(blocks):
             return adapter.estimate_payload(payload(blocks), len(render_messages(blocks)))
 
         if allowance is None:
-            allowance = (
-                size(tuple(b for b in job.inference.blocks if b.required))
-                if variant == "beverage_drop"
-                else window - cap
-            )
+            allowance = window - cap
         trace = []
         selected = select_context(job.inference.blocks, allowance, size, trace=trace)
         messages, outgoing = render_messages(selected), payload(selected)
@@ -123,9 +109,16 @@ async def capture(case: dict, allowance: int | None = None) -> dict:
 def test_all_profiles_keep_inputs_facts_settings_and_budget_with_generated_reply_shapes() -> None:
     from tests.completion.test_prompt_deduplication import factual_messages, thaw
 
+    # Keep removed-feature rows as immutable evidence; replay only current API scenarios.
+    assert (
+        hashlib.sha256(ARTIFACT.read_bytes()).hexdigest()
+        == "4cf92c6c2dd27cd99db6edfa429ab8616aa9d49245eeb5bf0e06a279efe6cd1e"
+    )
     archive = json.loads(ARTIFACT.read_bytes())
     assert archive["provider_calls"] == 0 and archive["synthetic"] is True
-    rows = thaw(archive["rows"], archive["text_pool"])
+    rows = [
+        row for row in thaw(archive["rows"], archive["text_pool"]) if not row["case"]["variant"].startswith("beverage_")
+    ]
     assert [row["case"] for row in rows] == cases()
 
     async def run():

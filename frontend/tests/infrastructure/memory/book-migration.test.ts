@@ -1,3 +1,5 @@
+import { restoreLegacyPreferenceColumns } from './schema-fixture';
+import { SCHEMA_VERSION } from '../../../src/infrastructure/memory/schema';
 import { afterEach, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -20,14 +22,15 @@ function fixture() {
     occurredAt: now, source: 'autonomy', triggerSequence: null, activityRunId: `game-${sequence}`, activity: 'cursor_game',
     cause: 'completed', outcome: 'completed', terminalReason: null, executedMs: 1000, participation: 'user_engaged' });
   new LifeHistoryStore(db).read(query);
-  db.exec('DELETE FROM schema_migrations WHERE version=13; PRAGMA user_version=12;');
+  restoreLegacyPreferenceColumns(db);
+  db.exec('DROP TABLE IF EXISTS routine_suppression; DELETE FROM schema_migrations WHERE version>=13; PRAGMA user_version=12;');
   return db;
 }
 it('advances the format gate atomically and rebuilds both indexes in bounded batches without clock rollback', () => {
   const db = fixture();
   try {
     initializeSchema(db, now);
-    expect(db.pragma('user_version', { simple: true })).toBe(13);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
     expect(db.prepare('SELECT cursor,target,complete,last_clock FROM causal_history_build').get())
       .toEqual({ cursor: 0, target: 130, complete: 0, last_clock: now });
     const history = new LifeHistoryStore(db), recall = new CausalRecallStore(db);

@@ -11,7 +11,7 @@ from tests.completion.projection_archive import assert_projected_input, projecte
 from tests.completion.test_prompt_deduplication import factual_messages, thaw
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
-from wisp_backend.completion.context import ContextOverflow, render_messages, response_schema_for, select_context
+from wisp_backend.completion.context import ContextOverflow, render_messages, select_context
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.prompt_inspection.report import PROVIDERS, digest, encoded, inspect_scene
 from wisp_backend.prompt_inspection.scenes import load_scene
@@ -22,19 +22,6 @@ ARTIFACT = Path(__file__).parents[1] / "fixtures/prompt_inspection/issue143_comp
 
 async def capture(case: dict, allowance: int) -> dict:
     route, body, lore, _ = load_scene(case["scene_id"], case["locale"])
-    if "beverage_case" in case:
-        name = case["beverage_case"]
-        body = {
-            **body,
-            "beveragePreference": (
-                {"allowProposal": True}
-                if name == "opt_in"
-                else {
-                    "allowProposal": False,
-                    "current": {"value": "coffee" if name == "hypothesis" else "tea", "validity": name},
-                }
-            ),
-        }
     job = prepare_job(ENDPOINTS[route].request_type.model_validate(body), lore)
     settings = AssistantSettings(provider=case["provider"])
     cap = min(settings.max_output_tokens, job.inference.max_output_tokens or settings.max_output_tokens)
@@ -47,9 +34,7 @@ async def capture(case: dict, allowance: int) -> dict:
         provider = PROVIDERS[settings.provider](client, settings)
 
         def payload(blocks):
-            return provider.request(
-                render_messages(blocks), settings, cap, response_schema=response_schema_for(blocks)
-            )[1]
+            return provider.request(render_messages(blocks), settings, cap)[1]
 
         def size(blocks):
             return provider.estimate_payload(payload(blocks), len(render_messages(blocks)))
@@ -106,6 +91,11 @@ def test_comparison_preserves_inputs_facts_budgets_and_explains_atomic_selection
     async def run():
         for row in rows:
             before, recorded = row["before"], row["after"]
+            if "beverage_case" in row["case"]:
+                for saved in (before, recorded):
+                    assert digest(saved["messages"]) == saved["messages_sha256"]
+                    assert digest(saved["payload"]) == saved["payload_sha256"]
+                continue  # Immutable evidence for the removed feature, never a current API input.
             current = await capture(row["case"], before["budget"]["input_allowance"])
             assert row["input_sha256"] == recorded["input_sha256"]
             assert_projected_input(current["input"], row["input_sha256"], row["before_blocks"])
@@ -158,10 +148,5 @@ def test_inspector_reports_active_annotations_schema_and_rendered_roles(provider
             for block in report["blocks"]:
                 if block["key"] in attached:
                     assert block["roles"] == ["system", "user"]
-            beverage = await inspect_scene(
-                "greeting_low_trust", "en", provider, budget_case=budget, beverage_case="opt_in"
-            )
-            assert beverage["active_optional_instructions"] == (["beverage_preference"] if budget == "normal" else [])
-            assert beverage["active_response_schema"] == ("beverage_proposal" if budget == "normal" else None)
 
     asyncio.run(run())

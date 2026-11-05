@@ -39,7 +39,6 @@ def test_public_schema(client_factory, body):
             "text",
             "decision",
             "memoryCandidates",
-            "beverageProposal",
             "appraisal",
         }
         assert set(schemas["InteractionTouchResponse"]["properties"]) == {"requestId", "text", "appraisal"}

@@ -1,3 +1,4 @@
+import { migrateBeverage } from '../../../src/infrastructure/memory/beverage-schema';
 import type Database from 'better-sqlite3';
 import { MEMORY_ITEMS_SCHEMA } from '../../../src/infrastructure/memory/item-schema';
 /** Test fixture downgrade of an empty current schema card store, before populating migration3 data. */
@@ -32,10 +33,23 @@ export function dropLifeHistory(db: Database.Database): void {
 
 /** Remove v12 before constructing a genuine older schema. */
 export function dropMusic(db: Database.Database): void {
- db.exec('DELETE FROM schema_migrations WHERE version=13;');
+ restoreLegacyPreferenceColumns(db);
+ db.exec('DELETE FROM schema_migrations WHERE version>=13;');
  db.exec('DROP TRIGGER IF EXISTS music_source_deleted; DROP TRIGGER IF EXISTS music_source_corrected; DROP TABLE IF EXISTS music_samples; DROP TABLE IF EXISTS music_user_preferences; DROP TABLE IF EXISTS music_clock; DELETE FROM schema_migrations WHERE version=12;');
  const columns = db.prepare('PRAGMA table_info(messages)').all();
  for (const name of ['music_intention','music_sample_digest','music_preference_consumed']) {
   if (columns.some(row => typeof row === 'object' && row !== null && 'name' in row && row.name === name)) db.exec(`ALTER TABLE messages DROP COLUMN ${name}`);
  }
+}
+
+/** Restore the historical parent shape before downgrading a test database to v4–v13. */
+export function restoreLegacyPreferenceColumns(db: Database.Database): void {
+ db.exec('DELETE FROM schema_migrations WHERE version>=14;');
+ const columns = db.prepare('PRAGMA table_info(memory_items)').all();
+ if (columns.some(row => typeof row === 'object' && row !== null && 'name' in row && row.name === 'beverage_value')) return;
+ const version = db.pragma('user_version', { simple: true });
+ const migration = db.prepare('SELECT applied_at FROM schema_migrations WHERE version=4').get() as { applied_at: string };
+ db.exec('DELETE FROM schema_migrations WHERE version=4;');
+ migrateBeverage(db, migration.applied_at);
+ db.pragma(`user_version = ${Number(version)}`);
 }

@@ -16,7 +16,7 @@ from tests.completion.projection_archive import (
 from tests.helpers import CONTRACT_FIXTURES
 from wisp_backend.api.dispatch import prepare_job
 from wisp_backend.api.endpoints import ENDPOINTS
-from wisp_backend.completion.context import render_messages, response_schema_for, select_context
+from wisp_backend.completion.context import render_messages, select_context
 from wisp_backend.completion.prompts.interaction import APPRAISAL_RULES
 from wisp_backend.completion.prompts.technical import CHARACTER_RULES, MEMORY_EVIDENCE_RULES
 from wisp_backend.config.settings import AssistantSettings
@@ -32,8 +32,6 @@ def cases() -> list[dict]:
     for provider in PROVIDERS:
         for locale in ("ru", "en"):
             result.extend(dict(provider=provider, locale=locale, scene=scene) for scene in SCENE_IDS)
-            for beverage in ("opt_in", "hypothesis", "confirmed"):
-                result.append(dict(provider=provider, locale=locale, scene="praise", beverage=beverage))
             for mode in ("follow_up", "reply"):
                 result.append(dict(provider=provider, locale=locale, scene="long_context", topic=mode))
             for observation in ("valid", "empty-title", "hostile-title"):
@@ -57,13 +55,6 @@ async def capture(case: dict) -> dict:
             "text": "Synthetic past topic",
             "statedAt": "2026-10-29T00:00:00.000Z",
         }
-    if "beverage" in case:
-        name = case["beverage"]
-        body["beveragePreference"] = (
-            {"allowProposal": True}
-            if name == "opt_in"
-            else {"allowProposal": False, "current": {"value": "tea", "validity": name}}
-        )
     job = prepare_job(ENDPOINTS[route].request_type.model_validate(body), lore)
     blocks = job.inference.blocks
     settings = AssistantSettings(provider=case["provider"])
@@ -77,9 +68,7 @@ async def capture(case: dict) -> dict:
         formatter = PROVIDERS[settings.provider](client, settings)
 
         def payload(candidate):
-            return formatter.request(
-                render_messages(candidate), settings, cap, response_schema=response_schema_for(candidate)
-            )[1]
+            return formatter.request(render_messages(candidate), settings, cap)[1]
 
         def cost(candidate):
             return formatter.estimate_payload(payload(candidate), len(render_messages(candidate)))
@@ -142,13 +131,18 @@ def factual_messages(block: dict) -> list[dict]:
 
 
 def test_same_inputs_preserve_facts_settings_and_budget_with_smaller_instructions() -> None:
+    # Keep removed-feature rows as immutable evidence; replay only current API scenarios.
+    assert (
+        hashlib.sha256(ARTIFACT.read_bytes()).hexdigest()
+        == "8d9eb406e4ca8b7d1226bc2f81338311069c075719c284f312448179071cd761"
+    )
     archive = json.loads(ARTIFACT.read_bytes())
     assert archive["synthetic"] is True and archive["provider_calls"] == 0
     for phase in ("before", "after"):
         overrides = thaw(archive[f"{phase}_source_overrides"], archive["text_pool"])
         for path, source in overrides.items():
             assert hashlib.sha256(source.encode()).hexdigest() == archive[f"{phase}_source_digests"][path]
-    rows = thaw(archive["rows"], archive["text_pool"])
+    rows = [row for row in thaw(archive["rows"], archive["text_pool"]) if "beverage" not in row["case"]]
     assert [row["case"] for row in rows] == cases()
 
     async def run():

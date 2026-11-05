@@ -53,7 +53,6 @@ export interface AIProviderRequest {
   readonly lifeReflection?: import('./life-history.interface').CrossDayGameObservation;
   /** Already decided local meaning; no local source/ownership metadata is projected. */
   readonly causalExpression?: import('./causal-life.interface').CausalExpressionProjection;
-  readonly beveragePreference?: import('./memory-beverage.interface').AIProviderBeverageContext;
   /** Explicitly confirmed, source-validated topic; ordinary user dialogue only. */
   readonly dialogueTopic?: import('./interest-thread.interface').AIProviderDialogueTopic;
   /** Full interaction context for the external v1 adapter. */
@@ -123,7 +122,6 @@ export interface AIProviderReply {
 export type AIProviderResponseStatus = 'ok' | 'fallback';
 
 export interface AIProviderResponse {
-  readonly beverageProposal?: import('./memory-beverage.interface').BeverageProposal;
   readonly appraisal?: InteractionAppraisal;
   requestId: string;
   status: AIProviderResponseStatus;
@@ -140,7 +138,6 @@ export interface IAIProvider {
   readonly supportsMusicTopic?: true;
   canIncludeMusicTopic?(request: AIProviderRequest): boolean;
   canIncludeLifeReflection?(request: AIProviderRequest): boolean;
-  canIncludeBeverage?(request: AIProviderRequest): boolean;
   /** Absent means unsupported. Check capability and ready status before reserving a topic. */
   readonly supportsDialogueTopic?: true;
   /** Whether the final wire projection keeps summary; lets recall restore covered sources when it does not fit. */

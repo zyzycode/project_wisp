@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '../../../src/infrastructure/memory/schema';
 import { schema3 } from './schema-fixture';
 import { afterEach, describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
@@ -95,7 +96,7 @@ describe('explicit persisted memory cards', () => {
     expect(run(f.store, 'listMemoryItems', { cursor: null, limit: 21 }, 21)).toEqual({ ok: false, code: 'invalid_data' });
     expect(run(f.store, 'clear', null, 22).ok).toBe(true);
     for (const table of ['memory_items', 'memory_item_sources', 'memory_item_terms', 'memory_suppressed_pairs', 'memory_mutation_receipts', 'messages']) expect(raw(f.filename, `SELECT * FROM ${table}`)).toEqual([]);
-    expect(raw(f.filename, 'SELECT version FROM schema_migrations')).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }, { version: 8 }, { version: 9 }, { version: 10 }, { version: 11 }, { version: 12 }, { version: 13 }]);
+    expect(raw(f.filename, 'SELECT version FROM schema_migrations')).toEqual(Array.from({ length: SCHEMA_VERSION }, (_, index) => ({ version: index + 1 })));
   });
 });
 

@@ -78,44 +78,6 @@ def test_provider_uses_the_same_estimate_at_equality_and_rejects_overflow_before
     asyncio.run(run())
 
 
-def test_conditional_beverage_schema_is_part_of_the_actual_final_payload_estimate() -> None:
-    from wisp_backend.api.dispatch import prepare_job
-    from wisp_backend.api.schemas.interaction import InteractionChatRequest
-    from wisp_backend.completion.context import render_messages, response_schema_for
-    from wisp_backend.prompt_inspection.scenes import load_scene
-
-    async def run() -> None:
-        route, body, lore, _ = load_scene("greeting_low_trust", "ru")
-        assert route == "/v1/chat"
-        body = {**body, "beveragePreference": {"allowProposal": True}}
-        job = prepare_job(InteractionChatRequest.model_validate(body), lore)
-        sent = []
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            sent.append(json.loads(request.content))
-            return httpx.Response(
-                200, json={"choices": [{"finish_reason": "stop", "message": {"content": '{"text":"ok"}'}}]}
-            )
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://test/") as client:
-            provider = OpenAIProvider(client, AssistantSettings(provider="openai", model="gpt-6-sol"))
-            deadline = asyncio.get_running_loop().time() + 1
-            selected = await provider.select_blocks(job.inference, 4096, 16384 - 4096, deadline)
-            messages = render_messages(selected)
-            schema = response_schema_for(selected)
-            assert schema is not None
-            actual = provider.request(messages, provider.settings, 4096, response_schema=schema)[1]
-            assert actual["response_format"]["type"] == "json_schema"
-            assert provider.estimate_payload(actual, len(messages)) == estimate_openai_input(actual, len(messages))
-            plain = provider.request(messages, provider.settings, 4096)[1]
-            assert provider.estimate_payload(actual, len(messages)) > provider.estimate_payload(plain, len(messages))
-            assert provider.estimate_payload(actual, len(messages)) <= 16384 - 4096
-            result = await provider.complete(job.inference, 1)
-            assert result.error is None and sent == [actual]
-
-    asyncio.run(run())
-
-
 @pytest.mark.parametrize("finish", ["stop", "length"])
 def test_long_structured_output_preserves_chat_reserve_and_known_usage(finish: str) -> None:
     answer = json.dumps(

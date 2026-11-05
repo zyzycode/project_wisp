@@ -34,7 +34,7 @@ it('reuses persisted cohort across restart and ordinary memory generations, rota
   const {store,filename} = fixture(), id = begin(store); run(store,'appendRoutine',observation(id)); store.close();
   const reopened = SqliteMemoryStore.open(filename,now); stores.push(reopened);
   expect(begin(reopened,{atUtcMs:start+300000,candidateCohortId:'unused'})).toEqual(id);
-  expect(run(reopened,'mutateBeverage',{kind:'reject',commandId:'x',expected:{itemId:'absent',revision:1},updatedAt:now},1).ok).toBe(false);
+  expect(run(reopened,'mutateInterestThread',{kind:'delete',commandId:'x',expected:{threadId:'absent',revision:1}},1).ok).toBe(false);
   expect(begin(reopened,{atUtcMs:start+300000,candidateCohortId:'unused'},1)).toEqual(id);
   const rotated = begin(reopened,{atUtcMs:start-1,candidateCohortId:'clock'},1); expect(rotated).toEqual({...id,cohortId:'clock'});
   const zone = begin(reopened,{zoneId:'Europe/London',candidateCohortId:'zone'},1); expect(zone).toEqual({...id,cohortId:'zone'});
