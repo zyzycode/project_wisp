@@ -20,29 +20,13 @@
 
 ### `conversation_sessions`
 
-Одна сессия на `app_run_id`; создаётся лениво в транзакции первого завершённого turn. `app_run_id` — UUID запуска Main, не dialogue conversationId и не renderer streamId. После полного memory reset создаётся новый app_run_id для памяти. Dialogue reset/reload не создают storage session.
-
-| Колонка | SQLite type | Правило |
-|---|---|---|
-| `id` | `TEXT` | primary key, not null |
-| `app_run_id` | `TEXT` | not null, unique |
-| `started_at` | `TEXT` | not null; время user-сообщения первой сохранённой пары |
-| `ended_at` | `TEXT` | nullable; штатное закрытие либо время следующего запуска |
+Одна сессия на `app_run_id`; создаётся лениво в транзакции первого завершённого turn. `app_run_id` — UUID запуска Main, не dialogue conversationId и не renderer streamId. После полного memory reset создаётся новый app_run_id для памяти. Dialogue reset/reload не создают storage session. Все поля TEXT: `id` primary key/not null, `app_run_id` not null/unique, `started_at` not null (user time первой сохранённой пары), `ended_at` nullable (штатное закрытие либо следующий запуск).
 
 Перед первой новой записью закрыть незавершённые сессии; `ended_at = max(started_at, suppliedNow)` защищает от отката часов. Нет пустых сессий после неуспешной записи пары. Summary и автоматическая сегментация не требуются MVP; Хранилище использует пары исходных сообщений без новой таблицы.
 
 ### `messages`
 
-Дословная история **завершённых показанных turn**. Success и показанный безопасный fallback сохраняются как пара; error/reset/cancel до terminal не сохраняют половину. Это история разговоров, не аудит каждого нажатия Send. Принятый turn сначала публикует runtime-результат, затем ставится в очередь записи; crash до commit может потерять эту пару.
-
-| Колонка | SQLite type | Правило |
-|---|---|---|
-| `sequence` | `INTEGER` | primary key autoincrement; внутренний порядок вставки |
-| `id` | `TEXT` | not null, unique; стабильный ID сообщения Application |
-| `conversation_session_id` | `TEXT` | not null, FK → `conversation_sessions(id)`, delete restrict |
-| `role` | `TEXT` | not null; Application допускает `user` / `assistant` |
-| `content` | `TEXT` | not null; текст после действующей input/reply validation |
-| `created_at` | `TEXT` | not null |
+Дословная история **завершённых показанных turn**. Success и показанный безопасный fallback сохраняются как пара; error/reset/cancel до terminal не сохраняют половину. Это история разговоров, не аудит каждого нажатия Send. Принятый turn сначала публикует runtime-результат, затем ставится в очередь записи; crash до commit может потерять эту пару. `sequence INTEGER PRIMARY KEY AUTOINCREMENT` — внутренний insertion order. Остальные поля TEXT NOT NULL: unique `id` (стабильный Application ID), `conversation_session_id` FK→conversation_sessions(id)/delete restrict, `role` user/assistant, `content` после input/reply validation, `created_at`.
 
 Индекс `messages(conversation_session_id, sequence)`. Общий порядок — `sequence`, а не часы/случайные UUID; равные timestamps и откат часов его не меняют. В паре user вставляется перед assistant. `sequence` не покидает adapter. SQL enum CHECK для роли не нужен, чтение неизвестной роли даёт `invalid_data`.
 
@@ -50,17 +34,7 @@
 
 ### `user_facts`
 
-Один стабильный `fact_key` — одно текущее скалярное значение. Массивы/наборы через JSON или суффиксы ключей до cardinality gate запрещены.
-
-| Колонка | SQLite type | Правило |
-|---|---|---|
-| `id` | `TEXT` | primary key, not null |
-| `fact_key` | `TEXT` | not null, unique |
-| `fact_value` | `TEXT` | not null |
-| `confidence` | `REAL` | not null, CHECK 0..1 |
-| `source_message_id` | `TEXT` | nullable FK → `messages(id)`, delete restrict |
-| `created_at` | `TEXT` | not null |
-| `updated_at` | `TEXT` | not null |
+Один стабильный `fact_key` — одно текущее скалярное значение. Массивы/наборы через JSON или суффиксы ключей до cardinality gate запрещены. TEXT NOT NULL: `id` primary key, unique `fact_key`, `fact_value`, `created_at`, `updated_at`. `confidence REAL NOT NULL CHECK 0..1`; `source_message_id TEXT` nullable FK→messages(id)/delete restrict.
 
 Upsert по key сохраняет исходные id/created_at, заменяет value/confidence/source, выставляет supplied updated_at. Application передаёт candidate id и timestamps; Infrastructure не генерирует время/семантику. Последняя принятая операция побеждает, часы не разрешают конфликт; updated_at нормализуется не ниже created_at. `removeByKey` идемпотентен. `list` сортирует по fact_key с BINARY collation.
 
@@ -68,16 +42,7 @@ Upsert по key сохраняет исходные id/created_at, заменя�
 
 ### `game_episodes`
 
-| Колонка | SQLite type | Правило |
-|---|---|---|
-| `app_run_id`, `activity_run_id` | `TEXT` | not null; составной primary key |
-| `kind` | `TEXT` | not null; `cursor_game` |
-| `outcome` | `TEXT` | not null; реальный `CursorGameOutcome` |
-| `play_completed` | `INTEGER` | not null, CHECK = 1 |
-| `executed_ms` | `REAL` | not null, CHECK >= 0; finite на границе |
-| `ended_at` | `TEXT` | not null; UTC время terminal |
-
-Первичный опыт без LLM-текста/importance/inferred preference; источник — [CursorGameResult](../../src/application/ports/cursor-game-contract.ts) из единственного terminal callback Activity. Сохранять только `playCompleted=true`, включая cancelled/lost_target **после** подтверждённой play phase; до неё записи нет. Не превращать cancelled в caught и не выводить исход из UI/реплики/анимации. Application конвертирует явное atMs через согласованную Main clock mapping в UTC; монотонное время не трактовать как epoch.
+TEXT NOT NULL: составной primary key (`app_run_id`,`activity_run_id`), `kind`=cursor_game, `outcome`=реальный CursorGameOutcome, `ended_at`=UTC terminal time. `play_completed INTEGER NOT NULL CHECK=1`; `executed_ms REAL NOT NULL CHECK>=0`, finite на границе. Первичный опыт без LLM-текста/importance/inferred preference; источник — [CursorGameResult](../../src/application/ports/cursor-game-contract.ts) из единственного terminal callback Activity. Сохранять только `playCompleted=true`, включая cancelled/lost_target **после** подтверждённой play phase; до неё записи нет. Не превращать cancelled в caught и не выводить исход из UI/реплики/анимации. Application конвертирует явное atMs через согласованную Main clock mapping в UTC; монотонное время не трактовать как epoch.
 
 Составной ключ защищает от повторного terminal, перезапуска и повторного использования activityRunId. Идентичный повтор — no-op; отличный payload того же ключа — `conflict`, первая запись сохраняется. `IGameEpisodeRepository.append` — единственный необходимый порт; recall/list подключается вместе с его потребителем. Ошибка сохранения не отменяет уже применённый play effect и не повторяет его.
 
@@ -448,3 +413,36 @@ Additive migration4 транзакционно перестраивает memory
 **Следующий AI gate.** Хранение всей истории и inference window различны: старые observations остаются, кандидат алгоритма читает только28 завершённых local dates текущего cohort, исключая текущий неполный день. Для текущего фиксированного шестичасового окна [00,06)/[06,12)/[12,18)/[18,24) eligible day требует ≥4h classified покрытия, positive — ≥1h active; N≥14 eligible, positive≥70%, из последних7 eligible ≥5 positive, последний eligible не старше7 календарных дней. Это консервативные стартовые эвристики для условной повторяемости, не вероятность/уверенность70% и не привычка всей жизни. Synthetic replay проверяет только заявленные предпосылки; пограничная полночь, смены расписания, пропуски и систематический zero могут честно дать omission. Для такого future query нужен индекс cohort/local-date, hard examined-row cap10000 (LIMIT10001→omission всей гипотезы, без расчёта по первым10000), ограниченные bytes и общий recall deadline200ms; timeout не заменяет лимит работы SQLite. Overlap/conflicted bins не суммировать; malformed/ambiguous/future timestamps дают omission, не привычку.
 
 **Проекция и границы будущего этапа.** Перед подключением AI отдельно согласовать local hypothesis/freshness, точную optional wire projection, validation и защиту от повторного использования устаревших выводов через history/summary. Raw diary в author lore отвергнут: lore — авторский мир, inferred routine — приобретённая условная гипотеза; registry facts также не расширять произвольным текстом. Предпочтителен один structured optional atomic block только обычного user chat, с явно ограниченной областью «при работающей Wisp», window/counts/freshness и правом omission; без local IDs/raw rows, нового inference call, инициатив, model writes или server storage. Текущая correction/refusal пользователя приоритетна; AI не узнаёт расписание из собственных реплик. Wire ещё не расширен: [Backend Memory](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#9-будущее-использование-распорядка-127).
+
+## 17. MEMORY-A01: indexed causal recall (#171)
+
+Целевой baseline #172 поверх реальных writers/readers #154; target-only declarations — [causal-recall.interface.ts](../../src/application/ports/causal-recall.interface.ts), [wire/Python договор](../../../docs/contracts/BACKEND_MEMORY_CONTRACT.md#11-memory-a01-проекция-собственного-события-171). Один Application LocalMemoryRecall владеет прежним общим200ms deadline, одной in-flight read group и memory2400-unit cap. Domain определяет закрытый causal match; worker выполняет bounded indexed reads; backend получает только выбранный факт, не историю/IDs. Это не semantic embeddings и не новый provider request.
+
+**Нормализация запроса.** Вход — trusted current causal situation либо tokens текущей user-реплики (NFC/lowercase, первые8 distinct tokens≥2 Unicode letters/digits, как §9). Situation имеет приоритет, только если current generation/source/run актуальны; source исключается из прошлого результата. Без situation разрешены закрытые RU/EN основы: game/игр/поигр/play/playing→game; interrupt/прерва/прервы/помеша/stopped→user_interrupted; timeout/таймаут либо пара timed+out→timeout; support/опор вместе с lost/потер→environment_lost; complet/finish/заверш/закон вместе с мы/we→completed.user_engaged, либо одна/alone/solitary→completed.solitary; коснул/касани/touch→contact. Prefix match только перечисленных основ, не общий stemmer. Причина игры требует game token; contact не требует game. Game без причины/участия → game.any. Две различные cause/participation группы, negation не/нет/not/never либо contact+game → no causal query: неоднозначность не решается догадкой. Прочие слова не evidence намерений. Trusted situation outside closed keys (other/unknown) → no causal query, без fallback к догадке по тексту.
+
+**Index и бюджет работы.** Следующая additive миграция создаёт rebuildable causal_recall_postings: exact source ref/revision1, closed key, private insertion order; unique(key,appRunId,sequence), index(key,insertion_order DESC). Каждый terminal с известной cause имеет game.any и максимум один specific key; contact только contact. Completed participation none получает лишь game.any. user_interrupted требует source=user/trusted trigger; environment_lost/timeout никогда не попадают в user_interrupted bucket. Other/unknown не индексируются. Новые postings и canonical episode append/delete/reset — одна worker transaction; index не второй source of truth. Исходные строки immutable, payload comparison и equivalence legacy game_episodes сохраняются.
+
+Существующие episodes backfill-ятся только из causal_life_episodes, не transcripts/legacy games: bounded rebuild batches≤64 rows с persisted cursor, максимум один batch in-flight, между existing worker requests, без таймера/tick SQL. Первичная миграция создаёт пустой index и build state; полнота становится complete только после достижения записанного high-water. Новые writes индексируются сразу; restart продолжает cursor, repeated batch idempotent. До complete результат явно coverage=index_building и не доказывает отсутствие прошлого. Потеря/invalid index даёт omission и rebuild по тем же bounds, не удаляет canonical events; rebuild failure не блокирует локальный runtime.
+
+Один exact key lookup читает≤16 newest postings, fetch≤16 exact canonical payloads в том же worker read transaction; нет count/full scan/неограниченного fan-out или SQL json-filter по всей таблице. До выбора revalidate shape/revision/key/source/generation; invalid/deleted/future occurredAt или occurredAt≥query.before исключаются. Tie order — больше private insertion order, затем appRunId codepoint/sequence; wall clock не задаёт ranking. Из valid candidates берётся один newest, причиной match остаётся exact_causal_bucket, не confidence. Cap может скрыть старый relevant event за16 invalid/future rows: честный no-match, не расширение сканирования.
+
+**Общий recall.** При допустимом query causal candidate занимает максимум одно из прежних двух episode slots; затем existing cards/recent pairs по §10.4/9. Equivalent legacy game из того же appRun/activityRun не занимает второй slot; при causal match не добавлять другой game episode, выдавая его за тот же факт. Без causal match прежний baseline slots сохраняется. Facts/Character projection приоритетны, max2 episodes/2400 UTF-16 strings/32KiB HTTP прежние; drop lowest-ranked episodes целиком, не усекать факт/подменять автора. Ни index building, ни no-match не позволяют утверждать «такого никогда не было». Storage error/timeout любого обязательного read group → existing safe empty memory, без позднего send и второй очереди.
+
+**Значение и удаление.** Проецируется только canonical event с observed cause, outcome, actor/participation, executedMs и occurredAt. Эмоция в момент события не записана в #154 и не восстанавливается из outcome; текущие affect/interpretation принадлежат Character/MIND-A01 и не становятся «тогдашней эмоцией». Текущая expression.causal #161 — другой current-state block; reported explanation не меняет immutable fact. Lookup/передача/ответ/restore не новые experiences, не обновляют facets/interest/habit и не создают memoryCandidates. UI/scalar facts/summary/PC routines не расширяются.
+
+Source correction/delete/reset синхронно инвалидируют capture/context/late results перед worker barrier; postings удаляются вместе с canonical source, CAS revision/generation повторно проверяются перед dispatch/публикацией. Full reset удаляет index/build cursor/canonical rows одной transaction. Recall memory не попадает в durable assistant-derived knowledge/summary как новое evidence; существующие suppression/source rules сохраняются. Уже отправленный provider payload физически не отзывается локальным delete; серверного event storage/delete endpoint нет. Диагностика содержит counts/code/coverage/latency, без частных текстов, prompts и source IDs.
+
+**Фиксированный synthetic corpus #172.** A=последний user_interrupted cursor_game≥1000ms; B=timeout, C=environment_lost, D=completed/user_engaged, E=completed/solitary, F=contact; разные appRun/run identities и валидные sources. Добавить более старый тот же A-key,1000 поздних unrelated dialogue pairs и1000 unrelated causal events в других buckets; timestamps одинакового уровня не меняют insertion tie. Для generic game ожидание — newest terminal по insertion order. Каждая строка ниже — два отдельных RU/EN запроса с одним ожидаемым source, четыре negatives отдельно; всего20 queries. Prefix dictionary выше применяется без LLM.
+
+| RU | EN | Ожидание |
+|---|---|---|
+| помнишь прерванную игру | remember when I interrupted the game | A |
+| тебе помешали поиграть | remember when you were stopped while playing | A |
+| игра завершилась по таймауту | the game timed out | B |
+| игра потеряла опору | the game lost its support | C |
+| мы завершили игру | we completed a game | D |
+| ты одна закончила игру | you finished a game alone | E |
+| я коснулся тебя | I touched you | F |
+| помнишь игру | remember a game | newest terminal |
+
+Negatives: «чай на столе», “a window title”, «я не прерывал игру», “the game was interrupted and timed out” → no causal query/result (прежний non-causal baseline допускается). Measured baseline report: causal precision@1 и recall@1 на16 positives, no-match false positives на4 negatives, поязыковые результаты и paraphrase subset отдельно; target100%/100%/0 только для этого закрытого корпуса, не general semantic quality. Дополнительно deleted/stale/source-generation rows никогда не возвращаются, examined/fetched≤16/turn, memory deadline≤200ms; замерить p50/p95/максимум времени/работы на указанной машине, таймауты считать omission, не успешным поиском. Если real elapsed выходит из200ms, зафиксировать фактический fail; не расширять threshold ради pass. Эти измерения и сохранённые lexical misses — вход #173, не основание объявить embeddings обязательными заранее.

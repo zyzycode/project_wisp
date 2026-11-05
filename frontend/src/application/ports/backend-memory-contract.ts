@@ -22,6 +22,18 @@ export type BackendMemoryEpisode =
       readonly occurredAt: string;
     };
 
+/** Wire target for #172; add to the active memory union only with both consumers. */
+export interface BackendCausalMemoryEpisode {
+  readonly kind: 'causal_event';
+  readonly activity: 'cursor_game' | 'contact';
+  readonly outcome: 'completed' | 'cancelled' | 'failed' | 'not_applicable';
+  readonly cause: 'contact' | 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout';
+  readonly actor: 'user' | 'system' | 'autonomy' | 'unknown';
+  readonly participation: 'user_engaged' | 'solitary' | 'none';
+  readonly executedMs: number;
+  readonly occurredAt: string;
+}
+
 export interface BackendMemoryContext {
   readonly facts: readonly BackendMemoryFact[];
   readonly episodes: readonly BackendMemoryEpisode[];
