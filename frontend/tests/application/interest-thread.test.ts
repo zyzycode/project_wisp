@@ -11,7 +11,7 @@ const ref = { threadId: 'topic', revision: 2 };
 const confirmedAt = '2026-10-20T00:00:00.000Z';
 const thread: InterestThread = { ref, state: 'unanswered', text: 'сегодня собеседование', source: { userMessageId: 'u', assistantMessageId: 'a' }, statedAt: confirmedAt, confirmedAt, eligibleAt: '2026-10-21T00:00:00.000Z', expiresAt: '2026-10-27T00:00:00.000Z', attempt: null };
 function capture(requestId: string, userMessageId: string): InterestThreadCapture { return { use: { ref, requestId, userMessageId, mode: 'follow_up' }, topic: { mode: 'follow_up', text: thread.text!, statedAt: confirmedAt }, expiresAt: thread.expiresAt, generation: 0 }; }
-function fixture(summary?: import('../../src/application/ports/summary').ISummaryRuntime) {
+function fixture(summary?: import('../../src/application/ports/summary').ISummaryRuntime, locale = 'ru') {
   vi.useFakeTimers(); vi.setSystemTime('2026-10-22T00:00:00.000Z');
   let generation = 0, id = 0;
   const response = deferred<AIProviderResponse>();
@@ -26,7 +26,7 @@ function fixture(summary?: import('../../src/application/ports/summary').ISummar
   const topic = new InterestThreadDialogue({ runtime: () => memory, repository, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, notice, isTurnCurrent: requestId => runtime.isTopicRequestCurrent(requestId), isAdmissionCurrent: token => runtime.isAdmissionCurrent(token) });
   const provider = { supportsDialogueTopic: true as const, getStatus: vi.fn(async () => ({ kind: 'ready' as const })), generateResponse: vi.fn((_request: AIProviderRequest) => response.promise) };
   const completed = vi.fn();
-  runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, ...(summary ? { summary } : {}), memory: { interestThread: topic, generation: () => generation, completed }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+  runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, locale, ...(summary ? { summary } : {}), memory: { interestThread: topic, generation: () => generation, completed }, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), offerIntent: vi.fn(), transaction: fn => fn(), publish: vi.fn() });
   runtime.replaceStream('stream');
   const send = (text = 'Привет', replyToInterestThread?: typeof ref) => runtime.receive({ type: 'send', text, sequence: ++id, conversationId: runtime.getPresentation().conversationId, streamId: 'stream', ...(replyToInterestThread ? { replyToInterestThread } : {}) });
@@ -124,4 +124,14 @@ it.each(['reset', 'reload', 'dispose'])('late prepare read cannot claim after di
   if (action === 'reset') f.runtime.receive({ type: 'reset', streamId: 'stream', conversationId: f.runtime.getPresentation().conversationId, sequence: 1000 });
   if (action === 'reload') f.runtime.replaceStream('new'); if (action === 'dispose') f.runtime.dispose();
   pending.resolve({ ok: true, value: { thread, sourceValid: true } }); await flush(); expect(f.claim).not.toHaveBeenCalled(); expect(f.provider.generateResponse).not.toHaveBeenCalled();
+});
+
+
+it.each(['ru', 'en'])('localizes unbound topic error in %s without a history pair', async locale => {
+  const f = fixture(undefined, locale); f.captureReply.mockResolvedValue({ ok: true, value: null });
+  f.send('Topic reply', ref); await flush();
+  expect(f.runtime.getPresentation().turn).toMatchObject({ phase: 'error', message: locale === 'en'
+    ? 'The reply could not be linked to the topic. Update the topic in memory and try again.'
+    : 'Не удалось связать ответ с темой. Обновите тему в памяти и попробуйте снова.' });
+  expect(f.provider.generateResponse).not.toHaveBeenCalled(); expect(f.completed).not.toHaveBeenCalled();
 });

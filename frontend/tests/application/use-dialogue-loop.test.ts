@@ -5,11 +5,11 @@ import { CharacterStateService } from '../../src/application/services/character-
 import type { AIProviderRequest, AIProviderResponse, IAIProvider } from '../../src/application/ports/ai-provider.interface';
 
 const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
-function fixture(provider: IAIProvider) {
+function fixture(provider: IAIProvider, locale = 'ru') {
   vi.useFakeTimers(); vi.setSystemTime(0); let id = 0;
   const character = new CharacterStateService({ now: Date.now });
   const apply = vi.spyOn(character, 'applyStimulus'); const offerIntent = vi.fn();
-  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, locale, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => character.getSnapshot(), applyStimulus: stimulus => { character.applyStimulus(stimulus); },
     offerIntent, beginThinking: () => {}, endThinking: () => {}, transaction: commit => commit(), publish: () => {} });
@@ -84,4 +84,18 @@ it('Issue #105: real Mock supported requests still reach the existing intent rou
   expect(f.offerIntent).toHaveBeenCalledOnce();
   expect(f.offerIntent.mock.calls[0]![0]).toMatchObject({ intent: { kind: 'play' } });
   expect(f.apply.mock.calls.map(call => call[0].type)).toEqual(['user_message', 'provider_response']);
+});
+
+
+it.each(['ru', 'en'])('localizes technical timeout fallback in %s', async locale => {
+  const p = { getStatus: vi.fn(async () => ({ kind: 'ready' as const })), generateResponse: vi.fn(() => new Promise<AIProviderResponse>(() => {})) };
+  const f = fixture(p, locale); f.send(1); await flush(); vi.advanceTimersByTime(15000);
+  expect(f.runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: locale === 'en'
+    ? 'A reply is unavailable right now. Please try again later.' : 'Сейчас ответ недоступен. Попробуйте позже.', outcome: { kind: 'fallback', reason: 'timeout' } });
+  expect(f.offerIntent).not.toHaveBeenCalled(); expect(f.apply).toHaveBeenCalledTimes(1);
+});
+it('localizes external adapter fallback without changing Mock reply policy', async () => {
+  const p = provider(r => ({ ...success(r), status: 'fallback', diagnostics: { provider: 'external', latencyMs: 0, fallbackReason: 'timeout' } }));
+  const f = fixture(p, 'en'); f.send(1); await flush();
+  expect(f.runtime.getPresentation().turn).toMatchObject({ replyText: 'A reply is unavailable right now. Please try again later.', outcome: { kind: 'fallback', reason: 'timeout' } });
 });

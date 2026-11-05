@@ -1,3 +1,4 @@
+import { localDialogueText } from './dialogue-local-text';
 import { parseBeverageProposal } from '../../shared/beverage-validation';
 import { parseInteractionAppraisal } from './touch-reaction-context';
 import { parseMemoryCandidates } from './memory-fact-registry';
@@ -41,4 +42,4 @@ export function fallbackReason(response: AIProviderResponse): DialogueFallbackRe
     default: return 'degraded';
   }
 }
-export const DIALOGUE_FALLBACK = 'Сейчас мне трудно подобрать ответ, но я рядом.';
+export const DIALOGUE_FALLBACK = localDialogueText('fallback', 'ru');

@@ -4,7 +4,8 @@ import type { ChatMotionRecognition, ChatMotionTerminal } from '../ports/chat-mo
 import { recognizeBeverageCorrection } from './beverage-preference';
 import type { BeverageCapture, BeverageCorrectionTurn } from '../ports/memory-beverage.interface';
 import { parseBeverageProposal } from '../../shared/beverage-validation';
-import { isQuietSupportCue, LOCAL_DIALOGUE_TEXT } from './quiet-support-runtime';
+import { isQuietSupportCue } from './quiet-support-runtime';
+import { localDialogueText } from './dialogue-local-text';
 import { isTopicRefusal } from './interest-thread';
 import { DialogueAdmission } from './dialogue-admission';
 import type { InterestThreadCapture, InterestThreadRef } from '../ports/interest-thread.interface';
@@ -15,7 +16,7 @@ import type { DialogueRuntimeOptions } from '../ports/dialogue-runtime';
 import type { AIProviderContextMessage, AIProviderRequest, AIProviderResponse } from '../ports/ai-provider.interface';
 import type { DialogueCommandReceiptDTO, DialoguePresentationDTO, DialogueFallbackReasonDTO } from '../../shared/ipc-contracts';
 import { parseDialogueCommand, parseDialoguePresentation } from '../../shared/dialogue-ipc-validation';
-import { parseProviderResponse, parseProviderStatus, fallbackReason, DIALOGUE_FALLBACK } from './dialogue-provider-result';
+import { parseProviderResponse, parseProviderStatus, fallbackReason } from './dialogue-provider-result';
 import { mapProviderResponseToBehaviorIntent } from './provider-response-intent-mapper';
 
 interface Turn { readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; readonly memoryGeneration: number; readonly interactionReceipt?: InteractionReceipt; readonly admissionDeadline: number; readonly replyTo?: InterestThreadRef; readonly requestBeverageProposal?: true; readonly beverageCorrection?: Omit<BeverageCorrectionTurn, 'requestId' | 'userMessageId'>; }
@@ -87,7 +88,7 @@ export class DialogueRuntime {
     const sleep = this.options.getSemanticSleepState();
     return parseDialoguePresentation({ conversationId: this.conversationId,
       canSubmit: bound && sleep === 'awake' && !this.executing && !this.retiredAdmission,
-      ...(bound && sleep === 'sleeping' ? { submissionMessage: this.options.locale === 'en' ? 'Wisp is sleeping' : 'Wisp спит' } : {}), turn: this.turn });
+      ...(bound && sleep === 'sleeping' ? { submissionMessage: localDialogueText('sleeping', this.options.locale) } : {}), turn: this.turn });
   }
   public replaceStream(streamId: string): void {
     if (this.disposed) return;
@@ -172,7 +173,7 @@ export class DialogueRuntime {
       let replyText: string;
       if (recognition.kind === 'clarify') {
         this.options.chatMotion?.cancel('user_input');
-        replyText = this.options.locale === 'en' ? 'Should I walk left, right, or stop?' : 'Уточни: идти влево, вправо или остановиться?';
+        replyText = localDialogueText('motion_clarify', this.options.locale);
       } else {
         const receipt = this.options.chatMotion?.submit({ requestId, conversationId: this.conversationId, generation: this.generation, command: recognition.command })
           ?? { status: 'rejected' as const, requestId, reason: 'unavailable' as const };
@@ -188,7 +189,7 @@ export class DialogueRuntime {
       this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
     });
   }
-  private correctionUnavailable(): void { this.turn = { phase: 'error', requestId: this.options.createId(), message: 'Не удалось безопасно исправить предпочтение. Обновите его в памяти и попробуйте снова.' }; this.options.publish(); }
+  private correctionUnavailable(): void { this.turn = { phase: 'error', requestId: this.options.createId(), message: localDialogueText('correction_error', this.options.locale) }; this.options.publish(); }
   private acknowledgeSupport(text: string): void {
     this.options.transaction(() => {
       this.supportEligible = false; this.lastOffered = undefined; this.sourceUserText = null;
@@ -196,7 +197,7 @@ export class DialogueRuntime {
       this.options.observation?.invalidate(); this.options.events?.suppressUnsolicited?.();
       const requestId = this.options.createId(), createdAt = this.options.timestamp();
       const user = { id: this.options.createId(), text, createdAt };
-      const assistant = { id: this.options.createId(), text: LOCAL_DIALOGUE_TEXT.support_quiet_ack[this.options.locale === 'en' ? 'en' : 'ru'], createdAt };
+      const assistant = { id: this.options.createId(), text: localDialogueText('support_quiet_ack', this.options.locale), createdAt };
       this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text, createdAt });
       this.turn = { phase: 'completed', requestId, replyText: assistant.text, outcome: { kind: 'local', reason: 'quiet_support' } };
       const pair: AIProviderContextMessage[] = [{ role: 'user', text, createdAt, sourceMessageId: user.id }, { role: 'wisp', text: assistant.text, createdAt, sourceMessageId: assistant.id }];
@@ -344,7 +345,7 @@ export class DialogueRuntime {
     const capture = this.captures.get(active);
     if (active.replyTo && !capture) {
       this.active = null; this.cancelTimer(); this.options.endThinking(active.request.requestId);
-      this.turn = { phase: 'error', requestId: active.request.requestId, message: 'Не удалось связать ответ с темой. Обновите тему в памяти и попробуйте снова.' };
+      this.turn = { phase: 'error', requestId: active.request.requestId, message: localDialogueText('topic_error', this.options.locale) };
       this.options.publish(); return;
     }
     if (capture && !this.options.memory?.interestThread?.isCurrent(capture)) { reason = 'degraded'; response = undefined; }
@@ -356,14 +357,15 @@ export class DialogueRuntime {
         if (reason === undefined && this.options.interactionEnabled && (outcome.effect === 'rejected' || outcome.effect === 'suppressed')) { reason = 'degraded'; response = undefined; }
       }
       this.options.endThinking(requestId);
-      const replyText = response?.reply.text ?? DIALOGUE_FALLBACK;
+      const replyText = response && !(response.status === 'fallback' && response.diagnostics?.provider === 'external')
+        ? response.reply.text : localDialogueText('fallback', this.options.locale);
       const assistantId = this.options.createId();
       let presentation: DialoguePresentationDTO;
       try {
         presentation = parseDialoguePresentation({ conversationId: this.conversationId, canSubmit: false,
           turn: { phase: 'completed', requestId, replyText, ...(capture && reason === undefined ? { interestThread: capture.use.ref } : {}), ...(reason === undefined ? { memorySource: { userMessageId: active.request.userMessage.id, assistantMessageId: assistantId } } : {}), outcome: reason === undefined ? { kind: 'success' } : { kind: 'fallback', reason } } });
       } catch {
-        this.turn = { phase: 'error', requestId, message: 'Не удалось показать ответ. Попробуй позже.' };
+        this.turn = { phase: 'error', requestId, message: localDialogueText('publication_error', this.options.locale) };
         this.options.publish(); return;
       }
       this.turn = presentation.turn;

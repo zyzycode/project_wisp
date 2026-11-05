@@ -12,9 +12,6 @@ export class QuietSupportRuntime implements IQuietSupportRuntime {
   dispose(): void { this.active = false; this.disposed = true; }
 }
 
-export const LOCAL_DIALOGUE_TEXT = {
-  support_quiet_ack: { ru: 'Поняла. Я рядом.', en: "I understand. I'm here." },
-};
 export function isQuietSupportCue(text: string): boolean {
   const normalized = text.normalize('NFC').trim().toLowerCase().replace(/’/gu, "'").replace(/[.!?\s]+$/gu, '');
   return normalized === 'мне от этого не легче' || normalized === "that doesn't make me feel better";

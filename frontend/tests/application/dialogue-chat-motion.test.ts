@@ -6,7 +6,7 @@ import { CharacterStateService } from '../../src/application/services/character-
 import { DialogueRuntime } from '../../src/application/services/dialogue-loop.service';
 
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
-function fixture(withMotion = true) {
+function fixture(withMotion = true, locale = 'ru') {
   vi.useFakeTimers(); vi.setSystemTime(0);
   let id = 0, run = 0;
   let settle!: (response: AIProviderResponse) => void;
@@ -21,7 +21,7 @@ function fixture(withMotion = true) {
   };
   const applyStimulus = vi.fn(), completed = vi.fn((_turn: CompletedDialogueMemoryTurn) => {});
   const offerIntent = vi.fn(() => ({ status: 'rejected' as const, reason: 'disabled' as const }));
-  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, ...(withMotion ? { chatMotion: motion } : {}),
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, locale, ...(withMotion ? { chatMotion: motion } : {}),
     now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus, offerIntent,
@@ -132,4 +132,17 @@ describe('DialogueRuntime local ChatMotion turns', () => {
     expect(f.motion.submit).not.toHaveBeenCalled(); expect(f.offerIntent).not.toHaveBeenCalled();
     expect(f.runtime.getPresentation()).toMatchObject({ canSubmit: true, turn: { phase: 'idle' } });
   });
+});
+
+
+it.each([['ru', 'Иду вправо.', 'Прогулка остановлена: время выполнения истекло.'], ['en', 'Walking right.', 'Walking stopped because its time limit expired.']])('keeps %s terminal reason in the bubble and immutable start in history', async (locale, start, terminal) => {
+  const f = fixture(true, locale); f.runtime.receive(f.command('please walk right'));
+  expect(f.runtime.getPresentation().turn).toMatchObject({ replyText: start });
+  const stored = f.completed.mock.calls[0]![0];
+  f.runtime.chatMotionTerminal({ ...f.started(), status: 'cancelled', reason: 'timeout' });
+  const after = f.runtime.getPresentation(); expect(after.turn).toMatchObject({ replyText: terminal });
+  f.runtime.chatMotionTerminal(f.started()); await flush();
+  expect(f.runtime.getPresentation()).toEqual(after); expect(stored.assistant.text).toBe(start);
+  expect(stored).toMatchObject({ localOnly: true, memoryConfirmable: false });
+  expect(f.completed).toHaveBeenCalledOnce(); expect(f.provider.getStatus).not.toHaveBeenCalled(); expect(f.provider.generateResponse).not.toHaveBeenCalled();
 });

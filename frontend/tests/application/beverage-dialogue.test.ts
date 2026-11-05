@@ -5,7 +5,7 @@ import type { IBeverageDialogue } from '../../src/application/ports/memory-bever
 import type { AIProviderRequest } from '../../src/application/ports/ai-provider.interface';
 const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes; }); return { promise, resolve }; }
-function fixture() {
+function fixture(locale = 'ru') {
   vi.useFakeTimers(); vi.setSystemTime(0); let id = 0, generation = 0;
   const persisted = deferred<boolean>();
   const beverage: IBeverageDialogue = {
@@ -16,7 +16,7 @@ function fixture() {
   };
   const completed = vi.fn((_turn: import('../../src/application/ports/memory-runtime').CompletedDialogueMemoryTurn) => persisted.promise);
   const provider = { getStatus: vi.fn(async () => ({ kind: 'ready' as const })), generateResponse: vi.fn(async (request: AIProviderRequest) => ({ requestId: request.requestId, status: 'ok' as const, confidence: 1, reply: { text: 'Похоже, ты любишь чай?' }, beverageProposal: { value: 'tea' as const, evidenceQuote: request.userMessage.text } })) };
-  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus: vi.fn(), offerIntent: vi.fn(), publish: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: fn => fn(), memory: { beverage, generation: () => generation, completed } });
+  const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', provider, locale, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, getCharacterSnapshot: () => new CharacterStateService().getSnapshot(), applyStimulus: vi.fn(), offerIntent: vi.fn(), publish: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(), transaction: fn => fn(), memory: { beverage, generation: () => generation, completed } });
   runtime.replaceStream('stream');
   const send = (sequence: number, optin = false, text = 'Пью чай') => runtime.receive({ type: 'send', text, streamId: 'stream', conversationId: runtime.getPresentation().conversationId, sequence, ...(optin ? { requestBeverageProposal: true } : {}) });
   return { runtime, send, provider, beverage, persisted, completed, advanceGeneration: () => { generation++; } };
@@ -36,3 +36,13 @@ it('keeps opt-in with current projection consumer-only, never reusing output as 
   f.persisted.resolve(true); await flush(); expect(f.beverage.offer).not.toHaveBeenCalled();
 });
 it('does not create a proposal source or offer when transport atomically drops the optional block', async () => { const f = fixture(); Object.assign(f.provider, { canIncludeBeverage: () => false }); f.send(1, true); await flush(); expect(f.completed.mock.calls[0]?.[0]).not.toHaveProperty('beverageProposalSource'); expect(f.completed.mock.calls[0]?.[0]).not.toHaveProperty('beverageUse'); f.persisted.resolve(true); await flush(); expect(f.beverage.offer).not.toHaveBeenCalled(); });
+
+
+it.each(['ru', 'en'])('localizes correction failure as a status without an assistant pair (%s)', async locale => {
+  const f = fixture(locale); vi.mocked(f.beverage.admit).mockResolvedValue({ ok: false, code: 'io_error' });
+  f.send(1, false, 'Нет, предпочитаю чай'); await flush();
+  expect(f.runtime.getPresentation().turn).toMatchObject({ phase: 'error', message: locale === 'en'
+    ? 'The preference could not be safely corrected. Update it in memory and try again.'
+    : 'Не удалось безопасно исправить предпочтение. Обновите его в памяти и попробуйте снова.' });
+  expect(f.provider.getStatus).not.toHaveBeenCalled(); expect(f.provider.generateResponse).not.toHaveBeenCalled(); expect(f.completed).not.toHaveBeenCalled();
+});
