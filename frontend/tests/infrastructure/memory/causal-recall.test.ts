@@ -1,13 +1,14 @@
 import { afterEach, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { SqliteMemoryStore } from '../../../src/infrastructure/memory/sqlite-store';
 import { causalRecallBucket } from '../../../src/domain/character/causal-recall';
+import { CAUSAL_RECALL_CORPUS } from './causal-recall-corpus';
 import { causalRecallPage } from '../../../src/infrastructure/memory/causal-recall-validation';
 import { itemCandidates } from '../../../src/infrastructure/memory/item-validation';
-import { LocalMemoryRecall } from '../../../src/application/services/memory-recall';
+import { LocalMemoryRecall, memoryTextLength } from '../../../src/application/services/memory-recall';
 import * as validation from '../../../src/infrastructure/memory/validation';
 import type { MemoryResult } from '../../../src/application/ports/memory-repository.interface';
 import type { CausalLifeEpisode } from '../../../src/application/ports/causal-life.interface';
@@ -23,7 +24,7 @@ const event = (id: string, sequence: number, cause: 'user_interrupted' | 'timeou
 function list<T>(value: unknown, parse: (value: unknown) => T): readonly T[] { if (!Array.isArray(value)) throw new Error('Expected rows'); return value.map(parse); }
 afterEach(() => { for (const store of stores.splice(0)) store.close(); for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 
-it('measures the approved20-query RU/EN corpus after1000 dialogue pairs and1000 unrelated events, then restart', async () => {
+it('measures the approved40-query RU/EN corpus after1000 dialogue pairs and1000 unrelated events, then restart', async () => {
   const f = fixture();
   const old = { ...event('old-A', 2, 'user_interrupted'), appRunId: 'older' };
   for (const e of [old, event('A', 2, 'user_interrupted'), event('B', 3, 'timeout'), event('C', 4, 'environment_lost'), event('D', 5, 'completed'), event('E', 6, 'completed', true)]) expect(run(f.store, 'appendCausalLife', e).ok).toBe(true);
@@ -38,39 +39,50 @@ it('measures the approved20-query RU/EN corpus after1000 dialogue pairs and1000 
   };
   const neverWrite = async (): Promise<never> => { throw new Error('Recall must not write experience'); };
   const failures: string[] = [];
+  let contextSource: string | null = null, contextBucket: string | null = null, causalCalls = 0;
   const recall = new LocalMemoryRecall({
     facts: { list: limit => call('listFacts', limit, value => list(value, validation.fact)), upsert: neverWrite, removeByKey: neverWrite },
     history: { getRecent: limit => call('getRecent', limit, value => list(value, validation.message)), appendTurn: neverWrite, closeSession: neverWrite, closeUnfinishedSessions: neverWrite },
     gameReader: { getRecent: limit => call('getRecentEpisodes', limit, value => list(value, validation.episode)) },
-    causalRecall: { find: query => call('findCausalLife', query, causalRecallPage) }, itemRecall: { find: tokens => call('findMemoryItems', tokens, itemCandidates) },
+    causalRecall: { find: async query => {
+      causalCalls++; contextBucket = query.key; const result = await call('findCausalLife', query, causalRecallPage);
+      const found = result.ok ? result.value.candidates[0]?.episode : undefined;
+      contextSource = found?.activityRunId ?? found?.appRunId ?? null; return result;
+    } }, itemRecall: { find: tokens => call('findMemoryItems', tokens, itemCandidates) },
     timestamp: () => now, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }, isCurrent: () => true, preference: () => undefined, onFailure: code => failures.push(code),
   });
-  const cases: readonly [string, string, string | null][] = [
-    ['RU1', 'помнишь прерванную игру', 'A'], ['EN1', 'remember when I interrupted the game', 'A'],
-    ['RU2', 'тебе помешали поиграть', 'A'], ['EN2', 'remember when you were stopped while playing', 'A'],
-    ['RU3', 'игра завершилась по таймауту', 'B'], ['EN3', 'the game timed out', 'B'],
-    ['RU4', 'игра потеряла опору', 'C'], ['EN4', 'the game lost its support', 'C'],
-    ['RU5', 'мы завершили игру', 'D'], ['EN5', 'we completed a game', 'D'],
-    ['RU6', 'ты одна закончила игру', 'E'], ['EN6', 'you finished a game alone', 'E'],
-    ['RU7', 'я коснулся тебя', 'F'], ['EN7', 'I touched you', 'F'],
-    ['RU8', 'помнишь игру', 'E'], ['EN8', 'remember a game', 'E'],
-    ['N1', 'чай на столе', null], ['N2', 'a window title', null], ['N3', 'я не прерывал игру', null], ['N4', 'the game was interrupted and timed out', null],
-  ];
-  const measurements: { id: string; expected: string | null; selected: string | null; elapsed: number; endToEndMs: number; examined: number; fetched: number }[] = [];
-  for (const [id, text, expected] of cases) {
-    const started = performance.now(), key = causalRecallBucket(text), page = key ? read(store, key) : null;
+  const measurements: { id: string; expected: string | null; selected: string | null; bucket: string | null; contextMatches: boolean; baseline: string | null; queryMs: number; elapsed: number; endToEndMs: number; examined: number; fetched: number }[] = [];
+  for (const { id, text, expected } of CAUSAL_RECALL_CORPUS) {
+    const started = performance.now(), key = causalRecallBucket(text), queryMs = performance.now() - started;
+    const page = key ? read(store, key) : null;
     const selected = page?.candidates[0]?.episode.activityRunId ?? page?.candidates[0]?.episode.appRunId ?? null;
     const elapsed = performance.now() - started;
-    expect(selected, id).toBe(expected); expect(page?.examined ?? 0).toBeLessThanOrEqual(16); expect(page?.fetched ?? 0).toBeLessThanOrEqual(16); expect(elapsed).toBeLessThanOrEqual(200);
+    expect(page?.examined ?? 0).toBeLessThanOrEqual(16); expect(page?.fetched ?? 0).toBeLessThanOrEqual(16); expect(elapsed).toBeLessThanOrEqual(200);
+    contextSource = null; contextBucket = null; causalCalls = 0;
     const contextStarted = performance.now(), context = await recall.recall({ text, excludedMessageIds: [] }, { generation: 0 }), endToEndMs = performance.now() - contextStarted;
     expect(context.ok).toBe(true); expect(endToEndMs).toBeLessThanOrEqual(200);
-    if (context.ok) expect(context.value.episodes.filter(event => event.kind === 'causal_event')).toHaveLength(expected ? 1 : 0);
-    measurements.push({ id, expected, selected, elapsed, endToEndMs, examined: page?.examined ?? 0, fetched: page?.fetched ?? 0 });
+    const causal = context.ok ? context.value.episodes.filter(event => event.kind === 'causal_event') : [];
+    const contextMatches = expected ? causal.length === 1 && contextSource === expected && contextBucket === key && causal[0]?.cause === page?.candidates[0]?.episode.cause : causal.length === 0 && contextSource === null;
+    expect(causalCalls).toBe(key ? 1 : 0);
+    if (context.ok) { expect(context.value.episodes.length).toBeLessThanOrEqual(2); expect(memoryTextLength(context.value)).toBeLessThanOrEqual(2400); expect(Buffer.byteLength(JSON.stringify(context.value))).toBeLessThanOrEqual(32768); }
+    const baseline = CAUSAL_RECALL_CORPUS.find(row => row.id === id)!.baselineSelected;
+    measurements.push({ id, expected, selected, bucket: key, contextMatches, baseline, queryMs, elapsed, endToEndMs, examined: page?.examined ?? 0, fetched: page?.fetched ?? 0 });
   }
   expect(failures).toEqual([]);
+  const queryTimes = measurements.map(m => m.queryMs).sort((a, b) => a - b);
   const times = measurements.map(m => m.elapsed).sort((a, b) => a - b);
   const contextTimes = measurements.map(m => m.endToEndMs).sort((a, b) => a - b);
-  console.info('CAUSAL_BASELINE', JSON.stringify({ node: process.version, platform: process.platform, syntheticDialoguePairs: 1000, syntheticNoiseEvents: 1000, precisionAt1: 1, recallAt1: 1, negativeFalsePositives: 0, ruPositive: '8/8', enPositive: '8/8', paraphrasePositive: '2/2', p50Ms: times[9], p95Ms: times[18], maxMs: times[19], contextP50Ms: contextTimes[9], contextP95Ms: contextTimes[18], contextMaxMs: contextTimes[19], maxExamined: Math.max(...measurements.map(m => m.examined)), maxFetched: Math.max(...measurements.map(m => m.fetched)), selections: measurements.map(({ id, expected, selected }) => ({ id, expected, selected })), lexicalMisses: ['RU-round-cut-short', 'EN-round-cut-short'] }));
+  const metrics = {
+    queryP50Ms: queryTimes[19], queryP95Ms: queryTimes[37], queryMaxMs: queryTimes[39],
+    queryAndIndexP50Ms: times[19], queryAndIndexP95Ms: times[37], queryAndIndexMaxMs: times[39],
+    contextP50Ms: contextTimes[19], contextP95Ms: contextTimes[37], contextMaxMs: contextTimes[39],
+    maxExamined: Math.max(...measurements.map(row => row.examined)), maxFetched: Math.max(...measurements.map(row => row.fetched)),
+    improved: measurements.filter(row => row.baseline !== row.expected && row.selected === row.expected && row.contextMatches).map(row => row.id),
+    worsened: measurements.filter(row => row.baseline === row.expected && (row.selected !== row.expected || !row.contextMatches)).map(row => row.id),
+    selections: measurements.map(({ id, expected, selected, bucket, contextMatches }) => ({ id, expected, selected, bucket, contextMatches })),
+  };
+  writeFileSync(path.join(os.tmpdir(), 'wisp-174-metrics.json'), JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch, baselineSource: '615ade1', syntheticDialoguePairs: 1000, syntheticNoiseEvents: 1000, ...metrics }, null, 2));
+  expect(measurements.filter(row => row.selected !== row.expected || !row.contextMatches).map(row => row.id)).toEqual([]);
   expect(causalRecallBucket('remember when our round was cut short')).toBeNull();
   expect(causalRecallBucket('вспомни как наше развлечение оборвалось')).toBeNull();
 }, 15000);

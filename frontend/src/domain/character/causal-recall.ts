@@ -3,6 +3,20 @@ import type { CausalObservedEvent } from './causal-affect';
 export type CausalRecallBucket = 'game.any' | 'game.user_interrupted' | 'game.timeout'
   | 'game.environment_lost' | 'game.completed.user_engaged' | 'game.completed.solitary' | 'contact';
 
+/** Immutable, finite phrase/guard tables; patterns are stateless and contain no retained query data. */
+export const CAUSAL_RECALL_PHRASES = Object.freeze({
+  positive: Object.freeze([
+    /^я не (?:дал|дала|позволил|позволила) тебе закончить игру$/u,
+    /^я (?:оборвал|оборвала) твою игру$/u,
+    /^i did not let you finish the game$/u,
+    /^i cut your game short$/u,
+    /^i (?:prevented|kept) you from finishing the game$/u,
+  ]),
+  quotationOrClause: /["'«»“”„‘’‹›;,:.!?]/u,
+  correction: /(?:^|\s)(?:but|actually|however|instead|rather|но|однако|вернее|точнее|а)(?:\s|$)|(?:^|\s)то есть(?:\s|$)/u,
+  incompatibleActor: /(?:^|\s)([\p{L}]{1,64}) (?:прервал(?:а|и)?|оборвал(?:а|и)?|interrupted|stopped|cut) (?:(?:мою|твою) игру|(?:my|your) game)(?:\s|$)/u,
+});
+
 export function recallTokens(text: string): readonly string[] {
   return [...new Set(text.normalize('NFC').toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? [])].slice(0, 8);
 }
@@ -21,7 +35,13 @@ export function causalRecallBuckets(event: CausalObservedEvent): readonly Causal
 
 /** Prefixes are deliberately limited to the approved bilingual baseline. */
 export function causalRecallBucket(text: string): CausalRecallBucket | null {
-  const tokens = recallTokens(text);
+  if (text.length > 240) return null;
+  const query = text.normalize('NFC').toLowerCase().trim().replace(/\s+/gu, ' ').replace(/[.!?]$/u, '').trimEnd();
+  if (CAUSAL_RECALL_PHRASES.quotationOrClause.test(query) || CAUSAL_RECALL_PHRASES.correction.test(query)) return null;
+  const actor = CAUSAL_RECALL_PHRASES.incompatibleActor.exec(query)?.[1];
+  if (actor && !['я', 'мы', 'i', 'we'].includes(actor)) return null;
+  if (CAUSAL_RECALL_PHRASES.positive.some(pattern => pattern.test(query))) return 'game.user_interrupted';
+  const tokens = recallTokens(query);
   const has = (pattern: RegExp) => tokens.some(token => pattern.test(token));
   if (tokens.some(token => ['не', 'нет', 'not', 'never'].includes(token))) return null;
   const game = has(/^(?:game|игр|поигр|play)/u), contact = has(/^(?:коснул|касани|touch)/u);
