@@ -6,7 +6,7 @@ import type { ISummaryCache, SummaryCache, SummaryPair, SummarySourceSnapshot } 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const pair = (n: number, userText = `Тема космос ${n}`): SummaryPair => ({ userMessageId: `u${n}`, assistantMessageId: `a${n}`, sessionId: 's', userText, assistantText: 'Обсудили космос.', eligible: true });
 function fixture(interruptObservation?: () => Promise<void>) {
-  let stored: SummaryCache = { formatVersion: 1, entry: null, receipt: null }, epoch = 0, generation = 0;
+  let stored: SummaryCache = { formatVersion: 2, entry: null, receipt: null }, epoch = 0, generation = 0;
   let snapshot: SummarySourceSnapshot = { pairs: Array.from({ length: 18 }, (_, n) => pair(n)), facts: [] };
   const write = vi.fn<ISummaryCache['write']>(async (value, g) => { if (g !== epoch) return { ok: false, code: 'stale' }; stored = value; return { ok: true, value: undefined }; });
   const cache: ISummaryCache = { read: async () => ({ ok: true, value: stored }), write, invalidate: () => ++epoch, clear: async reset => { epoch++; stored = { ...stored, entry: null, receipt: reset ? null : stored.receipt }; return { ok: true, value: undefined }; }, dispose: () => { epoch++; } };
@@ -17,7 +17,7 @@ function fixture(interruptObservation?: () => Promise<void>) {
   const runtime = new SummaryRuntime(options);
   return { runtime, options, cache, write, generateSummary, recent, exact, stored: () => stored, mutate: (pairs: readonly SummaryPair[]) => { snapshot = { ...snapshot, pairs }; }, generation: () => generation++, facts: () => { snapshot = { ...snapshot, facts: [{ id: 'f', factKey: 'user.display_name', factValue: 'Мария', confidence: 1, sourceMessageId: null, createdAt: '2026-10-17T00:00:00.000Z', updatedAt: '2026-10-17T00:00:00.000Z' }] }; } };
 }
-async function preview(f: ReturnType<typeof fixture>) { const p = await f.runtime.preview(); if (!p.ok) throw new Error(p.code); return p.value; }
+async function preview(f: ReturnType<typeof fixture>) { const p = await f.runtime.preview(); if (!p.ok) throw new Error(p.code); if (!('pairs' in p.value)) throw new Error('Wrong mode'); return p.value; }
 afterEach(() => vi.useRealTimers());
 it('selects contiguous latest 4–8 pairs outside the bounded recent window and all registry/correction sources', () => {
   const all = Array.from({ length: 22 }, (_, n) => pair(n));

@@ -56,3 +56,9 @@ it('rolls schema11 DDL and journal back atomically on migration failure', () => 
   expect(run(reopened, 'readLifeWindow', query)).toMatchObject({ value: { coverage: 'index_building', events: [] } });
   expect(run(reopened, 'readLifeWindow', query)).toMatchObject({ value: { coverage: 'complete', events: [game(1)] } });
 });
+it('supports an explicit historical UTC period while keeping asOf inclusive at the current capture time', () => {
+  const { store } = fixture(); const historical = { ...game(1), occurredAt: '2026-11-01T23:59:59.999Z' };
+  run(store, 'appendCausalLife', historical); run(store, 'appendCausalLife', game(2));
+  expect(run(store, 'readLifeWindow', { fromDateUTC: '2026-10-23', throughDateUTC: '2026-11-01', asOf: now })).toMatchObject({ value: { coverage: 'complete', events: [historical], examined: 1, fetched: 1 } });
+  expect(run(store, 'readLifeWindow', { ...query, throughDateUTC: '2026-11-06' })).toEqual({ ok: false, code: 'invalid_data' });
+});

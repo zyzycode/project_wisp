@@ -47,7 +47,7 @@ it('bounded atomic cache fails closed for malformed/future files; explicit delet
     await writeFile(filename, data); expect((await cache.read()).ok).toBe(false);
     expect((await cache.clear(false)).ok).toBe(true); const result = await cache.read(); expect(result).toMatchObject({ ok: true, value: { entry: null, receipt: { admittedAt: 1234 } } });
   }
-  const generation = cache.invalidate(); const pending = cache.write({ formatVersion: 1, entry: null, receipt: null }, generation); cache.dispose(); expect(await pending).toEqual({ ok: false, code: 'stale' });
+  const generation = cache.invalidate(); const pending = cache.write({ formatVersion: 2, entry: null, receipt: null }, generation); cache.dispose(); expect(await pending).toEqual({ ok: false, code: 'stale' });
   const reset = new FileSummaryCache(filename); await reset.clear(true); expect(await readFile(filename).catch(() => null)).toBeNull();
 });
 it('durable provenance excludes schema1/migrated unknown/fallback pairs without deleting transcript', async () => {
@@ -65,7 +65,7 @@ it('reset barrier wins over a file writer paused after staging and cannot recrea
   const sync = vi.spyOn(prototype, 'sync').mockImplementation(() => new Promise<void>(resolve => { entered = true; release = resolve; }));
   const filename = path.join(root, 'summary.json'), cache = new FileSummaryCache(filename);
   try {
-    const pending = cache.write({ formatVersion: 1, entry: null, receipt: null }, cache.invalidate());
+    const pending = cache.write({ formatVersion: 2, entry: null, receipt: null }, cache.invalidate());
     await vi.waitFor(() => expect(entered).toBe(true));
     const reset = cache.clear(true); release();
     expect(await pending).toEqual({ ok: false, code: 'stale' }); expect((await reset).ok).toBe(true);
@@ -88,5 +88,5 @@ it('explicit corruption repair retains a valid receipt even when its clock is ah
   await writeFile(filename, JSON.stringify({ formatVersion: 99, entry: 'invalid', receipt }));
   const cache = new FileSummaryCache(filename, () => 1);
   expect((await cache.clear(false, true)).ok).toBe(true);
-  expect(await cache.read()).toEqual({ ok: true, value: { formatVersion: 1, entry: null, receipt } });
+  expect(await cache.read()).toEqual({ ok: true, value: { formatVersion: 2, entry: null, receipt: { ...receipt, mode: 'dialogue_pairs' } } });
 });

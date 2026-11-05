@@ -1,4 +1,4 @@
-/** Ordinary-chat reflection; event-summary declarations remain reserved for #177. */
+/** Independent wire projections for ordinary reflection and explicit life-event summaries. */
 export interface BackendLifeReflection {
   readonly scope: 'observed_utc_window';
   readonly validity: 'tentative';

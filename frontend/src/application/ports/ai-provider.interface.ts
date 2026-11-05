@@ -54,7 +54,7 @@ export interface AIProviderRequest {
   readonly dialogueTopic?: import('./interest-thread.interface').AIProviderDialogueTopic;
   /** Full interaction context for the external v1 adapter. */
   readonly interaction?: { readonly card: CharacterCardReference; readonly effectPolicy: 'eligible' | 'suppressed'; readonly previousTouch?: PreviousTouchReaction };
-  readonly summary?: { readonly text: string };
+  readonly summary?: { readonly text: string } | import('./backend-life-history-contract').BackendLifeSummaryContext;
   requestId: string;
   userMessage: AIProviderUserMessage;
   characterSnapshot: AIProviderCharacterSnapshot;

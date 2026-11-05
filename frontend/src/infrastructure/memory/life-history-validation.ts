@@ -11,7 +11,7 @@ export function lifeWindowQuery(value: unknown): LifeHistoryWindowQuery {
   const p = record(value, ['fromDateUTC', 'throughDateUTC', 'asOf']);
   const fromDateUTC = utcDate(p.fromDateUTC), throughDateUTC = utcDate(p.throughDateUTC), asOf = timestamp(p.asOf);
   const span = (Date.parse(throughDateUTC) - Date.parse(fromDateUTC)) / 86400000 + 1;
-  if (span < 1 || span > 14 || asOf.slice(0, 10) !== throughDateUTC) throw new MemoryDataError('invalid_data');
+  if (span < 1 || span > 14 || asOf.slice(0, 10) < throughDateUTC) throw new MemoryDataError('invalid_data');
   return { fromDateUTC, throughDateUTC, asOf };
 }
 export function lifeWindow(value: unknown): LifeHistoryWindow {

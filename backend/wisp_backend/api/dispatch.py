@@ -6,6 +6,7 @@ from wisp_backend.api.endpoints import ENDPOINTS_BY_REQUEST
 from wisp_backend.api.responses import WireReplyEncoder
 from wisp_backend.api.schemas.events import EventRequest
 from wisp_backend.api.schemas.interaction import InteractionChatRequest, InteractionTouchRequest
+from wisp_backend.api.schemas.life_history import LifeSummaryContext, LifeSummaryRequest
 from wisp_backend.api.schemas.observation import ObservationRequest
 from wisp_backend.api.schemas.summary import SummaryRequest
 from wisp_backend.completion.contracts import CompletionJob, InferenceRequest
@@ -28,7 +29,12 @@ from wisp_backend.completion.prompts.lore import LoreCatalogue
 from wisp_backend.validation import trim_text
 
 CompletionRequest: TypeAlias = (
-    InteractionChatRequest | InteractionTouchRequest | ObservationRequest | SummaryRequest | EventRequest
+    InteractionChatRequest
+    | InteractionTouchRequest
+    | ObservationRequest
+    | SummaryRequest
+    | LifeSummaryRequest
+    | EventRequest
 )
 
 
@@ -50,7 +56,10 @@ def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | Non
         **common,
         memory=body.memory.model_dump(),
         previous_initiative=body.previousInitiative.model_dump() if body.previousInitiative is not None else None,
-        summary=body.summary.text if body.summary is not None else None,
+        summary=(
+            body.summary.text if body.summary is not None and not isinstance(body.summary, LifeSummaryContext) else None
+        ),
+        life_summary=body.summary.model_dump() if isinstance(body.summary, LifeSummaryContext) else None,
         interaction=InteractionContext(body.card.model_dump(), body.effectPolicy),
         previous_touch=body.previousTouch.model_dump() if body.previousTouch is not None else None,
         dialogue_topic=body.dialogueTopic.model_dump() if body.dialogueTopic is not None else None,
@@ -64,6 +73,13 @@ def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | Non
 
 def prepare_context(body: CompletionRequest, lore: LoreCatalogue | None = None) -> PromptContext:
     """Keep wire inheritance and normalization in the API adapter only."""
+    if isinstance(body, LifeSummaryRequest):
+        return SummaryContext(
+            body.locale,
+            life_events=tuple(event.model_dump() for event in body.events),
+            from_date=body.fromDate,
+            through_date=body.throughDate,
+        )
     if isinstance(body, SummaryRequest):
         return SummaryContext(body.locale, tuple(SummaryPair(pair.userText, pair.assistantText) for pair in body.pairs))
     if isinstance(body, InteractionChatRequest):

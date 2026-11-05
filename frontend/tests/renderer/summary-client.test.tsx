@@ -38,3 +38,14 @@ it('shows exact selected pairs and separate transmission consent before generati
   expect(markup).toContain('Подтверждаю отправку этих пар'); expect(markup).toContain('внешнему AI-провайдеру'); expect(markup).toContain('24 часа');
   expect(bridge.confirm).not.toHaveBeenCalled();
 });
+it('keeps event preview semantic and UTC-explicit and requires separate consent with one global quota', async () => {
+  const { bridge } = fixture(); const client = getSummaryClient(bridge); client.acceptIdentity('s', 'c');
+  const events = Array.from({ length: 4 }, (_, i) => ({ activity: 'cursor_game' as const, outcome: 'completed' as const, cause: 'completed' as const, actor: 'autonomy' as const, participation: 'user_engaged' as const, executedMs: 1000, occurredAt: `2026-11-0${i+1}T12:00:00.000Z` }));
+  bridge.preview.mockResolvedValueOnce({ ok: true, value: { mode: 'life_events', previewId: 'life-preview', expiresAt: 120000, fromDateUTC: '2026-10-23', throughDateUTC: '2026-11-05', events } });
+  await client.preview({ mode: 'life_events', fromDateUTC: '2026-10-23', throughDateUTC: '2026-11-05' });
+  expect(bridge.preview).toHaveBeenCalledWith({ streamId: 's', mode: 'life_events', fromDateUTC: '2026-10-23', throughDateUTC: '2026-11-05' });
+  const markup = renderToStaticMarkup(<SummaryControls bridge={bridge} snapshot={{ streamId: 's', dialogue: { conversationId: 'c', canSubmit: true, turn: { phase: 'idle' } } }} />);
+  for (const text of ['События Wisp','2026-11-01','12:00:00 UTC','с участием пользователя','не вся жизнь','Подтверждаю отправку этих событий','общей попытки за 24 часа','Источники краткого содержания']) expect(markup).toContain(text);
+  expect(markup).not.toMatch(/appRunId|activityRunId|contentDigest/u); expect(bridge.confirm).not.toHaveBeenCalled();
+  await client.confirm(); expect(bridge.confirm).toHaveBeenCalledWith({ streamId: 's', previewId: 'life-preview', commandId: expect.any(String) });
+});

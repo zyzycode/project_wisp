@@ -17,6 +17,7 @@ import { parseSummaryRequest, parseSummaryResponse, parseSummaryChatResponse, pa
 function component(value: unknown) { if (!value || typeof value !== 'object') throw new Error('Expected fixture'); return Object.fromEntries(Object.entries(value).filter(([key]) => !["card", "effectPolicy", "appraisal"].includes(key))); }
 const fixture = (name: string): unknown => JSON.parse(readFileSync(path.join(process.cwd(), '../docs/contracts/fixtures/desktop-backend-v1/summary', name), 'utf8'));
 const summaryWire = parseSummaryRequest(fixture('request.summary.json'));
+if (!('pairs' in summaryWire)) throw new Error('Expected pairs fixture');
 const chatWire = fixture('request.chat-summary.json') as BackendSummaryChatRequest;
 const summaryInput = { requestId: summaryWire.requestId, locale: summaryWire.locale, pairs: summaryWire.pairs };
 const json = (value: unknown, status = 200): Response => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });

@@ -1,3 +1,5 @@
+import type { LifeSummaryEntry, LifeSummaryEvent, LifeSummaryPreview, LifeSummaryReceipt, SummaryCacheV2 } from './life-history.interface';
+import type { CausalLifeSourceReference } from './causal-life.interface';
 import type { MemoryOperationContext, MemoryResult, UserFact } from './memory-repository.interface';
 
 export interface SummaryPair {
@@ -14,7 +16,9 @@ export interface ISummarySourceReader {
 }
 export interface SummaryReceipt { readonly commandId: string; readonly requestId: string; readonly sourceDigest: string; readonly admittedAt: number; readonly generatorVersion: 1 }
 export interface SummaryEntry { readonly text: string; readonly sources: readonly SummarySource[]; readonly sourceDigest: string; readonly factsDigest: string; readonly locale: 'ru' | 'en'; readonly generatorVersion: 1 }
-export interface SummaryCache { readonly formatVersion: 1; readonly entry: SummaryEntry | null; readonly receipt: SummaryReceipt | null }
+export type SummaryCache = SummaryCacheV2;
+export type ActiveSummaryEntry = (SummaryEntry & { readonly mode: 'dialogue_pairs' }) | LifeSummaryEntry;
+export type ActiveSummaryReceipt = (SummaryReceipt & { readonly mode: 'dialogue_pairs' }) | LifeSummaryReceipt;
 export interface ISummaryCache {
   read(): Promise<MemoryResult<SummaryCache>>;
   write(value: SummaryCache, generation: number): Promise<MemoryResult<void>>;
@@ -24,15 +28,20 @@ export interface ISummaryCache {
   dispose(): void;
 }
 export interface ISummaryGenerator {
-  generateSummary(request: { readonly requestId: string; readonly locale: 'ru' | 'en'; readonly pairs: readonly { readonly userText: string; readonly assistantText: string }[] }, signal: AbortSignal): Promise<string>;
+  generateSummary(request: SummaryGenerationRequest, signal: AbortSignal): Promise<string>;
 }
+export type SummaryGenerationRequest = { readonly requestId: string; readonly locale: 'ru' | 'en' } & ({ readonly pairs: readonly { readonly userText: string; readonly assistantText: string }[] } | { readonly fromDate: string; readonly throughDate: string; readonly events: readonly LifeSummaryEvent[] });
+export interface LifeSummaryRange { readonly mode: 'life_events'; readonly fromDateUTC: string; readonly throughDateUTC: string }
 export type SummaryFailure = 'unavailable' | 'busy' | 'stale' | 'rate_limited' | 'failed' | 'conflict';
 export type SummaryResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly code: SummaryFailure };
-export interface SummaryPreview { readonly previewId: string; readonly expiresAt: number; readonly pairs: readonly { readonly userText: string; readonly assistantText: string }[] }
-export interface SummaryCapture { readonly text: string; readonly excludedMessageIds: readonly string[]; readonly generation: number }
+export interface DialogueSummaryPreview { readonly previewId: string; readonly expiresAt: number; readonly pairs: readonly { readonly userText: string; readonly assistantText: string }[] }
+export type SummaryPreview = DialogueSummaryPreview | LifeSummaryPreview;
+export interface SummaryCapture { readonly text: string; readonly excludedMessageIds: readonly string[]; readonly generation: number; readonly memoryGeneration?: number;
+  readonly life?: { readonly fromDateUTC: string; readonly throughDateUTC: string; readonly eventCount: number; readonly sources: readonly CausalLifeSourceReference[]; readonly gameRuns: readonly { readonly appRunId: string; readonly activityRunId: string }[] };
+}
 /** UI uses explicit preview then confirm. Chat only captures existing valid cache. */
 export interface ISummaryRuntime {
-  preview(): Promise<SummaryResult<SummaryPreview>>;
+  preview(range?: LifeSummaryRange): Promise<SummaryResult<SummaryPreview>>;
   confirm(commandId: string, previewId: string): Promise<SummaryResult<string>>;
   deleteSummary(): Promise<SummaryResult<void>>;
   capture(text: string): Promise<SummaryCapture | undefined>;

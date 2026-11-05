@@ -6,7 +6,7 @@ import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-f
 import { parseBeverageCommand, parseBeverageRead, parseBeverageReadResult, parseBeverageMutationResult } from '../shared/beverage-validation';
 import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
 import { parseObservationCommand, parseObservationSettings } from '../shared/observation-ipc-validation';
-import { parseSummaryCommand, parseSummaryConfirm, parseSummaryDeleteResult, parseSummaryPreviewResult, parseSummaryTextResult } from '../shared/summary-ipc-validation';
+import { parseSummaryPreviewCommand, parseSummaryCommand, parseSummaryConfirm, parseSummaryDeleteResult, parseSummaryPreviewResult, parseSummaryTextResult } from '../shared/summary-ipc-validation';
 import { parseMemoryCardCommand, parseMemoryCardListCommand, parseMemoryCardListResult, parseMemoryCardResult } from '../shared/memory-card-validation';
 import { parseClearMemoryCommand, parseClearMemoryResult, parseMemoryStatus } from '../shared/memory-ipc-validation';
 import { parseQuietModeCommand, parseAutonomyMode } from '../shared/quiet-mode-validation';
@@ -102,7 +102,7 @@ const api: WispApiBridge = {
     mutate: async command => parseInterestThreadMutationResult(await ipcRenderer.invoke('wisp:mutate-interest-thread', parseInterestThreadCommand(command))),
   },
   summary: {
-    preview: async command => parseSummaryPreviewResult(await ipcRenderer.invoke('wisp:summary-preview', parseSummaryCommand(command))),
+    preview: async command => parseSummaryPreviewResult(await ipcRenderer.invoke('wisp:summary-preview', parseSummaryPreviewCommand(command))),
     confirm: async command => parseSummaryTextResult(await ipcRenderer.invoke('wisp:summary-confirm', parseSummaryConfirm(command))),
     deleteSummary: async command => parseSummaryDeleteResult(await ipcRenderer.invoke('wisp:summary-delete', parseSummaryCommand(command))),
   },

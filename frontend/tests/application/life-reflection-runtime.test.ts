@@ -41,3 +41,6 @@ it('retains one unsettled slot after 200ms and never queues another read or retu
   expect(await f.runtime.capture('our game')).toBeUndefined(); f.settle(); for (let i = 0; i < 8; i++) await Promise.resolve(); expect(f.readWindow).not.toHaveBeenCalled();
   const capture = await f.runtime.capture('our game'); expect(capture).toBeDefined(); f.clock('2026-11-05T11:00:00.000Z'); expect(f.runtime.isCurrent(capture!)).toBe(false);
 });
+it('preserves current explicit fact recognition by omitting derived context for whole fact statements', async () => {
+  const f = fixture(); expect(await f.runtime.capture('I like the cursor game')).toBeUndefined(); expect(f.readWindow).not.toHaveBeenCalled();
+});

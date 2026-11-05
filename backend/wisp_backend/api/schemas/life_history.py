@@ -1,4 +1,4 @@
-"""Ordinary-chat reflection and reserved event-summary wire schemas."""
+"""Ordinary-chat reflection and explicit life-event summary wire schemas."""
 
 import json
 from datetime import date
@@ -53,7 +53,9 @@ class LifeSummaryEvent(Contract):
     def causal_shape(self) -> "LifeSummaryEvent":
         if (self.outcome == "completed") != (self.cause == "completed"):
             raise ValueError("Incoherent terminal cause")
-        if self.cause == "user_interrupted" and self.actor != "user":
+        if self.cause in ("environment_lost", "timeout") and self.actor != "system":
+            raise ValueError("Incoherent environment actor")
+        if self.cause == "user_interrupted" and (self.actor != "user" or self.outcome != "cancelled"):
             raise ValueError("Incoherent interruption actor")
         return self
 

@@ -56,7 +56,7 @@ export class LifeHistoryStore {
       this.db.prepare('UPDATE causal_history_build SET last_clock=? WHERE id=1').run(q.asOf);
       if (state.complete === -1 || (latest !== undefined && text(record(latest).occurred_at) > q.asOf)) return omit('clock_unknown');
       if (state.complete !== 1) return omit('index_building');
-      const rows = this.db.prepare('SELECT * FROM causal_history_index WHERE occurred_at>=? AND occurred_at<=? ORDER BY occurred_at,insertion_order,app_run_id COLLATE BINARY,sequence LIMIT 1001').all(`${q.fromDateUTC}T00:00:00.000Z`, q.asOf);
+      const rows = this.db.prepare('SELECT * FROM causal_history_index WHERE occurred_at>=? AND occurred_at<=? ORDER BY occurred_at,insertion_order,app_run_id COLLATE BINARY,sequence LIMIT 1001').all(`${q.fromDateUTC}T00:00:00.000Z`, q.asOf.slice(0, 10) === q.throughDateUTC ? q.asOf : `${q.throughDateUTC}T23:59:59.999Z`);
       examined = rows.length;
       if (examined > 1000) return omit('overflow');
       const bytes = rows.reduce<number>((sum, row) => sum + integer(record(row).payload_bytes, 1), 0);

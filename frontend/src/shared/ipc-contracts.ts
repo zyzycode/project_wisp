@@ -534,16 +534,22 @@ export interface DebugTelemetryDTO {
 }
 
 export type SummaryFailureDTO = 'unavailable' | 'busy' | 'stale' | 'rate_limited' | 'failed' | 'conflict';
-export interface SummaryPreviewDTO {
+export interface DialogueSummaryPreviewDTO {
   readonly previewId: string;
   readonly expiresAt: number;
   readonly pairs: readonly { readonly userText: string; readonly assistantText: string }[];
 }
+export interface LifeSummaryPreviewDTO {
+  readonly mode: 'life_events'; readonly previewId: string; readonly expiresAt: number; readonly fromDateUTC: string; readonly throughDateUTC: string;
+  readonly events: readonly { readonly activity: 'cursor_game'; readonly outcome: 'completed' | 'cancelled' | 'failed'; readonly cause: 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout'; readonly actor: 'user' | 'system' | 'autonomy' | 'unknown'; readonly participation: 'user_engaged' | 'solitary' | 'none'; readonly executedMs: number; readonly occurredAt: string }[];
+}
+export type SummaryPreviewDTO = DialogueSummaryPreviewDTO | LifeSummaryPreviewDTO;
+export type SummaryPreviewCommandDTO = SummaryCommandDTO | (SummaryCommandDTO & { readonly mode: 'life_events'; readonly fromDateUTC: string; readonly throughDateUTC: string });
 export type SummaryResultDTO<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly code: SummaryFailureDTO };
 export interface SummaryCommandDTO { readonly streamId: string }
 export interface SummaryConfirmCommandDTO extends SummaryCommandDTO { readonly commandId: string; readonly previewId: string }
 export interface SummaryApiBridge {
-  preview(command: SummaryCommandDTO): Promise<SummaryResultDTO<SummaryPreviewDTO>>;
+  preview(command: SummaryPreviewCommandDTO): Promise<SummaryResultDTO<SummaryPreviewDTO>>;
   confirm(command: SummaryConfirmCommandDTO): Promise<SummaryResultDTO<string>>;
   deleteSummary(command: SummaryCommandDTO): Promise<SummaryResultDTO<null>>;
 }

@@ -1,0 +1,45 @@
+{
+  "requestId": "00000000-0000-4000-8000-000000000177",
+  "locale": "en",
+  "stream": false,
+  "fromDate": "2026-10-23",
+  "throughDate": "2026-11-05",
+  "events": [
+    {
+      "activity": "cursor_game",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "user_engaged",
+      "executedMs": 1000,
+      "occurredAt": "2026-11-01T12:00:00.000Z"
+    },
+    {
+      "activity": "cursor_game",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "user_engaged",
+      "executedMs": 1000,
+      "occurredAt": "2026-11-02T12:00:00.000Z"
+    },
+    {
+      "activity": "cursor_game",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "user_engaged",
+      "executedMs": 1000,
+      "occurredAt": "2026-11-03T12:00:00.000Z"
+    },
+    {
+      "activity": "cursor_game",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "user_engaged",
+      "executedMs": 1000,
+      "occurredAt": "2026-11-04T12:00:00.000Z"
+    }
+  ]
+}

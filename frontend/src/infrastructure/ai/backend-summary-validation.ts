@@ -1,10 +1,14 @@
+import { parseLifeSummaryRequest, parseLifeSummaryContext } from './backend-life-summary';
 import { summaryPlainText } from '../../shared/summary-text-validation';
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
-import type { BackendSummaryRequest, BackendSummaryChatRequest } from '../../application/ports/backend-summary-contract';
+import type { BackendSummaryRequest, BackendPairSummaryRequest, BackendSummaryChatRequest } from '../../application/ports/backend-summary-contract';
 import { backendRequestId } from './backend-request-projection';
 import { exactRecord, enumValue } from '../../shared/dialogue-ipc-validation';
 import { projectEventAwareChat } from './backend-events-validation';
+export function parseSummaryRequest(value: BackendPairSummaryRequest): BackendPairSummaryRequest;
+export function parseSummaryRequest(value: unknown): BackendSummaryRequest;
 export function parseSummaryRequest(value: unknown): BackendSummaryRequest {
+  if (value && typeof value === 'object' && Object.hasOwn(value, 'events')) return parseLifeSummaryRequest(value);
   const r = exactRecord(value, ['requestId', 'locale', 'stream', 'pairs']);
   if (r.stream !== false || !Array.isArray(r.pairs) || r.pairs.length < 4 || r.pairs.length > 8) throw new TypeError('Invalid summary request');
   const requestId = backendRequestId(r.requestId);
@@ -19,7 +23,7 @@ export function parseSummaryResponse(value: unknown, requestId: string) {
 }
 export function projectSummaryChat(request: AIProviderRequest): BackendSummaryChatRequest {
   const base = projectEventAwareChat(request);
-  const summary = request.summary === undefined ? undefined : { text: summaryPlainText(exactRecord(request.summary, ['text']).text, 1200) };
+  const summary = request.summary === undefined ? undefined : 'sourceKind' in request.summary ? parseLifeSummaryContext(request.summary) : { text: summaryPlainText(exactRecord(request.summary, ['text']).text, 1200) };
   const result: BackendSummaryChatRequest = { ...base, ...(summary ? { summary } : {}) };
   // Summary drops atomically before any further optional episode trimming.
   if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 32768) return base;

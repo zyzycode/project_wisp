@@ -88,9 +88,10 @@ export class LocalMemoryRecall implements ILocalMemoryRecall {
         if (score > 0) pairs.push({ score, position: i, episode: { kind: 'dialogue', userText: truncate(user.content, 240), assistantText: truncate(assistant.content, 400), occurredAt: assistant.createdAt } });
       }
       pairs.sort((a, b) => b.score - a.score || b.position - a.position);
-      const latestGame = queryTokens.some(token => /^(?:игр|курсор|пойм|промах|ловил|game|cursor|catch|caught|miss|play)/u.test(token)) ? games.value[0] : undefined;
+      const latestGame = queryTokens.some(token => /^(?:игр|курсор|пойм|промах|ловил|game|cursor|catch|caught|miss|play)/u.test(token)) ? games.value.find(game => !query.excludedGameRuns?.some(ref => ref.appRunId === game.appRunId && ref.activityRunId === game.activityRunId)) : undefined;
       const game = latestGame && latestGame.executedMs <= 60_000 ? latestGame : undefined;
-      const causalEpisode = causal.value?.candidates[0] ? projectCausalEpisode(causal.value.candidates[0].episode) : null;
+      const candidate = causal.value?.candidates.find(candidate => !query.excludedCausalSources?.some(ref => ref.appRunId === candidate.source.appRunId && ref.sequence === candidate.source.sequence && ref.revision === candidate.source.revision));
+      const causalEpisode = candidate ? projectCausalEpisode(candidate.episode) : null;
       // Cards participate in the local ranking; v1 does not permit their categories.
       // Filtering them here refills the same provider slots from the baseline pairs.
       const ranked = [...(items.value.coverage === 'complete' ? items.value.candidates.map(candidate => ({ kind: 'card' as const, candidate })) : []),

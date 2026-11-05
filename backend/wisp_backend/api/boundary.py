@@ -58,6 +58,8 @@ class CompletionBoundary:
             data = decode_json(chunks.decode("utf-8"))
         except (ValueError, UnicodeError, RecursionError):
             return await error_response("invalid_request")(scope, receive, send)
+        if scope["path"] == "/v1/summary" and isinstance(data, dict) and "events" in data and len(chunks) > 8192:
+            return await error_response("payload_too_large", read_request_id(data))(scope, receive, send)
         request_id = read_request_id(data)
         namespace = scope["method"] + " " + scope["path"]
         digest = namespace + ":" + hashlib.sha256(namespace.encode() + b"\0" + chunks).hexdigest()

@@ -10,6 +10,7 @@ from wisp_backend.api.schemas.interaction import (
     InteractionTouchRequest,
     InteractionTouchResponse,
 )
+from wisp_backend.api.schemas.life_history import LifeSummaryRequest
 from wisp_backend.api.schemas.observation import ObservationRequest, ObservationResponse
 from wisp_backend.api.schemas.summary import SummaryRequest, SummaryResponse
 from wisp_backend.completion.policies import Scenario
@@ -37,3 +38,5 @@ SUMMARY = Endpoint("/v1/summary", Scenario.SUMMARY, SummaryRequest, SummaryRespo
 OBSERVATION = Endpoint("/v1/observation", Scenario.OBSERVATION, ObservationRequest, ObservationResponse)
 ENDPOINTS = {endpoint.path: endpoint for endpoint in (CHAT, TOUCH, EVENT, SUMMARY, OBSERVATION)}
 ENDPOINTS_BY_REQUEST = {endpoint.request_type: endpoint for endpoint in ENDPOINTS.values()}
+
+ENDPOINTS_BY_REQUEST[LifeSummaryRequest] = SUMMARY

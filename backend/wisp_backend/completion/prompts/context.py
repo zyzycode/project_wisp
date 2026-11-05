@@ -50,6 +50,7 @@ class InteractionChatContext(CharacterPromptContext):
     dialogue_topic: Snapshot | None = None
     beverage_preference: Snapshot | None = None
     life_reflection: Snapshot | None = None
+    life_summary: Snapshot | None = None
     lore: LoreCatalogue | None = None
 
     def __post_init__(self) -> None:
@@ -80,7 +81,10 @@ class ObservationContext(CharacterPromptContext):
 @dataclass(frozen=True)
 class SummaryContext:
     locale: Locale
-    pairs: tuple[SummaryPair, ...]
+    pairs: tuple[SummaryPair, ...] = ()
+    life_events: tuple[Snapshot, ...] | None = None
+    from_date: str | None = None
+    through_date: str | None = None
 
 
 PromptContext: TypeAlias = (

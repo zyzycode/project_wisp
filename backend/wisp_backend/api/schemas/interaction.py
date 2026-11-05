@@ -6,7 +6,7 @@ from pydantic import BeforeValidator, field_validator, model_validator
 from wisp_backend.api.schemas.chat import ChatFields
 from wisp_backend.api.schemas.common import RequestId
 from wisp_backend.api.schemas.events import PreviousInitiative
-from wisp_backend.api.schemas.life_history import LifeReflection
+from wisp_backend.api.schemas.life_history import LifeReflection, LifeSummaryContext
 from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
 from wisp_backend.api.schemas.touch import TouchEvent, TouchFields
 from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply, TouchAppraisal
@@ -109,7 +109,7 @@ class InteractionChatRequest(ChatFields, InteractionPolicy):
     lifeReflection: LifeReflection = omittable()
     memory: MemoryContext
     previousInitiative: PreviousInitiative = omittable()
-    summary: SummaryModelReply = omittable()
+    summary: SummaryModelReply | LifeSummaryContext = omittable()
     previousTouch: PreviousTouch = omittable()
     dialogueTopic: DialogueTopic = omittable()
     beveragePreference: BeveragePreference = omittable()
@@ -118,6 +118,8 @@ class InteractionChatRequest(ChatFields, InteractionPolicy):
     def card_matches(self) -> "InteractionChatRequest":
         if self.card.id != self.character.personality.presetId:
             raise ValueError("Card does not match character")
+        if isinstance(self.summary, LifeSummaryContext) and self.lifeReflection is not None:
+            raise ValueError("Life summary and reflection are mutually exclusive")
         return self
 
 

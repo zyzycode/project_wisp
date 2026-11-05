@@ -84,7 +84,7 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
     const enabled = { ...result, beveragePreference: { allowProposal: raw.allowProposal, ...(current ? { current } : {}) } };
     if (bytes(enabled) <= 32768) result = enabled;
   }
-  if (request.lifeReflection !== undefined) {
+  if (request.lifeReflection !== undefined && !(result.summary && 'sourceKind' in result.summary)) {
     const r = exactRecord(request.lifeReflection, ['kind','fromDateUTC','throughDateUTC','completedCount','interruptedCount','completedUtcDays']);
     const lifeReflection = parseLifeReflection({ scope: 'observed_utc_window', validity: 'tentative', kind: r.kind, fromDate: r.fromDateUTC, throughDate: r.throughDateUTC, completedCount: r.completedCount, interruptedCount: r.interruptedCount, completedDays: r.completedUtcDays });
     const enabled = { ...result, lifeReflection };

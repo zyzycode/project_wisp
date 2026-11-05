@@ -812,6 +812,28 @@ html, body {
   width: 100%;
 }
 
+.memory-panel .summary-source-fields {
+  min-width: 0;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+}
+
+.memory-panel .summary-source-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.memory-panel .summary-source-option input {
+  accent-color: #c084fc;
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
+
 .memory-panel ul,
 .memory-panel ol {
   padding-left: 18px;

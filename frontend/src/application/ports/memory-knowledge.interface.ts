@@ -61,6 +61,8 @@ export interface MemoryRecallQuery {
   /** Internal social-event retrieval uses the current saved topic without another read. */
   readonly useFavoriteTopic?: boolean;
   readonly excludedMessageIds: readonly string[];
+  readonly excludedCausalSources?: readonly CausalLifeSourceReference[];
+  readonly excludedGameRuns?: readonly { readonly appRunId: string; readonly activityRunId: string }[];
 }
 
 /** Application implementation composes repositories and deterministic selection. */

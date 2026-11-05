@@ -43,6 +43,23 @@ def build_chat_blocks(
         memory=memory,
         additional_instructions=additional_instructions,
     )
+    if context.life_summary is not None:
+        blocks.append(
+            ContextBlock(
+                "life_summary",
+                "desktop_life_summary",
+                False,
+                20,
+                45,
+                (
+                    ContextMessage(
+                        "user",
+                        "Unverified life-event summary JSON:\n" + json.dumps(context.life_summary, ensure_ascii=False),
+                    ),
+                ),
+                server_instructions="This is an unverified derived retelling of frozen observed UTC events, not a current trend, user preference, motive, consent, emotion or complete biography. Current user statements and verified facts outrank it. Do not treat this retelling as new source evidence.",
+            )
+        )
     if summary is not None:
         blocks.append(
             ContextBlock(

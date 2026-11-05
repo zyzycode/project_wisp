@@ -485,7 +485,7 @@ function initializeAutonomyComposition(): void {
       gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), ...(observationRuntime?.isBusy() ? { allowed: false } : {}), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0, ...(!memoryRuntime?.isRunning() || summaryGenerating || summaryRuntime?.isBusy() ? { allowed: false, touchAllowed: false } : {}) }) });
     if (ai.summaryGenerator && memoryComposition) {
       const generator = ai.summaryGenerator;
-      summaryRuntime = new SummaryRuntime({ interruptObservation: () => observationRuntime?.interruptForUser() ?? Promise.resolve(), sources: memoryComposition.summarySources, cache: memoryComposition.summaryCache,
+      summaryRuntime = new SummaryRuntime({ lifeHistory: memoryComposition.lifeHistory, causalLife: memoryComposition.causalLife, sourceBarrier: memoryRuntime?.history.causal, interruptObservation: () => observationRuntime?.interruptForUser() ?? Promise.resolve(), sources: memoryComposition.summarySources, cache: memoryComposition.summaryCache,
         generator: { generateSummary: async (request, signal) => { summaryGenerating = true; try { return await generator.generateSummary(request, signal); } finally { summaryGenerating = false; } } },
         context: () => memoryRuntime?.context() ?? null, now: Date.now, monotonicNow: () => performance.now(), createId: randomUUID,
         hash: text => createHash('sha256').update(text, 'utf8').digest('hex'), scheduler: createMainAutonomyScheduler(), locale: 'ru',

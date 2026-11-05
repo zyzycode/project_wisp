@@ -1,3 +1,4 @@
+import { recognizeMemoryFact } from './memory-fact-registry';
 import { causalRecallBucket } from '../../domain/character/causal-recall';
 import { crossDayGameObservation } from '../../domain/character/cross-day-game-observation';
 import type { ICausalSourceReadBarrier, ILifeHistoryReader, ILifeReflectionRuntime, LifeReflectionCapture } from '../ports/life-history.interface';
@@ -34,6 +35,7 @@ export class LifeReflectionRuntime implements ILifeReflectionRuntime {
       && context?.generation === capture.memoryGeneration && state.generation === capture.memoryGeneration && state.revision === capture.sourceRevision && !state.pending;
   }
   async capture(queryText: string): Promise<LifeReflectionCapture | undefined> {
+    if (recognizeMemoryFact(queryText)) return undefined;
     const bucket = causalRecallBucket(queryText);
     if (this.disposed || (bucket !== 'game.any' && bucket !== 'game.completed.user_engaged') || !this.options.reader || this.reading) return undefined;
     if (this.cache && this.isCurrent(this.cache)) return this.cache;

@@ -13,6 +13,7 @@ it('authenticates all five existing semantic operations without provider keys or
   const eventRequest = { ...request, locale: 'ru' as const, memoryContext: request.memoryContext ?? { facts: [], episodes: [], characterPreferences: [] } };
   const observation = parseObservationRequest(fixture('observation/request.valid.json'));
   const summary = parseSummaryRequest(fixture('summary/request.summary.json'));
+  if (!('pairs' in summary)) throw new Error('Expected pairs fixture');
   const operations: readonly [string, (provider: ExternalAIProviderClient) => Promise<unknown>][] = [
     ['chat', provider => provider.generateResponse(request)],
     ['touch', provider => provider.generateEvent({ ...eventRequest, event: { type: 'user_touch', variant: 'touch', occurredAt: '2026-10-29T00:00:00.000Z' } })],

@@ -1,15 +1,30 @@
+import { lifeSummaryDates, parseLifeSummaryEvents } from './life-summary-validation';
 import { summaryPlainText } from './summary-text-validation';
-import type { SummaryCommandDTO, SummaryConfirmCommandDTO, SummaryPreviewDTO, SummaryResultDTO } from './ipc-contracts';
+import type { SummaryCommandDTO, SummaryPreviewCommandDTO, SummaryConfirmCommandDTO, SummaryPreviewDTO, SummaryResultDTO } from './ipc-contracts';
 import { enumValue, exactRecord } from './validation-primitives';
 function id(value: unknown): string { const result = summaryPlainText(value, 128); if (result.trim() !== result) throw new TypeError('Invalid summary id'); return result; }
 export function parseSummaryCommand(input: unknown): SummaryCommandDTO {
   const value = exactRecord(input, ['streamId']); return { streamId: id(value.streamId) };
+}
+export function parseSummaryPreviewCommand(input: unknown): SummaryPreviewCommandDTO {
+  const raw = exactRecord(input, ['streamId'], ['mode','fromDateUTC','throughDateUTC']);
+  if (!Object.hasOwn(raw, 'mode')) return parseSummaryCommand(input);
+  exactRecord(input, ['streamId','mode','fromDateUTC','throughDateUTC']);
+  if (raw.mode !== 'life_events') throw new TypeError('Invalid summary mode');
+  const dates = lifeSummaryDates(raw.fromDateUTC, raw.throughDateUTC);
+  return { streamId: id(raw.streamId), mode: 'life_events', fromDateUTC: dates.fromDate, throughDateUTC: dates.throughDate };
 }
 export function parseSummaryConfirm(input: unknown): SummaryConfirmCommandDTO {
   const value = exactRecord(input, ['streamId', 'commandId', 'previewId']);
   return { streamId: id(value.streamId), commandId: id(value.commandId), previewId: id(value.previewId) };
 }
 export function parseSummaryPreview(input: unknown): SummaryPreviewDTO {
+  if (input && typeof input === 'object' && Object.hasOwn(input, 'mode')) {
+    const value = exactRecord(input, ['mode','previewId','expiresAt','fromDateUTC','throughDateUTC','events']);
+    if (value.mode !== 'life_events' || typeof value.expiresAt !== 'number' || !Number.isSafeInteger(value.expiresAt) || value.expiresAt < 0) throw new TypeError('Invalid life preview');
+    const dates = lifeSummaryDates(value.fromDateUTC, value.throughDateUTC);
+    return { mode: 'life_events', previewId: id(value.previewId), expiresAt: value.expiresAt, fromDateUTC: dates.fromDate, throughDateUTC: dates.throughDate, events: parseLifeSummaryEvents(value.events, dates.fromDate, dates.throughDate) };
+  }
   const value = exactRecord(input, ['previewId', 'expiresAt', 'pairs']);
   if (!Number.isSafeInteger(value.expiresAt) || typeof value.expiresAt !== 'number' || value.expiresAt < 0 || !Array.isArray(value.pairs) || value.pairs.length < 4 || value.pairs.length > 8) throw new TypeError('Invalid summary preview');
   const pairs = value.pairs.map(input => { const pair = exactRecord(input, ['userText', 'assistantText']); return { userText: summaryPlainText(pair.userText, 240), assistantText: summaryPlainText(pair.assistantText, 2000) }; });

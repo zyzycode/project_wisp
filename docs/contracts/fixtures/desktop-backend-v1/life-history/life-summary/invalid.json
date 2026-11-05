@@ -1,0 +1,1073 @@
+[
+  {
+    "name": "pairs mixed",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ],
+      "pairs": []
+    }
+  },
+  {
+    "name": "null events",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": null
+    }
+  },
+  {
+    "name": "count3",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "count9",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "reverse",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "calendar",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-02-30",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "range15",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-22",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "future range",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-01",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "stream true",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": true,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "local ID",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ],
+      "appRunId": "private"
+    }
+  },
+  {
+    "name": "unknown cause",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "unknown",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "wrong actor",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "cancelled",
+          "cause": "user_interrupted",
+          "actor": "system",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "wrong interruption outcome",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "failed",
+          "cause": "user_interrupted",
+          "actor": "user",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "wrong system actor",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "failed",
+          "cause": "timeout",
+          "actor": "unknown",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "bool time",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": true,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "coerced time",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": "1000",
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "negative time",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": -1,
+          "occurredAt": "2026-11-01T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "outside date",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-10-22T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "impossible date",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-31T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "source IDs",
+    "kind": "request",
+    "value": {
+      "requestId": "00000000-0000-4000-8000-000000000177",
+      "locale": "en",
+      "stream": false,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "events": [
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-01T12:00:00.000Z",
+          "sequence": 1
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-02T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1000,
+          "occurredAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "name": "null text",
+    "kind": "context",
+    "value": {
+      "sourceKind": "life_events",
+      "text": null,
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "eventCount": 4
+    }
+  },
+  {
+    "name": "null kind",
+    "kind": "context",
+    "value": {
+      "sourceKind": null,
+      "text": "Four recorded games were completed.",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "eventCount": 4
+    }
+  },
+  {
+    "name": "bool count",
+    "kind": "context",
+    "value": {
+      "sourceKind": "life_events",
+      "text": "Four recorded games were completed.",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "eventCount": true
+    }
+  },
+  {
+    "name": "count3",
+    "kind": "context",
+    "value": {
+      "sourceKind": "life_events",
+      "text": "Four recorded games were completed.",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "eventCount": 3
+    }
+  },
+  {
+    "name": "count9",
+    "kind": "context",
+    "value": {
+      "sourceKind": "life_events",
+      "text": "Four recorded games were completed.",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "eventCount": 9
+    }
+  },
+  {
+    "name": "extra",
+    "kind": "context",
+    "value": {
+      "sourceKind": "life_events",
+      "text": "Four recorded games were completed.",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "eventCount": 4,
+      "sources": []
+    }
+  },
+  {
+    "name": "range15",
+    "kind": "context",
+    "value": {
+      "sourceKind": "life_events",
+      "text": "Four recorded games were completed.",
+      "fromDate": "2026-10-22",
+      "throughDate": "2026-11-05",
+      "eventCount": 4
+    }
+  },
+  {
+    "name": "long text",
+    "kind": "context",
+    "value": {
+      "sourceKind": "life_events",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "eventCount": 4
+    }
+  }
+]
