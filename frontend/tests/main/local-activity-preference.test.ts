@@ -7,7 +7,7 @@ import { scenario } from './autonomy-scenario-fixture';
 function state() {
   const seed = new CharacterStateService({ now: () => 0 }).getState();
   return { ...seed, needs: { energy: 51, comfort: 0, attention: 80, play: 0, boredom: 24 },
-    relationship: { ...seed.relationship, friendship: 100 } };
+    relationship: { ...seed.relationship, friendship: 100, familiarity: 100 } };
 }
 it.each(['activity.explore', 'activity.social_bid'] as const)('uses real authored traits and %s projection in Main, preserving other weights', key => {
   const original = state(), family = key === 'activity.explore' ? 'wander' : 'social_bid';

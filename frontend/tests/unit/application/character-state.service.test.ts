@@ -1,9 +1,10 @@
+import { createRelationship } from '../../../src/domain/character/relationship-facets';
 import { describe, it, expect } from 'vitest';
 import { curiousStubbornGirlPreset } from '../../../src/domain/character';
 import type { CharacterState } from '../../../src/domain/character';
 import { CharacterStateService } from '../../../src/application/services/character-state.service';
 
-function createState(overrides: Partial<CharacterState> = {}): CharacterState {
+function createState(overrides: Omit<Partial<CharacterState>, 'relationship'> & { relationship?: Partial<CharacterState['relationship']> } = {}): CharacterState {
   return {
     needs: {
       energy: 70,
@@ -14,6 +15,7 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
       ...overrides.needs,
     },
     relationship: {
+      ...createRelationship({ friendship: overrides.relationship?.friendship ?? 395, love: 0, loveUnlocked: false }),
       friendship: 395,
       love: 0,
       loveUnlocked: false,
@@ -28,6 +30,7 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
       ...overrides.intimacy,
     },
     preferences: overrides.preferences ?? {},
+    ownGameInterestSources: overrides.ownGameInterestSources ?? [],
     lastUpdated: overrides.lastUpdated ?? 1000,
   };
 }
@@ -72,11 +75,7 @@ describe('Application: CharacterStateService', () => {
     expect(after.needs.attention).toBeGreaterThan(0);
     expect(after.needs.play).toBeGreaterThan(0);
     expect(after.needs.boredom ?? 0).toBeGreaterThan(10);
-    expect(after.relationship).toEqual({
-      friendship: 300,
-      love: 25,
-      loveUnlocked: false,
-    });
+    expect(after.relationship).toEqual(createRelationship({ friendship: 300, love: 25, loveUnlocked: false }));
   });
 
   it('returns defensive copies of stored state', () => {

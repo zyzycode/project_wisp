@@ -180,7 +180,9 @@ function progressRelationship(
   const love = loveUnlocked && consentEnabled ? clampRelationship(relationship.love + Math.max(0, loveDelta)) : relationship.love;
 
   return {
+    ...relationship,
     friendship,
+    familiarity: friendship,
     love,
     loveUnlocked,
   };
@@ -308,6 +310,7 @@ export function processStimulus(state: CharacterState, stimulus: CharacterStimul
     },
     intimacy,
     preferences,
+    ownGameInterestSources: state.ownGameInterestSources.map(source => ({ ...source })),
     lastUpdated,
   };
 }

@@ -1,3 +1,4 @@
+import { createRelationship, projectRelationship } from '../../src/domain/character/relationship-facets';
 import { expect, it } from 'vitest';
 import type { JsonValue } from '../../src/application/ports/memory-repository.interface';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
@@ -5,7 +6,7 @@ import { projectCharacterMemory, restoreCharacterMemory } from '../../src/applic
 const now = '2026-09-18T00:00:00.000Z';
 const defaults = () => new CharacterStateService({ now: () => 100 }).getState();
 it('restores only dynamic fields, keeping installed preset metadata/caps and a fresh domain clock', () => {
-  const state = defaults(); state.relationship = { friendship: 600, love: 200, loveUnlocked: true }; state.intimacy.userConsentEnabled = false;
+  const state = defaults(); state.relationship = createRelationship({ friendship: 600, love: 200, loveUnlocked: true }); state.intimacy.userConsentEnabled = false;
   state.preferences = { jazz: { value: 80, confidence: 0.5, samples: 6 } };
   const snapshot = projectCharacterMemory(state, now); const restored = restoreCharacterMemory(snapshot, defaults(), 1000);
   expect(restored.relationship).toEqual(state.relationship); expect(restored.preferences).toEqual(state.preferences);
@@ -23,12 +24,12 @@ it.each(['extra', 'preset', 'axis', 'caps', 'range', 'samples', 'consent', 'vers
   if (variant === 'samples') input = { ...snapshot, state: { ...snapshot.state, preferences: { music: { value: 10, confidence: 0.4, samples: 1.5 } } } };
   if (variant === 'consent') input = { ...snapshot, state: { ...snapshot.state, intimacy: { ...snapshot.state.intimacy, userConsentEnabled: 'yes' } } };
   if (variant === 'revision') input = { ...snapshot, state: { ...snapshot.state, cardRevision: 1 } };
-  if (variant === 'version') input = { ...snapshot, snapshotVersion: 3 };
+  if (variant === 'version') input = { ...snapshot, snapshotVersion: 4 };
   expect(() => restoreCharacterMemory(input as typeof snapshot, defaults(), 1000)).toThrow();
 });
 
 function legacySnapshot() {
-  const { cardRevision: _revision, ...state } = projectCharacterMemory(defaults(), now).state;
+  const { cardRevision: _revision, ownGameInterestSources: _sources, ...state } = projectCharacterMemory(defaults(), now).state;
   return { snapshotVersion: 1, updatedAt: now, state: { ...state, presetId: 'shyDreamGirl',
     currentAxes: { openness: 0.2, extraversion: 0.05, agreeableness: 1, sensitivity: 1, playfulness: 0.1, boldness: 0.02, independence: 0.2 },
     needs: { energy: 12, attention: 34, play: 56, comfort: 78, boredom: 90 },
@@ -42,11 +43,13 @@ it('migrates exact legacy caps, resets only axes, preserves all dynamic knowledg
   const migrated = restoreCharacterMemory(legacy, defaults(), 1000);
   expect(migrated.personality.id).toBe('curiousStubbornGirl');
   expect(migrated.personality.axes).toEqual(defaults().personality.axes);
-  for (const key of ['needs', 'relationship', 'intimacy', 'preferences'] as const) expect(migrated[key]).toEqual(legacy.state[key]);
+  for (const key of ['needs', 'intimacy', 'preferences'] as const) expect(migrated[key]).toEqual(legacy.state[key]);
+  expect(migrated.relationship).toEqual(createRelationship(legacy.state.relationship));
+  expect(migrated.ownGameInterestSources).toEqual([]);
   expect(legacy).toEqual(before); expect(restoreCharacterMemory(legacy, defaults(), 1000)).toEqual(migrated);
   migrated.personality.axes.boldness.current = 0.8;
   const next = projectCharacterMemory(migrated, now);
-  expect(next.snapshotVersion).toBe(2); expect(next.state.cardRevision).toBe(3);
+  expect(next.snapshotVersion).toBe(3); expect(next.state.cardRevision).toBe(3);
   expect(restoreCharacterMemory(next, defaults(), 2000).personality.axes.boldness.current).toBe(0.8);
 });
 it.each(['caps', 'preset', 'extra', 'revision', 'missing', 'preference'])('rejects malformed legacy %s before resetting axes', variant => {
@@ -65,15 +68,43 @@ it('never retags an unknown Domain identity as the active persisted profile', ()
   expect(() => projectCharacterMemory(state, now)).toThrow('Invalid active preset');
 });
 
+it('persists independent V3 facets and exact source refs without replay on restore', () => {
+  const state = defaults();
+  state.relationship = { ...state.relationship, familiarity: 700, friendship: 700, affection: 900, trust: 321, respect: 654, resentment: 87, comfort: 432 };
+  const withSources = { ...state, ownGameInterestSources: [{ appRunId: 'prior-run', sequence: 42, revision: 1 as const }] };
+  const snapshot = projectCharacterMemory(withSources, now), before = structuredClone(snapshot);
+  const restored = restoreCharacterMemory(snapshot, defaults(), 1000);
+  expect(restored.relationship).toEqual(withSources.relationship);
+  expect(restored.ownGameInterestSources).toEqual(withSources.ownGameInterestSources);
+  expect(projectCharacterMemory(restored, now)).toEqual(snapshot);
+  expect(snapshot).toEqual(before);
+});
+
+it.each(['missing', 'range', 'mismatch', 'nan', 'sourceLimit', 'sourceDuplicate', 'sourceRevision', 'sourceExtra'])('rejects malformed V3 %s without downgrading or clamping', variant => {
+  const snapshot = projectCharacterMemory(defaults(), now);
+  let state: JsonValue = snapshot.state;
+  if (variant === 'missing') { const { trust: _trust, ...relationship } = snapshot.state.relationship; state = { ...snapshot.state, relationship }; }
+  if (variant === 'range') state = { ...snapshot.state, relationship: { ...snapshot.state.relationship, resentment: 1001 } };
+  if (variant === 'mismatch') state = { ...snapshot.state, relationship: { ...snapshot.state.relationship, familiarity: 12 } };
+  if (variant === 'nan') state = { ...snapshot.state, relationship: { ...snapshot.state.relationship, comfort: NaN } };
+  const ref = { appRunId: 'app', sequence: 1, revision: 1 };
+  if (variant === 'sourceLimit') state = { ...snapshot.state, ownGameInterestSources: Array.from({ length: 21 }, (_, i) => ({ ...ref, sequence: i + 1 })) };
+  if (variant === 'sourceDuplicate') state = { ...snapshot.state, ownGameInterestSources: [ref, ref] };
+  if (variant === 'sourceRevision') state = { ...snapshot.state, ownGameInterestSources: [{ ...ref, revision: 2 }] };
+  if (variant === 'sourceExtra') state = { ...snapshot.state, ownGameInterestSources: [{ ...ref, privateText: 'untrusted' }] };
+  expect(() => restoreCharacterMemory({ ...snapshot, state }, defaults(), 1000)).toThrow();
+});
+
 it.each([2, 3])('restores revision %s dynamics onto the installed card and writes only revision 3', cardRevision => {
   const state = defaults();
   state.needs = { energy: 23, attention: 45, play: 67, comfort: 12, boredom: 34 };
-  state.relationship = { friendship: 600, love: 200, loveUnlocked: true };
+  state.relationship = createRelationship({ friendship: 600, love: 200, loveUnlocked: true });
   state.intimacy = { flirtiness: 12, romanticCharge: 34, userConsentEnabled: true, boundariesKnown: true };
   state.personality.axes.boldness.current = 0.8;
   state.preferences = { jazz: { value: 80, confidence: 0.5, samples: 6 } };
   const projected = projectCharacterMemory(state, now);
-  const snapshot = { ...projected, state: { ...projected.state, cardRevision } };
+  const { ownGameInterestSources: _sources, ...v2State } = projected.state;
+  const snapshot = { ...projected, snapshotVersion: 2, state: { ...v2State, relationship: projectRelationship(state.relationship), cardRevision } };
   const before = structuredClone(snapshot);
   const restored = restoreCharacterMemory(snapshot, defaults(), 1000);
   for (const key of ['needs', 'relationship', 'intimacy', 'preferences'] as const) expect(restored[key]).toEqual(state[key]);
@@ -81,5 +112,5 @@ it.each([2, 3])('restores revision %s dynamics onto the installed card and write
   expect(restored.personality.aiSelfConcept).toBe(defaults().personality.aiSelfConcept);
   expect(snapshot).toEqual(before);
   expect(restoreCharacterMemory(snapshot, defaults(), 1000)).toEqual(restored);
-  expect(projectCharacterMemory(restored, now)).toMatchObject({ snapshotVersion: 2, state: { cardRevision: 3 } });
+  expect(projectCharacterMemory(restored, now)).toMatchObject({ snapshotVersion: 3, state: { cardRevision: 3 } });
 });

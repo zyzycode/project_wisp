@@ -1,3 +1,4 @@
+import { projectRelationship } from '../../src/domain/character/relationship-facets';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryLifecycle } from '../../src/application/services/memory-lifecycle';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
@@ -24,7 +25,7 @@ function fixture(summary?: Pick<import('../../src/application/ports/summary').IS
 }
 afterEach(() => vi.useRealTimers());
 it('restores once before start, hydrates Mock and checkpoints only dirty state at five-second cadence', async () => {
-  const f = fixture(); const saved = f.character.getState(); saved.relationship.friendship = 321;
+  const f = fixture(); const saved = f.character.getState(); saved.relationship.friendship = 321; saved.relationship.familiarity = 321;
   f.storage.character.load.mockResolvedValue({ ok: true, value: projectCharacterMemory(saved, new Date().toISOString()) });
   f.start.mockImplementation(() => expect(f.character.getState().relationship.friendship).toBe(321));
   await f.lifecycle.initialize(); expect(f.lifecycle.getStatus()).toEqual({ mode: 'persistent', characterRestore: 'restored' });
@@ -37,7 +38,7 @@ it('first input starts defaults immediately and discards a late restore complete
   const f = fixture(); const pending = deferred<MemoryResult<PersistedCharacterStateSnapshot | null>>();
   f.storage.character.load.mockReturnValue(pending.promise); const initialization = f.lifecycle.initialize(); await Promise.resolve(); await Promise.resolve();
   expect(f.lifecycle.admitInput()).toBe(true); expect(f.start).toHaveBeenCalledTimes(1);
-  const old = f.character.getState(); old.relationship.friendship = 999;
+  const old = f.character.getState(); old.relationship.friendship = 999; old.relationship.familiarity = 999;
   pending.resolve({ ok: true, value: projectCharacterMemory(old, new Date().toISOString()) }); await initialization;
   expect(f.character.getState().relationship.friendship).toBe(0); expect(f.hydrate).not.toHaveBeenCalled(); expect(f.storage.abort).toHaveBeenCalled();
   expect(f.lifecycle.getStatus()).toEqual({ mode: 'volatile', reason: 'unavailable' }); await f.lifecycle.shutdown();
@@ -49,7 +50,7 @@ it('enforces the ten-second deadline across restore reads, not only worker initi
 });
 it.each(['invalid', 'future', 'malformed-envelope'])('protects %s snapshot from automatic overwrite, including shutdown', async kind => {
   const f = fixture();
-  f.storage.character.load.mockResolvedValue(kind === 'malformed-envelope' ? { ok: false, code: 'invalid_data' } : { ok: true, value: { snapshotVersion: kind === 'future' ? 3 : 1, state: {}, updatedAt: new Date().toISOString() } });
+  f.storage.character.load.mockResolvedValue(kind === 'malformed-envelope' ? { ok: false, code: 'invalid_data' } : { ok: true, value: { snapshotVersion: kind === 'future' ? 4 : 1, state: {}, updatedAt: new Date().toISOString() } });
   await f.lifecycle.initialize(); expect(f.lifecycle.getStatus()).toEqual({ mode: 'persistent', characterRestore: kind === 'future' ? 'unsupported_snapshot' : 'invalid_snapshot' });
   await vi.advanceTimersByTimeAsync(10_000); await f.lifecycle.shutdown(); expect(f.storage.character.save).not.toHaveBeenCalled();
 });
@@ -75,7 +76,7 @@ it('rollback retains character data while advancing the generation and invalidat
 it('clears runtime after a committed database reset even when summary deletion fails', async () => {
   const summary = { invalidate: vi.fn(), reset: vi.fn(async () => ({ ok: false as const, code: 'unavailable' as const })), dispose: vi.fn() };
   const f = fixture(summary); await f.lifecycle.initialize();
-  const previous = f.character.getState(); previous.relationship.friendship = 321;
+  const previous = f.character.getState(); previous.relationship.friendship = 321; previous.relationship.familiarity = 321;
   f.character.replaceRestoredState(previous);
   expect(f.character.getState().relationship.friendship).toBeGreaterThan(0);
   const historyReset = vi.spyOn(f.lifecycle.history, 'reset');
@@ -93,7 +94,7 @@ it('clears runtime after a committed database reset even when summary deletion f
 it.each(['conflict', 'io_error'] as const)('preserves runtime on database %s even when summary deletion also fails', async code => {
   const summary = { invalidate: vi.fn(), reset: vi.fn(async () => ({ ok: false as const, code: 'unavailable' as const })), dispose: vi.fn() };
   const f = fixture(summary); await f.lifecycle.initialize();
-  const previous = f.character.getState(); previous.relationship.friendship = 321;
+  const previous = f.character.getState(); previous.relationship.friendship = 321; previous.relationship.familiarity = 321;
   f.character.replaceRestoredState(previous);
   const before = f.character.getState(), historyReset = vi.spyOn(f.lifecycle.history, 'reset');
   f.storage.clear.clearUserMemory.mockResolvedValue({ ok: false, code });
@@ -170,21 +171,21 @@ it.each([false, true])('startup topic maintenance closes expiry before admission
 });
 
 it.each([false, true])('legacy restore remains dirty until acknowledged checkpoint; busy failure retries: %s', async fail => {
-  const f = fixture(); const { cardRevision: _revision, ...state } = projectCharacterMemory(f.character.getState(), new Date().toISOString()).state;
-  const legacy = { snapshotVersion: 1, updatedAt: new Date().toISOString(), state: { ...state, presetId: 'shyDreamGirl', currentAxes: { openness: 0.55, extraversion: 0.28, agreeableness: 0.86, sensitivity: 0.88, playfulness: 0.42, boldness: 0.18, independence: 0.58 } } };
+  const f = fixture(); const { cardRevision: _revision, ownGameInterestSources: _sources, ...state } = projectCharacterMemory(f.character.getState(), new Date().toISOString()).state;
+  const legacy = { snapshotVersion: 1, updatedAt: new Date().toISOString(), state: { ...state, relationship: projectRelationship(f.character.getState().relationship), presetId: 'shyDreamGirl', currentAxes: { openness: 0.55, extraversion: 0.28, agreeableness: 0.86, sensitivity: 0.88, playfulness: 0.42, boldness: 0.18, independence: 0.58 } } };
   f.storage.character.load.mockResolvedValue({ ok: true, value: legacy });
   await f.lifecycle.initialize(); expect(f.storage.character.save).not.toHaveBeenCalled();
   if (fail) f.storage.character.save.mockResolvedValueOnce({ ok: false, code: 'busy' });
   await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(1);
-  expect(f.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2, state: { presetId: 'curiousStubbornGirl', cardRevision: 3 } });
+  expect(f.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 3, state: { presetId: 'curiousStubbornGirl', cardRevision: 3 } });
   await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
   await f.lifecycle.checkpoint(); expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
   await f.lifecycle.shutdown();
 });
 
 it('failed migration save leaves the source v1 available for a clean restart', async () => {
-  const f = fixture(); const { cardRevision: _revision, ...state } = projectCharacterMemory(f.character.getState(), new Date().toISOString()).state;
-  const source = { snapshotVersion: 1, updatedAt: new Date().toISOString(), state: { ...state, presetId: 'shyDreamGirl', currentAxes: { openness: 0.55, extraversion: 0.28, agreeableness: 0.86, sensitivity: 0.88, playfulness: 0.42, boldness: 0.18, independence: 0.58 } } };
+  const f = fixture(); const { cardRevision: _revision, ownGameInterestSources: _sources, ...state } = projectCharacterMemory(f.character.getState(), new Date().toISOString()).state;
+  const source = { snapshotVersion: 1, updatedAt: new Date().toISOString(), state: { ...state, relationship: projectRelationship(f.character.getState().relationship), presetId: 'shyDreamGirl', currentAxes: { openness: 0.55, extraversion: 0.28, agreeableness: 0.86, sensitivity: 0.88, playfulness: 0.42, boldness: 0.18, independence: 0.58 } } };
   const frozen = structuredClone(source);
   f.storage.character.load.mockResolvedValue({ ok: true, value: source });
   f.storage.character.save.mockResolvedValueOnce({ ok: false, code: 'io_error' });
@@ -194,14 +195,15 @@ it('failed migration save leaves the source v1 available for a clean restart', a
   const restarted = fixture(); restarted.storage.character.load.mockResolvedValue({ ok: true, value: source });
   await restarted.lifecycle.initialize(); await restarted.lifecycle.checkpoint();
   expect(restarted.storage.character.save).toHaveBeenCalledTimes(1);
-  expect(restarted.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2 });
+  expect(restarted.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 3 });
   await restarted.lifecycle.shutdown();
 });
 
 it.each([false, true])('revision 2 restore stays dirty until revision 3 checkpoint is acknowledged: %s', async fail => {
   const f = fixture(); const saved = f.character.getState(); saved.personality.axes.boldness.current = 0.8;
   const projected = projectCharacterMemory(saved, new Date().toISOString());
-  const source = { ...projected, state: { ...projected.state, cardRevision: 2 } };
+  const { ownGameInterestSources: _sources, ...v2State } = projected.state;
+  const source = { ...projected, snapshotVersion: 2, state: { ...v2State, relationship: projectRelationship(saved.relationship), cardRevision: 2 } };
   const before = structuredClone(source);
   f.storage.character.load.mockResolvedValue({ ok: true, value: source });
   await f.lifecycle.initialize();
@@ -210,7 +212,7 @@ it.each([false, true])('revision 2 restore stays dirty until revision 3 checkpoi
   if (fail) f.storage.character.save.mockResolvedValueOnce({ ok: false, code: 'busy' });
   await f.lifecycle.checkpoint();
   expect(f.storage.character.save).toHaveBeenCalledTimes(1);
-  expect(f.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 2, state: { cardRevision: 3 } });
+  expect(f.storage.character.save.mock.calls[0]![0]).toMatchObject({ snapshotVersion: 3, state: { cardRevision: 3 } });
   await f.lifecycle.checkpoint();
   expect(f.storage.character.save).toHaveBeenCalledTimes(fail ? 2 : 1);
   await f.lifecycle.checkpoint();

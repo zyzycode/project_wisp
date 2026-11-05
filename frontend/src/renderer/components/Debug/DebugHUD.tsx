@@ -2,7 +2,7 @@ import React from 'react';
 import type { DebugLogEntryDTO, PetPositionDTO } from '../../../shared/ipc-contracts';
 import type { AnimationExpressionHint, AnimationIntent } from '../../../domain/animation/animation-intent';
 import type { AnimationEvent, AnyAnimationState } from '../../../domain/animation/animation-state-machine';
-import type { Needs, Relationship, SynthesizedEmotionalTone } from '../../../domain/character/types';
+import type { Needs, RelationshipProjection, SynthesizedEmotionalTone } from '../../../domain/character/types';
 import { LogViewer } from './LogViewer';
 import { NeedsIndicator } from './NeedsIndicator';
 import { AnimationInspector } from './AnimationInspector';
@@ -11,7 +11,7 @@ import { RuntimeDiagnostics, type RuntimeDiagnosticsProps } from './RuntimeDiagn
 export interface DebugHUDProps {
   runtimeDiagnostics?: RuntimeDiagnosticsProps;
   needs: Needs;
-  relationship: Relationship;
+  relationship: RelationshipProjection;
   tone: SynthesizedEmotionalTone;
   animationState: AnyAnimationState;
   animationIntent: AnimationIntent;

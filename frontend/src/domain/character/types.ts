@@ -8,13 +8,32 @@
 import type { Needs } from './needs';
 export type { Needs } from './needs';
 
-export interface Relationship {
-  /** 0-1000, baseline trust, comfort, and familiarity. */
+/** Existing provider/presentation projection; local facets never cross this boundary. */
+export type RelationshipProjection = {
+  /** 0-1000, compatibility projection of familiarity. */
   friendship: number;
   /** 0-1000, deeper emotional / romantic bond. */
   love: number;
   /** Love progression is gated until friendship and consent rules allow it. */
   loveUnlocked: boolean;
+};
+
+export interface RelationshipFacets {
+  familiarity: number;
+  trust: number;
+  affection: number;
+  respect: number;
+  resentment: number;
+  /** Relationship safety, distinct from the comfort Need. */
+  comfort: number;
+}
+
+export interface Relationship extends RelationshipProjection, RelationshipFacets {}
+
+export interface CausalSourceReference {
+  readonly appRunId: string;
+  readonly sequence: number;
+  readonly revision: 1;
 }
 
 export type PersonalityAxis =
@@ -85,12 +104,13 @@ export interface CharacterState {
   personality: PersonalityPreset;
   intimacy: IntimacyState;
   preferences: Record<string, PreferenceTrack>;
+  readonly ownGameInterestSources: readonly CausalSourceReference[];
   lastUpdated: number;
 }
 
 export interface CharacterSnapshot {
   needs: Needs;
-  relationship: Relationship;
+  relationship: RelationshipProjection;
   personality: {
     presetId: string;
     aiSelfConcept: string;
@@ -142,7 +162,7 @@ export interface StimulusEvent {
 
 export interface CharacterPresentationDTO {
   needs: Needs;
-  relationship: Relationship;
+  relationship: RelationshipProjection;
   intimacy: IntimacyState;
   synthesizedTone: SynthesizedEmotionalTone;
   personality: {

@@ -1,3 +1,4 @@
+import { createRelationship } from '../../../src/domain/character/relationship-facets';
 import { describe, expect, it } from 'vitest';
 import { CharacterInteractionUseCase } from '../../../src/application/services/character-interaction.use-case';
 import { CharacterStateService } from '../../../src/application/services/character-state.service';
@@ -12,7 +13,7 @@ function createState(): CharacterState {
       comfort: 40,
       boredom: 50,
     },
-    relationship: { friendship: 10, love: 0, loveUnlocked: false },
+    relationship: createRelationship({ friendship: 10, love: 0, loveUnlocked: false }),
     personality: curiousStubbornGirlPreset,
     intimacy: {
       flirtiness: 0,
@@ -20,7 +21,7 @@ function createState(): CharacterState {
       userConsentEnabled: false,
       boundariesKnown: false,
     },
-    preferences: {},
+    preferences: {}, ownGameInterestSources: [],
     lastUpdated: 1000,
   };
 }

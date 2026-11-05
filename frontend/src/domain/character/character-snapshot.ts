@@ -3,6 +3,7 @@ import { PLAYFUL_PLAY_NEED_THRESHOLD, synthesizeEmotionalTone } from './emotiona
 import { requiresVitalSleep, WAKE_ATTENTION_MIN } from './autonomy-character-engine';
 import { canExpressFlirt, DEFAULT_INTIMACY_THRESHOLDS } from './intimacy-rules';
 import type { CharacterExpression, CharacterSnapshot, CharacterState } from './types';
+import { projectRelationship } from './relationship-facets';
 
 export function projectCharacterExpression(snapshot: CharacterSnapshot): CharacterExpression {
   const friendship = snapshot.relationship.friendship;
@@ -19,7 +20,7 @@ export function projectCharacterExpression(snapshot: CharacterSnapshot): Charact
 export function createCharacterSnapshot(state: CharacterState): CharacterSnapshot {
   return {
     needs: { ...state.needs },
-    relationship: { ...state.relationship },
+    relationship: projectRelationship(state.relationship),
     personality: {
       presetId: state.personality.id,
       aiSelfConcept: state.personality.aiSelfConcept,

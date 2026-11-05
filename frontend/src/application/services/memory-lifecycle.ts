@@ -69,7 +69,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
       if (snapshot.code === 'invalid_data') { restore = 'invalid_snapshot'; this.snapshotWritable = false; }
       else this.startupFailure(snapshot.code);
     } else if (snapshot.value !== null) {
-      if (snapshot.value.snapshotVersion !== 1 && snapshot.value.snapshotVersion !== 2) { restore = 'unsupported_snapshot'; this.snapshotWritable = false; }
+      if (![1, 2, 3].includes(snapshot.value.snapshotVersion)) { restore = 'unsupported_snapshot'; this.snapshotWritable = false; }
       else try { candidate = restoreCharacterMemory(snapshot.value, candidate, this.options.now()); restore = 'restored'; }
       catch { restore = 'invalid_snapshot'; this.snapshotWritable = false; }
     }
@@ -84,7 +84,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
       this.status = { mode: 'persistent', characterRestore: restore };
       // Identity migrations remain dirty until the current card revision is acknowledged.
       const loadedState = snapshot.ok ? snapshot.value?.state : null;
-      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 2
+      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 3
         && loadedState && typeof loadedState === 'object' && !Array.isArray(loadedState)
         && 'cardRevision' in loadedState && loadedState.cardRevision === 3) {
         this.savedSignature = JSON.stringify(projectCharacterMemory(candidate, this.options.timestamp()).state);

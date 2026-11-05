@@ -1,3 +1,4 @@
+import { createRelationship } from '../../src/domain/character/relationship-facets';
 import { expect, it } from 'vitest';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
 it('provider response never rewards a second time', () => {
@@ -53,7 +54,7 @@ it('allows drift within signature bands, rejects crossed bands and current conse
   expect(f.service.commitTouch({ ...stale, signature: 'old' }, supportive).reason).toBe('state_changed');
 });
 it('clamps permitted changes and preserves love, intimacy and personality', () => {
-  const f = fixture(), state = f.service.getState(); state.relationship.friendship = 999; state.needs = { ...state.needs, comfort: .5 };
+  const f = fixture(), state = f.service.getState(); state.relationship.friendship = 999; state.relationship.familiarity = 999; state.needs = { ...state.needs, comfort: .5 };
   f.service.replaceRestoredState(state); f.time(30000);
   const receipt = f.service.beginTouch(1), before = f.service.getState();
   expect(f.service.commitTouch(receipt, supportive).effect).toBe('accepted');
@@ -93,15 +94,15 @@ it('user messages share the ten-second base gate with click and never grant old 
   expect(f.service.getState().needs.attention).toBe(before.needs.attention - 6);
 });
 it.each([[999, .5, 'supportive', 1000, 0], [1, 99, 'hostile', 0, 100]] as const)('chat clamps %s friendship and %s comfort with moderate %s while preserving historical love', (friendship, comfort, category, expectedFriendship, expectedComfort) => {
-  const f = fixture(), state = f.service.getState(); state.relationship = { friendship, love: 40, loveUnlocked: true }; state.needs = { ...state.needs, comfort };
+  const f = fixture(), state = f.service.getState(); state.relationship = createRelationship({ friendship, love: 40, loveUnlocked: true }); state.needs = { ...state.needs, comfort };
   f.service.replaceRestoredState(state); f.time(30000); const receipt = f.service.beginChat(1);
   expect(f.service.commitChat(receipt, { category, intensity: 'moderate', confidence: 'clear' }).effect).toBe('accepted');
-  expect(f.service.getState().relationship).toEqual({ friendship: expectedFriendship, love: 40, loveUnlocked: true }); expect(f.service.getState().needs.comfort).toBe(expectedComfort);
+  expect(f.service.getState().relationship).toMatchObject({ friendship: expectedFriendship, love: 40, loveUnlocked: true }); expect(f.service.getState().needs.comfort).toBe(expectedComfort);
   f.time(60000); expect(f.service.commitChat(receipt, supportive).effect).toBe('rejected');
 });
 it('chat-only semantic unlock checks current consent without adding love', () => {
-  const f = fixture(), state = f.service.getState(); state.relationship.friendship = 399; state.intimacy.userConsentEnabled = true;
+  const f = fixture(), state = f.service.getState(); state.relationship.friendship = 399; state.relationship.familiarity = 399; state.intimacy.userConsentEnabled = true;
   f.service.replaceRestoredState(state); f.time(30000); f.service.commitChat(f.service.beginChat(1), supportive);
-  expect(f.service.getState().relationship).toEqual({ friendship: 401, love: 0, loveUnlocked: true });
+  expect(f.service.getState().relationship).toMatchObject({ friendship: 401, love: 0, loveUnlocked: true });
   expect(f.service.getState().intimacy).toEqual(state.intimacy);
 });

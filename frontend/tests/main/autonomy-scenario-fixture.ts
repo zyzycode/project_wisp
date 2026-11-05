@@ -18,7 +18,7 @@ export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialSta
   const seed = new CharacterStateService({ now: () => 0 }).getState();
   const character = new CharacterStateService({ now: () => now, initialState: initialState ?? { ...seed,
     needs: { ...seed.needs, energy: 70, play: 80, boredom: 80, ...needs },
-    relationship: { ...seed.relationship, friendship: 500, loveUnlocked: true } } });
+    relationship: { ...seed.relationship, friendship: 500, familiarity: 500, loveUnlocked: true } } });
   const input = new CharacterInteractionUseCase(character);
   const mapper = new ShimejiStimulusMapper(); const outcomes: ActivityOutcomeFeedback[] = [];
   const bounds = { id: 'screen', x: 0, y: 0, width: 1000, height: 800 };

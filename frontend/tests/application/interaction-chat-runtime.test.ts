@@ -14,7 +14,7 @@ const hostile: InteractionAppraisal = { category: 'hostile', intensity: 'moderat
 function fixture(proposal: InteractionAppraisal = supportive, energy = 85, friendship = 100) {
   let id = 0, sequence = 0, memoryGeneration = 0;
   const character = new CharacterStateService({ now: () => 0, monotonicNow: Date.now });
-  const state = character.getState(); state.needs = { ...state.needs, energy }; state.relationship.friendship = friendship; character.replaceRestoredState(state);
+  const state = character.getState(); state.needs = { ...state.needs, energy }; state.relationship.friendship = friendship; state.relationship.familiarity = friendship; character.replaceRestoredState(state);
   const generateResponse = vi.fn<IAIProvider['generateResponse']>(async request => ({ requestId: request.requestId, status: 'ok', confidence: 1, reply: { text: 'Ответ модели.' }, appraisal: request.interaction?.effectPolicy === 'suppressed' ? neutral : proposal }));
   const completed = vi.fn(), recall = vi.fn(async () => ({ ok: true as const, value: emptyMemoryContext() })), cancel = vi.fn(), offerIntent = vi.fn();
   const commit = vi.fn((receipt: Parameters<CharacterStateService['commitChat']>[0], appraisal?: InteractionAppraisal) => character.commitChat(receipt, appraisal));

@@ -1,3 +1,4 @@
+import { createRelationship } from '../../src/domain/character/relationship-facets';
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_INTIMACY_THRESHOLDS,
@@ -12,7 +13,7 @@ import {
 } from '../../src/domain/character';
 import type { CharacterState } from '../../src/domain/character';
 
-function createState(overrides: Partial<CharacterState> = {}): CharacterState {
+function createState(overrides: Omit<Partial<CharacterState>, 'relationship'> & { relationship?: Partial<CharacterState['relationship']> } = {}): CharacterState {
   return {
     needs: {
       energy: 70,
@@ -23,6 +24,7 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
       ...overrides.needs,
     },
     relationship: {
+      ...createRelationship({ friendship: overrides.relationship?.friendship ?? 450, love: 0, loveUnlocked: true }),
       friendship: 450,
       love: 0,
       loveUnlocked: true,
@@ -37,6 +39,7 @@ function createState(overrides: Partial<CharacterState> = {}): CharacterState {
       ...overrides.intimacy,
     },
     preferences: overrides.preferences ?? {},
+    ownGameInterestSources: overrides.ownGameInterestSources ?? [],
     lastUpdated: overrides.lastUpdated ?? 0,
   };
 }
@@ -115,7 +118,7 @@ describe('Domain: Character Engine v2', () => {
 
     expect(createCharacterSnapshot(state)).toEqual({
       needs: state.needs,
-      relationship: state.relationship,
+      relationship: { friendship: state.relationship.friendship, love: state.relationship.love, loveUnlocked: state.relationship.loveUnlocked },
       personality: {
         presetId: 'curiousStubbornGirl',
         aiSelfConcept: curiousStubbornGirlPreset.aiSelfConcept,
@@ -204,7 +207,7 @@ describe('Domain: Character Engine v2', () => {
     expect(next.relationship.loveUnlocked).toBe(true);
     expect(next.relationship.love).toBe(4);
     expect(next.preferences).toEqual({});
-    expect(state.relationship).toEqual({ friendship: 395, love: 0, loveUnlocked: false });
+    expect(state.relationship).toEqual(createRelationship({ friendship: 395, love: 0, loveUnlocked: false }));
     expect(state.preferences).toEqual({});
   });
 

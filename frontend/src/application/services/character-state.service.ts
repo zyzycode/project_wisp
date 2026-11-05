@@ -4,6 +4,7 @@ import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '.
 import { createAdaptationGate, type AdaptationGate } from '../../domain/character/adaptation-gate';
 import { learnVerifiedPreference } from '../../domain/character/preferences';
 import { appraiseCausalEvent, createCausalAffectState, decayCausalAffect, type CausalEmotion, type CausalObservedEvent } from '../../domain/character/causal-affect';
+import { causalRelationshipDeltas, createRelationship, shiftRelationshipFacets } from '../../domain/character/relationship-facets';
 import {
   createCharacterSnapshot,
   processStimulusWithAdaptation,
@@ -57,6 +58,7 @@ function cloneCharacterState(state: CharacterState): CharacterState {
     preferences: Object.fromEntries(
       Object.entries(state.preferences).map(([key, preference]) => [key, { ...preference }])
     ),
+    ownGameInterestSources: state.ownGameInterestSources.map(source => ({ ...source })),
     lastUpdated: state.lastUpdated,
   };
 }
@@ -64,11 +66,11 @@ function cloneCharacterState(state: CharacterState): CharacterState {
 function createDefaultCharacterState(now: () => number): CharacterState {
   return {
     needs: { ...DEFAULT_INITIAL_NEEDS },
-    relationship: {
+    relationship: createRelationship({
       friendship: 0,
       love: 0,
       loveUnlocked: false,
-    },
+    }),
     personality: clonePersonalityPreset(curiousStubbornGirlPreset),
     intimacy: {
       flirtiness: 0,
@@ -77,6 +79,7 @@ function createDefaultCharacterState(now: () => number): CharacterState {
       boundariesKnown: false,
     },
     preferences: {},
+    ownGameInterestSources: [],
     lastUpdated: now(),
   };
 }
@@ -125,7 +128,13 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   }
 
   public observeCausalEpisode(episode: CausalObservedEvent, atMs: number): void {
+    const previousSequence = this.causalAffect.highWaterSequence;
     this.causalAffect = appraiseCausalEvent(this.causalAffect, episode, atMs);
+    if (this.causalAffect.highWaterSequence <= previousSequence) return;
+    const deltas = causalRelationshipDeltas(episode, this.causalAffect.interruptionTimes.length >= 2);
+    if (!deltas || atMs < this.nextAppraisalAt) return;
+    this.state = { ...this.state, relationship: shiftRelationshipFacets(this.state.relationship, deltas) };
+    this.nextAppraisalAt = atMs + 30000;
   }
   public getCausalEmotion(): CausalEmotion | null {
     return this.causalAffect.emotion ? { ...this.causalAffect.emotion } : null;

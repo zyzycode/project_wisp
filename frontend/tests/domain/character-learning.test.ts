@@ -1,14 +1,15 @@
+import { createRelationship } from '../../src/domain/character/relationship-facets';
 import { expect, it } from 'vitest';
 import { processStimulus } from '../../src/domain/character/stimuli-reducer';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
 
 it('requires current consent for a new love unlock even after friendship crosses 400', () => {
-  const state = new CharacterStateService({ now: () => 0 }).getState(); state.relationship.friendship = 399;
+  const state = new CharacterStateService({ now: () => 0 }).getState(); state.relationship.friendship = 399; state.relationship.familiarity = 399;
   const next = processStimulus(state, { type: 'pet', source: 'user' });
   expect(next.relationship.friendship).toBe(403); expect(next.relationship.loveUnlocked).toBe(false); expect(next.relationship.love).toBe(0);
 });
 it('preserves historical love/latch but forbids positive growth after consent is withdrawn', () => {
-  const state = new CharacterStateService({ now: () => 0 }).getState(); state.relationship = { friendship: 600, love: 200, loveUnlocked: true }; state.intimacy.userConsentEnabled = false;
+  const state = new CharacterStateService({ now: () => 0 }).getState(); state.relationship = createRelationship({ friendship: 600, love: 200, loveUnlocked: true }); state.intimacy.userConsentEnabled = false;
   const next = processStimulus(state, { type: 'pet', source: 'user' });
   expect(next.relationship.loveUnlocked).toBe(true); expect(next.relationship.love).toBe(200); expect(next.intimacy.userConsentEnabled).toBe(false);
 });
@@ -19,8 +20,8 @@ import { adaptBoundedExperienceAxes } from '../../src/domain/character/personali
 import { learnVerifiedPreference } from '../../src/domain/character/preferences';
 
 it('allows a consented transition without erasing the existing friendship/love rewards', () => {
-  const state = new CharacterStateService().getState(); state.relationship.friendship = 399; state.intimacy.userConsentEnabled = true;
-  const next = processStimulus(state, { type: 'pet', source: 'user' }); expect(next.relationship).toEqual({ friendship: 403, love: 2, loveUnlocked: true });
+  const state = new CharacterStateService().getState(); state.relationship.friendship = 399; state.relationship.familiarity = 399; state.intimacy.userConsentEnabled = true;
+  const next = processStimulus(state, { type: 'pet', source: 'user' }); expect(next.relationship).toMatchObject({ friendship: 403, love: 2, loveUnlocked: true });
 });
 it('uses explicit monotonic time, includes the exact boundary and never catches up missed windows', () => {
   const gate = createAdaptationGate(100);

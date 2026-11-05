@@ -12,7 +12,7 @@ const scheduler = { setTimeout: (callback: () => void, ms: number) => setTimeout
 function fixture(energy = 85, friendship = 0) {
   let id = 0, sequence = 0, generation = 0, allowed = true;
   const character = new CharacterStateService({ now: () => 0, monotonicNow: Date.now });
-  const state = character.getState(); state.needs = { ...state.needs, energy }; state.relationship.friendship = friendship; character.replaceRestoredState(state);
+  const state = character.getState(); state.needs = { ...state.needs, energy }; state.relationship.friendship = friendship; state.relationship.familiarity = friendship; character.replaceRestoredState(state);
   const context = new TouchReactionContext(character, Date.now);
   const generateEvent = vi.fn<IAIEventProvider['generateEvent']>(async request => ({ requestId: request.requestId, replyText: 'Спасибо!', appraisal: request.interaction?.effectPolicy === 'suppressed' ? neutral : positive }));
   const transaction = vi.fn((commit: () => void) => commit()), cancel = vi.fn();

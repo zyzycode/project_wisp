@@ -44,7 +44,7 @@ it.each(['я'.repeat(500), '😀'.repeat(250)])('preserves the complete 500 UTF-
 it.each([0, 600])('keeps the installed canonical card across state changes and restore at trust %s', friendship => {
   const defaults = new CharacterStateService({ now: () => 0 }).getState();
   const state = new CharacterStateService({ now: () => 0 }).getState();
-  state.relationship.friendship = friendship;
+  state.relationship.friendship = friendship; state.relationship.familiarity = friendship;
   state.needs = { ...state.needs, energy: 10 };
   state.personality.axes.playfulness.current = 0.7;
   const checkpoint = projectCharacterMemory(state, '2026-10-17T00:00:00.000Z');

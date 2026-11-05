@@ -105,7 +105,7 @@ it.each([
   const initial = new CharacterStateService({ now: () => 0 }).getState();
   // Control transient Needs/relationship for both histories, keeping the real authored axes.
   const projection = (state: CharacterState) => createCharacterAutonomySnapshot({ ...state,
-    needs: { energy: 51, comfort: 0, attention: 80, play: 0, boredom: 24 }, relationship: { ...state.relationship, friendship: 100 } });
+    needs: { energy: 51, comfort: 0, attention: 80, play: 0, boredom: 24 }, relationship: { ...state.relationship, friendship: 100, familiarity: 100 } });
   const selection = { nowMs: 0, canExplore: key === 'activity.explore', canSocial: key === 'activity.social_bid', canPlay: false, canRest: false, history: [] };
   const baseline = selectLocalActivity(projection(initial), selection, 0).trace;
   const draw = baseline[0]!.score / baseline.reduce((sum, row) => sum + row.score, 0);
@@ -117,7 +117,7 @@ it.each([
     / fullBaseline.reduce((sum, row) => sum + row.score, 0);
   const mainChoosesTarget = (state: CharacterState) => {
     const controlled = projection(state);
-    const f = scenario({}, mainDraw, { ...state, needs: controlled.needs, relationship: { ...state.relationship, friendship: 100 } }, undefined, {}, true);
+    const f = scenario({}, mainDraw, { ...state, needs: controlled.needs, relationship: { ...state.relationship, friendship: 100, familiarity: 100 } }, undefined, {}, true);
     try { f.pulse(); return f.main.getActivityTimeline()?.activityId === (key === 'activity.explore' ? 'explore' : 'social_bid'); }
     finally { f.main.dispose(); }
   };

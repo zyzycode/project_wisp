@@ -22,14 +22,14 @@ export interface CausalLifeEpisode {
   readonly participation: 'user_engaged' | 'solitary' | 'none';
 }
 
-export interface CausalRelationshipFacets {
+export type CausalRelationshipFacets = {
   readonly familiarity: number;
   readonly trust: number;
   readonly affection: number;
   readonly respect: number;
   readonly resentment: number;
   readonly comfort: number;
-}
+};
 
 /** One volatile local decision; the model receives only the separately bounded wire projection. */
 export interface CausalEmotionSnapshot {
@@ -59,11 +59,11 @@ export interface ICausalLifeRepository {
   resolveSources(sources: readonly CausalLifeSourceReference[], context: MemoryOperationContext): Promise<MemoryResult<readonly CausalLifeEpisode[]>>;
 }
 
-export interface CausalLifeSourceReference {
+export type CausalLifeSourceReference = {
   readonly appRunId: string;
   readonly sequence: number;
   readonly revision: 1;
-}
+};
 
 export interface CharacterMemorySnapshotV3 {
   readonly snapshotVersion: 3;
