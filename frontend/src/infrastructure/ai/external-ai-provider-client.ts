@@ -16,6 +16,9 @@ interface ExternalAIProviderOptions {
   readonly fetch?: typeof fetch;
   /** Private Main-owned loopback transport credential, never a provider key. */
   readonly sessionToken?: string;
+  /** Main admission immediately before an autonomous HTTP send, never chat/touch/summary. */
+  readonly admitEventDispatch?: (requestId: string) => boolean;
+  readonly eventDispatched?: (requestId: string) => void;
 }
 class ProtocolError extends Error {}
 class TransportTimeout extends Error {}
@@ -130,13 +133,23 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     const projected = touch ? projectInteractionTouch(request) : projectEventRequest(request);
     const body = JSON.stringify(projected);
     if (this.activeRequestId) throw new Error('Events unavailable');
-    return this.post(touch ? 'touch' : 'events', request.requestId, body, (response, value) => {
-      if (response.status !== 200) {
-        touch ? parseInteractionError(value, request.requestId, response.status) : parseEventError(value, request.requestId, response.status);
-        throw new Error('Event unavailable');
+    try { return await this.post(touch ? 'touch' : 'events', request.requestId, body, (response, value) => {
+      try {
+        if (response.status !== 200) {
+          touch ? parseInteractionError(value, request.requestId, response.status) : parseEventError(value, request.requestId, response.status);
+          throw new Error(response.status === 401 ? 'auth' : response.status === 504 ? 'timeout' : 'unavailable');
+        }
+        return touch ? parseInteractionTouchResponse(value, request.requestId, 'effectPolicy' in projected ? projected.effectPolicy : 'suppressed') : parseEventResponse(value, request.requestId);
+      } catch (error) {
+        if (error instanceof TypeError || error instanceof SyntaxError) throw new ProtocolError('Invalid event response');
+        throw error;
       }
-      return touch ? parseInteractionTouchResponse(value, request.requestId, 'effectPolicy' in projected ? projected.effectPolicy : 'suppressed') : parseEventResponse(value, request.requestId);
-    });
+    }); } catch (error) {
+      if (error instanceof TransportTimeout) throw new Error('timeout');
+      if (error instanceof ProtocolError) throw new Error('invalid_response');
+      if (error instanceof TypeError) throw new Error('unavailable');
+      throw error;
+    }
   }
   public async generateSummary(request: Parameters<ISummaryGenerator['generateSummary']>[0], signal: AbortSignal): Promise<string> {
     if (this.activeRequestId || signal.aborted) throw new Error('Summary unavailable');
@@ -175,8 +188,11 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     const release = () => { if (this.activeRequestId === requestId) this.activeRequestId = undefined; };
     const exchange = async () => {
       try {
-        const response = await this.fetch(this.urls[operation], { method: 'POST', body, headers: this.headers,
+        if (controller.signal.aborted || (operation === 'events' && this.options.admitEventDispatch?.(requestId) === false)) throw new Error('unavailable');
+        const pendingResponse = this.fetch(this.urls[operation], { method: 'POST', body, headers: this.headers,
           redirect: 'error', credentials: 'omit', cache: 'no-store', signal: controller.signal });
+        if (operation === 'events') this.options.eventDispatched?.(requestId);
+        const response = await pendingResponse;
         const value = await readBoundedJson(response, controller.signal);
         if (controller.signal.aborted || (operation !== 'summary' && this.options.now() - startedAt >= timeoutMs)) throw new TransportTimeout();
         return parse(response, value);

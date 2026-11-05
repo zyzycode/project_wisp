@@ -150,6 +150,9 @@ def build_chat_blocks(
                 ),
                 server_instructions=(
                     "previousInitiative is a previously published AI phrase, not a user statement or proof of attention."
+                    " For window_help, outcome is a desktop fact; waiting/assisting is not success."
+                    " declined/unanswered/cancelled/target_lost imply no user fault, penalty or need to repeat the request."
+                    " Do not infer success or ask for another model call from this context."
                 ),
             )
         )

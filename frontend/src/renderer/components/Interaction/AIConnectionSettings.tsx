@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { InitiativeSettings } from './InitiativeSettings';
+import type { IInitiativeControls, InitiativeControlStatusDTO } from '../../../application/ports/initiative-controls.interface';
 import type {
   AIConnectionApiBridge,
   AIConnectionResultDTO,
@@ -6,6 +8,8 @@ import type {
 } from '../../../shared/ipc-contracts';
 
 interface Props {
+  readonly initiative?: IInitiativeControls;
+  readonly initiativeStatus?: InitiativeControlStatusDTO;
   readonly bridge?: AIConnectionApiBridge;
   readonly streamId?: string;
   readonly open: boolean;
@@ -36,7 +40,7 @@ function connectionStatus(state: AIConnectionStatusDTO): string {
   return state.hasSavedKey ? 'Ключ сохранён. AI-сервис пока не готов.' : 'Офлайн-режим. Личный ключ не сохранён.';
 }
 
-export function AIConnectionSettings({ bridge, streamId, open }: Props) {
+export function AIConnectionSettings({ bridge, streamId, open, initiative, initiativeStatus }: Props) {
   const [state, setState] = useState<AIConnectionStatusDTO | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [busy, setBusy] = useState(false);
@@ -132,5 +136,6 @@ export function AIConnectionSettings({ bridge, streamId, open }: Props) {
       </form>
     </>}
     {external && <p>Личный ключ здесь не используется. Настройки внешнего сервера меняются отдельно.</p>}
+    <InitiativeSettings bridge={initiative} status={initiativeStatus} streamId={streamId} open={open} />
   </details>;
 }

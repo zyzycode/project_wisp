@@ -1,4 +1,5 @@
 import { parseInitiativeSpeech } from './initiative-speech-validation';
+import { parseInitiativeStatus, parseWindowHelpStatus } from './initiative-status-validation';
 import { parseAutonomyMode } from './quiet-mode-validation';
 import { parseCursorGame } from './cursor-game-validation';
 import type {
@@ -288,7 +289,7 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
     'dialogue',
     'autonomy',
     'cursorGame',
-  ], ['initiativeSpeech', 'observationSpeech', 'globalCursor', 'externalWindowSupport']);
+  ], ['initiativeSpeech', 'observationSpeech', 'globalCursor', 'externalWindowSupport', 'initiativeStatus', 'windowHelp']);
   const sampledAtMs = finiteNumber(own(record, 'sampledAtMs'), 0);
   const character = asRecord(own(record, 'character'));
   requireExactKeys(character, ['needs', 'synthesizedTone']);
@@ -296,6 +297,8 @@ export function parseBrainStateDTO(value: unknown): BrainStateDTO {
   requireExactKeys(needs, ['energy', 'attention', 'play', 'comfort', 'boredom']);
   return {
     streamId: boundedId(own(record, 'streamId')),
+    ...(Object.hasOwn(record, 'initiativeStatus') ? { initiativeStatus: parseInitiativeStatus(own(record, 'initiativeStatus')) } : {}),
+    ...(Object.hasOwn(record, 'windowHelp') ? { windowHelp: parseWindowHelpStatus(own(record, 'windowHelp')) } : {}),
     ...(Object.hasOwn(record, 'externalWindowSupport') ? { externalWindowSupport: literal(own(record, 'externalWindowSupport'), ['available', 'initializing', 'unavailable', 'unsupported'] as const) } : {}),
     ...(Object.hasOwn(record, 'globalCursor') ? { globalCursor: parseGlobalCursor(own(record, 'globalCursor'), sampledAtMs) } : {}),
     dialogue: parseDialoguePresentation(own(record, 'dialogue')),

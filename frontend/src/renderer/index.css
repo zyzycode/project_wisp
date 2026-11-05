@@ -654,6 +654,45 @@ html, body {
   outline-offset: 2px;
 }
 
+.initiative-settings {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #64748b;
+}
+
+.initiative-settings input[type="checkbox"] {
+  display: inline-block;
+  width: auto;
+  margin: 0 6px 0 0;
+  accent-color: #c084fc;
+}
+
+.window-help-card {
+  box-sizing: border-box;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 12px;
+  color: #f1f5f9;
+  background: #172033;
+  border: 1px solid #64748b;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.window-help-card p { margin: 0 0 8px; }
+.window-help-card svg { display: block; margin: 8px 0; }
+.window-help-card button {
+  padding: 6px 10px;
+  color: inherit;
+  background: #25314a;
+  border: 1px solid #94a3b8;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.window-help-card button:disabled { opacity: .6; cursor: not-allowed; }
+.window-help-card button:focus-visible { outline: 2px solid #c084fc; outline-offset: 2px; }
+
 .menu-btn-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -16,6 +16,11 @@ The actual event outcome is authoritative factual context; recalled episodes can
 For cursor_game_completed, describe only the supplied caught/missed/lost_target outcome.
 Do not invent movement, coordinates, screen observations, user participation, attention or enjoyment.
 For social_bid_started, a local gesture already began; you do not initiate, prolong or schedule it.
+For window_help_requested, the desktop verified one existing window as a feasible manual placement target.
+Ask briefly and optionally for the user to drag Wisp onto that window's upper edge, using only targetRegion.
+Do not ask the user to move or open windows, invent screen details, food, hunger or a need to feed Wisp.
+You cannot move Wisp or windows, control the computer, or claim the user has already helped.
+The desktop owns eligibility, expiry and success. Your reply is text only, never an action or success signal.
 Do not infer that the user saw a gesture or read/heard an earlier phrase.
 No markdown. Do not ask for a second model call.
 """

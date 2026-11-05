@@ -27,7 +27,7 @@ import {
   type AutonomyTraceEntry,
   type VoluntaryMovementController,
 } from '../application/services/autonomy-coordinator';
-import { BrainActivityRuntime } from '../application/services/brain-activity-runtime';
+import { BrainActivityRuntime, type PreparedBrainActivity } from '../application/services/brain-activity-runtime';
 import type { BehaviorConfig, IPrng } from '../domain/behavior/autonomous-behavior';
 import type { BehaviorIntent } from '../domain/behavior/behavior-intent';
 import type { ActivityCancelReason } from '../domain/behavior/activity-runner';
@@ -69,6 +69,10 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
+  readonly windowHelp?: {
+    eligible(plan: ExplorePlan): boolean;
+    resolved(plan: ExplorePlan, decisionSequence: number, selectedAtMs: number): boolean;
+  };
   readonly ownHabit?: {
     started(runId: string, activityId: string, sequence: number, atMs: number): void;
     pose(runId: string, pose: string): void;
@@ -105,7 +109,7 @@ export interface MainAutonomyCompositionOptions {
   readonly onActivityCommitted?: (runId: string, activityId: string) => void;
   readonly onActivityStarted?: (runId: string, activityId: string) => void;
   readonly onSocialBidStarted?: (runId: string, atMs: number) => void;
-  readonly onAIInvalidated?: () => void;
+  readonly onAIInvalidated?: (acceptedAssistDrag?: boolean) => void;
   readonly onUserContact?: () => void;
   readonly onActivityOutcome?: (event: ActivityOutcomeFeedback) => void;
   readonly tickNeeds?: (deltaMs: number) => void;
@@ -184,10 +188,10 @@ export class MainAutonomyComposition {
         canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
         canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
         canRest: this.activity.canStart({ kind: 'sleep', source: 'timer', priority: 'normal' }) }),
-      onIntentResolved: (intent) => {
+      onIntentResolved: (intent, opportunity) => {
         const row = this.coordinator.getDecisionTrace().at(-1)?.selection?.find(candidate => candidate.selected);
         options.coping?.selected(intent.kind, intent.source === 'timer' && row?.kind === intent.kind && row.copingMultiplier > 1);
-        const accepted = this.handleResolvedIntent(intent);
+        const accepted = this.handleResolvedIntent(intent, false, undefined, opportunity);
         if (!accepted) { options.coping?.selected('', false); options.ownHabit?.interrupt(); }
         return accepted;
       },
@@ -195,6 +199,7 @@ export class MainAutonomyComposition {
       ...(options.behaviorConfig === undefined ? {} : { behaviorConfig: options.behaviorConfig }),
     });
     this.activity = new BrainActivityRuntime({
+      canRequestWindowHelp: plan => options.windowHelp?.eligible(plan) === true,
       canBook: () => this.character.getSemanticSleepState() === 'awake' && !this.quiet && !this.quietSupport && !this.menuOpen
         && !this.dialoguePending && options.movement.canAcceptVoluntaryMovement(),
       clock: options.clock,
@@ -744,10 +749,10 @@ export class MainAutonomyComposition {
     return started;
   }
 
-  public beginDrag(): void {
+  public beginDrag(acceptedAssistDrag = false): void {
     this.cancelCopingAndHabit();
     this.acceptUserContact();
-    this.options.onAIInvalidated?.();
+    this.options.onAIInvalidated?.(acceptedAssistDrag);
     this.cancelActivity('user_interaction', true, true);
     this.coordinator.noteUserActivity();
     this.coordinator.interruptForcedMotion();
@@ -906,6 +911,9 @@ export class MainAutonomyComposition {
       && this.activity.canStart(intent, { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] });
   }
   public getComputerPresence(): ReturnType<MainSystemIdle['getPresence']> { return this.systemIdle.getPresence(); }
+  public isComputerPresenceBlocked(): boolean { return this.systemIdle.isBlocked(); }
+  public isComputerPresenceFreshActive(): boolean { return this.systemIdle.isFreshActive(); }
+  public getInitiativeBudget(): InitiativeBudget { return this.initiativeBudget; }
   public startDeferredInvitation(): string | null {
     if (!this.canStartDeferredInvitation()) return null;
     const intent = this.character.resolveDirectIntent({ kind: 'play', source: 'memory', priority: 'normal',
@@ -933,23 +941,34 @@ export class MainAutonomyComposition {
     return step === 'calm_look_around' && !this.activity.canStart({ kind: 'idle', calmPose: 'look_around', source: 'timer', priority: 'normal' }) ? null : step;
   }
 
-  private handleResolvedIntent(intent: BehaviorIntent, planDispatch = false): boolean {
+  private handleResolvedIntent(intent: BehaviorIntent, planDispatch = false, prepared?: PreparedBrainActivity,
+    opportunity?: { readonly decisionSequence: number; readonly opportunityAtMs: number }): boolean {
     if (planDispatch && (!this.canInfluenceOwnGoals()
       || (intent.kind === 'sleep' && permitsAutomaticWake(this.options.getCharacterSnapshot())))) return false;
+    if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;
+    if (!isQuietCompatible(intent, this.quiet || this.quietSupport)) return false;
+    if (!prepared && opportunity && intent.kind === 'wander' && intent.source === 'timer' && intent.reason === 'local_utility') {
+      prepared = this.activity.prepareResolved(intent) ?? undefined;
+      if (!prepared) return false;
+      if (prepared.kind === 'needs_manual_support') {
+        const accepted = this.options.windowHelp?.resolved(prepared.plan, opportunity.decisionSequence, this.options.clock.now()) === true;
+        if (accepted) this.finishActivityCadence();
+        return accepted;
+      }
+    }
     if (!planDispatch && intent.source === 'timer' && intent.reason === 'local_utility') {
       const step = this.selectedOwnPlanStep();
       const matching = step === 'rest' ? intent.kind === 'sleep' : step === 'explore' ? intent.kind === 'wander'
         : step === 'calm_look_around' && intent.kind === 'idle' && intent.calmPose === 'look_around';
-      if (step && matching && this.options.ownGoals?.offerPlanStep?.(step, () => this.handleResolvedIntent(intent, true))) return true;
+      if (step && matching && this.options.ownGoals?.offerPlanStep?.(step, () => this.handleResolvedIntent(intent, true, prepared, opportunity))) return true;
     }
-    if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;
     const social = intent.activityFamily === 'social_bid';
-    if (!isQuietCompatible(intent, this.quiet || this.quietSupport)) return false;
     if (social && intent.source === 'timer' && !this.socialFollowup.canStartFirst()) return false;
     if (social && (this.systemIdle.isBlocked() || !this.initiativeBudget.available(this.options.clock.now()))) return false;
     this.startingSocial = social && intent.source === 'timer' ? 'first' : null;
     let started: boolean;
-    try { started = this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined); } finally { this.startingSocial = null; }
+    try { started = prepared ? this.activity.startPrepared(intent, prepared)
+      : this.activity.start(intent, social ? { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] } : undefined); } finally { this.startingSocial = null; }
     if (started) {
       if (social) { const run = this.activity.getRuntime(); if (run && intent.source !== 'system') this.options.onSocialBidStarted?.(run.runId, this.options.clock.now()); }
       this.localHistory.push({ kind: social ? 'social_bid' : intent.kind, atMs: this.options.clock.now() });

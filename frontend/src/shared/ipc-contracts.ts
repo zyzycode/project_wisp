@@ -329,6 +329,8 @@ export interface AIInitiativeSpeechDTO {
 }
 
 export interface BrainStateDTO {
+  readonly initiativeStatus?: import('../application/ports/initiative-controls.interface').InitiativeControlStatusDTO;
+  readonly windowHelp?: import('../application/ports/window-help.interface').WindowHelpStatusDTO;
   /** Main-owned external support capability; absence means unknown, not available. */
   readonly externalWindowSupport?: 'available' | 'initializing' | 'unavailable' | 'unsupported';
   /** Main monotonic sample; null means global source unavailable. Never a Body command. */
@@ -579,6 +581,8 @@ export interface AIConnectionApiBridge {
 }
 
 export interface WispApiBridge {
+  readonly initiative?: import('../application/ports/initiative-controls.interface').IInitiativeControls;
+  readonly windowHelp?: import('../application/ports/window-help.interface').IWindowHelpControls;
   readonly voiceOutput?: import('./voice-output-contracts').VoiceOutputBridge;
   /** Optional capability until the local runtime and model are available. */
   readonly voiceInput?: VoiceInputApiBridge;

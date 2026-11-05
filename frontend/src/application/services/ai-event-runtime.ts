@@ -15,7 +15,7 @@ import { emptyMemoryContext } from './memory-recall';
 const MAX_RECENT_EVENT_IDS = 128;
 
 interface Gate { readonly allowed: boolean; readonly touchAllowed?: boolean; readonly identity: string | null; readonly memoryGeneration: number; readonly activeRunId: string | null; readonly localSpeech: boolean }
-interface Source { readonly runId: string; readonly kind: 'cursor_game' | 'social_bid' | 'user_touch'; readonly event: AICompanionEvent; readonly terminalAt: number; readonly identity: string; readonly memoryGeneration: number; readonly epoch: number; readonly touchReceipt?: TouchInteractionReceipt }
+interface Source { readonly runId: string; readonly kind: 'cursor_game' | 'social_bid' | 'user_touch' | 'window_help'; readonly event: AICompanionEvent; readonly terminalAt: number; readonly identity: string; readonly memoryGeneration: number; readonly epoch: number; readonly touchReceipt?: TouchInteractionReceipt }
 interface Options {
   readonly causalExpression?: ICausalExpressionRuntime;
   readonly touchContext?: TouchReactionContext;
@@ -27,6 +27,15 @@ interface Options {
   readonly locale?: 'ru' | 'en';
   readonly random?: () => number;
   readonly autonomousEnabled?: boolean;
+  readonly initiativeAllowed?: () => boolean;
+  readonly initiativeSourceAllowed?: (atMs: number) => boolean;
+  readonly initiativePhase?: (phase: 'waiting' | 'generating' | 'visible') => void;
+  readonly initiativeFailed?: (failure: 'unavailable' | 'auth' | 'timeout' | 'invalid_response') => void;
+  readonly windowHelp?: {
+    readonly current: (requestId: string) => boolean;
+    readonly published: (requestId: string) => boolean;
+    readonly failed: (requestId: string) => void;
+  };
 }
 /** Causal speech owner; v1 touch commits bounded Character effects and a volatile trace atomically. No event queue. */
 export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObserver {
@@ -81,9 +90,30 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
   tick(): void {
     const causal = this.source && this.causalCaptures.get(this.source);
     if ((this.source || this.game || this.speech) && (!this.baseAllowed()
-      || (causal && !this.options.causalExpression?.isCurrent(causal)))) this.invalidate(true, false);
+      || (causal && !this.options.causalExpression?.isCurrent(causal))
+      || (this.source?.kind === 'window_help' && (!this.options.windowHelp?.current(this.source.runId)
+        || this.options.causalExpression?.capture(this.source.runId))))) this.invalidate(true, false);
   }
   userContact(): void { this.invalidate(true, false); }
+  /** An accepted post-publication assist drag clears speech without consuming its existing previous slot. */
+  assistContact(): void { this.invalidate(false, false); }
+  cancelWindowHelp(requestId: string): void {
+    if (this.source?.kind === 'window_help' && this.source.runId === requestId) this.invalidate(false, false);
+  }
+  updateWindowHelpOutcome(outcome: 'waiting' | 'assisting' | import('../ports/window-help.interface').WindowHelpOutcome): void {
+    if (this.previous?.value.kind === 'window_help' && this.options.now() < this.previous.expires) {
+      this.previous = { ...this.previous, value: { ...this.previous.value, outcome } };
+    }
+  }
+  windowHelpStarted(requestId: string, targetRegion: import('../ports/window-help.interface').WindowHelpRegion): boolean {
+    const gate = this.options.gate();
+    if (this.pending || this.source || !gate.identity || !this.baseAllowed(false)
+      || !this.options.windowHelp?.current(requestId) || this.options.causalExpression?.capture(requestId)) return false;
+    const source: Source = { runId: requestId, kind: 'window_help', terminalAt: this.options.now(),
+      epoch: this.epoch, identity: gate.identity, memoryGeneration: gate.memoryGeneration,
+      event: { type: 'window_help_requested', occurredAt: this.options.timestamp(), targetRegion } };
+    this.source = source; this.begin(source); return true;
+  }
   takePreviousInitiative(): AIProviderRequest['previousInitiative'] {
     const gate = this.options.gate(), prior = this.previous;
     const value = prior && this.options.now() < prior.expires && gate.identity === prior.identity && gate.memoryGeneration === prior.generation ? prior.value : undefined;
@@ -91,15 +121,17 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
   }
   async interruptForUser(): Promise<void> { this.invalidate(true, false); await this.pending; }
   invalidate(clearPrevious = true, clearTouch = true): void {
+    const unsolicited = this.source !== null && this.source.kind !== 'user_touch';
     if (clearTouch) this.options.touchContext?.clear();
     this.epoch++; this.source = null; this.game = null; if (clearPrevious) this.previous = null;
     this.options.scheduler.clearTimeout(this.causalTimer); this.options.scheduler.clearTimeout(this.deadlineTimer); this.options.scheduler.clearTimeout(this.speechTimer);
     if (this.requestId) this.options.provider.cancel(this.requestId);
     const changed = this.speech !== null; this.speech = null; this.speechCausal = undefined; if (changed) this.options.publish();
+    if (unsolicited) this.options.initiativePhase?.('waiting');
   }
   dispose(): void { this.disposed = true; this.invalidate(); this.seen.clear(); }
   gameTerminal(result: CursorGameResult, generation: number): void {
-    if (this.options.autonomousEnabled === false) return;
+    if (!this.autonomousAllowed() || this.options.initiativeSourceAllowed?.(result.atMs) === false) return;
     if (this.pending || this.source) return;
     const gate = this.options.gate();
     if (this.disposed || !gate.identity || gate.memoryGeneration !== generation || !result.playCompleted || result.outcome === 'cancelled' || result.executedMs > 60000) return;
@@ -127,7 +159,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     this.causalTimer = this.options.scheduler.setTimeout(() => { if (this.options.now() < source.terminalAt + 2500) this.begin(source); else this.source = null; }, Math.max(0, source.terminalAt + 2000 - this.options.now()));
   }
   socialStarted(runId: string, atMs: number): void {
-    if (this.disposed || this.options.autonomousEnabled === false) return;
+    if (this.disposed || !this.autonomousAllowed() || this.options.initiativeSourceAllowed?.(atMs) === false) return;
     const key = `social:${runId}`; if (!this.rememberEvent(key)) return;
     const gate = this.options.gate();
     if (this.pending || this.source || !gate.identity || !this.baseAllowed() || gate.activeRunId !== runId) return;
@@ -144,13 +176,16 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
   }
   private baseAllowed(touch = this.source?.kind === 'user_touch'): boolean {
     const gate = this.options.gate();
-    return !this.disposed && (touch ? gate.touchAllowed ?? gate.allowed : gate.allowed) && !this.thinking;
+    return !this.disposed && (touch ? gate.touchAllowed ?? gate.allowed : gate.allowed && this.autonomousAllowed()) && !this.thinking;
   }
+  private autonomousAllowed(): boolean { return this.options.initiativeAllowed?.() ?? this.options.autonomousEnabled !== false; }
   private current(source: Source): boolean {
     const gate = this.options.gate();
     const causal = this.causalCaptures.get(source);
     return this.source === source && source.epoch === this.epoch && this.baseAllowed() && gate.identity === source.identity && gate.memoryGeneration === source.memoryGeneration
       && (!causal || this.options.causalExpression?.isCurrent(causal) === true)
+      && (source.kind !== 'window_help' || (this.options.windowHelp?.current(source.runId) === true
+        && !this.options.causalExpression?.capture(source.runId)))
       && (source.kind === 'user_touch' || (source.kind === 'social_bid' ? gate.activeRunId === source.runId : gate.activeRunId === null));
   }
   private begin(source: Source): void {
@@ -159,13 +194,14 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     const deadline = this.options.now() + duration;
     this.deadlineTimer = this.options.scheduler.setTimeout(() => { if (this.source === source) { if (source.touchReceipt && this.current(source)) this.publishTouch(source); else this.invalidate(true, false); if (this.requestId) this.options.provider.cancel(this.requestId); } }, duration);
     const execution = Promise.resolve().then(() => this.execute(source, deadline));
+    if (source.kind !== 'user_touch') this.options.initiativePhase?.('generating');
     this.pending = execution;
     void execution.finally(() => { if (this.pending === execution) this.pending = null; });
   }
   private async execute(source: Source, deadline: number): Promise<void> {
     try {
       if (source.kind === 'user_touch') { await this.options.observation?.interruptForUser(); if (!this.current(source)) return; if (this.options.now() >= deadline) { this.publishTouch(source); return; } }
-      const causal = this.options.causalExpression?.capture(source.runId);
+      const causal = source.kind === 'window_help' ? undefined : this.options.causalExpression?.capture(source.runId);
       if (causal) {
         this.causalCaptures.set(source, causal); deadline = Math.min(deadline, causal.deadlineMs);
         this.options.scheduler.clearTimeout(this.deadlineTimer);
@@ -181,7 +217,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
       const recalled = source.kind === 'user_touch' ? undefined : await this.options.recall?.recall({ text: query, useFavoriteTopic: source.kind === 'social_bid', excludedMessageIds: [] }, { generation: source.memoryGeneration });
       if (!this.current(source)) return; if (this.options.now() >= deadline) { this.publishTouch(source); return; }
       const memory = recalled?.ok ? recalled.value : emptyMemoryContext();
-      const requestId = this.options.createId(); this.requestId = requestId;
+      const requestId = source.kind === 'window_help' ? source.runId : this.options.createId(); this.requestId = requestId;
       const request: AIEventProviderRequest = { ...(causal ? { causalExpression: { ...causal.expression } } : {}), ...(source.touchReceipt ? { interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: causal ? 'suppressed' : source.touchReceipt.effectPolicy } } : {}), requestId, event: source.event, characterSnapshot: this.options.character(), memoryContext: memory, locale };
       const raw = await this.options.provider.generateEvent(request);
       this.requestId = null;
@@ -194,13 +230,29 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
       if (expiresAtMs <= now) return;
       this.speech = { id: requestId, text, startedAtMs: now, expiresAtMs };
       this.speechCausal = causal;
-      this.previous = source.kind === 'user_touch' ? null : { value: { kind: source.kind, text, createdAt: this.options.timestamp() }, expires: now + 60000, identity: source.identity, generation: source.memoryGeneration };
+      if (source.kind === 'window_help' && !this.options.windowHelp?.published(source.runId)) {
+        this.speech = null; this.speechCausal = undefined; return;
+      }
+      this.previous = source.kind === 'user_touch' ? null : { value: source.kind === 'window_help'
+        ? { kind: 'window_help', text, createdAt: this.options.timestamp(), outcome: 'waiting' }
+        : { kind: source.kind, text, createdAt: this.options.timestamp() }, expires: now + 60000, identity: source.identity, generation: source.memoryGeneration };
+      if (source.kind !== 'user_touch') this.options.initiativePhase?.('visible');
       this.options.publish();
-      this.speechTimer = this.options.scheduler.setTimeout(() => { if (this.speech?.id === requestId) { this.speech = null; this.speechCausal = undefined; if (this.source === source) this.source = null; this.options.publish(); } }, expiresAtMs - now);
-    } catch { if (source.touchReceipt && this.current(source)) this.publishTouch(source); }
+      this.speechTimer = this.options.scheduler.setTimeout(() => { if (this.speech?.id === requestId) { this.speech = null; this.speechCausal = undefined; if (this.source === source) this.source = null;
+        if (source.kind !== 'user_touch') this.options.initiativePhase?.('waiting'); this.options.publish(); } }, expiresAtMs - now);
+    } catch (error) {
+      if (source.touchReceipt && this.current(source)) this.publishTouch(source);
+      else if (this.current(source)) {
+        const code = error instanceof Error && ['auth', 'timeout', 'invalid_response'].includes(error.message)
+          ? error.message : 'unavailable';
+        this.options.initiativeFailed?.(code === 'auth' || code === 'timeout' || code === 'invalid_response' ? code : 'unavailable');
+      }
+    }
     finally {
       this.requestId = null; this.options.scheduler.clearTimeout(this.deadlineTimer);
       if (this.source === source && !this.speech) this.source = null;
+      if (source.kind === 'window_help' && !this.speech) this.options.windowHelp?.failed(source.runId);
+      if (source.kind !== 'user_touch' && !this.speech) this.options.initiativePhase?.('waiting');
     }
   }
   private publishTouch(source: Source, text?: string, appraisal?: import('../ports/interaction-appraisal').InteractionAppraisal): void {

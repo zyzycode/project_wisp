@@ -7,6 +7,7 @@ interface Options {
   readonly getSender: () => object | null;
   readonly getStream: () => string | null;
   readonly controller: AIConnectionController;
+  readonly beforeConfigure?: () => void;
 }
 export function registerAIConnectionIpc(options: Options): () => void {
   options.register('wisp:ai-connection-read', async (event, ...args) => {
@@ -24,6 +25,7 @@ export function registerAIConnectionIpc(options: Options): () => void {
       command = parseAIConnectionCommand(args[0]);
     } catch { return { ok: false, code: 'invalid_input' }; }
     if (command.streamId !== options.getStream()) return { ok: false, code: 'stale' };
+    options.beforeConfigure?.();
     const result = await options.controller.configure(command);
     if (command.streamId !== options.getStream() || event.sender !== options.getSender()) return { ok: false, code: 'stale' };
     return parseAIConnectionResult(result);

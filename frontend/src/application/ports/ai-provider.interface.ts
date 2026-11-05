@@ -39,11 +39,14 @@ export interface AIProviderContextMessage {
 }
 
 /** Last committed autonomous speech, in RAM only; never a synthetic user message. */
-export interface AIPreviousInitiative {
+interface AIOrdinaryPreviousInitiative {
   readonly kind: 'cursor_game' | 'social_bid';
   readonly text: string;
   readonly createdAt: string;
 }
+export type AIPreviousInitiative = AIOrdinaryPreviousInitiative
+  | { readonly kind: 'window_help'; readonly text: string; readonly createdAt: string;
+      readonly outcome: 'waiting' | 'assisting' | import('./window-help.interface').WindowHelpOutcome };
 
 export interface AIProviderRequest {
   readonly musicTopic?: import('./backend-music-interest-contract').BackendMusicTopicContext;

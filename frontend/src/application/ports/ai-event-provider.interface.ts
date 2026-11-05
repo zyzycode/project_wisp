@@ -5,6 +5,8 @@ import type { GameEpisode, MemoryOperationContext } from './memory-repository.in
 import type { CharacterCardReference, InteractionAppraisal } from './interaction-appraisal';
 
 export type AICompanionEvent =
+  | { readonly type: 'window_help_requested'; readonly occurredAt: string;
+      readonly targetRegion: import('./window-help.interface').WindowHelpRegion }
   | { readonly type: 'user_touch'; readonly variant: 'stroke' | 'touch' | 'ruffle' | 'poke'; readonly occurredAt: string }
   | {
       readonly type: 'cursor_game_completed';

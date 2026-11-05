@@ -48,6 +48,7 @@ import type { CharacterAutonomySnapshot } from '../../domain/character';
 import type { AutonomyClock } from './autonomy-coordinator';
 
 export interface BrainActivityRuntimeOptions {
+  readonly canRequestWindowHelp?: (plan: ExplorePlan) => boolean;
   readonly canBook?: () => boolean;
   readonly getCursorObservation?: () => GameObservation;
   readonly onCursorGamePhase?: (runId: string, phase: string, outcome: CursorGameResult['outcome'] | null) => void;
@@ -83,6 +84,9 @@ export interface BrainActivityRuntimeOptions {
   readonly onSettled?: (runId: string, result: ActivityResult) => void;
   readonly onTerminated: (result: ActivityResult) => void;
 }
+export type PreparedBrainActivity =
+  | { readonly kind: 'execute'; readonly definition: ActivityDefinition; readonly plan: ExplorePlan | null }
+  | { readonly kind: 'needs_manual_support'; readonly plan: ExplorePlan };
 
 /** Application owner for exactly one ActivityRunner run and its external requests. */
 export class BrainActivityRuntime {
@@ -110,7 +114,15 @@ export class BrainActivityRuntime {
 
   public start(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): boolean {
     const prepared = this.prepare(intent, catalog);
-    return prepared !== null && this.startDefinition(prepared.definition, prepared.plan, this.options.clock.now(), intent);
+    return prepared !== null && this.startPrepared(intent, prepared);
+  }
+  /** Actual resolved choice; the caller consumes this once before claiming an own-plan step. */
+  public prepareResolved(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog): PreparedBrainActivity | null {
+    return this.prepare(intent, catalog);
+  }
+  public startPrepared(intent: BehaviorIntent, prepared: PreparedBrainActivity): boolean {
+    return prepared.kind === 'execute'
+      && this.startDefinition(prepared.definition, prepared.plan, this.options.clock.now(), intent);
   }
 
   public startChatWalk(definition: ActivityDefinition, intent: BehaviorIntent): boolean {
@@ -118,7 +130,7 @@ export class BrainActivityRuntime {
       && this.startDefinition(definition, null, this.options.clock.now(), intent);
   }
 
-  private prepare(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog, preview = false): { definition: ActivityDefinition; plan: ExplorePlan | null } | null {
+  private prepare(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog, preview = false): PreparedBrainActivity | null {
     const nowMs = this.options.clock.now();
     const selectionContext = {
       ...this.options.getSelectionContext(),
@@ -151,19 +163,25 @@ export class BrainActivityRuntime {
     if (selectedDefinition.id === 'rest') {
       const rest = selectRestSpot(context, intent.reason !== 'vital_sleep' && intent.source !== 'user');
       if (rest === null) return null;
-      return { definition: createRestSpotActivity(rest), plan: rest.target };
+      return { kind: 'execute', definition: createRestSpotActivity(rest), plan: rest.target };
     }
     const selectedExplorePlan = selectedDefinition.id === 'explore'
       ? selectExplorePlan({ ...context, isReachable: plan => {
           if (!context.isReachable(plan)) return false;
           if (plan.targetSurface === undefined && context.environment.currentSurface?.kind !== 'window_top') return true;
-          return this.options.traversalEnabled === true && createExternalRoute(plan, context) !== null;
+          return (this.options.traversalEnabled === true && createExternalRoute(plan, context) !== null)
+            || (intent.source === 'timer' && plan.targetSurface?.kind === 'window_top'
+              && this.options.canRequestWindowHelp?.(plan) === true);
         } }, preview ? 0 : this.options.nextRandom()) : null;
     if (selectedDefinition.id === 'explore' && selectedExplorePlan === null) return null;
+    if (selectedExplorePlan?.targetSurface?.kind === 'window_top'
+      && !(this.options.traversalEnabled === true && createExternalRoute(selectedExplorePlan, context) !== null)) {
+      return { kind: 'needs_manual_support', plan: selectedExplorePlan };
+    }
     const definition = selectedExplorePlan === null ? selectedDefinition
       : createExploreActivityDefinition(selectedExplorePlan, this.options.traversalEnabled
           ? createExploreTraversalSteps(selectedExplorePlan, context) : []);
-    return { definition, plan: selectedExplorePlan };
+    return { kind: 'execute', definition, plan: selectedExplorePlan };
   }
 
   private startDefinition(

@@ -3,6 +3,7 @@ import type { BackendAIErrorCode, BackendCharacterContext, BackendAIMessage } fr
 import type { BackendMemoryContext, BackendMemoryResponse } from './backend-memory-contract';
 
 export type BackendCompanionEvent =
+  | import('./backend-window-help-contract').BackendWindowHelpEvent
   | {
       readonly type: 'cursor_game_completed';
       readonly outcome: 'caught' | 'missed' | 'lost_target';
@@ -25,11 +26,13 @@ export interface BackendEventResponse {
   readonly text: string;
 }
 
-export interface BackendPreviousInitiative {
+interface BackendOrdinaryPreviousInitiative {
   readonly kind: 'cursor_game' | 'social_bid';
   readonly text: string;
   readonly createdAt: string;
 }
+export type BackendPreviousInitiative = BackendOrdinaryPreviousInitiative
+  | import('./backend-window-help-contract').BackendPreviousWindowHelpInitiative;
 
 /** v1 user-message semantics plus one explicitly sourced preceding initiative. */
 export interface BackendEventAwareChatRequest {

@@ -1,5 +1,6 @@
 import { ObservationSettings } from './Interaction/ObservationSettings';
 import { AIConnectionSettings } from './Interaction/AIConnectionSettings';
+import { WindowHelpCard } from './Interaction/WindowHelpCard';
 import React, { useState } from 'react';
 import type { RenderPresentationState } from '../render-engine';
 import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../shared/pet-presentation-layout';
@@ -92,7 +93,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         debugHudVisible={model.debugHudVisible}
         isAlwaysOnTop={model.isAlwaysOnTop}
         debugContent={debugHud}
-        aiConnectionContent={<AIConnectionSettings bridge={window.wispAPI?.aiConnection} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
+        aiConnectionContent={<AIConnectionSettings bridge={window.wispAPI?.aiConnection} initiative={window.wispAPI?.initiative}
+          initiativeStatus={model.bodySnapshot?.brain.initiativeStatus} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
         observationContent={<ObservationSettings bridge={window.wispAPI?.observationCommand} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
         voiceContent={<VoiceSettings output={model.dialogue.voiceOutput} outputState={model.dialogue.outputState}
           input={model.dialogue.voice} inputState={model.dialogue.voiceState} contextReady={model.dialogue.voiceContextReady} />}
@@ -141,6 +143,9 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         onContextMenu={model.handleContextMenu}
       />
       {model.debugHudEnabled && model.debugHudVisible && !model.menuOpen ? debugHud : null}
+      {model.bodySnapshot?.brain.windowHelp && <div data-wisp-interactive="true" style={{ position: 'absolute', left: 8, top: 8, maxWidth: 280 }}>
+        <WindowHelpCard status={model.bodySnapshot.brain.windowHelp} streamId={model.bodySnapshot.brain.streamId} bridge={window.wispAPI?.windowHelp} />
+      </div>}
       <div className="pet-label" data-wisp-interactive="true" onClick={model.toggleChat}
         style={{ left: labelAnchor.x, top: labelAnchor.y + 2 }}>
         💬 Wisp • {model.isWandering ? 'wandering' : model.animState}{' '}

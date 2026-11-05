@@ -20,7 +20,7 @@ it.each([false, true])('shares the unified transport with optional events/summar
   const c = createMainAIProvider({ backendUrl: 'https://backend.example', eventsEnabled: enabled, summaryEnabled: enabled, development: false, now: () => 0 });
   expect(c.interactionEnabled).toBe(true);
   expect(c.touchProvider).toBe(c.provider); expect(c.observationProvider).toBe(c.provider);
-  expect(c.eventProvider).toBe(enabled ? c.provider : undefined);
+  expect(c.eventProvider).toBe(c.provider);
   expect(c.summaryGenerator).toBe(enabled ? c.provider : undefined);
 });
 it.each([undefined, 'http://remote.example'])('does not expose network capabilities for unavailable configuration %s', backendUrl => {

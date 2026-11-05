@@ -17,6 +17,8 @@ import { subscribeVoiceRevocation } from '../infrastructure/platform/voice-lifec
 import { registerWindowIpc } from './window-ipc-registration';
 import { AIConnectionController, type PersonalAIRoute } from './ai-connection-controller';
 import { registerAIConnectionIpc } from './ai-connection-ipc-registration';
+import { registerInitiativeIpc } from './initiative-ipc-registration';
+import { MainInitiativeComposition } from './main-initiative-composition';
 import { ProtectedUserAIKeyStore } from '../infrastructure/platform/protected-user-ai-key-store';
 import { ManagedLocalAIBackend } from '../infrastructure/platform/managed-local-ai-backend';
 import { RoutineCapture } from '../application/services/routine-capture';
@@ -125,6 +127,7 @@ let shutdownStarted = false;
 let aiConnection: AIConnectionController | null = null;
 let aiRoute: PersonalAIRoute = {};
 let unregisterAIConnection: (() => void) | null = null;
+let unregisterInitiative: (() => void) | null = null;
 let memoryRuntime: MemoryLifecycle | null = null;
 let deferredInvitationRuntime: DeferredGameInvitationRuntime | null = null;
 let ownGoalsRuntime: OwnGoalsRuntime | null = null;
@@ -187,6 +190,7 @@ const brainStatePublisher = new BrainStatePublisher({
   prepareSnapshot: () => {
     observationRuntime?.tick();
     aiEventRuntime?.tick();
+    initiativeComposition.help?.tick();
     autonomyComposition?.tick();
     aiEventRuntime?.tick();
     observationRuntime?.tick();
@@ -201,6 +205,8 @@ const brainStatePublisher = new BrainStatePublisher({
     const visual = autonomyComposition.getVisualEpisode();
     const motion = shimejiMotionOrchestrator.getMotionState();
     return toBrainStateDTO({
+      initiativeStatus: initiativeComposition.controls.status(),
+      windowHelp: initiativeComposition.help?.status() ?? { phase: 'none' },
       externalWindowSupport: toExternalWindowSupport(externalWindowSurfaces?.getSnapshot()),
       dialogue,
       initiativeSpeech,
@@ -241,6 +247,20 @@ const causalExpressionRuntime = new CausalExpressionRuntime({ now: () => brainSt
     ownBookInterest: defaultCharacterStateService.getOwnBookInterest().band,
     ownGameInterest: defaultCharacterStateService.getOwnGameInterest().band };
 } });
+const initiativeComposition = new MainInitiativeComposition({ now: () => brainStatePublisher.now(),
+  streamId: () => summaryStream ?? '', createId: randomUUID, generation: () => memoryRuntime?.currentGeneration() ?? 0,
+  events: () => aiEventRuntime ?? undefined, publish: publishBrainState,
+  needs: () => { const n = defaultCharacterStateService.getState().needs; return { boredom: n.boredom ?? NaN, energy: n.energy }; },
+  noCausal: () => causalExpressionRuntime.capture('window-help-eligibility') === undefined,
+  manualPresenceActive: () => autonomyComposition?.isComputerPresenceFreshActive() === true,
+  screen: surface => platformEnvironmentAdapter.getSnapshot({ x: surface.bounds.x + surface.bounds.width / 2, y: surface.bounds.y }).screenBounds,
+  insets: () => DEFAULT_MOTION_CONSTRAINTS.collisionInsets,
+  conditions: () => ({ memory: !!memoryRuntime?.isRunning(),
+    quiet: !!autonomyComposition?.getAutonomyMode().quiet || quietSupportRuntime.isActive(),
+    sleeping: autonomyComposition?.getSemanticSleepState() !== 'awake',
+    away: autonomyComposition?.isComputerPresenceBlocked() === true,
+    busy: !dialogueRuntime?.getPresentation().canSubmit || !!observationRuntime?.isBusy() || summaryGenerating || !!summaryRuntime?.isBusy(),
+  }) });
 
 function resolvePreloadPath(): string {
   const jsPath = path.join(__dirname, '../preload/index.js');
@@ -304,6 +324,7 @@ function cancelActiveBodyDrag(): void {
   const drag = activeBodyDrag;
   const orchestrator = shimejiMotionOrchestrator;
   activeBodyDrag = null;
+  initiativeComposition.invalidate();
   if (drag === null || orchestrator === null) return;
   orchestrator.releaseDrag({
     dragSessionId: drag.dragSessionId,
@@ -363,6 +384,8 @@ function initializeAutonomyComposition(): void {
     planning: { appRunId: () => memoryRuntime?.history.currentAppRunId() ?? null,
       onOpportunityFinished: () => autonomyComposition?.finishOwnPlanOpportunity() } });
   autonomyComposition = new MainAutonomyComposition({
+    windowHelp: { eligible: plan => initiativeComposition.eligible(plan),
+      resolved: (plan, sequence, atMs) => initiativeComposition.resolved(plan, sequence, atMs) },
     coping: {
       consider: gates => copingRuntime?.consider(gates) ?? null,
       selected: (kind, applied) => copingRuntime?.selected(kind, applied),
@@ -411,11 +434,11 @@ function initializeAutonomyComposition(): void {
     getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState(), defaultCharacterStateService.getCursorGameSatiation(), defaultCharacterStateService.getCausalEmotion(), defaultCharacterStateService.getOwnGameInterest().multiplier, defaultCharacterStateService.getBookSatiation(), defaultCharacterStateService.getOwnBookInterest().multiplier),
     onChatMotionTerminal: event => dialogueRuntime?.chatMotionTerminal(event),
     onActivityCommitted: (runId, activityId) => { causalOwnerSequence++; ownGoalsRuntime?.activityStarted(runId, activityId); if (activityId === 'cursor_interest' || activityId === 'book') memoryRuntime?.socialInterpretation.gameStarted(); },
-    onActivityStarted: () => aiEventRuntime?.activityStarted(),
+    onActivityStarted: (_run, activity) => { if (activity !== 'calm') { initiativeComposition.invalidate(); aiEventRuntime?.activityStarted(); } },
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
-    onUnsolicitedBlocked: () => { aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); },
-    onAIInvalidated: () => { causalOwnerSequence++; if (!processingTouchInput || !aiEventRuntime?.isTouchPending()) aiEventRuntime?.invalidate(true, false); observationRuntime?.invalidate(); },
-    onUserContact: () => { aiEventRuntime?.userContact(); observationRuntime?.invalidate(); },
+    onUnsolicitedBlocked: () => { initiativeComposition.invalidate(); aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); },
+    onAIInvalidated: assist => { causalOwnerSequence++; initiativeComposition.invalidate(assist); if (assist) aiEventRuntime?.assistContact(); else if (!processingTouchInput || !aiEventRuntime?.isTouchPending()) aiEventRuntime?.invalidate(true, false); observationRuntime?.invalidate(); },
+    onUserContact: () => { initiativeComposition.invalidate(); aiEventRuntime?.userContact(); observationRuntime?.invalidate(); },
     onCursorGameResult: result => { aiEventRuntime?.gameTerminal(result, memoryGeneration); void memoryRuntime?.history.game(result, memoryGeneration); },
     onActivityOutcome: event => {
       if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
@@ -453,6 +476,7 @@ function initializeAutonomyComposition(): void {
     onSleepStateChanged: () => dialogueRuntime?.notifySleepStateChanged(),
     onPresentationChanged: publishBrainState,
   });
+  initiativeComposition.attach(autonomyComposition, externalWindowSurfaces);
   if (memoryComposition) {
     void ownGoalsRuntime.restore();
     const composition = autonomyComposition;
@@ -467,7 +491,8 @@ function initializeAutonomyComposition(): void {
   autonomyComposition.setQuietSupport(quietSupportRuntime.isActive());
   if (memoryRuntime?.isRunning() && mainWindow !== null && !mainWindow.isDestroyed()) autonomyComposition.start();
   if (dialogueRuntime === null) {
-    const ai = createMainAIProvider({ backendUrl: aiRoute.backendUrl, sessionToken: aiRoute.sessionToken, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
+    const ai = createMainAIProvider({ backendUrl: aiRoute.backendUrl, sessionToken: aiRoute.sessionToken, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now(), admitEventDispatch: id => initiativeComposition.admitDispatch(id), eventDispatched: () => initiativeComposition.controls.dispatched() });
+    initiativeComposition.configure(!!ai.eventProvider);
     const recall = !localMock && memoryComposition
       ? new LocalMemoryRecall({ ...memoryComposition, timestamp: () => new Date().toISOString(), beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
     observationManagement = createActiveApplicationObservation();
@@ -483,7 +508,7 @@ function initializeAutonomyComposition(): void {
       }; },
     });
     const touchContext = ai.interactionEnabled || !ai.touchProvider ? new TouchReactionContext(defaultCharacterStateService, () => brainStatePublisher.now()) : undefined;
-    aiEventRuntime = new AIEventRuntime({ causalExpression: causalExpressionRuntime, ...(touchContext ? { touchContext } : {}), transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } }, observation: observationRuntime, provider: ai.touchProvider ?? { generateEvent: async () => { throw new Error('Touch unavailable'); }, cancel: () => undefined }, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
+    aiEventRuntime = new AIEventRuntime({ initiativeSourceAllowed: atMs => initiativeComposition.controls.sourceAllowed(atMs), initiativeAllowed: () => initiativeComposition.controls.allowed(), initiativePhase: phase => initiativeComposition.controls.setPhase(phase), initiativeFailed: failure => initiativeComposition.controls.failed(failure), windowHelp: { current: id => initiativeComposition.help?.current(id) ?? false, published: id => initiativeComposition.help?.published(id) ?? false, failed: id => initiativeComposition.help?.failed(id) }, causalExpression: causalExpressionRuntime, ...(touchContext ? { touchContext } : {}), transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } }, observation: observationRuntime, provider: ai.touchProvider ?? { generateEvent: async () => { throw new Error('Touch unavailable'); }, cancel: () => undefined }, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
       now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
       gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), ...(observationRuntime?.isBusy() ? { allowed: false } : {}), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0, ...(!memoryRuntime?.isRunning() || summaryGenerating || summaryRuntime?.isBusy() ? { allowed: false, touchAllowed: false } : {}) }) });
     if (ai.summaryGenerator && memoryComposition) {
@@ -497,7 +522,7 @@ function initializeAutonomyComposition(): void {
       });
     }
     beverageDialogue = memoryComposition?.beverage ? new BeverageDialogue({ runtime: () => memoryRuntime, createId: randomUUID, timestamp: () => new Date().toISOString(), now: () => brainStatePublisher.now(), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) : null;
-    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
+    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { initiativeComposition.invalidate(); voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
@@ -576,6 +601,7 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
     now: () => brainStatePublisher.now(),
     eventDispatcher: {
       dispatchMotionEvent: (event) => {
+        initiativeComposition.motionEvent(event.type, shimejiMotionOrchestrator?.getSurfaceState().externalAttachment?.surface.id ?? null);
         autonomyComposition?.handleMotionEvent(event);
       },
       dispatchSurfaceEvent: (event) => {
@@ -609,7 +635,7 @@ function startCharacterRuntime(): void {
     orchestrator: shimejiMotionOrchestrator,
     getWindow: () => mainWindow,
     advanceBackgroundSampling: () => autonomyComposition?.tickBackgroundSampling(),
-    advanceBrain: () => { observationRuntime?.tick(); aiEventRuntime?.tick(); const changed = autonomyComposition?.tick() ?? false; aiEventRuntime?.tick(); return changed; },
+    advanceBrain: () => { initiativeComposition.help?.tick(); observationRuntime?.tick(); aiEventRuntime?.tick(); const changed = autonomyComposition?.tick() ?? false; aiEventRuntime?.tick(); return changed; },
     publishPresentation: publishBrainState,
     beginPresentationTransaction: () => brainStatePublisher.beginTransaction(),
     commitPresentationTransaction: () => brainStatePublisher.commitTransaction(),
@@ -619,6 +645,7 @@ function startCharacterRuntime(): void {
 }
 
 function pauseCharacterRuntime(): void {
+  initiativeComposition.resetProfile();
   stopShimejiMotionLoopHandle?.(); stopShimejiMotionLoopHandle = null;
   dialogueRuntime?.cancelForMemoryReset(); autonomyComposition?.dispose();
 }
@@ -663,7 +690,8 @@ function dispatchAcceptedBodyEvent(
       sequence: event.sequence,
       lastScreenPosition: event.screenPosition,
     };
-    autonomyComposition?.beginDrag();
+    const assisting = initiativeComposition.acceptedDrag();
+    autonomyComposition?.beginDrag(assisting);
     publishBrainState();
     return;
   }
@@ -685,6 +713,7 @@ function dispatchAcceptedBodyEvent(
     drag.lastScreenPosition = event.screenPosition;
     if (event.type === 'drag_moved') orchestrator.moveDrag(payload);
     else {
+      initiativeComposition.queuedRelease();
       orchestrator.releaseDrag(payload);
       activeBodyDrag = null;
     }
@@ -744,8 +773,9 @@ function registerIpcHandlers(): void {
   });
   unregisterSummary = registerSummaryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
+  unregisterInitiative = registerInitiativeIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, controls: initiativeComposition.controls, help: () => initiativeComposition.help });
   if (aiConnection) unregisterAIConnection = registerAIConnectionIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
-    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection });
+    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection, beforeConfigure: () => initiativeComposition.resetProfile() });
   unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands, beverage: beverageCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
@@ -982,7 +1012,7 @@ app.on('before-quit', event => {
     }
   }
   void voiceInput?.dispose(); void voiceOutput?.dispose(); unregisterVoiceOutput?.(); unregisterVoice?.(); unsubscribeVoiceLifecycle?.();
-  observationRuntime?.dispose(); unregisterObservation?.(); aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.(); unregisterAIConnection?.();
+  initiativeComposition.dispose(); unregisterInitiative?.(); observationRuntime?.dispose(); unregisterObservation?.(); aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.(); unregisterAIConnection?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();
   unsubscribeEnvironmentChanges?.();

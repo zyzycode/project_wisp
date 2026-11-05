@@ -32,6 +32,8 @@ import {
 import { isDebugMode } from '../shared/debug-mode';
 import { parseDialogueCommand, parseDialogueReceipt } from '../shared/dialogue-ipc-validation';
 
+import { parseInitiativeConsent, parseInitiativeRead, parseWindowHelpDecline } from '../shared/initiative-ipc-validation';
+import { parseInitiativeResult, parseWindowHelpResult } from '../shared/initiative-status-validation';
 const brainStateListeners = new Set<(state: BrainStateDTO) => void>();
 let latestBrainState: BrainStateDTO | null = null;
 
@@ -91,6 +93,13 @@ const api: WispApiBridge = {
   aiConnection: {
     read: async command => parseAIConnectionStatus(await ipcRenderer.invoke('wisp:ai-connection-read', parseAIConnectionRead(command))),
     configure: async command => parseAIConnectionResult(await ipcRenderer.invoke('wisp:ai-connection-configure', parseAIConnectionCommand(command))),
+  },
+  initiative: {
+    read: async command => parseInitiativeResult(await ipcRenderer.invoke('wisp:initiative-read', parseInitiativeRead(command))),
+    setConsent: async command => parseInitiativeResult(await ipcRenderer.invoke('wisp:initiative-consent', parseInitiativeConsent(command))),
+  },
+  windowHelp: {
+    decline: async command => parseWindowHelpResult(await ipcRenderer.invoke('wisp:window-help-decline', parseWindowHelpDecline(command))),
   },
   observationCommand: async command => parseObservationSettings(await ipcRenderer.invoke('wisp:observation-command', parseObservationCommand(command))),
   beveragePreference: {

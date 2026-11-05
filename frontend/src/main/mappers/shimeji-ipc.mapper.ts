@@ -18,6 +18,8 @@ export function toExternalWindowSupport(snapshot: ExternalWindowSurfacesSnapshot
 }
 
 export interface BrainStateSource {
+  readonly initiativeStatus?: BrainStateDTO['initiativeStatus'];
+  readonly windowHelp?: BrainStateDTO['windowHelp'];
   readonly externalWindowSupport?: BrainStateDTO['externalWindowSupport'];
   readonly globalCursor?: BrainStateDTO['globalCursor'];
   readonly observationSpeech?: BrainStateDTO['observationSpeech'];
@@ -96,6 +98,8 @@ function toBrainVisualIntentDTO(episode: BrainVisualEpisode): BrainVisualIntentD
 
 export function toBrainStateDTO(state: BrainStateSource): BrainStateDTO {
   return {
+    ...(state.initiativeStatus === undefined ? {} : { initiativeStatus: state.initiativeStatus }),
+    ...(state.windowHelp === undefined ? {} : { windowHelp: state.windowHelp }),
     ...(state.externalWindowSupport === undefined ? {} : { externalWindowSupport: state.externalWindowSupport }),
     ...(state.globalCursor === undefined ? {} : { globalCursor: state.globalCursor }),
     dialogue: state.dialogue,

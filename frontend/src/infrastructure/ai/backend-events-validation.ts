@@ -15,9 +15,13 @@ function fit<T extends BackendEventRequest | BackendEventAwareChatRequest>(reque
 export function projectEventRequest(request: AIEventProviderRequest): BackendEventRequest {
   if (Object.hasOwn(request, 'lifeReflection')) throw new TypeError('Life reflection is ordinary chat only');
   const base = projectBackendMemoryRequest({ ...(request.causalExpression === undefined ? {} : { causalExpression: request.causalExpression }), requestId: request.requestId, userMessage: { id: '', text: 'projection', createdAt: '' }, recentContext: [], characterSnapshot: request.characterSnapshot, memoryContext: request.memoryContext, locale: request.locale });
-  const e = exactRecord(request.event, ['type', 'occurredAt'], ['outcome', 'executedMs']);
+  const e = exactRecord(request.event, ['type', 'occurredAt'], ['outcome', 'executedMs', 'targetRegion']);
   const occurredAt = utc(e.occurredAt);
-  const event = e.type === 'social_bid_started'
+  if (e.type === 'window_help_requested' && request.causalExpression !== undefined) throw new TypeError('Window help cannot override causal expression');
+  const event = e.type === 'window_help_requested'
+    ? (exactRecord(e, ['type', 'occurredAt', 'targetRegion']), { type: 'window_help_requested' as const, occurredAt,
+      targetRegion: enumValue(e.targetRegion, ['upper_left', 'upper_center', 'upper_right', 'middle_left', 'middle_center', 'middle_right', 'lower_left', 'lower_center', 'lower_right']) })
+    : e.type === 'social_bid_started'
     ? (exactRecord(e, ['type', 'occurredAt']), { type: 'social_bid_started' as const, occurredAt })
     : (exactRecord(e, ['type', 'occurredAt', 'outcome', 'executedMs']), { type: enumValue(e.type, ['cursor_game_completed']), occurredAt, outcome: enumValue(e.outcome, ['caught', 'missed', 'lost_target']), executedMs: finiteRange(e.executedMs, 60000) });
   return fit({ requestId: base.requestId, event, stream: false, locale: base.locale, character: base.character, memory: base.memory });
@@ -25,7 +29,12 @@ export function projectEventRequest(request: AIEventProviderRequest): BackendEve
 export function projectEventAwareChat(request: AIProviderRequest): BackendEventAwareChatRequest {
   const base = projectBackendMemoryRequest(request);
   if (request.previousInitiative === undefined) return base;
-  const p = exactRecord(request.previousInitiative, ['kind', 'text', 'createdAt']);
+  const p = exactRecord(request.previousInitiative, ['kind', 'text', 'createdAt'], ['outcome']);
+  if (p.kind === 'window_help') return fit({ ...base, previousInitiative: {
+    kind: 'window_help', text: plainText(p.text, 240, true), createdAt: utc(p.createdAt),
+    outcome: enumValue(p.outcome, ['waiting', 'assisting', 'fulfilled', 'declined', 'unanswered', 'cancelled', 'target_lost']),
+  } });
+  exactRecord(p, ['kind', 'text', 'createdAt']);
   return fit({ ...base, previousInitiative: { kind: enumValue(p.kind, ['cursor_game', 'social_bid']), text: plainText(p.text, 240, true), createdAt: utc(p.createdAt) } });
 }
 export function parseEventResponse(value: unknown, requestId: string) {
