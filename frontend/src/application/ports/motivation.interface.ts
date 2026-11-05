@@ -62,7 +62,7 @@ export interface IOwnGoalsRuntime {
 }
 
 /** Bounded factual transition evidence in the existing Character checkpoint. */
-export interface OwnHabitTransition {
+export type OwnHabitTransition = {
   readonly appRunId: string;
   readonly exploreRunId: string;
   readonly nextRunId: string;
@@ -70,7 +70,7 @@ export interface OwnHabitTransition {
   readonly completedAt: string;
 }
 
-export interface OwnHabitMemory {
+export type OwnHabitMemory = {
   readonly transitions: readonly OwnHabitTransition[];
   readonly lastLearnedAt: string | null;
 }

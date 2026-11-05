@@ -369,6 +369,13 @@ function initializeAutonomyComposition(): void {
       terminal: (runId, completed) => copingRuntime?.terminal(runId, completed),
       cancel: () => copingRuntime?.cancel(),
     },
+    ownHabit: {
+      started: (run, activity, sequence, atMs) => defaultCharacterStateService.ownHabitStarted(memoryRuntime?.history.currentAppRunId() ?? 'volatile', run, activity, sequence, atMs),
+      pose: (run, pose) => defaultCharacterStateService.ownHabitPose(run, pose),
+      finished: (run, completed, atMs) => defaultCharacterStateService.ownHabitFinished(memoryRuntime?.history.currentAppRunId() ?? 'volatile', run, completed, atMs),
+      multiplier: atMs => defaultCharacterStateService.getOwnHabitMultiplier(atMs),
+      interrupt: () => defaultCharacterStateService.interruptOwnHabit(), invalidate: () => defaultCharacterStateService.invalidateOwnHabit(),
+    },
     ownGoals: {
       opportunity: () => ownGoalsRuntime?.opportunity(), selectedGoalKind: () => ownGoalsRuntime?.selectedGoalKind() ?? null,
       selectedPlanStep: () => ownGoalsRuntime?.selectedPlanStep() ?? null,

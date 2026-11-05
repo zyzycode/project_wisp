@@ -39,7 +39,7 @@ async function fixture() {
 it('flushes a same-profile shutdown reservation base-only before the final checkpoint and ignores late ack', async () => {
   const f = await fixture(); await f.lifecycle.shutdown();
   const snapshot = f.storage.character.save.mock.calls.at(-1)![0];
-  expect(snapshot.snapshotVersion).toBe(4);
+  expect(snapshot.snapshotVersion).toBe(5);
   expect(snapshot.state.relationship).toMatchObject({ trust: 501, resentment: 3 });
   expect(snapshot.state.relationshipRepair.lastRepairAt).toBeNull();
   f.lifecycle.relationshipRepair.committed(f.completed, { generation: 0 }, f.mono());

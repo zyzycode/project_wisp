@@ -79,7 +79,7 @@ describe('SQLite memory', () => {
     expect(run(store, 'appendEpisode', { ...episode, playCompleted: false })).toEqual({ ok: false, code: 'invalid_data' });
   });
   it('validates snapshot envelopes without interpreting domain state and preserves malformed rows', () => {
-    const { store, filename } = fixture(); const snapshot = { snapshotVersion: 4, state: { preferences: {} }, updatedAt: now };
+    const { store, filename } = fixture(); const snapshot = { snapshotVersion: 5, state: { preferences: {} }, updatedAt: now };
     expect(run(store, 'saveSnapshot', snapshot).ok).toBe(true);
     expect(run(store, 'loadSnapshot')).toEqual({ ok: true, value: snapshot });
     const db = new Database(filename); db.prepare("UPDATE character_state SET snapshot_json = 'invalid'").run();
@@ -89,7 +89,7 @@ describe('SQLite memory', () => {
   });
   it('clears all user tables but keeps schema and rejects late writes from old generations', () => {
     const { store, filename } = fixture(); run(store, 'appendTurn', turn()); run(store, 'upsertFact', fact); run(store, 'appendEpisode', episode);
-    run(store, 'saveSnapshot', { snapshotVersion: 4, state: {}, updatedAt: now });
+    run(store, 'saveSnapshot', { snapshotVersion: 5, state: {}, updatedAt: now });
     expect(run(store, 'clear', null, 1).ok).toBe(true);
     expect(run(store, 'appendTurn', turn())).toEqual({ ok: false, code: 'stale' });
     expect(run(store, 'clear', null, 1)).toEqual({ ok: false, code: 'stale' });
@@ -137,7 +137,7 @@ it.each([1, 2])('migrates character snapshotV%s without DDL or changing any exis
   expect(run(store, 'mutateInterestThread', { kind: 'confirm', commandId: 'topic-confirm', threadId: 'topic', expected: null, confirmed: true, source: { userMessageId: 'utopic', assistantMessageId: 'atopic' }, text: 'Привет', confirmedAt: now }, 1).ok).toBe(true);
   expect(run(store, 'mutateMemoryItem', { kind: 'confirm', commandId: 'item-confirm', itemId: 'item', expectedRevision: 0, confirmed: true, source: { userMessageId: 'u', assistantMessageId: 'a' }, content: { category: 'important_event', label: 'Приветствие', text: 'Привет', occurredOn: null }, confirmedAt: now }, 2).ok).toBe(true);
   const db = new Database(filename), defaults = new CharacterStateService().getState();
-  const { cardRevision: _revision, relationshipRepair: _repair, ownGameInterestSources: _sources, ...state } = projectCharacterMemory(defaults, now).state;
+  const { cardRevision: _revision, ownHabitMemory: _habit, relationshipRepair: _repair, ownGameInterestSources: _sources, ...state } = projectCharacterMemory(defaults, now).state;
   const legacy = { snapshotVersion, state: { ...state, relationship: projectRelationship(defaults.relationship),
     ...(snapshotVersion === 1 ? { presetId: 'shyDreamGirl', currentAxes: { openness: 0.55, extraversion: 0.28, agreeableness: 0.86, sensitivity: 0.88, playfulness: 0.42, boldness: 0.18, independence: 0.58 } } : { cardRevision: 3 }) } };
   db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?)").run(JSON.stringify(legacy), now);

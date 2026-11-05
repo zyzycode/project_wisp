@@ -60,9 +60,9 @@ export function snapshot(value: unknown): PersistedCharacterStateSnapshot {
   return result;
 }
 
-/** Active writer accepts v4 only; load preserves unknown envelopes for Application. */
+/** Active writer accepts v5 only; load preserves unknown envelopes for Application. */
 export function writableSnapshot(value: unknown): PersistedCharacterStateSnapshot {
   const result = snapshot(value);
-  if (result.snapshotVersion !== 4) throw new MemoryDataError('invalid_data');
+  if (result.snapshotVersion !== 5) throw new MemoryDataError('invalid_data');
   return result;
 }

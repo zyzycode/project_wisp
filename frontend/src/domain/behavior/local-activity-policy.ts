@@ -13,6 +13,7 @@ export interface LocalSelectionContext {
   readonly canSocial?: boolean;
   readonly quiet?: boolean;
   readonly ownGoal?: OwnGoalKind | null;
+  readonly ownHabitMultiplier?: number;
   readonly ownPlanStep?: OwnPlanStep | null;
   readonly copingStrategy?: CopingStrategy | null;
   readonly history: readonly { readonly kind: string; readonly atMs: number }[];
@@ -28,6 +29,7 @@ export interface LocalSelectionTrace {
   readonly goalMultiplier: number;
   readonly planMultiplier: number;
   readonly copingMultiplier: number;
+  readonly habitMultiplier: number;
   readonly poolEligible: boolean;
   readonly selected: boolean;
   readonly score: number;
@@ -83,8 +85,13 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
       factors, baselineScore, preferenceMultiplier, emotionMultiplier, goalMultiplier, planMultiplier, copingMultiplier,
       score: baselineScore * preferenceMultiplier * emotionMultiplier * Math.min(1.5, Math.max(.8, goalMultiplier * planMultiplier * copingMultiplier)) };
   });
+  const idle = weighted.find(row => row.kind === 'idle')!;
+  const rawHabit = context.ownHabitMultiplier;
+  const habit = planStep !== 'calm_look_around' && Number.isFinite(lookAround) && lookAround > 0
+    && rawHabit !== undefined && Number.isFinite(rawHabit) && rawHabit >= 1 && rawHabit <= 1.1 ? rawHabit : 1;
+  const effectiveHabit = Math.min(habit, 1.5 / (idle.goalMultiplier * idle.planMultiplier * idle.copingMultiplier));
   const maximum = Math.max(...weighted.map(row => row.score));
-  const trace = weighted.map(row => ({ ...row, poolEligible: row.score > 0 && row.score >= .5 * maximum }));
+  const trace = weighted.map(row => ({ ...row, habitMultiplier: row.kind === 'idle' && row.eligible ? effectiveHabit : 1, poolEligible: row.score > 0 && row.score >= .5 * maximum }));
   let remaining = Math.max(0, Math.min(1 - Number.EPSILON, Number.isFinite(random) ? random : 0))
     * trace.reduce((sum, row) => sum + (row.poolEligible ? row.score : 0), 0);
   let winner = trace[0]!;
@@ -96,7 +103,7 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
   // Reuse the uniformly distributed position within the selected family bucket.
   const poseRandom = winner.score > 0 ? (remaining + winner.score) / winner.score : 0;
 
-  const calmPose = kind === 'idle' && winner.poolEligible && planStep === 'calm_look_around' ? 'look_around' : poseRandom * (poseWeights[0]!.weight + poseWeights[1]!.weight) < poseWeights[0]!.weight
+  const calmPose = kind === 'idle' && winner.poolEligible && planStep === 'calm_look_around' ? 'look_around' : poseRandom * (poseWeights[0]!.weight + poseWeights[1]!.weight * effectiveHabit) < poseWeights[0]!.weight
     ? 'idle_blink' : 'look_around';
   return { intent: { kind: kind === 'social_bid' ? 'play' : kind, source: 'timer', priority: 'normal',
     reason: 'local_utility', ...(kind === 'social_bid' ? { activityFamily: 'social_bid' } : {}),

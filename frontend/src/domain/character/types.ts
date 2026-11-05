@@ -1,3 +1,4 @@
+import type { HabitMemory } from './own-habit';
 import type { RepairCheckpoint } from './relationship-repair';
 /**
  * Domain Contracts for Character Engine v2.
@@ -105,6 +106,7 @@ export interface CharacterState {
   personality: PersonalityPreset;
   intimacy: IntimacyState;
   preferences: Record<string, PreferenceTrack>;
+  readonly ownHabitMemory: HabitMemory;
   readonly relationshipRepair: RepairCheckpoint;
   readonly ownGameInterestSources: readonly CausalSourceReference[];
   lastUpdated: number;

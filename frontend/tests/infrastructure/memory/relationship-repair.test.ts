@@ -31,7 +31,7 @@ it('reopens V4 markers with their exact source and preserves facets without repl
     expect(restored.relationship).toEqual(state.relationship);
     expect(restored.relationshipRepair).toEqual(state.relationshipRepair);
     expect(run('resolveCausalLife', [state.relationshipRepair.lastInterruptionSource])).toEqual({ ok: true, value: [source] });
-    const { relationshipRepair: _repair, ...v3state } = snapshot.state;
+    const { ownHabitMemory: _habit, relationshipRepair: _repair, ...v3state } = snapshot.state;
     expect(run('saveSnapshot', { ...snapshot, snapshotVersion: 3, state: v3state })).toEqual({ ok: false, code: 'invalid_data' });
     expect(run('loadSnapshot')).toEqual({ ok: true, value: snapshot });
   } finally { store.close(); rmSync(dir, { recursive: true, force: true }); }

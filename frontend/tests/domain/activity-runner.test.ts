@@ -28,7 +28,7 @@ import type { CharacterState } from '../../src/domain/character';
 import type { EnvironmentSnapshot } from '../../src/domain/behavior';
 
 function character(needs: Partial<CharacterState['needs']> = {}): CharacterState {
-  return { needs: { energy: 70, attention: 10, play: 60, comfort: 20, boredom: 80, ...needs }, relationship: createRelationship({ friendship: 0, love: 0, loveUnlocked: false }), personality: { id: 'test', displayName: 'Test', aiSelfConcept: 'test', axes: { openness: axis(), extraversion: axis(), agreeableness: axis(), sensitivity: axis(), playfulness: axis(), boldness: axis(), independence: axis() } }, intimacy: { flirtiness: 0, romanticCharge: 0, userConsentEnabled: false, boundariesKnown: false }, preferences: {}, relationshipRepair: emptyRepairCheckpoint(), ownGameInterestSources: [], lastUpdated: 0 };
+  return { needs: { energy: 70, attention: 10, play: 60, comfort: 20, boredom: 80, ...needs }, relationship: createRelationship({ friendship: 0, love: 0, loveUnlocked: false }), personality: { id: 'test', displayName: 'Test', aiSelfConcept: 'test', axes: { openness: axis(), extraversion: axis(), agreeableness: axis(), sensitivity: axis(), playfulness: axis(), boldness: axis(), independence: axis() } }, intimacy: { flirtiness: 0, romanticCharge: 0, userConsentEnabled: false, boundariesKnown: false }, preferences: {}, ownHabitMemory: { transitions: [], lastLearnedAt: null }, relationshipRepair: emptyRepairCheckpoint(), ownGameInterestSources: [], lastUpdated: 0 };
 }
 function axis() { return { base: .5, current: .5, softMin: 0, softMax: 1, hardMin: 0, hardMax: 1, plasticity: .5 }; }
 const environment: EnvironmentSnapshot = {

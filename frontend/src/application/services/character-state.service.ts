@@ -1,4 +1,6 @@
-import { emptyRepairCheckpoint, restoreRepairClock, advanceRepairClock, acknowledgeRepairInterruption, canRepair, matchesRepairProof, repairSource, type RepairClock, type RepairEpisode } from '../../domain/character/relationship-repair';
+import { cloneCharacterState, createDefaultCharacterState } from './character-state-factory';
+import { createHabitState, interruptHabit, startHabitRun, recordHabitPose, finishHabitRun, habitMultiplier, type HabitState } from '../../domain/character/own-habit';
+import { restoreRepairClock, advanceRepairClock, acknowledgeRepairInterruption, canRepair, matchesRepairProof, repairSource, type RepairClock, type RepairEpisode } from '../../domain/character/relationship-repair';
 import { applyInteractionProposal, interactionSignature, isNonzeroProposal } from '../../domain/character/interaction-effects';
 import type { InteractionAppraisal, PreviousTouchReaction, InteractionReceipt, TouchInteractionReceipt } from '../ports/interaction-appraisal';
 import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '../ports/memory-knowledge.interface';
@@ -9,88 +11,23 @@ import type { InterpretationStatus } from '../../domain/character/social-interpr
 import { createOwnInterestGate, learnOwnGameInterest, reflectOwnGameInterest, OWN_GAME_INTEREST_KEY, type OwnInterestGate, type OwnGameEpisode, type OwnGameReflection } from '../../domain/character/own-game-interest';
 import type { CausalSourceReference } from '../../domain/character/types';
 import { createActivityExposure, observeActivityExposure, recoverActivityExposure } from '../../domain/character/activity-exposure';
-import { causalRelationshipDeltas, createRelationship, shiftRelationshipFacets } from '../../domain/character/relationship-facets';
+import { causalRelationshipDeltas, shiftRelationshipFacets } from '../../domain/character/relationship-facets';
 import {
   createCharacterSnapshot,
   processStimulusWithAdaptation,
-  curiousStubbornGirlPreset,
   synthesizeEmotionalTone,
 } from '../../domain/character';
 import type {
   CharacterSnapshot,
   CharacterState,
   CharacterStimulus,
-  Needs,
-  PersonalityPreset,
   SynthesizedEmotionalTone,
 } from '../../domain/character';
-
-const DEFAULT_INITIAL_NEEDS: Needs = {
-  energy: 85,
-  attention: 35,
-  play: 30,
-  comfort: 20,
-  boredom: 15,
-};
 
 export interface CharacterStateServiceOptions {
   readonly initialState?: CharacterState;
   readonly now?: () => number;
   readonly monotonicNow?: () => number;
-}
-
-function clonePersonalityPreset(preset: PersonalityPreset): PersonalityPreset {
-  return {
-    ...preset,
-    axes: {
-      openness: { ...preset.axes.openness },
-      extraversion: { ...preset.axes.extraversion },
-      agreeableness: { ...preset.axes.agreeableness },
-      sensitivity: { ...preset.axes.sensitivity },
-      playfulness: { ...preset.axes.playfulness },
-      boldness: { ...preset.axes.boldness },
-      independence: { ...preset.axes.independence },
-    },
-  };
-}
-
-function cloneCharacterState(state: CharacterState): CharacterState {
-  return {
-    needs: { ...state.needs },
-    relationship: { ...state.relationship },
-    personality: clonePersonalityPreset(state.personality),
-    intimacy: { ...state.intimacy },
-    preferences: Object.fromEntries(
-      Object.entries(state.preferences).map(([key, preference]) => [key, { ...preference }])
-    ),
-    relationshipRepair: { ...state.relationshipRepair,
-      lastInterruptionSource: state.relationshipRepair.lastInterruptionSource ? { ...state.relationshipRepair.lastInterruptionSource } : null,
-      lastRepairSource: state.relationshipRepair.lastRepairSource ? { ...state.relationshipRepair.lastRepairSource } : null },
-    ownGameInterestSources: state.ownGameInterestSources.map(source => ({ ...source })),
-    lastUpdated: state.lastUpdated,
-  };
-}
-
-function createDefaultCharacterState(now: () => number): CharacterState {
-  return {
-    needs: { ...DEFAULT_INITIAL_NEEDS },
-    relationship: createRelationship({
-      friendship: 0,
-      love: 0,
-      loveUnlocked: false,
-    }),
-    personality: clonePersonalityPreset(curiousStubbornGirlPreset),
-    intimacy: {
-      flirtiness: 0,
-      romanticCharge: 0,
-      userConsentEnabled: false,
-      boundariesKnown: false,
-    },
-    preferences: {},
-    relationshipRepair: emptyRepairCheckpoint(),
-    ownGameInterestSources: [],
-    lastUpdated: now(),
-  };
 }
 
 function normalizeDeltaMs(deltaMs: number): number {
@@ -112,6 +49,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   private readonly observedSources = new Set<string>();
   private causalAffect = createCausalAffectState();
   private activityExposure = createActivityExposure();
+  private ownHabit: HabitState;
   private repairClock: RepairClock;
   private repairProof: RepairEpisode | null = null;
   private pendingRepair: { readonly episode: RepairEpisode; readonly deltas: ReturnType<typeof causalRelationshipDeltas> } | null = null;
@@ -129,6 +67,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
       options.initialState !== undefined
         ? cloneCharacterState(options.initialState)
         : createDefaultCharacterState(this.now);
+    this.ownHabit = createHabitState(this.monotonicNow());
     this.repairClock = restoreRepairClock(this.state.relationshipRepair, this.now(), this.monotonicNow());
   }
 
@@ -189,6 +128,17 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
         lastRepairSource: repairSource(pending.episode) } } : {}) };
     if (paid) this.repairClock = { ...this.repairClock, repairReady: mono + 300000 };
   }
+  public interruptOwnHabit(): void { this.ownHabit = interruptHabit(this.ownHabit); }
+  public invalidateOwnHabit(): void { this.ownHabit = { ...this.ownHabit, cue: null, active: null }; }
+  public ownHabitStarted(appRunId: string, runId: string, activityId: string, sequence: number, atMs: number): void {
+    this.ownHabit = startHabitRun(this.ownHabit, appRunId, runId, activityId, sequence, atMs);
+  }
+  public ownHabitPose(runId: string, pose: string): void { this.ownHabit = recordHabitPose(this.ownHabit, runId, pose); }
+  public ownHabitFinished(appRunId: string, runId: string, completed: boolean, atMs: number): void {
+    const learned = finishHabitRun(this.state.ownHabitMemory, this.ownHabit, appRunId, runId, completed, atMs, new Date(this.now()).toISOString());
+    this.ownHabit = learned.state; this.state = { ...this.state, ownHabitMemory: learned.memory };
+  }
+  public getOwnHabitMultiplier(atMs = this.monotonicNow()): number { return habitMultiplier(this.state.ownHabitMemory, this.ownHabit, atMs); }
   public getCausalEmotion(): CausalEmotion | null {
     return this.causalAffect.emotion ? { ...this.causalAffect.emotion } : null;
   }
@@ -281,6 +231,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
     this.state = { ...this.state, preferences: learned.preferences }; this.preferenceGate = learned.gate;
   }
   private resetTransientLearning(): void {
+    this.ownHabit = createHabitState(this.monotonicNow());
     this.restoreRelationshipRepair();
     this.causalAffect = createCausalAffectState();
     this.activityExposure = createActivityExposure();

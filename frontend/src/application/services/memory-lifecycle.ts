@@ -87,7 +87,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
       if (snapshot.code === 'invalid_data') { restore = 'invalid_snapshot'; this.snapshotWritable = false; }
       else this.startupFailure(snapshot.code);
     } else if (snapshot.value !== null) {
-      if (![1, 2, 3, 4].includes(snapshot.value.snapshotVersion)) { restore = 'unsupported_snapshot'; this.snapshotWritable = false; }
+      if (![1, 2, 3, 4, 5].includes(snapshot.value.snapshotVersion)) { restore = 'unsupported_snapshot'; this.snapshotWritable = false; }
       else try { candidate = restoreCharacterMemory(snapshot.value, candidate, this.options.now()); restore = 'restored'; }
       catch { restore = 'invalid_snapshot'; this.snapshotWritable = false; }
     }
@@ -103,7 +103,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
       this.status = { mode: 'persistent', characterRestore: restore };
       // Identity migrations remain dirty until the current card revision is acknowledged.
       const loadedState = snapshot.ok ? snapshot.value?.state : null;
-      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 4
+      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 5
         && loadedState && typeof loadedState === 'object' && !Array.isArray(loadedState)
         && 'cardRevision' in loadedState && loadedState.cardRevision === 3) {
         this.savedSignature = JSON.stringify(projectCharacterMemory(candidate, this.options.timestamp()).state);
@@ -133,7 +133,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   /** Returns synchronously: first human input abandons restore, never waits on storage. */
   admitInput(): boolean {
     if (this.phase === 'initializing') {
-      this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: 'unavailable' };
+      this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: 'unavailable' };
       void this.options.storage.abort(); this.start();
     }
     return this.phase === 'running' || this.phase === 'mutating';
@@ -144,11 +144,11 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.phase = 'running'; this.options.start(); this.scheduleCheckpoint();
   }
   private startupFailure(code: MemoryFailureCode): void {
-    this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' || code === 'stale' ? 'io_error' : code }; void this.options.storage.abort();
+    this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' || code === 'stale' ? 'io_error' : code }; void this.options.storage.abort();
   }
   failure(code: MemoryFailureCode): void {
     if (code === 'stale' || code === 'busy') return;
-    this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
+    this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
     this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' ? 'io_error' : code };
     void this.options.storage.abort();
   }
@@ -234,7 +234,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   private async mutateMemory<T>(operation: (context: MemoryOperationContext) => Promise<MemoryResult<T>>, admissionToken?: object): Promise<MemoryResult<T>> {
     if (!this.context() || this.phase !== 'running') return { ok: false, code: 'unavailable' };
-    this.phase = 'mutating'; this.generation++; this.stopTimer(); this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
+    this.phase = 'mutating'; this.generation++; this.stopTimer(); this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
     const generation = this.generation;
     // Drop volatile projections even on rollback; local Character, motion and input keep running.
     this.options.summary?.invalidate(); this.options.invalidateMemory?.(admissionToken);
@@ -248,7 +248,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   async reset(): Promise<MemoryResult<void>> {
     if (this.phase !== 'running' || !this.storageReady) return { ok: false, code: 'unavailable' };
     this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate();
-    this.phase = 'resetting'; this.generation++; this.stopTimer(); this.options.pause(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
+    this.phase = 'resetting'; this.generation++; this.stopTimer(); this.options.pause(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
     const generation = this.generation;
     const summaryReset = this.options.summary ? await this.options.summary.reset() : undefined;
     if (this.phase !== 'resetting' || this.generation !== generation) return { ok: false, code: 'stale' };
@@ -267,6 +267,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   shutdown(): Promise<void> { return this.shutdownPromise ??= this.stop(); }
   private async stop(): Promise<void> {
     this.options.scheduler.clearTimeout(this.startupTimer); this.stopTimer();
+    this.options.character.invalidateOwnHabit();
     this.relationshipRepair.dispose();
     const capture = this.options.shutdownCapture?.() ?? Promise.resolve();
     const c = this.context(); const sessionClose = c ? this.history.close(this.options.timestamp()) : Promise.resolve();

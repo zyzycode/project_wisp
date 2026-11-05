@@ -103,3 +103,9 @@ export interface CharacterMemorySnapshotV4 {
   readonly updatedAt: string;
   readonly state: CharacterMemorySnapshotV3['state'] & { readonly relationshipRepair: import('./relationship-repair.interface').RelationshipRepairCheckpoint };
 }
+
+export interface CharacterMemorySnapshotV5 {
+  readonly snapshotVersion: 5;
+  readonly updatedAt: string;
+  readonly state: CharacterMemorySnapshotV4['state'] & { readonly ownHabitMemory: import('./motivation.interface').OwnHabitMemory };
+}
