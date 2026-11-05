@@ -69,6 +69,7 @@ export function isQuietCompatible(intent: BehaviorIntent, quiet: boolean): boole
 /** Character-owned semantic sleep state and autonomy-resolution transaction. */
 export class AutonomyCharacterEngine {
   private sleepState: SemanticSleepState = 'awake';
+  private manualWakeHold = false;
 
   public constructor(private readonly onSleepStateChanged?: () => void) {}
 
@@ -80,6 +81,16 @@ export class AutonomyCharacterEngine {
 
   public getSemanticSleepState(): SemanticSleepState {
     return this.sleepState;
+  }
+
+  /** A manual wake overrides the old fatigue episode until recovery, without a timer. */
+  private allowsAutomaticSleep(snapshot: CharacterAutonomySnapshot): boolean {
+    if (snapshot.needs.energy >= 60 && snapshot.needs.comfort <= 60) this.manualWakeHold = false;
+    return !this.manualWakeHold;
+  }
+
+  public requiresAutomaticSleep(snapshot: CharacterAutonomySnapshot): boolean {
+    return this.allowsAutomaticSleep(snapshot) && requiresVitalSleep(snapshot);
   }
 
   public chatMotionRejection(snapshot: CharacterAutonomySnapshot): 'sleeping' | 'low_energy' | 'overloaded' | null {
@@ -110,13 +121,14 @@ export class AutonomyCharacterEngine {
   }): CharacterAutonomyResolution {
     if (this.sleepState === 'sleeping') return this.resolution(null);
 
-    const vitalSleep = requiresVitalSleep(input.snapshot);
+    const automaticSleepAllowed = this.allowsAutomaticSleep(input.snapshot);
+    const vitalSleep = automaticSleepAllowed && requiresVitalSleep(input.snapshot);
     const sleepCandidate = input.candidates.find((candidate) => candidate.kind === 'sleep');
     if (!vitalSleep && input.selection) {
       // Optional rest must survive the same Character wake gate used by the next Brain tick.
       const selection = selectLocalActivity(input.snapshot, {
         ...input.selection,
-        canRest: input.selection.canRest && !permitsAutomaticWake(input.snapshot),
+        canRest: input.selection.canRest && automaticSleepAllowed && !permitsAutomaticWake(input.snapshot),
       }, input.prng.next());
       // An owned plan must acknowledge its claim before semantic admission.
       if (selection.intent.kind === 'sleep' && input.selection.ownPlanStep !== 'rest') this.setSleepState('sleeping');
@@ -128,7 +140,7 @@ export class AutonomyCharacterEngine {
         : { ...sleepCandidate, reason: 'vital_sleep' }
       : resolveAutonomousBehaviorIntent(
           input.context,
-          input.candidates,
+          automaticSleepAllowed ? input.candidates : input.candidates.filter(candidate => candidate.kind !== 'sleep'),
           input.prng,
           input.config ?? DEFAULT_AUTONOMOUS_INTENT_CONFIG,
           input.snapshot.needs
@@ -143,10 +155,12 @@ export class AutonomyCharacterEngine {
     snapshot: CharacterAutonomySnapshot
   ): CharacterAutonomyResolution {
     if (intent.kind === 'sleep' && intent.source === 'user' && this.sleepState === 'awake') {
+      this.manualWakeHold = false;
       this.setSleepState('sleeping');
       return this.resolution(intent);
     }
     if (intent.kind === 'drag') {
+      if (this.sleepState === 'sleeping') this.manualWakeHold = true;
       this.setSleepState('awake');
       return this.resolution(intent);
     }
@@ -162,6 +176,7 @@ export class AutonomyCharacterEngine {
         snapshot.needs.attention >= WAKE_ATTENTION_MIN ||
         snapshot.needs.energy >= WAKE_ENERGY_MIN)
     ) {
+      if (intent.source === 'user') this.manualWakeHold = true;
       this.setSleepState('awake');
       return this.resolution(intent);
     }
@@ -181,6 +196,7 @@ export class AutonomyCharacterEngine {
     if (['wake', 'drag', 'land', 'quiet'].includes(intent.kind)) return null;
     if (this.sleepState !== 'awake') return null;
     if (intent.kind === 'sleep') {
+      if (!this.allowsAutomaticSleep(snapshot)) return null;
       this.setSleepState('sleeping'); return intent;
     }
     if (requiresVitalSleep(snapshot)) return null;

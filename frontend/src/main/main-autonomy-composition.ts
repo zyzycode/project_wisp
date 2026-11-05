@@ -395,7 +395,7 @@ export class MainAutonomyComposition {
         this.options.movement.getEnvironmentSnapshot().currentSurface?.id !== this.cursorEpisode.supportId)) {
       this.cancelActivity('environment_invalidated', true);
     }
-    if (this.character.isAutonomyEligible() && requiresVitalSleep(this.options.getCharacterSnapshot())
+    if (this.character.isAutonomyEligible() && this.character.requiresAutomaticSleep(this.options.getCharacterSnapshot())
         && this.options.movement.canAcceptVoluntaryMovement() && this.enabled && !this.menuOpen
         && !this.deferredUserInteractionResume) {
       this.providerAdmission.invalidate('critical_need');
@@ -689,28 +689,14 @@ export class MainAutonomyComposition {
   public handleClick(): boolean {
     this.options.onAIInvalidated?.();
     const wasAwake = this.character.getSemanticSleepState() === 'awake';
-    this.suspendForUserInteraction();
-    if (!this.options.movement.canAcceptVoluntaryMovement()) { this.resumeAfterUserInteraction(); return true; }
-    if (wasAwake) {
-      this.acceptUserContact();
-      this.setVisualKind('happy_reaction', true, true);
-      this.resumeAfterUserInteraction();
-      return true;
-    }
-    if (this.character.isAutonomyEligible()) {
-      this.acceptUserContact();
-      this.setVisualKind('wake_up', true, true); this.resumeAfterUserInteraction(); return true;
-    }
-    const intent = this.character.resolveDirectIntent(
+    if (!wasAwake) this.character.resolveDirectIntent(
       { kind: 'wake', source: 'user', priority: 'critical', reason: 'user_click_wake' },
       this.options.getCharacterSnapshot()
-    ).resolvedIntent;
-    if (intent === null) {
-      this.resumeAfterUserInteraction();
-      return false;
-    }
+    );
+    this.suspendForUserInteraction();
+    if (!this.options.movement.canAcceptVoluntaryMovement()) { this.resumeAfterUserInteraction(); return true; }
     this.acceptUserContact();
-    this.setVisualKind('wake_up', true, true);
+    this.setVisualKind(wasAwake ? 'happy_reaction' : 'wake_up', true, true);
     this.resumeAfterUserInteraction();
     return true;
   }
@@ -753,13 +739,13 @@ export class MainAutonomyComposition {
     this.cancelCopingAndHabit();
     this.acceptUserContact();
     this.options.onAIInvalidated?.(acceptedAssistDrag);
-    this.cancelActivity('user_interaction', true, true);
-    this.coordinator.noteUserActivity();
-    this.coordinator.interruptForcedMotion();
     this.character.resolveDirectIntent(
       { kind: 'drag', source: 'user', priority: 'critical', reason: 'user_drag' },
       this.options.getCharacterSnapshot()
     );
+    this.cancelActivity('user_interaction', true, true);
+    this.coordinator.noteUserActivity();
+    this.coordinator.interruptForcedMotion();
     // The accepted P0 drag also supersedes a window created by its own terminal.
     this.cancelCopingAndHabit();
   }

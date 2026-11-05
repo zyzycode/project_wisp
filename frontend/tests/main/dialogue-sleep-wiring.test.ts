@@ -75,3 +75,50 @@ it('invalidates real Main dialogue before sleep publication, retaining the physi
   expect(endThinking).toHaveBeenCalledOnce();
   dialogue.dispose(); f.main.dispose();
 });
+
+it('keeps chat available after manual wake despite the previous vital sleep needs', () => {
+  let dialogue: DialogueRuntime | undefined;
+  const f = scenario({ energy: 0, comfort: 100 }, .2, undefined, undefined, {
+    onSleepStateChanged: () => dialogue?.notifySleepStateChanged(),
+  });
+  let id = 0;
+  dialogue = new DialogueRuntime({
+    provider: { getStatus: async () => ({ kind: 'ready' }), generateResponse: async request => ({ requestId: request.requestId, status: 'ok', confidence: 1, reply: { text: 'Привет' } }) },
+    getCharacterSnapshot: () => f.character.getSnapshot(), getSemanticSleepState: () => f.main.getSemanticSleepState(),
+    applyStimulus: () => undefined, beginThinking: () => undefined, endThinking: () => undefined,
+    offerIntent: () => ({ status: 'rejected', reason: 'character_gate' }), transaction: operation => operation(), publish: () => undefined,
+    now: f.now, timestamp: () => new Date(f.now()).toISOString(), createId: () => `wake-test-${++id}`,
+    scheduler: { setTimeout: () => 0, clearTimeout: () => undefined },
+  });
+  dialogue.replaceStream('wake-test');
+  f.advance(1);
+  expect(dialogue.getPresentation().canSubmit).toBe(false);
+  expect(f.main.requestSleepWake({ action: 'wake' })).toBe(true);
+  for (let i = 0; i < 30; i++) f.advance(1000);
+  expect(f.main.getSemanticSleepState()).toBe('awake');
+  expect(dialogue.getPresentation().canSubmit).toBe(true);
+  expect(f.main.requestSleepWake({ action: 'sleep' })).toBe(true);
+  expect(dialogue.getPresentation().canSubmit).toBe(false);
+  dialogue.dispose(); f.main.dispose();
+});
+
+it('keeps a click-awakened character awake after cancelling its rest activity', () => {
+  const f = scenario({ energy: 0, comfort: 100 });
+  f.advance(1);
+  expect(f.main.getSemanticSleepState()).toBe('sleeping');
+  expect(f.main.handleClick()).toBe(true);
+  for (let i = 0; i < 30; i++) f.advance(1000);
+  expect(f.main.getSemanticSleepState()).toBe('awake');
+  f.main.dispose();
+});
+
+it('automatically wakes a fully exhausted character within four minutes of actual sleep', () => {
+  const f = scenario({ energy: 0, comfort: 100 });
+  f.advance(1);
+  expect(f.main.getSemanticSleepState()).toBe('sleeping');
+  for (let i = 0; i < 240 && f.main.getSemanticSleepState() === 'sleeping'; i++) { f.arrive(); f.advance(1000); }
+  expect(f.main.getSemanticSleepState()).toBe('awake');
+  expect(f.character.getState().needs.energy).toBeGreaterThanOrEqual(80);
+  expect(f.character.getState().needs.comfort).toBeLessThan(20);
+  f.main.dispose();
+});

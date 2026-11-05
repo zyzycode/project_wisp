@@ -36,7 +36,7 @@ const TONE_DRIFTS: Record<SynthesizedEmotionalTone, NeedDrift> = {
   },
   sleepy: {
     target: { energy: 82, attention: 44, play: 38, comfort: 12, boredom: 60 },
-    ratePerHour: { energy: 0.3, attention: 0.04, play: 0.05, comfort: 0.32, boredom: 0.08 },
+    ratePerHour: { energy: 72, attention: 0.04, play: 0.05, comfort: 60, boredom: 0.08 },
   },
   playful: {
     target: { energy: 58, attention: 50, play: 50, comfort: 24, boredom: 85 },
@@ -54,6 +54,11 @@ const TONE_DRIFTS: Record<SynthesizedEmotionalTone, NeedDrift> = {
 
 function clampNeed(value: number): number {
   return Math.min(100, Math.max(0, value));
+}
+
+/** Stress grows at one quarter of the previous rate; relief retains its full effect. */
+export function applyStressChange(current: number, delta: number): number {
+  return clampNeed(current + (delta > 0 ? delta * 0.25 : delta));
 }
 
 function approach(current: number, target: number, ratePerHour: number, hours: number): number {
@@ -84,7 +89,7 @@ export function metabolizeNeeds(
     energy: approach(needs.energy, drift.target.energy, drift.ratePerHour.energy, hours),
     attention: approach(needs.attention, drift.target.attention, drift.ratePerHour.attention, hours),
     play: approach(needs.play, drift.target.play, drift.ratePerHour.play, hours),
-    comfort: approach(needs.comfort, drift.target.comfort, drift.ratePerHour.comfort, hours),
+    comfort: approach(needs.comfort, drift.target.comfort, drift.ratePerHour.comfort * (drift.target.comfort > needs.comfort ? 0.25 : 1), hours),
     boredom: approach(needs.boredom ?? 15, drift.target.boredom ?? 80, drift.ratePerHour.boredom ?? 0.15, hours),
   };
 }

@@ -2,7 +2,7 @@ import { DEFAULT_INTIMACY_THRESHOLDS } from './intimacy-rules';
 import { adaptBoundedExperienceAxes, type PersonalityAxisDeltas } from './personality-plasticity';
 import { takeAdaptationOpportunity, type AdaptationGate } from './adaptation-gate';
 import { synthesizeEmotionalTone } from './emotional-tone';
-import { metabolizeNeeds } from './metabolism';
+import { applyStressChange, metabolizeNeeds } from './metabolism';
 import type {
   CharacterState,
   IntimacyState,
@@ -162,7 +162,7 @@ function applyNeedShift(needs: Needs, shift: Partial<Needs>): Needs {
     energy: clampNeed(needs.energy + (shift.energy ?? 0)),
     attention: clampNeed(needs.attention + (shift.attention ?? 0)),
     play: clampNeed(needs.play + (shift.play ?? 0)),
-    comfort: clampNeed(needs.comfort + (shift.comfort ?? 0)),
+    comfort: applyStressChange(needs.comfort, shift.comfort ?? 0),
     boredom: clampNeed((needs.boredom ?? 15) + (shift.boredom ?? 0)),
   };
 }

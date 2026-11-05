@@ -1,3 +1,4 @@
+import { applyStressChange } from './metabolism';
 import type { CharacterSnapshot, CharacterState } from './types';
 import { DEFAULT_INTIMACY_THRESHOLDS } from './intimacy-rules';
 import { shiftRelationshipFacets } from './relationship-facets';
@@ -27,7 +28,7 @@ export function applyInteractionProposal(state: CharacterState, proposal: Intera
     proposal.category === 'supportive' ? { trust: 1, comfort: 1, respect: 1, resentment: -1 }
       : proposal.category === 'hostile' ? { trust: -1, respect: -1, comfort: -1 } : {});
   return { ...state, needs: { ...state.needs,
-    comfort: clamp(state.needs.comfort + k * (proposal.category === 'supportive' ? -1 : proposal.category === 'boundary' ? 1 : proposal.category === 'hostile' ? 2 : 0), 100),
+    comfort: applyStressChange(state.needs.comfort, k * (proposal.category === 'supportive' ? -1 : proposal.category === 'boundary' ? 1 : proposal.category === 'hostile' ? 2 : 0)),
     play: clamp(state.needs.play - (proposal.category === 'playful' ? 2 * k : 0), 100) },
     relationship: { ...relationship, loveUnlocked: state.relationship.loveUnlocked || (state.intimacy.userConsentEnabled && friendship >= DEFAULT_INTIMACY_THRESHOLDS.LOVE_UNLOCK_FRIENDSHIP_THRESHOLD) } };
 }

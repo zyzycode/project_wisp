@@ -32,7 +32,7 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(0); });
 afterEach(() => vi.useRealTimers());
 it.each([
   ['supportive', 'moderate', -2, 0, 4],
-  ['hostile', 'moderate', 4, 0, -2],
+  ['hostile', 'moderate', 1, 0, -2],
 ] as const)('commits %s/%s once with text and without AI axes/consent/love writes', async (category, intensity, comfort, play, friendship) => {
   const f = fixture({ category, intensity, confidence: 'clear' }); vi.setSystemTime(30000); const before = f.character.getState();
   f.send(); await flush(); const after = f.character.getState();

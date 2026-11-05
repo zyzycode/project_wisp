@@ -33,7 +33,7 @@ Character не выбирает Activity, physical outcome, sprites/frames. Poli
 
 $$V_{\text{new}} = V_{\text{current}} + (V_{\text{target}} - V_{\text{current}}) \times \left(1 - e^{-\text{ratePerHour} \times \Delta t}\right)$$
 
-Дискретные click/pet/dialogue/feed effects — [stimuli-reducer.ts](../../src/domain/character/stimuli-reducer.ts).
+Во время recovery сна energy стремится к82 со скоростью72/час, comfort к12 со скоростью60/час: даже energy=0/comfort=100 достигают automatic wake примерно за3.1 минуты фактического сна. Awake drift остаётся медленным. Положительные изменения stress/comfort от событий и appraisal уменьшены в4раза; положительный пассивный drift использует четверть прежней скорости, relief не замедляется. Дискретные click/pet/dialogue/feed effects — [stimuli-reducer.ts](../../src/domain/character/stimuli-reducer.ts).
 
 ### 2.1. Каноническая семантика сна и пробуждения
 
@@ -54,7 +54,7 @@ stateDiagram-v2
 | `wake` | `BehaviorIntentKind`, разрешаемый Character Engine для выхода из семантического сна. |
 | `sleep_start` / `sleep_loop` / `wake_up` | Исключительно визуальные клипы [`ANIMATION_ENGINE.md`](ANIMATION_ENGINE.md); не принимают решений о поведении. |
 
-P2 sleep срабатывает после P0 physics/P1 input. Direct drag (P1) прерывает сон через `drag -> land -> settle`, без ожидания `wake_up`. Внутренние respond/think/play/timer idle/wander сами не будят. Если после wake условие sleep ещё истинно, новый sleep допустим после приоритетного взаимодействия. Пороги и прямой click/wake заданы FSM выше.
+P2 sleep срабатывает после P0 physics/P1 input. Direct drag (P1) прерывает сон через `drag -> land -> settle`, без ожидания `wake_up`. Внутренние respond/think/play/timer idle/wander сами не будят. Ручной click/wake и drag из сна удерживают awake независимо от старого fatigue episode: P2, optional rest и provider sleep не усыпляют повторно до восстановления energy≥60 и comfort≤60. Затем новый fatigue episode снова допускает автоматический сон. Hold — volatile состояние Character, без таймера, persistence или изменения Needs; явная user sleep отменяет hold и разрешена сразу. Пороги и прямой click/wake заданы FSM выше.
 
 ### Диалог во время сна
 
@@ -342,8 +342,8 @@ Domain проверяет category/intensity/confidence, current gates и при
 |---|---|---|
 | supportive, clear | comfort −1×k | friendship +2×k |
 | playful, clear | play −2×k | friendship +1×k |
-| boundary, clear | comfort +1×k | 0 |
-| hostile, clear, только chat | comfort +2×k | friendship −1×k |
+| boundary, clear | comfort +0.25×k | 0 |
+| hostile, clear, только chat | comfort +0.5×k | friendship −1×k |
 | neutral либо uncertain | 0 | 0 |
 
 `k=1` для low, `k=2` для moderate. Clamp Needs 0..100, friendship 0..1000;
@@ -402,8 +402,8 @@ Play effect требует подтверждённой semantic play phase [Act
 | Завершённая игра | energy −3, play −15, boredom −18 (существующие play deltas). |
 | Та же игра с `participation=user_engaged` | Дополнительно attention −3 и friendship +3, один раз. |
 | Drag start / end | Только semantic lifecycle, нулевой дискретный reward/штраф. |
-| Однократный drag hold | comfort +2; без friendship/love/игрового эффекта. |
-| stumble / crash_landing | comfort +2 / +6; energy −1 / −2 соответственно. |
+| Однократный drag hold | comfort +0.5; без friendship/love/игрового эффекта. |
+| stumble / crash_landing | comfort +0.5 / +1.5; energy −1 / −2 соответственно. |
 | soft landing, calm, SocialBid без ответа | Нулевой дискретный effect. |
 
 Существующие play personality deltas — только за подтверждённую игру. Solitary play/cursor presence не доказывают социального участия. User input во время SocialBid даёт обычный stimulus, без второго reward за answered outcome. Cancel/failure до play phase не начисляет effect; пропорциональная оплата шагов/новый resource timer вне slice.
