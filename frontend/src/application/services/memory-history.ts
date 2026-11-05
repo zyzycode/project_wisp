@@ -10,6 +10,7 @@ export interface MemoryHistoryOptions {
   readonly generation?: () => number;
   readonly causalCommitObserver?: import('../ports/causal-life.interface').ICausalLifeCommitObserver;
   readonly causalObserver?: (episode: import('../ports/causal-life.interface').CausalLifeEpisode, atMs: number) => void;
+  readonly onUserMessagePersisted?: (message: import('./social-interpretation-runtime').CommittedClarificationMessage, context: MemoryOperationContext) => Promise<void>;
   readonly history: IChatHistoryRepository;
   readonly episodes: IGameEpisodeRepository;
   readonly context: () => MemoryOperationContext | null;
@@ -32,6 +33,7 @@ export class MemoryHistory {
       context: options.context, generation: options.generation ?? (() => options.context()?.generation ?? 0),
       toTimestamp: options.toTimestamp, onFailure: options.onFailure, onObserved: options.causalObserver, commitObserver: options.causalCommitObserver });
   }
+  currentAppRunId(): string { return this.appRunId; }
   async hydrate(): Promise<readonly AIProviderContextMessage[]> {
     const c = this.options.context(); if (!c) return [];
     const result = await this.safe(() => this.options.history.getRecent(20, c));
@@ -56,7 +58,14 @@ export class MemoryHistory {
       assistant: { id: turn.assistant.id, conversationSessionId: session.id, role: 'assistant', content: turn.assistant.text, createdAt: turn.assistant.createdAt } }, c));
     if (result.ok && session.appRunId === this.appRunId) this.session = session;
     if (!this.isCurrent(c.generation)) return false;
-    if (result.ok) { this.session = session; if (!turn.localOnly) await this.options.onPersisted?.(turn, c); } else this.options.onFailure(result.code);
+    if (result.ok) {
+      this.session = session;
+      if (!turn.localOnly) {
+        await this.options.onPersisted?.(turn, c);
+        if (this.isCurrent(c.generation)) await this.options.onUserMessagePersisted?.({ conversationSessionId: session.id,
+          userMessageId: turn.user.id, text: turn.user.text, createdAt: turn.user.createdAt }, c);
+      }
+    } else this.options.onFailure(result.code);
     return result.ok;
   }
   async game(result: CursorGameResult, generation: number): Promise<void> {

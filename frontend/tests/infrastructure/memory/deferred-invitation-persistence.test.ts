@@ -1,3 +1,4 @@
+import { dropSocialInterpretation } from './schema-fixture';
 import { afterEach, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -16,7 +17,7 @@ function fixture(){const dir=mkdtempSync(path.join(os.tmpdir(),'wisp-invite-db-'
 afterEach(()=>{for(const s of stores.splice(0))s.close();for(const d of dirs.splice(0))rmSync(d,{recursive:true,force:true});});
 it('adds schema8 atomically to populated schema7 and preserves sources across a real restart',()=>{
  const f=fixture();expect(command(f.store,'appendCausalLife',episode).ok).toBe(true);f.store.close();
- const db=new Database(f.file);db.exec('DROP TABLE deferred_game_invitation; DROP TABLE deferred_invitation_sources; DELETE FROM schema_migrations WHERE version=8; PRAGMA user_version=7;');
+ const db=new Database(f.file);dropSocialInterpretation(db);db.exec('DROP TABLE deferred_game_invitation; DROP TABLE deferred_invitation_sources; DELETE FROM schema_migrations WHERE version=8; PRAGMA user_version=7;');
  db.exec("CREATE TRIGGER reject_v8 BEFORE INSERT ON schema_migrations WHEN NEW.version=8 BEGIN SELECT RAISE(ABORT,'test'); END;");
  expect(()=>initializeSchema(db,now)).toThrow();expect(db.pragma('user_version',{simple:true})).toBe(7);
  expect(db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'deferred_%'").all()).toEqual([]);

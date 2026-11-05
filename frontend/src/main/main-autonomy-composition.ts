@@ -88,6 +88,8 @@ export interface MainAutonomyCompositionOptions {
   readonly prngMetadata: { readonly algorithm: string; readonly seed: number };
   readonly getCharacterSnapshot: () => CharacterAutonomySnapshot;
   readonly onCursorGameResult?: (result: CursorGameResult) => void;
+  /** Accepted semantic run, before initial visual callbacks; not evidence of a rendered frame. */
+  readonly onActivityCommitted?: (runId: string, activityId: string) => void;
   readonly onActivityStarted?: (runId: string, activityId: string) => void;
   readonly onSocialBidStarted?: (runId: string, atMs: number) => void;
   readonly onAIInvalidated?: () => void;
@@ -197,11 +199,13 @@ export class MainAutonomyComposition {
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
       onRunCommitted: (runId, activityId) => {
         if (this.activity.isInitiative()) this.initiativeStartSequence++;
-        if (activityId !== 'social_bid' || this.startingSocial === null) return;
-        this.initiativeBudget.start(options.clock.now());
-        if (this.startingSocial === 'deferred') { this.socialFollowup.firstStarted(runId); this.socialFollowup.invalidate(); }
-        else if (this.startingSocial === 'first') this.socialFollowup.firstStarted(runId);
-        else { this.socialFollowup.secondStarted(this.startingSocial, runId, options.clock.now()); this.secondRunId = runId; }
+        if (activityId === 'social_bid' && this.startingSocial !== null) {
+          this.initiativeBudget.start(options.clock.now());
+          if (this.startingSocial === 'deferred') { this.socialFollowup.firstStarted(runId); this.socialFollowup.invalidate(); }
+          else if (this.startingSocial === 'first') this.socialFollowup.firstStarted(runId);
+          else { this.socialFollowup.secondStarted(this.startingSocial, runId, options.clock.now()); this.secondRunId = runId; }
+        }
+        options.onActivityCommitted?.(runId, activityId);
       },
       onStarted: (runId, activityId) => { options.deferredInvitation?.activityStarted(runId); if (runId !== this.secondRunId) options.onActivityStarted?.(runId, activityId); },
       onOutcome: event => { if (event.activityRunId === this.secondRunId) return; options.onActivityOutcome?.(event); this.coordinator.noteActivityOutcome(event); },

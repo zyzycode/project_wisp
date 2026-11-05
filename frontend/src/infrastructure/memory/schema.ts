@@ -1,4 +1,5 @@
 import { DEFERRED_INVITATION_SCHEMA } from './deferred-invitation-store';
+import { SOCIAL_INTERPRETATION_SCHEMA } from './social-interpretation-store';
 import { CAUSAL_LIFE_SCHEMA } from './causal-life-store';
 import { CausalRecallStore } from './causal-recall-store';
 import { MemoryItemRecallStore } from './item-recall-store';
@@ -9,9 +10,9 @@ import { MEMORY_ITEMS_SCHEMA, MEMORY_ITEM_TABLES } from './item-schema';
 import type Database from 'better-sqlite3';
 import { MemoryDataError, record, timestamp } from './validation';
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 const migrationName = 'local_memory_v1';
-const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3', 'beverage_preference_v4', 'routine_observations_v5', 'causal_life_v6', 'causal_recall_v7', 'deferred_game_invitation_v8'];
+const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3', 'beverage_preference_v4', 'routine_observations_v5', 'causal_life_v6', 'causal_recall_v7', 'deferred_game_invitation_v8', 'social_interpretation_v9'];
 const schema = `
 CREATE TABLE conversation_sessions (id TEXT PRIMARY KEY NOT NULL, app_run_id TEXT NOT NULL UNIQUE, started_at TEXT NOT NULL, ended_at TEXT);
 CREATE TABLE messages (sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, conversation_session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE RESTRICT, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -86,6 +87,11 @@ export function initializeSchema(db: Database.Database, now: string): void {
     db.exec(DEFERRED_INVITATION_SCHEMA);
     db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(8, migrationNames[7], now);
     db.pragma('user_version = 8');
+  }).immediate();
+  if (version < 9) db.transaction(() => {
+    db.exec(SOCIAL_INTERPRETATION_SCHEMA);
+    db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(9, migrationNames[8], now);
+    db.pragma('user_version = 9');
   }).immediate();
   const foreignKeyErrors: unknown = db.pragma('foreign_key_check');
   if (!Array.isArray(foreignKeyErrors) || foreignKeyErrors.length !== 0) throw new MemoryDataError('corrupt');

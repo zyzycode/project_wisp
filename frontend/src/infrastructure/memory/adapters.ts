@@ -1,4 +1,6 @@
 import { deferredInvitation } from './deferred-invitation-validation';
+import { socialInterpretation } from './social-interpretation-validation';
+import type { ISocialInterpretationRepository } from '../../application/ports/social-interpretation.interface';
 import type { IDeferredGameInvitationRepository } from '../../application/ports/causal-life.interface';
 import type { ICausalLifeRepository } from '../../application/ports/causal-life.interface';
 import type { ICausalLifeRecallReader } from '../../application/ports/causal-recall.interface';
@@ -26,6 +28,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly socialInterpretation: ISocialInterpretationRepository;
   readonly deferredInvitation: IDeferredGameInvitationRepository;
   readonly causalRecall: ICausalLifeRecallReader;
   readonly itemRecall: IMemoryItemRecallReader;
@@ -49,6 +52,11 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    socialInterpretation: {
+      read: (now,c) => call('readSocialInterpretation',now,c,value => value === null ? null : socialInterpretation(value)),
+      replace: (value,expectedRevision,now,c) => call('replaceSocialInterpretation',{value,expectedRevision,now},c,nothing),
+      clear: (expectedRevision,c) => call('clearSocialInterpretation',expectedRevision,c,nothing),
+    },
     deferredInvitation: {
       create: (invite,c) => call('createDeferredInvitation',invite,c,nothing),
       read: (now,c) => call('readDeferredInvitation',now,c,value => value === null ? null : deferredInvitation(value)),

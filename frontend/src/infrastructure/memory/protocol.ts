@@ -1,4 +1,5 @@
 import { deferredInvitation, deferredTerminal } from './deferred-invitation-validation';
+import { socialInterpretation } from './social-interpretation-validation';
 import { causalEpisode, causalSources } from './causal-life-validation';
 import { causalRecallPage, causalRecallQuery } from './causal-recall-validation';
 import { routineStart, routineObservation, routineIdentity, routineStatus } from './routine-validation';
@@ -9,10 +10,10 @@ import type { MemoryFailureCode, MemoryResult } from '../../application/ports/me
 import { itemMutation, itemListQuery, itemReceipt, itemPage, itemRecallTokens, itemCandidates } from './item-validation';
 import * as v from './validation';
 
-export type Operation = 'createDeferredInvitation' | 'readDeferredInvitation' | 'claimDeferredInvitation' | 'finishDeferredInvitation' | 'findCausalLife' | 'findMemoryItems' | 'appendCausalLife' | 'recentCausalLife' | 'resolveCausalLife' | 'beginRoutine' | 'appendRoutine' | 'readRoutineStatus' | 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
+export type Operation = 'readSocialInterpretation' | 'replaceSocialInterpretation' | 'clearSocialInterpretation' | 'createDeferredInvitation' | 'readDeferredInvitation' | 'claimDeferredInvitation' | 'finishDeferredInvitation' | 'findCausalLife' | 'findMemoryItems' | 'appendCausalLife' | 'recentCausalLife' | 'resolveCausalLife' | 'beginRoutine' | 'appendRoutine' | 'readRoutineStatus' | 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
 export interface Command { readonly id: number; readonly generation: number; readonly operation: Operation; readonly payload: unknown }
 export interface Reply { readonly id: number; readonly result: MemoryResult<unknown> }
-const operations: readonly string[] = ['createDeferredInvitation', 'readDeferredInvitation', 'claimDeferredInvitation', 'finishDeferredInvitation', 'findCausalLife', 'findMemoryItems', 'appendCausalLife', 'recentCausalLife', 'resolveCausalLife', 'beginRoutine', 'appendRoutine', 'readRoutineStatus', 'readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
+const operations: readonly string[] = ['readSocialInterpretation', 'replaceSocialInterpretation', 'clearSocialInterpretation', 'createDeferredInvitation', 'readDeferredInvitation', 'claimDeferredInvitation', 'finishDeferredInvitation', 'findCausalLife', 'findMemoryItems', 'appendCausalLife', 'recentCausalLife', 'resolveCausalLife', 'beginRoutine', 'appendRoutine', 'readRoutineStatus', 'readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
 const codes: readonly string[] = ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'invalid_data', 'conflict', 'stale', 'io_error'];
 export function command(value: unknown): Command {
   const c = v.record(value, ['id', 'generation', 'operation', 'payload']);
@@ -20,6 +21,9 @@ export function command(value: unknown): Command {
   const operation = c.operation as Operation;
   let payload: unknown;
   switch (operation) {
+    case 'readSocialInterpretation': payload = v.timestamp(c.payload); break;
+    case 'clearSocialInterpretation': payload = v.integer(c.payload, 1); break;
+    case 'replaceSocialInterpretation': { const p = v.record(c.payload,['value','expectedRevision','now']); payload = { value: socialInterpretation(p.value), expectedRevision: p.expectedRevision === null ? null : v.integer(p.expectedRevision,1), now: v.timestamp(p.now) }; break; }
     case 'createDeferredInvitation': payload = deferredInvitation(c.payload); break;
     case 'readDeferredInvitation': payload = v.timestamp(c.payload); break;
     case 'claimDeferredInvitation': { const p = v.record(c.payload,['id','now']); payload = { id: v.text(p.id), now: v.timestamp(p.now) }; break; }
@@ -72,6 +76,7 @@ export function failure(error: unknown): MemoryResult<never> {
 
 export function responseValue(operation: Operation, value: unknown): unknown {
   switch (operation) {
+    case 'readSocialInterpretation': return value === null ? null : socialInterpretation(value);
     case 'readDeferredInvitation': return value === null ? null : deferredInvitation(value);
     case 'claimDeferredInvitation': if (typeof value !== 'boolean') throw new v.MemoryDataError('invalid_data'); return value;
     case 'findCausalLife': return causalRecallPage(value);

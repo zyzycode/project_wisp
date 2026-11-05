@@ -5,6 +5,7 @@ import { recognizeBeverageCorrection } from './beverage-preference';
 import type { BeverageCapture, BeverageCorrectionTurn } from '../ports/memory-beverage.interface';
 import { parseBeverageProposal } from '../../shared/beverage-validation';
 import { isQuietSupportCue } from './quiet-support-runtime';
+import { recognizeInterruptionReport } from '../../domain/character/social-interpretation';
 import { localDialogueText } from './dialogue-local-text';
 import { isTopicRefusal } from './interest-thread';
 import { DialogueAdmission } from './dialogue-admission';
@@ -216,7 +217,9 @@ export class DialogueRuntime {
     const createdAt = this.options.timestamp();
     this.executing = true;
     this.options.transaction(() => {
-      const interactionReceipt = this.options.beginInteraction?.();
+      const baseReceipt = this.options.beginInteraction?.();
+      const interactionReceipt = baseReceipt && recognizeInterruptionReport(command.text)
+        ? { ...baseReceipt, effectPolicy: 'suppressed' as const } : baseReceipt;
       if (!interactionReceipt) this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
       const request: AIProviderRequest = { ...(this.options.interactionEnabled ? { interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: interactionReceipt?.effectPolicy ?? 'suppressed', ...(previousTouch ? { previousTouch } : {}) } } : {}), requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };

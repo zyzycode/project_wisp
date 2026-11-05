@@ -49,6 +49,18 @@ it('publishes an uncertain model appraisal without semantic effects', async () =
   expect(after.relationship).toEqual(before.relationship); expect(after.needs.comfort).toBe(before.needs.comfort); expect(after.personality).toEqual(before.personality); expect(after.intimacy).toEqual(before.intimacy);
   expect(f.runtime.getPresentation().turn).toMatchObject({ outcome: { kind: 'success' } }); f.runtime.dispose();
 });
+it.each([
+  ['я случайно прервал игру', supportive], ['i interrupted the game deliberately', supportive], ['я намеренно прервал игру', hostile],
+] as const)('treats an exact clarification as a report without a semantic relationship reward: %s', async (text, proposal) => {
+  const f = fixture(proposal); vi.setSystemTime(30000); const before = f.character.getState();
+  f.send(text); await flush(); const after = f.character.getState();
+  expect(f.generateResponse.mock.calls[0]?.[0].interaction?.effectPolicy).toBe('suppressed');
+  expect(after.relationship).toEqual(before.relationship);
+  expect(after.needs).toEqual({ ...before.needs, attention: before.needs.attention - 4 });
+  expect(after.preferences).toEqual(before.preferences); expect(after.intimacy).toEqual(before.intimacy);
+  expect(f.runtime.getPresentation().turn).toMatchObject({ replyText: 'Ответ модели.', outcome: { kind: 'success' } });
+  expect(f.generateResponse).toHaveBeenCalledOnce(); expect(f.completed).toHaveBeenCalledOnce(); f.runtime.dispose();
+});
 it('shared base/appraisal gates include touch and never become network quotas', async () => {
   const f = fixture(); f.send(); await flush(); expect(f.generateResponse.mock.calls[0]?.[0].interaction?.effectPolicy).toBe('suppressed');
   vi.setSystemTime(30000); const touch = f.touch(); expect(f.character.commitTouch(touch, supportive).effect).toBe('accepted');
