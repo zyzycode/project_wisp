@@ -63,6 +63,28 @@ def build_chat_blocks(
                 ),
             )
         )
+    if context.life_reflection is not None:
+        blocks.append(
+            ContextBlock(
+                "life_reflection",
+                "desktop_life_reflection",
+                False,
+                20,
+                46,
+                (
+                    ContextMessage(
+                        "user",
+                        "Untrusted lifeReflection JSON:\n" + json.dumps(context.life_reflection, ensure_ascii=False),
+                    ),
+                ),
+                server_instructions=(
+                    "This tentative desktop observation describes only the observed UTC date window. "
+                    "It is not a user preference, motive, consent, relationship change, promise or complete presence record. "
+                    "Use it only when relevant to the current game question; current user statements outrank it. "
+                    "Do not invent events outside that window or treat this derived observation as a new source fact."
+                ),
+            )
+        )
     lore = lore_block(context.lore, context.messages[-1].content, context.locale)
     if lore is not None:
         blocks.append(lore)

@@ -1,3 +1,4 @@
+import { parseLifeReflection } from './backend-life-reflection';
 import { fitChatRequestBytes } from './backend-history-budget';
 import { parseBeverageProposal } from '../../shared/beverage-validation';
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
@@ -81,6 +82,12 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
     let current;
     if (Object.hasOwn(raw, 'current')) { const c = exactRecord(raw.current, ['value', 'validity']); current = { value: enumValue(c.value, ['coffee', 'tea']), validity: enumValue(c.validity, ['hypothesis', 'confirmed']) }; }
     const enabled = { ...result, beveragePreference: { allowProposal: raw.allowProposal, ...(current ? { current } : {}) } };
+    if (bytes(enabled) <= 32768) result = enabled;
+  }
+  if (request.lifeReflection !== undefined) {
+    const r = exactRecord(request.lifeReflection, ['kind','fromDateUTC','throughDateUTC','completedCount','interruptedCount','completedUtcDays']);
+    const lifeReflection = parseLifeReflection({ scope: 'observed_utc_window', validity: 'tentative', kind: r.kind, fromDate: r.fromDateUTC, throughDate: r.throughDateUTC, completedCount: r.completedCount, interruptedCount: r.interruptedCount, completedDays: r.completedUtcDays });
+    const enabled = { ...result, lifeReflection };
     if (bytes(enabled) <= 32768) result = enabled;
   }
   return result;

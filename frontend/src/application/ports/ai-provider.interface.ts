@@ -46,6 +46,7 @@ export interface AIPreviousInitiative {
 }
 
 export interface AIProviderRequest {
+  readonly lifeReflection?: import('./life-history.interface').CrossDayGameObservation;
   /** Already decided local meaning; no local source/ownership metadata is projected. */
   readonly causalExpression?: import('./causal-life.interface').CausalExpressionProjection;
   readonly beveragePreference?: import('./memory-beverage.interface').AIProviderBeverageContext;
@@ -132,6 +133,7 @@ export interface AIProviderResponse {
 }
 
 export interface IAIProvider {
+  canIncludeLifeReflection?(request: AIProviderRequest): boolean;
   canIncludeBeverage?(request: AIProviderRequest): boolean;
   /** Absent means unsupported. Check capability and ready status before reserving a topic. */
   readonly supportsDialogueTopic?: true;

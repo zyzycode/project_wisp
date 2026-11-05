@@ -9,6 +9,7 @@ export function observationMetadata(value: unknown, max: number, empty = false):
   return value;
 }
 export function projectObservationRequest(request: ObservationProviderRequest) {
+  if (Object.hasOwn(request, 'lifeReflection')) throw new TypeError('Life reflection is ordinary chat only');
   const base = projectBackendRequest({ requestId: request.requestId, characterSnapshot: request.characterSnapshot, locale: request.locale,
     recentContext: [], userMessage: { id: '', text: 'projection', createdAt: '' } });
   const observation = exactRecord(request.observation, ['appName', 'windowTitle']);

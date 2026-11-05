@@ -4,6 +4,7 @@ import { exactRecord, enumValue, plainText } from '../../shared/dialogue-ipc-val
 import { projectBackendRequest } from './backend-request-projection';
 
 export function projectTouchRequest(request: AIEventProviderRequest): BackendTouchRequest {
+  if (Object.hasOwn(request, 'lifeReflection')) throw new TypeError('Life reflection is ordinary chat only');
   const event = exactRecord(request.event, ['type', 'variant', 'occurredAt']);
   if (request.causalExpression !== undefined && (event.variant !== 'touch' || request.interaction?.effectPolicy !== 'suppressed')) throw new TypeError('Causal touch must suppress appraisal');
   const base = projectBackendRequest({ ...(request.causalExpression === undefined ? {} : { causalExpression: request.causalExpression }), requestId: request.requestId, characterSnapshot: request.characterSnapshot,

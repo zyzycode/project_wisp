@@ -9,6 +9,7 @@ ContextSource = Literal[
     "server_instructions",
     "desktop_character",
     "desktop_memory",
+    "desktop_life_reflection",
     "desktop_event",
     "desktop_interaction",
     "previous_ai",
@@ -114,7 +115,8 @@ def _selection_steps(
         _record(trace, block, True, "required", required_size)
     history_full = False
     optional = sorted(
-        (block for block in blocks if not block.required), key=lambda item: (-item.priority, -item.order, item.key)
+        (block for block in blocks if not block.required),
+        key=lambda item: (item.source == "desktop_life_reflection", -item.priority, -item.order, item.key),
     )
     for block in optional:
         if history_full and block.source == "dialogue":

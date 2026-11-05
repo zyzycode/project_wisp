@@ -2,7 +2,7 @@ import type { CausalLifeEpisode, CausalLifeSourceReference } from './causal-life
 import type { MemoryOperationContext, MemoryResult } from './memory-repository.interface';
 import type { SummaryEntry, SummaryReceipt } from './summary';
 
-/** MEMORY-A03 targets. These declarations do not activate a reader or wire branch. */
+/** Complete bounded UTC observations of canonical life facts. */
 export interface LifeHistoryWindowQuery {
   readonly fromDateUTC: string;
   readonly throughDateUTC: string;

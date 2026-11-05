@@ -41,6 +41,7 @@ export interface ConversationSession {
 
 /** A completed, displayed turn; session creation and both messages commit together. */
 export interface CompletedChatTurn {
+  readonly lifeDerivedUse?: import('./life-history.interface').LifeDerivedContextUse;
   readonly beverageProposalSource?: true;
   /** Suppress all derived output pairs of an actually dispatched current preference projection. */
   readonly beverageUse?: import('./memory-beverage.interface').BeverageTurnUse;

@@ -6,6 +6,7 @@ from pydantic import BeforeValidator, field_validator, model_validator
 from wisp_backend.api.schemas.chat import ChatFields
 from wisp_backend.api.schemas.common import RequestId
 from wisp_backend.api.schemas.events import PreviousInitiative
+from wisp_backend.api.schemas.life_history import LifeReflection
 from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
 from wisp_backend.api.schemas.touch import TouchEvent, TouchFields
 from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply, TouchAppraisal
@@ -105,6 +106,7 @@ class BeveragePreference(Contract):
 
 
 class InteractionChatRequest(ChatFields, InteractionPolicy):
+    lifeReflection: LifeReflection = omittable()
     memory: MemoryContext
     previousInitiative: PreviousInitiative = omittable()
     summary: SummaryModelReply = omittable()

@@ -1,0 +1,158 @@
+[
+  {
+    "name": "null",
+    "value": {
+      "scope": null,
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": 3,
+      "completedDays": 3
+    }
+  },
+  {
+    "name": "coerced",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": "7",
+      "interruptedCount": 3,
+      "completedDays": 3
+    }
+  },
+  {
+    "name": "bool",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": true,
+      "completedDays": 3
+    }
+  },
+  {
+    "name": "fraction",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": 3,
+      "completedDays": 3.5
+    }
+  },
+  {
+    "name": "low count",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 5,
+      "interruptedCount": 3,
+      "completedDays": 3
+    }
+  },
+  {
+    "name": "ratio",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": 4,
+      "completedDays": 3
+    }
+  },
+  {
+    "name": "overflow",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 1000,
+      "interruptedCount": 3,
+      "completedDays": 3
+    }
+  },
+  {
+    "name": "calendar",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-02-30",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": 3,
+      "completedDays": 3
+    }
+  },
+  {
+    "name": "span",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-22",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": 3,
+      "completedDays": 3
+    }
+  },
+  {
+    "name": "days",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": 3,
+      "completedDays": 8
+    }
+  },
+  {
+    "name": "extra",
+    "value": {
+      "scope": "observed_utc_window",
+      "validity": "tentative",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": 3,
+      "completedDays": 3,
+      "sources": []
+    }
+  },
+  {
+    "name": "missing",
+    "value": {
+      "scope": "observed_utc_window",
+      "kind": "shared_game_completions",
+      "fromDate": "2026-10-23",
+      "throughDate": "2026-11-05",
+      "completedCount": 7,
+      "interruptedCount": 3,
+      "completedDays": 3
+    }
+  }
+]

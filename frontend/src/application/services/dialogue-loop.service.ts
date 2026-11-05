@@ -1,3 +1,4 @@
+import type { LifeReflectionCapture } from '../ports/life-history.interface';
 import { recognizeChatMotion } from './chat-motion-recognition';
 import { chatMotionReply, chatMotionTerminalReply } from './chat-motion-reply';
 import type { ChatMotionRecognition, ChatMotionTerminal } from '../ports/chat-motion';
@@ -32,6 +33,8 @@ export class DialogueRuntime {
   private sourceUserText: string | null = null;
   private supportEligible = false;
   private readonly beverageCaptures = new WeakMap<Turn, BeverageCapture>();
+  private readonly lifeCaptures = new WeakMap<Turn, LifeReflectionCapture>();
+  private readonly dispatchedLife = new WeakSet<Turn>();
   private readonly dispatchedBeverage = new WeakSet<Turn>();
   private readonly captures = new WeakMap<Turn, InterestThreadCapture>();
   private readonly causalCaptures = new WeakMap<Turn, CausalExpressionCapture>();
@@ -295,9 +298,10 @@ export class DialogueRuntime {
       const status = parseProviderStatus(rawStatus);
       if (status.kind === 'offline') { this.executing = false; this.finish(turn, 'offline'); return; }
       if (status.kind !== 'ready' && status.kind !== 'degraded') { this.executing = false; this.finish(turn, 'provider_error'); return; }
-      const needsEnrichment = !!this.options.memory?.beverage || !!this.options.summary || !!this.options.memory?.recall || !!((this.options.provider.supportsDialogueTopic || turn.replyTo) && this.options.memory?.interestThread);
+      const needsEnrichment = !!this.options.memory?.lifeReflection || !!this.options.memory?.beverage || !!this.options.summary || !!this.options.memory?.recall || !!((this.options.provider.supportsDialogueTopic || turn.replyTo) && this.options.memory?.interestThread);
       const enriched = needsEnrichment ? await this.admission.run(turn.admissionDeadline, async () => {
         let request = turn.request;
+        const reflectionPending = this.options.memory?.lifeReflection?.capture(request.userMessage.text);
         const alive = () => this.isCurrent(turn) && this.options.now() < turn.admissionDeadline && (this.options.memory?.generation() ?? turn.memoryGeneration) === turn.memoryGeneration;
         const capturedSummary = this.options.summary ? await this.options.summary.capture(request.userMessage.text) : undefined;
         const summary = capturedSummary?.excludedMessageIds.some(id => this.contextMessageIds.includes(id)) ? undefined : capturedSummary;
@@ -332,11 +336,18 @@ export class DialogueRuntime {
           if (prepared.ok && prepared.value && this.options.memory.beverage.isCurrent(prepared.value)) { this.beverageCaptures.set(turn, prepared.value); request = { ...request, beveragePreference: prepared.value.context }; }
         }
         if (summary && !this.options.summary?.isCurrent(summary)) { const { summary: _staleSummary, ...withoutSummary } = request; request = { ...withoutSummary, memoryContext: emptyMemoryContext() }; }
+        const reflection = await reflectionPending;
+        if (reflection && alive() && this.options.memory?.lifeReflection?.isCurrent(reflection)) {
+          this.lifeCaptures.set(turn, reflection);
+          request = { ...request, lifeReflection: reflection.observation };
+        }
         return request;
       }) : turn.request;
       if (!this.mayContinue(turn)) return;
       let request = enriched ?? { ...turn.request, ...(this.options.memory?.recall ? { memoryContext: emptyMemoryContext() } : {}) };
       if (causal) request = { ...request, causalExpression: { ...causal.expression } };
+      const lifeCapture = this.lifeCaptures.get(turn);
+      if (request.lifeReflection && (!lifeCapture || !this.options.memory?.lifeReflection?.isCurrent(lifeCapture))) { const { lifeReflection: _stale, ...baseline } = request; request = baseline; }
       const capture = this.captures.get(turn);
       if (turn.replyTo && !capture) { this.executing = false; this.finish(turn, 'degraded'); return; }
       if (capture && !this.options.memory?.interestThread?.isCurrent(capture)) { this.executing = false; this.finish(turn, 'degraded'); return; }
@@ -349,11 +360,16 @@ export class DialogueRuntime {
       // The transport reports whether its byte cap actually retained this optional block.
       if (request.beveragePreference && this.options.provider.canIncludeBeverage?.(request) !== false) this.dispatchedBeverage.add(turn);
       if (!this.mayContinue(turn)) return;
+      if (request.lifeReflection) {
+        if (this.options.provider.canIncludeLifeReflection?.(request) === true) this.dispatchedLife.add(turn);
+        else { const { lifeReflection: _dropped, ...baseline } = request; request = baseline; }
+      }
       const responsePromise = this.options.provider.generateResponse(request);
       this.options.transaction(() => { this.options.publish(); });
       const rawResponse = await responsePromise;
       this.executing = false;
       if (!this.mayContinue(turn)) return;
+      if (this.dispatchedLife.has(turn) && lifeCapture && !this.options.memory?.lifeReflection?.isCurrent(lifeCapture)) { this.discardCausal(turn); return; }
       let response: AIProviderResponse;
       try { response = parseProviderResponse(rawResponse, turn.request.requestId); if (this.options.interactionEnabled && response.status === 'ok' && (!response.appraisal || (turn.request.interaction?.effectPolicy === 'suppressed' && (response.appraisal.category !== 'neutral' || response.appraisal.intensity !== 'low' || response.appraisal.confidence !== 'clear')))) throw new TypeError('Invalid suppressed appraisal'); if (!this.options.interactionEnabled && response.appraisal) throw new TypeError('Unexpected appraisal'); }
       catch { this.finish(turn, 'invalid_response'); return; }
@@ -369,6 +385,8 @@ export class DialogueRuntime {
   private finish(active: Turn, reason?: DialogueFallbackReasonDTO, response?: AIProviderResponse): void {
     if (this.active === active && this.options.getSemanticSleepState() !== 'awake') this.notifySleepStateChanged();
     if (!this.isCurrent(active)) return;
+    const life = this.lifeCaptures.get(active);
+    if (this.dispatchedLife.has(active) && life && !this.options.memory?.lifeReflection?.isCurrent(life)) { this.discardCausal(active); return; }
     const causal = this.causalCaptures.get(active);
     if (causal && !this.options.causalExpression?.isCurrent(causal)) { this.discardCausal(active); return; }
     if (this.options.now() >= Math.min(active.deadline, causal?.deadlineMs ?? Infinity)) { reason = 'timeout'; response = undefined; }
@@ -401,11 +419,11 @@ export class DialogueRuntime {
       this.turn = presentation.turn;
       this.publishedCausal = causal;
       this.supportEligible = reason === undefined;
-      this.sourceUserText = reason === undefined && !capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active) ? active.request.userMessage.text : null;
+      this.sourceUserText = reason === undefined && !capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active) && !this.dispatchedLife.has(active) ? active.request.userMessage.text : null;
       this.lastOffered = reason === undefined ? capture?.use.ref : undefined;
       const createdAt = this.options.timestamp();
       const pair: AIProviderContextMessage[] = [{ role: 'user', text: active.request.userMessage.text, createdAt: active.request.userMessage.createdAt, sourceMessageId: active.request.userMessage.id }, { role: 'wisp', text: replyText, createdAt, sourceMessageId: assistantId }];
-      this.context = capture || active.beverageCorrection || this.dispatchedBeverage.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
+      this.context = capture || active.beverageCorrection || this.dispatchedBeverage.has(active) || this.dispatchedLife.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
       if (reason === undefined && response && !causal) {
         const tone = response.reply.tone;
         this.options.applyStimulus({ type: 'provider_response', source: 'provider', text: replyText, requestId, createdAt,
@@ -418,11 +436,11 @@ export class DialogueRuntime {
         }
       }
       this.options.publish();
-      if (!capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active)) this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
+      if (!capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active) && !this.dispatchedLife.has(active)) this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
       const beverage = this.dispatchedBeverage.has(active) ? this.beverageCaptures.get(active) : undefined;
       let proposal;
       if (reason === undefined && !capture && !active.beverageCorrection && beverage?.context.allowProposal && !beverage.use && response?.beverageProposal) try { proposal = parseBeverageProposal(response.beverageProposal, active.request.userMessage.text); } catch { /* Attribution is independent of the semantic model guess. */ }
-      const persisted = this.options.memory?.completed({ ...(capture ? { interestThread: capture.use } : {}), ...(beverage?.use ? { beverageUse: beverage.use } : {}), ...(active.beverageCorrection ? { beverageCorrection: { ...active.beverageCorrection, requestId, userMessageId: active.request.userMessage.id } } : {}), ...(proposal ? { beverageProposalSource: true as const } : {}), user: active.request.userMessage,
+      const persisted = this.options.memory?.completed({ ...(this.dispatchedLife.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: 'reflection' as const } } : {}), ...(capture ? { interestThread: capture.use } : {}), ...(beverage?.use ? { beverageUse: beverage.use } : {}), ...(active.beverageCorrection ? { beverageCorrection: { ...active.beverageCorrection, requestId, userMessageId: active.request.userMessage.id } } : {}), ...(proposal ? { beverageProposalSource: true as const } : {}), user: active.request.userMessage,
         assistant: { id: assistantId, text: replyText, createdAt }, memoryConfirmable: reason === undefined, memoryGeneration: active.memoryGeneration });
       const source = { userMessageId: active.request.userMessage.id, assistantMessageId: assistantId };
       if (proposal && persisted) {

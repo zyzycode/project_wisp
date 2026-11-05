@@ -1,3 +1,4 @@
+import { LifeReflectionRuntime } from './life-reflection-runtime';
 import type { MemoryItemMutation, MemoryItemPage, MemoryItemReceipt } from '../ports/memory-items.interface';
 import { MEMORY_FACT_KEYS, parseMemoryFact } from './memory-fact-registry';
 import type { IUserMemoryFactsReader, UserMemoryFact } from '../ports/memory-knowledge.interface';
@@ -38,6 +39,7 @@ interface Options {
 }
 export class MemoryLifecycle implements IUserMemoryFactsReader {
   readonly history: MemoryHistory;
+  readonly lifeReflection: LifeReflectionRuntime;
   readonly ownGameInterest: OwnGameInterestRuntime;
   readonly socialInterpretation: SocialInterpretationRuntime;
   private readonly knowledge: MemoryKnowledge;
@@ -51,12 +53,13 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   private startupTimer: unknown;
   private shutdownPromise: Promise<void> | undefined;
   constructor(private readonly options: Options) {
-    this.knowledge = new MemoryKnowledge({ invalidateSummary: () => options.summary?.invalidate(), facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
+    this.knowledge = new MemoryKnowledge({ invalidateSummary: () => { options.summary?.invalidate(); this.lifeReflection.invalidate(); }, facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
     this.ownGameInterest = new OwnGameInterestRuntime({ repository: options.storage.causalLife, character: options.character, context: () => this.context(), scheduler: options.scheduler });
     this.socialInterpretation = new SocialInterpretationRuntime({ repository: options.storage.socialInterpretation, character: options.character,
       context: () => this.context(), appRunId: () => this.history.currentAppRunId(), now: options.monotonicNow ?? options.now,
       timestamp: options.timestamp, scheduler: options.scheduler });
     this.history = new MemoryHistory({ onUserMessagePersisted: (message, context) => this.socialInterpretation.persisted(message, context), causalCommitObserver: { committed: (episode, context, atMs) => { this.ownGameInterest.committed(episode, context, atMs); this.socialInterpretation.committed(episode, context, atMs); options.causalCommitObserver?.committed(episode, context, atMs); } }, causalObserver: options.causalObserver, generation: () => this.generation, ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => { if (turn.beverageCorrection) options.summary?.invalidate(); return this.knowledge.persisted(turn, context); }, ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
+    this.lifeReflection = new LifeReflectionRuntime({ reader: options.storage.lifeHistory, barrier: this.history.causal, context: () => this.context(), timestamp: options.timestamp, scheduler: options.scheduler });
   }
   currentGeneration(): number { return this.generation; }
   getStatus(): MemoryStatusDTO { return { ...this.status }; }
@@ -114,7 +117,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     if (!result.ok) { this.failure(result.code); return; }
     const thread = result.value.thread;
     if (!thread || thread.state !== 'unanswered' || (result.value.sourceValid && Date.parse(this.options.timestamp()) < Date.parse(thread.expiresAt))) return;
-    this.generation++; this.options.summary?.invalidate(); this.options.invalidateMemory?.();
+    this.generation++; this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.invalidateMemory?.();
     const next = this.generation;
     const closed = await this.safe(() => repository.mutate({ kind: 'close', commandId: this.options.createId(), expected: thread.ref, reason: result.value.sourceValid ? 'expired' : 'source_changed' }, { generation: next }));
     if (this.phase !== 'initializing' || this.generation !== next || !this.storageReady) return;
@@ -124,7 +127,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   /** Returns synchronously: first human input abandons restore, never waits on storage. */
   admitInput(): boolean {
     if (this.phase === 'initializing') {
-      this.storageReady = false; this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: 'unavailable' };
+      this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: 'unavailable' };
       void this.options.storage.abort(); this.start();
     }
     return this.phase === 'running' || this.phase === 'mutating';
@@ -135,11 +138,11 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.phase = 'running'; this.options.start(); this.scheduleCheckpoint();
   }
   private startupFailure(code: MemoryFailureCode): void {
-    this.storageReady = false; this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' || code === 'stale' ? 'io_error' : code }; void this.options.storage.abort();
+    this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' || code === 'stale' ? 'io_error' : code }; void this.options.storage.abort();
   }
   failure(code: MemoryFailureCode): void {
     if (code === 'stale' || code === 'busy') return;
-    this.storageReady = false; this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate();
+    this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate();
     this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' ? 'io_error' : code };
     void this.options.storage.abort();
   }
@@ -153,14 +156,14 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   async upsertFact(fact: UserFact): Promise<MemoryResult<UserFact>> {
     const c = this.context(); if (!c || this.phase !== 'running') return { ok: false, code: 'unavailable' };
-    this.options.summary?.invalidate();
+    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate();
     const result = await this.safe(() => this.options.storage.facts.upsert(fact, c));
     if (this.context()?.generation !== c.generation) return { ok: false, code: 'stale' };
     if (!result.ok) this.failure(result.code); return result;
   }
   async removeFact(key: string): Promise<MemoryResult<void>> {
     const c = this.context(); if (!c || this.phase !== 'running') return { ok: false, code: 'unavailable' };
-    this.options.summary?.invalidate();
+    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate();
     const result = await this.safe(() => this.options.storage.facts.removeByKey(key, c));
     if (this.context()?.generation !== c.generation) return { ok: false, code: 'stale' };
     if (!result.ok) this.failure(result.code); return result;
@@ -225,7 +228,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   private async mutateMemory<T>(operation: (context: MemoryOperationContext) => Promise<MemoryResult<T>>, admissionToken?: object): Promise<MemoryResult<T>> {
     if (!this.context() || this.phase !== 'running') return { ok: false, code: 'unavailable' };
-    this.phase = 'mutating'; this.generation++; this.stopTimer(); this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate();
+    this.phase = 'mutating'; this.generation++; this.stopTimer(); this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate();
     const generation = this.generation;
     // Drop volatile projections even on rollback; local Character, motion and input keep running.
     this.options.summary?.invalidate(); this.options.invalidateMemory?.(admissionToken);
@@ -238,7 +241,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   async reset(): Promise<MemoryResult<void>> {
     if (this.phase !== 'running' || !this.storageReady) return { ok: false, code: 'unavailable' };
-    this.options.summary?.invalidate();
+    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate();
     this.phase = 'resetting'; this.generation++; this.stopTimer(); this.options.pause(); this.ownGameInterest.invalidate(); this.socialInterpretation.invalidate();
     const generation = this.generation;
     const summaryReset = this.options.summary ? await this.options.summary.reset() : undefined;
@@ -260,7 +263,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.options.scheduler.clearTimeout(this.startupTimer); this.stopTimer();
     const capture = this.options.shutdownCapture?.() ?? Promise.resolve();
     const c = this.context(); const sessionClose = c ? this.history.close(this.options.timestamp()) : Promise.resolve();
-    this.phase = 'stopping'; this.ownGameInterest.dispose(); this.socialInterpretation.dispose(); this.options.summary?.dispose(); this.options.pause(); this.history.causal.dispose();
+    this.phase = 'stopping'; this.lifeReflection.dispose(); this.ownGameInterest.dispose(); this.socialInterpretation.dispose(); this.options.summary?.dispose(); this.options.pause(); this.history.causal.dispose();
     let grace: unknown;
     const deadline = new Promise<void>(resolve => { grace = this.options.scheduler.setTimeout(() => { void this.options.storage.abort().then(resolve); }, 7000); });
     const drain = async () => {

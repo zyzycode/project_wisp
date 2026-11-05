@@ -1,4 +1,4 @@
-/** MEMORY-A03 target wire declarations; active unions change only in #176/#177. */
+/** Ordinary-chat reflection; event-summary declarations remain reserved for #177. */
 export interface BackendLifeReflection {
   readonly scope: 'observed_utc_window';
   readonly validity: 'tentative';

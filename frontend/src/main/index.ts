@@ -491,7 +491,7 @@ function initializeAutonomyComposition(): void {
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
-      memory: { ...(beverageDialogue ? { beverage: beverageDialogue } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
+      memory: { ...(memoryRuntime ? { lifeReflection: memoryRuntime.lifeReflection } : {}), ...(beverageDialogue ? { beverage: beverageDialogue } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
           now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, notice: publishBrainState, isTurnCurrent: requestId => dialogueRuntime?.isTopicRequestCurrent(requestId) ?? false, onFailure: code => memoryRuntime?.failure(code), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) } : {}), generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
         completed: turn => memoryRuntime?.history.completed(turn) ?? Promise.resolve(false), ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),

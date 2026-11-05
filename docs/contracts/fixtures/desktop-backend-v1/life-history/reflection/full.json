@@ -1,0 +1,10 @@
+{
+  "scope": "observed_utc_window",
+  "validity": "tentative",
+  "kind": "shared_game_completions",
+  "fromDate": "2026-10-23",
+  "throughDate": "2026-11-05",
+  "completedCount": 7,
+  "interruptedCount": 3,
+  "completedDays": 3
+}

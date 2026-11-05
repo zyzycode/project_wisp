@@ -1,3 +1,4 @@
+import { dropLifeHistory } from './schema-fixture';
 import { afterEach, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -20,6 +21,7 @@ it('migrates populated v9 atomically, preserves pending goals after restart and 
   const f = fixture();
   expect(run(f.store, 'upsertFact', { id: 'f', factKey: 'name', factValue: 'Synthetic', confidence: 1, sourceMessageId: null, createdAt: now, updatedAt: now }).ok).toBe(true);
   f.store.close(); const db = new Database(f.file);
+  dropLifeHistory(db);
   db.exec("DROP TABLE own_motivation; DELETE FROM schema_migrations WHERE version=10; PRAGMA user_version=9; CREATE TRIGGER reject_v10 BEFORE INSERT ON schema_migrations WHEN NEW.version=10 BEGIN SELECT RAISE(ABORT,'test'); END;");
   expect(() => initializeSchema(db, now)).toThrow();
   expect(db.pragma('user_version', { simple: true })).toBe(9);

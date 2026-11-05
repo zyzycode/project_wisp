@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { causalEpisode, causalSources } from './causal-life-validation';
+import { LifeHistoryStore } from './life-history-store';
 import { CausalRecallStore } from './causal-recall-store';
 import { integer, MemoryDataError, record, text } from './validation-primitives';
 
@@ -20,6 +21,7 @@ export class CausalLifeStore {
       }
       const result = this.db.prepare('INSERT INTO causal_life_episodes VALUES (?, ?, ?, ?)').run(episode.appRunId, episode.sequence, episode.activityRunId, payload);
       new CausalRecallStore(this.db).index(episode, Number(result.lastInsertRowid));
+      new LifeHistoryStore(this.db).index(episode, Number(result.lastInsertRowid));
     }).immediate();
   }
   recent(value: unknown) {

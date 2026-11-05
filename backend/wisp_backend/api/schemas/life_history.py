@@ -1,4 +1,4 @@
-"""MEMORY-A03 targets; active chat/summary unions are not extended by this gate."""
+"""Ordinary-chat reflection and reserved event-summary wire schemas."""
 
 import json
 from datetime import date

@@ -1,3 +1,4 @@
+import type { ICausalSourceReadBarrier } from '../ports/life-history.interface';
 import type { CausalLifeEpisode, ICausalLifeCommitObserver, ICausalLifeRepository } from '../ports/causal-life.interface';
 import type { ActivityOutcomeFeedback } from '../ports/shimeji-feedback-port';
 import type { MemoryFailureCode, MemoryOperationContext } from '../ports/memory-repository.interface';
@@ -13,7 +14,14 @@ interface Options {
   readonly onObserved?: (episode: CausalLifeEpisode, atMs: number) => void;
 }
 /** Trusted observed facts remain usable offline; storage acknowledgement is a separate boundary. */
-export class CausalLifeRecorder {
+export class CausalLifeRecorder implements ICausalSourceReadBarrier {
+  private revision = 0;
+  private pendingWrites = 0;
+  private settled: Promise<void> = Promise.resolve();
+  private settle: (() => void) | undefined;
+  snapshot() { return { generation: this.options.generation(), revision: this.revision, pending: this.pendingWrites > 0 }; }
+  whenSettled(): Promise<void> { return this.settled; }
+  invalidate(): void { this.revision++; }
   private sequence = 0;
   private disposed = false;
   private input: { readonly sequence: number; readonly generation: number; contact: { readonly episode: CausalLifeEpisode; readonly atMs: number } | null } | null = null;
@@ -30,7 +38,7 @@ export class CausalLifeRecorder {
       this.emit(episode, atMs, false);
     }
   }
-  dispose(): void { this.disposed = true; this.input = null; }
+  dispose(): void { this.invalidate(); this.disposed = true; this.input = null; }
   endInput(): void {
     const contact = this.input?.generation === this.options.generation() ? this.input.contact : null;
     this.input = null;
@@ -56,19 +64,22 @@ export class CausalLifeRecorder {
       source: cause === 'user_interrupted' ? 'user' : cause === 'unknown' ? 'unknown' : cause === 'completed' ? 'autonomy' : 'system',
       executedMs: event.executedMs, participation: event.participation }, event.atMs);
   }
-  reset(): void { this.sequence = 0; this.input = null; /* Runtime activity sequence survives memory reset; old terminal callbacks remain stale. */ }
+  reset(): void { this.invalidate(); this.sequence = 0; this.input = null; /* Runtime activity sequence survives memory reset; old terminal callbacks remain stale. */ }
   private base(sequence: number, atMs: number) {
     return { appRunId: this.options.appRunId(), sequence, revision: 1 as const, occurredAt: this.options.toTimestamp(atMs) };
   }
   private emit(episode: CausalLifeEpisode, atMs: number, observe = true): void {
     if (observe) this.options.onObserved?.(episode, atMs);
+    this.invalidate();
     const context = this.options.context(), repository = this.options.repository;
     if (!context || !repository) return;
     // Worker queue and generation barrier own backpressure; never await storage on input/tick.
     const appRunId = this.options.appRunId();
-    void repository.append(episode, context).then(result => {
+    if (this.pendingWrites++ === 0) this.settled = new Promise(resolve => { this.settle = resolve; });
+    const append = () => { try { return repository.append(episode, context); } catch (error) { return Promise.reject(error); } };
+    void append().then(result => {
       if (!this.disposed && this.options.appRunId() === appRunId && this.options.context()?.generation === context.generation && result.ok) this.options.commitObserver?.committed(episode, context, atMs);
       if (this.options.context()?.generation === context.generation && !result.ok) this.options.onFailure(result.code);
-    }).catch(() => { if (this.options.context()?.generation === context.generation) this.options.onFailure('unavailable'); });
+    }).catch(() => { if (this.options.context()?.generation === context.generation) this.options.onFailure('unavailable'); }).finally(() => { if (--this.pendingWrites === 0) { this.settle?.(); this.settle = undefined; } });
   }
 }

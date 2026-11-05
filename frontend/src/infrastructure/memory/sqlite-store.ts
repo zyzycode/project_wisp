@@ -1,3 +1,5 @@
+import { LifeDerivedTurnStore } from './life-derived-turn-store';
+import { LifeHistoryStore } from './life-history-store';
 import { DeferredInvitationStore } from './deferred-invitation-store';
 import { MotivationStore } from './motivation-store';
 import { SocialInterpretationStore } from './social-interpretation-store';
@@ -50,6 +52,7 @@ export class SqliteMemoryStore {
       const value = this.dispatch(c);
       // A bounded maintenance batch between requests never creates a background queue.
       new CausalRecallStore(this.db).maintain();
+      new LifeHistoryStore(this.db).maintain();
       new MemoryItemRecallStore(this.db).maintain();
       return { ok: true, value };
     } catch (error) {
@@ -72,6 +75,7 @@ export class SqliteMemoryStore {
       case 'readDeferredInvitation': return new DeferredInvitationStore(this.db).read(c.payload);
       case 'claimDeferredInvitation': return new DeferredInvitationStore(this.db).claim(c.payload);
       case 'finishDeferredInvitation': return new DeferredInvitationStore(this.db).finish(c.payload);
+      case 'readLifeWindow': return new LifeHistoryStore(this.db).read(c.payload);
       case 'findCausalLife': return new CausalRecallStore(this.db).find(c.payload);
       case 'findMemoryItems': return new MemoryItemRecallStore(this.db).find(c.payload);
       case 'appendCausalLife': return new CausalLifeStore(this.db).append(c.payload);
@@ -116,7 +120,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 3, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { new MotivationStore(this.db).clear(); new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { new MotivationStore(this.db).clear(); new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new LifeHistoryStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM life_derived_turns; DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }
@@ -128,8 +132,9 @@ export class SqliteMemoryStore {
     const t = v.turn(payload);
     this.db.transaction(() => {
       const topics = new InterestThreadStore(this.db), beverage = new BeverageStore(this.db);
-      const topicReplay = topics.checkTurn(t), beverageReplay = beverage.checkTurn(t);
-      if (topicReplay === 'replay' || beverageReplay === 'replay') return;
+      const derived = new LifeDerivedTurnStore(this.db);
+      const derivedReplay = derived.check(t), topicReplay = topics.checkTurn(t), beverageReplay = beverage.checkTurn(t);
+      if (derivedReplay === 'replay' || topicReplay === 'replay' || beverageReplay === 'replay') return;
       const existing = this.db.prepare(`SELECT ${sessionColumns} FROM conversation_sessions WHERE id = ? OR app_run_id = ?`).all(t.session.id, t.session.appRunId);
       const messages = this.db.prepare(`SELECT ${messageColumns} FROM messages WHERE id IN (?, ?) ORDER BY sequence`).all(t.user.id, t.assistant.id).map(v.message);
       if (existing.length > 1) throw new v.MemoryDataError('conflict');
@@ -152,6 +157,7 @@ export class SqliteMemoryStore {
       for (const m of [t.user, t.assistant]) insert.run(m.id, m.conversationSessionId, m.role, m.content, m.createdAt, t.memoryConfirmable === true ? 1 : 0);
       topics.commitTurn(t);
       beverage.commitTurn(t);
+      derived.commit(t);
     }).immediate();
   }
   private upsertFact(payload: unknown): unknown {
