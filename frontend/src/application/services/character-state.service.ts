@@ -3,6 +3,7 @@ import type { InteractionAppraisal, PreviousTouchReaction, InteractionReceipt, T
 import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '../ports/memory-knowledge.interface';
 import { createAdaptationGate, type AdaptationGate } from '../../domain/character/adaptation-gate';
 import { learnVerifiedPreference } from '../../domain/character/preferences';
+import { appraiseCausalEvent, createCausalAffectState, decayCausalAffect, type CausalEmotion, type CausalObservedEvent } from '../../domain/character/causal-affect';
 import {
   createCharacterSnapshot,
   processStimulusWithAdaptation,
@@ -97,6 +98,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   private axesGate: AdaptationGate;
   private preferenceGate: AdaptationGate;
   private readonly observedSources = new Set<string>();
+  private causalAffect = createCausalAffectState();
 
   constructor(options: CharacterStateServiceOptions = {}) {
     this.now = options.now ?? Date.now;
@@ -122,9 +124,16 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
     return createCharacterSnapshot(this.state);
   }
 
-  public beginTouch(sequence: number): TouchInteractionReceipt {
+  public observeCausalEpisode(episode: CausalObservedEvent, atMs: number): void {
+    this.causalAffect = appraiseCausalEvent(this.causalAffect, episode, atMs);
+  }
+  public getCausalEmotion(): CausalEmotion | null {
+    return this.causalAffect.emotion ? { ...this.causalAffect.emotion } : null;
+  }
+  public beginTouch(sequence: number, causalBound = false): TouchInteractionReceipt {
     const before = this.getSnapshot();
     return { ...this.beginInteraction(sequence, 'user_click'),
+      ...(causalBound ? { effectPolicy: 'suppressed' as const } : {}),
       energyBand: before.needs.energy <= 30 ? 'tired' : 'rested', comfortBand: before.needs.comfort >= 80 ? 'overloaded' : 'calm' };
   }
   public beginChat(sequence: number): InteractionReceipt { return this.beginInteraction(sequence, 'user_message'); }
@@ -184,12 +193,14 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
     this.state = { ...this.state, preferences: learned.preferences }; this.preferenceGate = learned.gate;
   }
   private resetTransientLearning(): void {
+    this.causalAffect = createCausalAffectState();
     this.interactionGeneration++; this.baseSequence = 0; this.appraisalSequence = 0; this.nextBaseAt = this.monotonicNow(); this.nextAppraisalAt = this.monotonicNow() + 30000;
     this.activityEffects.clear(); this.observedSources.clear();
     this.axesGate = createAdaptationGate(this.monotonicNow()); this.preferenceGate = createAdaptationGate(this.monotonicNow());
   }
 
   public tickNeeds(deltaMs: number, tone?: SynthesizedEmotionalTone): CharacterState {
+    this.causalAffect = decayCausalAffect(this.causalAffect, this.monotonicNow());
     const normalizedDeltaMs = normalizeDeltaMs(deltaMs);
     const metadata: CharacterStimulus['metadata'] = {
       deltaMs: normalizedDeltaMs,

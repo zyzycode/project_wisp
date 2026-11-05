@@ -611,7 +611,7 @@ function dispatchAcceptedBodyEvent(
   if (interactionType !== 'click') autonomyComposition?.suspendForUserInteraction();
   let touchReceipt: TouchInteractionReceipt | undefined;
   if (interactionType === 'click' || interactionType === 'double_click' || interactionType === 'right_click') {
-    touchReceipt = defaultCharacterStateService.beginTouch(++interactionSequence);
+    touchReceipt = defaultCharacterStateService.beginTouch(++interactionSequence, interactionType === 'click');
   } else if (interactionType !== 'think') {
     defaultCharacterInteractionUseCase.execute({
       type: interactionType,
@@ -821,7 +821,7 @@ if (!gotTheLock) {
     localMock = !aiRoute.backendUrl;
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
-    memoryRuntime = new MemoryLifecycle({ summary: {
+    memoryRuntime = new MemoryLifecycle({ causalObserver: (episode, atMs) => defaultCharacterStateService.observeCausalEpisode(episode, atMs), summary: {
       invalidate: () => { if (summaryRuntime) summaryRuntime.invalidate(); else void memoryComposition?.summaryCache.clear(false, false); },
       reset: async () => {
         if (summaryRuntime) return summaryRuntime.reset();
