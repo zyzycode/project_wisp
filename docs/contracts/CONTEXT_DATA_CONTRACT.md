@@ -256,7 +256,7 @@ reasoning graph или learning из derived text.
 
 ### 7.1. Общее окно источников
 
-Новый rebuildable `causal_history_index` хранит exact source ref/revision1, occurredAt, private insertion order и размер canonical payload только cursor_game
+Новый rebuildable `causal_history_index` хранит exact source ref/revision1, occurredAt, private insertion order и размер canonical payload cursor_game и target #183 book
 terminals. Index `(occurred_at, insertion_order)` позволяет UTC range read без transcript scan/SQL JSON scan. Canonical append/delete/reset и index изменяются
 одной transaction; существующая bounded maintenance обрабатывает не более64 canonical rows за request, с persisted cursor, без poller/tick SQL. До окончания
 backfill/loss repair coverage=index_building; derived index не второй source of truth. Invalid index → omission/rebuild, не удаление canonical facts.
@@ -323,7 +323,7 @@ Main/Application; Renderer получает preview ID и semantic entries. TTL1
 `POST /v1/summary` принимает одну из двух exact форм: прежние `{requestId,locale,stream:false,pairs}` **без изменений** либо target
 `{requestId,locale,stream:false,fromDate,throughDate,events}`. Shapes взаимно исключаются: pairs+events/null/extra keys отклоняются до admission. Это единый
 Alpha contract, без version field/probe/adapter/нового endpoint. Event array4–8 в chronology; UTC dates calendar-valid, inclusive span≤14 и каждый occurredAt
-внутри него. Event fields — target BackendLifeSummaryEvent; only cursor_game, coherent known terminal cause/outcome/actor, finite executedMs0..600000.
+внутри него. Event fields — BackendLifeSummaryEvent с target #183 activity cursor_game/book; book всегда solitary, completed≥14000ms, coherent actor/cause, executedMs0..600000; decorative, не чтение/knowledge.
 IDs/appRun/run IDs/revisions/raw dialogue/исходная summary/Character/settings/instructions не передаются. Array position — request-local ordinal, mapping exact
 refs хранит client.
 
