@@ -196,6 +196,8 @@ export class ActivityRunner {
 
 function decay(ageMs: number, halfLifeMs: number): number { return Math.exp(-Math.LN2 * Math.max(0, ageMs) / halfLifeMs); }
 export function repetitionModifier(definition: ActivityDefinition, history: RepetitionHistory, nowMs: MonotonicMs, config: RepetitionPenalty = DEFAULT_REPETITION_PENALTY): number {
+  // Cursor-game satiation is paid once at its opportunity, not again for Activity/actions.
+  if (definition.id === 'cursor_interest') return 1;
   const activityScore = history.activities.filter((entry) => entry.activityId === definition.id).reduce((sum, entry) => sum + decay(nowMs - entry.selectedAtMs, config.activityHalfLifeMs), 0);
   const visualSteps = definition.steps.filter((step): step is AnimationActivityStep | VoluntaryLocomotionStep => step.type === 'animation' || step.type === 'locomotion');
   const actionScore = history.actions.reduce((sum, entry) => sum + visualSteps.filter((step) => step.actionId === entry.actionId || step.intent.kind === entry.animationKind).length / Math.max(1, visualSteps.length) * decay(nowMs - entry.shownAtMs, config.actionHalfLifeMs), 0);

@@ -21,15 +21,16 @@ export interface CharacterAutonomySnapshot {
   readonly learnedCursorGamePreference?: Readonly<Pick<PreferenceTrack, 'value' | 'confidence'>>;
   readonly learnedExplorePreference?: LearnedPreference;
   readonly learnedSocialBidPreference?: LearnedPreference;
+  readonly cursorGameSatiation?: number;
   readonly localTraits?: { readonly openness: number; readonly playfulness: number; readonly independence: number; readonly extraversion: number };
   readonly synthesizedTone: SynthesizedEmotionalTone;
   readonly relationship?: Readonly<Pick<Relationship, 'friendship'>>;
 }
 
 /** Internal local projection; provider and IPC snapshots do not gain preference keys. */
-export function createCharacterAutonomySnapshot(state: CharacterState): CharacterAutonomySnapshot {
+export function createCharacterAutonomySnapshot(state: CharacterState, cursorGameSatiation = 0): CharacterAutonomySnapshot {
   const axes = state.personality.axes;
-  return { ...createCharacterSnapshot(state),
+  return { ...createCharacterSnapshot(state), cursorGameSatiation,
     learnedCursorGamePreference: validatedCursorGamePreference(state.preferences['activity.cursor_game']),
     learnedExplorePreference: validatedLocalPreference(state.preferences['activity.explore']),
     learnedSocialBidPreference: validatedLocalPreference(state.preferences['activity.social_bid']),

@@ -44,7 +44,7 @@ export function decayCausalAffect(state: CausalAffectState, nowMs: number): Caus
 }
 
 /** No Needs, relationship, consent, personality or activity effects are paid here. */
-export function appraiseCausalEvent(state: CausalAffectState, event: CausalObservedEvent, nowMs: number): CausalAffectState {
+export function appraiseCausalEvent(state: CausalAffectState, event: CausalObservedEvent, nowMs: number, contactHabituation = 0): CausalAffectState {
   if (!validTime(state, nowMs) || !Number.isSafeInteger(event.sequence) || event.sequence <= state.highWaterSequence
       || !Number.isFinite(event.executedMs) || event.executedMs < 0) return state;
   const next = { ...decayCausalAffect(state, nowMs), highWaterSequence: event.sequence };
@@ -53,7 +53,7 @@ export function appraiseCausalEvent(state: CausalAffectState, event: CausalObser
   const trustedTrigger = event.source === 'user' && Number.isSafeInteger(event.triggerSequence) && event.triggerSequence !== null && event.triggerSequence > 0;
   if (event.cause === 'contact') {
     return event.source === 'user' && event.activity === null && event.activityRunId === null && event.outcome === null && event.executedMs === 0
-      ? { ...next, emotion: makeEmotion('curious', 0.1, 'self') } : next;
+      ? { ...next, emotion: makeEmotion('curious', 0.1 / (1 + Math.max(0, Math.min(4, contactHabituation))), 'self') } : next;
   }
   if (event.activity !== 'cursor_game' || !event.activityRunId || event.outcome === null) return next;
   if (event.cause === 'completed' && event.outcome === 'completed' && event.participation === 'user_engaged') {

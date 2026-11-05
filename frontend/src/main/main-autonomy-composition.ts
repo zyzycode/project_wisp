@@ -540,6 +540,7 @@ export class MainAutonomyComposition {
       friendship: snapshot.relationship?.friendship ?? 0,
       gameCandidateEligible,
       learnedGamePreference: snapshot.learnedCursorGamePreference,
+      cursorGameSatiation: snapshot.cursorGameSatiation,
       noticeRandomUnit: this.options.prng.next(),
     });
     if (!update.noticed || update.zone === undefined) return false;

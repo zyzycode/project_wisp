@@ -24,7 +24,7 @@ it('records accepted contact independently of wake and binds only synchronous tr
 it('separates known unrelated cancellation/environment from unknown and excludes other activities', () => {
   const f = fixture();
   f.recorder.outcome({ ...event, activity: undefined }); expect(f.observed).toHaveLength(0);
-  let sequence = 0;
+  let sequence = 1;
   for (const [id, reason, cause] of [['quiet', 'explicit_cancel', 'other'], ['loss', 'environment_invalidated', 'environment_lost'], ['time', 'step_timeout', 'timeout']] as const) {
     f.recorder.outcome({ ...event, activityRunId: id, activitySequence: ++sequence, terminalReason: reason });
     expect(f.observed.at(-1)).toMatchObject({ cause, source: 'system', triggerSequence: null });
@@ -39,8 +39,26 @@ it('observes offline without storage and drops old generation binding and late f
   f.recorder.outcome(event); expect(f.observed.at(-1)).toMatchObject({ appRunId: 'next', sequence: 1, cause: 'unknown' });
   f.recorder.beginInput(false, 3000); f.mutation(); f.recorder.outcome({ ...event, activityRunId: 'late-generation', activitySequence: 2 });
   expect(f.observed.at(-1)?.cause).toBe('unknown');
-  f.offline(); f.recorder.beginInput(true, 4000);
+  f.offline(); f.recorder.beginInput(true, 4000); f.recorder.endInput();
   expect(f.observed.at(-1)?.cause).toBe('contact'); expect(f.append).toHaveBeenCalledTimes(3);
+});
+
+it('persists contact before dispatch but observes only a non-interrupting contact at ingress completion', () => {
+  const f = fixture();
+  f.recorder.beginInput(true, 100);
+  expect(f.append).toHaveBeenCalledTimes(1); expect(f.observed).toEqual([]);
+  f.recorder.endInput(); expect(f.observed).toHaveLength(1);
+  f.recorder.beginInput(true, 2000); f.recorder.outcome({ ...event, executedMs: 100 }); f.recorder.endInput();
+  expect(f.observed.map(e => e.cause)).toEqual(['contact', 'user_interrupted']);
+  f.recorder.beginInput(true, 3000);
+  f.recorder.outcome({ ...event, activitySequence: 2, activityRunId: 'other', terminalReason: 'explicit_cancel' });
+  f.recorder.endInput(); expect(f.observed.map(e => e.cause)).toEqual(['contact', 'user_interrupted', 'other']);
+  f.recorder.beginInput(true, 4000);
+  f.recorder.outcome({ ...event, activitySequence: 3, activity: undefined });
+  f.recorder.endInput(); expect(f.observed).toHaveLength(3);
+  f.recorder.beginInput(true, 5000); f.reset(); f.recorder.endInput(); expect(f.observed).toHaveLength(3);
+  f.recorder.beginInput(true, 6000); f.recorder.outcome(event); f.recorder.endInput();
+  expect(f.observed.at(-1)?.cause).toBe('contact');
 });
 
 it('keeps a constant terminal watermark across hundreds of runs and reset without replay effects', () => {

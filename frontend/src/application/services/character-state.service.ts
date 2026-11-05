@@ -4,6 +4,7 @@ import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '.
 import { createAdaptationGate, type AdaptationGate } from '../../domain/character/adaptation-gate';
 import { learnVerifiedPreference } from '../../domain/character/preferences';
 import { appraiseCausalEvent, createCausalAffectState, decayCausalAffect, type CausalEmotion, type CausalObservedEvent } from '../../domain/character/causal-affect';
+import { createActivityExposure, observeActivityExposure, recoverActivityExposure } from '../../domain/character/activity-exposure';
 import { causalRelationshipDeltas, createRelationship, shiftRelationshipFacets } from '../../domain/character/relationship-facets';
 import {
   createCharacterSnapshot,
@@ -102,6 +103,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   private preferenceGate: AdaptationGate;
   private readonly observedSources = new Set<string>();
   private causalAffect = createCausalAffectState();
+  private activityExposure = createActivityExposure();
 
   constructor(options: CharacterStateServiceOptions = {}) {
     this.now = options.now ?? Date.now;
@@ -129,8 +131,10 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
 
   public observeCausalEpisode(episode: CausalObservedEvent, atMs: number): void {
     const previousSequence = this.causalAffect.highWaterSequence;
-    this.causalAffect = appraiseCausalEvent(this.causalAffect, episode, atMs);
+    const exposure = recoverActivityExposure(this.activityExposure, atMs);
+    this.causalAffect = appraiseCausalEvent(this.causalAffect, episode, atMs, exposure.habituation);
     if (this.causalAffect.highWaterSequence <= previousSequence) return;
+    this.activityExposure = observeActivityExposure(exposure, episode, atMs);
     const deltas = causalRelationshipDeltas(episode, this.causalAffect.interruptionTimes.length >= 2);
     if (!deltas || atMs < this.nextAppraisalAt) return;
     this.state = { ...this.state, relationship: shiftRelationshipFacets(this.state.relationship, deltas) };
@@ -139,6 +143,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   public getCausalEmotion(): CausalEmotion | null {
     return this.causalAffect.emotion ? { ...this.causalAffect.emotion } : null;
   }
+  public getCursorGameSatiation(): number { return this.activityExposure.satiation; }
   public beginTouch(sequence: number, causalBound = false): TouchInteractionReceipt {
     const before = this.getSnapshot();
     return { ...this.beginInteraction(sequence, 'user_click'),
@@ -203,6 +208,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   }
   private resetTransientLearning(): void {
     this.causalAffect = createCausalAffectState();
+    this.activityExposure = createActivityExposure();
     this.interactionGeneration++; this.baseSequence = 0; this.appraisalSequence = 0; this.nextBaseAt = this.monotonicNow(); this.nextAppraisalAt = this.monotonicNow() + 30000;
     this.activityEffects.clear(); this.observedSources.clear();
     this.axesGate = createAdaptationGate(this.monotonicNow()); this.preferenceGate = createAdaptationGate(this.monotonicNow());
@@ -210,6 +216,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
 
   public tickNeeds(deltaMs: number, tone?: SynthesizedEmotionalTone): CharacterState {
     this.causalAffect = decayCausalAffect(this.causalAffect, this.monotonicNow());
+    this.activityExposure = recoverActivityExposure(this.activityExposure, this.monotonicNow());
     const normalizedDeltaMs = normalizeDeltaMs(deltaMs);
     const metadata: CharacterStimulus['metadata'] = {
       deltaMs: normalizedDeltaMs,
