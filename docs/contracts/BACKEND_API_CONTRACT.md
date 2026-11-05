@@ -329,3 +329,7 @@ abort/late-result rejection desktop и серверные deadline/cancellation/
 сохраняются. Сбой child не останавливает Motion/FSM/input и не запускает auto-retry.
 Удаление личного ключа отключает следующий managed запуск, но не удаляет память,
 ledger/provider copy и не отзывает ключ в аккаунте OpenAI.
+
+## 8. MEMORY-A03: target history branches (#175)
+
+#176/#177 расширяют существующий v1 только по [Context data §7](CONTEXT_DATA_CONTRACT.md#7-memory-a03-несколько-наблюдённых-utc-дат-и-summary-событий-175) и [Backend Memory §13](BACKEND_MEMORY_CONTRACT.md#13-memory-a03-вывод-о-совместных-играх-175): ordinary-chat-only tentative lifeReflection и отдельная exact event-source форма `/v1/summary`/life summary context. До atomic implementation обеих сторон это target declarations, не active request fields. Общие access/admission/errors/deadlines/ledger/retention, один provider call на явную summary confirmation, отсутствие server history и отсутствие wire version сохраняются. Состав source данными ограничен семантическими cursor-game terminal facts и UTC-датами, без native handles/app metadata/local IDs или inferred historical emotion.

@@ -245,3 +245,132 @@ Read-only измерение существующего normalizer `615ade1` н�
 Ресурсная приёмка: один прежний read group≤200ms, causal examined/fetched≤16, card postings/payload≤96, прежние2 slots/2400 units/32KiB; без новых reads/индекса/worker job/model. Измерить query-stage и whole-recall p50/p95/max на указанной машине; каждый elapsed>200ms — omission/fail, не successful match. Новые persistent index bytes/startup/rebuild work равны0; статические phrase/guard tables≤4KiB UTF-8, mutable cache/retained query state отсутствует, дополнительная нормализация ограничена240 UTF-16 текущей реплики. Общий RAM/disk existing индексов и их source invalidation не меняются. Crash/corruption/rebuild/missing source используют прежний safe omission #172; unsupported query использует прежний baseline, явный несовместимый clause — только omission. Живое качество речи и generalized semantic quality этими fixtures не подтверждаются.
 
 **Выбор #173.** Альтернативы: baseline сохраняет измеренные phrase/subject ошибки; локальное ограниченное сопоставление адресует их без нового resource lifecycle. Hybrid/semantic retrieval не измерены на этом наборе и не объявлены лучше; similarity сама не разрешает отрицание/actor/source validity, поэтому новый model/store не обоснован. Более широкие перефразирования остаются неподтверждёнными; отдельная технология требует новых measured misses и нового решения. #174 реализует только Domain matcher/guards и существующие quality/lifecycle tests, без wire/schema/CRUD/retention/UI изменений; точные заранее установленные quality/resource acceptance — в corpus.
+
+## 7. MEMORY-A03: несколько наблюдённых UTC-дат и summary событий (#175)
+
+Это target договор #176/#177, не утверждение готовности runtime. Источник — только immutable causal episodes #154; [local
+ports](../../frontend/src/application/ports/life-history.interface.ts), [target wire](../../frontend/src/application/ports/backend-life-history-contract.ts),
+независимые [Python schemas](../../backend/wisp_backend/api/schemas/life_history.py). Domain проверяет независимость/агрегацию; Application связывает source
+proof, общий recall/summary lifecycle и consent; существующий worker выполняет bounded reads. Никаких новых providers/dependencies, фонового inference,
+reasoning graph или learning из derived text.
+
+### 7.1. Общее окно источников
+
+Новый rebuildable `causal_history_index` хранит exact source ref/revision1, occurredAt, private insertion order и размер canonical payload только cursor_game
+terminals. Index `(occurred_at, insertion_order)` позволяет UTC range read без transcript scan/SQL JSON scan. Canonical append/delete/reset и index изменяются
+одной transaction; существующая bounded maintenance обрабатывает не более64 canonical rows за request, с persisted cursor, без poller/tick SQL. До окончания
+backfill/loss repair coverage=index_building; derived index не второй source of truth. Invalid index → omission/rebuild, не удаление canonical facts.
+
+Одна worker transaction читает metadata build/clock и до1001 postings диапазона, затем максимум1000 exact canonical payloads. 1001-я запись или serialized
+canonical page>1MiB означает coverage=overflow и **пустые events**, не inference по prefix. Metadata хранит максимальный recorded UTC timestamp и
+пересчитывается при удалении/исправлении соответствующего source; future source относительно `asOf`, invalid calendar/shape, индекс/source mismatch либо
+обнаруженный wall-clock rollback → clock_unknown/whole omission. Постоянный metadata read не count/full-history scan. Общий read group≤200ms, одна in-flight
+группа; timeout/storage failure → omission, без расширения cap, retry loop или очереди запросов. Новые offsets/timezone/DST не применяются задним числом.
+
+Окно — максимум14 UTC calendar dates, включая текущую частичную дату, `fromDateUTC..throughDateUTC`, `asOf` — текущий calendar UTC timestamp. Читаются только
+occurredAt≤asOf; порядок occurredAt ASC, при равенстве private insertion order ASC, затем exact identity. Даты означают **записанные UTC-метки**, не полные
+дни присутствия/личный timezone пользователя. Нет источников в дату — нет evidence, не отказ/AFK/неудача. Invalid/unknown date не восстанавливается из текста
+или текущего timezone. После rollback новый derived capture допустим лишь при восстановленной согласованности часов; локальный runtime не ждёт его.
+
+Независимая identity — `(appRunId, sequence, revision1)` плюс unique actual activityRun в том appRun. Legacy game_episodes, другой index, report, recall,
+summary и повтор callback того же terminal не второй sample. Source changes/reset проходят существующий synchronous memory generation barrier; время закрытого
+приложения не создаёт события. Retention canonical rows остаётся до full reset, автоматический TTL/удаление sources здесь не вводятся.
+
+### 7.2. Один cross-day вывод #176
+
+Категория только `shared_game_completions`: повторение завершений **наблюдённых** совместных cursor games. Полное окно для capture — текущие14 UTC dates по7.1.
+Eligible evidence: distinct completed/user_engaged terminals с executedMs≥1000 либо user_interrupted/user_engaged terminals с executedMs≥1000 и trusted user
+trigger. Solitary/none, environment loss/timeout, other/unknown и текст модели не positive и не counterevidence пользователя. Они не превращаются в «плохие
+отношения».
+
+| Условие текущего полного окна | Результат |
+|---|---|
+| Completed≥6 и встречаются на≥3 distinct UTC dates; completed/(completed+interrupted)≥0.7; последний eligible terminal completed; среди последних4 eligible меньше2 interruptions | Ровно один tentative completion-pattern с exact counts/датами и source refs |
+| Недостаток days/counts, ratio<0.7, последний eligible interruption или≥2 interruptions среди последних4 | No insight; прежний вывод снимается |
+| Building/overflow/clock_unknown, missing/invalid source, volatile/storage/timeout | Omission, не отрицательный вывод |
+
+Это versioned техническое правило, не доказательство удовольствия, дружбы, мотива, будущей готовности играть или полного распорядка. Числовые
+Character/relationships/preferences/consent, own-interest #160 и activity outcomes не меняются. Разные истории могут давать pattern либо no-insight, но не
+социальный диагноз/штраф.
+
+Derived результат хранится только в одном RAM cache с ≤1000 exact source refs, memory generation, source revision и asOf. Startup ничего не
+replay-ит/генерирует; первый подходящий ordinary user query заново читает canonical окно. Cache действителен только для того же UTC date/window, текущих
+clocks/generation/source revision. Нет отдельного persisted insight payload, обещания successful write или восстановления старого вывода без proof.
+
+`ICausalSourceReadBarrier` — одна revision и один settle wait существующих causal appends. Revision синхронно меняется **до** постановки append в worker и при
+invalidation/reset; pending очищается после acknowledged success/failure. Capture один раз ждёт settle в том же200ms budget, затем фиксирует state с
+pending=false, читает окно и повторно проверяет revision/generation/pending/date перед dispatch и публикацией. Любой новый append (включая будущий
+counterevidence), deletion/correction/reset или clock discontinuity инвалидирует старый RAM result/pending capture. Никаких повторных read в том же opportunity,
+SQL на tick, background recompute или нового queue; failure не считается опытом. После timeout новый запрос не создаёт вторую unsettled read group.
+
+Единственный consumer — обычный `/v1/chat`, когда current text existing normalizer даёт game.any либо game.completed.user_engaged. No query match → no insight.
+Local proof/capture не помещается в IPC/wire; provider получает только [lifeReflection](BACKEND_MEMORY_CONTRACT.md#13-memory-a03-вывод-о-совместных-играх-175),
+без IDs/исходного дневника. Events/touch/observation не получают его и явно отклоняют это поле; не появляется инициативный вопрос/LLM loop. Capture validity
+проверяется и после provider result, до публикации; source invalidation не позволяет late reply вернуть старую inference.
+
+### 7.3. Один event-source mode summary #177
+
+Режим `life_events` добавляется к **тому же** controller/interlock/cache/controls summary, отдельно от `dialogue_pairs`. Пользователь явно выбирает UTC
+диапазон≤14 dates и видит preview точных4–8 eligible cursor terminal sources; новый режим не маскирует event как user→assistant pair. Из полного окна7.1 берутся
+последние8 known-cause terminals, в occurredAt/private insertion chronology. Contact, other/unknown, rejected preview и несохранённый event не подходят. Нет4
+sources/неполное окно/нет provider capability → unavailable с понятной причиной, без inference.
+
+Preview содержит реальную chronology/outcome/participation/date и поясняет «выбранные события при работающей Wisp; не вся жизнь». Source IDs остаются
+Main/Application; Renderer получает preview ID и semantic entries. TTL120s, current stream/memory generation и отдельное подтверждение передачи выбранных
+событий текущему backend/provider. Свободный пересказ не заменяет preview. При offline остаются локальная жизнь/обычный recall и безопасный статус; полноценная
+локальная речь от отсутствующей модели не обещается.
+
+`POST /v1/summary` принимает одну из двух exact форм: прежние `{requestId,locale,stream:false,pairs}` **без изменений** либо target
+`{requestId,locale,stream:false,fromDate,throughDate,events}`. Shapes взаимно исключаются: pairs+events/null/extra keys отклоняются до admission. Это единый
+Alpha contract, без version field/probe/adapter/нового endpoint. Event array4–8 в chronology; UTC dates calendar-valid, inclusive span≤14 и каждый occurredAt
+внутри него. Event fields — target BackendLifeSummaryEvent; only cursor_game, coherent known terminal cause/outcome/actor, finite executedMs0..600000.
+IDs/appRun/run IDs/revisions/raw dialogue/исходная summary/Character/settings/instructions не передаются. Array position — request-local ordinal, mapping exact
+refs хранит client.
+
+Structured event request≤8KiB и общий32KiB cap; source data обязательны целиком, не truncate ради бюджета. Summary scenario использует прежние8192 budget
+units/output≤512 provider tokens, server10s/transport12s/runtime15s, одна generation, никаких repair pass/failover/tools/extraction. Prompt source-only:
+даты/исходы/участие лишь как записаны, unknown не достраивать, не объявлять мотивы/эмоции/вкус/авторскую биографию/«всегда» или полную coverage. Нет style
+examples/нового характера. Events untrusted user-role JSON, технический provenance отдельно. Формат ответа остаётся exact `{requestId,text}`, text1..1200
+UTF-16/response≤16KiB. Форматная проверка и source proof **не доказывают** истинность свободного LLM текста; он остаётся помеченным derived/unverified, не
+evidence. Live качество отдельно, без paid calls в automated tests.
+
+До dispatch durable receipt и exact revalidation всех4–8 refs; после ответа, перед save и каждым chat capture — exact resolveSources≤8 в общем200ms budget и
+SHA-256 canonical source payload/identity/revision. Missing/corrected/deleted source/digest/generation mismatch → stale, не cache save/send. Same command joins
+pending/result, другой payload/mode с тем же ID конфликтует. Одна глобальная принятая попытка rolling24h на профиль **для обоих режимов**, включая
+errors/timeout/unknown outcome; no retry/background call. Cache hit того же sourceDigest/locale/generatorVersion после validation возвращает text без inference.
+Новые append не меняют выбранные immutable sources: summary остаётся историей именно frozen preview, не current trend7.2.
+
+### 7.4. Cache, chat inclusion и удаление
+
+Один прежний `summary-cache.json`, максимум32KiB/одна entry/один общий receipt, target formatVersion2. Strict format1 migration только локальная: старые
+entry/receipt получают mode=dialogue_pairs, hashes/locale/generatorVersion1/admittedAt сохраняются дословно; writer затем толькоformat2. Life entry/receipt
+mode=life_events/generatorVersion2, sourceDigest включает mode/locale/UTC range/ordered exact refs+payload digests. Cache не копирует raw source payload.
+Никаких wire versions/legacy transports. Corrupt/future format fail closed, не повреждает SQLite и не сбрасывает frequency receipt/не разрешает новый paid call.
+Старый binary не переписывает неизвестный format.
+
+Life cache capture разрешён только ordinary chat при current game query и valid exact sources. В тот же optional `summary` field передаётся target
+`{sourceKind:life_events,text,fromDate,throughDate,eventCount}`; прежняя `{text}` ветка dialogue_pairs остаётся прежней. Оба режима summary одновременно не
+передаются, summary не попадает в events/touch/observation. Если life summary выбран, lifeReflection целиком omitted; иначе reflection может участвовать по7.2.
+При inclusion exact covered causal refs и equivalent legacy game run IDs исключаются из recall, как dialogue coverage исключает свои message IDs. Не исключать
+другие verified события, не увеличивать2 episode slots/2400 memory units/32KiB body/token ceiling. Whole optional drop при byte/provider overflow, без
+вытеснения immutable baseline state/facts/current input. Chat/startup/timer никогда не создают summary inference.
+
+Любой turn, которому фактически dispatch-нут lifeReflection или life summary, получает Main-owned `LifeDerivedContextUse`. Append пары+suppress этой пары для
+future raw recall/summary/extraction — одна прежняя worker transaction, включая fallback output. Request/user/assistant binding/digest препятствуют
+bound/unbound replay, как existing topic/beverage use; не выводить use из текста LLM/Renderer. Current явная user-реплика сохраняет прежний recognizer, но model
+paraphrase/новый summary не становятся causal source или новым подтверждением pattern. Это flat use/suppression, не новый source graph. Уже показанная
+историческая реплика не считается новым событием/актуальным cache.
+
+Source correction/delete, full reset и существующие memory mutations синхронно закрывают admission/abort/инвалидируют captures/cache **до** SQL barrier;
+rollback не оживляет callbacks. Counterevidence append инвалидирует current reflection, но не переписывает immutable выбранный sample старой summary. «Удалить
+сводку» удаляет entry text/coverage и сохраняет общий24h receipt/источники; UI не обещает удалить source history, уже отправленный backend/provider payload либо
+произвести full reset. Full reset очищает cache/temporary files/receipt/index/state одной прежней cleanup workflow; late writer запрещён. Dialogue reset/reload
+abort preview/generation, durable cache/receipt остаются; restart лишь revalidates, dispose завершает queue без late save. Старые association/suppression IDs
+остаются до full reset, тексты не логируются. Server storage не добавляется: inference lifetime/RAM response cache≤10min/provider retention и общие ledger TTL
+остаются прежними.
+
+### 7.5. Конечные проверки разработчика
+
+#176: synthetic sufficient histories на3+ UTC dates против duplicates/same-date/solitary/unknown/missing sources; ratio70%, latest/out-of-last4 counterevidence boundaries; timezone/DST не меняет recorded UTC grouping, future/rollback/building/1001 rows/1MiB/200ms дают omission. Capture-before-append-ack, new counterevidence during read/provider wait, failed append, source correction/delete/reset/restart/dispose и no replay/learning. Ordinary chat only, exact TS/Python root-field fixtures, optional atomic drop/auth/outage/malformed/timeout/late result, actual derived-use pair suppression/no echo.
+
+#177: pairs mode unchanged; life4/8 sources/range14/chronology/ties/dedup/unknown cases, preview120s/explicit consent, one global receipt across modes, duplicate/conflict/lost write/clock rollback, format1→2 preserves receipt, future/corrupt cache safe. Actual source→generation→restart→1000 later events→matching chat without duplicated source; correction/delete/reset/late generator/filewriter/consumer pair echo. Shared valid/invalid fixtures under `desktop-backend-v1/life-history`, both providers mocked; no private corpus/live-quality claims. Проверить typecheck, affected backend schemas/tests и общий integration gate через existing tooling, scoped pre-commit. Нового QA/benchmark framework нет.

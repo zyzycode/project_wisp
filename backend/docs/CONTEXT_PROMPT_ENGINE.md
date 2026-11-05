@@ -363,7 +363,7 @@ Touch/events/observation не активируют lore.
 Диапазон передаётся атомарно; его нельзя урезать ради бюджета. Desktop проверяет
 происхождение, актуальность и владеет локальным кешем. Chat v1 использует summary
 как дополнительный контекст ниже текущих фактов, предыдущей инициативы и истории.
-Полные границы — [Context data](../../docs/contracts/CONTEXT_DATA_CONTRACT.md).
+Полные границы — [Context data](../../docs/contracts/CONTEXT_DATA_CONTRACT.md); target event-source mode и tentative cross-day projection #176/#177 отдельно определены в [§7](../../docs/contracts/CONTEXT_DATA_CONTRACT.md#7-memory-a03-несколько-наблюдённых-utc-дат-и-summary-событий-175), без нового характера или automatic inference.
 
 ## OBS-A02: untrusted observation
 

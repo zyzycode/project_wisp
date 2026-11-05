@@ -247,7 +247,7 @@ Score — число совпавших различных query tokens в label
 <a id="12-ctx-a01-производная-summary"></a>
 ## 12. Производная summary
 
-Спецификация производного summary разговоров;
+Этот раздел задаёт summary разговоров; отдельные cross-day вывод и event-source mode #176/#177 — [Context data §7](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md#7-memory-a03-несколько-наблюдённых-utc-дат-и-summary-событий-175).
 передача/доверие/budgets — [Context data](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md).
 Summary — неподтверждённый пересказ, не knowledge item, transcript, факт или adaptation.
 Application владеет selection/generation/revalidation; Infrastructure — локальным cache
@@ -432,7 +432,7 @@ Additive migration4 транзакционно перестраивает memory
 
 Source correction/delete/reset синхронно инвалидируют capture/context/late results перед worker barrier; postings удаляются вместе с canonical source, CAS revision/generation повторно проверяются перед dispatch/публикацией. Full reset удаляет index/build cursor/canonical rows одной transaction. Recall memory не попадает в durable assistant-derived knowledge/summary как новое evidence; существующие suppression/source rules сохраняются. Уже отправленный provider payload физически не отзывается локальным delete; серверного event storage/delete endpoint нет. Диагностика содержит counts/code/coverage/latency, без частных текстов, prompts и source IDs.
 
-**Контроль качества.** Неизменённый baseline20 #172 и целевой языковой delta #174, источники/метрики/resource caps — единый [контрольный corpus](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md#causal-recall-quality). Query-stage bucket selection не подменяет actual retrieval; ambiguous «не закончили/round cut short» не доказывает user interruption.
+**Контроль качества.** Неизменённый baseline20 #172 и целевой языковой delta #174, источники/метрики/resource caps — единый [контрольный corpus](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md#causal-recall-quality). Query-stage bucket selection не подменяет actual retrieval; ambiguous «не закончили/round cut short» не доказывает user interruption. Полное bounded UTC-окно для #176/#177 и его source barrier — [Context data §7.1](../../../docs/contracts/CONTEXT_DATA_CONTRACT.md#71-общее-окно-источников), не этот bucket≤16.
 
 ## 18. MEMORY-A02: ограниченное языковое сопоставление (#173)
 
