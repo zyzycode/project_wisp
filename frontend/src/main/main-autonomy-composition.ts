@@ -104,6 +104,7 @@ export interface MainAutonomyCompositionOptions {
   readonly behaviorConfig?: BehaviorConfig;
   readonly createVisualEpisodeId: () => string;
   readonly createActivityRunId?: () => string;
+  readonly createActivitySequence?: () => number;
   readonly onPresentationChanged: () => void;
 }
 
@@ -201,6 +202,7 @@ export class MainAutonomyComposition {
       },
       cancelLocomotion: (forDrag) => options.movement.cancelVoluntaryMovement(forDrag),
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
+      createActivitySequence: options.createActivitySequence,
       onRunCommitted: (runId, activityId) => {
         if (this.activity.isInitiative()) this.initiativeStartSequence++;
         if (activityId === 'social_bid' && this.startingSocial !== null) {

@@ -128,6 +128,7 @@ let memoryRuntime: MemoryLifecycle | null = null;
 let deferredInvitationRuntime: DeferredGameInvitationRuntime | null = null;
 let ownGoalsRuntime: OwnGoalsRuntime | null = null;
 let causalOwnerSequence = 0;
+let activityRunSequence = 0;
 let routineCapture: RoutineCapture | null = null;
 let unregisterMemory: (() => void) | null = null;
 let unregisterSummary: (() => void) | null = null;
@@ -391,9 +392,9 @@ function initializeAutonomyComposition(): void {
     onUserContact: () => { aiEventRuntime?.userContact(); observationRuntime?.invalidate(); },
     onCursorGameResult: result => { aiEventRuntime?.gameTerminal(result, memoryGeneration); void memoryRuntime?.history.game(result, memoryGeneration); },
     onActivityOutcome: event => {
+      if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
       causalOwnerSequence++;
       memoryRuntime?.history.causal.outcome(event);
-      if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
       ownGoalsRuntime?.activityOutcome(event.activityRunId, event.outcome);
       aiEventRuntime?.outcome(event);
       const stimulus = shimejiStimulusMapper.map(event, { createdAtIso: new Date().toISOString(),
@@ -422,6 +423,7 @@ function initializeAutonomyComposition(): void {
     },
     createVisualEpisodeId: randomUUID,
     createActivityRunId: randomUUID,
+    createActivitySequence: () => ++activityRunSequence,
     onSleepStateChanged: () => dialogueRuntime?.notifySleepStateChanged(),
     onPresentationChanged: publishBrainState,
   });

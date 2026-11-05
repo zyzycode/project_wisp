@@ -69,6 +69,8 @@ export interface BrainActivityRuntimeOptions {
   }) => boolean;
   readonly cancelLocomotion: (forDrag?: boolean) => boolean;
   readonly createRunId: () => string;
+  /** The application owner keeps this monotonic across replacement runtime instances. */
+  readonly createActivitySequence?: () => number;
   readonly cooldownRules?: readonly CooldownRule[];
   readonly onVisualIntent: (intent: AnimationIntent<AnimationIntentKind>) => void;
   readonly onRunCommitted?: (runId: string, activityId: string) => void;
@@ -165,7 +167,10 @@ export class BrainActivityRuntime {
     const rawId = this.options.createRunId();
     if (rawId.trim().length === 0 || rawId.trim() !== rawId) throw new Error('Activity run ID must be trimmed and non-empty');
     if (this.runSequence >= Number.MAX_SAFE_INTEGER) throw new Error('Activity run sequence exhausted');
-    const runId = `${++this.runSequence}:${rawId.slice(0, 100).trimEnd()}`;
+    const sequence = this.options.createActivitySequence?.() ?? this.runSequence + 1;
+    if (!Number.isSafeInteger(sequence) || sequence <= this.runSequence) throw new Error('Activity run sequence must increase');
+    this.runSequence = sequence;
+    const runId = `${sequence}:${rawId.slice(0, 100).trimEnd()}`;
     const update = this.runner.start(definition, runId, nowMs);
     if (update.runtime === undefined) return false;
     this.definition = definition;
