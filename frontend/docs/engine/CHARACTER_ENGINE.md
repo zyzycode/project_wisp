@@ -440,6 +440,10 @@ Facets изменяются только один раз на принятый e
 
 Domain/Character владеет event-scoped интерпретацией, переоценкой текущего affect и evidence-based repair, отдельно от CE-A01 фактов/facets. Полные локальные правила и lifecycle — [Autonomy §16](AUTONOMY_ENGINE.md#16-mind-a01-объяснение-прерывания-coping-и-восстановление-163); attributed report не доказательство мотива и не consent. Это цель slices #164–166, без нового AI-loop или изменения authored личности.
 
+## 14. MIND-A02: собственные мотивы и контекстный переход (#167)
+
+Domain/Character удерживает recover_energy/seek_novelty отдельно от вкуса и одного durable invitation; Application не превращает их в прямые команды. [Autonomy §17](AUTONOMY_ENGINE.md#17-mind-a02-собственная-цель-короткий-план-и-привычный-переход-167) задаёт конечные goals/plans и один habit Explore→calm/look_around; обычные Needs/consent/P0–P3 сильнее этих факторов. SnapshotV5 расширяет dynamic checkpoint без изменения authored identity; это цель #168–170.
+
 ## Архитектурные границы
 
 Чистый Domain `frontend/src/domain/character/`; [общая изоляция](README.md#5-общие-архитектурные-границы-и-изоляция-clean-architecture).
