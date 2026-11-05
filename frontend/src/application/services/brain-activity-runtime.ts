@@ -1,3 +1,4 @@
+import { initialCursorGameParticipation, observeCursorGameParticipation, terminalCursorGameParticipation, type CursorGameParticipation } from '../../domain/behavior/cursor-game-participation';
 import type { ActivityOutcomeFeedback } from '../ports/shimeji-feedback-port';
 import { advanceCursorGame, initialCursorGame, type GameState, type GameObservation } from '../../domain/behavior/cursor-game';
 import { DEFAULT_CURSOR_GAME_TUNING, type CursorGameResult } from '../ports/cursor-game-contract';
@@ -96,6 +97,7 @@ export class BrainActivityRuntime {
   private readonly terminalRuns = new Set<string>();
   private explorePlan: ExplorePlan | null = null;
   private cursorGame: GameState | null = null;
+  private cursorParticipation: CursorGameParticipation = initialCursorGameParticipation(0);
 
   public constructor(private readonly options: BrainActivityRuntimeOptions) {}
 
@@ -161,7 +163,8 @@ export class BrainActivityRuntime {
     intent: BehaviorIntent
   ): boolean {
     this.cancel('higher_priority_activity');
-    this.participation = intent.source === 'user' ? 'user_engaged' : 'solitary';
+    this.participation = definition.id !== 'cursor_interest' && intent.source === 'user' ? 'user_engaged' : 'solitary';
+    this.cursorParticipation = initialCursorGameParticipation(nowMs);
     this.playCompleted = false;
     this.source = intent.reason === 'vital_sleep' ? 'character' : intent.source === 'user' ? 'user' : intent.source === 'provider' ? 'provider' : 'local';
     const rawId = this.options.createRunId();
@@ -342,6 +345,8 @@ export class BrainActivityRuntime {
     if (this.terminalRuns.size > 64) this.terminalRuns.delete(this.terminalRuns.values().next().value!);
     const atMs = result.status === 'completed' ? result.completedAtMs
       : result.status === 'cancelled' ? result.cancelledAtMs : result.failedAtMs;
+    const participation = this.cursorGame ? terminalCursorGameParticipation(this.cursorParticipation, atMs) : this.participation;
+    this.cursorParticipation = initialCursorGameParticipation(0);
     if (this.cursorGame) {
       this.options.onCursorGameResult?.({ activityRunId: runtime.runId, atMs,
         outcome: this.cursorGame.outcome ?? 'cancelled', playCompleted: this.cursorGame.playCompleted,
@@ -356,7 +361,7 @@ export class BrainActivityRuntime {
       activityRunId: runtime.runId, activitySequence: Number(runtime.runId.slice(0, runtime.runId.indexOf(':'))), atMs, family, outcome: result.status,
       ...(definition.id === 'cursor_interest' ? { activity: 'cursor_game' as const } : {}),
       terminalReason: result.status === 'completed' ? null : result.reason,
-      participation: this.participation, executedMs: Math.max(0, atMs - runtime.startedAtMs),
+      participation, executedMs: Math.max(0, atMs - runtime.startedAtMs),
       playCompleted: this.playCompleted });
     this.options.onSettled?.(runtime.runId, result);
     this.repetition = recordRunResult(this.repetition, runtime, result);
@@ -369,7 +374,11 @@ export class BrainActivityRuntime {
 
   private updateCursorGame(nowMs: number, arrived = false): boolean {
     if (!this.cursorGame || !this.runtime || !this.definition || !this.options.getCursorObservation) return false;
-    const change = advanceCursorGame(this.cursorGame, this.runtime, this.options.getCursorObservation(),
+    const observation = this.options.getCursorObservation();
+    this.cursorParticipation = observeCursorGameParticipation(this.cursorParticipation, this.runtime.startedAtMs,
+      this.cursorGame, observation, DEFAULT_CURSOR_GAME_TUNING, nowMs);
+    this.participation = this.cursorParticipation.engaged ? 'user_engaged' : 'solitary';
+    const change = advanceCursorGame(this.cursorGame, this.runtime, observation,
       DEFAULT_CURSOR_GAME_TUNING, nowMs, arrived);
     this.cursorGame = change.game;
     this.playCompleted = change.game.playCompleted;

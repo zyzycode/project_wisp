@@ -23,6 +23,30 @@ describe('autonomous cursor game', () => {
     expect(f.main.getActivityTimeline()?.runId).toBe(runId);
     f.fresh(1200, 560); expect(f.outcomes).toHaveLength(1); f.main.dispose();
   });
+  it('records real post-start cursor movement as engaged input on the completed system-initiated game', () => {
+    const f = game();
+    f.fresh(200, 440); f.fresh(200, 460); f.fresh(2400, 440);
+    expect(f.outcomes).toHaveLength(1);
+    expect(f.outcomes[0]).toMatchObject({ activity: 'cursor_game', outcome: 'completed', playCompleted: true, participation: 'user_engaged' });
+    f.main.dispose();
+  });
+  it('ignores movement first observed after the game outcome has already been decided', () => {
+    const f = game(); f.fresh(1600); expect(f.main.getCursorGamePresentation()?.outcome).toBe('caught');
+    f.fresh(200, 460); f.fresh(1000, 440);
+    expect(f.outcomes[0]).toMatchObject({ outcome: 'completed', participation: 'solitary' }); f.main.dispose();
+  });
+  it('drops the participation latch when the terminal clock goes backwards', () => {
+    const f = game(); f.fresh(200); f.fresh(200, 460); f.elapse(-101); f.main.handleClick();
+    expect(f.outcomes[0]).toMatchObject({ outcome: 'cancelled', participation: 'solitary' }); f.main.dispose();
+  });
+  it('does not carry observed participation into the next independently admitted stationary run', () => {
+    const f = game(); f.fresh(200); f.fresh(200, 460); f.fresh(2600);
+    expect(f.outcomes[0]?.participation).toBe('user_engaged');
+    f.elapse(31000); f.setRandom(0); f.sample(900); f.sample();
+    for (let i = 0; i < 6 && f.main.getActivityTimeline()?.activityId !== 'cursor_interest'; i++) { f.advance(100); f.sample(); }
+    expect(f.main.getActivityTimeline()?.activityId).toBe('cursor_interest'); f.fresh(3000);
+    expect(f.outcomes).toHaveLength(2); expect(f.outcomes[1]?.participation).toBe('solitary'); f.main.dispose();
+  });
   it('plays, speaks, rewards once and refuses an ignored stationary replay', () => {
     const f = game(); const relationship = f.character.getState().relationship;
     f.fresh(600); expect(f.main.getActivityTimeline()?.phaseId).toBe('attempt');
