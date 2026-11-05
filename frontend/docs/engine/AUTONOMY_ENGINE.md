@@ -31,7 +31,7 @@ Skin completion/rejection/fallback/interruption не Activity events. Нет Ren
 | P1 direct user / causal continuation | drag, click, pet, explicit command | Отменяет P2–P5; airborne drag начинается после atomic physics step. |
 | P2 critical Character state | required sleep/wake | Определяется только Character contract; ждёт P0/P1 и отменяет P3–P5. |
 | P3 reactive / provider | admitted AI, затем local spook/cursor reaction | После gating отменяет P4–P5; AI выше local P3, вне Utility. |
-| P4 autonomous | Explore, optional Rest, calm, Zoomies, SocialBid; target [book #183](ACTIVITY_ENGINE.md#20-body-i03-декоративное-занятие-с-книгой-183) | Заменяет P5; local peers не заменяют active P4 по умолчанию. |
+| P4 autonomous | Explore, Rest, calm, Zoomies, SocialBid, [book #183](ACTIVITY_ENGINE.md#20-body-i03-декоративное-занятие-с-книгой-183); target [manual window help #131](ACTIVITY_ENGINE.md#21-qa-soc-01-проверенная-просьба-перенести-на-окно-131) | Заменяет P5; local peers не заменяют active P4 по умолчанию. |
 | P5 ambient | blink, micro-idle | Прерывается всеми higher ranks. |
 
 [Character sleep/quiet](CHARACTER_ENGINE.md#21-каноническая-семантика-сна-и-пробуждения) владеет thresholds/семантикой; [Motion](MOTION_ENGINE.md#8-авторитет-позиции-кто-двигает-окно) — ordering/возврат position authority.
