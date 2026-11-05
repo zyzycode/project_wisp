@@ -1,3 +1,4 @@
+import { CausalLifeStore } from './causal-life-store';
 import { RoutineStore } from './routine-store';
 import { BeverageStore } from './beverage-store';
 import { InterestThreadStore } from './interest-thread-store';
@@ -52,6 +53,9 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'appendCausalLife': return new CausalLifeStore(this.db).append(c.payload);
+      case 'recentCausalLife': return new CausalLifeStore(this.db).recent(c.payload);
+      case 'resolveCausalLife': return new CausalLifeStore(this.db).resolve(c.payload);
       case 'beginRoutine': return new RoutineStore(this.db).begin(c.payload);
       case 'appendRoutine': return new RoutineStore(this.db).append(c.payload);
       case 'readRoutineStatus': return new RoutineStore(this.db).read();
@@ -91,7 +95,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 2, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { new RoutineStore(this.db).clear(); this.db.exec('DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { new RoutineStore(this.db).clear(); this.db.exec('DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }

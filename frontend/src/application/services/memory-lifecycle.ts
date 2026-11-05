@@ -12,6 +12,7 @@ import { projectCharacterMemory, restoreCharacterMemory } from './character-memo
 import { MemoryHistory } from './memory-history';
 
 interface Options {
+  readonly causalObserver?: (episode: import('../ports/causal-life.interface').CausalLifeEpisode, atMs: number) => void;
   readonly summary?: Pick<import('../ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>;
   readonly storage: MemoryRepositories;
   readonly character: CharacterStateService;
@@ -45,7 +46,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   private shutdownPromise: Promise<void> | undefined;
   constructor(private readonly options: Options) {
     this.knowledge = new MemoryKnowledge({ invalidateSummary: () => options.summary?.invalidate(), facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
-    this.history = new MemoryHistory({ ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => { if (turn.beverageCorrection) options.summary?.invalidate(); return this.knowledge.persisted(turn, context); }, ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
+    this.history = new MemoryHistory({ causalObserver: options.causalObserver, generation: () => this.generation, ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => { if (turn.beverageCorrection) options.summary?.invalidate(); return this.knowledge.persisted(turn, context); }, ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
   }
   currentGeneration(): number { return this.generation; }
   getStatus(): MemoryStatusDTO { return { ...this.status }; }
@@ -246,7 +247,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.options.scheduler.clearTimeout(this.startupTimer); this.stopTimer();
     const capture = this.options.shutdownCapture?.() ?? Promise.resolve();
     const c = this.context(); const sessionClose = c ? this.history.close(this.options.timestamp()) : Promise.resolve();
-    this.phase = 'stopping'; this.options.summary?.dispose(); this.options.pause();
+    this.phase = 'stopping'; this.options.summary?.dispose(); this.options.pause(); this.history.causal.dispose();
     let grace: unknown;
     const deadline = new Promise<void>(resolve => { grace = this.options.scheduler.setTimeout(() => { void this.options.storage.abort().then(resolve); }, 7000); });
     const drain = async () => {

@@ -1,3 +1,4 @@
+import { CAUSAL_LIFE_SCHEMA } from './causal-life-store';
 import { migrateRoutine, ROUTINE_TABLES } from './routine-schema';
 import { migrateBeverage } from './beverage-schema';
 import { INTEREST_THREAD_SCHEMA, INTEREST_THREAD_TABLES } from './interest-thread-schema';
@@ -5,9 +6,9 @@ import { MEMORY_ITEMS_SCHEMA, MEMORY_ITEM_TABLES } from './item-schema';
 import type Database from 'better-sqlite3';
 import { MemoryDataError, record, timestamp } from './validation';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 const migrationName = 'local_memory_v1';
-const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3', 'beverage_preference_v4', 'routine_observations_v5'];
+const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3', 'beverage_preference_v4', 'routine_observations_v5', 'causal_life_v6'];
 const schema = `
 CREATE TABLE conversation_sessions (id TEXT PRIMARY KEY NOT NULL, app_run_id TEXT NOT NULL UNIQUE, started_at TEXT NOT NULL, ended_at TEXT);
 CREATE TABLE messages (sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, conversation_session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE RESTRICT, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -32,6 +33,7 @@ export function initializeSchema(db: Database.Database, now: string): void {
     if (version >= 2 && MEMORY_ITEM_TABLES.some(name => !names.includes(name))) throw new MemoryDataError('corrupt');
     if (version >= 3 && INTEREST_THREAD_TABLES.some(name => !names.includes(name))) throw new MemoryDataError('corrupt');
     if (version >= 5 && ROUTINE_TABLES.some(name => !names.includes(name))) throw new MemoryDataError('corrupt');
+    if (version >= 6 && !names.includes('causal_life_episodes')) throw new MemoryDataError('corrupt');
     const entries = db.prepare('SELECT version, name, applied_at FROM schema_migrations ORDER BY version').all();
     if (entries.length !== version) throw new MemoryDataError('corrupt');
     for (const [index, entry] of entries.entries()) {
@@ -63,6 +65,11 @@ export function initializeSchema(db: Database.Database, now: string): void {
   }).immediate();
   if (version < 4) migrateBeverage(db, now);
   if (version < 5) migrateRoutine(db, now);
+  if (version < 6) db.transaction(() => {
+    db.exec(CAUSAL_LIFE_SCHEMA);
+    db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(6, migrationNames[5], now);
+    db.pragma('user_version = 6');
+  }).immediate();
   const foreignKeyErrors: unknown = db.pragma('foreign_key_check');
   if (!Array.isArray(foreignKeyErrors) || foreignKeyErrors.length !== 0) throw new MemoryDataError('corrupt');
 }

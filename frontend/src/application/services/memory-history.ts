@@ -1,3 +1,4 @@
+import { CausalLifeRecorder } from './causal-life-recorder';
 import type { CompletedDialogueMemoryTurn } from '../ports/memory-runtime';
 import type { CursorGameResult } from '../ports/cursor-game-contract';
 import type { AIProviderContextMessage } from '../ports/ai-provider.interface';
@@ -5,6 +6,9 @@ import type { ConversationSession, IChatHistoryRepository, IGameEpisodeRepositor
 import { boundMemoryContext } from './memory-context';
 
 export interface MemoryHistoryOptions {
+  readonly causalLife?: import('../ports/causal-life.interface').ICausalLifeRepository;
+  readonly generation?: () => number;
+  readonly causalObserver?: (episode: import('../ports/causal-life.interface').CausalLifeEpisode, atMs: number) => void;
   readonly history: IChatHistoryRepository;
   readonly episodes: IGameEpisodeRepository;
   readonly context: () => MemoryOperationContext | null;
@@ -16,11 +20,17 @@ export interface MemoryHistoryOptions {
   readonly onFailure: (code: MemoryFailureCode) => void;
 }
 export class MemoryHistory {
+  readonly causal: CausalLifeRecorder;
   private appRunId: string;
   private session: ConversationSession | null = null;
   private pendingTurns = 0;
   private turns: Promise<unknown> = Promise.resolve();
-  constructor(private readonly options: MemoryHistoryOptions) { this.appRunId = options.createId(); }
+  constructor(private readonly options: MemoryHistoryOptions) {
+    this.appRunId = options.createId();
+    this.causal = new CausalLifeRecorder({ repository: options.causalLife, appRunId: () => this.appRunId,
+      context: options.context, generation: options.generation ?? (() => options.context()?.generation ?? 0),
+      toTimestamp: options.toTimestamp, onFailure: options.onFailure, onObserved: options.causalObserver });
+  }
   async hydrate(): Promise<readonly AIProviderContextMessage[]> {
     const c = this.options.context(); if (!c) return [];
     const result = await this.safe(() => this.options.history.getRecent(20, c));
@@ -57,7 +67,7 @@ export class MemoryHistory {
   }
   /** Recall can await preceding acknowledged fact corrections within its own bounded budget. */
   whenSettled(): Promise<void> { return this.turns.then(() => undefined); }
-  reset(): void { this.session = null; this.appRunId = this.options.createId(); }
+  reset(): void { this.causal.reset(); this.session = null; this.appRunId = this.options.createId(); }
   async close(endedAt: string): Promise<void> {
     const c = this.options.context(); if (!c) return;
     await this.turns;

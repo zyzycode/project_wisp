@@ -347,6 +347,7 @@ function initializeAutonomyComposition(): void {
     onUserContact: () => { aiEventRuntime?.userContact(); observationRuntime?.invalidate(); },
     onCursorGameResult: result => { aiEventRuntime?.gameTerminal(result, memoryGeneration); void memoryRuntime?.history.game(result, memoryGeneration); },
     onActivityOutcome: event => {
+      memoryRuntime?.history.causal.outcome(event);
       if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
       aiEventRuntime?.outcome(event);
       const stimulus = shimejiStimulusMapper.map(event, { createdAtIso: new Date().toISOString(),
@@ -545,6 +546,15 @@ function getNativePosition(): PetPositionDTO {
 let interactionSequence = 0;
 let processingTouchInput = false;
 function handleAcceptedBodyEvent(
+  event: Exclude<BodyEventDTO, { readonly type: 'menu_visibility_changed' }>
+): void {
+  const causal = memoryRuntime?.history.causal;
+  const input = event.type === 'interaction' || event.type === 'drag_started';
+  if (input) causal?.beginInput(event.type === 'interaction' && event.interaction === 'click', brainStatePublisher.now());
+  try { dispatchAcceptedBodyEvent(event); } finally { if (input) causal?.endInput(); }
+}
+
+function dispatchAcceptedBodyEvent(
   event: Exclude<BodyEventDTO, { readonly type: 'menu_visibility_changed' }>
 ): void {
   const orchestrator = shimejiMotionOrchestrator;

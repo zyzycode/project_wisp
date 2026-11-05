@@ -62,6 +62,11 @@ export interface IShimejiStimulusMapper {
 /** AUTO-A09 target outcome boundary (#46); legacy Swat migrates to the same run key. */
 export interface ActivityOutcomeFeedback {
   readonly type: 'activity_outcome';
+  /** Present for the actual cursor game, never for look-only cursor activity. */
+  readonly activity?: 'cursor_game';
+  /** Monotonically increasing identity from the sole Activity runtime, retained across memory reset. */
+  readonly activitySequence?: number;
+  readonly terminalReason?: import('./causal-life.interface').CausalLifeEpisode['terminalReason'];
   readonly eventId: string;
   readonly activityRunId: string;
   readonly atMs: MonotonicMs;

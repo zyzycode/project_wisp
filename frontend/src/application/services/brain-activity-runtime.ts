@@ -347,7 +347,9 @@ export class BrainActivityRuntime {
       : definition.tags?.includes('cursor') ? 'cursor_interest'
       : definition.id === 'social_bid' ? 'social_bid' : definition.id.startsWith('rest') ? 'rest' : 'calm';
     if (definition.id !== 'chat_walk') this.options.onOutcome?.({ type: 'activity_outcome', eventId: `${runtime.runId}:terminal`,
-      activityRunId: runtime.runId, atMs, family, outcome: result.status,
+      activityRunId: runtime.runId, activitySequence: Number(runtime.runId.slice(0, runtime.runId.indexOf(':'))), atMs, family, outcome: result.status,
+      ...(definition.id === 'cursor_interest' ? { activity: 'cursor_game' as const } : {}),
+      terminalReason: result.status === 'completed' ? null : result.reason,
       participation: this.participation, executedMs: Math.max(0, atMs - runtime.startedAtMs),
       playCompleted: this.playCompleted });
     this.options.onSettled?.(runtime.runId, result);

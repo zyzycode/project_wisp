@@ -1,3 +1,4 @@
+import { causalEpisode, causalSources } from './causal-life-validation';
 import { routineStart, routineObservation, routineIdentity, routineStatus } from './routine-validation';
 import { beverageMutation, beverageRead, beverageReceipt } from './beverage-validation';
 import { topicRead, topicMutation, topicReservation, topicReceipt, topicCapture } from './interest-thread-validation';
@@ -6,10 +7,10 @@ import type { MemoryFailureCode, MemoryResult } from '../../application/ports/me
 import { itemMutation, itemListQuery, itemReceipt, itemPage } from './item-validation';
 import * as v from './validation';
 
-export type Operation = 'beginRoutine' | 'appendRoutine' | 'readRoutineStatus' | 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
+export type Operation = 'appendCausalLife' | 'recentCausalLife' | 'resolveCausalLife' | 'beginRoutine' | 'appendRoutine' | 'readRoutineStatus' | 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
 export interface Command { readonly id: number; readonly generation: number; readonly operation: Operation; readonly payload: unknown }
 export interface Reply { readonly id: number; readonly result: MemoryResult<unknown> }
-const operations: readonly string[] = ['beginRoutine', 'appendRoutine', 'readRoutineStatus', 'readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
+const operations: readonly string[] = ['appendCausalLife', 'recentCausalLife', 'resolveCausalLife', 'beginRoutine', 'appendRoutine', 'readRoutineStatus', 'readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
 const codes: readonly string[] = ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'invalid_data', 'conflict', 'stale', 'io_error'];
 export function command(value: unknown): Command {
   const c = v.record(value, ['id', 'generation', 'operation', 'payload']);
@@ -17,6 +18,9 @@ export function command(value: unknown): Command {
   const operation = c.operation as Operation;
   let payload: unknown;
   switch (operation) {
+    case 'appendCausalLife': payload = causalEpisode(c.payload); break;
+    case 'resolveCausalLife': payload = causalSources(c.payload); break;
+    case 'recentCausalLife': payload = v.integer(c.payload, 1, 100); break;
     case 'beginRoutine': payload = routineStart(c.payload); break;
     case 'appendRoutine': payload = routineObservation(c.payload); break;
     case 'mutateBeverage': payload = beverageMutation(c.payload); break;
@@ -60,6 +64,10 @@ export function failure(error: unknown): MemoryResult<never> {
 
 export function responseValue(operation: Operation, value: unknown): unknown {
   switch (operation) {
+    case 'recentCausalLife': case 'resolveCausalLife': {
+      if (!Array.isArray(value) || value.length > (operation === 'resolveCausalLife' ? 20 : 100)) throw new v.MemoryDataError('invalid_data');
+      return value.map(causalEpisode);
+    }
     case 'beginRoutine': return routineIdentity(value);
     case 'readRoutineStatus': return routineStatus(value);
     case 'readBeverage': return beverageRead(value);
