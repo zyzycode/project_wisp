@@ -16,7 +16,9 @@
 
 ## 2. Схема SQLite v1
 
-Типы — [memory-repository.interface.ts](../../src/application/ports/memory-repository.interface.ts) и [character-memory-snapshot.ts](../../src/application/ports/character-memory-snapshot.ts). Имена/пути драйвера не входят в public ports. Все таблицы создаются одной первой миграцией; ORM не нужен.
+Типы — [memory-repository.interface.ts](../../src/application/ports/memory-repository.interface.ts) и [character-memory-snapshot.ts](../../src/application/ports/character-memory-snapshot.ts). Имена/пути драйвера не входят в public ports; ORM не нужен.
+
+**Текущая локальная разработка:** действует [правило расходных dev-БД](../../../AGENTS.md#2-архитектура-и-контракты). Новые изменения схемы проверяются на создании с нуля; старую dev-БД можно удалить целиком вместо миграции. Описанные ниже последовательные миграции и сохранение прежних snapshot отражают уже реализованный код и не требуют продолжать эту цепочку в новых задачах. Совместимость с прежними dev-данными не является критерием приёмки.
 
 ### `conversation_sessions`
 
@@ -56,7 +58,7 @@ TEXT NOT NULL: составной primary key (`app_run_id`,`activity_run_id`), 
 
 `version INTEGER PRIMARY KEY` positive; `name TEXT NOT NULL` — неизменное имя миграции; `applied_at TEXT NOT NULL`.
 
-`PRAGMA user_version` и непрерывный журнал обязаны совпадать. Каждая последовательная миграция обновляет DDL/data, журнал и user_version в одной транзакции. Уже применённый SQL не редактировать; новые изменения — новая версия. Непустая БД без известной версии, разрыв журнала или несовпадение имени — `corrupt`, будущая версия — `unsupported_version`. Нет down-migration, неявного DROP/recreate или автоматического исправления журнала.
+В существующем migration runtime `PRAGMA user_version` и непрерывный журнал обязаны совпадать; каждый применяемый шаг обновляет DDL/data, журнал и user_version в одной транзакции. Непустая БД без известной версии, разрыв журнала или несовпадение имени — `corrupt`, будущая версия — `unsupported_version`. Эти проверки текущего runtime не требуют новой миграции для следующего изменения схемы: в локальной разработке допустимы обновление актуальной схемы и пересоздание dev-БД по правилу выше.
 
 ### Retention и расширение
 
@@ -101,7 +103,7 @@ V2 restore принимает curiousStubbornGirl/cardRevision=2 или 3; #137 
 
 Corrupt SQLite/NOTADB, неуспешная migration, future schema, read-only/userData недоступен, disk full или worker failure: rollback где возможно, остановка durable writes и `MemoryStatusDTO.mode=volatile`. `busy` одной операции допускает отказ без закрытия исправной БД. При системной деградации текущая runtime-сессия продолжает работу с ограниченным volatile dialogue context и живым CharacterState; durable backlog не копится и не проигрывается скрыто позже.
 
-Исходный файл и WAL/SHM не удалять, не переименовывать отдельно и не заменять пустой БД. Нет автоматического quarantine/export/backup с незаданным retention. Recovery — поддерживающая версия/исправление условий и новый запуск; для повреждённой БД, которую нельзя открыть, reset возвращает failure. Ручное восстановление/удаление файлов и recovery UI — отдельная задача. Никогда не трактовать ошибку чтения как пустую подтверждённую память.
+В обычном runtime исходный файл и WAL/SHM не удалять, не переименовывать отдельно и не заменять пустой БД при ошибке чтения. Нет автоматического quarantine/export/backup с незаданным retention. Recovery — поддерживающая версия/исправление условий и новый запуск; для повреждённой БД, которую нельзя открыть, reset возвращает failure. Для локальной разработки отдельно разрешено намеренное пересоздание всей dev-БД после закрытия соединений, вместе с её WAL/SHM. Никогда не трактовать ошибку чтения как пустую подтверждённую память.
 
 ## 5. История, подбор и AI context
 
