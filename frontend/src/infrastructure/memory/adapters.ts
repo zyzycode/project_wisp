@@ -1,3 +1,5 @@
+import type { IMusicInterestRepository } from '../../application/ports/music-interest.interface';
+import { musicEvidence } from './music-validation';
 import type { ILifeHistoryReader } from '../../application/ports/life-history.interface';
 import { lifeWindow } from './life-history-validation';
 import { deferredInvitation } from './deferred-invitation-validation';
@@ -32,6 +34,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly music: IMusicInterestRepository;
   readonly lifeHistory: ILifeHistoryReader;
   readonly motivation: IMotivationRepository;
   readonly socialInterpretation: ISocialInterpretationRepository;
@@ -58,6 +61,7 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    music: { read: (now,c) => call('readMusicInterest',now,c,musicEvidence), appendSample: (sample,now,c) => call('appendMusicSample',{sample,now},c,nothing), replaceUserPreference: (preference,now,c) => call('replaceMusicPreference',{preference,now},c,nothing) },
     lifeHistory: { readWindow: (query, c) => call('readLifeWindow', query, c, lifeWindow) },
     motivation: {
       restore: (now,c) => call('restoreMotivation',now,c,value => value === null ? null : motivationRecord(value)),

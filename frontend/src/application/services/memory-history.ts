@@ -17,7 +17,7 @@ export interface MemoryHistoryOptions {
   readonly isCurrent?: (generation: number) => boolean;
   readonly createId: () => string;
   readonly gameObserver?: import('../ports/ai-event-provider.interface').IGameEpisodeCommitObserver;
-  readonly onPersisted?: (turn: CompletedDialogueMemoryTurn, context: MemoryOperationContext) => Promise<void>;
+  readonly onPersisted?: (turn: CompletedDialogueMemoryTurn, context: MemoryOperationContext, source: import('../ports/music-interest.interface').MusicDialogueSource) => Promise<void>;
   readonly toTimestamp: (monotonicMs: number) => string;
   readonly onFailure: (code: MemoryFailureCode) => void;
 }
@@ -61,7 +61,7 @@ export class MemoryHistory {
     if (result.ok) {
       this.session = session;
       if (!turn.localOnly) {
-        await this.options.onPersisted?.(turn, c);
+        await this.options.onPersisted?.(turn, c, { conversationSessionId: session.id, userMessageId: turn.user.id, assistantMessageId: turn.assistant.id, revision: 1 });
         if (this.isCurrent(c.generation)) await this.options.onUserMessagePersisted?.({ conversationSessionId: session.id,
           userMessageId: turn.user.id, text: turn.user.text, createdAt: turn.user.createdAt }, c);
       }

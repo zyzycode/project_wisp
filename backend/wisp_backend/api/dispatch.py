@@ -63,6 +63,7 @@ def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | Non
         interaction=InteractionContext(body.card.model_dump(), body.effectPolicy),
         previous_touch=body.previousTouch.model_dump() if body.previousTouch is not None else None,
         dialogue_topic=body.dialogueTopic.model_dump() if body.dialogueTopic is not None else None,
+        music_topic=body.musicTopic.model_dump(exclude_none=True) if body.musicTopic is not None else None,
         life_reflection=body.lifeReflection.model_dump() if body.lifeReflection is not None else None,
         beverage_preference=bounded_preference(
             body.beveragePreference.model_dump(exclude_none=True) if body.beveragePreference is not None else None,

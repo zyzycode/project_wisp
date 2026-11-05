@@ -1,6 +1,6 @@
 import type { MusicTopicId } from './music-interest.interface';
 
-/** Target #179, ordinary chat only; not imported into active requests by #178. */
+/** Ordinary chat only; source validation remains local to Application. */
 export interface BackendMusicTopicContext {
   readonly scope: 'text_discussion';
   readonly topic: MusicTopicId;

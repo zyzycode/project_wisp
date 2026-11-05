@@ -2,6 +2,7 @@ import type { AIProviderContextMessage } from './ai-provider.interface';
 import type { ChatContextLimits } from './memory-repository.interface';
 
 export interface CompletedDialogueMemoryTurn {
+  readonly musicReceipt?: import('./music-interest.interface').MusicPublishedReceipt;
   readonly lifeDerivedUse?: import('./life-history.interface').LifeDerivedContextUse;
   readonly beverageUse?: import('./memory-beverage.interface').BeverageTurnUse;
   readonly beverageCorrection?: import('./memory-beverage.interface').BeverageCorrectionTurn;
@@ -15,6 +16,7 @@ export interface CompletedDialogueMemoryTurn {
   readonly memoryGeneration: number;
 }
 export interface DialogueMemoryHooks {
+  readonly music?: import('./music-interest.interface').IMusicInterestRuntime;
   readonly lifeReflection?: import('./life-history.interface').ILifeReflectionRuntime;
   readonly beverage?: import('./memory-beverage.interface').IBeverageDialogue;
   readonly interestThread?: import('./interest-thread.interface').IInterestThreadDialogue;
@@ -31,6 +33,7 @@ export interface MemoryScheduler {
 export interface InitialDialogueContext { readonly messages: readonly AIProviderContextMessage[] }
 
 export interface MemoryRepositories {
+  readonly music?: import('./music-interest.interface').IMusicInterestRepository;
   readonly lifeHistory?: import('./life-history.interface').ILifeHistoryReader;
   readonly motivation?: import('./motivation.interface').IMotivationRepository;
   readonly socialInterpretation?: import('./social-interpretation.interface').ISocialInterpretationRepository;

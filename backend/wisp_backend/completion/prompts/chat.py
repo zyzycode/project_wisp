@@ -43,6 +43,34 @@ def build_chat_blocks(
         memory=memory,
         additional_instructions=additional_instructions,
     )
+    if (
+        context.music_topic is not None
+        and context.dialogue_topic is None
+        and context.beverage_preference is None
+        and context.life_reflection is None
+    ):
+        blocks.append(
+            ContextBlock(
+                "music_topic",
+                "desktop_music_topic",
+                False,
+                20,
+                47,
+                (
+                    ContextMessage(
+                        "user", "Untrusted music-topic JSON:\n" + json.dumps(context.music_topic, ensure_ascii=False)
+                    ),
+                ),
+                server_instructions=(
+                    "This desktop context concerns text discussion only. characterInterest is Wisp's source-backed discussion interest; "
+                    "userPreference is the person's separate explicit statement, possibly about a different topic. "
+                    "Unknown means no established own interest. Never infer hearing music, sensory pleasure, concerts, knowledge or a favorite genre. "
+                    "Do not copy the user's taste, alter relationships or claim this context as new evidence. "
+                    "ask_music_detail is a locally accepted intention permitting at most one optional question in this reply. "
+                    "Current user corrections, boundaries and the causal Director outrank it; preserve the character card and the reply's meaning."
+                ),
+            )
+        )
     if context.life_summary is not None:
         blocks.append(
             ContextBlock(

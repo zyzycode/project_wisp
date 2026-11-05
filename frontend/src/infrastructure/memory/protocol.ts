@@ -1,3 +1,4 @@
+import { musicEvidence, musicSample, musicPreference } from './music-validation';
 import { lifeWindow, lifeWindowQuery } from './life-history-validation';
 import { deferredInvitation, deferredTerminal } from './deferred-invitation-validation';
 import { socialInterpretation } from './social-interpretation-validation';
@@ -12,10 +13,10 @@ import type { MemoryFailureCode, MemoryResult } from '../../application/ports/me
 import { itemMutation, itemListQuery, itemReceipt, itemPage, itemRecallTokens, itemCandidates } from './item-validation';
 import * as v from './validation';
 
-export type Operation = 'readLifeWindow' | 'restoreMotivation' | 'readMotivation' | 'replaceMotivation' | 'readSocialInterpretation' | 'replaceSocialInterpretation' | 'clearSocialInterpretation' | 'createDeferredInvitation' | 'readDeferredInvitation' | 'claimDeferredInvitation' | 'finishDeferredInvitation' | 'findCausalLife' | 'findMemoryItems' | 'appendCausalLife' | 'recentCausalLife' | 'resolveCausalLife' | 'beginRoutine' | 'appendRoutine' | 'readRoutineStatus' | 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
+export type Operation = 'readMusicInterest' | 'appendMusicSample' | 'replaceMusicPreference' | 'readLifeWindow' | 'restoreMotivation' | 'readMotivation' | 'replaceMotivation' | 'readSocialInterpretation' | 'replaceSocialInterpretation' | 'clearSocialInterpretation' | 'createDeferredInvitation' | 'readDeferredInvitation' | 'claimDeferredInvitation' | 'finishDeferredInvitation' | 'findCausalLife' | 'findMemoryItems' | 'appendCausalLife' | 'recentCausalLife' | 'resolveCausalLife' | 'beginRoutine' | 'appendRoutine' | 'readRoutineStatus' | 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
 export interface Command { readonly id: number; readonly generation: number; readonly operation: Operation; readonly payload: unknown }
 export interface Reply { readonly id: number; readonly result: MemoryResult<unknown> }
-const operations: readonly string[] = ['readLifeWindow', 'restoreMotivation', 'readMotivation', 'replaceMotivation', 'readSocialInterpretation', 'replaceSocialInterpretation', 'clearSocialInterpretation', 'createDeferredInvitation', 'readDeferredInvitation', 'claimDeferredInvitation', 'finishDeferredInvitation', 'findCausalLife', 'findMemoryItems', 'appendCausalLife', 'recentCausalLife', 'resolveCausalLife', 'beginRoutine', 'appendRoutine', 'readRoutineStatus', 'readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
+const operations: readonly string[] = ['readMusicInterest', 'appendMusicSample', 'replaceMusicPreference', 'readLifeWindow', 'restoreMotivation', 'readMotivation', 'replaceMotivation', 'readSocialInterpretation', 'replaceSocialInterpretation', 'clearSocialInterpretation', 'createDeferredInvitation', 'readDeferredInvitation', 'claimDeferredInvitation', 'finishDeferredInvitation', 'findCausalLife', 'findMemoryItems', 'appendCausalLife', 'recentCausalLife', 'resolveCausalLife', 'beginRoutine', 'appendRoutine', 'readRoutineStatus', 'readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
 const codes: readonly string[] = ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'invalid_data', 'conflict', 'stale', 'io_error'];
 export function command(value: unknown): Command {
   const c = v.record(value, ['id', 'generation', 'operation', 'payload']);
@@ -23,6 +24,9 @@ export function command(value: unknown): Command {
   const operation = c.operation as Operation;
   let payload: unknown;
   switch (operation) {
+    case 'readMusicInterest': payload = v.timestamp(c.payload); break;
+    case 'appendMusicSample': { const p = v.record(c.payload,['sample','now']); payload = { sample: musicSample(p.sample), now: v.timestamp(p.now) }; break; }
+    case 'replaceMusicPreference': { const p = v.record(c.payload,['preference','now']); payload = { preference: musicPreference(p.preference), now: v.timestamp(p.now) }; break; }
     case 'restoreMotivation':
     case 'readMotivation': payload = v.timestamp(c.payload); break;
     case 'replaceMotivation': { const p = v.record(c.payload,['value','expectedRevision']); payload = { value: motivationRecord(p.value), expectedRevision: p.expectedRevision === null ? null : v.integer(p.expectedRevision,1) }; break; }
@@ -82,6 +86,7 @@ export function failure(error: unknown): MemoryResult<never> {
 
 export function responseValue(operation: Operation, value: unknown): unknown {
   switch (operation) {
+    case 'readMusicInterest': return musicEvidence(value);
     case 'restoreMotivation':
     case 'readMotivation': return value === null ? null : motivationRecord(value);
     case 'readSocialInterpretation': return value === null ? null : socialInterpretation(value);

@@ -49,6 +49,7 @@ class InteractionChatContext(CharacterPromptContext):
     previous_touch: Snapshot | None = None
     dialogue_topic: Snapshot | None = None
     beverage_preference: Snapshot | None = None
+    music_topic: Snapshot | None = None
     life_reflection: Snapshot | None = None
     life_summary: Snapshot | None = None
     lore: LoreCatalogue | None = None

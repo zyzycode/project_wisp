@@ -1,4 +1,4 @@
-"""Target #179 text-discussion context; not part of active requests yet."""
+"""Bounded ordinary-chat text-discussion context, independent of local evidence."""
 
 import json
 from typing import Literal

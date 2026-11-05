@@ -22,9 +22,11 @@ export function turn(value: unknown): CompletedChatTurn {
   if (Object.hasOwn(raw,'beverageProposalSource') && v.beverageProposalSource !== true) throw new MemoryDataError('invalid_data');
   let lifeDerivedUse: CompletedChatTurn['lifeDerivedUse'];
   if (Object.hasOwn(raw, 'lifeDerivedUse')) {
-    const use = record(v.lifeDerivedUse, ['requestId','userMessageId','origin']);
-    if (use.origin !== 'reflection' && use.origin !== 'life_summary') throw new MemoryDataError('invalid_data');
-    lifeDerivedUse = { requestId: text(use.requestId), userMessageId: text(use.userMessageId), origin: use.origin };
+    const rawUse = record(v.lifeDerivedUse);
+    const use = record(v.lifeDerivedUse, ['requestId','userMessageId','origin', ...(Object.hasOwn(rawUse,'musicIntention') ? ['musicIntention'] : [])]);
+    if (use.origin !== 'reflection' && use.origin !== 'life_summary' && use.origin !== 'music_topic') throw new MemoryDataError('invalid_data');
+    if (Object.hasOwn(rawUse,'musicIntention') && (use.origin !== 'music_topic' || use.musicIntention !== 'ask_music_detail')) throw new MemoryDataError('invalid_data');
+    lifeDerivedUse = { requestId: text(use.requestId), userMessageId: text(use.userMessageId), origin: use.origin, ...(use.musicIntention === 'ask_music_detail' ? { musicIntention: 'ask_music_detail' as const } : {}) };
   }
   const s = session(v.session), u = message(v.user), a = message(v.assistant);
   if (u.role !== 'user' || a.role !== 'assistant' || u.id === a.id || u.conversationSessionId !== s.id || a.conversationSessionId !== s.id || s.endedAt !== null) throw new MemoryDataError('invalid_data');

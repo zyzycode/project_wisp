@@ -500,7 +500,7 @@ function initializeAutonomyComposition(): void {
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
-      memory: { ...(memoryRuntime ? { lifeReflection: memoryRuntime.lifeReflection } : {}), ...(beverageDialogue ? { beverage: beverageDialogue } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
+      memory: { ...(memoryRuntime ? { music: memoryRuntime.music } : {}), ...(memoryRuntime ? { lifeReflection: memoryRuntime.lifeReflection } : {}), ...(beverageDialogue ? { beverage: beverageDialogue } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
           now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, notice: publishBrainState, isTurnCurrent: requestId => dialogueRuntime?.isTopicRequestCurrent(requestId) ?? false, onFailure: code => memoryRuntime?.failure(code), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) } : {}), generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
         completed: turn => memoryRuntime?.history.completed(turn) ?? Promise.resolve(false), ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
@@ -906,7 +906,7 @@ if (!gotTheLock) {
     localMock = !aiRoute.backendUrl;
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
-    memoryRuntime = new MemoryLifecycle({ causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { copingRuntime?.observed(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
+    memoryRuntime = new MemoryLifecycle({ music: { random: Math.random, gates: () => ({ awake: autonomyComposition?.getSemanticSleepState() === 'awake', quiet: (autonomyComposition?.getAutonomyMode().quiet ?? true) || quietSupportRuntime.isActive(), role: false }) }, causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { copingRuntime?.observed(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
       invalidate: () => { if (summaryRuntime) summaryRuntime.invalidate(); else void memoryComposition?.summaryCache.clear(false, false); },
       reset: async () => {
         if (summaryRuntime) return summaryRuntime.reset();

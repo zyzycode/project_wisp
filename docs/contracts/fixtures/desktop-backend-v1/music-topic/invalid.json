@@ -1,0 +1,123 @@
+[
+  {
+    "name": "empty_unknown",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": "unknown"
+    }
+  },
+  {
+    "name": "audio_claim",
+    "value": {
+      "scope": "heard_music",
+      "topic": "jazz",
+      "characterInterest": "unknown",
+      "intention": "ask_music_detail"
+    }
+  },
+  {
+    "name": "alias",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "smooth_jazz",
+      "characterInterest": "unknown",
+      "intention": "ask_music_detail"
+    }
+  },
+  {
+    "name": "numeric_interest",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": 6,
+      "intention": "ask_music_detail"
+    }
+  },
+  {
+    "name": "null_intention",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": "unknown",
+      "intention": null
+    }
+  },
+  {
+    "name": "unknown_intention",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": "unknown",
+      "intention": "play_music"
+    }
+  },
+  {
+    "name": "extra_source",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": "unknown",
+      "intention": "ask_music_detail",
+      "source": "private-source"
+    }
+  },
+  {
+    "name": "explicit_null_user",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": "unknown",
+      "intention": "ask_music_detail",
+      "userPreference": null
+    }
+  },
+  {
+    "name": "user_extra",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": "unknown",
+      "intention": "ask_music_detail",
+      "userPreference": {
+        "topic": "jazz",
+        "disposition": "like",
+        "confidence": 1
+      }
+    }
+  },
+  {
+    "name": "bad_user_topic",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": "unknown",
+      "intention": "ask_music_detail",
+      "userPreference": {
+        "topic": "blues",
+        "disposition": "like"
+      }
+    }
+  },
+  {
+    "name": "bad_user_disposition",
+    "value": {
+      "scope": "text_discussion",
+      "topic": "jazz",
+      "characterInterest": "unknown",
+      "intention": "ask_music_detail",
+      "userPreference": {
+        "topic": "rock",
+        "disposition": "love"
+      }
+    }
+  },
+  {
+    "name": "null",
+    "value": null
+  },
+  {
+    "name": "array",
+    "value": []
+  }
+]
