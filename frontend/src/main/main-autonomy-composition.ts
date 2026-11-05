@@ -541,6 +541,7 @@ export class MainAutonomyComposition {
       gameCandidateEligible,
       learnedGamePreference: snapshot.learnedCursorGamePreference,
       cursorGameSatiation: snapshot.cursorGameSatiation,
+      causalEmotion: snapshot.causalEmotion,
       noticeRandomUnit: this.options.prng.next(),
     });
     if (!update.noticed || update.zone === undefined) return false;

@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SystemIdleLifecycleEvent, SystemIdlePort, SystemIdleReading } from '../../src/application/ports/system-idle.port';
 import { scenario } from './autonomy-scenario-fixture';
+import type { Needs } from '../../src/domain/character';
 
-function idleFixture() {
+function idleFixture(needs: Partial<Needs> = {}) {
   let reading: SystemIdleReading = { status: 'available', idleMs: 1000 };
   let listener: ((event: SystemIdleLifecycleEvent) => void) | undefined;
   const source: SystemIdlePort = { read: vi.fn(() => reading), subscribeLifecycle: callback => {
     listener = callback; return vi.fn(); }, dispose: vi.fn() };
   const social = vi.fn(), unsolicited = vi.fn();
-  const f = scenario({ attention: 90 }, 0, undefined, undefined,
+  const f = scenario({ attention: 90, ...needs }, 0, undefined, undefined,
     { systemIdle: source, onSocialBidStarted: social, onUnsolicitedBlocked: unsolicited });
   f.main.tick();
   const sample = (idleMs: number) => { reading = { status: 'available', idleMs }; f.advance(1000); };
@@ -51,7 +52,7 @@ describe('system idle local initiative integration', () => {
     expect(f.main.getActivityTimeline()).toBeNull(); f.main.dispose();
   });
   it('charges return once and cancels a safe calm run without enabling a second cursor episode', () => {
-    const f = idleFixture(); f.away(); f.pulse(); expect(f.main.getActivityTimeline()?.activityId).toBe('calm');
+    const f = idleFixture({ play: 0, boredom: 0 }); f.away(); f.pulse(); expect(f.main.getActivityTimeline()?.activityId).toBe('calm');
     f.sample(1000); expect(f.main.getActivityTimeline()?.activityId).toBe('social_bid');
     expect(f.main.spendObservationBudget(f.now())).toBe(false);
     for (let i = 0; i < 6; i++) { f.advance(100); f.main.handleCursorObservation({ x: 440, y: 790 }); }

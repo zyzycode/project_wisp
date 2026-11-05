@@ -31,7 +31,7 @@ function fixture() {
       clearTimeout: id => { timers.delete(id as number); },
     },
     prng: { next: () => random.shift() ?? .5 }, prngMetadata: { algorithm: 'fixture', seed: 1 },
-    getCharacterSnapshot: () => ({ needs: { energy: 90, boredom: 80, play: 60, comfort: 20, attention: 20 }, synthesizedTone: 'neutral' }),
+    getCharacterSnapshot: () => ({ needs: { energy: 90, boredom: 80, play: 20, comfort: 20, attention: 20 }, synthesizedTone: 'neutral' }),
     movement: {
       getRootPosition: () => motion.getMotionState().position, getBounds: () => bounds,
       getEnvironmentSnapshot: () => environment, getCollisionInsets: () => DEFAULT_MOTION_CONSTRAINTS.collisionInsets,

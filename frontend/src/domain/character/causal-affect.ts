@@ -19,6 +19,13 @@ export interface CausalEmotion {
   readonly target: 'user' | 'environment' | 'self';
 }
 
+/** Optional affect can only modestly lower a social/game choice, never its admission. */
+export function causalEmotionMultiplier(emotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null): number {
+  if (emotion?.kind !== 'irritated' || !Number.isFinite(emotion.intensity)
+      || emotion.intensity < 0 || emotion.intensity > 1) return 1;
+  return Math.max(0.8, 1 - 0.2 * emotion.intensity);
+}
+
 export interface CausalAffectState {
   readonly emotion: CausalEmotion | null;
   readonly interruptionTimes: readonly number[];

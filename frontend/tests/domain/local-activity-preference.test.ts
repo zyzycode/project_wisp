@@ -40,7 +40,7 @@ it.each([-100, 100])('bounds %s weights and never revives disabled families or q
   const blocked = selectLocalActivity(input, { ...context, canSocial: true, quiet: true }, .99);
   expect(blocked.intent.kind).toBe('idle');
   expect(blocked.trace.filter(row => row.kind !== 'idle').every(row => row.score === 0)).toBe(true);
-  expect(LOCAL_TUNING_VERSION).toBe('CHAR-I03-v1');
+  expect(LOCAL_TUNING_VERSION).toBe('CE-I05-v1');
 });
 it('projects only validated bounded local tracks and preserves authored axes/needs', () => {
   const state = new CharacterStateService({ now: () => 0 }).getState();

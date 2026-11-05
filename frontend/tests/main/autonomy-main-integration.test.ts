@@ -68,7 +68,8 @@ function createFixture(
       needs: {
         energy: 70,
         attention: 20,
-        play: 60,
+        // Keep Explore competitive for this movement/lifecycle fixture under CE-I05.
+        play: 20,
         comfort: 20,
         boredom: 80,
         ...needs,
@@ -163,11 +164,21 @@ describe('Main integration: Brain runtime', () => {
   });
 
   it('ends an autonomous nap awake and resumes the single opportunity scheduler', () => {
-    const f = createFixture(sequence(0, .95), { energy: 70, boredom: 40, play: 30 });
+    let draw = 0;
+    const f = createFixture({ next: () => draw }, { energy: 50, boredom: 0, play: 0 });
     f.composition.start(); f.scheduler.take()?.();
+    expect(f.composition.getActivityTimeline()?.activityId).toBe('calm');
+    // One recent calm run makes finite Rest competitive in the approved pool.
+    for (let phase = 0; phase < 10 && f.composition.getActivityTimeline(); phase++) {
+      f.scheduler.nowMs = f.composition.getActivityTimeline()!.phaseEndsAtMs!;
+      f.composition.tick();
+    }
+    expect(f.composition.getActivityTimeline()).toBeNull();
+    draw = .99; f.scheduler.take()?.();
     expect(f.composition.getActivityTimeline()?.activityId).toBe('rest_spot_nap');
+    const napStartedAt = f.scheduler.nowMs;
     f.composition.notifyVoluntaryMovementCompleted();
-    for (const ms of [1500, 3500, 16000, 18000, 21000]) { f.scheduler.nowMs = ms; f.composition.tick(); }
+    for (const ms of [1500, 3500, 16000, 18000, 21000]) { f.scheduler.nowMs = napStartedAt + ms; f.composition.tick(); }
     expect(f.composition.getActivityTimeline()).toBeNull();
     expect(f.composition.requestSleepWake({ action: 'wake' })).toBe(false);
     expect(f.scheduler.size()).toBe(1);

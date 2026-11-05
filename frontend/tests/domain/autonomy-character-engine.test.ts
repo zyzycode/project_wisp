@@ -26,7 +26,8 @@ describe('Domain: AutonomyCharacterEngine', () => {
       snapshot: { ...awakeSnapshot, needs: { ...awakeSnapshot.needs, energy, attention } },
       candidates,
       prng: { next: () => .99 },
-      selection: { nowMs: 800, history: [], canExplore: false, canPlay: false, canRest: true },
+      // A recent calm run makes optional Rest competitive within the half-max pool.
+      selection: { nowMs: 800, history: [{ kind: 'idle', atMs: 800 }], canExplore: false, canPlay: false, canRest: true },
     });
     expect(result.resolvedIntent?.kind).toBe(expectedKind);
     expect(result.semanticSleepState).toBe(expectedKind === 'sleep' ? 'sleeping' : 'awake');

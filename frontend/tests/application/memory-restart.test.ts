@@ -108,13 +108,13 @@ it.each([
     needs: { energy: 51, comfort: 0, attention: 80, play: 0, boredom: 24 }, relationship: { ...state.relationship, friendship: 100, familiarity: 100 } });
   const selection = { nowMs: 0, canExplore: key === 'activity.explore', canSocial: key === 'activity.social_bid', canPlay: false, canRest: false, history: [] };
   const baseline = selectLocalActivity(projection(initial), selection, 0).trace;
-  const draw = baseline[0]!.score / baseline.reduce((sum, row) => sum + row.score, 0);
+  const draw = baseline[0]!.score / baseline.reduce((sum, row) => sum + (row.poolEligible ? row.score : 0), 0);
   const choose = (state: CharacterState) => selectLocalActivity(projection(state), selection, draw).intent.kind;
   const target = key === 'activity.explore' ? 'wander' : 'play';
   const fullBaseline = selectLocalActivity(projection(initial), { ...selection, canExplore: true, canSocial: true, canRest: true }, 0).trace;
   const targetFamily = key === 'activity.explore' ? 'wander' : 'social_bid';
-  const mainDraw = fullBaseline.slice(0, fullBaseline.findIndex(row => row.kind === targetFamily)).reduce((sum, row) => sum + row.score, 0)
-    / fullBaseline.reduce((sum, row) => sum + row.score, 0);
+  const mainDraw = fullBaseline.slice(0, fullBaseline.findIndex(row => row.kind === targetFamily)).reduce((sum, row) => sum + (row.poolEligible ? row.score : 0), 0)
+    / fullBaseline.reduce((sum, row) => sum + (row.poolEligible ? row.score : 0), 0);
   const mainChoosesTarget = (state: CharacterState) => {
     const controlled = projection(state);
     const f = scenario({}, mainDraw, { ...state, needs: controlled.needs, relationship: { ...state.relationship, friendship: 100, familiarity: 100 } }, undefined, {}, true);

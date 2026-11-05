@@ -12,6 +12,7 @@ import type { CharacterState, Needs, PreferenceTrack, Relationship, SynthesizedE
 import { createCharacterSnapshot } from './character-snapshot';
 import { validatedLocalPreference, type LearnedPreference } from './preferences';
 import { validatedCursorGamePreference } from '../behavior/cursor-observe-policy';
+import type { CausalEmotion } from './causal-affect';
 
 export type SemanticSleepState = 'awake' | 'sleeping';
 
@@ -22,15 +23,17 @@ export interface CharacterAutonomySnapshot {
   readonly learnedExplorePreference?: LearnedPreference;
   readonly learnedSocialBidPreference?: LearnedPreference;
   readonly cursorGameSatiation?: number;
+  readonly causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null;
   readonly localTraits?: { readonly openness: number; readonly playfulness: number; readonly independence: number; readonly extraversion: number };
   readonly synthesizedTone: SynthesizedEmotionalTone;
   readonly relationship?: Readonly<Pick<Relationship, 'friendship'>>;
 }
 
 /** Internal local projection; provider and IPC snapshots do not gain preference keys. */
-export function createCharacterAutonomySnapshot(state: CharacterState, cursorGameSatiation = 0): CharacterAutonomySnapshot {
+export function createCharacterAutonomySnapshot(state: CharacterState, cursorGameSatiation = 0,
+  causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null): CharacterAutonomySnapshot {
   const axes = state.personality.axes;
-  return { ...createCharacterSnapshot(state), cursorGameSatiation,
+  return { ...createCharacterSnapshot(state), cursorGameSatiation, causalEmotion,
     learnedCursorGamePreference: validatedCursorGamePreference(state.preferences['activity.cursor_game']),
     learnedExplorePreference: validatedLocalPreference(state.preferences['activity.explore']),
     learnedSocialBidPreference: validatedLocalPreference(state.preferences['activity.social_bid']),

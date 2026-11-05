@@ -14,14 +14,14 @@ it.each(['activity.explore', 'activity.social_bid'] as const)('uses real authore
   const baseline = selectLocalActivity(createCharacterAutonomySnapshot(original), {
     nowMs: 0, canExplore: true, canSocial: true, canPlay: false, canRest: true, history: [],
   }, 0).trace;
-  const prior = baseline.slice(0, baseline.findIndex(row => row.kind === family)).reduce((sum, row) => sum + row.score, 0);
-  const draw = prior / baseline.reduce((sum, row) => sum + row.score, 0);
+  const prior = baseline.slice(0, baseline.findIndex(row => row.kind === family)).reduce((sum, row) => sum + (row.poolEligible ? row.score : 0), 0);
+  const draw = prior / baseline.reduce((sum, row) => sum + (row.poolEligible ? row.score : 0), 0);
   const choices = [12, -12].map(value => {
     const f = scenario({}, draw, { ...original, preferences: { [key]: { value, confidence: .5, samples: 6 } } }, undefined, {}, true);
     try {
       f.pulse();
       const selected = f.main.getDecisionTrace().at(-1)!;
-      expect(selected.tuningVersion).toBe('CHAR-I03-v1');
+      expect(selected.tuningVersion).toBe('CE-I05-v1');
       const target = selected.selection?.find(row => row.kind === family);
       expect(target?.preferenceMultiplier).toBe(value === 12 ? 1.012 : .988);
       for (const row of selected.selection ?? []) {

@@ -6,7 +6,7 @@ function fixture() {
   let lifecycle: ((event: SystemIdleLifecycleEvent) => void) | undefined;
   const source: SystemIdlePort = { read: () => reading, subscribeLifecycle: listener => { lifecycle = listener; return () => {}; }, dispose: vi.fn() };
   const social = vi.fn(), started = vi.fn(), outcome = vi.fn();
-  const f = scenario({ attention: 90 }, .999, undefined, undefined,
+  const f = scenario({ attention: 90, play: 0, boredom: 0 }, .999, undefined, undefined,
     { systemIdle: source, onSocialBidStarted: social, onActivityStarted: started, onActivityOutcome: outcome });
   f.main.tick();
   const step = (ms: number) => { for (let remaining = ms; remaining > 0;) { const next = Math.min(remaining, 1000); f.advance(next); remaining -= next; } };
@@ -102,7 +102,7 @@ it('accepted chat may finish idle without provider; a later fresh first can stil
 });
 it('actual start latches before visual callbacks, accepted reentrant contact cancels linkage without late rearming', () => {
   let main: ReturnType<typeof scenario>['main'] | undefined, contacts = 0;
-  const f = scenario({ attention: 90 }, .999, undefined, undefined, { onPresentationChanged: () => {
+  const f = scenario({ attention: 90, play: 0, boredom: 0 }, .999, undefined, undefined, { onPresentationChanged: () => {
     if (main?.getActivityTimeline()?.activityId === 'social_bid' && contacts === 0) { contacts++; main.acceptUserContact(); }
   } }); main = f.main;
   f.pulse(); f.finish(); f.advance(120000); f.pulse();

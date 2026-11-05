@@ -3,6 +3,7 @@ import type { Needs } from '../character/needs';
 import type { ActivityDefinition, AnimationIntentTemplate } from './activity-runner';
 import type { CursorProximitySignal, GazeDirection } from './gaze-engine';
 import { cursorGameSatiationMultiplier } from '../character/activity-exposure';
+import { causalEmotionMultiplier, type CausalEmotion } from '../character/causal-affect';
 
 export type CursorDistanceZone = 'contact' | 'near' | 'ambient' | 'far';
 export type ObserveCursorReaction =
@@ -30,6 +31,7 @@ export interface CursorObserveInput {
   readonly gameCandidateEligible?: boolean;
   readonly learnedGamePreference?: { readonly value: number; readonly confidence: number };
   readonly cursorGameSatiation?: number;
+  readonly causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null;
 }
 
 export interface CursorObserveUpdate {
@@ -119,7 +121,8 @@ export function resolveCursorObserve(
   const preferredChance = preference
     ? clampUnit(baseChance + 0.20 * (preference.value / 100) * preference.confidence)
     : baseChance;
-  const noticeChance = preferredChance * (input.gameCandidateEligible === true ? cursorGameSatiationMultiplier(input.cursorGameSatiation) : 1);
+  const noticeChance = preferredChance * (input.gameCandidateEligible === true
+    ? cursorGameSatiationMultiplier(input.cursorGameSatiation) * causalEmotionMultiplier(input.causalEmotion) : 1);
   return {
     noticed: input.noticeRandomUnit < noticeChance,
     zone,

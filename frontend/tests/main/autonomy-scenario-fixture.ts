@@ -31,7 +31,7 @@ export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialSta
     setTimeout: (callback, delay) => { const key = ++nextTimer; timers.set(key, { callback, atMs: now + delay }); return key; },
     clearTimeout: key => { timers.delete(key as number); } },
     prng: { next: () => random }, prngMetadata: { algorithm: 'constant', seed: 1 },
-    getCharacterSnapshot: () => ({ ...createCharacterAutonomySnapshot(character.getState()),
+    getCharacterSnapshot: () => ({ ...createCharacterAutonomySnapshot(character.getState(), character.getCursorGameSatiation(), character.getCausalEmotion()),
       ...(useAuthoredTraits ? {} : { localTraits: { openness: .8, playfulness: .7, independence: .5, extraversion: .8 } }) }),
     tickNeeds: delta => { character.tickNeeds(delta, main.isSleepingForRecovery() ? 'sleepy' : undefined); },
     onActivityOutcome: event => { hooks.onActivityOutcome?.(event); outcomes.push(event); const stimulus = mapper.map(event, {

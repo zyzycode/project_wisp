@@ -164,7 +164,9 @@ describe('real Character closed loop', () => {
   });
 
   it('allows AI to replace an optional nap but preserves full user sleep', () => {
-    const f = scenario({ energy: 50, play: 30, boredom: 20 }, .99); f.pulse();
+    const f = scenario({ energy: 50, play: 0, boredom: 0 }, 0); f.pulse();
+    // Recent calm makes optional Rest competitive; weak Rest cannot win an unrelated pool.
+    f.finish(); f.setRandom(.99); f.pulse();
     expect(f.main.getActivityTimeline()?.activityId).toBe('rest_spot_nap');
     expect(f.offer('respond').status).toBe('admitted');
     expect(f.main.getActivityTimeline()?.activityId).toBe('expression');

@@ -79,6 +79,23 @@ function selectedReaction(
 }
 
 describe('Domain: Observe Cursor policy', () => {
+  it('applies bounded irritation only to an eligible game using the same notice draw', () => {
+    const opportunity = input({ gameCandidateEligible: true, noticeRandomUnit: .5 });
+    const baseline = resolveCursorObserve(opportunity);
+    const causalEmotion = { kind: 'irritated', intensity: .6 } as const;
+    const irritated = resolveCursorObserve({ ...opportunity, causalEmotion });
+    expect(baseline.noticed).toBe(true); expect(irritated.noticed).toBe(false);
+    expect(irritated.noticeChance).toBeCloseTo(baseline.noticeChance * .88);
+    const saturated = resolveCursorObserve({ ...opportunity, causalEmotion, cursorGameSatiation: .5 });
+    expect(saturated.noticeChance).toBeCloseTo(baseline.noticeChance * .88 * .625);
+    for (const gameCandidateEligible of [undefined, false]) {
+      expect(resolveCursorObserve(input({ causalEmotion, cursorGameSatiation: 1, gameCandidateEligible })))
+        .toEqual(resolveCursorObserve(input()));
+    }
+    for (const intensity of [NaN, Infinity, -1, 1.1]) {
+      expect(resolveCursorObserve({ ...opportunity, causalEmotion: { kind: 'irritated', intensity } })).toEqual(baseline);
+    }
+  });
   it('biases only an eligible game with the existing draw and clamps the resulting chance', () => {
     const opportunity = input({ gameCandidateEligible: true, noticeRandomUnit: 0.55 });
     const liked = resolveCursorObserve({ ...opportunity, learnedGamePreference: { value: 100, confidence: 0.5 } });
