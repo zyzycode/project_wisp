@@ -417,3 +417,31 @@ V1 chat поддерживает memory/summary/previousInitiative; `/v1/summary
 shared interlock/abort settlement, 15s runtime/12s transport deadlines прежние.
 Chat effectPolicy определяется текущим Character gate; previousTouch не создаёт повторный reward.
 Нет изменения public IPC: Renderer показывает только существующие dialogue/speech.
+
+## Один инструмент focus окна: TOOLS-A01
+
+Целевой контракт #190/#191, не утверждение runtime/native readiness. Разрешена одна best-effort попытка focus выбранного пользователем видимого Windows-окна. [Consumer declarations](../../src/application/ports/external-window-focus.port.ts) пока не активируют IPC; Linux/macOS unsupported. [Read-only surfaces](PERCEPTION_ENGINE.md#10-внешние-окна--целевой-контракт-auto-a07), Motion #138/#139 и manual help #131 не предоставляют полномочий на действие с внешним окном.
+
+`model prose → suggestion only; explicit user selector → Main native confirmation → Application authorization/revalidation → same fixed Windows helper prepare/commit once → OS focus/readback → local receipt`. Provider/title не задают target, allowlist или permission. Первый slice не добавляет executable provider proposal/wire field: действие — отдельный явный запрос пользователя. Domain BehaviorIntent/ActivityRunner не получают desktop commands; нет общего tool registry/второго runner.
+
+Main выдаёт ≤20 normalized preview rectangles с opaque selection IDs без titles/screenshots/PID/paths. Только существующие fresh visible supported top-level surfaces; observer exclusions Wisp/helper/shell/dialog/owned/minimized/cloaked/disabled сохраняются. Selector TTL 30 s. Renderer выбирает ID и запрашивает подтверждение, но `confirmed:true`/модельный текст не являются consent: Main-owned native dialog показывает конкретную подсветку/геометрию и одно действие. Отказ не создаёт grant.
+
+Application хранит один RAM grant: request/stream/conversation/generation, target surface ID/source epoch/policy generation/geometry signature, confirmation/attempt identity и deadline 5 s после согласия. Freshness observation ≤300 ms; после каждого await и непосредственно перед irreversible dispatch проверяются current request, разрешение, expiry, capability, epoch и geometry. Exact DTO shape/enums/IDs≤128, safe integer generations, finite normalized preview bounds/positive sizes обязательны; Renderer не выбирает native identifiers/URLs/commands. Поля/validation активирует только #191.
+
+Infrastructure расширяет тот же fixed bundled helper закрытым data-only prepare/commit protocol, без новой зависимости и произвольного executable input. HWND/native identity map остаётся private; source edge ID не парсится в handle. Prepare заново проверяет выбранное окно и выдаёт одноразовый opaque nonce с expiry ≤500 ms по helper-monotonic clock; Main/helper часы не сравниваются. Commit сверяет attempt/nonce/target/epoch/expiry, pump-ит lifecycle events и потребляет nonce до единственного `SetForegroundWindow`. При already-foreground тот же проверенный target даёт no-op success. Readback не повторяет side effect; общий deadline 5 s включает подготовку и проверку.
+
+| Проверка / граница | Исход и действие |
+|---|---|
+| Unsupported OS; observer unavailable | unsupported либо rejected/unavailable; без native focus |
+| Forged/stale selection/request/grant, expiry, decline, закрытый/изменившийся target до dispatch | rejected; никаких замен цели или OS focus |
+| Lock/suspend/quiet/revoke/reset/dispose до dispatch | Инвалидировать grant/nonce; rejected без эффекта; unlock/resume не восстанавливают consent |
+| API отказала, target/readback достоверны | rejected/os_denied; не обходить foreground restrictions |
+| Тот же tracked target достоверно foreground при проверке | success/already_foreground либо success/focus_observed; это наблюдение, не обещание удержания фокуса |
+| Timeout/crash/late callback, target/lifecycle/context потерян после dispatch, foreground NULL/не подтверждён | unknown; возможный эффект не описывается как отменённый/успешный |
+| Duplicate request/commit | Тот же pending/final receipt, максимум один вызов; без automatic retry |
+
+У чужого HWND нет обещания атомарного lifetime check+focus: [IsWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-iswindow) предупреждает о recycling; [out-of-context WinEvent](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwineventhook) доставляется асинхронно. Новый helper/discontinuity навсегда инвалидируют прежние tokens; обнаруженное изменение между check/execute запрещает success. [SetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow) может быть отклонена Windows; [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow) может вернуть NULL. После irreversible dispatch reset/revoke запрещают публикацию старого success, но не гарантируют физический rollback/cancellation; неопределённый итог — unknown, не повтор/обратное переключение.
+
+Запрещены AttachThreadInput/synthetic input, обход foreground lock, restore/minimize/topmost/resize/move, shell, файлы, typing/send/browser control и запуск программ. Cancel до dispatch исключает вызов; abort после него не доказывает отсутствие эффекта. Одновременно один pending и один terminal receipt≤60 s/current request, один helper/action lifecycle; dispose снимает callbacks, late results не восстанавливают grant. RAM-only selectors/geometry/grants/receipts очищаются при lifecycle invalidation; native metadata, titles и screenshots не идут в Renderer/provider/logs/backend/persistence. Durable memory writes отсутствуют; unknown/rejected не создают факта выполненного действия. Только local outcome receipt, не модельная фраза, подтверждает результат UI.
+
+Проверки #191: injection из model/title, forged/wrong target, stale generation/epoch, expiry/nonce replay, close/reuse, duplicate, lock/suspend/revoke/reset до/после dispatch, null foreground/helper failure/dispose и unsupported OS; rejected-before-dispatch не вызывает adapter. Windows native smoke — только явно выбранное тестовое окно, actual foreground и реальные ограничения; моки не доказывают эффект. Недоступная native проверка — NOT RUN с открытой приёмкой; обычные FSM/Motion/ввод работают offline независимо от tool/provider.

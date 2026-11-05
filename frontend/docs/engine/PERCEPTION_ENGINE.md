@@ -211,7 +211,7 @@ Pure updates по explicit inputs/constraints; freshness по monotonic `nowMs`,
 <a id="10-внешние-окна--целевой-контракт-auto-a07"></a>
 ## 10. Внешние окна и обнаружение поверхностей
 
-Target implementation contract, не утверждение runtime readiness. [ExternalWindowSurfacesPort](../../src/application/ports/external-window-surfaces.port.ts) отделён от Electron-aware `IPlatformAdapter`. Infrastructure отдаёт полный набор, Application выбирает currentSurface для Motion; Renderer опору не выбирает.
+Target implementation contract, не утверждение runtime readiness. [ExternalWindowSurfacesPort](../../src/application/ports/external-window-surfaces.port.ts) отделён от Electron-aware `IPlatformAdapter`. Infrastructure отдаёт полный набор, Application выбирает currentSurface для Motion; Renderer опору не выбирает. Observation/geometry не дают разрешения focus; отдельный [TOOLS-A01 contract](AI_PROVIDER_CONTRACT.md#один-инструмент-focus-окна-tools-a01) требует явного выбора/подтверждения и не обещает атомарной OS identity.
 
 ### Модель и capability
 
