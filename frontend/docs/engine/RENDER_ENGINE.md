@@ -42,7 +42,7 @@ Renderer не парсит provider DTO, не считает Needs/Activity/auth
 | `update(state)` | Применить последнюю полную `BodyVisualState` | Не принимает partial patch; повтор revision не создаёт React/render update. |
 | `destroy()` | Остановить RAF/player callbacks и освободить resources | После возврата новые updates запрещены. |
 
-`SpriteSkinAdapter` — единственный adapter scope, оборачивает текущие resolver/player/renderer/manifest без format migration. Base clip стартует/replay только при новой паре `(streamId, visualIntent.episodeId)` с baseline `visualAgeMs`; Brain revision/reflex старого episode не сбрасывают playback. Completion локален, не входит в `BodyEventDTO` и не создаёт Brain outcome.
+`SpriteSkinAdapter` — единственный реализованный Skin adapter, оборачивает текущие resolver/player/renderer/manifest без format migration. Base clip стартует/replay только при новой паре `(streamId, visualIntent.episodeId)` с baseline `visualAgeMs`; Brain revision/reflex старого episode не сбрасывают playback. Completion локален, не входит в `BodyEventDTO` и не создаёт Brain outcome.
 
 Нейтральный gaze может использовать зарегистрированную пару `face_gaze_base` +
 `pupils_gaze` только при явном `enableContinuousGaze` и overlay-совместимости с
@@ -110,7 +110,7 @@ Frames — PNG paths либо atlas `SpriteFrameDef.sourceRect`, отсчиты�
 
 Для overlay: только face/* keys; объявленный `anchor` в `defaultAnchors`/`frameMeta`; fallback входит в allowedFaceKeys либо `none`. Baked-in/none никогда не получают allowedFaceKeys/anchor, fallback только none. Без якоря overlay запрещён; expression не заменяет полный face track.
 
-Текущие назначения/allowedFaceKeys — в [manifest.json](../../public/assets/sprites/manifest.json): overlay у body_idle/stand_up/sit/lie, baked-in у motion/reaction body_walk/run/dragged/fall/land/sleep. Каталог конкретных face keys читается из манифеста, не копируется сюда.
+Текущие назначения/allowedFaceKeys определяет [manifest.json](../../public/assets/sprites/manifest.json), включая каждый вариант позы. Каталог capabilities и face keys читается из манифеста, не выводится из имени клипа и не копируется сюда. Наличие face asset не разрешает overlay на `baked_in`/`none`.
 
 ### 1.6. Система координат (Face Anchor & Pivot)
 
@@ -148,3 +148,74 @@ Procedural blush — SVG radial-gradient tint поверх щёк без выт�
 Fallback не бросает unhandled exceptions, optional layers деградируют до base body; меняется только presentation, не исходные `AnimationIntent`/`BehaviorIntent`. Экспрессивность не повышать: shy→idle, не affectionate.
 
 `fps > 0`; assets загружены **до** синхронного render tick, без async loading посреди него. Одинаковый `RenderPresentationState` даёт идентичный frame независимо от tick frequency. Render не меняет semantic FSM; UI/DOM/resources локальны, platform APIs запрещены.
+
+## 4. Условный контракт управляемого тела
+
+Требования ниже — целевой контракт повторного rig gate [BODY-A01 / #180](https://github.com/zyzycode/project_wisp/issues/180), **не реализованные возможности**. Подключение rig сейчас не разрешено: остаётся `SpriteSkinAdapter`. Исследованный runtime-кандидат, Dependency Review и причины no-go фиксируются в Issue; кандидат не означает разрешения устанавливать пакет. Для нового go нужны готовый human-authored pack, подтверждённые права поставки и измерения. Графика, экспорт и rigging агентами не выполняются.
+
+### 4.1. Входы и проверяемые capabilities
+
+Будущий adapter потребляет тот же ordered `BodyVisualState`; bones, tracks, attachments, resource handles и mouth playback остаются renderer-local. Новые Application/IPC/Domain rig API не нужны. Существующий semantic expression #161 не проектируется заново.
+
+| Канал | Разрешённый вход | Реальные sprites / требование к будущему rig | Unsupported fallback |
+|---|---|---|---|
+| Base motion | `visualIntent.kind/loop`, episode age и authoritative velocity | Sprites — готовые clips; rig — authored idle/walk/sit/drag/fall/sleep | Существующий category/base fallback §3 |
+| Additive pose | Только явно разрешённая semantic projection | В текущем Body нет независимой fatigue intensity; rig требует отдельной маски и authored pose | Опустить pose; не рассчитывать Need/эмоцию в Renderer |
+| Face | `expressionHint`, `emotionalTone` | Sprites — строго `faceOverlay`; rig — независимые face controls с таблицей semantic соответствий | Совместимое нейтральное лицо; без усиления/противоположной эмоции |
+| Gaze | Нормализованный `reflex.pupilOffset` | Sprites — дискретный либо явно включённый continuous gaze; rig — отдельные eye targets/limits | Нейтральный взгляд; не подменять semantic expression |
+| Hands/props | Только существующий/отдельно согласованный semantic hint | Sprites — доступные prop layers; rig — authored grips, anchors, attachments и pose compatibility | Удалить несовместимый/отсутствующий prop |
+| Mouth playback | Фактический renderer audio handle/clock и bounded envelope | Сейчас отдельного mouth channel нет; rig требует независимой resting/open формы | Неподвижная совместимая resting pose |
+
+`sleepy` hint можно отображать без нового semantic входа. Непрерывная усталость/интенсивность не считается уже доступной: расширение разрешённой Main projection согласуется отдельно до #182. Подготовка текста/TTS или UI `speaking` не запускают mouth. Первый mouth slice — activity/envelope, без обещания фонемной точности.
+
+### 4.2. Композиция, приоритеты и contact root
+
+Один base track следует текущему Brain episode; additive updates не сбрасывают его clock. Остальные каналы применяются только при capability и совместимости текущей позы. Приоритеты forced/sleep и Brain timeline остаются в [Animation §2/§5](ANIMATION_ENGINE.md#2-матрица-приоритетов-и-прерываний).
+
+- Drag/fall/landing и защищённый sleep атомарно снимают несовместимые pose/hands/props/gaze. Они не ждут завершения rig clip. Новый semantic face сильнее локального gaze; mouth меняет только разрешённые mouth controls, сохраняя emotion.
+- Artist pack перечисляет непересекающиеся bone/property masks и совместимые сочетания для base, pose, face, gaze, hands/mouth; совпадающие masks без явного порядка отклоняются. Missing optional layer не меняет исходный hint.
+- Gaze ограничен `[-1,1]`, mapped к authored limits; smoothing использует только Renderer delta, время стабилизации — целевые 100 ms. При утрате актуального cursor observation target нейтрален. Reset/stream replacement очищают старые targets/attachments сразу.
+- Contact root привязан к canonical root из раздела общей геометрии; root translation из rig clip запрещена. Визуальный offset анимации — дочерний относительно contact root. Reflection/scale/rotation и переход поз не меняют native offset или authoritative velocity.
+- Feet/hand/face anchors используют ту же projection и letterboxing; bounds не вычисляют новую физику, опору или hit outcome. Secondary rig physics первого slice выключена.
+
+### 4.3. Pack и validation
+
+Готовый pack размещается только в разрешённом каталоге assets; миграция sprite manifest и новый resource format требуют конкретного повторного go. До этого существующие PNG/manifest не преобразуются.
+
+Художник-человек предоставляет exported skeleton, atlas и все referenced textures; authoring source, точную editor/export версию, native facing/scale, canonical contact root, bounds и реестр clips/capabilities. Обязательны проверяемые face/eyes/hands/feet anchors; additive poses/grips/mouth — только для заявленных capabilities. Для каждого semantic hint указаны compatible poses и safe fallback. Коммерческие права на artwork/rig, изменение и распространение подтверждаются отдельно от runtime license.
+
+Перед активацией проверяются local-only paths без traversal/URL, размер данных и decoded texture dimensions, finite transforms, наличие root/anchors/base clips, atlas references, masks, limits и точная совместимость export/runtime major.minor. Повреждённая обязательная база отклоняет весь pack; отсутствующая optional capability деградирует отдельно. Никаких resource loads в синхронном render tick.
+
+### 4.4. Загрузка, replacement и освобождение
+
+Sprite fallback остаётся видимым до полной загрузки/validation rig; переключение атомарно применяет последний snapshot и episode age. Один Skin instance владеет своими RAF/resources/listeners; одновременно визуализируется один adapter.
+
+| Граница/ошибка | Требуемое поведение |
+|---|---|
+| Missing/corrupt resource, incompatible export, load deadline | Освободить частично загруженное; применить sprite fallback актуального snapshot и bounded diagnostic без содержимого ресурсов |
+| WebGL/context недоступен или потерян | Остановить rig и перейти к sprites; автоматический бесконечный reload запрещён |
+| Старая revision/stream/generation или late load | Не публиковать; late result освобождает только собственные resources |
+| Reset/replacement | Инвалидировать load generation, очистить controls/attachments и создать новый lifecycle; не оживлять старый episode |
+| `destroy()`/unmount | Идемпотентно отменить RAF/loading, снять callbacks/listeners/subscriptions, освободить textures/buffers/shaders и ссылки; после возврата публикации запрещены |
+
+Retry допускается только новым явно созданным lifecycle; Brain продолжает semantic progression при любом исходе. Rig completion/listener не пересекает BodyEvent/Preload/Main boundary.
+
+### 4.5. Целевые пределы и performance/visual gate
+
+Числа ниже — **TARGETS для будущей реализации, не измерения и не доказательство готовности**. Превышение требует облегчить human pack либо повторно согласовать бюджет; нельзя молча объявить passed.
+
+| Параметр одного rig | Целевой предел |
+|---|---|
+| Resources | Один context; ≤2 atlas pages по 2048×2048 RGBA, ≤32 MiB raw texels без browser/driver copies; pack ≤8 MiB, skeleton JSON ≤2 MiB |
+| Complexity | ≤100 bones, 150 slots, 10 000 visible vertices, 3 influences/vertex, 5 tracks; без clipping в первом slice |
+| Load | Ready ≤2 s на локальном диске, затем sprite fallback |
+| CPU/frame при 240 DIP, DPR 1/2, 60 Hz | Adapter update+draw p95 ≤2 ms, p99 ≤4 ms; ≤20 draw calls/frame; frame interval p95 ≤20 ms |
+| Publication | Неизменное изображение — ноль дополнительных React publications; gaze/mouth не создают per-frame IPC |
+| Memory/lifecycle | Renderer RSS delta к прогретым sprites ≤64 MiB; retained delta ≤5 MiB после 100 replacement/dispose cycles и GC settling |
+| Mouth | Начало/конец envelope ≤50 ms от фактического audio clock; stop закрывает mouth не позднее следующего RAF |
+
+Проверка использует один scripted Brain trace для sprites/rig и фиксирует semantic parity, отсутствие root/native-window drift и сохранение episode cadence. Матрица: idle/walk/sit × neutral/annoyed/tired × доступный gaze; drag/fall/sleep, props/mouth, invalid resources, context loss, reset/replacement/dispose. Unsupported art помечается unsupported, не successful visual combination. Отдельно проверяются flip/scale/rotation, compact/expanded и DPR 1/2.
+
+Для Windows, macOS и Linux Wayland/X11 записываются OS/hardware/driver/DPR, длительность прогона, CPU/RSS/frame percentiles, GPU timing при наличии и PASS/NOT RUN каждого сценария. GPU percentage, native transparency и качество изображения не выводятся из unit mocks или факта WebGL support. Human visual/voice acceptance остаётся отдельной проверкой.
+
+Технические основания будущего gate: [официальный spine-ts README](https://github.com/EsotericSoftware/spine-runtimes/blob/4.3/spine-ts/README.md) описывает JS/TS backends и ограничения Canvas; [AnimationState](https://esotericsoftware.com/spine-applying-animations) — layering; [versioning](https://esotericsoftware.com/spine-versioning) — matching major.minor; [clipping](https://eu.esotericsoftware.com/spine-clipping) — стоимость CPU. Право интеграции/поставки проверяется по [Editor License §2](https://esotericsoftware.com/spine-editor-license) и [Runtime License](https://esotericsoftware.com/spine-runtimes-license); наличие editor license художника не подтверждает автоматически права разработчика. Maintenance оценивается по [датированным официальным spine-ts releases](https://github.com/EsotericSoftware/spine-runtimes/actions/workflows/spine-ts.yml) при повторном Dependency Review, без security audit/обновления текущих зависимостей.

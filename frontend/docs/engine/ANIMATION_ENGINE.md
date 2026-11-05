@@ -60,6 +60,8 @@ Brain передаёт serializable `visualIntent` в BrainStateDTO; Body → Bo
 
 Authoritative root — только `BrainStateDTO.motion`. Native window handles, Electron/platform types/callbacks не входят в Body/Skin DTO и Main/Application/Domain/Shared contracts.
 
+Условные rig capabilities, composition masks, contact root, resource lifecycle и целевые performance limits определяет [Render §4](RENDER_ENGINE.md#4-условный-контракт-управляемого-тела). Это контракт повторного gate, не разрешение подключения rig. Additive pose/gaze/mouth не создают новый semantic episode, не выводят эмоцию/Needs в Renderer и не возвращают completion в Brain; текущий adapter остаётся sprite.
+
 ## 5. Независимые semantic и clip timelines
 
 Фоновые `idle_blink`, `look_around`, `settle`, `sit` и `sit_edge` не наследуют
