@@ -212,7 +212,7 @@ Wiring read/observer, run snapshot и selector — **prerequisite будущей
 
 ## 9. Taste & Preferences (Вкусы и предпочтения)
 
-[preferences.ts](../../src/domain/character/preferences.ts): `value` `-100..100` — отношение к теме, `confidence` `0.0..1.0` — уверенность, `samples` — число тематических dialogues/events. Опыт, эмпатия и привязанность могут мягко сближать интересы с пользователем.
+[preferences.ts](../../src/domain/character/preferences.ts): `value` `-100..100`, `confidence` `0..1`, `samples` — только разрешённое evidence конкретного track, не произвольные dialogues. User-derived activity tracks ниже и собственный музыкальный discussion interest [Autonomy §19](AUTONOMY_ENGINE.md#19-memory-a04-собственный-интерес-к-музыкальным-темам-178) имеют независимые subject/source; эмпатия/отношения не копируют вкус пользователя в Character.
 
 <a id="p15-a02-скорость-и-доказательства-адаптации-57"></a>
 ### Скорость и доказательства адаптации
