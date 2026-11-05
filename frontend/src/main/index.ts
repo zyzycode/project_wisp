@@ -1,3 +1,4 @@
+import { DeferredGameInvitationRuntime } from '../application/services/deferred-game-invitation-runtime';
 import { pathToFileURL } from 'node:url';
 import { VoiceOutputService } from '../application/services/voice-output-service';
 import { LocalSpeechSynthesizer } from '../infrastructure/voice-output/local-speech-synthesizer';
@@ -120,6 +121,7 @@ let aiConnection: AIConnectionController | null = null;
 let aiRoute: PersonalAIRoute = {};
 let unregisterAIConnection: (() => void) | null = null;
 let memoryRuntime: MemoryLifecycle | null = null;
+let deferredInvitationRuntime: DeferredGameInvitationRuntime | null = null;
 let routineCapture: RoutineCapture | null = null;
 let unregisterMemory: (() => void) | null = null;
 let unregisterSummary: (() => void) | null = null;
@@ -310,6 +312,7 @@ function stopShimejiMotionLoop(): void {
 }
 
 function disposeAutonomyComposition(): void {
+  void deferredInvitationRuntime?.dispose(); deferredInvitationRuntime = null;
   autonomyComposition?.dispose();
   autonomyComposition = null;
 }
@@ -321,6 +324,13 @@ function initializeAutonomyComposition(): void {
   const prng = new SeededPrng(AUTONOMY_SEED);
   const memoryGeneration = memoryRuntime?.currentGeneration() ?? 0;
   autonomyComposition = new MainAutonomyComposition({
+    deferredInvitation: {
+      opportunity: () => deferredInvitationRuntime?.opportunity() ?? false,
+      activityStarted: runId => deferredInvitationRuntime?.activityStarted(runId),
+      terminal: (runId, completed) => deferredInvitationRuntime?.terminal(runId, completed),
+      cancel: () => { void deferredInvitationRuntime?.cancel(); },
+      invalidateAdmission: () => deferredInvitationRuntime?.invalidateAdmission(),
+    },
     cursorPosition: platformAdapter,
     systemIdle: platformAdapter.createSystemIdleSource?.(),
     routine: { sample: (sample, source) => routineCapture?.sample(sample, source), boundary: () => routineCapture?.boundary(), clockDiscontinuity: () => routineCapture?.clockDiscontinuity() },
@@ -379,6 +389,15 @@ function initializeAutonomyComposition(): void {
     onSleepStateChanged: () => dialogueRuntime?.notifySleepStateChanged(),
     onPresentationChanged: publishBrainState,
   });
+  if (memoryComposition) {
+    const composition = autonomyComposition;
+    deferredInvitationRuntime = new DeferredGameInvitationRuntime({ repository: memoryComposition.deferredInvitation,
+      context: () => memoryRuntime?.context() ?? null, wallNow: Date.now, monotonicNow: () => brainStatePublisher.now(), createId: randomUUID,
+      creationAllowed: () => composition.canRetainDeferredInvitation(),
+      eligible: () => composition.canStartDeferredInvitation(), start: () => composition.startDeferredInvitation(),
+      onOpportunityFinished: () => composition.finishDeferredInvitationOpportunity() });
+    void deferredInvitationRuntime.restore();
+  }
   autonomyComposition.setQuietSupport(quietSupportRuntime.isActive());
   if (memoryRuntime?.isRunning() && mainWindow !== null && !mainWindow.isDestroyed()) autonomyComposition.start();
   if (dialogueRuntime === null) {
@@ -821,7 +840,7 @@ if (!gotTheLock) {
     localMock = !aiRoute.backendUrl;
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
-    memoryRuntime = new MemoryLifecycle({ causalObserver: (episode, atMs) => defaultCharacterStateService.observeCausalEpisode(episode, atMs), summary: {
+    memoryRuntime = new MemoryLifecycle({ causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { defaultCharacterStateService.observeCausalEpisode(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
       invalidate: () => { if (summaryRuntime) summaryRuntime.invalidate(); else void memoryComposition?.summaryCache.clear(false, false); },
       reset: async () => {
         if (summaryRuntime) return summaryRuntime.reset();
@@ -833,8 +852,8 @@ if (!gotTheLock) {
       scheduler: createMainAutonomyScheduler(), now: Date.now, timestamp: () => new Date().toISOString(), createId: randomUUID,
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
-      shutdownCapture: () => routineCapture?.shutdown() ?? Promise.resolve(),
-      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { routineCapture?.invalidate(); beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
+      shutdownCapture: () => Promise.all([routineCapture?.shutdown(), deferredInvitationRuntime?.dispose()]).then(() => undefined),
+      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
       resetCommitted: () => { voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); beverageCommands.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });

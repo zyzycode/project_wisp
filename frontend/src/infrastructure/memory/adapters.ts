@@ -1,3 +1,5 @@
+import { deferredInvitation } from './deferred-invitation-validation';
+import type { IDeferredGameInvitationRepository } from '../../application/ports/causal-life.interface';
 import type { ICausalLifeRepository } from '../../application/ports/causal-life.interface';
 import type { ICausalLifeRecallReader } from '../../application/ports/causal-recall.interface';
 import { causalRecallPage } from './causal-recall-validation';
@@ -24,6 +26,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly deferredInvitation: IDeferredGameInvitationRepository;
   readonly causalRecall: ICausalLifeRecallReader;
   readonly itemRecall: IMemoryItemRecallReader;
   readonly causalLife: ICausalLifeRepository;
@@ -46,6 +49,12 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    deferredInvitation: {
+      create: (invite,c) => call('createDeferredInvitation',invite,c,nothing),
+      read: (now,c) => call('readDeferredInvitation',now,c,value => value === null ? null : deferredInvitation(value)),
+      claim: (id,now,c) => call('claimDeferredInvitation',{id,now},c,value => { if (typeof value !== 'boolean') throw new v.MemoryDataError('invalid_data'); return value; }),
+      finish: (id,state,c) => call('finishDeferredInvitation',{id,state},c,nothing),
+    },
     causalRecall: { find: (query, c) => call('findCausalLife', query, c, causalRecallPage) },
     itemRecall: { find: (tokens, c) => call('findMemoryItems', tokens, c, itemCandidates) },
     causalLife: { append: (episode, c) => call('appendCausalLife', episode, c, nothing), getRecent: (limit, c) => call('recentCausalLife', limit, c, value => list(value, causalEpisode)), resolveSources: (sources, c) => call('resolveCausalLife', sources, c, value => list(value, causalEpisode)) },

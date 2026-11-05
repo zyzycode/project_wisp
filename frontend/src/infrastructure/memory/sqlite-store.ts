@@ -1,3 +1,4 @@
+import { DeferredInvitationStore } from './deferred-invitation-store';
 import { CausalLifeStore } from './causal-life-store';
 import { CausalRecallStore } from './causal-recall-store';
 import { MemoryItemRecallStore } from './item-recall-store';
@@ -59,6 +60,10 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'createDeferredInvitation': return new DeferredInvitationStore(this.db).create(c.payload);
+      case 'readDeferredInvitation': return new DeferredInvitationStore(this.db).read(c.payload);
+      case 'claimDeferredInvitation': return new DeferredInvitationStore(this.db).claim(c.payload);
+      case 'finishDeferredInvitation': return new DeferredInvitationStore(this.db).finish(c.payload);
       case 'findCausalLife': return new CausalRecallStore(this.db).find(c.payload);
       case 'findMemoryItems': return new MemoryItemRecallStore(this.db).find(c.payload);
       case 'appendCausalLife': return new CausalLifeStore(this.db).append(c.payload);
@@ -103,7 +108,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 3, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }

@@ -66,6 +66,13 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
+  readonly deferredInvitation?: {
+    opportunity(): boolean;
+    activityStarted(runId: string): void;
+    terminal(runId: string, completed: boolean): void;
+    cancel(): void;
+    invalidateAdmission(): void;
+  };
   readonly onSleepStateChanged?: () => void;
   readonly onChatMotionTerminal?: (event: ChatMotionTerminal) => void;
   readonly systemIdle?: SystemIdlePort;
@@ -118,7 +125,7 @@ export class MainAutonomyComposition {
   private menuOpen = false;
   private cursorReactionActive = false;
   private readonly socialFollowup = new SocialBidFollowupPolicy();
-  private startingSocial: 'first' | SocialFollowupTicket | null = null;
+  private startingSocial: 'first' | 'deferred' | SocialFollowupTicket | null = null;
   private secondRunId: string | null = null;
   private initiativeStartSequence = 0;
   private dialoguePending = false;
@@ -149,7 +156,7 @@ export class MainAutonomyComposition {
       beforeLocalOpportunity: () => {
         const previous = this.initiativeStartSequence;
         this.drainSocialAdmission();
-        return this.initiativeStartSequence !== previous;
+        return this.initiativeStartSequence !== previous || (options.deferredInvitation?.opportunity() ?? false);
       },
       getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
         quiet: this.quiet || this.quietSupport,
@@ -192,13 +199,15 @@ export class MainAutonomyComposition {
         if (this.activity.isInitiative()) this.initiativeStartSequence++;
         if (activityId !== 'social_bid' || this.startingSocial === null) return;
         this.initiativeBudget.start(options.clock.now());
-        if (this.startingSocial === 'first') this.socialFollowup.firstStarted(runId);
+        if (this.startingSocial === 'deferred') { this.socialFollowup.firstStarted(runId); this.socialFollowup.invalidate(); }
+        else if (this.startingSocial === 'first') this.socialFollowup.firstStarted(runId);
         else { this.socialFollowup.secondStarted(this.startingSocial, runId, options.clock.now()); this.secondRunId = runId; }
       },
-      onStarted: (runId, activityId) => { if (runId !== this.secondRunId) options.onActivityStarted?.(runId, activityId); },
+      onStarted: (runId, activityId) => { options.deferredInvitation?.activityStarted(runId); if (runId !== this.secondRunId) options.onActivityStarted?.(runId, activityId); },
       onOutcome: event => { if (event.activityRunId === this.secondRunId) return; options.onActivityOutcome?.(event); this.coordinator.noteActivityOutcome(event); },
       onVisualIntent: (intent) => this.setVisualIntent(intent, true, true),
       onSettled: (runId, result) => {
+        options.deferredInvitation?.terminal(runId, result.status === 'completed');
         this.socialFollowup.terminal(runId, result.status, result.status === 'completed' ? result.completedAtMs
           : result.status === 'cancelled' ? result.cancelledAtMs : result.failedAtMs);
         if (this.secondRunId === runId) this.secondRunId = null;
@@ -384,7 +393,7 @@ export class MainAutonomyComposition {
   public resetSystemIdle(): void { this.invalidateSocialFollowup(); this.systemIdle.reset(); }
   public invalidateSocialFollowup(): void { this.socialFollowup.invalidate(); this.dialoguePending = false; }
   public resetSocialFollowupMemory(): void { this.socialFollowup.reset(); this.dialoguePending = false; }
-  public acceptUserContact(): void { this.socialFollowup.contact(); }
+  public acceptUserContact(): void { this.options.deferredInvitation?.cancel(); this.socialFollowup.contact(); }
   public acceptDialogueContact(): void {
     this.acceptUserContact(); this.dialoguePending = true;
     if (this.activity.getRuntime()?.activityId === 'social_bid') this.cancelActivity('user_interaction', true);
@@ -405,6 +414,7 @@ export class MainAutonomyComposition {
     if (this.quietSupport === enabled) return;
     this.quietSupport = enabled;
     if (enabled) {
+      this.options.deferredInvitation?.cancel();
       this.socialFollowup.invalidate();
       this.providerAdmission.invalidateIncompatibleQuiet();
       this.blockUnsolicited();
@@ -418,7 +428,7 @@ export class MainAutonomyComposition {
     if (this.quiet === enabled) return this.getAutonomyMode();
     this.quiet = enabled;
     this.systemIdle.reset();
-    if (enabled) { this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidateIncompatibleQuiet(); }
+    if (enabled) { this.options.deferredInvitation?.cancel(); this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidateIncompatibleQuiet(); }
     this.resetCursorInterest();
     if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
       this.cancelActivity('explicit_cancel', true);
@@ -436,13 +446,14 @@ export class MainAutonomyComposition {
   public setEnabled(enabled: boolean): void {
     this.systemIdle.setEnabled(enabled);
     this.resetCursorInterest();
-    if (!enabled) { this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
+    if (!enabled) { this.options.deferredInvitation?.cancel(); this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
     if (!enabled) this.cancelActivity('explicit_cancel', true);
     this.enabled = enabled;
     this.coordinator.setEnabled(enabled);
   }
 
   public setMenuOpen(menuOpen: boolean): void {
+    if (menuOpen) this.options.deferredInvitation?.invalidateAdmission();
     if (this.menuOpen !== menuOpen) this.systemIdle.reset();
     this.resetCursorInterest();
     if (menuOpen) { this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidate('disabled'); }
@@ -681,6 +692,7 @@ export class MainAutonomyComposition {
   }
 
   public suspendForUserInteraction(): void {
+    this.options.deferredInvitation?.cancel();
     this.options.onAIInvalidated?.();
     this.cancelActivity('user_interaction', true);
     this.coordinator.suspendForUserInteraction();
@@ -795,6 +807,38 @@ export class MainAutonomyComposition {
     }
     return appliedSteps > 0;
   }
+
+  public canRetainDeferredInvitation(): boolean {
+    return this.started && !this.disposed && this.enabled && !this.quiet && !this.quietSupport;
+  }
+  public canStartDeferredInvitation(): boolean {
+    const intent: BehaviorIntent = { kind: 'play', source: 'memory', priority: 'normal', activityFamily: 'social_bid' };
+    return this.started && !this.disposed && this.enabled && !this.quiet && !this.quietSupport && !this.menuOpen
+      && this.systemIdle.isFreshActive() && this.character.isAutonomyEligible()
+      && !requiresVitalSleep(this.options.getCharacterSnapshot()) && this.options.movement.canAcceptVoluntaryMovement()
+      && this.activity.getRuntime() === null && !this.dialoguePending && this.options.clock.now() >= this.dialogueGuardUntilMs
+      && !this.deferredUserInteractionResume && this.coordinator.canAcceptReactiveOpportunity()
+      && !this.providerAdmission.hasPending() && this.providerAdmission.getOwnedRun() === null
+      && this.initiativeBudget.available(this.options.clock.now())
+      && this.activity.canStart(intent, { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] });
+  }
+  public startDeferredInvitation(): string | null {
+    if (!this.canStartDeferredInvitation()) return null;
+    const intent = this.character.resolveDirectIntent({ kind: 'play', source: 'memory', priority: 'normal',
+      activityFamily: 'social_bid', reason: 'deferred_game_invitation' }, this.options.getCharacterSnapshot()).resolvedIntent;
+    if (!intent || !this.canStartDeferredInvitation()) return null;
+    this.startingSocial = 'deferred';
+    let started: boolean;
+    try { started = this.activity.start(intent, { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] }); }
+    finally { this.startingSocial = null; }
+    const run = this.activity.getRuntime();
+    if (!started || !run) return null;
+    this.options.onSocialBidStarted?.(run.runId, this.options.clock.now());
+    this.localHistory.push({ kind: 'social_bid',atMs: this.options.clock.now() });
+    if (this.localHistory.length > 16) this.localHistory.shift();
+    return run.runId;
+  }
+  public finishDeferredInvitationOpportunity(): void { this.coordinator.notifyActivityFinished(); }
 
   private handleResolvedIntent(intent: BehaviorIntent): boolean {
     if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;

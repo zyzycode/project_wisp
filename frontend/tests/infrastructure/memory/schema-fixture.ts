@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 import { MEMORY_ITEMS_SCHEMA } from '../../../src/infrastructure/memory/item-schema';
 /** Test fixture downgrade of an empty current schema card store, before populating migration3 data. */
 export function schema3(db:Database.Database):void {
- db.exec(`DROP TABLE IF EXISTS causal_recall_postings; DROP TABLE IF EXISTS causal_recall_build; DROP TABLE IF EXISTS memory_item_recall_build; DELETE FROM schema_migrations WHERE version=7; DROP TABLE IF EXISTS causal_life_episodes; DELETE FROM schema_migrations WHERE version=6; DROP TABLE IF EXISTS routine_observations; DROP TABLE IF EXISTS routine_metadata; DELETE FROM schema_migrations WHERE version=5;
+ db.exec(`DROP TABLE IF EXISTS deferred_game_invitation; DROP TABLE IF EXISTS deferred_invitation_sources; DELETE FROM schema_migrations WHERE version=8; DROP TABLE IF EXISTS causal_recall_postings; DROP TABLE IF EXISTS causal_recall_build; DROP TABLE IF EXISTS memory_item_recall_build; DELETE FROM schema_migrations WHERE version=7; DROP TABLE IF EXISTS causal_life_episodes; DELETE FROM schema_migrations WHERE version=6; DROP TABLE IF EXISTS routine_observations; DROP TABLE IF EXISTS routine_metadata; DELETE FROM schema_migrations WHERE version=5;
  DROP TABLE memory_item_terms;DROP TABLE memory_item_sources;DROP TABLE memory_items;
  DROP INDEX beverage_turn_request;DROP INDEX beverage_turn_user;DROP INDEX beverage_turn_assistant;
  ALTER TABLE memory_mutation_receipts DROP COLUMN request_id;
