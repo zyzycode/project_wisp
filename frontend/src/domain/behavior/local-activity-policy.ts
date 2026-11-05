@@ -3,6 +3,7 @@ import { localPreferenceMultiplier } from '../character/preferences';
 import { causalEmotionMultiplier } from '../character/causal-affect';
 import { ownGoalSelectionMultiplier, type OwnGoalKind } from '../character/own-goals';
 import { ownPlanSelectionMultiplier, type OwnPlanStep } from '../character/own-plans';
+import { copingSelectionMultiplier, type CopingStrategy } from '../character/coping';
 import type { BehaviorIntent } from './behavior-intent';
 export interface LocalSelectionContext {
   readonly nowMs: number;
@@ -13,6 +14,7 @@ export interface LocalSelectionContext {
   readonly quiet?: boolean;
   readonly ownGoal?: OwnGoalKind | null;
   readonly ownPlanStep?: OwnPlanStep | null;
+  readonly copingStrategy?: CopingStrategy | null;
   readonly history: readonly { readonly kind: string; readonly atMs: number }[];
 }
 export interface LocalSelectionTrace {
@@ -25,6 +27,7 @@ export interface LocalSelectionTrace {
   readonly emotionMultiplier: number;
   readonly goalMultiplier: number;
   readonly planMultiplier: number;
+  readonly copingMultiplier: number;
   readonly poolEligible: boolean;
   readonly selected: boolean;
   readonly score: number;
@@ -75,9 +78,10 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
     const emotionMultiplier = d.kind === 'social_bid' ? causalEmotionMultiplier(snapshot.causalEmotion) : 1;
     const planMultiplier = eligible ? ownPlanSelectionMultiplier(planStep, d.kind) : 1;
     const goalMultiplier = eligible && !planStep ? ownGoalSelectionMultiplier(context.ownGoal, d.kind) : 1;
+    const copingMultiplier = eligible ? copingSelectionMultiplier(context.copingStrategy, d.kind) : 1;
     return { kind: d.kind, eligible, reason: !d.eligible ? 'state_environment_cooldown_or_mode' : eligible ? 'eligible' : 'invalid_required_baseline',
-      factors, baselineScore, preferenceMultiplier, emotionMultiplier, goalMultiplier, planMultiplier,
-      score: baselineScore * preferenceMultiplier * emotionMultiplier * Math.min(1.5, Math.max(.8, goalMultiplier * planMultiplier)) };
+      factors, baselineScore, preferenceMultiplier, emotionMultiplier, goalMultiplier, planMultiplier, copingMultiplier,
+      score: baselineScore * preferenceMultiplier * emotionMultiplier * Math.min(1.5, Math.max(.8, goalMultiplier * planMultiplier * copingMultiplier)) };
   });
   const maximum = Math.max(...weighted.map(row => row.score));
   const trace = weighted.map(row => ({ ...row, poolEligible: row.score > 0 && row.score >= .5 * maximum }));

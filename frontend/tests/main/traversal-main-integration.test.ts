@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { MainAutonomyComposition } from '../../src/main/main-autonomy-composition';
+import { describe, expect, it, vi } from 'vitest';
+import { MainAutonomyComposition, type MainAutonomyCompositionOptions } from '../../src/main/main-autonomy-composition';
 import { ShimejiMotionOrchestrator } from '../../src/application/services/shimeji-motion-orchestrator';
 import { DEFAULT_MOTION_CONSTRAINTS, MotionEngine } from '../../src/domain/behavior/motion-engine';
 import { SurfaceKinematics } from '../../src/domain/behavior/surface-kinematics';
 
-function fixture() {
+function fixture(coping?: MainAutonomyCompositionOptions['coping']) {
   let now = 0;
   let nextId = 0;
   const timers = new Map<number, () => void>();
@@ -26,6 +26,7 @@ function fixture() {
   const random = [0, .2, .35, .5, 0];
   let episode = 0;
   main = new MainAutonomyComposition({
+    ...(coping ? { coping } : {}),
     clock: { now: () => now }, scheduler: {
       setTimeout: callback => { timers.set(++nextId, callback); return nextId; },
       clearTimeout: id => { timers.delete(id as number); },
@@ -63,6 +64,19 @@ function fixture() {
 }
 
 describe('AUTO-I04 Brain → Motion integration', () => {
+  it('keeps the boosted Explore run through its owned voluntary jump and pays only its completed terminal', () => {
+    const coping = { consider: () => 'explore' as const, selected: vi.fn(), activityCommitted: vi.fn(), terminal: vi.fn(), cancel: vi.fn() };
+    const f = fixture(coping);
+    const runId = f.main.getActivityTimeline()!.runId;
+    f.advance(18000);
+    expect(f.phases).toContain('jump_travel');
+    expect(coping.cancel).not.toHaveBeenCalled();
+    expect(coping.activityCommitted).toHaveBeenCalledWith(runId, 'explore');
+    expect(coping.terminal).toHaveBeenCalledExactlyOnceWith(runId, true);
+    expect(f.main.getDecisionTrace().at(-1)?.selection?.find(row => row.selected)?.copingMultiplier).toBe(1.2);
+    f.main.dispose();
+  });
+
   it('runs the route under one Activity, shows jump/fall/land and resumes cadence once', () => {
     const f = fixture();
     expect(f.main.getActivityTimeline()?.phaseId).toBe('approach');

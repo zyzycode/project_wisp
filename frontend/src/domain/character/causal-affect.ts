@@ -95,3 +95,14 @@ export function reappraiseInterruption(state: CausalAffectState, causeSequence: 
   return { ...current, emotion: intensity >= 0.05 ? { ...emotion, intensity } : null,
     baselineIntensity: intensity >= 0.05 ? current.baselineIntensity : null };
 }
+
+/** A real completed coping run relieves the trajectory, not merely its reversible report factor. */
+export function relieveCausalInterruption(state: CausalAffectState, causeSequence: number, nowMs: number): CausalAffectState {
+  if (!validTime(state, nowMs)) return state;
+  const current = decayCausalAffect(state, nowMs), emotion = current.emotion;
+  if (!emotion || emotion.causeSequence !== causeSequence || emotion.cause !== 'user_interrupted'
+    || emotion.kind !== 'irritated' || current.baselineIntensity === null) return current;
+  const intensity = emotion.intensity * .5;
+  return { ...current, emotion: intensity >= .05 ? { ...emotion, intensity } : null,
+    baselineIntensity: intensity >= .05 ? current.baselineIntensity * .5 : null };
+}

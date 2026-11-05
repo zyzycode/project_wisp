@@ -1,5 +1,6 @@
 import { DeferredGameInvitationRuntime } from '../application/services/deferred-game-invitation-runtime';
 import { OwnGoalsRuntime } from '../application/services/own-goals-runtime';
+import { CopingRuntime } from '../application/services/coping-runtime';
 import { CausalExpressionRuntime } from '../application/services/causal-expression-runtime';
 import { causalVisualExpression } from '../domain/character/causal-director';
 import { canExpressFlirt } from '../domain/character/intimacy-rules';
@@ -127,6 +128,7 @@ let unregisterAIConnection: (() => void) | null = null;
 let memoryRuntime: MemoryLifecycle | null = null;
 let deferredInvitationRuntime: DeferredGameInvitationRuntime | null = null;
 let ownGoalsRuntime: OwnGoalsRuntime | null = null;
+let copingRuntime: CopingRuntime | null = null;
 let causalOwnerSequence = 0;
 let activityRunSequence = 0;
 let routineCapture: RoutineCapture | null = null;
@@ -335,6 +337,7 @@ function stopShimejiMotionLoop(): void {
 }
 
 function disposeAutonomyComposition(): void {
+  copingRuntime?.dispose(); copingRuntime = null;
   ownGoalsRuntime?.dispose(); ownGoalsRuntime = null;
   void deferredInvitationRuntime?.dispose(); deferredInvitationRuntime = null;
   autonomyComposition?.dispose();
@@ -348,6 +351,9 @@ function initializeAutonomyComposition(): void {
   if (orchestrator === null) return;
   const prng = new SeededPrng(AUTONOMY_SEED);
   const memoryGeneration = memoryRuntime?.currentGeneration() ?? 0;
+  copingRuntime = new CopingRuntime({ character: defaultCharacterStateService,
+    now: () => brainStatePublisher.now(), appRunId: () => memoryRuntime?.history.currentAppRunId() ?? '',
+    interpretation: () => memoryRuntime?.socialInterpretation.getCurrent() ?? null });
   ownGoalsRuntime = new OwnGoalsRuntime({ repository: memoryComposition?.motivation,
     context: () => memoryRuntime?.context() ?? null, wallNow: Date.now,
     getNeeds: () => defaultCharacterStateService.getState().needs,
@@ -356,6 +362,13 @@ function initializeAutonomyComposition(): void {
     planning: { appRunId: () => memoryRuntime?.history.currentAppRunId() ?? null,
       onOpportunityFinished: () => autonomyComposition?.finishOwnPlanOpportunity() } });
   autonomyComposition = new MainAutonomyComposition({
+    coping: {
+      consider: gates => copingRuntime?.consider(gates) ?? null,
+      selected: (kind, applied) => copingRuntime?.selected(kind, applied),
+      activityCommitted: (runId, activityId) => copingRuntime?.activityCommitted(runId, activityId),
+      terminal: (runId, completed) => copingRuntime?.terminal(runId, completed),
+      cancel: () => copingRuntime?.cancel(),
+    },
     ownGoals: {
       opportunity: () => ownGoalsRuntime?.opportunity(), selectedGoalKind: () => ownGoalsRuntime?.selectedGoalKind() ?? null,
       selectedPlanStep: () => ownGoalsRuntime?.selectedPlanStep() ?? null,
@@ -884,7 +897,7 @@ if (!gotTheLock) {
     localMock = !aiRoute.backendUrl;
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
-    memoryRuntime = new MemoryLifecycle({ causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { defaultCharacterStateService.observeCausalEpisode(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
+    memoryRuntime = new MemoryLifecycle({ causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { defaultCharacterStateService.observeCausalEpisode(episode, atMs); copingRuntime?.observed(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
       invalidate: () => { if (summaryRuntime) summaryRuntime.invalidate(); else void memoryComposition?.summaryCache.clear(false, false); },
       reset: async () => {
         if (summaryRuntime) return summaryRuntime.reset();
@@ -897,7 +910,7 @@ if (!gotTheLock) {
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
       shutdownCapture: () => Promise.all([routineCapture?.shutdown(), deferredInvitationRuntime?.dispose()]).then(() => undefined),
-      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
+      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { copingRuntime?.cancel(); ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); beverageDialogue?.invalidateOffer(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
       resetCommitted: () => { voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); beverageCommands.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });

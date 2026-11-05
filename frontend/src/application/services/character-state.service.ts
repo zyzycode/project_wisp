@@ -3,7 +3,7 @@ import type { InteractionAppraisal, PreviousTouchReaction, InteractionReceipt, T
 import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '../ports/memory-knowledge.interface';
 import { createAdaptationGate, type AdaptationGate } from '../../domain/character/adaptation-gate';
 import { learnVerifiedPreference } from '../../domain/character/preferences';
-import { appraiseCausalEvent, createCausalAffectState, decayCausalAffect, reappraiseInterruption, type CausalEmotion, type CausalObservedEvent } from '../../domain/character/causal-affect';
+import { appraiseCausalEvent, createCausalAffectState, decayCausalAffect, reappraiseInterruption, relieveCausalInterruption, type CausalEmotion, type CausalObservedEvent } from '../../domain/character/causal-affect';
 import type { InterpretationStatus } from '../../domain/character/social-interpretation';
 import { createOwnInterestGate, learnOwnGameInterest, reflectOwnGameInterest, OWN_GAME_INTEREST_KEY, type OwnInterestGate, type OwnGameEpisode, type OwnGameReflection } from '../../domain/character/own-game-interest';
 import type { CausalSourceReference } from '../../domain/character/types';
@@ -153,6 +153,10 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   public reappraiseInterruption(causeSequence: number, status: InterpretationStatus, atMs: number, generation = this.interactionGeneration): void {
     if (generation !== this.interactionGeneration) return;
     this.causalAffect = reappraiseInterruption(this.causalAffect, causeSequence, status, atMs);
+  }
+  public relieveCausalInterruption(causeSequence: number, atMs: number, generation: number): void {
+    if (generation !== this.interactionGeneration) return;
+    this.causalAffect = relieveCausalInterruption(this.causalAffect, causeSequence, atMs);
   }
   public observeCommittedOwnGame(episode: OwnGameEpisode, atMs: number): boolean {
     const learned = learnOwnGameInterest(this.state.preferences[OWN_GAME_INTEREST_KEY], this.state.ownGameInterestSources, this.ownInterestGate, episode, atMs);
