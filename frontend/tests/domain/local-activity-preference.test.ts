@@ -35,7 +35,7 @@ it.each([-100, 100])('bounds %s weights and never revives disabled families or q
   const input = { ...snapshot, learnedExplorePreference: preference, learnedSocialBidPreference: preference,
     learnedCursorGamePreference: { value: 100, confidence: 1 } };
   const allowed = selectLocalActivity(input, { ...context, canExplore: true, canSocial: true }, .5);
-  expect(allowed.trace.map(row => row.kind)).toEqual(['idle', 'wander', 'sleep', 'play', 'social_bid']);
+  expect(allowed.trace.map(row => row.kind)).toEqual(['idle', 'wander', 'book', 'sleep', 'play', 'social_bid']);
   for (const row of allowed.trace) expect(row.preferenceMultiplier).toBe(['wander', 'social_bid'].includes(row.kind) ? 1 + value / 500 : 1);
   const blocked = selectLocalActivity(input, { ...context, canSocial: true, quiet: true }, .99);
   expect(blocked.intent.kind).toBe('idle');

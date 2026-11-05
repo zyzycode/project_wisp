@@ -1,3 +1,5 @@
+import { hasBookSupport } from '../../domain/behavior/book-activity';
+import { isBookDeadlineReached, isBookActivityEligible } from '../../domain/behavior/book-activity-policy';
 import { initialCursorGameParticipation, observeCursorGameParticipation, terminalCursorGameParticipation, type CursorGameParticipation } from '../../domain/behavior/cursor-game-participation';
 import type { ActivityOutcomeFeedback } from '../ports/shimeji-feedback-port';
 import { advanceCursorGame, initialCursorGame, type GameState, type GameObservation } from '../../domain/behavior/cursor-game';
@@ -46,6 +48,7 @@ import type { CharacterAutonomySnapshot } from '../../domain/character';
 import type { AutonomyClock } from './autonomy-coordinator';
 
 export interface BrainActivityRuntimeOptions {
+  readonly canBook?: () => boolean;
   readonly getCursorObservation?: () => GameObservation;
   readonly onCursorGamePhase?: (runId: string, phase: string, outcome: CursorGameResult['outcome'] | null) => void;
   readonly onCursorGameResult?: (result: CursorGameResult) => void;
@@ -130,6 +133,13 @@ export class BrainActivityRuntime {
       catalog
     );
     if (selectedDefinition === null) return null;
+    if (selectedDefinition.id === 'book') {
+      if (this.runtime !== null) return null;
+      const n = selectionContext.character.needs;
+      if (!isBookActivityEligible({ canBook: this.options.canBook?.() ?? true, awake: true, energy: n.energy, boredom: n.boredom ?? NaN, comfort: n.comfort,
+        quiet: false, supportMode: false, menuOpen: false, forcedMotion: false, criticalNeed: false, activeOwner: false, cooldownReady: true,
+        stableSupport: hasBookSupport(selectionContext.environment, this.options.getRootPosition(), this.options.getCollisionInsets(), nowMs) })) return null;
+    }
     if (selectedDefinition.id === 'cursor_interest' && !this.options.getCursorObservation) return null;
     const context = {
       currentRootPosition: this.options.getRootPosition(), environment: selectionContext.environment,
@@ -163,7 +173,7 @@ export class BrainActivityRuntime {
     intent: BehaviorIntent
   ): boolean {
     this.cancel('higher_priority_activity');
-    this.participation = definition.id !== 'cursor_interest' && intent.source === 'user' ? 'user_engaged' : 'solitary';
+    this.participation = definition.id !== 'book' && definition.id !== 'cursor_interest' && intent.source === 'user' ? 'user_engaged' : 'solitary';
     this.cursorParticipation = initialCursorGameParticipation(nowMs);
     this.playCompleted = false;
     this.source = intent.reason === 'vital_sleep' ? 'character' : intent.source === 'user' ? 'user' : intent.source === 'provider' ? 'provider' : 'local';
@@ -197,6 +207,11 @@ export class BrainActivityRuntime {
     const definition = this.definition;
     const runtime = this.runtime;
     if (definition === null || runtime === null) return false;
+    if (definition.id === 'book') {
+      if (isBookDeadlineReached(runtime.startedAtMs, nowMs)) return this.applyUpdate(definition, this.runner.cancel(runtime, 'step_timeout', nowMs));
+      if (!hasBookSupport(this.options.getSelectionContext().environment, this.options.getRootPosition(), this.options.getCollisionInsets(), nowMs)) return this.applyUpdate(definition, this.runner.cancel(runtime, 'environment_invalidated', nowMs));
+      if (this.options.canBook && !this.options.canBook()) return this.applyUpdate(definition, this.runner.cancel(runtime, 'explicit_cancel', nowMs));
+    }
     if (this.cursorGame) return this.updateCursorGame(nowMs);
     const update = this.runner.tick(definition, runtime, nowMs);
     if (update.runtime === runtime && update.result === undefined) return false;
@@ -232,6 +247,7 @@ export class BrainActivityRuntime {
     this.runtime = null;
     this.explorePlan = null;
     this.options.cancelLocomotion(forDrag);
+    if (definition.id === 'book') this.options.onVisualIntent(this.animationIntentFor({ kind: 'idle_blink', propHint: 'none' }));
     this.recordTerminal(definition, runtime, update.result!);
     return true;
   }
@@ -280,6 +296,7 @@ export class BrainActivityRuntime {
       this.runtime = null;
       this.explorePlan = null;
       if (update.result.status !== 'completed') this.options.cancelLocomotion();
+      if (definition.id === 'book') this.options.onVisualIntent(this.animationIntentFor({ kind: 'idle_blink', propHint: 'none' }));
       if (runtime !== null) this.recordTerminal(definition, runtime, update.result);
       this.options.onTerminated(update.result);
       return true;
@@ -353,18 +370,20 @@ export class BrainActivityRuntime {
         executedMs: Math.max(0, atMs - runtime.startedAtMs) });
       this.cursorGame = null;
     }
-    const family = definition.id.startsWith('explore') ? 'explore'
+    const family = definition.id === 'book' ? 'book' : definition.id.startsWith('explore') ? 'explore'
       : definition.id === 'zoomies' ? 'play'
       : definition.tags?.includes('cursor') ? 'cursor_interest'
       : definition.id === 'social_bid' ? 'social_bid' : definition.id.startsWith('rest') ? 'rest' : 'calm';
     if (definition.id !== 'chat_walk') this.options.onOutcome?.({ type: 'activity_outcome', eventId: `${runtime.runId}:terminal`,
       activityRunId: runtime.runId, activitySequence: Number(runtime.runId.slice(0, runtime.runId.indexOf(':'))), atMs, family, outcome: result.status,
-      ...(definition.id === 'cursor_interest' ? { activity: 'cursor_game' as const } : {}),
+      ...(definition.id === 'book' ? { activity: 'book' as const } : definition.id === 'cursor_interest' ? { activity: 'cursor_game' as const } : {}),
       terminalReason: result.status === 'completed' ? null : result.reason,
-      participation, executedMs: Math.max(0, atMs - runtime.startedAtMs),
+      participation, executedMs: definition.id === 'book' ? Math.min(600000, Math.max(0, atMs - runtime.startedAtMs))
+        : Math.max(0, atMs - runtime.startedAtMs),
       playCompleted: this.playCompleted });
     this.options.onSettled?.(runtime.runId, result);
     this.repetition = recordRunResult(this.repetition, runtime, result);
+    if (result.status === 'failed' && definition.id === 'book') this.applyCooldown(definition, 'cancelled', result.failedAtMs);
     if (result.status === 'completed') {
       this.applyCooldown(definition, 'completion', result.completedAtMs);
     } else if (result.status === 'cancelled') {

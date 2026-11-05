@@ -23,13 +23,14 @@ export interface BackendCharacterExpression {
 
 /** Independent wire form; no Domain or Application aliases. */
 export interface BackendCausalExpression {
+  readonly activity: 'contact' | 'cursor_game' | 'book';
   readonly intent: 'respond' | 'acknowledge' | 'give_space' | 'continue_activity';
   readonly emotion: 'content' | 'curious' | 'irritated';
   readonly intensity: 'low' | 'moderate';
   readonly target: 'user' | 'environment' | 'self';
   readonly cause: 'contact' | 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout';
   readonly deferredInvitation: boolean;
-  readonly ownGameInterest: 'none' | 'emerging' | 'established';
+  readonly ownActivityInterest: 'none' | 'emerging' | 'established';
 }
 
 /** Wire fields are defined independently of the local character model. */

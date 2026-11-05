@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { scenario } from './autonomy-scenario-fixture';
 function fixture() {
   let f: ReturnType<typeof scenario>;
-  f = scenario({ energy: 70, boredom: 70, play: 0, attention: 0, comfort: 60 }, .9, undefined, undefined, {
+  f = scenario({ energy: 70, boredom: 70, play: 0, attention: 0, comfort: 60 }, .2, undefined, undefined, {
     ownHabit: {
       started: (run, activity, sequence, at) => f.character.ownHabitStarted('app', run, activity, sequence, at),
       pose: (run, pose) => f.character.ownHabitPose(run, pose),
@@ -22,7 +22,8 @@ it('enables the learned factor only after a real completed Explore and consumes 
   f.pulse(); expect(f.main.getActivityTimeline()?.activityId).toBe('explore');
   expect(f.character.getOwnHabitMultiplier(f.now())).toBe(1); f.finish();
   expect(f.character.getOwnHabitMultiplier(f.now())).toBeCloseTo(1.1);
-  f.pulse(); expect(f.main.getActivityTimeline()?.activityId).toBe('explore');
+  // The completed Explore changes Needs and repetition; this draw remains in its next weighted bucket.
+  f.setRandom(.4); f.pulse(); expect(f.main.getActivityTimeline()?.activityId).toBe('explore');
   expect(f.character.getOwnHabitMultiplier(f.now())).toBe(1);
   f.main.dispose();
 });
@@ -41,7 +42,7 @@ it.each(['input', 'quiet', 'menu', 'forced', 'stop'] as const)('clears a fresh c
 it('binds the actual calm pose before presentation and appends only after its real completed terminal', () => {
   const f = fixture(); f.elapse(310000); f.pulse(); f.finish();
   f.character.applyStimulus({ type: 'play', source: 'system' });
-  f.setRandom(.4); f.pulse();
+  f.setRandom(.2); f.pulse();
   expect(f.main.getActivityTimeline()?.activityId).toBe('calm');
   expect(f.main.getVisualEpisode().intent.kind).toBe('look_around');
   expect(f.character.getState().ownHabitMemory.transitions).toHaveLength(6);

@@ -1,3 +1,5 @@
+import { BOOK_ACTIVITY } from './book-activity';
+import { isLocalBookAdmission } from './book-activity-policy';
 import type { TraversalAction } from './traversal-route';
 import type { Vector2Dto } from './motion-engine';
 import type { AnimationIntent, AnimationIntentKind } from '../animation';
@@ -65,6 +67,7 @@ export const EMPTY_COOLDOWNS: CooldownState = { entries: [] };
 export const DEFAULT_ZOOMIES_COOLDOWN_MS = 30_000;
 export const DEFAULT_CURSOR_OBSERVE_COOLDOWN_MS = 6_000;
 export const DEFAULT_ACTIVITY_COOLDOWN_RULES: readonly CooldownRule[] = Object.freeze([
+  { key: 'book', durationMs: 30_000, startsOn: 'any_finish' },
   Object.freeze({ key: 'zoomies', durationMs: DEFAULT_ZOOMIES_COOLDOWN_MS, startsOn: 'start' }),
   Object.freeze({
     key: 'observe_cursor',
@@ -197,7 +200,7 @@ export class ActivityRunner {
 function decay(ageMs: number, halfLifeMs: number): number { return Math.exp(-Math.LN2 * Math.max(0, ageMs) / halfLifeMs); }
 export function repetitionModifier(definition: ActivityDefinition, history: RepetitionHistory, nowMs: MonotonicMs, config: RepetitionPenalty = DEFAULT_REPETITION_PENALTY): number {
   // Cursor-game satiation is paid once at its opportunity, not again for Activity/actions.
-  if (definition.id === 'cursor_interest') return 1;
+  if (definition.id === 'cursor_interest' || definition.id === 'book') return 1;
   const activityScore = history.activities.filter((entry) => entry.activityId === definition.id).reduce((sum, entry) => sum + decay(nowMs - entry.selectedAtMs, config.activityHalfLifeMs), 0);
   const visualSteps = definition.steps.filter((step): step is AnimationActivityStep | VoluntaryLocomotionStep => step.type === 'animation' || step.type === 'locomotion');
   const actionScore = history.actions.reduce((sum, entry) => sum + visualSteps.filter((step) => step.actionId === entry.actionId || step.intent.kind === entry.animationKind).length / Math.max(1, visualSteps.length) * decay(nowMs - entry.shownAtMs, config.actionHalfLifeMs), 0);
@@ -226,6 +229,7 @@ export const REST_ACTIVITY: ActivityDefinition = { id: 'rest', priority: 'P4_aut
 export const ZOOMIES_ACTIVITY: ActivityDefinition = { id: 'zoomies', priority: 'P3_reactive', baseWeight: .1, cooldownKey: 'zoomies', entryStepId: 'sprint', steps: [ { id: 'sprint', actionId: 'zoomies_sprint', stage: 'looping', type: 'locomotion', gait: 'run', targetRef: 'zoomies_target', intent: { kind: 'run' }, timeoutMs: 6000, next: 'settle' }, { id: 'settle', actionId: 'zoomies_settle', stage: 'exiting', type: 'animation', intent: { kind: 'settle' }, completion: { type: 'elapsed', durationMs: 3000 } } ] };
 
 export interface ActivitySelectionCatalog {
+  readonly book?: boolean;
   readonly play?: readonly ActivityDefinition[];
 }
 
@@ -237,7 +241,8 @@ export function selectActivityForResolvedIntent(
   randomUnit = 0,
   catalog: ActivitySelectionCatalog = {}
 ): ActivityDefinition | null {
-  const candidates = intent.kind === 'wander'
+  if (intent.kind === 'book' && (!isLocalBookAdmission(intent.source, intent.reason) || catalog.book === false)) return null;
+  const candidates = intent.kind === 'book' ? [BOOK_ACTIVITY] : intent.kind === 'wander'
     ? [EXPLORE_ACTIVITY]
     : ['respond', 'think', 'react_happy', 'react_confused'].includes(intent.kind)
       ? [{ id: 'expression', priority: 'P3_reactive', baseWeight: 1, entryStepId: 'expression', steps: [{ id: 'expression', actionId: 'expression', stage: 'looping', type: 'animation', intent: { kind: intent.kind === 'respond' ? 'talking' : intent.kind === 'think' ? 'thinking_loop' : intent.kind === 'react_happy' ? 'happy_reaction' : 'confused_reaction' }, completion: { type: 'elapsed', durationMs: 3000 } }] } satisfies ActivityDefinition]

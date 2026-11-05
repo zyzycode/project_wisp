@@ -24,12 +24,12 @@ it.each(['extra', 'preset', 'axis', 'caps', 'range', 'samples', 'consent', 'vers
   if (variant === 'samples') input = { ...snapshot, state: { ...snapshot.state, preferences: { music: { value: 10, confidence: 0.4, samples: 1.5 } } } };
   if (variant === 'consent') input = { ...snapshot, state: { ...snapshot.state, intimacy: { ...snapshot.state.intimacy, userConsentEnabled: 'yes' } } };
   if (variant === 'revision') input = { ...snapshot, state: { ...snapshot.state, cardRevision: 1 } };
-  if (variant === 'version') input = { ...snapshot, snapshotVersion: 6 };
+  if (variant === 'version') input = { ...snapshot, snapshotVersion: 7 };
   expect(() => restoreCharacterMemory(input as typeof snapshot, defaults(), 1000)).toThrow();
 });
 
 function legacySnapshot() {
-  const { cardRevision: _revision, ownHabitMemory: _habit, relationshipRepair: _repair, ownGameInterestSources: _sources, ...state } = projectCharacterMemory(defaults(), now).state;
+  const { ownBookInterestSources: _book, cardRevision: _revision, ownHabitMemory: _habit, relationshipRepair: _repair, ownGameInterestSources: _sources, ...state } = projectCharacterMemory(defaults(), now).state;
   return { snapshotVersion: 1, updatedAt: now, state: { ...state, presetId: 'shyDreamGirl',
     currentAxes: { openness: 0.2, extraversion: 0.05, agreeableness: 1, sensitivity: 1, playfulness: 0.1, boldness: 0.02, independence: 0.2 },
     needs: { energy: 12, attention: 34, play: 56, comfort: 78, boredom: 90 },
@@ -49,7 +49,7 @@ it('migrates exact legacy caps, resets only axes, preserves all dynamic knowledg
   expect(legacy).toEqual(before); expect(restoreCharacterMemory(legacy, defaults(), 1000)).toEqual(migrated);
   migrated.personality.axes.boldness.current = 0.8;
   const next = projectCharacterMemory(migrated, now);
-  expect(next.snapshotVersion).toBe(5); expect(next.state.cardRevision).toBe(3);
+  expect(next.snapshotVersion).toBe(6); expect(next.state.cardRevision).toBe(3);
   expect(restoreCharacterMemory(next, defaults(), 2000).personality.axes.boldness.current).toBe(0.8);
 });
 it.each(['caps', 'preset', 'extra', 'revision', 'missing', 'preference'])('rejects malformed legacy %s before resetting axes', variant => {
@@ -103,7 +103,7 @@ it.each([2, 3])('restores revision %s dynamics onto the installed card and write
   state.personality.axes.boldness.current = 0.8;
   state.preferences = { jazz: { value: 80, confidence: 0.5, samples: 6 } };
   const projected = projectCharacterMemory(state, now);
-  const { ownHabitMemory: _habit, relationshipRepair: _repair, ownGameInterestSources: _sources, ...v2State } = projected.state;
+  const { ownBookInterestSources: _book, ownHabitMemory: _habit, relationshipRepair: _repair, ownGameInterestSources: _sources, ...v2State } = projected.state;
   const snapshot = { ...projected, snapshotVersion: 2, state: { ...v2State, relationship: projectRelationship(state.relationship), cardRevision } };
   const before = structuredClone(snapshot);
   const restored = restoreCharacterMemory(snapshot, defaults(), 1000);
@@ -112,12 +112,12 @@ it.each([2, 3])('restores revision %s dynamics onto the installed card and write
   expect(restored.personality.aiSelfConcept).toBe(defaults().personality.aiSelfConcept);
   expect(snapshot).toEqual(before);
   expect(restoreCharacterMemory(snapshot, defaults(), 1000)).toEqual(restored);
-  expect(projectCharacterMemory(restored, now)).toMatchObject({ snapshotVersion: 5, state: { cardRevision: 3 } });
+  expect(projectCharacterMemory(restored, now)).toMatchObject({ snapshotVersion: 6, state: { cardRevision: 3 } });
 });
 
 it('migrates V3 with null repair marker pairs while preserving all prior dynamic values', () => {
   const projected = projectCharacterMemory(defaults(), now);
-  const { ownHabitMemory: _habit, relationshipRepair: _repair, ...state } = projected.state;
+  const { ownBookInterestSources: _book, ownHabitMemory: _habit, relationshipRepair: _repair, ...state } = projected.state;
   const restored = restoreCharacterMemory({ ...projected, snapshotVersion: 3, state }, defaults(), 1000);
   expect(restored.relationshipRepair).toEqual({ lastInterruptionAt: null, lastInterruptionSource: null, lastRepairAt: null, lastRepairSource: null });
   expect(projectCharacterMemory(restored, now).state).toEqual(projected.state);
@@ -131,12 +131,12 @@ it.each(['half-pair', 'invalid-time', 'source-extra', 'source-revision'] as cons
 });
 it('migrates V4 with neutral habit memory and preserves nonneutral repair markers', () => {
   const projected = projectCharacterMemory(defaults(), now);
-  const { ownHabitMemory: _habit, ...state } = projected.state;
+  const { ownBookInterestSources: _book, ownHabitMemory: _habit, ...state } = projected.state;
   const repair = { lastInterruptionAt: now, lastInterruptionSource: { appRunId: 'app', sequence: 2, revision: 1 as const }, lastRepairAt: null, lastRepairSource: null };
   const restored = restoreCharacterMemory({ ...projected, snapshotVersion: 4, state: { ...state, relationshipRepair: repair } }, defaults(), 1000);
   expect(restored.ownHabitMemory).toEqual({ transitions: [], lastLearnedAt: null });
   expect(restored.relationshipRepair).toEqual(repair);
-  expect(projectCharacterMemory(restored, now).snapshotVersion).toBe(5);
+  expect(projectCharacterMemory(restored, now).snapshotVersion).toBe(6);
 });
 it.each(['limit', 'duplicate', 'same-run', 'kind', 'date', 'clock', 'extra'] as const)('rejects malformed V5 habit %s without changing state', variant => {
   const snapshot = projectCharacterMemory(defaults(), now);

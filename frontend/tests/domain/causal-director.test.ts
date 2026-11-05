@@ -4,12 +4,12 @@ import { createSystemAnimationIntent } from '../../src/domain/animation/animatio
 import type { CausalEmotion } from '../../src/domain/character/causal-affect';
 import { CausalExpressionRuntime, type CausalDirectorState } from '../../src/application/services/causal-expression-runtime';
 
-const emotion: CausalEmotion = { causeSequence: 2, cause: 'user_interrupted', kind: 'irritated', intensity: .3, target: 'user' };
+const emotion: CausalEmotion = { activity: 'cursor_game' as const, causeSequence: 2, cause: 'user_interrupted', kind: 'irritated', intensity: .3, target: 'user' };
 it('chooses the local intent and bounded semantics without changing the observed emotion', () => {
   const before = { ...emotion };
   const decision = directCausalExpression(emotion, true, 'emerging')!;
-  expect(decision).toEqual({ sourceSequence: 2, expression: { intent: 'give_space', emotion: 'irritated', intensity: 'moderate',
-    target: 'user', cause: 'user_interrupted', deferredInvitation: true, ownGameInterest: 'emerging' } });
+  expect(decision).toEqual({ sourceSequence: 2, expression: { activity: 'cursor_game' as const, intent: 'give_space', emotion: 'irritated', intensity: 'moderate',
+    target: 'user', cause: 'user_interrupted', deferredInvitation: true, ownActivityInterest: 'emerging' } });
   expect(directCausalExpression({ ...emotion, intensity: .1 }, false, 'none')?.expression.intent).toBe('acknowledge');
   expect(directCausalExpression(null, false, 'none')).toBeUndefined();
   expect(directCausalExpression({ ...emotion, cause: 'unknown' }, false, 'none')).toBeUndefined();
@@ -25,7 +25,7 @@ it('captures semantic bands, owner, source, generation and consent but not conti
   state = { ...state, emotion: { ...emotion, intensity: .25 } }; expect(runtime.isCurrent(captured)).toBe(true);
   for (const change of [{ generation: 2 }, { owner: 'other' }, { activeRunId: 'run' }, { consent: true },
     { romanceAllowed: true }, { deferredInvitation: true }, { ownGameInterest: 'emerging' as const },
-    { emotion: { ...emotion, causeSequence: 3 } }, { emotion: { ...emotion, intensity: .1 } }, { emotion: null }]) {
+    { emotion: { ...emotion, activity: 'cursor_game' as const, causeSequence: 3 } }, { emotion: { ...emotion, intensity: .1 } }, { emotion: null }]) {
     const before = state; state = { ...state, ...change }; expect(runtime.isCurrent(captured)).toBe(false); state = before;
   }
 });

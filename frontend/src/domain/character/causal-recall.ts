@@ -1,6 +1,7 @@
 import type { CausalObservedEvent } from './causal-affect';
 
 export type CausalRecallBucket = 'game.any' | 'game.user_interrupted' | 'game.timeout'
+  | 'book.any' | 'book.completed' | 'book.user_interrupted' | 'book.environment_lost' | 'book.timeout'
   | 'game.environment_lost' | 'game.completed.user_engaged' | 'game.completed.solitary' | 'contact';
 
 /** Immutable, finite phrase/guard tables; patterns are stateless and contain no retained query data. */
@@ -24,6 +25,13 @@ export function recallTokens(text: string): readonly string[] {
 /** Exact closed facts; this index never infers a user's intention or an emotion. */
 export function causalRecallBuckets(event: CausalObservedEvent): readonly CausalRecallBucket[] {
   if (event.cause === 'contact') return event.source === 'user' && event.activity === null ? ['contact'] : [];
+  if (event.activity === 'book' && event.activityRunId && event.participation === 'solitary' && event.outcome !== null
+    && ['completed', 'user_interrupted', 'environment_lost', 'timeout'].includes(event.cause)) {
+    if (event.cause === 'completed' && event.outcome === 'completed' && event.source === 'autonomy' && event.executedMs >= 14000) return ['book.any', 'book.completed'];
+    if (event.cause === 'user_interrupted' && event.source === 'user' && event.triggerSequence) return ['book.any', 'book.user_interrupted'];
+    if (event.cause === 'environment_lost' || event.cause === 'timeout') return event.source === 'system' ? ['book.any', `book.${event.cause}`] : [];
+    return [];
+  }
   if (event.activity !== 'cursor_game' || event.outcome === null || event.cause === 'other' || event.cause === 'unknown') return [];
   if (event.cause === 'completed') {
     if (event.outcome !== 'completed') return [];
@@ -46,6 +54,16 @@ export function causalRecallBucket(text: string): CausalRecallBucket | null {
   if (tokens.some(token => ['не', 'нет', 'not', 'never'].includes(token))) return null;
   const game = has(/^(?:game|игр|поигр|play)/u), contact = has(/^(?:коснул|касани|touch)/u);
   if (contact) return game ? null : 'contact';
+  const book = has(/^(?:book|книг)/u);
+  if (book) {
+    if (game) return null;
+    const keys: CausalRecallBucket[] = [];
+    if (has(/^(?:interrupt|прерва|помеша|stopped)/u)) keys.push('book.user_interrupted');
+    if (has(/^(?:timeout|таймаут)/u)) keys.push('book.timeout');
+    if (has(/^(?:support|опор)/u) && has(/^(?:lost|потер)/u)) keys.push('book.environment_lost');
+    if (has(/^(?:complet|finish|заверш|закон)/u)) keys.push('book.completed');
+    return keys.length > 1 ? null : keys[0] ?? 'book.any';
+  }
   if (!game) return null;
   const keys: CausalRecallBucket[] = [];
   if (has(/^(?:interrupt|прерва|прервы|помеша|stopped)/u)) keys.push('game.user_interrupted');

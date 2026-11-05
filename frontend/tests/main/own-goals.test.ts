@@ -27,7 +27,8 @@ async function fixture(kind: OwnGoalKind, reentrantCancel = false) {
     replace: async (next, expectedRevision, c) => empty(command('replaceMotivation', { value: next, expectedRevision }, c.generation)),
   };
   let runtime: OwnGoalsRuntime | undefined, id = 0, cancelled = false;
-  const f = scenario({ energy: 45, comfort: 60, boredom: 40, play: 0, attention: 0 }, .9, undefined, undefined, {
+  // Keep both goal families available while the comfort deficit excludes the unrelated book peer.
+  const f = scenario({ energy: 45, comfort: 75, boredom: 40, play: 0, attention: 0 }, .9, undefined, undefined, {
     ownGoals: { opportunity: () => runtime?.opportunity(), selectedGoalKind: () => runtime?.selectedGoalKind() ?? null,
       cancel: () => runtime?.cancel() ?? Promise.resolve(), invalidate: () => runtime?.invalidate() },
     onActivityCommitted: (run, activity) => runtime?.activityStarted(run, activity),

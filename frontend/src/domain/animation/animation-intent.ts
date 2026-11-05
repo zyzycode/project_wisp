@@ -2,6 +2,7 @@ import type { SynthesizedEmotionalTone } from '../character/types';
 import type { BehaviorIntent, BehaviorIntentKind } from '../behavior/behavior-intent';
 
 export type CoreAnimationIntentKind =
+  | 'book_settle' | 'book_with_book' | 'book_finish'
   | 'idle_blink'
   | 'walk'
   | 'settle'
@@ -86,6 +87,7 @@ export type AnimationExpressionHint =
 export type AnimationGazeDirection = 'left' | 'right' | 'up' | 'down';
 
 export type AnimationPropHint =
+  | 'book'
   | 'pillow'
   | 'heart'
   | 'question'
@@ -141,6 +143,9 @@ const DEFAULT_TONE_HINTS: Record<SynthesizedEmotionalTone, ToneHints> = {
 };
 
 const INTENT_POLICIES: Record<AnimationIntentKind, IntentPolicy> = {
+  book_settle: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'none' },
+  book_with_book: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'until_replaced' },
+  book_finish: { category: 'idle', priority: 'low', interrupt: 'yes', loop: 'none' },
   grab_edge: { category: 'transition', priority: 'normal', interrupt: 'yes', loop: 'none' },
   jump_travel: { category: 'movement', priority: 'normal', interrupt: 'yes', loop: 'until_replaced' },
   pull_up_edge: { category: 'transition', priority: 'high', interrupt: 'yes', loop: 'none' },
@@ -189,6 +194,7 @@ function hints(overrides: Partial<Record<SynthesizedEmotionalTone, HintOverride>
 }
 
 const BEHAVIOR_MAPPINGS: Record<BehaviorIntentKind, BehaviorMapping> = {
+  book: { kind: 'book_settle', hintsByTone: hints({}) },
   respond: {
     kind: 'talking',
     hintsByTone: hints({}),

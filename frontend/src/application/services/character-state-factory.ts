@@ -40,6 +40,7 @@ export function cloneCharacterState(state: CharacterState): CharacterState {
     relationshipRepair: { ...state.relationshipRepair,
       lastInterruptionSource: state.relationshipRepair.lastInterruptionSource ? { ...state.relationshipRepair.lastInterruptionSource } : null,
       lastRepairSource: state.relationshipRepair.lastRepairSource ? { ...state.relationshipRepair.lastRepairSource } : null },
+    ownBookInterestSources: state.ownBookInterestSources.map(source => ({ ...source })),
     ownGameInterestSources: state.ownGameInterestSources.map(source => ({ ...source })),
     lastUpdated: state.lastUpdated,
   };
@@ -63,6 +64,7 @@ export function createDefaultCharacterState(now: () => number): CharacterState {
     preferences: {},
     ownHabitMemory: emptyHabitMemory(),
     relationshipRepair: emptyRepairCheckpoint(),
+    ownBookInterestSources: [],
     ownGameInterestSources: [],
     lastUpdated: now(),
   };

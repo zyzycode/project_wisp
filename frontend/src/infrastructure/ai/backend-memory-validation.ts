@@ -36,13 +36,16 @@ export function parseBackendMemory(value: unknown): BackendMemoryContext {
     const occurredAt = utc(e.occurredAt);
     if (e.kind === 'causal_event') {
       exactRecord(e, ['kind', 'occurredAt', 'activity', 'outcome', 'cause', 'actor', 'participation', 'executedMs']);
-      const causal = { kind: 'causal_event' as const, activity: enumValue(e.activity, ['cursor_game', 'contact']),
+      const causal = { kind: 'causal_event' as const, activity: enumValue(e.activity, ['cursor_game', 'contact', 'book']),
         outcome: enumValue(e.outcome, ['completed', 'cancelled', 'failed', 'not_applicable']),
         cause: enumValue(e.cause, ['contact', 'completed', 'user_interrupted', 'environment_lost', 'timeout']),
         actor: enumValue(e.actor, ['user', 'system', 'autonomy', 'unknown']),
         participation: enumValue(e.participation, ['user_engaged', 'solitary', 'none']), executedMs: finiteRange(e.executedMs, 600_000), occurredAt };
       if (causal.activity === 'contact' ? causal.outcome !== 'not_applicable' || causal.cause !== 'contact' || causal.actor !== 'user' || causal.participation !== 'none' || causal.executedMs !== 0
         : causal.outcome === 'not_applicable' || causal.cause === 'contact' || (causal.outcome === 'completed') !== (causal.cause === 'completed') || (causal.cause === 'user_interrupted' && causal.actor !== 'user')) throw new TypeError('Invalid causal fact');
+      if (causal.activity === 'book' && ((causal.cause === 'user_interrupted' && causal.outcome !== 'cancelled') || causal.participation !== 'solitary'
+        || causal.actor !== (causal.cause === 'completed' ? 'autonomy' : causal.cause === 'user_interrupted' ? 'user' : 'system')
+        || (causal.cause === 'completed' && causal.executedMs < 14000))) throw new TypeError('Invalid book fact');
       return causal;
     }
     if (e.kind === 'dialogue') {

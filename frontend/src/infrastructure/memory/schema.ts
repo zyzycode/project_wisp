@@ -14,9 +14,9 @@ import { MEMORY_ITEMS_SCHEMA, MEMORY_ITEM_TABLES } from './item-schema';
 import type Database from 'better-sqlite3';
 import { MemoryDataError, record, timestamp } from './validation';
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 const migrationName = 'local_memory_v1';
-const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3', 'beverage_preference_v4', 'routine_observations_v5', 'causal_life_v6', 'causal_recall_v7', 'deferred_game_invitation_v8', 'social_interpretation_v9', 'own_motivation_v10', 'causal_history_v11', 'music_discussion_v12'];
+const migrationNames = [migrationName, 'confirmed_memory_items_v2', 'interest_thread_v3', 'beverage_preference_v4', 'routine_observations_v5', 'causal_life_v6', 'causal_recall_v7', 'deferred_game_invitation_v8', 'social_interpretation_v9', 'own_motivation_v10', 'causal_history_v11', 'music_discussion_v12', 'book_activity_v13'];
 const schema = `
 CREATE TABLE conversation_sessions (id TEXT PRIMARY KEY NOT NULL, app_run_id TEXT NOT NULL UNIQUE, started_at TEXT NOT NULL, ended_at TEXT);
 CREATE TABLE messages (sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, conversation_session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE RESTRICT, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -117,6 +117,14 @@ export function initializeSchema(db: Database.Database, now: string): void {
     migrateMusic(db);
     db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(12, migrationNames[11], now);
     db.pragma('user_version = 12');
+  }).immediate();
+  if (version < 13) db.transaction(() => {
+    // Format gate and disposable index rebuild are atomic. Keep canonical rows and history clock high-water.
+    db.exec(`DELETE FROM causal_recall_postings; DELETE FROM causal_history_index;
+      UPDATE causal_recall_build SET cursor=0,target=(SELECT coalesce(max(rowid),0) FROM causal_life_episodes),complete=CASE WHEN (SELECT count(*) FROM causal_life_episodes)=0 THEN 1 ELSE 0 END WHERE id=1;
+      UPDATE causal_history_build SET cursor=0,target=(SELECT coalesce(max(rowid),0) FROM causal_life_episodes),complete=CASE WHEN (SELECT count(*) FROM causal_life_episodes)=0 THEN 1 ELSE 0 END WHERE id=1;`);
+    db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(13, migrationNames[12], now);
+    db.pragma('user_version = 13');
   }).immediate();
   const foreignKeyErrors: unknown = db.pragma('foreign_key_check');
   if (!Array.isArray(foreignKeyErrors) || foreignKeyErrors.length !== 0) throw new MemoryDataError('corrupt');

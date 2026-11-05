@@ -11,7 +11,7 @@ it('projects a current decision through existing idle/pout/curious/happy artwork
   const gate = { forced: false, awake: true, priority: null };
   for (const [kind, cause, target, face] of [['irritated', 'user_interrupted', 'user', 'face_pout'],
     ['curious', 'contact', 'self', 'face_curious'], ['content', 'completed', 'user', 'face_happy']] as const) {
-    const expression = directCausalExpression({ kind, cause, target, causeSequence: 3, intensity: .3 }, false, 'none')!.expression;
+    const expression = directCausalExpression({ kind, cause, target, activity: cause === 'contact' ? 'contact' : 'cursor_game', causeSequence: 3, intensity: .3 }, false, 'none')!.expression;
     const intent = causalVisualExpression(original, expression, gate);
     const resolved = new AssetResolver(manifest).resolve(intent);
     expect(intent.kind).toBe('idle_blink'); expect(resolved.body.animationKey).toBe('body_idle');
@@ -21,7 +21,7 @@ it('projects a current decision through existing idle/pout/curious/happy artwork
     const fallback = new AssetResolver(unavailable).resolve(intent);
     expect(fallback.body.animationKey).toBe('body_idle'); expect(fallback.face?.animationKey).not.toBe(face);
   }
-  const expression = directCausalExpression({ kind: 'irritated', cause: 'user_interrupted', target: 'user', causeSequence: 3, intensity: .3 }, false, 'none')!.expression;
+  const expression = directCausalExpression({ kind: 'irritated', cause: 'user_interrupted', target: 'user', activity: 'cursor_game', causeSequence: 3, intensity: .3 }, false, 'none')!.expression;
   const walking = createSystemAnimationIntent('idle_blink');
   expect(causalVisualExpression(walking, expression, { ...gate, forced: true })).toBe(walking);
 });

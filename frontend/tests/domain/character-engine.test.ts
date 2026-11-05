@@ -40,7 +40,7 @@ function createState(overrides: Omit<Partial<CharacterState>, 'relationship'> & 
       ...overrides.intimacy,
     },
     preferences: overrides.preferences ?? {},
-    ownHabitMemory: { transitions: [], lastLearnedAt: null }, relationshipRepair: emptyRepairCheckpoint(), ownGameInterestSources: overrides.ownGameInterestSources ?? [],
+    ownHabitMemory: { transitions: [], lastLearnedAt: null }, relationshipRepair: emptyRepairCheckpoint(), ownBookInterestSources: [], ownGameInterestSources: overrides.ownGameInterestSources ?? [],
     lastUpdated: overrides.lastUpdated ?? 0,
   };
 }

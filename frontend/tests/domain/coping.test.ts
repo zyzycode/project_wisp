@@ -4,7 +4,7 @@ import type { CausalEmotion } from '../../src/domain/character/causal-affect';
 const episode = { appRunId: 'app', sequence: 2, revision: 1 as const, source: 'user' as const, triggerSequence: 1,
   activityRunId: 'game', activity: 'cursor_game' as const, outcome: 'cancelled' as const,
   cause: 'user_interrupted' as const, executedMs: 1000, participation: 'user_engaged' as const };
-const emotion: CausalEmotion = { causeSequence: 2, cause: 'user_interrupted', kind: 'irritated', intensity: .3, target: 'user' };
+const emotion: CausalEmotion = { activity: 'cursor_game' as const, causeSequence: 2, cause: 'user_interrupted', kind: 'irritated', intensity: .3, target: 'user' };
 const context = { nowMs: 1000, generation: 0, appRunId: 'app', emotion, free: true, menu: false, blocked: false,
   interpretation: 'unknown' as const, comfort: 500 };
 const observed = () => observeCoping(createCopingState(), episode, emotion, 1000, 0);
@@ -39,7 +39,7 @@ it('does not replay a cancelled opportunity or restore relief after generation/s
   const state = observed(); expect(observeCoping(cancelCoping(state), episode, emotion, 1000, 0).opportunity).toBeNull();
   const running = commitCoping(selectCoping(considerCoping(state, context), 'idle', true), 'calm', 'calm', context);
   for (const changed of [{ ...context, generation: 1 }, { ...context, appRunId: 'new' }, { ...context, emotion: null },
-    { ...context, emotion: { ...emotion, causeSequence: 3 } }]) expect(finishCoping(running, 'calm', true, changed).relief).toBeNull();
+    { ...context, emotion: { ...emotion, activity: 'cursor_game' as const, causeSequence: 3 } }]) expect(finishCoping(running, 'calm', true, changed).relief).toBeNull();
 });
 it('rejects reversed clocks and cannot pay completion before actual run start', () => {
   expect(considerCoping(observed(), { ...context, nowMs: 999 }).choice).toBeNull();

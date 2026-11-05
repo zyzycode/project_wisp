@@ -180,6 +180,7 @@ export class MainAutonomyComposition {
       getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
         quiet: this.quiet || this.quietSupport, ownGoal: options.ownGoals?.selectedGoalKind(), ownPlanStep: this.selectedOwnPlanStep(), copingStrategy: this.copingStrategy, ownHabitMultiplier: options.ownHabit?.multiplier(options.clock.now()),
         canSocial: this.socialFollowup.canStartFirst() && !this.systemIdle.isBlocked() && this.initiativeBudget.available(options.clock.now()),
+        canBook: this.activity.canStart({ kind: 'book', source: 'timer', priority: 'normal', reason: 'local_utility' }),
         canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
         canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
         canRest: this.activity.canStart({ kind: 'sleep', source: 'timer', priority: 'normal' }) }),
@@ -194,6 +195,8 @@ export class MainAutonomyComposition {
       ...(options.behaviorConfig === undefined ? {} : { behaviorConfig: options.behaviorConfig }),
     });
     this.activity = new BrainActivityRuntime({
+      canBook: () => this.character.getSemanticSleepState() === 'awake' && !this.quiet && !this.quietSupport && !this.menuOpen
+        && !this.dialoguePending && options.movement.canAcceptVoluntaryMovement(),
       clock: options.clock,
       getCursorObservation: () => this.getCursorObservation(),
       onCursorGamePhase: (runId, phase, outcome) => this.gamePresentation.phase(runId, phase, outcome),
@@ -441,7 +444,7 @@ export class MainAutonomyComposition {
       if (key !== this.lastDialogueTerminal) { this.lastDialogueTerminal = key; this.dialogueGuardUntilMs = this.options.clock.now() + 5000; }
     }
   }
-  public resetCursorGame(): void { if (this.activity.getRuntime()?.activityId === 'cursor_interest') this.cancelActivity('explicit_cancel', true); this.resetCursorInterest(); this.gamePresentation.reset(); }
+  public resetCursorGame(): void { if (this.activity.getRuntime()?.activityId === 'cursor_interest' || this.activity.getRuntime()?.activityId === 'book') this.cancelActivity('explicit_cancel', true); this.resetCursorInterest(); this.gamePresentation.reset(); }
   public resetSystemIdle(): void { this.invalidateSocialFollowup(); this.systemIdle.reset(); }
   public invalidateSocialFollowup(): void { this.socialFollowup.invalidate(); this.dialoguePending = false; }
   public resetSocialFollowupMemory(): void { this.socialFollowup.reset(); this.dialoguePending = false; }
@@ -473,7 +476,7 @@ export class MainAutonomyComposition {
       this.socialFollowup.invalidate();
       this.providerAdmission.invalidateIncompatibleQuiet();
       this.blockUnsolicited();
-      if (this.activity.getRuntime()?.activityId === 'zoomies' && this.activity.getSource() !== 'user') this.cancelActivity('explicit_cancel', true);
+      if ((this.activity.getRuntime()?.activityId === 'zoomies' && this.activity.getSource() !== 'user') || this.activity.getRuntime()?.activityId === 'book') this.cancelActivity('explicit_cancel', true);
     }
     this.options.onPresentationChanged();
   }
@@ -487,7 +490,7 @@ export class MainAutonomyComposition {
     this.systemIdle.reset();
     if (enabled) { this.options.deferredInvitation?.cancel(); this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidateIncompatibleQuiet(); }
     this.resetCursorInterest();
-    if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies')) {
+    if (enabled && (this.activity.isInitiative() || this.activity.getRuntime()?.activityId === 'zoomies' || this.activity.getRuntime()?.activityId === 'book')) {
       this.cancelActivity('explicit_cancel', true);
     }
     this.coordinator.notifyActivityFinished();

@@ -33,7 +33,7 @@ export interface RecalledCursorGameEpisode {
 
 export interface RecalledCausalEpisode {
   readonly kind: 'causal_event';
-  readonly activity: 'cursor_game' | 'contact';
+  readonly activity: 'cursor_game' | 'contact' | 'book';
   readonly outcome: 'completed' | 'cancelled' | 'failed' | 'not_applicable';
   readonly cause: 'contact' | 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout';
   readonly actor: 'user' | 'system' | 'autonomy' | 'unknown';

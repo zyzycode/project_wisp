@@ -22,6 +22,8 @@ export interface CharacterAutonomySnapshot {
   readonly learnedCursorGamePreference?: Readonly<Pick<PreferenceTrack, 'value' | 'confidence'>>;
   readonly learnedExplorePreference?: LearnedPreference;
   readonly learnedSocialBidPreference?: LearnedPreference;
+  readonly bookSatiation?: number;
+  readonly ownBookInterestMultiplier?: number;
   readonly cursorGameSatiation?: number;
   readonly ownGameInterestMultiplier?: number;
   readonly causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null;
@@ -32,9 +34,9 @@ export interface CharacterAutonomySnapshot {
 
 /** Internal local projection; provider and IPC snapshots do not gain preference keys. */
 export function createCharacterAutonomySnapshot(state: CharacterState, cursorGameSatiation = 0,
-  causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null, ownGameInterestMultiplier = 1): CharacterAutonomySnapshot {
+  causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null, ownGameInterestMultiplier = 1, bookSatiation = 0, ownBookInterestMultiplier = 1): CharacterAutonomySnapshot {
   const axes = state.personality.axes;
-  return { ...createCharacterSnapshot(state), cursorGameSatiation, causalEmotion, ownGameInterestMultiplier,
+  return { ...createCharacterSnapshot(state), cursorGameSatiation, causalEmotion, ownGameInterestMultiplier, bookSatiation, ownBookInterestMultiplier,
     learnedCursorGamePreference: validatedCursorGamePreference(state.preferences['activity.cursor_game']),
     learnedExplorePreference: validatedLocalPreference(state.preferences['activity.explore']),
     learnedSocialBidPreference: validatedLocalPreference(state.preferences['activity.social_bid']),
@@ -61,7 +63,7 @@ export function permitsAutomaticWake(snapshot: CharacterAutonomySnapshot): boole
   return snapshot.needs.attention >= WAKE_ATTENTION_MIN || snapshot.needs.energy >= WAKE_ENERGY_MIN;
 }
 export function isQuietCompatible(intent: BehaviorIntent, quiet: boolean): boolean {
-  return !quiet || intent.source === 'user' || !['play', 'respond', 'react_happy'].includes(intent.kind);
+  return !quiet || intent.source === 'user' || !['book', 'play', 'respond', 'react_happy'].includes(intent.kind);
 }
 
 /** Character-owned semantic sleep state and autonomy-resolution transaction. */

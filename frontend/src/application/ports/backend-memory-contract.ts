@@ -26,7 +26,7 @@ export type BackendMemoryEpisode =
 /** Wire causal fact; local source identities and historical affect are excluded. */
 export interface BackendCausalMemoryEpisode {
   readonly kind: 'causal_event';
-  readonly activity: 'cursor_game' | 'contact';
+  readonly activity: 'cursor_game' | 'contact' | 'book';
   readonly outcome: 'completed' | 'cancelled' | 'failed' | 'not_applicable';
   readonly cause: 'contact' | 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout';
   readonly actor: 'user' | 'system' | 'autonomy' | 'unknown';

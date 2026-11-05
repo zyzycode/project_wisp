@@ -1,3 +1,4 @@
+import { bookSatiationMultiplier } from './book-activity-policy';
 import type { CharacterAutonomySnapshot } from '../character/autonomy-character-engine';
 import { localPreferenceMultiplier } from '../character/preferences';
 import { causalEmotionMultiplier } from '../character/causal-affect';
@@ -7,6 +8,7 @@ import { copingSelectionMultiplier, type CopingStrategy } from '../character/cop
 import type { BehaviorIntent } from './behavior-intent';
 export interface LocalSelectionContext {
   readonly nowMs: number;
+  readonly canBook?: boolean;
   readonly canExplore: boolean;
   readonly canPlay: boolean;
   readonly canRest: boolean;
@@ -56,6 +58,7 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
   const definitions = [
     { kind: 'idle', eligible: true, need: .3 + (100 - n.energy + n.comfort) / 70, personality: .5 + t.independence },
     { kind: 'wander', eligible: context.canExplore, need: .2 + (n.boredom ?? 0) / 30, personality: .5 + t.openness },
+    { kind: 'book', eligible: context.canBook === true && !context.quiet && n.energy >= 35 && (n.boredom ?? NaN) >= 30 && n.comfort <= 70, need: .2 + (n.boredom ?? NaN) / 30, personality: .5 + t.openness },
     { kind: 'sleep', eligible: context.canRest, need: .05 + (100 - n.energy + n.comfort) / 140, personality: .5 + t.independence },
     { kind: 'play', eligible: context.canPlay && !context.quiet, need: n.play / 20 + (n.boredom ?? 0) / 25, personality: .5 + t.playfulness },
     { kind: 'social_bid', eligible: context.canSocial === true && !context.quiet && n.attention >= 80
@@ -65,8 +68,8 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
   const weighted = definitions.map(d => {
     const repeat = context.history.filter(entry => entry.kind === d.kind).reduce((sum, entry) =>
       sum + Math.pow(.5, Math.max(0, context.nowMs - entry.atMs) / 90000), 0);
-    const rawFactors = { need: d.need, personality: d.personality, repetition: Math.max(.15, 1 / (1 + repeat)) };
-    const inputs = d.kind === 'idle' || d.kind === 'sleep' ? [n.energy, n.comfort]
+    const rawFactors = { need: d.need, personality: d.personality, repetition: d.kind === 'book' ? 1 : Math.max(.15, 1 / (1 + repeat)) };
+    const inputs = d.kind === 'book' ? [n.energy, n.comfort, n.boredom ?? NaN] : d.kind === 'idle' || d.kind === 'sleep' ? [n.energy, n.comfort]
       : d.kind === 'wander' ? [n.boredom ?? 0] : d.kind === 'play' ? [n.play, n.boredom ?? 0] : [n.attention];
     const valid = inputs.every(validNeed) && Object.values(rawFactors).every(value => Number.isFinite(value) && value >= 0)
       && Number.isFinite(context.nowMs) && context.nowMs >= 0;
@@ -75,12 +78,12 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
     const factors = { need: valid ? rawFactors.need : 0, personality: valid ? rawFactors.personality : 0,
       repetition: valid ? rawFactors.repetition : 0 };
     const baselineScore = eligible ? rawBaseline : 0;
-    const preferenceMultiplier = localPreferenceMultiplier(d.kind === 'wander' ? snapshot.learnedExplorePreference
+    const preferenceMultiplier = d.kind === 'book' ? Math.max(.8, Math.min(1.2, Number.isFinite(snapshot.ownBookInterestMultiplier) ? snapshot.ownBookInterestMultiplier! : 1)) * bookSatiationMultiplier(snapshot.bookSatiation) : localPreferenceMultiplier(d.kind === 'wander' ? snapshot.learnedExplorePreference
       : d.kind === 'social_bid' ? snapshot.learnedSocialBidPreference : undefined);
     const emotionMultiplier = d.kind === 'social_bid' ? causalEmotionMultiplier(snapshot.causalEmotion) : 1;
-    const planMultiplier = eligible ? ownPlanSelectionMultiplier(planStep, d.kind) : 1;
-    const goalMultiplier = eligible && !planStep ? ownGoalSelectionMultiplier(context.ownGoal, d.kind) : 1;
-    const copingMultiplier = eligible ? copingSelectionMultiplier(context.copingStrategy, d.kind) : 1;
+    const planMultiplier = eligible && d.kind !== 'book' ? ownPlanSelectionMultiplier(planStep, d.kind) : 1;
+    const goalMultiplier = eligible && d.kind !== 'book' && !planStep ? ownGoalSelectionMultiplier(context.ownGoal, d.kind) : 1;
+    const copingMultiplier = eligible && d.kind !== 'book' ? copingSelectionMultiplier(context.copingStrategy, d.kind) : 1;
     return { kind: d.kind, eligible, reason: !d.eligible ? 'state_environment_cooldown_or_mode' : eligible ? 'eligible' : 'invalid_required_baseline',
       factors, baselineScore, preferenceMultiplier, emotionMultiplier, goalMultiplier, planMultiplier, copingMultiplier,
       score: baselineScore * preferenceMultiplier * emotionMultiplier * Math.min(1.5, Math.max(.8, goalMultiplier * planMultiplier * copingMultiplier)) };

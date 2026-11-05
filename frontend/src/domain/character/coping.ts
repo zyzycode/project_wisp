@@ -28,7 +28,7 @@ function current(opportunity: Opportunity, context: CopingContext): boolean {
   return Number.isFinite(context.nowMs) && context.nowMs >= 0 && opportunity.generation === context.generation
     && context.nowMs >= opportunity.expiresAtMs - 30000
     && opportunity.source.appRunId === context.appRunId && context.emotion?.causeSequence === opportunity.source.sequence
-    && context.emotion.cause === 'user_interrupted' && context.emotion.kind === 'irritated' && context.emotion.target === 'user'
+    && context.emotion.activity === 'cursor_game' && context.emotion.cause === 'user_interrupted' && context.emotion.kind === 'irritated' && context.emotion.target === 'user'
     && Number.isFinite(context.emotion.intensity) && context.emotion.intensity >= .05 && context.emotion.intensity <= 1;
 }
 export function observeCoping(state: CopingState, episode: CausalObservedEvent & CausalSourceReference,

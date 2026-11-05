@@ -108,6 +108,7 @@ export interface CharacterState {
   preferences: Record<string, PreferenceTrack>;
   readonly ownHabitMemory: HabitMemory;
   readonly relationshipRepair: RepairCheckpoint;
+  readonly ownBookInterestSources: readonly CausalSourceReference[];
   readonly ownGameInterestSources: readonly CausalSourceReference[];
   lastUpdated: number;
 }

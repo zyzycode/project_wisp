@@ -203,6 +203,7 @@ export type BrainEmotionalToneDTO =
   | 'flustered';
 
 export type BrainVisualIntentKindDTO =
+  | 'book_settle' | 'book_with_book' | 'book_finish'
   | 'idle_blink'
   | 'walk'
   | 'settle'
@@ -304,7 +305,7 @@ export interface BrainVisualIntentDTO {
     | 'dizzy'
     | 'flirty';
   readonly gazeDirection?: 'left' | 'right' | 'up' | 'down';
-  readonly propHint?: 'pillow' | 'heart' | 'question' | 'sparkle' | 'none';
+  readonly propHint?: 'book' | 'pillow' | 'heart' | 'question' | 'sparkle' | 'none';
 }
 
 /** Local game presentation; geometry and outcome decisions remain in Brain. */
@@ -541,7 +542,7 @@ export interface DialogueSummaryPreviewDTO {
 }
 export interface LifeSummaryPreviewDTO {
   readonly mode: 'life_events'; readonly previewId: string; readonly expiresAt: number; readonly fromDateUTC: string; readonly throughDateUTC: string;
-  readonly events: readonly { readonly activity: 'cursor_game'; readonly outcome: 'completed' | 'cancelled' | 'failed'; readonly cause: 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout'; readonly actor: 'user' | 'system' | 'autonomy' | 'unknown'; readonly participation: 'user_engaged' | 'solitary' | 'none'; readonly executedMs: number; readonly occurredAt: string }[];
+  readonly events: readonly { readonly activity: 'cursor_game' | 'book'; readonly outcome: 'completed' | 'cancelled' | 'failed'; readonly cause: 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout'; readonly actor: 'user' | 'system' | 'autonomy' | 'unknown'; readonly participation: 'user_engaged' | 'solitary' | 'none'; readonly executedMs: number; readonly occurredAt: string }[];
 }
 export type SummaryPreviewDTO = DialogueSummaryPreviewDTO | LifeSummaryPreviewDTO;
 export type SummaryPreviewCommandDTO = SummaryCommandDTO | (SummaryCommandDTO & { readonly mode: 'life_events'; readonly fromDateUTC: string; readonly throughDateUTC: string });

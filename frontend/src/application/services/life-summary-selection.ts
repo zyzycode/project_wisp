@@ -2,10 +2,10 @@ import type { CausalLifeEpisode } from '../ports/causal-life.interface';
 import type { LifeSummaryEntry, LifeSummaryEvent, LifeSummarySource } from '../ports/life-history.interface';
 
 export function lifeSummaryEvent(e: CausalLifeEpisode): LifeSummaryEvent | undefined {
-  if (e.activity !== 'cursor_game' || !e.outcome || !['completed', 'user_interrupted', 'environment_lost', 'timeout'].includes(e.cause)) return undefined;
+  if ((e.activity !== 'cursor_game' && e.activity !== 'book') || !e.outcome || !['completed', 'user_interrupted', 'environment_lost', 'timeout'].includes(e.cause)) return undefined;
   const cause = e.cause;
   if (cause !== 'completed' && cause !== 'user_interrupted' && cause !== 'environment_lost' && cause !== 'timeout') return undefined;
-  return { activity: 'cursor_game', outcome: e.outcome, cause, actor: e.source, participation: e.participation, executedMs: e.executedMs, occurredAt: e.occurredAt };
+  return { activity: e.activity, outcome: e.outcome, cause, actor: e.source, participation: e.participation, executedMs: e.executedMs, occurredAt: e.occurredAt };
 }
 export function selectLifeSummary(events: readonly CausalLifeEpisode[]): readonly CausalLifeEpisode[] {
   const identities = new Set<string>(), runs = new Set<string>();

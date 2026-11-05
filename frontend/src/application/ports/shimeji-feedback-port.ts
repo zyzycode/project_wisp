@@ -63,14 +63,14 @@ export interface IShimejiStimulusMapper {
 export interface ActivityOutcomeFeedback {
   readonly type: 'activity_outcome';
   /** Present for the actual cursor game, never for look-only cursor activity. */
-  readonly activity?: 'cursor_game';
+  readonly activity?: 'cursor_game' | 'book';
   /** Monotonically increasing identity from the sole Activity runtime, retained across memory reset. */
   readonly activitySequence?: number;
   readonly terminalReason?: import('./causal-life.interface').CausalLifeEpisode['terminalReason'];
   readonly eventId: string;
   readonly activityRunId: string;
   readonly atMs: MonotonicMs;
-  readonly family: 'explore' | 'play' | 'calm' | 'rest' | 'cursor_interest' | 'social_bid';
+  readonly family: 'book' | 'explore' | 'play' | 'calm' | 'rest' | 'cursor_interest' | 'social_bid';
   readonly outcome: 'completed' | 'cancelled' | 'failed';
   readonly participation: 'solitary' | 'user_engaged';
   /** Actual Brain execution, excluding deferred admission and provider waiting. */

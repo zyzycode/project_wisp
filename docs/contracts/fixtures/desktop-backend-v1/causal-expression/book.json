@@ -1,0 +1,204 @@
+{
+  "expressions": [
+    {
+      "activity": "book",
+      "intent": "acknowledge",
+      "emotion": "content",
+      "intensity": "low",
+      "target": "self",
+      "cause": "completed",
+      "deferredInvitation": false,
+      "ownActivityInterest": "emerging"
+    },
+    {
+      "activity": "book",
+      "intent": "acknowledge",
+      "emotion": "irritated",
+      "intensity": "low",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": false,
+      "ownActivityInterest": "emerging"
+    },
+    {
+      "activity": "book",
+      "intent": "acknowledge",
+      "emotion": "irritated",
+      "intensity": "low",
+      "target": "environment",
+      "cause": "timeout",
+      "deferredInvitation": false,
+      "ownActivityInterest": "emerging"
+    },
+    {
+      "activity": "contact",
+      "intent": "acknowledge",
+      "emotion": "curious",
+      "intensity": "low",
+      "target": "self",
+      "cause": "contact",
+      "deferredInvitation": false,
+      "ownActivityInterest": "none"
+    }
+  ],
+  "events": [
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "solitary",
+      "executedMs": 14000,
+      "occurredAt": "2026-11-06T12:00:00.000Z"
+    },
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "cancelled",
+      "cause": "user_interrupted",
+      "actor": "user",
+      "participation": "solitary",
+      "executedMs": 1200,
+      "occurredAt": "2026-11-06T12:00:00.000Z"
+    },
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "cancelled",
+      "cause": "timeout",
+      "actor": "system",
+      "participation": "solitary",
+      "executedMs": 16000,
+      "occurredAt": "2026-11-06T12:00:00.000Z"
+    }
+  ],
+  "invalidExpressions": [
+    {
+      "activity": "book",
+      "intent": "acknowledge",
+      "emotion": "content",
+      "intensity": "low",
+      "target": "self",
+      "cause": "completed",
+      "deferredInvitation": true,
+      "ownActivityInterest": "emerging"
+    },
+    {
+      "activity": "book",
+      "intent": "acknowledge",
+      "emotion": "content",
+      "intensity": "moderate",
+      "target": "self",
+      "cause": "completed",
+      "deferredInvitation": false,
+      "ownActivityInterest": "emerging"
+    },
+    {
+      "activity": "book",
+      "intent": "acknowledge",
+      "emotion": "content",
+      "intensity": "low",
+      "target": "user",
+      "cause": "completed",
+      "deferredInvitation": false,
+      "ownActivityInterest": "emerging"
+    },
+    {
+      "activity": "book",
+      "intent": "acknowledge",
+      "emotion": "content",
+      "intensity": "low",
+      "target": "self",
+      "cause": "completed",
+      "deferredInvitation": false,
+      "ownActivityInterest": "emerging",
+      "ownGameInterest": "emerging"
+    },
+    {
+      "activity": "book",
+      "intent": "acknowledge",
+      "emotion": "content",
+      "intensity": "low",
+      "target": "self",
+      "cause": "completed",
+      "deferredInvitation": false,
+      "ownActivityInterest": "emerging",
+      "title": "A book"
+    },
+    {
+      "activity": "contact",
+      "intent": "acknowledge",
+      "emotion": "content",
+      "intensity": "low",
+      "target": "self",
+      "cause": "completed",
+      "deferredInvitation": false,
+      "ownActivityInterest": "emerging"
+    }
+  ],
+  "invalidEvents": [
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "solitary",
+      "executedMs": 13999,
+      "occurredAt": "2026-11-06T12:00:00.000Z"
+    },
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "user_engaged",
+      "executedMs": 14000,
+      "occurredAt": "2026-11-06T12:00:00.000Z"
+    },
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "user",
+      "participation": "solitary",
+      "executedMs": 14000,
+      "occurredAt": "2026-11-06T12:00:00.000Z"
+    },
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "solitary",
+      "executedMs": 14000,
+      "occurredAt": "2026-11-06T12:00:00.000Z",
+      "page": 1
+    },
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "completed",
+      "cause": "completed",
+      "actor": "autonomy",
+      "participation": "solitary",
+      "executedMs": 14000,
+      "occurredAt": "2026-11-06T12:00:00.000Z",
+      "progress": 0.5
+    },
+    {
+      "kind": "causal_event",
+      "activity": "book",
+      "outcome": "cancelled",
+      "cause": "other",
+      "actor": "autonomy",
+      "participation": "solitary",
+      "executedMs": 14000,
+      "occurredAt": "2026-11-06T12:00:00.000Z"
+    }
+  ]
+}

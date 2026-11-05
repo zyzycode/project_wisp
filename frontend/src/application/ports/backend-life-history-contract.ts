@@ -10,7 +10,7 @@ export interface BackendLifeReflection {
   readonly completedDays: number;
 }
 export interface BackendLifeSummaryEvent {
-  readonly activity: 'cursor_game';
+  readonly activity: 'cursor_game' | 'book';
   readonly outcome: 'completed' | 'cancelled' | 'failed';
   readonly cause: 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout';
   readonly actor: 'user' | 'system' | 'autonomy' | 'unknown';

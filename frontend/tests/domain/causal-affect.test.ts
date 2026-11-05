@@ -9,7 +9,7 @@ const interrupted: CausalObservedEvent = { ...contact, activityRunId: 'game-1', 
 describe('CE-A01 causal affect', () => {
   it('distinguishes accepted contact, completed participation and real interruption with the same time', () => {
     const calm = appraiseCausalEvent(createCausalAffectState(), contact, 0);
-    expect(calm.emotion).toEqual({ causeSequence: 1, cause: 'contact', kind: 'curious', intensity: 0.1, target: 'self' });
+    expect(calm.emotion).toEqual({ activity: 'contact', causeSequence: 1, cause: 'contact', kind: 'curious', intensity: 0.1, target: 'self' });
     expect(appraiseCausalEvent(createCausalAffectState(), interrupted, 0).emotion)
       .toMatchObject({ causeSequence: 1, cause: 'user_interrupted', kind: 'irritated', intensity: 0.2, target: 'user' });
     expect(appraiseCausalEvent(createCausalAffectState(), { ...interrupted, cause: 'completed', outcome: 'completed', participation: 'user_engaged' }, 0).emotion)

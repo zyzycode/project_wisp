@@ -13,7 +13,7 @@ export function causalEpisode(value: unknown): CausalLifeEpisode {
     source: member(p.source, ['user', 'system', 'autonomy', 'unknown']),
     triggerSequence: p.triggerSequence === null ? null : integer(p.triggerSequence, 1),
     activityRunId: p.activityRunId === null ? null : text(p.activityRunId),
-    activity: member(p.activity, ['cursor_game', null]), outcome: member(p.outcome, ['completed', 'cancelled', 'failed', null]),
+    activity: member(p.activity, ['cursor_game', 'book', null]), outcome: member(p.outcome, ['completed', 'cancelled', 'failed', null]),
     terminalReason: member(p.terminalReason, ['forced_motion', 'user_interaction', 'critical_need', 'higher_priority_activity', 'environment_invalidated', 'animation_rejected', 'step_timeout', 'explicit_cancel', 'application_shutdown', 'invalid_definition', 'unresolved_target', null]),
     cause: member(p.cause, ['contact', 'completed', 'user_interrupted', 'environment_lost', 'timeout', 'other', 'unknown']),
     executedMs: finite(p.executedMs, 0, 600000), participation: member(p.participation, ['user_engaged', 'solitary', 'none']),
@@ -22,8 +22,10 @@ export function causalEpisode(value: unknown): CausalLifeEpisode {
   if (e.cause === 'contact') {
     if (e.activity !== null || e.activityRunId !== null || e.outcome !== null || e.terminalReason !== null || e.executedMs !== 0 || e.participation !== 'none' || e.source !== 'user' || e.triggerSequence !== null) throw new MemoryDataError('invalid_data');
   } else {
-    if (e.activity !== 'cursor_game' || e.activityRunId === null || e.outcome === null || e.participation === 'none' || (e.outcome === 'completed') !== (e.cause === 'completed')) throw new MemoryDataError('invalid_data');
-    if (e.cause === 'user_interrupted' && (e.source !== 'user' || e.triggerSequence === null || e.outcome !== 'cancelled' || e.terminalReason !== 'user_interaction')) throw new MemoryDataError('invalid_data');
+    if (e.activity === null || e.activityRunId === null || e.outcome === null || e.participation === 'none' || (e.outcome === 'completed') !== (e.cause === 'completed')) throw new MemoryDataError('invalid_data');
+    if (e.activity === 'book' && (e.participation !== 'solitary' || (e.outcome === 'completed' && (e.source !== 'autonomy' || e.executedMs < 14000)))) throw new MemoryDataError('invalid_data');
+    if (e.cause === 'user_interrupted' && (e.source !== 'user' || e.triggerSequence === null || e.outcome !== 'cancelled'
+      || (e.terminalReason !== 'user_interaction' && !(e.activity === 'book' && e.terminalReason === 'forced_motion')))) throw new MemoryDataError('invalid_data');
     if (e.outcome === 'completed' && e.terminalReason !== null) throw new MemoryDataError('invalid_data');
     if (e.cause === 'environment_lost' && (e.terminalReason !== 'environment_invalidated' || e.source !== 'system')) throw new MemoryDataError('invalid_data');
     if (e.cause === 'timeout' && (e.terminalReason !== 'step_timeout' || e.source !== 'system')) throw new MemoryDataError('invalid_data');

@@ -6,6 +6,7 @@
  */
 
 export type BehaviorIntentKind =
+  | 'book'
   | 'respond'
   | 'think'
   | 'react_happy'

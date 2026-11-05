@@ -1,7 +1,7 @@
 /** Pure CE-A01 calendar policy; monotonic clocks are never persisted. */
 export interface DeferredInvitationSource {
   readonly occurredAt: string;
-  readonly activity: 'cursor_game' | null;
+  readonly activity: string | null;
   readonly outcome: 'completed' | 'cancelled' | 'failed' | null;
   readonly participation: 'user_engaged' | 'solitary' | 'none';
 }

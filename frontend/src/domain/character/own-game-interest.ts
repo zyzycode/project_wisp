@@ -7,7 +7,7 @@ export interface OwnGameEpisode extends CausalSourceReference {
   readonly source: string;
   readonly terminalReason: string | null;
   readonly triggerSequence: number | null;
-  readonly activity: 'cursor_game' | null;
+  readonly activity: string | null;
   readonly activityRunId: string | null;
   readonly cause: string;
   readonly outcome: string | null;

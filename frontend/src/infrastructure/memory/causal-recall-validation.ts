@@ -2,7 +2,7 @@ import type { CausalRecallKey, CausalRecallQuery, CausalRecallPage } from '../..
 import { causalEpisode, causalSources } from './causal-life-validation';
 import { integer, MemoryDataError, record, timestamp } from './validation-primitives';
 
-const keys: readonly CausalRecallKey[] = ['game.any', 'game.user_interrupted', 'game.timeout', 'game.environment_lost', 'game.completed.user_engaged', 'game.completed.solitary', 'contact'];
+const keys: readonly CausalRecallKey[] = ['game.any', 'game.user_interrupted', 'game.timeout', 'game.environment_lost', 'game.completed.user_engaged', 'game.completed.solitary', 'contact', 'book.any', 'book.completed', 'book.user_interrupted', 'book.environment_lost', 'book.timeout'];
 export function causalRecallKey(value: unknown): CausalRecallKey {
   if (typeof value !== 'string' || !keys.includes(value as CausalRecallKey)) throw new MemoryDataError('invalid_data');
   return value as CausalRecallKey;

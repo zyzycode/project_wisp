@@ -3,6 +3,7 @@ import type { MemoryOperationContext, MemoryResult } from './memory-repository.i
 
 /** MEMORY-A01 target; closed causal buckets, not an arbitrary SQL/text query. */
 export type CausalRecallKey = 'game.any' | 'game.user_interrupted' | 'game.timeout'
+  | 'book.any' | 'book.completed' | 'book.user_interrupted' | 'book.environment_lost' | 'book.timeout'
   | 'game.environment_lost' | 'game.completed.user_engaged' | 'game.completed.solitary' | 'contact';
 
 export interface CausalRecallQuery {

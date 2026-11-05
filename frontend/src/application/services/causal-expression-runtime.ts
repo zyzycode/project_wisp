@@ -11,7 +11,8 @@ export interface CausalDirectorState {
   readonly romanceAllowed: boolean;
   readonly emotion: CausalEmotion | null;
   readonly deferredInvitation: boolean;
-  readonly ownGameInterest: CausalExpressionProjection['ownGameInterest'];
+  readonly ownBookInterest?: CausalExpressionProjection['ownActivityInterest'];
+  readonly ownGameInterest: CausalExpressionProjection['ownActivityInterest'];
 }
 
 /** Captures one existing local decision; it never starts inference, activities or effects. */
@@ -27,7 +28,7 @@ export class CausalExpressionRuntime implements ICausalExpressionRuntime {
   private decision() {
     const state = this.options.read();
     if (state.owner === null || !Number.isSafeInteger(state.generation) || state.generation < 0) return undefined;
-    const decision = directCausalExpression(state.emotion, state.deferredInvitation, state.ownGameInterest);
+    const decision = directCausalExpression(state.emotion, state.deferredInvitation, state.emotion?.activity === 'book' ? state.ownBookInterest ?? 'none' : state.ownGameInterest);
     return decision && { decision, signature: JSON.stringify([state.generation, state.owner, state.activeRunId,
       state.consent, state.romanceAllowed, decision.sourceSequence, decision.expression]) };
   }

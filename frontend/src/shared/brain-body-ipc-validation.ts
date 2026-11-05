@@ -24,6 +24,7 @@ const EMOTIONAL_TONES = [
 ] as const;
 
 const VISUAL_KINDS = [
+  'book_settle', 'book_with_book', 'book_finish',
   'idle_blink',
   'walk',
   'settle',
@@ -248,7 +249,7 @@ function parseVisualIntent(value: unknown, sampledAtMs: number): BrainVisualInte
     ? literal(own(record, 'gazeDirection'), ['left', 'right', 'up', 'down'] as const)
     : undefined;
   const propHint = Object.hasOwn(record, 'propHint')
-    ? literal(own(record, 'propHint'), ['pillow', 'heart', 'question', 'sparkle', 'none'] as const)
+    ? literal(own(record, 'propHint'), ['book', 'pillow', 'heart', 'question', 'sparkle', 'none'] as const)
     : undefined;
   return {
     episodeId: boundedId(own(record, 'episodeId')),

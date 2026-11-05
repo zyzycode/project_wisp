@@ -238,6 +238,7 @@ const causalExpressionRuntime = new CausalExpressionRuntime({ now: () => brainSt
     activeRunId: autonomyComposition?.getAIEventState().activeRunId ?? null,
     consent: character.intimacy.userConsentEnabled, romanceAllowed: canExpressFlirt(character),
     emotion: defaultCharacterStateService.getCausalEmotion(), deferredInvitation: deferredInvitationRuntime?.hasPendingInvitation() ?? false,
+    ownBookInterest: defaultCharacterStateService.getOwnBookInterest().band,
     ownGameInterest: defaultCharacterStateService.getOwnGameInterest().band };
 } });
 
@@ -407,9 +408,9 @@ function initializeAutonomyComposition(): void {
     }),
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
-    getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState(), defaultCharacterStateService.getCursorGameSatiation(), defaultCharacterStateService.getCausalEmotion(), defaultCharacterStateService.getOwnGameInterest().multiplier),
+    getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState(), defaultCharacterStateService.getCursorGameSatiation(), defaultCharacterStateService.getCausalEmotion(), defaultCharacterStateService.getOwnGameInterest().multiplier, defaultCharacterStateService.getBookSatiation(), defaultCharacterStateService.getOwnBookInterest().multiplier),
     onChatMotionTerminal: event => dialogueRuntime?.chatMotionTerminal(event),
-    onActivityCommitted: (runId, activityId) => { causalOwnerSequence++; ownGoalsRuntime?.activityStarted(runId, activityId); if (activityId === 'cursor_interest') memoryRuntime?.socialInterpretation.gameStarted(); },
+    onActivityCommitted: (runId, activityId) => { causalOwnerSequence++; ownGoalsRuntime?.activityStarted(runId, activityId); if (activityId === 'cursor_interest' || activityId === 'book') memoryRuntime?.socialInterpretation.gameStarted(); },
     onActivityStarted: () => aiEventRuntime?.activityStarted(),
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
     onUnsolicitedBlocked: () => { aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); },
@@ -635,7 +636,7 @@ function handleAcceptedBodyEvent(
 ): void {
   const causal = memoryRuntime?.history.causal;
   const input = event.type === 'interaction' || event.type === 'drag_started';
-  if (input) causal?.beginInput(event.type === 'interaction' && event.interaction === 'click', brainStatePublisher.now());
+  if (input) causal?.beginInput(event.type === 'interaction' && event.interaction === 'click', brainStatePublisher.now(), event.type === 'drag_started');
   try { dispatchAcceptedBodyEvent(event); } finally { if (input) causal?.endInput(); }
 }
 

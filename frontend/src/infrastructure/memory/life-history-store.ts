@@ -21,7 +21,7 @@ export class LifeHistoryStore {
     this.db.prepare('INSERT OR IGNORE INTO causal_history_build VALUES(1,0,?,?,NULL)').run(target, target === 0 ? 1 : 0);
   }
   index(episode: CausalLifeEpisode, order: number): void {
-    if (episode.activity !== 'cursor_game') return;
+    if ((episode.activity !== 'cursor_game' && episode.activity !== 'book')) return;
     this.db.prepare('INSERT OR REPLACE INTO causal_history_index VALUES(?,?,?,?,?)').run(episode.appRunId, episode.sequence, episode.occurredAt, order, Buffer.byteLength(JSON.stringify(episode), 'utf8'));
   }
   maintain(): void {
@@ -69,7 +69,7 @@ export class LifeHistoryStore {
         try {
           const source = record(found), raw = text(source.payload, 4096), episode = causalEpisode(JSON.parse(raw));
           const run = JSON.stringify([episode.appRunId, episode.activityRunId]);
-          if (episode.activity !== 'cursor_game' || episode.appRunId !== r.app_run_id || episode.sequence !== r.sequence || episode.occurredAt !== r.occurred_at || source.ordinal !== r.insertion_order || Buffer.byteLength(raw, 'utf8') !== r.payload_bytes || runs.has(run)) return omit('clock_unknown');
+          if ((episode.activity !== 'cursor_game' && episode.activity !== 'book') || episode.appRunId !== r.app_run_id || episode.sequence !== r.sequence || episode.occurredAt !== r.occurred_at || source.ordinal !== r.insertion_order || Buffer.byteLength(raw, 'utf8') !== r.payload_bytes || runs.has(run)) return omit('clock_unknown');
           runs.add(run); events.push(episode);
         } catch (error) {
           if (!(error instanceof MemoryDataError) && !(error instanceof SyntaxError)) throw error;

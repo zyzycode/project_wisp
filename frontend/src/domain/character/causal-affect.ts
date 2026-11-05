@@ -4,7 +4,7 @@ export interface CausalObservedEvent {
   readonly source: 'user' | 'system' | 'autonomy' | 'unknown';
   readonly triggerSequence: number | null;
   readonly activityRunId: string | null;
-  readonly activity: 'cursor_game' | null;
+  readonly activity: 'cursor_game' | 'book' | null;
   readonly outcome: 'completed' | 'cancelled' | 'failed' | null;
   readonly cause: 'contact' | 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout' | 'other' | 'unknown';
   readonly executedMs: number;
@@ -12,6 +12,7 @@ export interface CausalObservedEvent {
 }
 
 export interface CausalEmotion {
+  readonly activity: 'contact' | 'cursor_game' | 'book';
   readonly causeSequence: number;
   readonly cause: CausalObservedEvent['cause'];
   readonly kind: 'content' | 'curious' | 'irritated';
@@ -60,11 +61,17 @@ export function appraiseCausalEvent(state: CausalAffectState, event: CausalObser
       || !Number.isFinite(event.executedMs) || event.executedMs < 0) return state;
   const next = { ...decayCausalAffect(state, nowMs), highWaterSequence: event.sequence };
   const makeEmotion = (kind: CausalEmotion['kind'], intensity: number, target: CausalEmotion['target']): CausalEmotion =>
-    ({ causeSequence: event.sequence, cause: event.cause, kind, intensity, target });
+    ({ activity: event.activity ?? 'contact', causeSequence: event.sequence, cause: event.cause, kind, intensity, target });
   const trustedTrigger = event.source === 'user' && Number.isSafeInteger(event.triggerSequence) && event.triggerSequence !== null && event.triggerSequence > 0;
   if (event.cause === 'contact') {
     return event.source === 'user' && event.activity === null && event.activityRunId === null && event.outcome === null && event.executedMs === 0
       ? withEmotion(next, makeEmotion('curious', 0.1 / (1 + Math.max(0, Math.min(4, contactHabituation))), 'self')) : next;
+  }
+  if (event.activity === 'book' && event.activityRunId && event.participation === 'solitary') {
+    if (event.cause === 'completed' && event.outcome === 'completed' && event.executedMs >= 14000) return withEmotion(next, makeEmotion('content', .1, 'self'));
+    if (event.cause === 'user_interrupted' && event.outcome === 'cancelled' && trustedTrigger && event.executedMs >= 1000) return withEmotion(next, makeEmotion('irritated', .1, 'user'));
+    if (event.cause === 'environment_lost' || event.cause === 'timeout') return withEmotion(next, makeEmotion('irritated', .1, 'environment'));
+    return next;
   }
   if (event.activity !== 'cursor_game' || !event.activityRunId || event.outcome === null) return next;
   if (event.cause === 'completed' && event.outcome === 'completed' && event.participation === 'user_engaged') {
@@ -89,7 +96,7 @@ export function reappraiseInterruption(state: CausalAffectState, causeSequence: 
   status: 'unknown' | 'reported_accidental' | 'reported_deliberate' | 'contradicted', nowMs: number): CausalAffectState {
   if (!validTime(state, nowMs)) return state;
   const current = decayCausalAffect(state, nowMs), emotion = current.emotion;
-  if (!emotion || emotion.causeSequence !== causeSequence || emotion.cause !== 'user_interrupted'
+  if (!emotion || emotion.activity !== 'cursor_game' || emotion.causeSequence !== causeSequence || emotion.cause !== 'user_interrupted'
     || emotion.kind !== 'irritated' || current.baselineIntensity === null) return current;
   const intensity = current.baselineIntensity * (status === 'reported_accidental' ? 0.5 : 1);
   return { ...current, emotion: intensity >= 0.05 ? { ...emotion, intensity } : null,
@@ -100,7 +107,7 @@ export function reappraiseInterruption(state: CausalAffectState, causeSequence: 
 export function relieveCausalInterruption(state: CausalAffectState, causeSequence: number, nowMs: number): CausalAffectState {
   if (!validTime(state, nowMs)) return state;
   const current = decayCausalAffect(state, nowMs), emotion = current.emotion;
-  if (!emotion || emotion.causeSequence !== causeSequence || emotion.cause !== 'user_interrupted'
+  if (!emotion || emotion.activity !== 'cursor_game' || emotion.causeSequence !== causeSequence || emotion.cause !== 'user_interrupted'
     || emotion.kind !== 'irritated' || current.baselineIntensity === null) return current;
   const intensity = emotion.intensity * .5;
   return { ...current, emotion: intensity >= .05 ? { ...emotion, intensity } : null,

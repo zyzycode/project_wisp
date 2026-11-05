@@ -46,7 +46,7 @@ def recalled_memory(memory: Snapshot) -> str:
         isinstance(episode, dict) and episode.get("kind") == "causal_event" for episode in episodes
     ):
         lines.append(
-            "Causal events are source-validated observed facts. Actor is provenance, not motive; participation does not prove enjoyment. Historical emotion and current interpretation are not supplied by an outcome."
+            "Causal events are source-validated observed facts. Actor is provenance, not motive; participation does not prove enjoyment. Historical emotion and current interpretation are not supplied by an outcome. A book event is only a decorative finite session, possibly sit/idle fallback: no text, pages, title, reading progress, understanding or learned knowledge is provided."
         )
     for key, title in (
         ("episodes", "Recalled episodes — past events, not current preferences"),

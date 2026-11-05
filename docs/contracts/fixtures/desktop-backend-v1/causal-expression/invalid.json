@@ -12,8 +12,9 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging",
-      "localSequence": 2
+      "localSequence": 2,
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -25,7 +26,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": "true",
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -37,7 +39,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": 1,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -48,7 +51,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -59,7 +63,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -70,7 +75,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -81,7 +87,8 @@
       "intensity": "moderate",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -92,7 +99,8 @@
       "intensity": "moderate",
       "target": "user",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -103,7 +111,8 @@
       "intensity": "moderate",
       "target": "user",
       "cause": "user_interrupted",
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -126,7 +135,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -138,7 +148,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -150,7 +161,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -162,7 +174,8 @@
       "target": "unknown",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -174,7 +187,8 @@
       "target": "user",
       "cause": "unknown",
       "deferredInvitation": true,
-      "ownGameInterest": "emerging"
+      "ownActivityInterest": "emerging",
+      "activity": "cursor_game"
     }
   },
   {
@@ -186,7 +200,8 @@
       "target": "user",
       "cause": "user_interrupted",
       "deferredInvitation": true,
-      "ownGameInterest": "unknown"
+      "ownActivityInterest": "unknown",
+      "activity": "cursor_game"
     }
   }
 ]

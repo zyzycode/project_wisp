@@ -18,6 +18,13 @@ it('requires sufficient dates, ratio, recent completion and fewer than two inter
   expect(observation([...games().slice(0, -1), interrupted, { ...interrupted, sequence: 9 }, games()[5]!])).toBeUndefined();
   expect(observation([...games().slice(0, -1), { ...interrupted, executedMs: 999 }, games()[5]!])?.interruptedCount).toBe(0);
 });
+it('filters book before every game count, ratio, date and freshness calculation', () => {
+  const books: CausalLifeEpisode[] = Array.from({ length: 12 }, (_, i) => ({ ...games()[5]!, sequence: 100 + i,
+    activity: 'book', activityRunId: `book-${i}`, participation: 'solitary', outcome: 'cancelled',
+    cause: 'user_interrupted', source: 'user', triggerSequence: 7, terminalReason: 'user_interaction', executedMs: 14_000 }));
+  expect(observation([...games(), ...books])).toEqual(observation(games()));
+  expect(observation([...games().slice(0, 5), ...books])).toBeUndefined();
+});
 function fixture() {
   vi.useFakeTimers(); let revision = 0, pending = false, generation = 0, now = '2026-11-05T12:00:00.000Z';
   let settle = () => {}; let settled: Promise<void> = Promise.resolve();

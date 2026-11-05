@@ -1,3 +1,5 @@
+import { createBookExposure, observeBookExposure, recoverBookExposure } from '../../domain/character/book-exposure';
+import { learnOwnBookInterest, reflectOwnBookInterest, OWN_BOOK_INTEREST_KEY, type OwnBookEpisode, type OwnBookReflection } from '../../domain/character/own-book-interest';
 import { MUSIC_TOPICS, musicInterestTrack, type MusicTopic } from '../../domain/character/music-interest';
 import { cloneCharacterState, createDefaultCharacterState } from './character-state-factory';
 import { createHabitState, interruptHabit, startHabitRun, recordHabitPose, finishHabitRun, habitMultiplier, type HabitState } from '../../domain/character/own-habit';
@@ -49,6 +51,8 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   private preferenceGate: AdaptationGate;
   private readonly observedSources = new Set<string>();
   private causalAffect = createCausalAffectState();
+  private bookExposure = createBookExposure();
+  private ownBookInterestProof: readonly CausalSourceReference[] | null = null;
   private activityExposure = createActivityExposure();
   private ownHabit: HabitState;
   private repairClock: RepairClock;
@@ -104,6 +108,12 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
     this.causalAffect = appraiseCausalEvent(this.causalAffect, episode, atMs, exposure.habituation);
     if (this.causalAffect.highWaterSequence <= previousSequence) return false;
     this.activityExposure = observeActivityExposure(exposure, episode, atMs);
+    this.bookExposure = observeBookExposure(this.bookExposure, episode, atMs);
+    if (episode.activity === 'book' && episode.outcome === 'completed' && episode.cause === 'completed'
+      && episode.participation === 'solitary' && episode.executedMs >= 14000) {
+      this.state = { ...this.state, needs: { ...this.state.needs, energy: Math.max(0, this.state.needs.energy - 1),
+        boredom: Math.max(0, (this.state.needs.boredom ?? 0) - 4) } };
+    }
     const deltas = causalRelationshipDeltas(episode, this.causalAffect.interruptionTimes.length >= 2);
     if (!deltas || atMs < this.nextAppraisalAt) return false;
     this.nextAppraisalAt = atMs + 30000;
@@ -182,6 +192,24 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   public getOwnGameInterest(): OwnGameReflection {
     return reflectOwnGameInterest(this.state.preferences[OWN_GAME_INTEREST_KEY], this.ownInterestProof ?? []);
   }
+  public observeCommittedOwnBook(episode: OwnBookEpisode, atMs: number, currentAppRunId: string): boolean {
+    const learned = learnOwnBookInterest(this.state.preferences[OWN_BOOK_INTEREST_KEY], this.state.ownBookInterestSources,
+      this.ownInterestGate, episode, atMs, currentAppRunId);
+    this.ownInterestGate = learned.gate;
+    if (!learned.accepted) return false;
+    this.state = { ...this.state, preferences: { ...this.state.preferences, [OWN_BOOK_INTEREST_KEY]: learned.track }, ownBookInterestSources: learned.sources };
+    this.ownBookInterestProof = null; return true;
+  }
+  public invalidateOwnBookInterestProof(): void { this.ownBookInterestProof = null; }
+  public setOwnBookInterestProof(sources: readonly CausalSourceReference[]): void {
+    const valid = this.state.ownBookInterestSources.filter(ref => sources.some(source => source.appRunId === ref.appRunId && source.sequence === ref.sequence && source.revision === ref.revision));
+    this.state = { ...this.state, ownBookInterestSources: valid.map(ref => ({ ...ref })) };
+    this.ownBookInterestProof = valid;
+  }
+  public getOwnBookInterest(): OwnBookReflection {
+    return reflectOwnBookInterest(this.state.preferences[OWN_BOOK_INTEREST_KEY], this.ownBookInterestProof ?? []);
+  }
+  public getBookSatiation(): number { return this.bookExposure.satiation; }
   public getCursorGameSatiation(): number { return this.activityExposure.satiation; }
   public beginTouch(sequence: number, causalBound = false): TouchInteractionReceipt {
     const before = this.getSnapshot();
@@ -250,6 +278,8 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
     this.restoreRelationshipRepair();
     this.causalAffect = createCausalAffectState();
     this.activityExposure = createActivityExposure();
+    this.bookExposure = createBookExposure();
+    this.ownBookInterestProof = null;
     this.ownInterestGate = createOwnInterestGate(this.monotonicNow()); this.ownInterestProof = null;
     this.interactionGeneration++; this.baseSequence = 0; this.appraisalSequence = 0; this.nextBaseAt = this.monotonicNow(); this.nextAppraisalAt = this.monotonicNow() + 30000;
     this.activityEffects.clear(); this.observedSources.clear();
@@ -257,6 +287,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   }
 
   public tickNeeds(deltaMs: number, tone?: SynthesizedEmotionalTone): CharacterState {
+    this.bookExposure = recoverBookExposure(this.bookExposure, this.monotonicNow());
     this.causalAffect = decayCausalAffect(this.causalAffect, this.monotonicNow());
     this.activityExposure = recoverActivityExposure(this.activityExposure, this.monotonicNow());
     const normalizedDeltaMs = normalizeDeltaMs(deltaMs);

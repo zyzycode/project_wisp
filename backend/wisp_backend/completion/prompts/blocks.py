@@ -53,8 +53,8 @@ def common_blocks(
                     "The desktop already chose this current causal intent and emotion. Formulate that decision "
                     "using the character card; do not replace it with a different emotion, invent a hidden user "
                     "motive, change state, or execute an action. Deferred invitation is only a pending local record, "
-                    "not a promise of execution. Own game interest is a source-validated character inference, "
-                    "not a user preference or permission. Response hints do not override the local decision."
+                    "not a promise of execution. Own activity interest belongs only to the selected activity and is a source-validated character inference, "
+                    "not a user preference or permission. Book means a decorative finite session with sit/idle fallback, no text access, pages, title, reading progress, understanding or new knowledge. Completion only ends the session. Response hints do not override the local decision."
                 ),
             )
         )

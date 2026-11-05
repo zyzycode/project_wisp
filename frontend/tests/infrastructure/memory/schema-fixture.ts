@@ -32,6 +32,7 @@ export function dropLifeHistory(db: Database.Database): void {
 
 /** Remove v12 before constructing a genuine older schema. */
 export function dropMusic(db: Database.Database): void {
+ db.exec('DELETE FROM schema_migrations WHERE version=13;');
  db.exec('DROP TRIGGER IF EXISTS music_source_deleted; DROP TRIGGER IF EXISTS music_source_corrected; DROP TABLE IF EXISTS music_samples; DROP TABLE IF EXISTS music_user_preferences; DROP TABLE IF EXISTS music_clock; DELETE FROM schema_migrations WHERE version=12;');
  const columns = db.prepare('PRAGMA table_info(messages)').all();
  for (const name of ['music_intention','music_sample_digest','music_preference_consumed']) {

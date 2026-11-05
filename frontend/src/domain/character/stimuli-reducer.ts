@@ -312,6 +312,7 @@ export function processStimulus(state: CharacterState, stimulus: CharacterStimul
     preferences,
     ownHabitMemory: state.ownHabitMemory,
     relationshipRepair: { ...state.relationshipRepair },
+    ownBookInterestSources: state.ownBookInterestSources.map(source => ({ ...source })),
     ownGameInterestSources: state.ownGameInterestSources.map(source => ({ ...source })),
     lastUpdated,
   };

@@ -15,7 +15,7 @@ const response = (r: AIProviderRequest, text = 'A reply'): AIProviderResponse =>
   reply: { text, tone: 'playful' }, suggestedBehavior: 'play', suggestedMood: 'happy', confidence: 1 });
 function fixture(provider: IAIProvider, causal = true) {
   vi.useFakeTimers(); vi.setSystemTime(0); let id = 0, generation = 0, owner = 'owner', activeRunId: string | null = null, consent = false;
-  let emotion: CausalEmotion | null = causal ? { causeSequence: 3, cause: 'user_interrupted', kind: 'irritated', intensity: .3, target: 'user' } : null;
+  let emotion: CausalEmotion | null = causal ? { activity: 'cursor_game', causeSequence: 3, cause: 'user_interrupted', kind: 'irritated', intensity: .3, target: 'user' } : null;
   const character = new CharacterStateService({ now: Date.now, monotonicNow: Date.now });
   const director = new CausalExpressionRuntime({ now: Date.now, read: () => ({ generation, owner, activeRunId, consent,
     romanceAllowed: false, emotion, deferredInvitation: false, ownGameInterest: 'none' }) });
@@ -28,7 +28,7 @@ function fixture(provider: IAIProvider, causal = true) {
   runtime.replaceStream('stream'); let sequence = 0;
   const send = (text = 'Why?') => runtime.receive({ type: 'send', text, streamId: 'stream', conversationId: runtime.getPresentation().conversationId, sequence: ++sequence });
   return { runtime, send, director, applyStimulus, offerIntent, completed, character, setBehaviorContext,
-    change: (kind: string) => { if (kind === 'cause') emotion = { ...emotion!, causeSequence: 4 }; if (kind === 'generation') generation++;
+    change: (kind: string) => { if (kind === 'cause') emotion = { ...emotion!, activity: 'cursor_game', causeSequence: 4 }; if (kind === 'generation') generation++;
       if (kind === 'owner') owner = 'other'; if (kind === 'run') activeRunId = 'new-run'; if (kind === 'consent') consent = true;
       if (kind === 'clear') emotion = null; } };
 }

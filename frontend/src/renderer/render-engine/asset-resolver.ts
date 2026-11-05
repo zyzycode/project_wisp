@@ -28,6 +28,7 @@ const ZERO_POINT: SpritePoint = { x: 0, y: 0 };
 type AnyAnimationIntent = AnimationIntent<AnyAnimationIntentKind>;
 
 const BODY_KEYS: Readonly<Record<AnyAnimationIntentKind, string>> = {
+  book_settle: 'body_sit', book_with_book: 'body_sit', book_finish: 'body_idle',
   grab_edge: 'body_grab_edge',
   jump_travel: 'body_jump_travel',
   pull_up_edge: 'body_pull_up_edge',
@@ -92,11 +93,12 @@ const EXPRESSION_KEYS: Readonly<Partial<Record<NonNullable<AnimationIntent['expr
 
 const PROP_CONFIG: Readonly<Record<Exclude<NonNullable<AnimationIntent['propHint']>, 'none'>, {
   readonly key: string;
-  readonly id: 'prop_pillow' | 'prop_heart' | 'prop_question' | 'prop_sparkle';
+  readonly id: 'prop_book' | 'prop_pillow' | 'prop_heart' | 'prop_question' | 'prop_sparkle';
   readonly zIndex: number;
   readonly blendMode: RenderBlendMode;
   readonly playbackMode: 'hold' | 'loop';
 }>> = {
+  book: { key: 'prop_book', id: 'prop_book', zIndex: 40, blendMode: 'normal', playbackMode: 'hold' },
   pillow: { key: 'prop_pillow', id: 'prop_pillow', zIndex: 40, blendMode: 'normal', playbackMode: 'hold' },
   heart: { key: 'prop_heart', id: 'prop_heart', zIndex: 41, blendMode: 'additive', playbackMode: 'hold' },
   question: { key: 'prop_question', id: 'prop_question', zIndex: 42, blendMode: 'normal', playbackMode: 'hold' },
@@ -262,6 +264,7 @@ export class AssetResolver {
   }
 
   private resolveProp(intent: AnyAnimationIntent): (ResolvedOverlayTrack & { readonly category: 'props' }) | undefined {
+    if (intent.propHint === 'book' && intent.kind !== 'book_with_book') return undefined;
     if (intent.propHint === undefined || intent.propHint === 'none') return undefined;
     const config = PROP_CONFIG[intent.propHint];
     const animation = selectAnimation(this.manifest.animations[config.key], 'props');

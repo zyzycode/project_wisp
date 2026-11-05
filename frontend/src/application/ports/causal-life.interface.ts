@@ -11,7 +11,7 @@ export interface CausalLifeEpisode {
   /** Accepted input sequence in the same appRun; null when no input caused this fact. */
   readonly triggerSequence: number | null;
   readonly activityRunId: string | null;
-  readonly activity: 'cursor_game' | null;
+  readonly activity: 'cursor_game' | 'book' | null;
   readonly outcome: 'completed' | 'cancelled' | 'failed' | null;
   readonly terminalReason: 'forced_motion' | 'user_interaction' | 'critical_need'
     | 'higher_priority_activity' | 'environment_invalidated' | 'animation_rejected'
@@ -33,6 +33,7 @@ export type CausalRelationshipFacets = {
 
 /** One volatile local decision; the model receives only the separately bounded wire projection. */
 export interface CausalEmotionSnapshot {
+  readonly activity: 'contact' | 'cursor_game' | 'book';
   readonly causeSequence: number;
   readonly kind: 'content' | 'curious' | 'irritated';
   readonly intensity: number;
@@ -41,13 +42,14 @@ export interface CausalEmotionSnapshot {
 
 /** Target #161 wire projection; has no local IDs, timers, source text or numeric writes. */
 export interface CausalExpressionProjection {
+  readonly activity: 'contact' | 'cursor_game' | 'book';
   readonly intent: 'respond' | 'acknowledge' | 'give_space' | 'continue_activity';
   readonly emotion: CausalEmotionSnapshot['kind'];
   readonly intensity: 'low' | 'moderate';
   readonly target: CausalEmotionSnapshot['target'];
   readonly cause: 'contact' | 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout';
   readonly deferredInvitation: boolean;
-  readonly ownGameInterest: 'none' | 'emerging' | 'established';
+  readonly ownActivityInterest: 'none' | 'emerging' | 'established';
 }
 
 export interface ICausalLifeRepository {

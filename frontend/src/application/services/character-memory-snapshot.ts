@@ -4,7 +4,7 @@ import type { CharacterState, PersonalityAxis } from '../../domain/character';
 import type { CausalSourceReference } from '../../domain/character/types';
 import { createRelationship, RELATIONSHIP_FACET_KEYS } from '../../domain/character/relationship-facets';
 import { validDynamicCharacterState } from '../../domain/character/state-validation';
-import type { CharacterMemorySnapshotV5 } from '../ports/causal-life.interface';
+import type { CharacterMemorySnapshotV6 } from '../ports/book-activity.interface';
 import type { PersistedCharacterStateSnapshot } from '../ports/memory-repository.interface';
 import { exactRecord } from '../../shared/dialogue-ipc-validation';
 
@@ -55,11 +55,11 @@ function habitMemory(value: unknown): HabitMemory {
   if (m.lastLearnedAt !== (transitions.at(-1)?.completedAt ?? null)) throw new TypeError('Invalid habit clock');
   return { transitions, lastLearnedAt: transitions.at(-1)?.completedAt ?? null };
 }
-export function projectCharacterMemory(state: CharacterState, updatedAt: string): CharacterMemorySnapshotV5 {
+export function projectCharacterMemory(state: CharacterState, updatedAt: string): CharacterMemorySnapshotV6 {
   if (state.personality.id !== 'curiousStubbornGirl') throw new TypeError('Invalid active preset');
   if (!validDynamicCharacterState(state)) throw new TypeError('Invalid character state');
   const a = state.personality.axes;
-  return { snapshotVersion: 5, updatedAt, state: {
+  return { snapshotVersion: 6, updatedAt, state: {
     presetId: 'curiousStubbornGirl', cardRevision: 3,
     needs: { energy: state.needs.energy, attention: state.needs.attention, play: state.needs.play, comfort: state.needs.comfort, boredom: state.needs.boredom ?? 15 },
     relationship: { ...state.relationship }, intimacy: { ...state.intimacy },
@@ -67,16 +67,18 @@ export function projectCharacterMemory(state: CharacterState, updatedAt: string)
     preferences: Object.fromEntries(Object.entries(state.preferences).map(([key, value]) => [key, { ...value }])),
     ownHabitMemory: habitMemory(state.ownHabitMemory),
     relationshipRepair: repairCheckpoint(state.relationshipRepair),
+    ownBookInterestSources: sourceReferences(state.ownBookInterestSources),
     ownGameInterestSources: sourceReferences(state.ownGameInterestSources),
   } };
 }
 export function restoreCharacterMemory(snapshot: PersistedCharacterStateSnapshot, defaults: CharacterState, now: number): CharacterState {
   const legacy = snapshot.snapshotVersion === 1;
-  const habit = snapshot.snapshotVersion === 5;
+  const book = snapshot.snapshotVersion === 6;
+  const habit = snapshot.snapshotVersion === 5 || book;
   const repair = snapshot.snapshotVersion === 4 || habit;
   const current = snapshot.snapshotVersion === 3 || repair;
   if (!legacy && !current && snapshot.snapshotVersion !== 2) throw new TypeError('Unsupported snapshot');
-  const state = exactRecord(snapshot.state, ['presetId', 'needs', 'relationship', 'intimacy', 'currentAxes', 'preferences', ...(legacy ? [] : ['cardRevision']), ...(current ? ['ownGameInterestSources'] : []), ...(repair ? ['relationshipRepair'] : []), ...(habit ? ['ownHabitMemory'] : [])]);
+  const state = exactRecord(snapshot.state, ['presetId', 'needs', 'relationship', 'intimacy', 'currentAxes', 'preferences', ...(legacy ? [] : ['cardRevision']), ...(current ? ['ownGameInterestSources'] : []), ...(repair ? ['relationshipRepair'] : []), ...(habit ? ['ownHabitMemory'] : []), ...(book ? ['ownBookInterestSources'] : [])]);
   if (state.presetId !== (legacy ? 'shyDreamGirl' : 'curiousStubbornGirl') || (!legacy && state.cardRevision !== 2 && state.cardRevision !== 3)) throw new TypeError('Invalid preset');
   const needs = exactRecord(state.needs, ['energy', 'attention', 'play', 'comfort', 'boredom']);
   if (current && state.cardRevision !== 3) throw new TypeError('Invalid card revision');
@@ -96,8 +98,11 @@ export function restoreCharacterMemory(snapshot: PersistedCharacterStateSnapshot
       if (!key.trim() || key.length > 128) throw new TypeError('Invalid preference key');
       const track = exactRecord(value, ['value', 'confidence', 'samples']);
       return [key, { value: number(track.value), confidence: number(track.confidence), samples: number(track.samples) }];
-    })), ownHabitMemory: habit ? habitMemory(state.ownHabitMemory) : emptyHabitMemory(), relationshipRepair: repair ? repairCheckpoint(state.relationshipRepair) : emptyRepairCheckpoint(), ownGameInterestSources: current ? sourceReferences(state.ownGameInterestSources) : [], lastUpdated: now,
+    })), ownBookInterestSources: book ? sourceReferences(state.ownBookInterestSources) : [], ownHabitMemory: habit ? habitMemory(state.ownHabitMemory) : emptyHabitMemory(), relationshipRepair: repair ? repairCheckpoint(state.relationshipRepair) : emptyRepairCheckpoint(), ownGameInterestSources: current ? sourceReferences(state.ownGameInterestSources) : [], lastUpdated: now,
   };
+  if (!book) {
+    const preferences = { ...restored.preferences }; delete preferences['own.activity.book']; restored.preferences = preferences;
+  }
   for (const axis of axes) {
     const current = number(currentAxes[axis]);
     const [hardMin, hardMax] = legacy ? legacyHardCaps[axis] : [defaults.personality.axes[axis].hardMin, defaults.personality.axes[axis].hardMax];

@@ -124,6 +124,7 @@ export type RenderLayerId =
   | 'pupils'
   | 'expression'
   | 'procedural_blush'
+  | 'prop_book'
   | 'prop_pillow'
   | 'prop_heart'
   | 'prop_question'

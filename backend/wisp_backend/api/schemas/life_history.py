@@ -41,12 +41,12 @@ class LifeReflection(Contract):
 
 
 class LifeSummaryEvent(Contract):
-    activity: Literal["cursor_game"]
+    activity: Literal["cursor_game", "book"]
     outcome: Literal["completed", "cancelled", "failed"]
     cause: Literal["completed", "user_interrupted", "environment_lost", "timeout"]
     actor: Literal["user", "system", "autonomy", "unknown"]
     participation: Literal["user_engaged", "solitary", "none"]
-    executedMs: Annotated[float, Field(ge=0, le=600000)]
+    executedMs: Annotated[float, Field(strict=True, ge=0, le=600000, allow_inf_nan=False)]
     occurredAt: Timestamp
 
     @model_validator(mode="after")
@@ -57,6 +57,17 @@ class LifeSummaryEvent(Contract):
             raise ValueError("Incoherent environment actor")
         if self.cause == "user_interrupted" and (self.actor != "user" or self.outcome != "cancelled"):
             raise ValueError("Incoherent interruption actor")
+        if self.activity == "book":
+            expected = (
+                "autonomy" if self.cause == "completed" else "user" if self.cause == "user_interrupted" else "system"
+            )
+            if (
+                self.participation != "solitary"
+                or self.actor != expected
+                or (self.cause == "completed" and self.executedMs < 14000)
+                or (self.cause == "user_interrupted" and self.outcome != "cancelled")
+            ):
+                raise ValueError("Invalid decorative book event")
         return self
 
 

@@ -1,6 +1,6 @@
 interface ObservedGame {
   readonly occurredAt: string;
-  readonly activity: 'cursor_game' | null;
+  readonly activity: string | null;
   readonly cause: string;
   readonly participation: string;
   readonly executedMs: number;

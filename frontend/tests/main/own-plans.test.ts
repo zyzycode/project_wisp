@@ -56,7 +56,8 @@ it('uses the existing Main runner for three acknowledged steps and completes nov
   expect(f.read().plan?.claim?.appRunId).toBe('app');
   f.finish(); await flush();
   expect(f.read().plan).toMatchObject({ stepIndex: 1, attempts: 1, claim: null });
-  f.needs(70, 70, 60); f.setRandom(.9); f.pulse(); await flush();
+  // Book adds a neutral peer bucket; choose a position inside the weighted Explore bucket.
+  f.needs(70, 70, 60); f.setRandom(.4); f.pulse(); await flush();
   expect(f.main.getActivityTimeline()?.activityId).toBe('explore');
   f.finish(); await flush();
   expect(f.read().goals.find(g => g.kind === 'seek_novelty')?.status).toBe('pending');

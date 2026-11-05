@@ -60,7 +60,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   constructor(private readonly options: Options) {
     this.music = new MusicInterestRuntime({ repository: options.storage.music, character: options.character, context: () => this.context(), now: options.monotonicNow ?? options.now, timestamp: options.timestamp, scheduler: options.scheduler, random: options.music?.random ?? (() => 1), gates: options.music?.gates ?? (() => ({ awake: false, quiet: true, role: false })), whenSettled: () => this.history.whenSettled() });
     this.knowledge = new MemoryKnowledge({ invalidateSummary: () => { options.summary?.invalidate(); this.lifeReflection.invalidate(); this.music.invalidate(); }, facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
-    this.ownGameInterest = new OwnGameInterestRuntime({ repository: options.storage.causalLife, character: options.character, context: () => this.context(), scheduler: options.scheduler });
+    this.ownGameInterest = new OwnGameInterestRuntime({ appRunId: () => this.history.currentAppRunId(), repository: options.storage.causalLife, character: options.character, context: () => this.context(), scheduler: options.scheduler });
     this.socialInterpretation = new SocialInterpretationRuntime({ repository: options.storage.socialInterpretation, character: options.character,
       context: () => this.context(), appRunId: () => this.history.currentAppRunId(), now: options.monotonicNow ?? options.now,
       timestamp: options.timestamp, scheduler: options.scheduler });
@@ -91,7 +91,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
       if (snapshot.code === 'invalid_data') { restore = 'invalid_snapshot'; this.snapshotWritable = false; }
       else this.startupFailure(snapshot.code);
     } else if (snapshot.value !== null) {
-      if (![1, 2, 3, 4, 5].includes(snapshot.value.snapshotVersion)) { restore = 'unsupported_snapshot'; this.snapshotWritable = false; }
+      if (![1, 2, 3, 4, 5, 6].includes(snapshot.value.snapshotVersion)) { restore = 'unsupported_snapshot'; this.snapshotWritable = false; }
       else try { candidate = restoreCharacterMemory(snapshot.value, candidate, this.options.now()); restore = 'restored'; }
       catch { restore = 'invalid_snapshot'; this.snapshotWritable = false; }
     }
@@ -108,7 +108,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
       this.status = { mode: 'persistent', characterRestore: restore };
       // Identity migrations remain dirty until the current card revision is acknowledged.
       const loadedState = snapshot.ok ? snapshot.value?.state : null;
-      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 5
+      if (restore === 'restored' && snapshot.ok && snapshot.value?.snapshotVersion === 6
         && loadedState && typeof loadedState === 'object' && !Array.isArray(loadedState)
         && 'cardRevision' in loadedState && loadedState.cardRevision === 3) {
         this.savedSignature = JSON.stringify(projectCharacterMemory(candidate, this.options.timestamp()).state);

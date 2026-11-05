@@ -22,7 +22,7 @@ function createState(): CharacterState {
       userConsentEnabled: false,
       boundariesKnown: false,
     },
-    preferences: {}, ownHabitMemory: { transitions: [], lastLearnedAt: null }, relationshipRepair: emptyRepairCheckpoint(), ownGameInterestSources: [],
+    preferences: {}, ownHabitMemory: { transitions: [], lastLearnedAt: null }, relationshipRepair: emptyRepairCheckpoint(), ownBookInterestSources: [], ownGameInterestSources: [],
     lastUpdated: 1000,
   };
 }
