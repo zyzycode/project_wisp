@@ -414,6 +414,7 @@ export class MainAutonomyComposition {
         && this.activity.getSource() !== 'user' && this.activity.getSource() !== 'character',
       activeRunId: this.activity.getRuntime()?.runId ?? null, localSpeech: this.getCursorGamePresentation()?.speech != null };
   }
+  public getActivityPriority() { return this.activity.getPriority(); }
   public setQuietSupport(enabled: boolean): void {
     if (this.quietSupport === enabled) return;
     this.quietSupport = enabled;

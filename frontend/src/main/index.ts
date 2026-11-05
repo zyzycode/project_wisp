@@ -1,4 +1,7 @@
 import { DeferredGameInvitationRuntime } from '../application/services/deferred-game-invitation-runtime';
+import { CausalExpressionRuntime } from '../application/services/causal-expression-runtime';
+import { causalVisualExpression } from '../domain/character/causal-director';
+import { canExpressFlirt } from '../domain/character/intimacy-rules';
 import { pathToFileURL } from 'node:url';
 import { VoiceOutputService } from '../application/services/voice-output-service';
 import { LocalSpeechSynthesizer } from '../infrastructure/voice-output/local-speech-synthesizer';
@@ -122,6 +125,7 @@ let aiRoute: PersonalAIRoute = {};
 let unregisterAIConnection: (() => void) | null = null;
 let memoryRuntime: MemoryLifecycle | null = null;
 let deferredInvitationRuntime: DeferredGameInvitationRuntime | null = null;
+let causalOwnerSequence = 0;
 let routineCapture: RoutineCapture | null = null;
 let unregisterMemory: (() => void) | null = null;
 let unregisterSummary: (() => void) | null = null;
@@ -186,10 +190,15 @@ const brainStatePublisher = new BrainStatePublisher({
     if (shimejiMotionOrchestrator === null || autonomyComposition === null || dialogueRuntime === null) {
       throw new Error('Brain state sources are unavailable');
     }
+    const dialogue = dialogueRuntime.getPresentation();
+    const initiativeSpeech = aiEventRuntime?.getSpeech() ?? null;
+    const causal = dialogueRuntime.getCausalExpression() ?? aiEventRuntime?.getCausalExpression();
+    const visual = autonomyComposition.getVisualEpisode();
+    const motion = shimejiMotionOrchestrator.getMotionState();
     return toBrainStateDTO({
       externalWindowSupport: toExternalWindowSupport(externalWindowSurfaces?.getSnapshot()),
-      dialogue: dialogueRuntime.getPresentation(),
-      initiativeSpeech: aiEventRuntime?.getSpeech() ?? null,
+      dialogue,
+      initiativeSpeech,
       observationSpeech: observationRuntime?.getSpeech() ?? null,
       cursorGame: autonomyComposition.getCursorGamePresentation(),
       globalCursor: autonomyComposition.getGlobalCursorSample(),
@@ -199,8 +208,9 @@ const brainStatePublisher = new BrainStatePublisher({
       character: defaultCharacterStateService.getSnapshot(),
       activity: autonomyComposition.getActivityTimeline(),
       autonomy: autonomyComposition.getAutonomyMode(),
-      motion: shimejiMotionOrchestrator.getMotionState(),
-      visualEpisode: autonomyComposition.getVisualEpisode(),
+      motion,
+      visualEpisode: { ...visual, intent: causalVisualExpression(visual.intent, causal, { forced: motion.phase !== 'grounded',
+        awake: autonomyComposition.getSemanticSleepState() === 'awake', priority: autonomyComposition.getActivityPriority() }) },
     });
   },
   deliver: (state) => {
@@ -215,6 +225,16 @@ const brainStatePublisher = new BrainStatePublisher({
     appLogger.warn('IPC', `Brain state delivery failed: ${String(error)}`);
   },
 });
+
+const causalExpressionRuntime = new CausalExpressionRuntime({ now: () => brainStatePublisher.now(), read: () => {
+  const character = defaultCharacterStateService.getSnapshot();
+  return { generation: memoryRuntime?.currentGeneration() ?? 0,
+    owner: autonomyComposition ? `${causalOwnerSequence}:${dialogueRuntime?.getIdentity() ?? ''}:${shimejiMotionOrchestrator?.getMotionState().phase ?? 'unavailable'}` : null,
+    activeRunId: autonomyComposition?.getAIEventState().activeRunId ?? null,
+    consent: character.intimacy.userConsentEnabled, romanceAllowed: canExpressFlirt(character),
+    emotion: defaultCharacterStateService.getCausalEmotion(), deferredInvitation: deferredInvitationRuntime?.hasPendingInvitation() ?? false,
+    ownGameInterest: defaultCharacterStateService.getOwnGameInterest().band };
+} });
 
 function resolvePreloadPath(): string {
   const jsPath = path.join(__dirname, '../preload/index.js');
@@ -318,6 +338,7 @@ function disposeAutonomyComposition(): void {
 }
 
 function initializeAutonomyComposition(): void {
+  causalOwnerSequence++;
   disposeAutonomyComposition();
   const orchestrator = shimejiMotionOrchestrator;
   if (orchestrator === null) return;
@@ -350,14 +371,15 @@ function initializeAutonomyComposition(): void {
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState(), defaultCharacterStateService.getCursorGameSatiation(), defaultCharacterStateService.getCausalEmotion(), defaultCharacterStateService.getOwnGameInterest().multiplier),
     onChatMotionTerminal: event => dialogueRuntime?.chatMotionTerminal(event),
-    onActivityCommitted: (_runId, activityId) => { if (activityId === 'cursor_interest') memoryRuntime?.socialInterpretation.gameStarted(); },
+    onActivityCommitted: (_runId, activityId) => { causalOwnerSequence++; if (activityId === 'cursor_interest') memoryRuntime?.socialInterpretation.gameStarted(); },
     onActivityStarted: () => aiEventRuntime?.activityStarted(),
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
     onUnsolicitedBlocked: () => { aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); },
-    onAIInvalidated: () => { if (!processingTouchInput || !aiEventRuntime?.isTouchPending()) aiEventRuntime?.invalidate(true, false); observationRuntime?.invalidate(); },
+    onAIInvalidated: () => { causalOwnerSequence++; if (!processingTouchInput || !aiEventRuntime?.isTouchPending()) aiEventRuntime?.invalidate(true, false); observationRuntime?.invalidate(); },
     onUserContact: () => { aiEventRuntime?.userContact(); observationRuntime?.invalidate(); },
     onCursorGameResult: result => { aiEventRuntime?.gameTerminal(result, memoryGeneration); void memoryRuntime?.history.game(result, memoryGeneration); },
     onActivityOutcome: event => {
+      causalOwnerSequence++;
       memoryRuntime?.history.causal.outcome(event);
       if (!memoryRuntime?.isRunning() || memoryRuntime.currentGeneration() !== memoryGeneration) return;
       aiEventRuntime?.outcome(event);
@@ -417,7 +439,7 @@ function initializeAutonomyComposition(): void {
       }; },
     });
     const touchContext = ai.interactionEnabled || !ai.touchProvider ? new TouchReactionContext(defaultCharacterStateService, () => brainStatePublisher.now()) : undefined;
-    aiEventRuntime = new AIEventRuntime({ ...(touchContext ? { touchContext } : {}), transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } }, observation: observationRuntime, provider: ai.touchProvider ?? { generateEvent: async () => { throw new Error('Touch unavailable'); }, cancel: () => undefined }, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
+    aiEventRuntime = new AIEventRuntime({ causalExpression: causalExpressionRuntime, ...(touchContext ? { touchContext } : {}), transaction: commit => { brainStatePublisher.beginTransaction(); try { commit(); } finally { brainStatePublisher.commitTransaction(); } }, observation: observationRuntime, provider: ai.touchProvider ?? { generateEvent: async () => { throw new Error('Touch unavailable'); }, cancel: () => undefined }, ...(recall ? { recall } : {}), random: Math.random, autonomousEnabled: !!ai.eventProvider && !!recall,
       now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(), character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
       gate: () => ({ ...(autonomyComposition?.getAIEventState() ?? { allowed: false, activeRunId: null, localSpeech: false }), ...(observationRuntime?.isBusy() ? { allowed: false } : {}), identity: dialogueRuntime?.getIdentity() ?? null, memoryGeneration: memoryRuntime?.currentGeneration() ?? 0, ...(!memoryRuntime?.isRunning() || summaryGenerating || summaryRuntime?.isBusy() ? { allowed: false, touchAllowed: false } : {}) }) });
     if (ai.summaryGenerator && memoryComposition) {
@@ -431,7 +453,7 @@ function initializeAutonomyComposition(): void {
       });
     }
     beverageDialogue = memoryComposition?.beverage ? new BeverageDialogue({ runtime: () => memoryRuntime, createId: randomUUID, timestamp: () => new Date().toISOString(), now: () => brainStatePublisher.now(), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) : null;
-    dialogueRuntime = new DialogueRuntime({ getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
+    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),

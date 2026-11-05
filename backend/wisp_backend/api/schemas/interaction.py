@@ -70,6 +70,8 @@ class InteractionTouchRequest(TouchFields, InteractionPolicy):
     def card_matches(self) -> "InteractionTouchRequest":
         if self.card.id != self.character.personality.presetId:
             raise ValueError("Card does not match character")
+        if self.character.expression.causal is not None and self.effectPolicy != "suppressed":
+            raise ValueError("Causal touch must suppress appraisal")
         return self
 
 

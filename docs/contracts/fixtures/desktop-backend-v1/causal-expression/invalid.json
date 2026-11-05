@@ -1,0 +1,192 @@
+[
+  {
+    "name": "null",
+    "value": null
+  },
+  {
+    "name": "unknown-field",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging",
+      "localSequence": 2
+    }
+  },
+  {
+    "name": "string-flag",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": "true",
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "number-flag",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": 1,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "missing-intent",
+    "value": {
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "missing-emotion",
+    "value": {
+      "intent": "give_space",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "missing-intensity",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "missing-target",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "missing-cause",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "missing-deferredInvitation",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "missing-ownGameInterest",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true
+    }
+  },
+  {
+    "name": "invalid-intent",
+    "value": {
+      "intent": "unknown",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "invalid-emotion",
+    "value": {
+      "intent": "give_space",
+      "emotion": "unknown",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "invalid-intensity",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "unknown",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "invalid-target",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "unknown",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "invalid-cause",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "unknown",
+      "deferredInvitation": true,
+      "ownGameInterest": "emerging"
+    }
+  },
+  {
+    "name": "invalid-ownGameInterest",
+    "value": {
+      "intent": "give_space",
+      "emotion": "irritated",
+      "intensity": "moderate",
+      "target": "user",
+      "cause": "user_interrupted",
+      "deferredInvitation": true,
+      "ownGameInterest": "unknown"
+    }
+  }
+]

@@ -9,6 +9,7 @@ import type {
   AIProviderFallbackReason,
 } from '../../application/ports/ai-provider.interface';
 import { CATEGORY_TEMPLATES, UNSUPPORTED_REPLIES } from './mock-response-catalog';
+import { localDialogueText } from '../../application/services/dialogue-local-text';
 import type {
   MockMessageCategory,
   MockResponseTemplate,
@@ -73,6 +74,10 @@ export class MockAIProvider implements IAIProvider {
       const text = request.userMessage.text ?? '';
       const trimmed = text.trim();
       const locale = request.locale === 'en' ? 'en' : 'ru';
+      if (request.causalExpression !== undefined) {
+        return this.createFallbackResponse(request.requestId, 'unsupported_input', localDialogueText('fallback', locale),
+          'quiet', 'neutral', 'respond', Date.now() - startTime);
+      }
 
       // Empty input fallback
       if (trimmed.length === 0) {

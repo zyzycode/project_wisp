@@ -11,6 +11,7 @@ import { isTopicRefusal } from './interest-thread';
 import { DialogueAdmission } from './dialogue-admission';
 import type { InterestThreadCapture, InterestThreadRef } from '../ports/interest-thread.interface';
 import type { InteractionReceipt } from '../ports/interaction-appraisal';
+import type { CausalExpressionCapture } from '../ports/causal-expression';
 import { emptyMemoryContext } from './memory-recall';
 import { boundMemoryContext } from './memory-context';
 import type { DialogueRuntimeOptions } from '../ports/dialogue-runtime';
@@ -33,6 +34,8 @@ export class DialogueRuntime {
   private readonly beverageCaptures = new WeakMap<Turn, BeverageCapture>();
   private readonly dispatchedBeverage = new WeakSet<Turn>();
   private readonly captures = new WeakMap<Turn, InterestThreadCapture>();
+  private readonly causalCaptures = new WeakMap<Turn, CausalExpressionCapture>();
+  private publishedCausal: CausalExpressionCapture | undefined;
   private streamId: string | null = null;
   private conversationId: string;
   private sequence = 0;
@@ -85,11 +88,19 @@ export class DialogueRuntime {
     });
   }
   public getPresentation(): DialoguePresentationDTO {
+    if (this.publishedCausal && !this.options.causalExpression?.isCurrent(this.publishedCausal)) {
+      this.publishedCausal = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null; this.supportEligible = false;
+    }
     const bound = !this.disposed && this.streamId !== null;
     const sleep = this.options.getSemanticSleepState();
     return parseDialoguePresentation({ conversationId: this.conversationId,
       canSubmit: bound && sleep === 'awake' && !this.executing && !this.retiredAdmission,
       ...(bound && sleep === 'sleeping' ? { submissionMessage: localDialogueText('sleeping', this.options.locale) } : {}), turn: this.turn });
+  }
+  public getCausalExpression(): CausalExpressionCapture['expression'] | undefined {
+    const capture = this.publishedCausal;
+    return capture && this.turn.phase === 'completed' && this.turn.requestId === capture.requestId
+      && this.options.causalExpression?.isCurrent(capture) ? { ...capture.expression } : undefined;
   }
   public replaceStream(streamId: string): void {
     if (this.disposed) return;
@@ -114,6 +125,7 @@ export class DialogueRuntime {
     this.options.summary?.interrupt();
     if (this.executing || this.retiredAdmission) return { status: 'rejected', reason: 'busy' };
     this.options.onAcceptedUserInput?.();
+    this.publishedCausal = undefined;
     this.options.memory?.beverage?.invalidateOffer();
     this.options.quietSupport?.resumeForUserDialogue();
     const motion = recognizeChatMotion(command.text);
@@ -232,6 +244,7 @@ export class DialogueRuntime {
     });
   }
   private reset(): void {
+    this.publishedCausal = undefined;
     this.chatRun = null; this.options.chatMotion?.cancel('reset');
     this.options.onLifecycleReset?.();
     if (this.pending) this.executing = false;
@@ -253,10 +266,12 @@ export class DialogueRuntime {
   private mayContinue(turn: Turn): boolean {
     if (this.active === turn && this.options.getSemanticSleepState() !== 'awake') this.notifySleepStateChanged();
     if (!this.isCurrent(turn)) return false;
+    const causal = this.causalCaptures.get(turn);
+    if (causal && !this.options.causalExpression?.isCurrent(causal)) { this.discardCausal(turn); return false; }
     if (this.options.memory && this.options.memory.generation() !== turn.memoryGeneration) {
       this.options.transaction(() => { this.reset(); this.options.publish(); }); return false;
     }
-    if (this.options.now() >= turn.deadline) { this.finish(turn, 'timeout'); return false; }
+    if (this.options.now() >= Math.min(turn.deadline, causal?.deadlineMs ?? Infinity)) { this.finish(turn, 'timeout'); return false; }
     return true;
   }
   private async execute(turn: Turn): Promise<void> {
@@ -266,6 +281,15 @@ export class DialogueRuntime {
       if (!this.mayContinue(turn)) return;
       await this.options.events?.interruptForUser();
       if (!this.mayContinue(turn)) return;
+      const causal = this.options.causalExpression?.capture(turn.request.requestId);
+      if (causal) {
+        this.causalCaptures.set(turn, causal); this.cancelTimer();
+        this.timer = this.options.scheduler.setTimeout(() => {
+          if (this.active !== turn) return;
+          this.finish(turn, 'timeout');
+          try { this.options.provider.cancel?.(turn.request.requestId); } catch { /* The retired response still has its capture guard. */ }
+        }, Math.max(0, causal.deadlineMs - this.options.now()));
+      }
       const rawStatus = await this.options.provider.getStatus();
       if (!this.mayContinue(turn)) return;
       const status = parseProviderStatus(rawStatus);
@@ -312,6 +336,7 @@ export class DialogueRuntime {
       }) : turn.request;
       if (!this.mayContinue(turn)) return;
       let request = enriched ?? { ...turn.request, ...(this.options.memory?.recall ? { memoryContext: emptyMemoryContext() } : {}) };
+      if (causal) request = { ...request, causalExpression: { ...causal.expression } };
       const capture = this.captures.get(turn);
       if (turn.replyTo && !capture) { this.executing = false; this.finish(turn, 'degraded'); return; }
       if (capture && !this.options.memory?.interestThread?.isCurrent(capture)) { this.executing = false; this.finish(turn, 'degraded'); return; }
@@ -344,7 +369,9 @@ export class DialogueRuntime {
   private finish(active: Turn, reason?: DialogueFallbackReasonDTO, response?: AIProviderResponse): void {
     if (this.active === active && this.options.getSemanticSleepState() !== 'awake') this.notifySleepStateChanged();
     if (!this.isCurrent(active)) return;
-    if (this.options.now() >= active.deadline) { reason = 'timeout'; response = undefined; }
+    const causal = this.causalCaptures.get(active);
+    if (causal && !this.options.causalExpression?.isCurrent(causal)) { this.discardCausal(active); return; }
+    if (this.options.now() >= Math.min(active.deadline, causal?.deadlineMs ?? Infinity)) { reason = 'timeout'; response = undefined; }
     const capture = this.captures.get(active);
     if (active.replyTo && !capture) {
       this.active = null; this.cancelTimer(); this.options.endThinking(active.request.requestId);
@@ -372,13 +399,14 @@ export class DialogueRuntime {
         this.options.publish(); return;
       }
       this.turn = presentation.turn;
+      this.publishedCausal = causal;
       this.supportEligible = reason === undefined;
       this.sourceUserText = reason === undefined && !capture && !active.beverageCorrection && !this.dispatchedBeverage.has(active) ? active.request.userMessage.text : null;
       this.lastOffered = reason === undefined ? capture?.use.ref : undefined;
       const createdAt = this.options.timestamp();
       const pair: AIProviderContextMessage[] = [{ role: 'user', text: active.request.userMessage.text, createdAt: active.request.userMessage.createdAt, sourceMessageId: active.request.userMessage.id }, { role: 'wisp', text: replyText, createdAt, sourceMessageId: assistantId }];
       this.context = capture || active.beverageCorrection || this.dispatchedBeverage.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
-      if (reason === undefined && response) {
+      if (reason === undefined && response && !causal) {
         const tone = response.reply.tone;
         this.options.applyStimulus({ type: 'provider_response', source: 'provider', text: replyText, requestId, createdAt,
           metadata: { tone: tone === 'warm' ? 'affectionate' : tone === 'confused' || tone === 'quiet' ? 'neutral' : tone ?? null } });
@@ -406,5 +434,13 @@ export class DialogueRuntime {
         });
       }
     });
+  }
+  private discardCausal(active: Turn): void {
+    if (this.active !== active) return;
+    this.active = null; this.publishedCausal = undefined; this.turn = { phase: 'idle' }; this.cancelTimer();
+    // The existing global reset also cancels a cursor activity. A late response must not touch its new owner.
+    this.options.endThinking(active.request.requestId);
+    try { this.options.provider.cancel?.(active.request.requestId); } catch { /* Retired response still has its identity guard. */ }
+    this.options.publish();
   }
 }

@@ -13,7 +13,7 @@ function fit<T extends BackendEventRequest | BackendEventAwareChatRequest>(reque
   if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 32768) throw new TypeError('Request too large'); return result;
 }
 export function projectEventRequest(request: AIEventProviderRequest): BackendEventRequest {
-  const base = projectBackendMemoryRequest({ requestId: request.requestId, userMessage: { id: '', text: 'projection', createdAt: '' }, recentContext: [], characterSnapshot: request.characterSnapshot, memoryContext: request.memoryContext, locale: request.locale });
+  const base = projectBackendMemoryRequest({ ...(request.causalExpression === undefined ? {} : { causalExpression: request.causalExpression }), requestId: request.requestId, userMessage: { id: '', text: 'projection', createdAt: '' }, recentContext: [], characterSnapshot: request.characterSnapshot, memoryContext: request.memoryContext, locale: request.locale });
   const e = exactRecord(request.event, ['type', 'occurredAt'], ['outcome', 'executedMs']);
   const occurredAt = utc(e.occurredAt);
   const event = e.type === 'social_bid_started'

@@ -46,6 +46,8 @@ export interface AIPreviousInitiative {
 }
 
 export interface AIProviderRequest {
+  /** Already decided local meaning; no local source/ownership metadata is projected. */
+  readonly causalExpression?: import('./causal-life.interface').CausalExpressionProjection;
   readonly beveragePreference?: import('./memory-beverage.interface').AIProviderBeverageContext;
   /** Explicitly confirmed, source-validated topic; ordinary user dialogue only. */
   readonly dialogueTopic?: import('./interest-thread.interface').AIProviderDialogueTopic;

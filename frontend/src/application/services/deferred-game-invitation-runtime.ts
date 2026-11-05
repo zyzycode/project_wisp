@@ -33,6 +33,12 @@ export class DeferredGameInvitationRuntime implements ICausalLifeCommitObserver 
   private observedSource: ObservedSource | null = null;
   private cancelledThrough: { readonly generation: number; readonly atMs: number; readonly source: ObservedSource | null } | null = null;
   constructor(private readonly options: Options) {}
+  /** RAM-only acknowledged projection; an in-flight write/claim is not proof of pending state. */
+  hasPendingInvitation(): boolean {
+    if (!this.loaded || this.disposed || this.inFlight || !this.invitation || !this.options.context()) return false;
+    const state = invitationTimeState(this.invitation, this.options.wallNow(), this.lastSeenWallMs);
+    return state === 'waiting' || state === 'ready';
+  }
   observed(episode: CausalLifeEpisode, atMs: number): void {
     const context = this.options.context();
     if (!context || this.disposed || !Number.isFinite(atMs)) return;

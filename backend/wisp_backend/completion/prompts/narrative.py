@@ -17,7 +17,11 @@ def reference_lines(value: object, path: str = "") -> list[str]:
 
 
 def character_state(context: CharacterPromptContext) -> str:
-    return "\n".join(["[Character card & current factual state]", *reference_lines(context.character)])
+    character = context.character
+    expression = character.get("expression")
+    if isinstance(expression, dict) and "causal" in expression:
+        character = {**character, "expression": {key: value for key, value in expression.items() if key != "causal"}}
+    return "\n".join(["[Character card & current factual state]", *reference_lines(character)])
 
 
 def recalled_memory(memory: Snapshot) -> str:

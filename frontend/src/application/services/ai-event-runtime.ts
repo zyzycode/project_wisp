@@ -1,4 +1,5 @@
 import type { TouchInteractionReceipt } from '../ports/interaction-appraisal';
+import type { CausalExpressionCapture, ICausalExpressionRuntime } from '../ports/causal-expression';
 import { TouchReactionContext, parseInteractionAppraisal } from './touch-reaction-context';
 import type { AICompanionEvent, AIEventProviderRequest, IAIEventInterlock, IAIEventProvider, IGameEpisodeCommitObserver } from '../ports/ai-event-provider.interface';
 import type { AIProviderRequest } from '../ports/ai-provider.interface';
@@ -16,6 +17,7 @@ const MAX_RECENT_EVENT_IDS = 128;
 interface Gate { readonly allowed: boolean; readonly touchAllowed?: boolean; readonly identity: string | null; readonly memoryGeneration: number; readonly activeRunId: string | null; readonly localSpeech: boolean }
 interface Source { readonly runId: string; readonly kind: 'cursor_game' | 'social_bid' | 'user_touch'; readonly event: AICompanionEvent; readonly terminalAt: number; readonly identity: string; readonly memoryGeneration: number; readonly epoch: number; readonly touchReceipt?: TouchInteractionReceipt }
 interface Options {
+  readonly causalExpression?: ICausalExpressionRuntime;
   readonly touchContext?: TouchReactionContext;
   readonly transaction?: (commit: () => void) => void;
   readonly observation?: IAIEventInterlock;
@@ -39,10 +41,19 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
   private deadlineTimer: unknown;
   private speechTimer: unknown;
   private speech: AIInitiativeSpeechDTO | null = null;
+  private readonly causalCaptures = new WeakMap<Source, CausalExpressionCapture>();
+  private speechCausal: CausalExpressionCapture | undefined;
   private previous: { value: NonNullable<AIProviderRequest['previousInitiative']>; expires: number; identity: string; generation: number } | null = null;
   private thinking = false;
   constructor(private readonly options: Options) {}
-  getSpeech(): AIInitiativeSpeechDTO | null { return this.speech && this.options.now() < this.speech.expiresAtMs ? this.speech : null; }
+  getSpeech(): AIInitiativeSpeechDTO | null {
+    if (!this.speech || this.options.now() >= this.speech.expiresAtMs) { this.speechCausal = undefined; return null; }
+    if (this.speechCausal && !this.options.causalExpression?.isCurrent(this.speechCausal)) this.invalidate(true, false);
+    return this.speech && this.options.now() < this.speech.expiresAtMs ? this.speech : null;
+  }
+  getCausalExpression(): CausalExpressionCapture['expression'] | undefined {
+    return this.getSpeech() && this.speechCausal ? { ...this.speechCausal.expression } : undefined;
+  }
   observeDialogue(dialogue: DialoguePresentationDTO): void {
     this.thinking = dialogue.turn.phase === 'thinking';
     if (this.thinking && (this.source || this.speech)) this.invalidate(true, false);
@@ -67,7 +78,11 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
       event: { type: 'user_touch', variant, occurredAt: this.options.timestamp() } };
     this.source = source; this.begin(source);
   }
-  tick(): void { if ((this.source || this.game || this.speech) && !this.baseAllowed()) this.invalidate(true, false); }
+  tick(): void {
+    const causal = this.source && this.causalCaptures.get(this.source);
+    if ((this.source || this.game || this.speech) && (!this.baseAllowed()
+      || (causal && !this.options.causalExpression?.isCurrent(causal)))) this.invalidate(true, false);
+  }
   userContact(): void { this.invalidate(true, false); }
   takePreviousInitiative(): AIProviderRequest['previousInitiative'] {
     const gate = this.options.gate(), prior = this.previous;
@@ -80,7 +95,7 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
     this.epoch++; this.source = null; this.game = null; if (clearPrevious) this.previous = null;
     this.options.scheduler.clearTimeout(this.causalTimer); this.options.scheduler.clearTimeout(this.deadlineTimer); this.options.scheduler.clearTimeout(this.speechTimer);
     if (this.requestId) this.options.provider.cancel(this.requestId);
-    const changed = this.speech !== null; this.speech = null; if (changed) this.options.publish();
+    const changed = this.speech !== null; this.speech = null; this.speechCausal = undefined; if (changed) this.options.publish();
   }
   dispose(): void { this.disposed = true; this.invalidate(); this.seen.clear(); }
   gameTerminal(result: CursorGameResult, generation: number): void {
@@ -133,7 +148,9 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
   }
   private current(source: Source): boolean {
     const gate = this.options.gate();
+    const causal = this.causalCaptures.get(source);
     return this.source === source && source.epoch === this.epoch && this.baseAllowed() && gate.identity === source.identity && gate.memoryGeneration === source.memoryGeneration
+      && (!causal || this.options.causalExpression?.isCurrent(causal) === true)
       && (source.kind === 'user_touch' || (source.kind === 'social_bid' ? gate.activeRunId === source.runId : gate.activeRunId === null));
   }
   private begin(source: Source): void {
@@ -148,6 +165,16 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
   private async execute(source: Source, deadline: number): Promise<void> {
     try {
       if (source.kind === 'user_touch') { await this.options.observation?.interruptForUser(); if (!this.current(source)) return; if (this.options.now() >= deadline) { this.publishTouch(source); return; } }
+      const causal = this.options.causalExpression?.capture(source.runId);
+      if (causal) {
+        this.causalCaptures.set(source, causal); deadline = Math.min(deadline, causal.deadlineMs);
+        this.options.scheduler.clearTimeout(this.deadlineTimer);
+        this.deadlineTimer = this.options.scheduler.setTimeout(() => {
+          if (this.source !== source) return;
+          if (source.touchReceipt && this.current(source)) this.publishTouch(source); else this.invalidate(true, false);
+          if (this.requestId) this.options.provider.cancel(this.requestId);
+        }, Math.max(0, deadline - this.options.now()));
+      }
       const locale = this.options.locale ?? 'ru';
       const query = source.kind === 'cursor_game' ? locale === 'ru' ? 'игра курсор' : 'cursor game' : '';
       if (!this.current(source)) return;
@@ -155,20 +182,21 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
       if (!this.current(source)) return; if (this.options.now() >= deadline) { this.publishTouch(source); return; }
       const memory = recalled?.ok ? recalled.value : emptyMemoryContext();
       const requestId = this.options.createId(); this.requestId = requestId;
-      const request: AIEventProviderRequest = { ...(source.touchReceipt ? { interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: source.touchReceipt.effectPolicy } } : {}), requestId, event: source.event, characterSnapshot: this.options.character(), memoryContext: memory, locale };
+      const request: AIEventProviderRequest = { ...(causal ? { causalExpression: { ...causal.expression } } : {}), ...(source.touchReceipt ? { interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: causal ? 'suppressed' : source.touchReceipt.effectPolicy } } : {}), requestId, event: source.event, characterSnapshot: this.options.character(), memoryContext: memory, locale };
       const raw = await this.options.provider.generateEvent(request);
       this.requestId = null;
       if (!this.current(source) || this.options.gate().localSpeech) return;
       if (this.options.now() >= deadline) { this.publishTouch(source); return; }
       const result = exactRecord(raw, ['requestId', 'replyText'], source.touchReceipt ? ['appraisal'] : []); if (result.requestId !== requestId) throw new TypeError('Invalid request id');
       const text = plainText(result.replyText, 240, true), now = this.options.now();
-      if (source.touchReceipt) { const appraisal = parseInteractionAppraisal(result.appraisal, true); if (source.touchReceipt.effectPolicy === 'suppressed' && (appraisal.category !== 'neutral' || appraisal.confidence !== 'clear')) throw new TypeError('Suppressed appraisal'); this.publishTouch(source, text, appraisal); return; }
+      if (source.touchReceipt) { const appraisal = parseInteractionAppraisal(result.appraisal, true); if ((causal || source.touchReceipt.effectPolicy === 'suppressed') && (appraisal.category !== 'neutral' || appraisal.confidence !== 'clear')) throw new TypeError('Suppressed appraisal'); this.publishTouch(source, text, appraisal); return; }
       const expiresAtMs = Math.min(now + 2000, source.kind === 'cursor_game' ? source.terminalAt + 8000 : Infinity);
       if (expiresAtMs <= now) return;
       this.speech = { id: requestId, text, startedAtMs: now, expiresAtMs };
+      this.speechCausal = causal;
       this.previous = source.kind === 'user_touch' ? null : { value: { kind: source.kind, text, createdAt: this.options.timestamp() }, expires: now + 60000, identity: source.identity, generation: source.memoryGeneration };
       this.options.publish();
-      this.speechTimer = this.options.scheduler.setTimeout(() => { if (this.speech?.id === requestId) { this.speech = null; if (this.source === source) this.source = null; this.options.publish(); } }, expiresAtMs - now);
+      this.speechTimer = this.options.scheduler.setTimeout(() => { if (this.speech?.id === requestId) { this.speech = null; this.speechCausal = undefined; if (this.source === source) this.source = null; this.options.publish(); } }, expiresAtMs - now);
     } catch { if (source.touchReceipt && this.current(source)) this.publishTouch(source); }
     finally {
       this.requestId = null; this.options.scheduler.clearTimeout(this.deadlineTimer);
@@ -181,8 +209,9 @@ export class AIEventRuntime implements IAIEventInterlock, IGameEpisodeCommitObse
       const published = this.options.touchContext!.publish(source.touchReceipt!, source.event.occurredAt, text, appraisal, this.options.locale ?? 'ru');
       const now = this.options.now();
       this.speech = { id: source.runId, text: published, startedAtMs: now, expiresAtMs: now + 2000 };
+      this.speechCausal = this.causalCaptures.get(source);
       this.options.publish();
-      this.speechTimer = this.options.scheduler.setTimeout(() => { if (this.speech?.id === source.runId) { this.speech = null; if (this.source === source) this.source = null; this.options.publish(); } }, 2000);
+      this.speechTimer = this.options.scheduler.setTimeout(() => { if (this.speech?.id === source.runId) { this.speech = null; this.speechCausal = undefined; if (this.source === source) this.source = null; this.options.publish(); } }, 2000);
     };
     if (this.options.transaction) this.options.transaction(commit); else commit();
   }

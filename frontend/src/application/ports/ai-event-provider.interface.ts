@@ -15,6 +15,7 @@ export type AICompanionEvent =
   | { readonly type: 'social_bid_started'; readonly occurredAt: string };
 
 export interface AIEventProviderRequest {
+  readonly causalExpression?: import('./causal-life.interface').CausalExpressionProjection;
   /** Only user_touch carries appraisal; autonomous events remain text-only. */
   readonly interaction?: { readonly card: CharacterCardReference; readonly effectPolicy: 'eligible' | 'suppressed' };
   readonly requestId: string;

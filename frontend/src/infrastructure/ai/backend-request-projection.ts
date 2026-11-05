@@ -2,6 +2,7 @@ import type { AIProviderRequest } from '../../application/ports/ai-provider.inte
 import type { BackendAIRequest, BackendCharacterContext, BackendCharacterExpression } from '../../application/ports/backend-ai-contract';
 import { canExpressFlirt } from '../../domain/character/intimacy-rules';
 import { exactRecord, plainText } from '../../shared/dialogue-ipc-validation';
+import { parseBackendCausalExpression } from './backend-causal-expression';
 
 export function finiteRange(value: unknown, max: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max) throw new TypeError('Invalid backend range');
@@ -16,10 +17,11 @@ export function backendRequestId(value: unknown): string {
   return value;
 }
 
-export function parseBackendExpression(value: unknown): BackendCharacterExpression {
-  const expression = exactRecord(value, ['romanceAllowed']);
+export function parseBackendExpression(value: unknown, causalAllowed = false): BackendCharacterExpression {
+  const expression = exactRecord(value, ['romanceAllowed'], causalAllowed ? ['causal'] : []);
   return {
     romanceAllowed: boolean(expression.romanceAllowed),
+    ...(Object.hasOwn(expression, 'causal') ? { causal: parseBackendCausalExpression(expression.causal) } : {}),
   };
 }
 
@@ -46,5 +48,6 @@ export function projectBackendRequest(request: AIProviderRequest): BackendAIRequ
   messages.push({ role: 'user', content: plainText(request.userMessage.text, 240, true) });
   return { requestId: backendRequestId(request.requestId), event: { type: 'user_message' }, messages,
     stream: false, locale: request.locale === 'en' ? 'en' : 'ru',
-    character: { ...character, expression: { romanceAllowed: canExpressFlirt(character) } } };
+    character: { ...character, expression: { romanceAllowed: canExpressFlirt(character),
+      ...(request.causalExpression === undefined ? {} : { causal: parseBackendCausalExpression(request.causalExpression) }) } } };
 }

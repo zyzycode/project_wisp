@@ -5,7 +5,8 @@ import { projectBackendRequest } from './backend-request-projection';
 
 export function projectTouchRequest(request: AIEventProviderRequest): BackendTouchRequest {
   const event = exactRecord(request.event, ['type', 'variant', 'occurredAt']);
-  const base = projectBackendRequest({ requestId: request.requestId, characterSnapshot: request.characterSnapshot,
+  if (request.causalExpression !== undefined && (event.variant !== 'touch' || request.interaction?.effectPolicy !== 'suppressed')) throw new TypeError('Causal touch must suppress appraisal');
+  const base = projectBackendRequest({ ...(request.causalExpression === undefined ? {} : { causalExpression: request.causalExpression }), requestId: request.requestId, characterSnapshot: request.characterSnapshot,
     locale: request.locale, recentContext: [], userMessage: { id: '', text: 'projection', createdAt: '' } });
   return { requestId: base.requestId, stream: false, locale: base.locale, character: base.character,
     event: { type: enumValue(event.type, ['user_touch']), variant: enumValue(event.variant, ['stroke', 'touch', 'ruffle', 'poke']) } };

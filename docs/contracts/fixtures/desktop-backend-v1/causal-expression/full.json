@@ -1,0 +1,9 @@
+{
+  "intent": "give_space",
+  "emotion": "irritated",
+  "intensity": "moderate",
+  "target": "user",
+  "cause": "user_interrupted",
+  "deferredInvitation": true,
+  "ownGameInterest": "emerging"
+}

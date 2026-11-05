@@ -4,6 +4,7 @@ import re
 from typing import Annotated, Literal
 
 from pydantic import Field, StrictBool, model_validator
+from wisp_backend.api.schemas.causal_expression import CausalExpression
 from wisp_backend.errors import ErrorCode
 from wisp_backend.validation import Contract, omittable, text_type, validate_text
 
@@ -78,6 +79,7 @@ class Intimacy(Contract):
 
 class Expression(Contract):
     romanceAllowed: StrictBool
+    causal: CausalExpression = omittable()
 
 
 class CharacterContext(Contract):

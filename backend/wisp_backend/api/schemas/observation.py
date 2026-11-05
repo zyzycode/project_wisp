@@ -3,7 +3,7 @@
 import unicodedata
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BeforeValidator
+from pydantic import AfterValidator, BeforeValidator, model_validator
 from wisp_backend.api.schemas.common import CharacterContext, RequestId, false_only
 from wisp_backend.completion.replies import EventModelReply
 from wisp_backend.validation import Contract, trim_text
@@ -37,6 +37,12 @@ class ObservationRequest(Contract):
     locale: Literal["ru", "en"]
     character: CharacterContext
     observation: Observation
+
+    @model_validator(mode="after")
+    def no_causal_expression(self) -> "ObservationRequest":
+        if self.character.expression.causal is not None:
+            raise ValueError("Observation does not accept causal expression")
+        return self
 
 
 class ObservationResponse(EventModelReply):

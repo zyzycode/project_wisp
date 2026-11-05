@@ -247,6 +247,7 @@ export class BrainActivityRuntime {
   public getRuntime(): ActivityRuntimeState | null {
     return this.runtime === null ? null : { ...this.runtime };
   }
+  public getPriority(): ActivityDefinition['priority'] | null { return this.definition?.priority ?? null; }
 
   public getExplorePlan(): ExplorePlan | null {
     return this.explorePlan === null
