@@ -1,4 +1,3 @@
-import type { MusicContextCapture, MusicTurnAdmission } from '../ports/music-interest.interface';
 import type { SummaryCapture } from '../ports/summary';
 import type { LifeReflectionCapture } from '../ports/life-history.interface';
 import { recognizeChatMotion } from './chat-motion-recognition';
@@ -21,16 +20,12 @@ import { parseDialogueCommand, parseDialoguePresentation } from '../../shared/di
 import { parseProviderResponse, parseProviderStatus, fallbackReason } from './dialogue-provider-result';
 import { mapProviderResponseToBehaviorIntent } from './provider-response-intent-mapper';
 
-interface Turn { readonly musicAdmission?: MusicTurnAdmission; readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; readonly memoryGeneration: number; readonly interactionReceipt?: InteractionReceipt; readonly admissionDeadline: number; readonly replyTo?: InterestThreadRef; }
+interface Turn { readonly request: AIProviderRequest; readonly generation: number; readonly deadline: number; readonly requestedAtMs: number; readonly memoryGeneration: number; readonly interactionReceipt?: InteractionReceipt; readonly admissionDeadline: number; readonly replyTo?: InterestThreadRef; }
 
 /** One instance per Main lifecycle, including while its window is closed. */
 export class DialogueRuntime {
   private chatRun: { requestId: string; runId: string; generation: number; conversationId: string } | null = null;
   private readonly admission: DialogueAdmission;
-  private pendingMusicAdmission: MusicTurnAdmission | undefined;
-  private readonly musicCaptures = new WeakMap<Turn, MusicContextCapture>();
-  private readonly dispatchedMusic = new WeakSet<Turn>();
-  private publishedMusic: MusicContextCapture | undefined;
   private pending: object | null = null;
   private lastOffered: InterestThreadRef | undefined;
   private sourceUserText: string | null = null;
@@ -94,7 +89,6 @@ export class DialogueRuntime {
     });
   }
   public getPresentation(): DialoguePresentationDTO {
-    if (this.publishedMusic && !this.options.memory?.music?.isCurrent(this.publishedMusic)) { this.publishedMusic = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null; this.supportEligible = false; }
     if (this.publishedCausal && !this.options.causalExpression?.isCurrent(this.publishedCausal)) {
       this.publishedCausal = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null; this.supportEligible = false;
     }
@@ -132,8 +126,6 @@ export class DialogueRuntime {
     this.options.summary?.interrupt();
     if (this.executing || this.retiredAdmission) return { status: 'rejected', reason: 'busy' };
     this.options.onAcceptedUserInput?.();
-    this.pendingMusicAdmission = this.options.memory?.music?.beginTurn(this.conversationId, command.text);
-    this.publishedMusic = undefined;
     this.publishedCausal = undefined;
     this.options.quietSupport?.resumeForUserDialogue();
     const motion = recognizeChatMotion(command.text);
@@ -239,7 +231,7 @@ export class DialogueRuntime {
       if (!interactionReceipt) this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text: command.text, createdAt });
       const request: AIProviderRequest = { ...(this.options.interactionEnabled ? { interaction: { card: { id: 'curiousStubbornGirl', revision: 3 }, effectPolicy: interactionReceipt?.effectPolicy ?? 'suppressed', ...(previousTouch ? { previousTouch } : {}) } } : {}), requestId, ...(previousInitiative ? { previousInitiative } : {}), userMessage: { id: this.options.createId(), text: command.text, createdAt },
         characterSnapshot: this.options.getCharacterSnapshot(), recentContext: this.context.map(message => ({ ...message })), locale: this.options.locale ?? 'ru' };
-      const active: Turn = { ...(this.pendingMusicAdmission ? { musicAdmission: this.pendingMusicAdmission } : {}), ...(interactionReceipt ? { interactionReceipt } : {}), request, generation: this.generation, deadline, requestedAtMs, admissionDeadline: enrich ? admissionDeadline : requestedAtMs, ...(command.replyToInterestThread ? { replyTo: command.replyToInterestThread } : {}), memoryGeneration: this.options.memory?.generation() ?? 0 };
+      const active: Turn = { ...(interactionReceipt ? { interactionReceipt } : {}), request, generation: this.generation, deadline, requestedAtMs, admissionDeadline: enrich ? admissionDeadline : requestedAtMs, ...(command.replyToInterestThread ? { replyTo: command.replyToInterestThread } : {}), memoryGeneration: this.options.memory?.generation() ?? 0 };
       this.active = active; this.turn = { phase: 'thinking', requestId };
       this.timer = this.options.scheduler.setTimeout(() => this.finish(active, 'timeout'), Math.max(0, deadline - this.options.now()));
       this.options.setBehaviorContext?.({ requestId, conversationId: this.conversationId, generation: this.generation, requestedAtMs });
@@ -248,7 +240,7 @@ export class DialogueRuntime {
     });
   }
   private reset(): void {
-    this.options.memory?.music?.cancelDialogue(); this.pendingMusicAdmission = undefined; this.publishedMusic = undefined;
+
     this.publishedCausal = undefined;
     this.chatRun = null; this.options.chatMotion?.cancel('reset');
     this.options.onLifecycleReset?.();
@@ -299,7 +291,7 @@ export class DialogueRuntime {
       const status = parseProviderStatus(rawStatus);
       if (status.kind === 'offline') { this.executing = false; this.finish(turn, 'offline'); return; }
       if (status.kind !== 'ready' && status.kind !== 'degraded') { this.executing = false; this.finish(turn, 'provider_error'); return; }
-      const needsEnrichment = !!this.options.memory?.music || !!this.options.memory?.lifeReflection || !!this.options.summary || !!this.options.memory?.recall || !!((this.options.provider.supportsDialogueTopic || turn.replyTo) && this.options.memory?.interestThread);
+      const needsEnrichment = !!this.options.memory?.lifeReflection || !!this.options.summary || !!this.options.memory?.recall || !!((this.options.provider.supportsDialogueTopic || turn.replyTo) && this.options.memory?.interestThread);
       const enriched = needsEnrichment ? await this.admission.run(turn.admissionDeadline, async () => {
         let request = turn.request;
         const reflectionPending = this.options.memory?.lifeReflection?.capture(request.userMessage.text);
@@ -337,12 +329,6 @@ export class DialogueRuntime {
           this.lifeCaptures.set(turn, reflection);
           request = { ...request, lifeReflection: reflection.observation };
         }
-        if (this.options.provider.supportsMusicTopic && turn.musicAdmission && this.options.memory?.music) {
-          const music = await this.options.memory.music.prepare(turn.musicAdmission, turn.memoryGeneration, {
-            causal: !!causal, otherBundle: !!request.dialogueTopic || !!request.lifeReflection || this.captures.has(turn), deadlineMs: turn.admissionDeadline,
-          });
-          if (music && alive() && this.options.memory.music.isCurrent(music)) { this.musicCaptures.set(turn, music); request = { ...request, musicTopic: { ...music.context, ...(music.context.userPreference ? { userPreference: { ...music.context.userPreference } } : {}) } }; }
-        }
         return request;
       }) : turn.request;
       if (!this.mayContinue(turn)) return;
@@ -368,11 +354,6 @@ export class DialogueRuntime {
         if (this.options.provider.canIncludeSummary?.(request) === true) this.dispatchedLifeSummary.add(turn);
         else { const { summary: _dropped, ...baseline } = request; request = baseline; }
       }
-      const musicCapture = this.musicCaptures.get(turn);
-      if (request.musicTopic) {
-        if (musicCapture && this.options.memory?.music?.isCurrent(musicCapture) && this.options.provider.canIncludeMusicTopic?.(request) === true) this.dispatchedMusic.add(turn);
-        else { const { musicTopic: _dropped, ...baseline } = request; request = baseline; }
-      }
       const responsePromise = this.options.provider.generateResponse(request);
       this.options.transaction(() => { this.options.publish(); });
       const rawResponse = await responsePromise;
@@ -380,7 +361,6 @@ export class DialogueRuntime {
       if (!this.mayContinue(turn)) return;
       if (this.dispatchedLifeSummary.has(turn) && lifeSummary && !this.options.summary?.isCurrent(lifeSummary)) { this.discardCausal(turn); return; }
       if (this.dispatchedLife.has(turn) && lifeCapture && !this.options.memory?.lifeReflection?.isCurrent(lifeCapture)) { this.discardCausal(turn); return; }
-      if (this.dispatchedMusic.has(turn) && musicCapture && !this.options.memory?.music?.isCurrent(musicCapture)) { this.discardCausal(turn); return; }
       let response: AIProviderResponse;
       try { response = parseProviderResponse(rawResponse, turn.request.requestId); if (this.options.interactionEnabled && response.status === 'ok' && (!response.appraisal || (turn.request.interaction?.effectPolicy === 'suppressed' && (response.appraisal.category !== 'neutral' || response.appraisal.intensity !== 'low' || response.appraisal.confidence !== 'clear')))) throw new TypeError('Invalid suppressed appraisal'); if (!this.options.interactionEnabled && response.appraisal) throw new TypeError('Unexpected appraisal'); }
       catch { this.finish(turn, 'invalid_response'); return; }
@@ -403,8 +383,6 @@ export class DialogueRuntime {
     const causal = this.causalCaptures.get(active);
     if (causal && !this.options.causalExpression?.isCurrent(causal)) { this.discardCausal(active); return; }
     if (this.options.now() >= Math.min(active.deadline, causal?.deadlineMs ?? Infinity)) { reason = 'timeout'; response = undefined; }
-    const music = this.musicCaptures.get(active);
-    if (this.dispatchedMusic.has(active) && music && !this.options.memory?.music?.isCurrent(music)) { this.discardCausal(active); return; }
     const capture = this.captures.get(active);
     if (active.replyTo && !capture) {
       this.active = null; this.cancelTimer(); this.options.endThinking(active.request.requestId);
@@ -433,13 +411,12 @@ export class DialogueRuntime {
       }
       this.turn = presentation.turn;
       this.publishedCausal = causal;
-      this.publishedMusic = this.dispatchedMusic.has(active) ? this.musicCaptures.get(active) : undefined;
       this.supportEligible = reason === undefined;
-      this.sourceUserText = reason === undefined && !capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) && !this.dispatchedMusic.has(active) ? active.request.userMessage.text : null;
+      this.sourceUserText = reason === undefined && !capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) ? active.request.userMessage.text : null;
       this.lastOffered = reason === undefined ? capture?.use.ref : undefined;
       const createdAt = this.options.timestamp();
       const pair: AIProviderContextMessage[] = [{ role: 'user', text: active.request.userMessage.text, createdAt: active.request.userMessage.createdAt, sourceMessageId: active.request.userMessage.id }, { role: 'wisp', text: replyText, createdAt, sourceMessageId: assistantId }];
-      this.context = capture || this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) || this.dispatchedMusic.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
+      this.context = capture || this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
       if (reason === undefined && response && !causal) {
         const tone = response.reply.tone;
         this.options.applyStimulus({ type: 'provider_response', source: 'provider', text: replyText, requestId, createdAt,
@@ -452,12 +429,8 @@ export class DialogueRuntime {
         }
       }
       this.options.publish();
-      if (!capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) && !this.dispatchedMusic.has(active)) this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
-      const musicCapture = this.musicCaptures.get(active);
-      const musicReceipt = active.musicAdmission ? { admission: active.musicAdmission, success: reason === undefined,
-        dispatched: this.dispatchedMusic.has(active), intention: this.dispatchedMusic.has(active) && musicCapture?.context.intention === 'ask_music_detail',
-        discussionAllowed: !causal && !capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) } : undefined;
-      this.options.memory?.completed({ ...(musicReceipt ? { musicReceipt } : {}), ...(this.dispatchedMusic.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: 'music_topic' as const, ...(musicReceipt?.intention ? { musicIntention: 'ask_music_detail' as const } : {}) } } : {}), ...(this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: this.dispatchedLifeSummary.has(active) ? 'life_summary' as const : 'reflection' as const } } : {}), ...(capture ? { interestThread: capture.use } : {}), user: active.request.userMessage,
+      if (!capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active)) this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
+      this.options.memory?.completed({ ...(this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: this.dispatchedLifeSummary.has(active) ? 'life_summary' as const : 'reflection' as const } } : {}), ...(capture ? { interestThread: capture.use } : {}), user: active.request.userMessage,
         assistant: { id: assistantId, text: replyText, createdAt }, memoryConfirmable: reason === undefined, memoryGeneration: active.memoryGeneration });
     });
   }

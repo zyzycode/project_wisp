@@ -37,9 +37,9 @@ it('resolves both exact groups in parallel within one 200ms budget and neutraliz
   runtime.invalidate(); expect(character.getOwnBookInterest().band).toBe('none');
   expect(character.getState().preferences['own.activity.book']).toEqual(track); runtime.dispose();
 });
-it('migrates V5 without book backfill while preserving repair, habit and existing music preferences', () => {
+it('migrates V5 without book backfill while preserving repair, habit and existing activity preferences', () => {
   const character = new CharacterStateService(), original = character.getState();
-  original.preferences['own.music_topic.jazz'] = { value: 2, samples: 2, confidence: .25 };
+  original.preferences['activity.explore'] = { value: 2, samples: 2, confidence: .25 };
   original.preferences['own.activity.book'] = { value: 100, samples: 100, confidence: 1 };
   const projected = projectCharacterMemory({ ...original, ownBookInterestSources: refs(101), ownGameInterestSources: refs(1) }, '2026-11-06T12:00:00.000Z');
   expect(projected.snapshotVersion).toBe(6);
@@ -48,7 +48,7 @@ it('migrates V5 without book backfill while preserving repair, habit and existin
   const { ownBookInterestSources: _book, ...oldState } = projected.state;
   const legacy = restoreCharacterMemory({ ...projected, snapshotVersion: 5, state: oldState }, character.createDefaults(), 10);
   expect(legacy.ownBookInterestSources).toEqual([]); expect(legacy.preferences).not.toHaveProperty('own.activity.book');
-  expect(legacy.preferences['own.music_topic.jazz']).toEqual(original.preferences['own.music_topic.jazz']);
+  expect(legacy.preferences['activity.explore']).toEqual(original.preferences['activity.explore']);
   expect(legacy.ownGameInterestSources).toEqual(refs(1)); expect(legacy.relationshipRepair).toEqual(original.relationshipRepair);
   expect(legacy.ownHabitMemory).toEqual(original.ownHabitMemory);
   expect(() => restoreCharacterMemory({ ...projected, state: { ...projected.state, ownBookInterestSources: Array.from({ length: 21 }, (_, i) => ({ appRunId: 'app', sequence: i + 1, revision: 1 })) } }, character.createDefaults(), 10)).toThrow();

@@ -1,4 +1,3 @@
-import { parseMusicTopic } from './backend-music-interest';
 import { parseLifeReflection } from './backend-life-reflection';
 import { fitChatRequestBytes } from './backend-history-budget';
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
@@ -81,13 +80,6 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
     const lifeReflection = parseLifeReflection({ scope: 'observed_utc_window', validity: 'tentative', kind: r.kind, fromDate: r.fromDateUTC, throughDate: r.throughDateUTC, completedCount: r.completedCount, interruptedCount: r.interruptedCount, completedDays: r.completedUtcDays });
     const enabled = { ...result, lifeReflection };
     if (bytes(enabled) <= 32768) result = enabled;
-  }
-  if (request.musicTopic !== undefined) {
-    const musicTopic = parseMusicTopic(request.musicTopic);
-    if (!request.causalExpression && !result.dialogueTopic && !result.lifeReflection) {
-      const enabled = { ...result, musicTopic };
-      if (bytes(enabled) <= 32768) result = enabled;
-    }
   }
   return result;
 }

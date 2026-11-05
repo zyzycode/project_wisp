@@ -20,7 +20,7 @@ function fixture(){const dir=mkdtempSync(path.join(os.tmpdir(),'wisp-migration4-
 const tables=['messages','memory_items','memory_item_sources','memory_item_terms','memory_suppressed_pairs','memory_mutation_receipts','interest_thread','interest_thread_receipts'];
 it('rebuilds populated schema3 without losing child rows, old receipt columns or sequence high-water',()=>{const f=fixture();try{
  const before=tables.map(t=>f.db.prepare(`SELECT * FROM ${t}`).all());migrateBeverage(f.db,now);
- for(const [i,t] of tables.entries()){const rows=f.db.prepare(`SELECT * FROM ${t}`).all().map(r=>{const x={...r as Record<string,unknown>};for(const k of t==='messages'?['music_intention','music_sample_digest','music_preference_consumed']:t==='memory_items'?['beverage_value','beverage_provenance','beverage_validity','beverage_manually_corrected']:t==='memory_mutation_receipts'?['request_id','user_message_id','assistant_message_id']:[])delete x[k];return x;});expect(rows).toEqual(before[i]);}
+ for(const [i,t] of tables.entries()){const rows=f.db.prepare(`SELECT * FROM ${t}`).all().map(r=>{const x={...r as Record<string,unknown>};for(const k of t==='memory_items'?['beverage_value','beverage_provenance','beverage_validity','beverage_manually_corrected']:t==='memory_mutation_receipts'?['request_id','user_message_id','assistant_message_id']:[])delete x[k];return x;});expect(rows).toEqual(before[i]);}
  expect(f.db.pragma('foreign_keys',{simple:true})).toBe(1);expect(f.db.pragma('foreign_key_check')).toEqual([]);
  expect(f.db.prepare("SELECT seq FROM sqlite_sequence WHERE name='memory_items'").get()).toEqual({seq:90});
  expect(f.db.prepare("SELECT name FROM sqlite_master WHERE name='memory_terms_order'").get()).toEqual({name:'memory_terms_order'});

@@ -58,8 +58,7 @@ export interface ILifeReflectionRuntime {
 export interface LifeDerivedContextUse {
   readonly requestId: string;
   readonly userMessageId: string;
-  readonly origin: 'reflection' | 'life_summary' | 'music_topic';
-  readonly musicIntention?: 'ask_music_detail';
+  readonly origin: 'reflection' | 'life_summary';
 }
 
 export interface LifeSummarySource extends CausalLifeSourceReference {

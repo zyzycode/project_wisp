@@ -8,7 +8,6 @@ ContextSource = Literal[
     "server_instructions",
     "desktop_character",
     "desktop_memory",
-    "desktop_music_topic",
     "desktop_life_reflection",
     "desktop_life_summary",
     "desktop_event",
@@ -102,7 +101,7 @@ def _selection_steps(
     optional = sorted(
         (block for block in blocks if not block.required),
         key=lambda item: (
-            item.source in ("desktop_life_reflection", "desktop_life_summary", "desktop_music_topic"),
+            item.source in ("desktop_life_reflection", "desktop_life_summary"),
             -item.priority,
             -item.order,
             item.key,

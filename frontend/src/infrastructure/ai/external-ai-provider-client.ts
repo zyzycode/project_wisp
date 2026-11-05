@@ -85,8 +85,6 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     this.urls = { chat: endpoint(options.baseUrl, development, 'chat'), touch: endpoint(options.baseUrl, development, 'touch'), events: endpoint(options.baseUrl, development, 'events'), summary: endpoint(options.baseUrl, development, 'summary'), observation: endpoint(options.baseUrl, development, 'observation') };
     this.fetch = options.fetch ?? globalThis.fetch;
   }
-  public readonly supportsMusicTopic = true as const;
-  public canIncludeMusicTopic(request: AIProviderRequest): boolean { return projectInteractionChat(request).musicTopic !== undefined; }
   public canIncludeLifeReflection(request: AIProviderRequest): boolean { return projectInteractionChat(request).lifeReflection !== undefined; }
   public canIncludeSummary(request: AIProviderRequest): boolean {
     return projectInteractionChat(request).summary !== undefined;

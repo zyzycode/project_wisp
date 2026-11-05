@@ -27,19 +27,14 @@ export function dropSocialInterpretation(db: Database.Database): void {
 
 /** Remove v11 derived tables when constructing a genuine older schema. */
 export function dropLifeHistory(db: Database.Database): void {
- dropMusic(db);
+ dropAfterLifeHistory(db);
  db.exec('DROP TABLE IF EXISTS causal_history_index; DROP TABLE IF EXISTS causal_history_build; DROP TABLE IF EXISTS life_derived_turns; DELETE FROM schema_migrations WHERE version=11;');
 }
 
-/** Remove v12 before constructing a genuine older schema. */
-export function dropMusic(db: Database.Database): void {
+/** Remove post-v11 feature metadata before constructing an older schema fixture. */
+export function dropAfterLifeHistory(db: Database.Database): void {
  restoreLegacyPreferenceColumns(db);
- db.exec('DELETE FROM schema_migrations WHERE version>=13;');
- db.exec('DROP TRIGGER IF EXISTS music_source_deleted; DROP TRIGGER IF EXISTS music_source_corrected; DROP TABLE IF EXISTS music_samples; DROP TABLE IF EXISTS music_user_preferences; DROP TABLE IF EXISTS music_clock; DELETE FROM schema_migrations WHERE version=12;');
- const columns = db.prepare('PRAGMA table_info(messages)').all();
- for (const name of ['music_intention','music_sample_digest','music_preference_consumed']) {
-  if (columns.some(row => typeof row === 'object' && row !== null && 'name' in row && row.name === name)) db.exec(`ALTER TABLE messages DROP COLUMN ${name}`);
- }
+ db.exec('DELETE FROM schema_migrations WHERE version>=12;');
 }
 
 /** Restore the historical parent shape before downgrading a test database to v4–v13. */

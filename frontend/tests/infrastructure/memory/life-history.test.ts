@@ -1,4 +1,4 @@
-import { dropMusic } from './schema-fixture';
+import { dropAfterLifeHistory } from './schema-fixture';
 import { CausalLifeStore } from '../../../src/infrastructure/memory/causal-life-store';
 import { lifeWindow } from '../../../src/infrastructure/memory/life-history-validation';
 import { afterEach, expect, it } from 'vitest';
@@ -48,7 +48,7 @@ it('uses actual UTF-8 bytes for whole-window omission even with only1000 canonic
 });
 it('rolls schema11 DDL and journal back atomically on migration failure', () => {
   const { store, file } = fixture(); run(store, 'appendCausalLife', game(1)); store.close();
-  const db = new Database(file); dropMusic(db); db.exec("DROP TABLE causal_history_index; DROP TABLE causal_history_build; DROP TABLE life_derived_turns; DELETE FROM schema_migrations WHERE version=11; PRAGMA user_version=10; CREATE TRIGGER reject_v11 BEFORE INSERT ON schema_migrations WHEN NEW.version=11 BEGIN SELECT RAISE(ABORT,'test'); END;"); db.close();
+  const db = new Database(file); dropAfterLifeHistory(db); db.exec("DROP TABLE causal_history_index; DROP TABLE causal_history_build; DROP TABLE life_derived_turns; DELETE FROM schema_migrations WHERE version=11; PRAGMA user_version=10; CREATE TRIGGER reject_v11 BEFORE INSERT ON schema_migrations WHEN NEW.version=11 BEGIN SELECT RAISE(ABORT,'test'); END;"); db.close();
   expect(() => SqliteMemoryStore.open(file, now)).toThrow();
   const check = new Database(file); expect(check.pragma('user_version', { simple: true })).toBe(10);
   expect(check.prepare("SELECT name FROM sqlite_master WHERE name IN ('causal_history_index','life_derived_turns')").all()).toEqual([]);

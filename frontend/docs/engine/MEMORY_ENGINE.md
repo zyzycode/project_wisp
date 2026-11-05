@@ -148,7 +148,7 @@ Reset удаляет логическую локальную память, не 
 
 Registry конечный: пять provider scalar keys и два локальных ключа (§9.1 Character), один текущий value на key. `display_name`/`preferred_address` до 80 UTF-16 units, `favorite_topic` до 120; reply_style — `brief`/`detailed`, cursor_game/explore/social_bid — `like`/`dislike`. Извлечение не создаёт диагнозы, политические взгляды, credentials, обещания/напоминания или произвольные ключи. Такие сообщения могут остаться в истории по §2, но не превращаются в структурированные знания автоматически.
 
-Пять provider keys остаются текущей wire projection. Local-only `user.explore`/`user.social_bid` — [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений), без расширения wire allowlist; local facts исключаются до cap пяти facts, распознанные пары — из recall. Музыкальные subjects/evidence имеют отдельный bounded storage [Autonomy §19](AUTONOMY_ENGINE.md#19-memory-a04-собственный-интерес-к-музыкальным-темам-178), не этот registry. События/шутки — §10.
+Пять provider keys остаются текущей wire projection. Local-only `user.explore`/`user.social_bid` — [Character §9.1](CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений), без расширения wire allowlist; local facts исключаются до cap пяти facts, распознанные пары — из recall. События/шутки — §10.
 
 ### Source validation и registry
 

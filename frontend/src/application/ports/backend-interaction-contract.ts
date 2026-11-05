@@ -47,7 +47,6 @@ export interface BackendInteractionTouchResponse {
 
 export type BackendInteractionChatRequest = BackendSummaryChatRequest &
   BackendInteractionPolicy & {
-    readonly musicTopic?: import('./backend-music-interest-contract').BackendMusicTopicContext;
     readonly lifeReflection?: import('./backend-life-history-contract').BackendLifeReflection;
     readonly previousTouch?: BackendPreviousTouchReaction;
     readonly dialogueTopic?: BackendDialogueTopic;

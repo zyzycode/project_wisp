@@ -1,5 +1,3 @@
-import { MusicInterestStore } from './music-store';
-import { musicSample, musicPreference } from './music-validation';
 import { LifeDerivedTurnStore } from './life-derived-turn-store';
 import { LifeHistoryStore } from './life-history-store';
 import { DeferredInvitationStore } from './deferred-invitation-store';
@@ -93,9 +91,6 @@ export class SqliteMemoryStore {
       case 'summaryExact': return readSummarySources(this.db, summarySources(c.payload));
       case 'mutateMemoryItem': return new MemoryItemStore(this.db).mutate(c.payload);
       case 'listMemoryItems': return new MemoryItemStore(this.db).list(c.payload);
-      case 'readMusicInterest': return new MusicInterestStore(this.db).read(v.timestamp(c.payload));
-      case 'appendMusicSample': { const p = v.record(c.payload,['sample','now']); return new MusicInterestStore(this.db).append(musicSample(p.sample),v.timestamp(p.now)); }
-      case 'replaceMusicPreference': { const p = v.record(c.payload,['preference','now']); return new MusicInterestStore(this.db).preference(musicPreference(p.preference),v.timestamp(p.now)); }
       case 'appendTurn': return this.appendTurn(c.payload);
       case 'getRecent': return this.db.prepare(`SELECT ${messageColumns} FROM (SELECT * FROM messages WHERE NOT EXISTS (SELECT 1 FROM memory_suppressed_pairs s WHERE s.user_message_id = messages.id OR s.assistant_message_id = messages.id) ORDER BY sequence DESC LIMIT ?) ORDER BY sequence`).all(v.integer(c.payload, 1, 100)).map(v.message);
       case 'closeSession': {
@@ -122,7 +117,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 6, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { new MusicInterestStore(this.db).clear(); new MotivationStore(this.db).clear(); new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new LifeHistoryStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM life_derived_turns; DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { new MotivationStore(this.db).clear(); new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new LifeHistoryStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM life_derived_turns; DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }
@@ -159,7 +154,6 @@ export class SqliteMemoryStore {
       for (const m of [t.user, t.assistant]) insert.run(m.id, m.conversationSessionId, m.role, m.content, m.createdAt, t.memoryConfirmable === true ? 1 : 0);
       topics.commitTurn(t);
       derived.commit(t);
-      if (t.lifeDerivedUse?.origin === 'music_topic' && t.lifeDerivedUse.musicIntention === 'ask_music_detail') this.db.prepare('UPDATE messages SET music_intention=1 WHERE id=?').run(t.user.id);
     }).immediate();
   }
   private upsertFact(payload: unknown): unknown {

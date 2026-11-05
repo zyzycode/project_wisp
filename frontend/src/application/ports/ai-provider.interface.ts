@@ -49,7 +49,6 @@ export type AIPreviousInitiative = AIOrdinaryPreviousInitiative
       readonly outcome: 'waiting' | 'assisting' | import('./window-help.interface').WindowHelpOutcome };
 
 export interface AIProviderRequest {
-  readonly musicTopic?: import('./backend-music-interest-contract').BackendMusicTopicContext;
   readonly lifeReflection?: import('./life-history.interface').CrossDayGameObservation;
   /** Already decided local meaning; no local source/ownership metadata is projected. */
   readonly causalExpression?: import('./causal-life.interface').CausalExpressionProjection;
@@ -135,8 +134,6 @@ export interface AIProviderResponse {
 }
 
 export interface IAIProvider {
-  readonly supportsMusicTopic?: true;
-  canIncludeMusicTopic?(request: AIProviderRequest): boolean;
   canIncludeLifeReflection?(request: AIProviderRequest): boolean;
   /** Absent means unsupported. Check capability and ready status before reserving a topic. */
   readonly supportsDialogueTopic?: true;

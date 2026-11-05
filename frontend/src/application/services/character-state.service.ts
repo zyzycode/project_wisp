@@ -1,6 +1,5 @@
 import { createBookExposure, observeBookExposure, recoverBookExposure } from '../../domain/character/book-exposure';
 import { learnOwnBookInterest, reflectOwnBookInterest, OWN_BOOK_INTEREST_KEY, type OwnBookEpisode, type OwnBookReflection } from '../../domain/character/own-book-interest';
-import { MUSIC_TOPICS, musicInterestTrack, type MusicTopic } from '../../domain/character/music-interest';
 import { cloneCharacterState, createDefaultCharacterState } from './character-state-factory';
 import { createHabitState, interruptHabit, startHabitRun, recordHabitPose, finishHabitRun, habitMultiplier, type HabitState } from '../../domain/character/own-habit';
 import { restoreRepairClock, advanceRepairClock, acknowledgeRepairInterruption, canRepair, matchesRepairProof, repairSource, type RepairClock, type RepairEpisode } from '../../domain/character/relationship-repair';
@@ -80,20 +79,6 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   public resetToDefaults(): void { this.state = createDefaultCharacterState(this.now); this.resetTransientLearning(); }
   public createDefaults(): CharacterState { return createDefaultCharacterState(this.now); }
 
-  public clearMusicInterests(): void {
-    const preferences = { ...this.state.preferences };
-    for (const topic of MUSIC_TOPICS) delete preferences[`own.music_topic.${topic}`];
-    this.state = { ...this.state, preferences };
-  }
-  public setMusicEvidence(samples: readonly { readonly topic: MusicTopic }[]): void {
-    const preferences = { ...this.state.preferences };
-    for (const topic of MUSIC_TOPICS) {
-      const count = samples.filter(s => s.topic === topic).length;
-      if (count) preferences[`own.music_topic.${topic}`] = musicInterestTrack(count);
-      else delete preferences[`own.music_topic.${topic}`];
-    }
-    this.state = { ...this.state, preferences };
-  }
   public getState(): CharacterState {
     return cloneCharacterState(this.state);
   }
