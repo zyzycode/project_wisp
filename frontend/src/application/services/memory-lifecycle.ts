@@ -10,8 +10,10 @@ import type { MemoryStatusDTO } from '../../shared/ipc-contracts';
 import { CharacterStateService } from './character-state.service';
 import { projectCharacterMemory, restoreCharacterMemory } from './character-memory-snapshot';
 import { MemoryHistory } from './memory-history';
+import { OwnGameInterestRuntime } from './own-game-interest-runtime';
 
 interface Options {
+  readonly causalCommitObserver?: import('../ports/causal-life.interface').ICausalLifeCommitObserver;
   readonly causalObserver?: (episode: import('../ports/causal-life.interface').CausalLifeEpisode, atMs: number) => void;
   readonly summary?: Pick<import('../ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>;
   readonly storage: MemoryRepositories;
@@ -34,6 +36,7 @@ interface Options {
 }
 export class MemoryLifecycle implements IUserMemoryFactsReader {
   readonly history: MemoryHistory;
+  readonly ownGameInterest: OwnGameInterestRuntime;
   private readonly knowledge: MemoryKnowledge;
   private generation = 0;
   private phase: 'initializing' | 'running' | 'mutating' | 'resetting' | 'stopping' = 'initializing';
@@ -46,7 +49,8 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   private shutdownPromise: Promise<void> | undefined;
   constructor(private readonly options: Options) {
     this.knowledge = new MemoryKnowledge({ invalidateSummary: () => options.summary?.invalidate(), facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
-    this.history = new MemoryHistory({ causalObserver: options.causalObserver, generation: () => this.generation, ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => { if (turn.beverageCorrection) options.summary?.invalidate(); return this.knowledge.persisted(turn, context); }, ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
+    this.ownGameInterest = new OwnGameInterestRuntime({ repository: options.storage.causalLife, character: options.character, context: () => this.context(), scheduler: options.scheduler });
+    this.history = new MemoryHistory({ causalCommitObserver: { committed: (episode, context, atMs) => { this.ownGameInterest.committed(episode, context, atMs); options.causalCommitObserver?.committed(episode, context, atMs); } }, causalObserver: options.causalObserver, generation: () => this.generation, ...(options.gameObserver ? { gameObserver: options.gameObserver } : {}), onPersisted: (turn, context) => { if (turn.beverageCorrection) options.summary?.invalidate(); return this.knowledge.persisted(turn, context); }, ...options.storage, context: () => this.context(), isCurrent: generation => this.storageReady && this.status.mode !== 'volatile' && this.generation === generation, createId: options.createId, toTimestamp: options.toTimestamp, onFailure: code => this.failure(code) });
   }
   currentGeneration(): number { return this.generation; }
   getStatus(): MemoryStatusDTO { return { ...this.status }; }
@@ -93,6 +97,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     }
     if (this.phase !== 'initializing') return;
     this.start();
+    void this.ownGameInterest.revalidate();
   }
   private async maintainStartupTopic(): Promise<void> {
     const repository = this.options.storage.interestThread;
@@ -113,7 +118,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   /** Returns synchronously: first human input abandons restore, never waits on storage. */
   admitInput(): boolean {
     if (this.phase === 'initializing') {
-      this.storageReady = false; this.status = { mode: 'volatile', reason: 'unavailable' };
+      this.storageReady = false; this.ownGameInterest.invalidate(); this.status = { mode: 'volatile', reason: 'unavailable' };
       void this.options.storage.abort(); this.start();
     }
     return this.phase === 'running' || this.phase === 'mutating';
@@ -124,11 +129,11 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.phase = 'running'; this.options.start(); this.scheduleCheckpoint();
   }
   private startupFailure(code: MemoryFailureCode): void {
-    this.storageReady = false; this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' || code === 'stale' ? 'io_error' : code }; void this.options.storage.abort();
+    this.storageReady = false; this.ownGameInterest.invalidate(); this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' || code === 'stale' ? 'io_error' : code }; void this.options.storage.abort();
   }
   failure(code: MemoryFailureCode): void {
     if (code === 'stale' || code === 'busy') return;
-    this.storageReady = false;
+    this.storageReady = false; this.ownGameInterest.invalidate();
     this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' ? 'io_error' : code };
     void this.options.storage.abort();
   }
@@ -214,19 +219,21 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   private async mutateMemory<T>(operation: (context: MemoryOperationContext) => Promise<MemoryResult<T>>, admissionToken?: object): Promise<MemoryResult<T>> {
     if (!this.context() || this.phase !== 'running') return { ok: false, code: 'unavailable' };
-    this.phase = 'mutating'; this.generation++; this.stopTimer();
+    this.phase = 'mutating'; this.generation++; this.stopTimer(); this.ownGameInterest.invalidate();
     const generation = this.generation;
     // Drop volatile projections even on rollback; local Character, motion and input keep running.
     this.options.summary?.invalidate(); this.options.invalidateMemory?.(admissionToken);
     const result = await this.safe(() => operation({ generation }));
     if (this.phase !== 'mutating' || this.generation !== generation) return { ok: false, code: 'stale' };
     if (!result.ok && result.code !== 'conflict' && result.code !== 'invalid_data') this.failure(result.code);
-    this.phase = 'running'; this.scheduleCheckpoint(); return result;
+    this.phase = 'running'; await this.ownGameInterest.revalidate();
+    if (this.phase !== 'running' || this.generation !== generation) return { ok: false, code: 'stale' };
+    this.scheduleCheckpoint(); return result;
   }
   async reset(): Promise<MemoryResult<void>> {
     if (this.phase !== 'running' || !this.storageReady) return { ok: false, code: 'unavailable' };
     this.options.summary?.invalidate();
-    this.phase = 'resetting'; this.generation++; this.stopTimer(); this.options.pause();
+    this.phase = 'resetting'; this.generation++; this.stopTimer(); this.options.pause(); this.ownGameInterest.invalidate();
     const generation = this.generation;
     const summaryReset = this.options.summary ? await this.options.summary.reset() : undefined;
     if (this.phase !== 'resetting' || this.generation !== generation) return { ok: false, code: 'stale' };
@@ -247,7 +254,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.options.scheduler.clearTimeout(this.startupTimer); this.stopTimer();
     const capture = this.options.shutdownCapture?.() ?? Promise.resolve();
     const c = this.context(); const sessionClose = c ? this.history.close(this.options.timestamp()) : Promise.resolve();
-    this.phase = 'stopping'; this.options.summary?.dispose(); this.options.pause(); this.history.causal.dispose();
+    this.phase = 'stopping'; this.ownGameInterest.dispose(); this.options.summary?.dispose(); this.options.pause(); this.history.causal.dispose();
     let grace: unknown;
     const deadline = new Promise<void>(resolve => { grace = this.options.scheduler.setTimeout(() => { void this.options.storage.abort().then(resolve); }, 7000); });
     const drain = async () => {

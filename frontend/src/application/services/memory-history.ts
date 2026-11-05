@@ -8,6 +8,7 @@ import { boundMemoryContext } from './memory-context';
 export interface MemoryHistoryOptions {
   readonly causalLife?: import('../ports/causal-life.interface').ICausalLifeRepository;
   readonly generation?: () => number;
+  readonly causalCommitObserver?: import('../ports/causal-life.interface').ICausalLifeCommitObserver;
   readonly causalObserver?: (episode: import('../ports/causal-life.interface').CausalLifeEpisode, atMs: number) => void;
   readonly history: IChatHistoryRepository;
   readonly episodes: IGameEpisodeRepository;
@@ -29,7 +30,7 @@ export class MemoryHistory {
     this.appRunId = options.createId();
     this.causal = new CausalLifeRecorder({ repository: options.causalLife, appRunId: () => this.appRunId,
       context: options.context, generation: options.generation ?? (() => options.context()?.generation ?? 0),
-      toTimestamp: options.toTimestamp, onFailure: options.onFailure, onObserved: options.causalObserver });
+      toTimestamp: options.toTimestamp, onFailure: options.onFailure, onObserved: options.causalObserver, commitObserver: options.causalCommitObserver });
   }
   async hydrate(): Promise<readonly AIProviderContextMessage[]> {
     const c = this.options.context(); if (!c) return [];

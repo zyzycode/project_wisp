@@ -1,4 +1,4 @@
-import type { CausalLifeEpisode, ICausalLifeRepository } from '../ports/causal-life.interface';
+import type { CausalLifeEpisode, ICausalLifeCommitObserver, ICausalLifeRepository } from '../ports/causal-life.interface';
 import type { ActivityOutcomeFeedback } from '../ports/shimeji-feedback-port';
 import type { MemoryFailureCode, MemoryOperationContext } from '../ports/memory-repository.interface';
 
@@ -9,6 +9,7 @@ interface Options {
   readonly generation: () => number;
   readonly toTimestamp: (atMs: number) => string;
   readonly onFailure: (code: MemoryFailureCode) => void;
+  readonly commitObserver?: ICausalLifeCommitObserver;
   readonly onObserved?: (episode: CausalLifeEpisode, atMs: number) => void;
 }
 /** Trusted observed facts remain usable offline; storage acknowledgement is a separate boundary. */
@@ -64,7 +65,9 @@ export class CausalLifeRecorder {
     const context = this.options.context(), repository = this.options.repository;
     if (!context || !repository) return;
     // Worker queue and generation barrier own backpressure; never await storage on input/tick.
+    const appRunId = this.options.appRunId();
     void repository.append(episode, context).then(result => {
+      if (!this.disposed && this.options.appRunId() === appRunId && this.options.context()?.generation === context.generation && result.ok) this.options.commitObserver?.committed(episode, context, atMs);
       if (this.options.context()?.generation === context.generation && !result.ok) this.options.onFailure(result.code);
     }).catch(() => { if (this.options.context()?.generation === context.generation) this.options.onFailure('unavailable'); });
   }

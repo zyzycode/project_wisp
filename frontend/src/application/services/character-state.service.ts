@@ -4,6 +4,8 @@ import type { ICharacterPreferenceLearning, VerifiedPreferenceEvidence } from '.
 import { createAdaptationGate, type AdaptationGate } from '../../domain/character/adaptation-gate';
 import { learnVerifiedPreference } from '../../domain/character/preferences';
 import { appraiseCausalEvent, createCausalAffectState, decayCausalAffect, type CausalEmotion, type CausalObservedEvent } from '../../domain/character/causal-affect';
+import { createOwnInterestGate, learnOwnGameInterest, reflectOwnGameInterest, OWN_GAME_INTEREST_KEY, type OwnInterestGate, type OwnGameEpisode, type OwnGameReflection } from '../../domain/character/own-game-interest';
+import type { CausalSourceReference } from '../../domain/character/types';
 import { createActivityExposure, observeActivityExposure, recoverActivityExposure } from '../../domain/character/activity-exposure';
 import { causalRelationshipDeltas, createRelationship, shiftRelationshipFacets } from '../../domain/character/relationship-facets';
 import {
@@ -104,11 +106,14 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   private readonly observedSources = new Set<string>();
   private causalAffect = createCausalAffectState();
   private activityExposure = createActivityExposure();
+  private ownInterestGate: OwnInterestGate;
+  private ownInterestProof: readonly CausalSourceReference[] | null = null;
 
   constructor(options: CharacterStateServiceOptions = {}) {
     this.now = options.now ?? Date.now;
     this.monotonicNow = options.monotonicNow ?? (() => performance.now());
     this.nextAppraisalAt = this.monotonicNow() + 30000;
+    this.ownInterestGate = createOwnInterestGate(this.monotonicNow());
     this.axesGate = createAdaptationGate(this.monotonicNow());
     this.preferenceGate = createAdaptationGate(this.monotonicNow());
     this.state =
@@ -142,6 +147,22 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   }
   public getCausalEmotion(): CausalEmotion | null {
     return this.causalAffect.emotion ? { ...this.causalAffect.emotion } : null;
+  }
+  public observeCommittedOwnGame(episode: OwnGameEpisode, atMs: number): boolean {
+    const learned = learnOwnGameInterest(this.state.preferences[OWN_GAME_INTEREST_KEY], this.state.ownGameInterestSources, this.ownInterestGate, episode, atMs);
+    this.ownInterestGate = learned.gate;
+    if (!learned.accepted) return false;
+    this.state = { ...this.state, preferences: { ...this.state.preferences, [OWN_GAME_INTEREST_KEY]: learned.track }, ownGameInterestSources: learned.sources };
+    this.invalidateOwnGameInterestProof(); return true;
+  }
+  public invalidateOwnGameInterestProof(): void { this.ownInterestProof = null; }
+  public setOwnGameInterestProof(sources: readonly CausalSourceReference[]): void {
+    const valid = this.state.ownGameInterestSources.filter(ref => sources.some(source => source.appRunId === ref.appRunId && source.sequence === ref.sequence && source.revision === ref.revision));
+    this.state = { ...this.state, ownGameInterestSources: valid.map(ref => ({ ...ref })) };
+    this.ownInterestProof = valid;
+  }
+  public getOwnGameInterest(): OwnGameReflection {
+    return reflectOwnGameInterest(this.state.preferences[OWN_GAME_INTEREST_KEY], this.ownInterestProof ?? []);
   }
   public getCursorGameSatiation(): number { return this.activityExposure.satiation; }
   public beginTouch(sequence: number, causalBound = false): TouchInteractionReceipt {
@@ -209,6 +230,7 @@ export class CharacterStateService implements ICharacterPreferenceLearning {
   private resetTransientLearning(): void {
     this.causalAffect = createCausalAffectState();
     this.activityExposure = createActivityExposure();
+    this.ownInterestGate = createOwnInterestGate(this.monotonicNow()); this.ownInterestProof = null;
     this.interactionGeneration++; this.baseSequence = 0; this.appraisalSequence = 0; this.nextBaseAt = this.monotonicNow(); this.nextAppraisalAt = this.monotonicNow() + 30000;
     this.activityEffects.clear(); this.observedSources.clear();
     this.axesGate = createAdaptationGate(this.monotonicNow()); this.preferenceGate = createAdaptationGate(this.monotonicNow());

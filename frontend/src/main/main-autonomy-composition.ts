@@ -541,6 +541,7 @@ export class MainAutonomyComposition {
       gameCandidateEligible,
       learnedGamePreference: snapshot.learnedCursorGamePreference,
       cursorGameSatiation: snapshot.cursorGameSatiation,
+      ownGameInterestMultiplier: snapshot.ownGameInterestMultiplier,
       causalEmotion: snapshot.causalEmotion,
       noticeRandomUnit: this.options.prng.next(),
     });

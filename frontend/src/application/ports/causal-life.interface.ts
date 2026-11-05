@@ -87,8 +87,13 @@ export interface DeferredGameInvitation {
 export interface IDeferredGameInvitationRepository {
   /** Atomically create at most one pending invitation from a committed completed source. */
   create(invitation: DeferredGameInvitation, context: MemoryOperationContext): Promise<MemoryResult<void>>;
-  read(context: MemoryOperationContext): Promise<MemoryResult<DeferredGameInvitation | null>>;
+  read(now: string, context: MemoryOperationContext): Promise<MemoryResult<DeferredGameInvitation | null>>;
   /** Compare-and-set plus current source validation; only an acknowledged claim permits admission. */
   claim(id: string, now: string, context: MemoryOperationContext): Promise<MemoryResult<boolean>>;
   finish(id: string, state: 'completed' | 'cancelled' | 'expired' | 'abandoned', context: MemoryOperationContext): Promise<MemoryResult<void>>;
+}
+
+/** Successful append of a fresh observed event; reads/restores never invoke this observer. */
+export interface ICausalLifeCommitObserver {
+  committed(episode: CausalLifeEpisode, context: MemoryOperationContext, atMs: number): void;
 }

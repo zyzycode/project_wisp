@@ -23,6 +23,7 @@ export interface CharacterAutonomySnapshot {
   readonly learnedExplorePreference?: LearnedPreference;
   readonly learnedSocialBidPreference?: LearnedPreference;
   readonly cursorGameSatiation?: number;
+  readonly ownGameInterestMultiplier?: number;
   readonly causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null;
   readonly localTraits?: { readonly openness: number; readonly playfulness: number; readonly independence: number; readonly extraversion: number };
   readonly synthesizedTone: SynthesizedEmotionalTone;
@@ -31,9 +32,9 @@ export interface CharacterAutonomySnapshot {
 
 /** Internal local projection; provider and IPC snapshots do not gain preference keys. */
 export function createCharacterAutonomySnapshot(state: CharacterState, cursorGameSatiation = 0,
-  causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null): CharacterAutonomySnapshot {
+  causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null, ownGameInterestMultiplier = 1): CharacterAutonomySnapshot {
   const axes = state.personality.axes;
-  return { ...createCharacterSnapshot(state), cursorGameSatiation, causalEmotion,
+  return { ...createCharacterSnapshot(state), cursorGameSatiation, causalEmotion, ownGameInterestMultiplier,
     learnedCursorGamePreference: validatedCursorGamePreference(state.preferences['activity.cursor_game']),
     learnedExplorePreference: validatedLocalPreference(state.preferences['activity.explore']),
     learnedSocialBidPreference: validatedLocalPreference(state.preferences['activity.social_bid']),

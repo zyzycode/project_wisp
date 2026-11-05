@@ -1,3 +1,4 @@
+import { effectiveOwnGameMultiplier } from '../character/own-game-interest';
 import type { SynthesizedEmotionalTone } from '../character';
 import type { Needs } from '../character/needs';
 import type { ActivityDefinition, AnimationIntentTemplate } from './activity-runner';
@@ -31,6 +32,7 @@ export interface CursorObserveInput {
   readonly gameCandidateEligible?: boolean;
   readonly learnedGamePreference?: { readonly value: number; readonly confidence: number };
   readonly cursorGameSatiation?: number;
+  readonly ownGameInterestMultiplier?: number;
   readonly causalEmotion?: Pick<CausalEmotion, 'kind' | 'intensity'> | null;
 }
 
@@ -121,7 +123,9 @@ export function resolveCursorObserve(
   const preferredChance = preference
     ? clampUnit(baseChance + 0.20 * (preference.value / 100) * preference.confidence)
     : baseChance;
-  const noticeChance = preferredChance * (input.gameCandidateEligible === true
+  const ownChance = input.gameCandidateEligible === true
+    ? clampUnit(preferredChance * effectiveOwnGameMultiplier(preference, input.ownGameInterestMultiplier)) : preferredChance;
+  const noticeChance = ownChance * (input.gameCandidateEligible === true
     ? cursorGameSatiationMultiplier(input.cursorGameSatiation) * causalEmotionMultiplier(input.causalEmotion) : 1);
   return {
     noticed: input.noticeRandomUnit < noticeChance,
