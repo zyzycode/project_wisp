@@ -1,4 +1,6 @@
 import { CausalLifeStore } from './causal-life-store';
+import { CausalRecallStore } from './causal-recall-store';
+import { MemoryItemRecallStore } from './item-recall-store';
 import { RoutineStore } from './routine-store';
 import { BeverageStore } from './beverage-store';
 import { InterestThreadStore } from './interest-thread-store';
@@ -42,7 +44,11 @@ export class SqliteMemoryStore {
         // The barrier survives rollback: old callbacks never regain write access.
         this.generation = c.generation;
       } else if (c.generation !== this.generation) return { ok: false, code: 'stale' };
-      return { ok: true, value: this.dispatch(c) };
+      const value = this.dispatch(c);
+      // A bounded maintenance batch between requests never creates a background queue.
+      new CausalRecallStore(this.db).maintain();
+      new MemoryItemRecallStore(this.db).maintain();
+      return { ok: true, value };
     } catch (error) {
       const result = failure(error);
       if (!result.ok && ['unavailable', 'storage_full', 'corrupt', 'io_error', 'unsupported_version'].includes(result.code)) this.unavailable = true;
@@ -53,6 +59,8 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'findCausalLife': return new CausalRecallStore(this.db).find(c.payload);
+      case 'findMemoryItems': return new MemoryItemRecallStore(this.db).find(c.payload);
       case 'appendCausalLife': return new CausalLifeStore(this.db).append(c.payload);
       case 'recentCausalLife': return new CausalLifeStore(this.db).recent(c.payload);
       case 'resolveCausalLife': return new CausalLifeStore(this.db).resolve(c.payload);
@@ -95,7 +103,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 3, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { new RoutineStore(this.db).clear(); this.db.exec('DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }

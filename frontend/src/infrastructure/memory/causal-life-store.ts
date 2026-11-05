@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { causalEpisode, causalSources } from './causal-life-validation';
+import { CausalRecallStore } from './causal-recall-store';
 import { integer, MemoryDataError, record, text } from './validation-primitives';
 
 export const CAUSAL_LIFE_SCHEMA = `
@@ -17,7 +18,8 @@ export class CausalLifeStore {
         if (JSON.stringify(row(existing)) !== payload) throw new MemoryDataError('conflict');
         return;
       }
-      this.db.prepare('INSERT INTO causal_life_episodes VALUES (?, ?, ?, ?)').run(episode.appRunId, episode.sequence, episode.activityRunId, payload);
+      const result = this.db.prepare('INSERT INTO causal_life_episodes VALUES (?, ?, ?, ?)').run(episode.appRunId, episode.sequence, episode.activityRunId, payload);
+      new CausalRecallStore(this.db).index(episode, Number(result.lastInsertRowid));
     }).immediate();
   }
   recent(value: unknown) {

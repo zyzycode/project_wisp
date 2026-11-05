@@ -1,0 +1,375 @@
+[
+  {
+    "name": "activity:None",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": null,
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "outcome:unknown",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "unknown",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "cause:other",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "other",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "actor:provider",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "provider",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "participation:None",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": null,
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "executedMs:1",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": "1",
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "executedMs:True",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": true,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "executedMs:-1",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": -1,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "executedMs:600001",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 600001,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "occurredAt:2026-02-30T00:00:00.000Z",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-02-30T00:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "occurredAt:2026-11-01T10:00:00Z",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "extra:forbidden",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z",
+          "extra": "forbidden"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "localId:private",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z",
+          "localId": "private"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "cause:contact",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "contact",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "outcome:not_applicable",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "not_applicable",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "contact coherent",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "contact",
+          "outcome": "not_applicable",
+          "cause": "contact",
+          "actor": "user",
+          "participation": "none",
+          "executedMs": 1,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "actor not authority",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "cancelled",
+          "cause": "user_interrupted",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "duplicate causal",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        },
+        {
+          "kind": "causal_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  },
+  {
+    "name": "card category forbidden",
+    "memory": {
+      "facts": [],
+      "episodes": [
+        {
+          "kind": "important_event",
+          "activity": "cursor_game",
+          "outcome": "completed",
+          "cause": "completed",
+          "actor": "autonomy",
+          "participation": "user_engaged",
+          "executedMs": 1500,
+          "occurredAt": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "characterPreferences": []
+    }
+  }
+]

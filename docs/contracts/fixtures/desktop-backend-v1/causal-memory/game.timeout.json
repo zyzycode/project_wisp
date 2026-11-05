@@ -1,0 +1,16 @@
+{
+  "facts": [],
+  "episodes": [
+    {
+      "kind": "causal_event",
+      "activity": "cursor_game",
+      "outcome": "failed",
+      "cause": "timeout",
+      "actor": "system",
+      "participation": "user_engaged",
+      "executedMs": 1500,
+      "occurredAt": "2026-11-01T10:00:00.000Z"
+    }
+  ],
+  "characterPreferences": []
+}

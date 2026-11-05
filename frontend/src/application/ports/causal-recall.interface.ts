@@ -21,6 +21,8 @@ export interface CausalRecallPage {
   /** Newest insertion first, at most16; sources revalidated before projection. */
   readonly candidates: readonly CausalRecallCandidate[];
   readonly coverage: 'complete' | 'index_building';
+  readonly examined: number;
+  readonly fetched: number;
 }
 
 export interface ICausalLifeRecallReader {

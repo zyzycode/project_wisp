@@ -1,27 +1,12 @@
 """Selected-memory fields of the unified chat and event contract."""
 
-import re
-from calendar import monthrange
 from typing import Annotated, Literal
 
-from pydantic import BeforeValidator, Field, model_validator
+from pydantic import Field, model_validator
+from wisp_backend.api.schemas.causal_memory import CausalMemoryEpisode
+from wisp_backend.api.schemas.memory_timestamp import Timestamp
 from wisp_backend.completion.replies import MemoryFact
 from wisp_backend.validation import Contract, text_type
-
-
-def calendar_utc(value: object) -> str:
-    if not isinstance(value, str) or not re.fullmatch(
-        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", value, flags=re.ASCII
-    ):
-        raise ValueError("Expected UTC timestamp with milliseconds")
-    year, month, day = map(int, value[:10].split("-"))
-    hour, minute, second = map(int, value[11:19].split(":"))
-    if not (1 <= month <= 12 and 1 <= day <= monthrange(year, month)[1] and hour < 24 and minute < 60 and second < 60):
-        raise ValueError("Invalid calendar timestamp")
-    return value
-
-
-Timestamp = Annotated[str, BeforeValidator(calendar_utc)]
 
 
 class DialogueEpisode(Contract):
@@ -56,7 +41,9 @@ def memory_text_units(value: object) -> int:
 
 class MemoryContext(Contract):
     facts: list[MemoryFact] = Field(max_length=5)
-    episodes: list[Annotated[DialogueEpisode | CursorGameEpisode, Field(discriminator="kind")]] = Field(max_length=2)
+    episodes: list[
+        Annotated[DialogueEpisode | CursorGameEpisode | CausalMemoryEpisode, Field(discriminator="kind")]
+    ] = Field(max_length=2)
     characterPreferences: list[CharacterPreference] = Field(max_length=1)
 
     @model_validator(mode="after")
@@ -65,6 +52,8 @@ class MemoryContext(Contract):
             raise ValueError("Duplicate fact key")
         if sum(isinstance(episode, CursorGameEpisode) for episode in self.episodes) > 1:
             raise ValueError("Too many cursor game episodes")
+        if sum(isinstance(episode, CausalMemoryEpisode) for episode in self.episodes) > 1:
+            raise ValueError("Too many causal episodes")
         if memory_text_units(self.model_dump()) > 2400:
             raise ValueError("Memory text budget exceeded")
         return self

@@ -52,7 +52,8 @@ export class MemoryItemStore {
         this.db.prepare('INSERT OR IGNORE INTO memory_suppressed_pairs VALUES (?, ?)').run(c.source.userMessageId, c.source.assistantMessageId);
         this.db.prepare('DELETE FROM memory_item_terms WHERE item_id = ?').run(c.itemId);
         const item = parseRow(this.db.prepare(`SELECT ${columns} FROM memory_items WHERE id = ? AND category!='beverage_preference'`).get(c.itemId));
-        const order = integer(record(this.db.prepare('SELECT insertion_order FROM memory_items WHERE id = ?').get(c.itemId)).insertion_order, 1);
+        // The receipt inserted below receives this private rowid in the same serialized transaction.
+        const order = integer(record(this.db.prepare('SELECT coalesce(max(rowid),0)+1 AS ordinal FROM memory_mutation_receipts').get()).ordinal, 1);
         const insert = this.db.prepare('INSERT INTO memory_item_terms VALUES (?, ?, ?)');
         for (const token of tokens(item)) insert.run(token, c.itemId, order);
       } else if (c.kind === 'withdraw') {

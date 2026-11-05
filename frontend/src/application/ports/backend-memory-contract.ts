@@ -14,6 +14,7 @@ export interface BackendMemoryFact {
 }
 
 export type BackendMemoryEpisode =
+  | BackendCausalMemoryEpisode
   | { readonly kind: 'dialogue'; readonly userText: string; readonly assistantText: string; readonly occurredAt: string }
   | {
       readonly kind: 'cursor_game';
@@ -22,7 +23,7 @@ export type BackendMemoryEpisode =
       readonly occurredAt: string;
     };
 
-/** Wire target for #172; add to the active memory union only with both consumers. */
+/** Wire causal fact; local source identities and historical affect are excluded. */
 export interface BackendCausalMemoryEpisode {
   readonly kind: 'causal_event';
   readonly activity: 'cursor_game' | 'contact';

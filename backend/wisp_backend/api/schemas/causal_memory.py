@@ -1,9 +1,9 @@
-"""MEMORY-A01 target model; active MemoryContext rollout belongs to #172."""
+"""Strict source-validated causal facts, without local identities or inferred feelings."""
 
 from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
-from wisp_backend.api.schemas.memory import Timestamp
+from wisp_backend.api.schemas.memory_timestamp import Timestamp
 from wisp_backend.validation import Contract
 
 

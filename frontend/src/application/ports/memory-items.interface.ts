@@ -40,3 +40,20 @@ export interface IMemoryItemsRepository {
   delete(command: MemoryItemMutation & { readonly kind: 'delete' }, next: MemoryOperationContext): Promise<MemoryResult<MemoryItemReceipt>>;
   list(query: { readonly cursor: number | null; readonly limit: number }, context: MemoryOperationContext): Promise<MemoryResult<MemoryItemPage>>;
 }
+
+export interface MemoryItemCandidate {
+  readonly item: MemoryItem;
+  readonly score: number;
+  readonly labelMatches: number;
+  readonly confirmationOrder: number;
+}
+export interface IMemoryItemRecallReader {
+  /** At most8 tokens ×12 postings; exact current source validation, at most96 payloads. */
+  find(tokens: readonly string[], context: MemoryOperationContext): Promise<MemoryResult<MemoryItemRecallPage>>;
+}
+export interface MemoryItemRecallPage {
+  readonly candidates: readonly MemoryItemCandidate[];
+  readonly coverage: 'complete' | 'index_building';
+  readonly examined: number;
+  readonly fetched: number;
+}

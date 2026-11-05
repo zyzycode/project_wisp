@@ -32,8 +32,19 @@ export function parseBackendMemory(value: unknown): BackendMemoryContext {
   const facts = array(r.facts, 5).map(fact);
   if (new Set(facts.map(item => item.key)).size !== facts.length) throw new TypeError('Duplicate memory fact');
   const episodes = array(r.episodes, 2).map((value): BackendMemoryContext['episodes'][number] => {
-    const e = exactRecord(value, ['kind', 'occurredAt'], ['userText', 'assistantText', 'outcome', 'executedMs']);
+    const e = exactRecord(value, ['kind', 'occurredAt'], ['userText', 'assistantText', 'outcome', 'executedMs', 'activity', 'cause', 'actor', 'participation']);
     const occurredAt = utc(e.occurredAt);
+    if (e.kind === 'causal_event') {
+      exactRecord(e, ['kind', 'occurredAt', 'activity', 'outcome', 'cause', 'actor', 'participation', 'executedMs']);
+      const causal = { kind: 'causal_event' as const, activity: enumValue(e.activity, ['cursor_game', 'contact']),
+        outcome: enumValue(e.outcome, ['completed', 'cancelled', 'failed', 'not_applicable']),
+        cause: enumValue(e.cause, ['contact', 'completed', 'user_interrupted', 'environment_lost', 'timeout']),
+        actor: enumValue(e.actor, ['user', 'system', 'autonomy', 'unknown']),
+        participation: enumValue(e.participation, ['user_engaged', 'solitary', 'none']), executedMs: finiteRange(e.executedMs, 600_000), occurredAt };
+      if (causal.activity === 'contact' ? causal.outcome !== 'not_applicable' || causal.cause !== 'contact' || causal.actor !== 'user' || causal.participation !== 'none' || causal.executedMs !== 0
+        : causal.outcome === 'not_applicable' || causal.cause === 'contact' || (causal.outcome === 'completed') !== (causal.cause === 'completed') || (causal.cause === 'user_interrupted' && causal.actor !== 'user')) throw new TypeError('Invalid causal fact');
+      return causal;
+    }
     if (e.kind === 'dialogue') {
       exactRecord(e, ['kind', 'occurredAt', 'userText', 'assistantText']);
       return { kind: 'dialogue', userText: plainText(e.userText, 240, true), assistantText: plainText(e.assistantText, 400, true), occurredAt };
@@ -42,6 +53,7 @@ export function parseBackendMemory(value: unknown): BackendMemoryContext {
     return { kind: 'cursor_game', outcome: enumValue(e.outcome, ['caught', 'missed', 'lost_target', 'cancelled']), executedMs: finiteRange(e.executedMs, 60_000), occurredAt };
   });
   if (episodes.filter(item => item.kind === 'cursor_game').length > 1) throw new TypeError('Duplicate game');
+  if (episodes.filter(item => item.kind === 'causal_event').length > 1) throw new TypeError('Duplicate causal event');
   const characterPreferences = array(r.characterPreferences, 1).map(value => {
     const p = exactRecord(value, ['key', 'value', 'confidence']);
     if (typeof p.value !== 'number' || !Number.isFinite(p.value) || Math.abs(p.value) > 100) throw new TypeError('Invalid preference');

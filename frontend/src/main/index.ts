@@ -384,7 +384,7 @@ function initializeAutonomyComposition(): void {
   if (dialogueRuntime === null) {
     const ai = createMainAIProvider({ backendUrl: aiRoute.backendUrl, sessionToken: aiRoute.sessionToken, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now() });
     const recall = !localMock && memoryComposition
-      ? new LocalMemoryRecall({ ...memoryComposition, beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
+      ? new LocalMemoryRecall({ ...memoryComposition, timestamp: () => new Date().toISOString(), beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
     observationManagement = createActiveApplicationObservation();
     observationRuntime = new ObservationRuntime({ observer: observationManagement.port, ...(ai.observationProvider ? { provider: ai.observationProvider } : {}),
       now: () => brainStatePublisher.now(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),

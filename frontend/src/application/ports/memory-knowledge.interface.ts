@@ -1,6 +1,7 @@
 /** Local knowledge/recall boundary. Rules: MEMORY_ENGINE §9, P15_A02_RESULT. */
 import type { GameEpisode, MemoryOperationContext, MemoryResult } from './memory-repository.interface';
 import type { LearnedPreferenceKey } from '../../domain/character/preferences';
+import type { CausalLifeEpisode, CausalLifeSourceReference } from './causal-life.interface';
 
 export type MemoryFactKey =
   | 'user.display_name' | 'user.preferred_address' | 'user.favorite_topic'
@@ -30,7 +31,17 @@ export interface RecalledCursorGameEpisode {
   readonly occurredAt: string;
 }
 
-export type RecalledMemoryEpisode = RecalledDialogueEpisode | RecalledCursorGameEpisode;
+export interface RecalledCausalEpisode {
+  readonly kind: 'causal_event';
+  readonly activity: 'cursor_game' | 'contact';
+  readonly outcome: 'completed' | 'cancelled' | 'failed' | 'not_applicable';
+  readonly cause: 'contact' | 'completed' | 'user_interrupted' | 'environment_lost' | 'timeout';
+  readonly actor: 'user' | 'system' | 'autonomy' | 'unknown';
+  readonly participation: 'user_engaged' | 'solitary' | 'none';
+  readonly executedMs: number;
+  readonly occurredAt: string;
+}
+export type RecalledMemoryEpisode = RecalledDialogueEpisode | RecalledCursorGameEpisode | RecalledCausalEpisode;
 
 /** Provider-neutral, explicitly bounded projection; no SQL or storage record IDs. */
 export interface AIProviderMemoryContext {
@@ -45,6 +56,8 @@ export interface AIProviderMemoryContext {
 
 export interface MemoryRecallQuery {
   readonly text: string;
+  /** Trusted current event, supplied only by its generation-owned local lifecycle. */
+  readonly causalSituation?: { readonly source: CausalLifeSourceReference; readonly episode: CausalLifeEpisode };
   /** Internal social-event retrieval uses the current saved topic without another read. */
   readonly useFavoriteTopic?: boolean;
   readonly excludedMessageIds: readonly string[];

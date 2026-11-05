@@ -55,7 +55,7 @@ it('reports latest receipt after backward-clock cohorts and rotates epoch atomic
 });
 it('additively migrates schema4 preserving every legacy table and measures a synthetic day', () => {
   const {store,filename} = fixture(); store.close(); const db = new Database(filename);
-  db.exec("DROP TABLE causal_life_episodes; DROP TABLE routine_observations; DROP TABLE routine_metadata; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4;");
+  db.exec("DROP TABLE IF EXISTS causal_recall_postings; DROP TABLE IF EXISTS causal_recall_build; DROP TABLE IF EXISTS memory_item_recall_build; DELETE FROM schema_migrations WHERE version=7; DROP TABLE causal_life_episodes; DROP TABLE routine_observations; DROP TABLE routine_metadata; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4;");
   db.prepare('INSERT INTO user_facts VALUES (?,?,?,?,?,?,?)').run('fact','name','Ира',1,null,now,now);
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as {name:string}[];
   const before = tables.map(({name})=>({name,rows:db.prepare(`SELECT * FROM "${name}"`).all()})); db.close();
@@ -78,7 +78,7 @@ it('persists fractional monotonic durations without inventing coverage', () => {
 });
 it('rolls schema5 metadata, tables and migration journal back together on migration failure', () => {
   const {store,filename}=fixture(); store.close(); const db=new Database(filename);
-  db.exec("DROP TABLE causal_life_episodes; DROP TABLE routine_observations; DROP TABLE routine_metadata; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4; CREATE TRIGGER reject_v5 BEFORE INSERT ON schema_migrations WHEN NEW.version=5 BEGIN SELECT RAISE(ABORT,'test'); END;");
+  db.exec("DROP TABLE IF EXISTS causal_recall_postings; DROP TABLE IF EXISTS causal_recall_build; DROP TABLE IF EXISTS memory_item_recall_build; DELETE FROM schema_migrations WHERE version=7; DROP TABLE causal_life_episodes; DROP TABLE routine_observations; DROP TABLE routine_metadata; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4; CREATE TRIGGER reject_v5 BEFORE INSERT ON schema_migrations WHEN NEW.version=5 BEGIN SELECT RAISE(ABORT,'test'); END;");
   expect(()=>SqliteMemoryStore.open(filename,now)).toThrow();
   expect(db.pragma('user_version',{simple:true})).toBe(4);
   expect(db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'routine_%'").all()).toEqual([]);

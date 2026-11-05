@@ -1,0 +1,16 @@
+{
+  "facts": [],
+  "episodes": [
+    {
+      "kind": "causal_event",
+      "activity": "contact",
+      "outcome": "not_applicable",
+      "cause": "contact",
+      "actor": "user",
+      "participation": "none",
+      "executedMs": 0,
+      "occurredAt": "2026-11-01T10:00:00.000Z"
+    }
+  ],
+  "characterPreferences": []
+}

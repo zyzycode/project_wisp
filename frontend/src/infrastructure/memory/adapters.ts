@@ -1,4 +1,6 @@
 import type { ICausalLifeRepository } from '../../application/ports/causal-life.interface';
+import type { ICausalLifeRecallReader } from '../../application/ports/causal-recall.interface';
+import { causalRecallPage } from './causal-recall-validation';
 import { causalEpisode } from './causal-life-validation';
 import type { IRoutineObservationRepository } from '../../application/ports/routine-observation.port';
 import { routineIdentity, routineStatus } from './routine-validation';
@@ -8,8 +10,8 @@ import type { IInterestThreadRepository } from '../../application/ports/interest
 import { topicRead, topicReceipt, topicCapture } from './interest-thread-validation';
 import type { ISummarySourceReader } from '../../application/ports/summary';
 import { summarySnapshot } from './summary-source-reader';
-import { itemReceipt, itemPage } from './item-validation';
-import type { IMemoryItemsRepository } from '../../application/ports/memory-items.interface';
+import { itemReceipt, itemPage, itemCandidates } from './item-validation';
+import type { IMemoryItemsRepository, IMemoryItemRecallReader } from '../../application/ports/memory-items.interface';
 import type { IGameEpisodeReader } from '../../application/ports/memory-knowledge.interface';
 import type { ICharacterStateRepository, IChatHistoryRepository, IClearMemoryStore, IGameEpisodeRepository, IUserFactsRepository, MemoryResult, MemoryOperationContext } from '../../application/ports/memory-repository.interface';
 import type { MemoryWorkerClient } from './worker-client';
@@ -22,6 +24,8 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly causalRecall: ICausalLifeRecallReader;
+  readonly itemRecall: IMemoryItemRecallReader;
   readonly causalLife: ICausalLifeRepository;
   readonly routine: IRoutineObservationRepository;
   readonly beverage: IBeveragePreferencesRepository;
@@ -42,6 +46,8 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    causalRecall: { find: (query, c) => call('findCausalLife', query, c, causalRecallPage) },
+    itemRecall: { find: (tokens, c) => call('findMemoryItems', tokens, c, itemCandidates) },
     causalLife: { append: (episode, c) => call('appendCausalLife', episode, c, nothing), getRecent: (limit, c) => call('recentCausalLife', limit, c, value => list(value, causalEpisode)), resolveSources: (sources, c) => call('resolveCausalLife', sources, c, value => list(value, causalEpisode)) },
     routine: { begin: (input,c) => call('beginRoutine',input,c,routineIdentity), append: (input,c) => call('appendRoutine',input,c,nothing), readStatus: c => call('readRoutineStatus',null,c,routineStatus) },
     beverage: { read: c => call('readBeverage', null, c, beverageRead), mutate: (command, c) => call('mutateBeverage', command, c, beverageReceipt) },

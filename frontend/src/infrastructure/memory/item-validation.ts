@@ -1,6 +1,19 @@
-import type { MemoryItemMutation, MemoryItemPage, MemoryItemReceipt } from '../../application/ports/memory-items.interface';
+import type { MemoryItemMutation, MemoryItemPage, MemoryItemReceipt, MemoryItemRecallPage } from '../../application/ports/memory-items.interface';
 import { memoryCardInteger, parseMemoryCard, parseMemoryCardCommand, parseMemoryCardResult } from '../../shared/memory-card-validation';
-import { record, timestamp, MemoryDataError } from './validation';
+import { record, timestamp, integer, MemoryDataError } from './validation';
+export function itemRecallTokens(input: unknown): readonly string[] {
+  if (!Array.isArray(input) || input.length > 8 || new Set(input).size !== input.length
+    || input.some(token => typeof token !== 'string' || !/^[\p{L}\p{N}]{2,64}$/u.test(token) || token !== token.normalize('NFC').toLowerCase())) throw new MemoryDataError('invalid_data');
+  return input as readonly string[];
+}
+export function itemCandidates(input: unknown): MemoryItemRecallPage {
+  const r = record(input, ['candidates', 'coverage', 'examined', 'fetched']);
+  if (!Array.isArray(r.candidates) || r.candidates.length > 96 || (r.coverage !== 'complete' && r.coverage !== 'index_building')) throw new MemoryDataError('invalid_data');
+  return { candidates: r.candidates.map(value => {
+    const c = record(value, ['item', 'score', 'labelMatches', 'confirmationOrder']);
+    return { item: parseMemoryCard(c.item), score: integer(c.score, 1, 8), labelMatches: integer(c.labelMatches, 0, 8), confirmationOrder: integer(c.confirmationOrder, 1) };
+  }), coverage: r.coverage, examined: integer(r.examined, 0, 96), fetched: integer(r.fetched, 0, 96) };
+}
 export function itemMutation(input: unknown): MemoryItemMutation {
   const r = record(input);
   const { confirmedAt, ...rest } = r;

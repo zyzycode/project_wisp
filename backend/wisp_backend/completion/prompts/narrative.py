@@ -37,6 +37,13 @@ def recalled_memory(memory: Snapshot) -> str:
                 lines.append(f"- {labels.get(key, key)}: {json.dumps(fact['value'], ensure_ascii=False)}")
     if not facts:
         lines.append("- No recalled user facts supplied.")
+    episodes = memory.get("episodes", [])
+    if isinstance(episodes, list) and any(
+        isinstance(episode, dict) and episode.get("kind") == "causal_event" for episode in episodes
+    ):
+        lines.append(
+            "Causal events are source-validated observed facts. Actor is provenance, not motive; participation does not prove enjoyment. Historical emotion and current interpretation are not supplied by an outcome."
+        )
     for key, title in (
         ("episodes", "Recalled episodes — past events, not current preferences"),
         ("characterPreferences", "Learned character preferences — not user facts"),
