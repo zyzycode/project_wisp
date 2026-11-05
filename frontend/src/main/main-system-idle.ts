@@ -35,6 +35,11 @@ export class MainSystemIdle {
       && this.lastReadingAvailable && systemPresenceAt(this.state, this.options.now()) === 'active';
   }
 
+  public getPresence(): ReturnType<typeof systemPresenceAt> {
+    return this.enabled && !this.disposed && !this.suspended && !this.inactiveSession && !this.locked && this.lastReadingAvailable
+      ? systemPresenceAt(this.state, this.options.now()) : 'unknown';
+  }
+
   public reset(): void {
     this.options.onInvalidated?.();
     this.lastReadingAvailable = false;

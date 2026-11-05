@@ -4,6 +4,8 @@ export interface ObservationSettingsDTO {
   readonly generation: number;
   readonly enabled: boolean;
   readonly paused: boolean;
+  readonly timingEnabled: boolean;
+  readonly timingStatus: 'off' | 'settling' | 'stable' | 'unavailable';
   readonly status: 'off' | 'paused' | 'available' | 'unavailable';
   readonly reason: ObservationUnavailableReasonDTO | null;
   readonly applications: readonly ObservationApplicationDTO[];
@@ -11,7 +13,7 @@ export interface ObservationSettingsDTO {
   readonly preview: { readonly appName: string; readonly windowTitle: string } | null;
 }
 export type ObservationCommandDTO = { readonly streamId: string; readonly generation: number } & (
-  { readonly type: 'get' | 'pick' | 'enable' | 'disable' | 'pause' | 'resume' | 'clear' | 'preview-open' | 'preview-close' }
+  { readonly type: 'get' | 'pick' | 'enable' | 'disable' | 'pause' | 'resume' | 'clear' | 'preview-open' | 'preview-close' | 'timing-enable' | 'timing-disable' }
   | { readonly type: 'remove'; readonly appKey: string }
   | { readonly type: 'exclude'; readonly appKey: string; readonly excluded: boolean }
 );

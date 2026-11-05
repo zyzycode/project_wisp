@@ -20,6 +20,18 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(1000000); });
 afterEach(() => vi.useRealTimers());
 
 describe('bounded Main system idle lifecycle', () => {
+  it('projects normalized cached presence without a second sampler and omits stale/lifecycle-disabled evidence', () => {
+    const f = fixture(); expect(f.controller.getPresence()).toBe('unknown');
+    f.controller.tick(true); expect(f.controller.getPresence()).toBe('active');
+    const reads = vi.mocked(f.source.read).mock.calls.length;
+    f.controller.getPresence(); f.controller.getPresence(); expect(f.source.read).toHaveBeenCalledTimes(reads);
+    f.setMono(2501); expect(f.controller.getPresence()).toBe('unknown');
+    f.controller.reset(); f.sample(1000); expect(f.controller.getPresence()).toBe('active');
+    f.lifecycle('lock'); expect(f.controller.getPresence()).toBe('unknown');
+    f.lifecycle('unlock'); f.sample(1000); expect(f.controller.getPresence()).toBe('active');
+    f.controller.setEnabled(false); expect(f.controller.getPresence()).toBe('unknown');
+    f.controller.dispose(); expect(f.controller.getPresence()).toBe('unknown');
+  });
   it('reads no more than once per second and never catches up a paused tick', () => {
     const f = fixture(); f.controller.tick(true); f.advance(999); expect(f.source.read).toHaveBeenCalledTimes(1);
     f.advance(1); expect(f.source.read).toHaveBeenCalledTimes(2); f.advance(10000);

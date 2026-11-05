@@ -28,6 +28,7 @@ export function registerObservationIpc(options: Options): () => void {
     else if (command.type === 'clear') { runtime.clear(); options.clearExecutables(); }
     else if (command.type === 'preview-open') runtime.preview(true);
     else if (command.type === 'preview-close') runtime.preview(false);
+    else if (command.type === 'timing-enable' || command.type === 'timing-disable') runtime.setTimingEnabled(command.type === 'timing-enable');
     else if (command.type !== 'get') runtime[command.type]();
     return parseObservationSettings(runtime.getSettings());
   });

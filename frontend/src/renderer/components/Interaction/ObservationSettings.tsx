@@ -1,9 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ObservationBridge, ObservationCommandDTO, ObservationSettingsDTO } from '../../../shared/observation-contracts';
 export const OBSERVATION_DISCLOSURE = 'Название разрешённого приложения и заголовок активного окна отправляются backend и внешнему AI-провайдеру для короткой реакции персонажа. Заголовок может содержать личные данные. Отключение останавливает новые отправки, но не отзывает уже отправленные данные';
+export const TIMING_DISCLOSURE = 'Используются только уже разрешённые наблюдения. После переключения окна приглашение ненадолго откладывается. Это не распознаёт занятость и не включает наблюдение самостоятельно.';
+const TIMING_STATUS = { off: 'Выбор момента выключен', settling: 'Короткая пауза после переключения окна', stable: 'Окно стабильно; обычные ограничения приглашений сохранены', unavailable: 'Нет разрешённого актуального наблюдения для выбора момента' };
 const REASONS = { backend_unavailable: 'AI-наблюдение недоступно: backend не настроен', disabled: 'Выключено', paused: 'На паузе', unsupported: 'Доступно только в Windows', initializing: 'Подключение', excluded: 'Приложение не разрешено', permission_denied: 'Нет доступа', bridge_failed: 'Наблюдение остановлено. Возобновите явно.', stale: 'Нет актуального наблюдения' };
 type Action = ObservationCommandDTO extends infer C ? C extends ObservationCommandDTO ? Omit<C, 'streamId' | 'generation'> : never : never;
 interface Props { readonly bridge?: ObservationBridge['observationCommand']; readonly streamId?: string; readonly open: boolean; }
+export function ObservationTimingControls({ state, onToggle }: { readonly state: ObservationSettingsDTO; readonly onToggle: (enabled: boolean) => void }) {
+  const disclosure = useId();
+  const unavailable = !state.enabled || state.paused || state.reason === 'backend_unavailable' || state.reason === 'unsupported';
+  return <><p id={disclosure}>{TIMING_DISCLOSURE}</p>
+    <label><input type="checkbox" checked={state.timingEnabled} disabled={!state.timingEnabled && unavailable} aria-describedby={disclosure} onChange={event => onToggle(event.target.checked)} />Учитывать переключение окон при выборе момента приглашения</label>
+    <p role="status" aria-label="Выбор момента приглашения">{TIMING_STATUS[state.timingStatus]}</p></>;
+}
 export function ObservationSettings({ bridge, streamId, open }: Props) {
   const [state, setState] = useState<ObservationSettingsDTO | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(false);
@@ -37,6 +46,7 @@ export function ObservationSettings({ bridge, streamId, open }: Props) {
     {error && <p role="alert">Настройки недоступны. Откройте меню заново.</p>}
     {state && <fieldset disabled={busy}>
       <label><input type="checkbox" checked={state.enabled} onChange={event => { void command({ type: event.target.checked ? 'enable' : 'disable' }); }} />Разрешить отправку названия приложения и заголовка окна</label>
+      <ObservationTimingControls state={state} onToggle={enabled => { void command({ type: enabled ? 'timing-enable' : 'timing-disable' }); }} />
       <button type="button" onClick={() => { void command({ type: 'pick' }); }}>Выбрать приложение…</button>
       {state.applications.map(app => <div key={app.appKey}><span>{app.alias}</span>
         <label><input type="checkbox" checked={app.excluded} onChange={event => { void command({ type: 'exclude', appKey: app.appKey, excluded: event.target.checked }); }} />Исключить</label>

@@ -5,9 +5,12 @@ import type { MemoryScheduler } from '../ports/memory-runtime';
 import type { AIInitiativeSpeechDTO, DialoguePresentationDTO } from '../../shared/ipc-contracts';
 import type { ObservationSettingsDTO } from '../../shared/observation-contracts';
 import { summaryPlainText } from '../../shared/summary-text-validation';
+import type { CurrentComputerContext } from '../ports/world-context.interface';
+import { ForegroundContextTracker } from './foreground-context-tracker';
 type Sample = Extract<ActiveApplicationObservationSnapshot, { capability: 'available' }>;
 interface Options {
   readonly observer: ActiveApplicationObservationPort; readonly provider?: IObservationProvider;
+  readonly backendAvailable?: () => boolean;
   readonly now: () => number; readonly createId: () => string; readonly scheduler: MemoryScheduler;
   readonly character: () => ObservationProviderRequest['characterSnapshot']; readonly locale?: 'ru' | 'en';
   readonly gate: () => { readonly identity: string | null; readonly allowed: boolean; readonly busy: boolean; readonly higherSpeech: boolean };
@@ -19,6 +22,10 @@ export class ObservationRuntime {
   private enabled = false;
   private paused = false;
   private disposed = false;
+  private timingEnabled = false;
+  private timingBackendUnavailable = false;
+  private readonly foreground = new ForegroundContextTracker();
+  private observationRevision = -1;
   private applications: readonly ObservationApplication[] = [];
   private previewOpen = false;
   private sample: Sample | null = null;
@@ -38,10 +45,12 @@ export class ObservationRuntime {
   constructor(private readonly options: Options) { this.unsubscribe = options.observer.subscribe(value => this.observe(value)); }
   getSettings(): ObservationSettingsDTO {
     const latest = this.options.observer.getSnapshot();
-    const usable = !!this.options.provider && this.sample && this.fresh(this.sample);
+    const usable = this.providerAvailable() && this.sample && this.fresh(this.sample);
+    const context = this.getComputerContext();
     return { generation: this.generation, enabled: this.enabled, paused: this.paused,
+      timingEnabled: this.timingEnabled, timingStatus: !this.timingEnabled ? 'off' : context.foreground === 'unknown' ? 'unavailable' : context.foreground,
       status: !this.enabled ? 'off' : this.paused ? 'paused' : usable ? 'available' : 'unavailable',
-      reason: !this.enabled ? 'disabled' : this.paused ? 'paused' : !this.options.provider ? 'backend_unavailable' : latest.capability === 'unavailable' ? latest.reason : usable ? null : 'stale',
+      reason: !this.enabled ? 'disabled' : this.paused ? 'paused' : !this.providerAvailable() ? 'backend_unavailable' : latest.capability === 'unavailable' ? latest.reason : usable ? null : 'stale',
       applications: this.applications.map(app => ({ ...app })), previewOpen: this.previewOpen,
       preview: this.previewOpen && usable ? { appName: this.sample!.appName, windowTitle: this.sample!.windowTitle } : null };
   }
@@ -53,23 +62,42 @@ export class ObservationRuntime {
   removeApplication(appKey: string): void { this.applications = this.applications.filter(app => app.appKey !== appKey); this.replacePolicy(); }
   exclude(appKey: string, excluded: boolean): void { this.applications = this.applications.map(app => app.appKey === appKey ? { ...app, excluded } : app); this.replacePolicy(); }
   enable(): void { if (this.disposed) return; this.enabled = true; this.paused = false; this.replacePolicy(); }
-  disable(): void { this.enabled = false; this.paused = false; this.replacePolicy(); }
-  pause(): void { if (this.disposed) return; this.paused = this.enabled; this.replacePolicy(); }
-  resume(): void { if (this.disposed || !this.enabled) return; this.paused = false; this.replacePolicy(); }
-  clear(): void { this.enabled = false; this.paused = false; this.applications = []; this.replacePolicy(); }
-  preview(open: boolean): void { this.previewOpen = open && !this.disposed; }
-  private replacePolicy(): void {
-    this.invalidate(); this.sample = null; this.dwell = null; this.previewOpen = false; this.generation++;
-    this.options.observer.replacePolicy({ generation: this.generation, active: !!this.options.provider && this.enabled && !this.paused && !this.disposed, applications: this.applications });
+  disable(): void { this.enabled = false; this.paused = false; this.replacePolicy(true); }
+  pause(): void { if (this.disposed) return; this.paused = this.enabled; this.replacePolicy(true); }
+  resume(): void { if (this.disposed || !this.enabled) return; this.paused = false; this.timingBackendUnavailable = false; this.replacePolicy(true); }
+  clear(): void { this.enabled = false; this.paused = false; this.applications = []; this.replacePolicy(true); }
+  setTimingEnabled(enabled: boolean): void {
+    if (this.disposed) return;
+    this.timingEnabled = enabled; this.timingBackendUnavailable = false; this.foreground.reset();
   }
+  backendUnavailable(): void { this.pause(); this.timingBackendUnavailable = true; }
+  getComputerContext(presence: CurrentComputerContext['presence'] = 'unknown'): CurrentComputerContext {
+    if (!this.timingEnabled || !this.enabled || this.paused || this.disposed || !this.providerAvailable() || this.timingBackendUnavailable) this.foreground.invalidate();
+    return this.foreground.current(this.options.now(), presence);
+  }
+  preview(open: boolean): void { this.previewOpen = open && !this.disposed; }
+  private replacePolicy(clearTiming = false): void {
+    if (clearTiming) this.timingEnabled = false;
+    this.foreground.reset();
+    this.observationRevision = -1;
+    this.invalidate(); this.sample = null; this.dwell = null; this.previewOpen = false; this.generation++;
+    this.options.observer.replacePolicy({ generation: this.generation, active: this.providerAvailable() && this.enabled && !this.paused && !this.disposed, applications: this.applications });
+  }
+  private providerAvailable(): boolean { return !!this.options.provider && (this.options.backendAvailable?.() ?? true); }
   private fresh(sample: Sample): boolean { const age = this.options.now() - sample.capturedAtMs; return age >= 0 && age <= 2500; }
   private observe(value: ActiveApplicationObservationSnapshot): void {
     if (this.disposed || value.policyGeneration !== this.generation) return;
+    const ordered = Number.isSafeInteger(value.revision) && value.revision >= 0 && value.revision > this.observationRevision;
+    if (ordered) this.observationRevision = value.revision;
     if (value.capability === 'unavailable') {
+      this.foreground.invalidate();
       this.sample = null; this.dwell = null; this.invalidate();
       if (this.enabled && !this.paused && ['paused', 'bridge_failed', 'permission_denied'].includes(value.reason)) this.pause();
       return;
     }
+    if (ordered && this.timingEnabled && this.enabled && !this.paused && this.providerAvailable() && !this.timingBackendUnavailable
+      && this.applications.some(app => app.appKey === value.appKey && !app.excluded)) this.foreground.observe(value, this.options.now());
+    else this.foreground.invalidate();
     if (!this.enabled || this.paused || !this.fresh(value) || (this.sample && value.revision <= this.sample.revision)) return;
     const changed = !this.sample || this.sample.appKey !== value.appKey || this.sample.episodeToken !== value.episodeToken || this.sample.sourceToken !== value.sourceToken;
     if (changed) { this.invalidate(); this.dwell = null; }
@@ -88,8 +116,9 @@ export class ObservationRuntime {
     if (this.thinking || this.options.now() < this.dialogueGuardUntil) this.invalidate();
   }
   tick(): void {
+    this.getComputerContext();
     const sample = this.sample, gate = this.options.gate();
-    if (!sample || !this.fresh(sample)) { this.sample = null; this.dwell = null; this.invalidate(); return; }
+    if (!this.providerAvailable() || !sample || !this.fresh(sample)) { this.sample = null; this.dwell = null; this.invalidate(); return; }
     if (!gate.allowed || gate.higherSpeech || this.thinking || this.options.now() < this.dialogueGuardUntil) this.invalidate();
     if (!this.dwell || this.dwell.consumed || sample.capturedAtMs - this.dwell.started < 30000) return;
     this.dwell.consumed = true;
@@ -118,11 +147,17 @@ export class ObservationRuntime {
         observation: { appName: source.appName, windowTitle: source.windowTitle } }, controller.signal);
       if (!this.current(source, identity, generation, epoch, deadline)) return;
       const text = summaryPlainText(result, 240).trim(); if (text !== text.trim()) return;
+      if (this.timingBackendUnavailable) { this.timingBackendUnavailable = false; this.foreground.reset(); }
       const startedAtMs = this.options.now();
       this.speech = { id: requestId, text, startedAtMs, expiresAtMs: startedAtMs + 2000 };
       this.speechTimer = this.options.scheduler.setTimeout(() => { if (this.speech?.id === requestId) { this.speech = null; this.options.publish(); } }, 2000);
       this.options.publish();
-    } catch { /* Optional speech never produces an error bubble or retry. */ }
+    } catch {
+      if (!controller.signal.aborted && generation === this.generation && epoch === this.epoch) {
+        this.timingBackendUnavailable = true; this.foreground.reset();
+      }
+      /* Optional speech never produces an error bubble or retry. */
+    }
     finally { this.options.scheduler.clearTimeout(this.deadlineTimer); }
   }
   getSpeech(): AIInitiativeSpeechDTO | null { return this.speech && this.options.now() < this.speech.expiresAtMs ? this.speech : null; }
@@ -133,5 +168,5 @@ export class ObservationRuntime {
   }
   async interruptForUser(): Promise<void> { this.invalidate(); await this.pending; }
   reset(): void { this.dialogueGuardUntil = 0; this.terminalDialogue = null; this.pause(); }
-  dispose(): void { if (this.disposed) return; this.disposed = true; this.replacePolicy(); this.unsubscribe(); this.options.observer.dispose(); }
+  dispose(): void { if (this.disposed) return; this.disposed = true; this.replacePolicy(true); this.unsubscribe(); this.options.observer.dispose(); }
 }

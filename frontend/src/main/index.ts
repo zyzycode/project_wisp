@@ -459,6 +459,7 @@ function initializeAutonomyComposition(): void {
       context: () => memoryRuntime?.context() ?? null, wallNow: Date.now, monotonicNow: () => brainStatePublisher.now(), createId: randomUUID,
       creationAllowed: () => composition.canRetainDeferredInvitation(),
       eligible: () => composition.canStartDeferredInvitation(), start: () => composition.startDeferredInvitation(),
+      computerContext: () => observationRuntime?.getComputerContext(composition.getComputerPresence()),
       onOpportunityFinished: () => composition.finishDeferredInvitationOpportunity() });
     void deferredInvitationRuntime.restore();
   }
@@ -470,6 +471,7 @@ function initializeAutonomyComposition(): void {
       ? new LocalMemoryRecall({ ...memoryComposition, timestamp: () => new Date().toISOString(), beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
     observationManagement = createActiveApplicationObservation();
     observationRuntime = new ObservationRuntime({ observer: observationManagement.port, ...(ai.observationProvider ? { provider: ai.observationProvider } : {}),
+      backendAvailable: () => { const mode = aiConnection?.read().mode; return mode === 'ready' || mode === 'external'; },
       now: () => brainStatePublisher.now(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
       character: () => defaultCharacterStateService.getSnapshot(), publish: publishBrainState,
       spendBudget: atMs => autonomyComposition?.spendObservationBudget(atMs) ?? false,
@@ -895,7 +897,7 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     const userData = app.getPath('userData');
     aiConnection = new AIConnectionController({ externalUrl: process.env.WISP_BACKEND_URL, store: new ProtectedUserAIKeyStore(userData),
-      backend: new ManagedLocalAIBackend({ python: process.env.WISP_PYTHON, directory: process.env.WISP_LOCAL_BACKEND_DIR, onUnavailable: () => aiConnection?.backendUnavailable() }),
+      backend: new ManagedLocalAIBackend({ python: process.env.WISP_PYTHON, directory: process.env.WISP_LOCAL_BACKEND_DIR, onUnavailable: () => { aiConnection?.backendUnavailable(); observationRuntime?.backendUnavailable(); } }),
       ledgerPath: path.join(userData, 'personal-ai-usage.sqlite3'), createSessionToken: () => randomBytes(32).toString('hex'),
       scheduleRestart: () => { setTimeout(() => { if (!shutdownStarted) { app.relaunch(); app.quit(); } }, 0); },
     });

@@ -1,6 +1,8 @@
 import type { CausalLifeEpisode, DeferredGameInvitation, ICausalLifeCommitObserver, IDeferredGameInvitationRepository } from '../ports/causal-life.interface';
 import type { MemoryOperationContext } from '../ports/memory-repository.interface';
 import { invitationSourceEligible, invitationTimeState, invitationWindow } from '../../domain/behavior/deferred-game-invitation';
+import { allowsDeferredInvitationContext } from '../../domain/behavior/computer-opportunity';
+import type { CurrentComputerContext } from '../ports/world-context.interface';
 
 interface ObservedSource { readonly generation: number; readonly appRunId: string; readonly sequence: number; readonly firstSequence: number; }
 interface Options {
@@ -11,6 +13,7 @@ interface Options {
   readonly creationAllowed?: () => boolean;
   readonly createId: () => string;
   readonly eligible: () => boolean;
+  readonly computerContext?: () => CurrentComputerContext | undefined;
   readonly start: () => string | null;
   /** Re-arm the existing cadence after an asynchronous failed admission. */
   readonly onOpportunityFinished: () => void;
@@ -94,10 +97,12 @@ export class DeferredGameInvitationRuntime implements ICausalLifeCommitObserver 
     const timeState = invitationTimeState(invite,now,this.lastSeenWallMs);
     if (timeState === 'cancelled' || timeState === 'expired') { void this.cancel(timeState); return false; }
     this.lastSeenWallMs = now;
-    if (timeState !== 'ready' || !this.options.eligible()) return false;
+    const computer = this.options.computerContext?.();
+    if (timeState !== 'ready' || !this.options.eligible()
+      || !allowsDeferredInvitationContext(computer, this.options.monotonicNow())) return false;
     const serial = ++this.serial;
     this.inFlight = true; this.claiming = true;
-    void this.claim(invite,context,serial,now);
+    void this.claim(invite,context,serial,now,computer?.generation);
     return true;
   }
   /** Any unrelated actual start invalidates an outstanding claim, without blocking it. */
@@ -146,12 +151,14 @@ export class DeferredGameInvitationRuntime implements ICausalLifeCommitObserver 
   private current(context: MemoryOperationContext): boolean {
     return !this.disposed && this.options.context()?.generation === context.generation;
   }
-  private async claim(invite: DeferredGameInvitation, context: MemoryOperationContext, serial: number, now: number): Promise<void> {
+  private async claim(invite: DeferredGameInvitation, context: MemoryOperationContext, serial: number, now: number, computerGeneration: number | undefined): Promise<void> {
     let started = false;
     try {
       const result = await this.options.repository.claim(invite.id,new Date(now).toISOString(),context);
       if (!result.ok || !result.value) { if (this.current(context) && serial === this.serial) this.invitation = null; return; }
+      const computer = this.options.computerContext?.();
       if (!this.current(context) || serial !== this.serial || !this.options.eligible()
+          || computer?.generation !== computerGeneration || !allowsDeferredInvitationContext(computer, this.options.monotonicNow())
           || invitationTimeState(invite,this.options.wallNow(),this.lastSeenWallMs) !== 'ready') {
         if (this.invitation?.id === invite.id) this.invitation = null;
         await this.options.repository.finish(invite.id,'abandoned',context); return;

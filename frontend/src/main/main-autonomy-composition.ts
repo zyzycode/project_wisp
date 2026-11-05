@@ -902,6 +902,7 @@ export class MainAutonomyComposition {
       && this.initiativeBudget.available(this.options.clock.now())
       && this.activity.canStart(intent, { play: [createSocialBidActivity(INITIATIVE_TUNING.socialWaitMaxMs)] });
   }
+  public getComputerPresence(): ReturnType<MainSystemIdle['getPresence']> { return this.systemIdle.getPresence(); }
   public startDeferredInvitation(): string | null {
     if (!this.canStartDeferredInvitation()) return null;
     const intent = this.character.resolveDirectIntent({ kind: 'play', source: 'memory', priority: 'normal',

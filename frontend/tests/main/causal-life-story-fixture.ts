@@ -14,10 +14,11 @@ import { MemoryHistory } from '../../src/application/services/memory-history';
 import { message } from '../../src/infrastructure/memory/validation';
 import { LifeReflectionRuntime } from '../../src/application/services/life-reflection-runtime';
 import type { CharacterStateService } from '../../src/application/services/character-state.service';
+import type { CurrentComputerContext } from '../../src/application/ports/world-context.interface';
 import { scenario } from './autonomy-scenario-fixture';
 export const STORY_BASE = Date.parse('2026-11-01T10:00:00.000Z');
 export const flushStory = async () => { for (let i = 0; i < 50; i++) await Promise.resolve(); };
-export function causalStory(filename: string, invitations = false, persistent = true) {
+export function causalStory(filename: string, invitations = false, persistent = true, computerContext?: () => CurrentComputerContext | undefined) {
   let store = SqliteMemoryStore.open(filename, new Date(STORY_BASE).toISOString());
   let generation = 0, currentCharacter: CharacterStateService | undefined;
   let own: OwnGameInterestRuntime | undefined, invite: DeferredGameInvitationRuntime | undefined;
@@ -66,6 +67,7 @@ export function causalStory(filename: string, invitations = false, persistent = 
   const scheduler = { setTimeout, clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
   own = new OwnGameInterestRuntime({ character: f.character, repository, context, scheduler, now: f.now });
   if (invitations) invite = new DeferredGameInvitationRuntime({ repository: invitationRepository, context,
+    ...(computerContext ? { computerContext } : {}),
     wallNow: () => STORY_BASE + f.now(), monotonicNow: f.now, creationAllowed: () => f.main.canRetainDeferredInvitation(),
     createId: () => 'story-invite', eligible: () => f.main.canStartDeferredInvitation(), start: () => f.main.startDeferredInvitation(),
     onOpportunityFinished: () => f.main.finishDeferredInvitationOpportunity() });

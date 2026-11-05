@@ -5,13 +5,13 @@ function bool(value: unknown): boolean { if (typeof value !== 'boolean') throw n
 function id(value: unknown): string { const text = plainText(value, 128); if (text.trim() !== text) throw new TypeError('Invalid observation identity'); return text; }
 export function parseObservationCommand(value: unknown): ObservationCommandDTO {
   const r = exactRecord(value, ['type', 'streamId', 'generation'], ['appKey', 'excluded']);
-  const type = enumValue(r.type, ['get', 'pick', 'enable', 'disable', 'pause', 'resume', 'clear', 'preview-open', 'preview-close', 'remove', 'exclude']);
+  const type = enumValue(r.type, ['get', 'pick', 'enable', 'disable', 'pause', 'resume', 'clear', 'preview-open', 'preview-close', 'timing-enable', 'timing-disable', 'remove', 'exclude']);
   exactRecord(r, ['type', 'streamId', 'generation', ...(type === 'exclude' ? ['appKey', 'excluded'] : type === 'remove' ? ['appKey'] : [])]);
   const base = { streamId: id(r.streamId), generation: generation(r.generation) };
   return type === 'remove' ? { ...base, type, appKey: id(r.appKey) } : type === 'exclude' ? { ...base, type, appKey: id(r.appKey), excluded: bool(r.excluded) } : { ...base, type };
 }
 export function parseObservationSettings(value: unknown): ObservationSettingsDTO {
-  const r = exactRecord(value, ['generation', 'enabled', 'paused', 'status', 'reason', 'applications', 'previewOpen', 'preview']);
+  const r = exactRecord(value, ['generation', 'enabled', 'paused', 'timingEnabled', 'timingStatus', 'status', 'reason', 'applications', 'previewOpen', 'preview']);
   if (!Array.isArray(r.applications) || r.applications.length > 32) throw new TypeError('Invalid observation applications');
   const applications = r.applications.map((value: unknown) => {
     const a = exactRecord(value, ['appKey', 'alias', 'category', 'excluded']);
@@ -21,8 +21,11 @@ export function parseObservationSettings(value: unknown): ObservationSettingsDTO
   let preview: ObservationSettingsDTO['preview'] = null;
   if (r.preview !== null) { const p = exactRecord(r.preview, ['appName', 'windowTitle']); if (typeof p.windowTitle !== 'string' || p.windowTitle.length > 160) throw new TypeError('Invalid preview title'); preview = { appName: plainText(p.appName, 80), windowTitle: p.windowTitle }; }
   const result: ObservationSettingsDTO = { generation: generation(r.generation), enabled: bool(r.enabled), paused: bool(r.paused),
+    timingEnabled: bool(r.timingEnabled), timingStatus: enumValue(r.timingStatus, ['off', 'settling', 'stable', 'unavailable']),
     status: enumValue(r.status, ['off', 'paused', 'available', 'unavailable']), reason: r.reason === null ? null : enumValue(r.reason, ['backend_unavailable', 'disabled', 'paused', 'unsupported', 'initializing', 'excluded', 'permission_denied', 'bridge_failed', 'stale']),
     applications, previewOpen: bool(r.previewOpen), preview };
   if (preview && (!result.previewOpen || result.status !== 'available')) throw new TypeError('Invalid observation preview');
+  if ((!result.timingEnabled && result.timingStatus !== 'off') || (result.timingEnabled && result.timingStatus === 'off')
+    || (['settling', 'stable'].includes(result.timingStatus) && (!result.enabled || result.paused || result.status !== 'available'))) throw new TypeError('Invalid timing status');
   return result;
 }

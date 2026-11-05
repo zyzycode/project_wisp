@@ -33,3 +33,13 @@ it('closed preview immediately drops title and disable clears both preview and h
   const f = fixture(); await f.command('enable'); f.sample(); expect(f.runtime.getSettings().preview).toBeNull(); await f.command('preview-open'); expect(f.runtime.getSettings().preview?.windowTitle).toBe('Synthetic title');
   await f.command('preview-close'); expect(f.runtime.getSettings().preview).toBeNull(); await f.command('disable'); expect(f.runtime.getSettings()).toMatchObject({ enabled: false, preview: null, previewOpen: false });
 });
+it('keeps timing consent separate from network policy and rejects stale timing commands', async () => {
+  const f = fixture(), calls = f.observer.replacePolicy.mock.calls.length;
+  const initial = f.runtime.getSettings().generation;
+  await f.command('timing-enable'); expect(f.runtime.getSettings()).toMatchObject({ enabled: false, timingEnabled: true, timingStatus: 'unavailable' });
+  expect(f.observer.replacePolicy).toHaveBeenCalledTimes(calls); expect(f.generateObservation).not.toHaveBeenCalled();
+  await f.command('enable'); f.sample(); expect(f.runtime.getSettings().timingStatus).toBe('settling');
+  await expect(f.raw({ type: 'timing-disable', streamId: 's', generation: initial })).rejects.toThrow();
+  await f.command('timing-disable'); expect(f.runtime.getSettings().timingStatus).toBe('off'); expect(f.runtime.getSettings().enabled).toBe(true);
+  await f.command('timing-enable'); f.reload(); expect(f.runtime.getSettings().timingEnabled).toBe(false);
+});
