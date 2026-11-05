@@ -36,6 +36,8 @@ export interface MotivationRecord {
 
 export interface IMotivationRepository {
   read(now: string, context: MemoryOperationContext): Promise<MemoryResult<MotivationRecord | null>>;
+  /** Startup ownership recovery; ordinary reads never abandon a live claimed step. */
+  restore?(now: string, context: MemoryOperationContext): Promise<MemoryResult<MotivationRecord | null>>;
   /** Claims, finish and replacement use one compare-and-set operation. */
   replace(
     value: MotivationRecord,
@@ -49,6 +51,9 @@ export interface IOwnGoalsRuntime {
   restore(): Promise<void>;
   opportunity(): void;
   selectedGoalKind(): OwnGoalKind | null;
+  selectedPlanStep?(): OwnPlanStep | null;
+  offerPlanStep?(step: OwnPlanStep, start: () => boolean): boolean;
+  interruptPlanAdmission?(): void;
   activityStarted(runId: string, activityId: string): void;
   activityOutcome(runId: string, result: 'completed' | 'cancelled' | 'failed'): void;
   cancel(): Promise<void>;

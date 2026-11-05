@@ -2,6 +2,7 @@ import type { CharacterAutonomySnapshot } from '../character/autonomy-character-
 import { localPreferenceMultiplier } from '../character/preferences';
 import { causalEmotionMultiplier } from '../character/causal-affect';
 import { ownGoalSelectionMultiplier, type OwnGoalKind } from '../character/own-goals';
+import { ownPlanSelectionMultiplier, type OwnPlanStep } from '../character/own-plans';
 import type { BehaviorIntent } from './behavior-intent';
 export interface LocalSelectionContext {
   readonly nowMs: number;
@@ -11,6 +12,7 @@ export interface LocalSelectionContext {
   readonly canSocial?: boolean;
   readonly quiet?: boolean;
   readonly ownGoal?: OwnGoalKind | null;
+  readonly ownPlanStep?: OwnPlanStep | null;
   readonly history: readonly { readonly kind: string; readonly atMs: number }[];
 }
 export interface LocalSelectionTrace {
@@ -22,6 +24,7 @@ export interface LocalSelectionTrace {
   readonly preferenceMultiplier: number;
   readonly emotionMultiplier: number;
   readonly goalMultiplier: number;
+  readonly planMultiplier: number;
   readonly poolEligible: boolean;
   readonly selected: boolean;
   readonly score: number;
@@ -38,6 +41,13 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
   const n = snapshot.needs;
   const t = { openness: optionalTrait(snapshot.localTraits?.openness), playfulness: optionalTrait(snapshot.localTraits?.playfulness),
     independence: optionalTrait(snapshot.localTraits?.independence), extraversion: optionalTrait(snapshot.localTraits?.extraversion) };
+  const poseWeights = (['idle_blink', 'look_around'] as const).map(pose => {
+    const repeats = context.history.filter(entry => entry.kind === `calm:${pose}`).reduce((sum, entry) =>
+      sum + Math.pow(.5, Math.max(0, context.nowMs - entry.atMs) / 90000), 0);
+    return { pose, weight: (pose === 'idle_blink' ? 1.4 : 1) / (1 + repeats) };
+  });
+  const lookAround = poseWeights[1]!.weight;
+  const planStep = context.ownPlanStep === 'calm_look_around' && (!Number.isFinite(lookAround) || lookAround <= 0) ? null : context.ownPlanStep;
   const definitions = [
     { kind: 'idle', eligible: true, need: .3 + (100 - n.energy + n.comfort) / 70, personality: .5 + t.independence },
     { kind: 'wander', eligible: context.canExplore, need: .2 + (n.boredom ?? 0) / 30, personality: .5 + t.openness },
@@ -63,10 +73,11 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
     const preferenceMultiplier = localPreferenceMultiplier(d.kind === 'wander' ? snapshot.learnedExplorePreference
       : d.kind === 'social_bid' ? snapshot.learnedSocialBidPreference : undefined);
     const emotionMultiplier = d.kind === 'social_bid' ? causalEmotionMultiplier(snapshot.causalEmotion) : 1;
-    const goalMultiplier = eligible ? ownGoalSelectionMultiplier(context.ownGoal, d.kind) : 1;
+    const planMultiplier = eligible ? ownPlanSelectionMultiplier(planStep, d.kind) : 1;
+    const goalMultiplier = eligible && !planStep ? ownGoalSelectionMultiplier(context.ownGoal, d.kind) : 1;
     return { kind: d.kind, eligible, reason: !d.eligible ? 'state_environment_cooldown_or_mode' : eligible ? 'eligible' : 'invalid_required_baseline',
-      factors, baselineScore, preferenceMultiplier, emotionMultiplier, goalMultiplier,
-      score: baselineScore * preferenceMultiplier * emotionMultiplier * Math.min(1.5, Math.max(.8, goalMultiplier)) };
+      factors, baselineScore, preferenceMultiplier, emotionMultiplier, goalMultiplier, planMultiplier,
+      score: baselineScore * preferenceMultiplier * emotionMultiplier * Math.min(1.5, Math.max(.8, goalMultiplier * planMultiplier)) };
   });
   const maximum = Math.max(...weighted.map(row => row.score));
   const trace = weighted.map(row => ({ ...row, poolEligible: row.score > 0 && row.score >= .5 * maximum }));
@@ -80,12 +91,8 @@ export function selectLocalActivity(snapshot: CharacterAutonomySnapshot, context
   const kind = definitions.find(d => d.kind === winner.kind)!.kind;
   // Reuse the uniformly distributed position within the selected family bucket.
   const poseRandom = winner.score > 0 ? (remaining + winner.score) / winner.score : 0;
-  const poseWeights = (['idle_blink', 'look_around'] as const).map(pose => {
-    const repeats = context.history.filter(entry => entry.kind === `calm:${pose}`).reduce((sum, entry) =>
-      sum + Math.pow(.5, Math.max(0, context.nowMs - entry.atMs) / 90000), 0);
-    return { pose, weight: (pose === 'idle_blink' ? 1.4 : 1) / (1 + repeats) };
-  });
-  const calmPose = poseRandom * (poseWeights[0]!.weight + poseWeights[1]!.weight) < poseWeights[0]!.weight
+
+  const calmPose = kind === 'idle' && winner.poolEligible && planStep === 'calm_look_around' ? 'look_around' : poseRandom * (poseWeights[0]!.weight + poseWeights[1]!.weight) < poseWeights[0]!.weight
     ? 'idle_blink' : 'look_around';
   return { intent: { kind: kind === 'social_bid' ? 'play' : kind, source: 'timer', priority: 'normal',
     reason: 'local_utility', ...(kind === 'social_bid' ? { activityFamily: 'social_bid' } : {}),

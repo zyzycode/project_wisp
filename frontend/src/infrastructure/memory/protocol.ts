@@ -11,10 +11,10 @@ import type { MemoryFailureCode, MemoryResult } from '../../application/ports/me
 import { itemMutation, itemListQuery, itemReceipt, itemPage, itemRecallTokens, itemCandidates } from './item-validation';
 import * as v from './validation';
 
-export type Operation = 'readMotivation' | 'replaceMotivation' | 'readSocialInterpretation' | 'replaceSocialInterpretation' | 'clearSocialInterpretation' | 'createDeferredInvitation' | 'readDeferredInvitation' | 'claimDeferredInvitation' | 'finishDeferredInvitation' | 'findCausalLife' | 'findMemoryItems' | 'appendCausalLife' | 'recentCausalLife' | 'resolveCausalLife' | 'beginRoutine' | 'appendRoutine' | 'readRoutineStatus' | 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
+export type Operation = 'restoreMotivation' | 'readMotivation' | 'replaceMotivation' | 'readSocialInterpretation' | 'replaceSocialInterpretation' | 'clearSocialInterpretation' | 'createDeferredInvitation' | 'readDeferredInvitation' | 'claimDeferredInvitation' | 'finishDeferredInvitation' | 'findCausalLife' | 'findMemoryItems' | 'appendCausalLife' | 'recentCausalLife' | 'resolveCausalLife' | 'beginRoutine' | 'appendRoutine' | 'readRoutineStatus' | 'readBeverage' | 'mutateBeverage' | 'readInterestThread' | 'mutateInterestThread' | 'claimInterestThread' | 'captureInterestThreadReply' | 'summaryRecent' | 'summaryExact' | 'mutateMemoryItem' | 'listMemoryItems' | 'appendTurn' | 'getRecent' | 'closeSession' | 'closeUnfinishedSessions' | 'upsertFact' | 'removeFact' | 'listFacts' | 'appendEpisode' | 'getRecentEpisodes' | 'loadSnapshot' | 'saveSnapshot' | 'clear' | 'close';
 export interface Command { readonly id: number; readonly generation: number; readonly operation: Operation; readonly payload: unknown }
 export interface Reply { readonly id: number; readonly result: MemoryResult<unknown> }
-const operations: readonly string[] = ['readMotivation', 'replaceMotivation', 'readSocialInterpretation', 'replaceSocialInterpretation', 'clearSocialInterpretation', 'createDeferredInvitation', 'readDeferredInvitation', 'claimDeferredInvitation', 'finishDeferredInvitation', 'findCausalLife', 'findMemoryItems', 'appendCausalLife', 'recentCausalLife', 'resolveCausalLife', 'beginRoutine', 'appendRoutine', 'readRoutineStatus', 'readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
+const operations: readonly string[] = ['restoreMotivation', 'readMotivation', 'replaceMotivation', 'readSocialInterpretation', 'replaceSocialInterpretation', 'clearSocialInterpretation', 'createDeferredInvitation', 'readDeferredInvitation', 'claimDeferredInvitation', 'finishDeferredInvitation', 'findCausalLife', 'findMemoryItems', 'appendCausalLife', 'recentCausalLife', 'resolveCausalLife', 'beginRoutine', 'appendRoutine', 'readRoutineStatus', 'readBeverage', 'mutateBeverage', 'readInterestThread', 'mutateInterestThread', 'claimInterestThread', 'captureInterestThreadReply', 'summaryRecent', 'summaryExact', 'mutateMemoryItem', 'listMemoryItems', 'appendTurn', 'getRecent', 'closeSession', 'closeUnfinishedSessions', 'upsertFact', 'removeFact', 'listFacts', 'appendEpisode', 'getRecentEpisodes', 'loadSnapshot', 'saveSnapshot', 'clear', 'close'];
 const codes: readonly string[] = ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'invalid_data', 'conflict', 'stale', 'io_error'];
 export function command(value: unknown): Command {
   const c = v.record(value, ['id', 'generation', 'operation', 'payload']);
@@ -22,6 +22,7 @@ export function command(value: unknown): Command {
   const operation = c.operation as Operation;
   let payload: unknown;
   switch (operation) {
+    case 'restoreMotivation':
     case 'readMotivation': payload = v.timestamp(c.payload); break;
     case 'replaceMotivation': { const p = v.record(c.payload,['value','expectedRevision']); payload = { value: motivationRecord(p.value), expectedRevision: p.expectedRevision === null ? null : v.integer(p.expectedRevision,1) }; break; }
     case 'readSocialInterpretation': payload = v.timestamp(c.payload); break;
@@ -79,6 +80,7 @@ export function failure(error: unknown): MemoryResult<never> {
 
 export function responseValue(operation: Operation, value: unknown): unknown {
   switch (operation) {
+    case 'restoreMotivation':
     case 'readMotivation': return value === null ? null : motivationRecord(value);
     case 'readSocialInterpretation': return value === null ? null : socialInterpretation(value);
     case 'readDeferredInvitation': return value === null ? null : deferredInvitation(value);

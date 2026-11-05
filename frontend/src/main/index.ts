@@ -352,10 +352,15 @@ function initializeAutonomyComposition(): void {
     context: () => memoryRuntime?.context() ?? null, wallNow: Date.now,
     getNeeds: () => defaultCharacterStateService.getState().needs,
     eligible: () => autonomyComposition?.canInfluenceOwnGoals() ?? false,
-    createId: () => randomUUID(), onFailure: code => memoryRuntime?.failure(code) });
+    createId: () => randomUUID(), onFailure: code => memoryRuntime?.failure(code),
+    planning: { appRunId: () => memoryRuntime?.history.currentAppRunId() ?? null,
+      onOpportunityFinished: () => autonomyComposition?.finishOwnPlanOpportunity() } });
   autonomyComposition = new MainAutonomyComposition({
     ownGoals: {
       opportunity: () => ownGoalsRuntime?.opportunity(), selectedGoalKind: () => ownGoalsRuntime?.selectedGoalKind() ?? null,
+      selectedPlanStep: () => ownGoalsRuntime?.selectedPlanStep() ?? null,
+      offerPlanStep: (step, start) => ownGoalsRuntime?.offerPlanStep(step, start) ?? false,
+      interruptPlanAdmission: () => ownGoalsRuntime?.interruptPlanAdmission(),
       cancel: () => ownGoalsRuntime?.cancel() ?? Promise.resolve(), invalidate: () => ownGoalsRuntime?.invalidate(),
     },
     deferredInvitation: {

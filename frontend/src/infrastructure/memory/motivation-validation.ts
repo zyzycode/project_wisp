@@ -30,7 +30,9 @@ function plan(value: unknown, goals: readonly OwnGoal[]): OwnPlan | null {
     const c = record(p.claim, ['appRunId', 'stepToken', 'runId']);
     claim = { appRunId: text(c.appRunId), stepToken: text(c.stepToken), runId: c.runId === null ? null : text(c.runId) };
   }
-  return { goalId, steps, stepIndex: integer(p.stepIndex, 0, steps.length - 1), attempts: integer(p.attempts, 0, 3), claim };
+  const stepIndex = integer(p.stepIndex, 0, steps.length - 1), attempts = integer(p.attempts, 0, 3);
+  if (attempts < stepIndex || (claim && attempts >= 3)) throw new MemoryDataError('invalid_data');
+  return { goalId, steps, stepIndex, attempts, claim };
 }
 export function motivationRecord(value: unknown): MotivationRecord {
   const p = record(value, ['revision', 'goals', 'plan', 'noveltyArmed', 'recoveryArmed', 'lastSeenAt']);

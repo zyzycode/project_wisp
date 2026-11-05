@@ -1,5 +1,5 @@
 import { ChatMotionRuntime } from '../application/services/chat-motion-runtime';
-import type { IOwnGoalsRuntime } from '../application/ports/motivation.interface';
+import type { IOwnGoalsRuntime, OwnPlanStep } from '../application/ports/motivation.interface';
 import { planChatWalk } from '../domain/behavior/chat-walk';
 import type { ChatMotionRequest, ChatMotionTerminal, ChatMotionCancellation } from '../application/ports/chat-motion';
 import type { CursorGameResult } from '../application/ports/cursor-game-contract';
@@ -67,7 +67,7 @@ export const DEFAULT_BRAIN_LOOP_POLICY: BrainLoopPolicy = {
 };
 
 export interface MainAutonomyCompositionOptions {
-  readonly ownGoals?: Pick<IOwnGoalsRuntime, 'opportunity' | 'selectedGoalKind' | 'cancel' | 'invalidate'>;
+  readonly ownGoals?: Pick<IOwnGoalsRuntime, 'opportunity' | 'selectedGoalKind' | 'selectedPlanStep' | 'offerPlanStep' | 'interruptPlanAdmission' | 'cancel' | 'invalidate'>;
   readonly deferredInvitation?: {
     opportunity(): boolean;
     activityStarted(runId: string): void;
@@ -166,7 +166,7 @@ export class MainAutonomyComposition {
         return consumed;
       },
       getLocalSelection: () => ({ nowMs: options.clock.now(), history: this.localHistory,
-        quiet: this.quiet || this.quietSupport, ownGoal: options.ownGoals?.selectedGoalKind(),
+        quiet: this.quiet || this.quietSupport, ownGoal: options.ownGoals?.selectedGoalKind(), ownPlanStep: this.selectedOwnPlanStep(),
         canSocial: this.socialFollowup.canStartFirst() && !this.systemIdle.isBlocked() && this.initiativeBudget.available(options.clock.now()),
         canExplore: this.activity.canStart({ kind: 'wander', source: 'timer', priority: 'normal' }),
         canPlay: this.activity.canStart({ kind: 'play', source: 'timer', priority: 'normal' }),
@@ -204,6 +204,7 @@ export class MainAutonomyComposition {
       createRunId: () => options.createActivityRunId?.() ?? `activity-${++this.activityRunSequence}`,
       createActivitySequence: options.createActivitySequence,
       onRunCommitted: (runId, activityId) => {
+        if (activityId.startsWith('rest')) this.character.beginRest();
         if (this.activity.isInitiative()) this.initiativeStartSequence++;
         if (activityId === 'social_bid' && this.startingSocial !== null) {
           this.initiativeBudget.start(options.clock.now());
@@ -409,7 +410,7 @@ export class MainAutonomyComposition {
   public resetSystemIdle(): void { this.invalidateSocialFollowup(); this.systemIdle.reset(); }
   public invalidateSocialFollowup(): void { this.socialFollowup.invalidate(); this.dialoguePending = false; }
   public resetSocialFollowupMemory(): void { this.socialFollowup.reset(); this.dialoguePending = false; }
-  public acceptUserContact(): void { this.options.deferredInvitation?.cancel(); this.socialFollowup.contact(); }
+  public acceptUserContact(): void { this.options.ownGoals?.interruptPlanAdmission?.(); this.options.deferredInvitation?.cancel(); this.socialFollowup.contact(); }
   public acceptDialogueContact(): void {
     this.acceptUserContact(); this.dialoguePending = true;
     if (this.activity.getRuntime()?.activityId === 'social_bid') this.cancelActivity('user_interaction', true);
@@ -431,6 +432,7 @@ export class MainAutonomyComposition {
     if (this.quietSupport === enabled) return;
     this.quietSupport = enabled;
     if (enabled) {
+      this.options.ownGoals?.interruptPlanAdmission?.();
       this.options.deferredInvitation?.cancel();
       this.socialFollowup.invalidate();
       this.providerAdmission.invalidateIncompatibleQuiet();
@@ -444,6 +446,7 @@ export class MainAutonomyComposition {
   public setQuietMode(enabled: boolean): { readonly quiet: boolean } {
     if (this.quiet === enabled) return this.getAutonomyMode();
     this.quiet = enabled;
+    if (enabled) this.options.ownGoals?.interruptPlanAdmission?.();
     this.systemIdle.reset();
     if (enabled) { this.options.deferredInvitation?.cancel(); this.socialFollowup.invalidate(); this.options.onAIInvalidated?.(); this.providerAdmission.invalidateIncompatibleQuiet(); }
     this.resetCursorInterest();
@@ -471,6 +474,7 @@ export class MainAutonomyComposition {
   }
 
   public setMenuOpen(menuOpen: boolean): void {
+    if (menuOpen) this.options.ownGoals?.interruptPlanAdmission?.();
     if (menuOpen) this.options.deferredInvitation?.invalidateAdmission();
     if (this.menuOpen !== menuOpen) this.systemIdle.reset();
     this.resetCursorInterest();
@@ -867,7 +871,22 @@ export class MainAutonomyComposition {
   }
   public finishDeferredInvitationOpportunity(): void { this.coordinator.notifyActivityFinished(); }
 
-  private handleResolvedIntent(intent: BehaviorIntent): boolean {
+  public finishOwnPlanOpportunity(): void { this.coordinator.notifyActivityFinished(); }
+
+  private selectedOwnPlanStep(): OwnPlanStep | null {
+    const step = this.options.ownGoals?.selectedPlanStep?.() ?? null;
+    return step === 'calm_look_around' && !this.activity.canStart({ kind: 'idle', calmPose: 'look_around', source: 'timer', priority: 'normal' }) ? null : step;
+  }
+
+  private handleResolvedIntent(intent: BehaviorIntent, planDispatch = false): boolean {
+    if (planDispatch && (!this.canInfluenceOwnGoals()
+      || (intent.kind === 'sleep' && permitsAutomaticWake(this.options.getCharacterSnapshot())))) return false;
+    if (!planDispatch && intent.source === 'timer' && intent.reason === 'local_utility') {
+      const step = this.selectedOwnPlanStep();
+      const matching = step === 'rest' ? intent.kind === 'sleep' : step === 'explore' ? intent.kind === 'wander'
+        : step === 'calm_look_around' && intent.kind === 'idle' && intent.calmPose === 'look_around';
+      if (step && matching && this.options.ownGoals?.offerPlanStep?.(step, () => this.handleResolvedIntent(intent, true))) return true;
+    }
     if ((this.activity.getRuntime() !== null || this.providerAdmission?.hasPending()) && intent.reason !== 'vital_sleep') return false;
     const social = intent.activityFamily === 'social_bid';
     if (!isQuietCompatible(intent, this.quiet || this.quietSupport)) return false;
@@ -963,6 +982,7 @@ export class MainAutonomyComposition {
   }
 
   private cancelActivity(reason: ActivityCancelReason, publish: boolean, forDrag = false): boolean {
+    this.options.ownGoals?.interruptPlanAdmission?.();
     if (reason === 'user_interaction' || reason === 'forced_motion') {
       this.socialFollowup.invalidate();
       this.providerAdmission?.invalidate(reason);

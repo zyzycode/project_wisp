@@ -52,7 +52,9 @@ export function evaluateOwnGoals(record: OwnMotivation, needs: GoalNeeds, now: s
   if (!validGoalNeeds(needs) || Date.parse(now) < Date.parse(settled.lastSeenAt)) return settled;
   let goals = settled.goals.map(goal => goal.status !== 'pending' ? goal
     : goal.kind === 'recover_energy' && needs.energy >= 60 ? { ...goal, status: 'completed' as const }
-    : goal.kind === 'seek_novelty' && needs.boredom! < 40 ? { ...goal, status: 'cancelled' as const } : goal);
+    : goal.kind === 'seek_novelty' && needs.boredom! < 40
+      && !(settled.plan?.goalId === goal.id && settled.plan.stepIndex > settled.plan.steps.indexOf('explore'))
+      ? { ...goal, status: 'cancelled' as const } : goal);
   let recoveryArmed = settled.recoveryArmed || needs.energy >= 60;
   let noveltyArmed = settled.noveltyArmed || needs.boredom! < 40;
   const add = (kind: OwnGoalKind) => {
@@ -91,6 +93,7 @@ export function ownGoalActivityKind(activityId: string): OwnGoalKind | null {
 }
 export function finishOwnGoal(record: OwnMotivation, goalId: string, outcome: 'completed' | 'cancelled' | 'failed', now: string): OwnMotivation {
   if (!Number.isFinite(Date.parse(now))) return record;
+  if (record.plan?.goalId === goalId) return record;
   const settled = settleOwnGoals(record, now);
   const goals = settled.goals.map(goal => goal.id === goalId && goal.status === 'pending'
     ? { ...goal, status: outcome === 'completed' ? 'completed' as const : 'cancelled' as const } : goal);

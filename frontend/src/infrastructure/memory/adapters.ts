@@ -56,6 +56,7 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
   }
   return {
     motivation: {
+      restore: (now,c) => call('restoreMotivation',now,c,value => value === null ? null : motivationRecord(value)),
       read: (now,c) => call('readMotivation',now,c,value => value === null ? null : motivationRecord(value)),
       replace: (value,expectedRevision,c) => call('replaceMotivation',{value,expectedRevision},c,nothing),
     },

@@ -62,6 +62,7 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'restoreMotivation': return new MotivationStore(this.db).read(c.payload,true);
       case 'readMotivation': return new MotivationStore(this.db).read(c.payload);
       case 'replaceMotivation': return new MotivationStore(this.db).replace(c.payload);
       case 'readSocialInterpretation': return new SocialInterpretationStore(this.db).read(c.payload);

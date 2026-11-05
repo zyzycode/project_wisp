@@ -88,6 +88,7 @@ export class AutonomyCharacterEngine {
   }
 
   public finishRest(): void { this.setSleepState('awake'); }
+  public beginRest(): void { this.setSleepState('sleeping'); }
 
   public wakeForSupportLoss(): void {
     this.setSleepState('awake');
@@ -115,7 +116,8 @@ export class AutonomyCharacterEngine {
         ...input.selection,
         canRest: input.selection.canRest && !permitsAutomaticWake(input.snapshot),
       }, input.prng.next());
-      if (selection.intent.kind === 'sleep') this.setSleepState('sleeping');
+      // An owned plan must acknowledge its claim before semantic admission.
+      if (selection.intent.kind === 'sleep' && input.selection.ownPlanStep !== 'rest') this.setSleepState('sleeping');
       return { ...this.resolution(selection.intent), selectionTrace: selection.trace };
     }
     const resolvedIntent = vitalSleep
