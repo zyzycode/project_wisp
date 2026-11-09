@@ -33,7 +33,7 @@ process.on('SIGTERM', abort);
 try {
   // Explicit life cases use a separate synthetic profile; no case preserves the generic smoke.
   const lifeCase = process.env.WISP_SMOKE_LIFE_CASE;
-  if (lifeCase !== undefined && lifeCase !== 'causal') throw new Error('WISP_SMOKE_LIFE_CASE must be causal when set');
+  if (lifeCase !== undefined && !['causal', 'book-completed', 'book-interrupted'].includes(lifeCase)) throw new Error('WISP_SMOKE_LIFE_CASE must be causal, book-completed or book-interrupted when set');
   if (lifeCase && nativeMode) throw new Error('Life and native TTS cases cannot be combined');
   if (lifeCase) environment.WISP_SMOKE_LIFE_CASE = lifeCase;
   const lifeSoakMs = Number(process.env.WISP_LIFE_SOAK_MS ?? 10_000);

@@ -61,7 +61,7 @@ app.whenReady().then(() => {
   });
 });
 const lifeCase = process.env.WISP_SMOKE_LIFE_CASE;
-if (lifeCase !== undefined && lifeCase !== 'causal') throw new Error('Unknown life smoke case');
+if (lifeCase !== undefined && !['causal', 'book-completed', 'book-interrupted'].includes(lifeCase)) throw new Error('Unknown life smoke case');
 let lifeFixture; let lifeInputs;
 
 (async () => {
@@ -99,6 +99,17 @@ let lifeFixture; let lifeInputs;
     if (lifeCase === 'causal') {
       const { runCausalLife } = require('./causal-life.cjs');
       report.causalLife = await runCausalLife({ win, evaluate, until, sleep, record, output, profile, inputs: lifeInputs, fixture: lifeFixture });
+      assert.equal(errors.length, 0, 'Renderer/preload runtime errors');
+      lifeInputs.dispose();
+      completed = true;
+      save();
+      await evaluate('window.wispAPI.closeApp()').catch(() => { /* Real quit closes the Renderer. */ });
+      return;
+    }
+    if (lifeCase?.startsWith('book-')) {
+      const { runBookActivity } = require('./book-activity.cjs');
+      report.bookActivity = await runBookActivity({ win, evaluate, until, sleep, record, output,
+        profile, inputs: lifeInputs, fixture: lifeFixture, caseName: lifeCase.slice('book-'.length) });
       assert.equal(errors.length, 0, 'Renderer/preload runtime errors');
       lifeInputs.dispose();
       completed = true;
