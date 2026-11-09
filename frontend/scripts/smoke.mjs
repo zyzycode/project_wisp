@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { bounded, exitStatus, smokeEnvironment, stopOwnedProcess } from './smoke-support.mjs';
+import { smokeDeadlineMs } from './smoke-budget.mjs';
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(path.join(frontend, 'package.json'));
@@ -81,10 +82,8 @@ try {
   // Only bounded diagnostic output from the isolated, mock-only profile is retained.
   for (const stream of [child.stdout, child.stderr]) stream.on('data', data => { log = (log + data).slice(-32_768); });
   closed = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
-  const smokeDeadlineMs = environment.WISP_TTS_NATIVE_PROBE
-    ? 240_000 + (nativeRegression ? 0 : lifeSoakMs - 10_000)
-    : lifeCase ? 120_000 : Math.min(120_000, 50_000 + lifeSoakMs);
-  const code = await run(closed, smokeDeadlineMs, 'Electron smoke');
+  const deadlineMs = smokeDeadlineMs({ nativeProbe: environment.WISP_TTS_NATIVE_PROBE, nativeRegression, lifeCase, lifeSoakMs });
+  const code = await run(closed, deadlineMs, 'Electron smoke');
   const native = JSON.parse(await readFile(path.join(output, 'electron.json'), 'utf8'));
   if (native.runId !== runId) throw new Error('Missing current Electron receipt (old output directory)');
   Object.assign(report, native);

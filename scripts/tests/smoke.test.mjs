@@ -8,10 +8,26 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bounded, exitStatus, smokeEnvironment, stopOwnedProcess } from '../../frontend/scripts/smoke-support.mjs';
 import { wispCommands } from '../commands.mjs';
+import { smokeDeadlineMs } from '../../frontend/scripts/smoke-budget.mjs';
 
 test('smoke launcher forwards a literal output path to the isolated runner', () => {
   const [command] = wispCommands('smoke:desktop', ['output folder']);
   assert.deepEqual(command.args.slice(-3), ['smoke:desktop', '--', 'output folder']);
+});
+
+test('generic smoke budgets the full validated soak while explicit cases retain their limits', () => {
+  assert.equal(smokeDeadlineMs({ lifeSoakMs: 10_000 }), 60_000);
+  assert.equal(smokeDeadlineMs({ lifeSoakMs: 300_000 }), 350_000);
+  for (const lifeCase of ['causal', 'book-completed', 'book-interrupted']) {
+    assert.equal(smokeDeadlineMs({ lifeCase, lifeSoakMs: 10_000 }), 120_000);
+    assert.equal(smokeDeadlineMs({ lifeCase, lifeSoakMs: 300_000 }), 120_000);
+  }
+  assert.equal(smokeDeadlineMs({ nativeProbe: '1', nativeRegression: false, lifeSoakMs: 10_000 }), 240_000);
+  assert.equal(smokeDeadlineMs({ nativeProbe: '1', nativeRegression: false, lifeSoakMs: 300_000 }), 530_000);
+  for (const nativeProbe of ['cancel-load', 'cancel-run', 'complete', 'crash', 'coordination']) {
+    assert.equal(smokeDeadlineMs({ nativeProbe, nativeRegression: true, lifeSoakMs: 10_000 }), 240_000);
+    assert.equal(smokeDeadlineMs({ nativeProbe, nativeRegression: true, lifeSoakMs: 300_000 }), 240_000);
+  }
 });
 
 test('profile cannot inherit AI routes, credentials, debugging or sandbox bypass flags', () => {
