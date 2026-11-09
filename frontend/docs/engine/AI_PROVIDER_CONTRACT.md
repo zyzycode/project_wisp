@@ -55,26 +55,11 @@ stop/cleanup и Character admission не ждут формулировки мо�
 
 ## Личный ключ OpenAI и подключение из приложения
 
-Настройка личного подключения отделена от семантического `IAIProvider`. Контракты:
-[ai-connection.interface.ts](../../src/application/ports/ai-connection.interface.ts),
-`AIConnectionApiBridge` и связанные DTO в [ipc-contracts.ts](../../src/shared/ipc-contracts.ts).
-Main владеет настройкой, доверенным IPC sender, хранилищем ключа, локальным backend child
-и выбором маршрута. Renderer владеет только формой и временным вводом пользователя.
+Настройка личного подключения отделена от семантического `IAIProvider`. Контракты: [ai-connection.interface.ts](../../src/application/ports/ai-connection.interface.ts), `AIConnectionApiBridge` и связанные DTO в [ipc-contracts.ts](../../src/shared/ipc-contracts.ts). Main владеет настройкой, доверенным IPC sender, хранилищем ключа, локальным backend child и выбором маршрута. Renderer владеет только формой и временным вводом пользователя.
 
-**Две категории credentials:** ключ оператора внешнего backend никогда не передаётся
-в desktop; `.env` backend не читается и не редактируется из приложения. Личный ключ
-пользователь вводит сам: masked set-only поле → typed preload → Main. Этот одноразовый
-ввод не разрешает чтение сохранённых секретов из Renderer. Ответы IPC, Brain snapshots,
-диалог, память, логи, ошибки и telemetry не содержат ключ, его часть или hash. Поле
-очищается после отправки, закрытия формы и смены stream; localStorage/sessionStorage
-и автосохранение draft запрещены. JavaScript не гарантирует стирание строк из RAM.
+**Две категории credentials:** ключ оператора внешнего backend никогда не передаётся в desktop; `.env` backend не читается и не редактируется из приложения. Личный ключ пользователь вводит сам: masked set-only поле → typed preload → Main. Этот одноразовый ввод не разрешает чтение сохранённых секретов из Renderer. Ответы IPC, Brain snapshots, диалог, память, логи, ошибки и telemetry не содержат ключ, его часть или hash. Поле очищается после отправки, закрытия формы и смены stream; localStorage/sessionStorage и автосохранение draft запрещены. JavaScript не гарантирует стирание строк из RAM.
 
-Первый slice поддерживает только OpenAI; модель и upstream URL выбирает существующий
-backend profile. Форма не принимает provider/model/URL, не переключает Gemini и не
-включает автономные платные события. Изменение Gemini rollout требует отдельного решения.
-UI объясняет отправку сообщений и разрешённой памяти OpenAI, возможность расходов и
-то, что сохранение ключа не проверяет его действительность. Автоматических inference
-или иных provider probes при открытии/сохранении/старте нет.
+Первый slice поддерживает только OpenAI; модель и upstream URL выбирает существующий backend profile. Форма не принимает provider/model/URL, не переключает Gemini и не включает автономные платные события. Изменение Gemini rollout требует отдельного решения. UI объясняет отправку сообщений и разрешённой памяти OpenAI, возможность расходов и то, что сохранение ключа не проверяет его действительность. Автоматических inference или иных provider probes при открытии/сохранении/старте нет.
 
 | Операция | Правило |
 |---|---|
@@ -84,45 +69,58 @@ UI объясняет отправку сообщений и разрешённ�
 | Неуспешная запись/удаление | Не утверждать успех и не перезапускать. Старый файл сохраняется при ошибке записи; пользователю возвращается безопасный код. |
 | Указан внешний `WISP_BACKEND_URL` | Режим `external`, локальное управление ключом недоступно. Не менять внешний backend, не загружать личный ключ и не подменять его серверный credential. |
 
-Trusted sender проверяется до payload; точная форма, enum, длины и stream проверяются
-в Main, вход/выход также валидируются в preload. Неизвестные поля отклоняются без
-echo исходного ввода. Чтение не возвращает credential. Stale IPC не изменяет хранилище.
-Если stream сменился во время завершённой записи, повторного restart/повторной записи
-нет; результат не применяется к новой форме. После admitted успешной записи Main
-завершает один нормальный restart независимо от закрытия формы.
+Trusted sender проверяется до payload; точная форма, enum, длины и stream проверяются в Main, вход/выход также валидируются в preload. Неизвестные поля отклоняются без echo исходного ввода. Чтение не возвращает credential. Stale IPC не изменяет хранилище. Если stream сменился во время завершённой записи, повторного restart/повторной записи нет; результат не применяется к новой форме. После admitted успешной записи Main завершает один нормальный restart независимо от закрытия формы.
 
-`IUserAIKeyStore` реализуется в Infrastructure/platform через Electron `safeStorage`
-после app ready. Зашифрованный файл — только в `app.getPath('userData')`, вне repo,
-с атомарной заменой и ограниченными правами. Использовать доступный async API текущего
-Electron. При недоступном OS encryption либо Linux `basic_text`/`unknown` — fail closed:
-не записывать plaintext, не включать `setUsePlainTextEncryption`, продолжить offline.
-Ошибка расшифровки не удаляет файл автоматически; UI позволяет заменить/удалить ключ.
-Платформенные различия проверяются только platform adapter. Защита не обещает
-невозможности доступа любому процессу текущего OS пользователя.
+`IUserAIKeyStore` реализуется в Infrastructure/platform через Electron `safeStorage` после app ready. Зашифрованный файл — только в `app.getPath('userData')`, вне repo, с атомарной заменой и ограниченными правами. Использовать доступный async API текущего Electron. При недоступном OS encryption либо Linux `basic_text`/`unknown` — fail closed: не записывать plaintext, не включать `setUsePlainTextEncryption`, продолжить offline. Ошибка расшифровки не удаляет файл автоматически; UI позволяет заменить/удалить ключ. Платформенные различия проверяются только platform adapter. Защита не обещает невозможности доступа любому процессу текущего OS пользователя.
 
-Startup: без внешнего URL Main загружает личный ключ. При отсутствии — прежний Mock;
-при наличии — один managed backend по [Backend §7](../../../docs/contracts/BACKEND_API_CONTRACT.md#7-личный-local-backend-desktop).
-Main сохраняет plaintext только на время bootstrap; HTTP adapter хранит только
-случайный session token. Ожидание старта ограничено 10 s и не блокирует event loop;
-ошибка/таймаут оставляют рабочий локальный runtime и понятный статус подключения.
-Готовый маршрут передаётся в существующую AI-композицию один раз, без горячей смены
-Dialogue/Event/Observation services. Упавший child не перезапускается автоматически.
+Startup: без внешнего URL Main загружает личный ключ. При отсутствии — прежний Mock; при наличии — один managed backend по [Backend §7](../../../docs/contracts/BACKEND_API_CONTRACT.md#7-личный-local-backend-desktop). Main сохраняет plaintext только на время bootstrap; HTTP adapter хранит только случайный session token. Ожидание старта ограничено 10 s и не блокирует event loop; ошибка/таймаут оставляют рабочий локальный runtime и понятный статус подключения. Готовый маршрут передаётся в существующую AI-композицию один раз, без горячей смены Dialogue/Event/Observation services. Упавший child не перезапускается автоматически.
 
-Сохранение/удаление запускает штатные `relaunch`/`quit` после ответа IPC. Существующие
-memory flush, dispose/cancel и generation checks сохраняются; поздние ответы не
-публикуются после dispose. Main останавливает только принадлежащий ему child:
-закрыть stdin, дать короткое graceful окно, затем завершить этот child при
-необходимости; общий stop deadline ≤3 s, включая kill escalation и ожидание выхода.
-Нельзя искать/убивать чужие процессы по имени или порту. Потеря Main
-закрывает pipe и завершает child. После запуска форма показывает безопасную причину
-неуспеха; неверный ключ выявляется только обычным запросом пользователя, существующий
-provider failure не выдаётся за успешное подключение к OpenAI.
+Сохранение/удаление запускает штатные `relaunch`/`quit` после ответа IPC. Существующие memory flush, dispose/cancel и generation checks сохраняются; поздние ответы не публикуются после dispose. Main останавливает только принадлежащий ему child: закрыть stdin, дать короткое graceful окно, затем завершить этот child при необходимости; общий stop deadline ≤3 s, включая kill escalation и ожидание выхода. Нельзя искать/убивать чужие процессы по имени или порту. Потеря Main закрывает pipe и завершает child. После запуска форма показывает безопасную причину неуспеха; неверный ключ выявляется только обычным запросом пользователя, существующий provider failure не выдаётся за успешное подключение к OpenAI.
 
-Development launcher передаёт доверенный путь backend/Python, но не ключи; обычный
-`dev` запускает desktop, который владеет личным child. Явный `dev:backend` и внешний
-deployment сохраняются. При отсутствии доверенного runtime в packaged приложении —
-`runtime_unavailable`, без поиска Python по произвольным путям или скачивания файлов.
-Упаковка Python/backend в distributable не входит в этот slice.
+Development launcher передаёт доверенный путь backend/Python, но не ключи; обычный `dev` запускает desktop, который владеет личным child. Явный `dev:backend` и внешний deployment сохраняются. При отсутствии доверенного runtime в packaged приложении — `runtime_unavailable`, без поиска Python по произвольным путям или скачивания файлов. Упаковка Python/backend в distributable не входит в этот slice.
+
+
+
+## Опциональная локальная модель (#194)
+
+**Target для #195, ещё не runtime capability.** Единственный одобренный путь: `IAIProvider → ExternalAIProviderClient → managed Python /v1/chat → Ollama /api/chat`. Python child — transport/prompt adapter, Ollama выполняет inference; наличие child само по себе не означает локальную модель. OpenAI/Gemini сохраняются; прямой desktop→Ollama adapter и второй сборщик карточки/prompt не вводятся.
+
+### Capability и доверие
+
+Main выбирает один маршрут до DI. Python переиспользует canonical builders, bounded context selection, активную response schema и parsers [Prompt Engine](../../../backend/docs/CONTEXT_PROMPT_ENGINE.md). Публичный `/v1/chat`, ошибки и TS/Python fixtures сохраняют текущий wire; private bootstrap delta — [Backend §7](../../../docs/contracts/BACKEND_API_CONTRACT.md#7-личный-local-backend-desktop). Точные tagged DTO/порты #195 объявляет до реализации; provider configuration не входит в semantic request.
+
+| Возможность первого local slice | Admission |
+|---|---|
+| Пользовательский chat RU/EN и разрешённая memory projection | Текущий v1 chat с обязательным appraisal; hints/candidates только через прежние exact validators, evidence/consent и Domain gates |
+| Causal Director | Тот же обязательный snapshot/signature; несовместимый structured output даёт fallback, без text-only обхода |
+| Touch, инициативные AI events, observation, summary/reflection generation | Недоступны в local profile; Main не подключает capabilities, использует прежнее local/offline поведение |
+| Streaming/tools/vision/audio, model-owned memory/retrieval | Недоступны; локальные FSM/Motion/память продолжают работать |
+
+Фиксированный кандидат — `qwen3:4b` Q4_K_M, `think=false`, локальные веса. [Каталог](https://ollama.com/library/qwen3:4b) указывает 2.5 GB/digest prefix `359d7dd4bcda`, [владелец модели](https://huggingface.co/Qwen/Qwen3-4B/blob/main/LICENSE) публикует Apache-2.0. #195 фиксирует полный digest и reviewed версию Ollama до live acceptance; mutable tag/иной digest/неизвестная версия не считаются проверенными. Cloud/remote descriptors и произвольные model/Modelfile overrides отвергаются. Metadata не доказывают качество или соблюдение semantics.
+
+Upstream — только точный `http://127.0.0.1:11434` и фиксированные metadata/chat paths; без DNS/redirect/proxy/environment overrides, credentials и URL из IPC. [Локальный API](https://docs.ollama.com/api/authentication) не требует auth: session bearer защищает только Main→свой Python. Loopback не удостоверяет владельца процесса; пользователь доверяет установленному runtime, защиты от вредоносного процесса того же OS account не обещать.
+
+### Provisioning и данные
+
+Ollama/веса устанавливает и запускает пользователь вручную, cloud отключает через `OLLAMA_NO_CLOUD=1` ([FAQ](https://docs.ollama.com/faq)). Wisp не скачивает, не настраивает и не останавливает чужой runtime. До выбора local форма объясняет передачу разрешённых chat/memory данных локальному процессу, RAM/GPU/диск и отдельное управление его logs/retention. Wisp не пишет raw prompts/replies/provider internals/server history, освобождает свои временные buffers после settlement/dispose; физическое затирание RAM и удаление данных чужого процесса не гарантируются. Local digest/cloud-disabled setup — условия поддерживаемой установки, отдельно подтверждаемые native egress test; одного loopback URL для этого недостаточно.
+
+В существующей форме — только выбор offline/OpenAI/local, safe status и ручная инструкция, без endpoint/model/process path. Выбор local сохраняет только mode в обычном userData config и вызывает один штатный restart; OpenAI key не читается и не передаётся local child. Возврат к OpenAI использует прежнее protected storage; отключение local выбирает offline, сохраняя память/ключ. Внешний `WISP_BACKEND_URL` оставляет external и запрещает локальную перенастройку. Нет hidden cloud fallback, paid probes, pull/sign-in/create/delete API или периодических health checks. Metadata (`GET /api/version`, `GET /api/tags`, `POST /api/show` с фиксированным именем) разрешены при явном подключении и перед admitted turn; сохранение/старт не вызывают inference. Версия/полный digest сверяются с reviewed profile; `ready` означает доступный проверенный descriptor, не прогретую модель или успешный inference.
+
+### Lifecycle и бюджеты
+
+[Chat API](https://docs.ollama.com/api/chat): `stream=false`, `format` с текущей schema, `think=false`, `keep_alive=0`; `num_ctx=16384`, `num_predict≤4096` и меньший scenario limit сохраняется. Thinking/tools не попадают в semantic reply. Обязательные card/state/Director не обрезать: overflow даёт безопасный отказ, optional blocks отбирает существующий алгоритм. Target safety caps: request≤256 KiB, upstream body≤64 KiB с bounded streaming read до JSON parse, metadata≤64 KiB; превышение отклоняется без payload echo.
+
+Один inference in-flight, ноль Wisp очереди/retry; metadata/загрузка входят в прежние 15000 ms от admission. Backend сохраняет общий deadline≤10 s по API §5, connect/pool≤500 ms каждый, metadata≤1 s внутри него, без обновления полного timeout после await. Отмена закрывает HTTP stream/task по владельцу lifecycle; `keep_alive=0` относится к завершённому запросу, не доказывает остановку вычислений после disconnect. Retired-call guard сохраняется до settlement локального исполнения, late upstream результаты не публикуются и не вызывают retry. Native cancel/queue test отдельно проверяет остановку inference; зависший чужой runtime пользователь останавливает вручную.
+
+Нет сервиса/модели, неверный digest, 404/429/503/overload дают существующий wire `503 upstream_unavailable` и локальный `provider_unavailable`; deadline — `504 upstream_timeout`/локальный `timeout`; malformed/schema/truncation/thinking-only/tool output — прежний `502 invalid_model_response`/invalid-response path, без новых wire codes. Auth отказ Main→Python и upstream error не раскрывают provider internals. Reset/sleep/revoke/dispose/смена connection инвалидируют generation: late success/error не создают memory/appraisal и не завершают Activity нового turn. Смена route сохраняет canonical identity revision/state/evidence и persisted pending intentions, не переводит их в model session и не создаёт synthetic experience; новый turn повторно проверяет gates, текст разных моделей совпадать не обязан.
+
+Выбранный **тестовый target**, не измеренный минимум: RAM≥16 GiB, при GPU VRAM≥8 GiB, ручная поддерживаемая установка с `OLLAMA_MAX_LOADED_MODELS=1`, `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_MAX_QUEUE=1`, idle unload. Wisp эти настройки чужого процесса не меняет. Target peak Ollama RSS+GPU allocation≤8 GiB (shared memory не считать дважды), p95 admitted reply≤15 s, zero request growth после cancel/dispose. Фактические CPU/RAM/VRAM, cold/warm latency и cleanup измеряются на конкретной машине; размер весов не доказывает PASS. Не прошедшая машина остаётся unsupported/degraded с работающим offline runtime, без увеличения общего deadline.
+
+### Проверки и готовность #195
+
+После task dependencies разрешены adapter/DTO/mocked tests, без автоматического live inference. Проверить оба bootstrap mode/TS-Python fixtures, capability isolation, malformed/oversize/context overflow, auth expiry/outage/overload/deadline, duplicate/reset/restart/dispose/late generation и отсутствие downloads/cloud fallback/logging. Paired fake providers получают один canonical context; replacement сам не меняет identity/state/history/intent и не создаёт state writes из отличающейся формулировки.
+
+Live acceptance — отдельно, после явного разрешения пользователя запускать установленную модель на synthetic data/выбранной машине. Матрица≥20 RU/EN prompts: ordinary, causal mismatch, uncertain recall, denied action, interruption и offline; schema/length/permission/lifecycle инварианты 100%, human card/factual consistency≥18/20, ни одного выдуманного completed action/knowledge. Cold/warm/cancel/overload прогоны фиксируют version/full digest/OS/CPU/RAM/GPU, p50/p95, peak memory, no egress и zero growth. Human/native NOT RUN не заменять mocks; непроверенный профиль не получает claimed local quality, приёмка #195 остаётся открытой.
 
 ## Request DTO (Форма запроса)
 

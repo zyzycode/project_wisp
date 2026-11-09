@@ -273,6 +273,14 @@ custom endpoint/model, новая server persistence и обновление з�
 не HTTP, argv, environment, temp files или stdout. Не добавляется endpoint для
 чтения/записи ключей, и ключ никогда не включается в `/v1/*` semantic payload.
 
+### Target local-model bootstrap (#194 → #195)
+
+До atomic #195 нижеследующие mode-поля не принимаются, текущий OpenAI bootstrap остаётся exact. #195 одновременно обновляет TS `LocalAIBackendBootstrap`, Python stdin schema и fixtures: обе ветки получают обязательный `mode=openai|local_model`; общие `sessionToken`/`ledgerPath`, byte/UTF-8/exact-key caps и один bootstrap сохраняются. `openai` требует прежний `apiKey`; `local_model` запрещает `apiKey` и любые endpoint/model/exec overrides, выбирает единственный reviewed профиль из [AI Provider — local](../../frontend/docs/engine/AI_PROVIDER_CONTRACT.md#опциональная-локальная-модель-194). Это private control record, не новое поле `/v1/*`, не wire version или адаптер старых клиентов.
+
+Ollama разрешён только optional managed `local_model` branch; standalone cloud OpenAI/Gemini, `.env` isolation и существующий OpenAI mode сохраняют правила выше. Local child не читает saved OpenAI key/operator credentials; соединение с fixed loopback runtime — lifecycle-owned httpx без proxy/redirect, его chat context/schema/parsers/ledger/errors/deadlines прежние. Local profile не подключает touch/events/summary/observation/screen capabilities; неподдерживаемый endpoint отклоняется до inference по существующему safe unavailable path. Наличие модели/metadata не доказывает native quality; caps, readiness/provisioning/данные и отдельная live matrix заданы в AI Provider, не дублируются здесь.
+
+Main хранит только выбранный mode отдельно от protected key и использует штатный restart после изменения. Отключение local возвращает offline, не удаляет OpenAI key/Character state/memory. Startup/stop/token/EOF guards остаются прежними; ready означает готовность Python adapter, не загрузку весов или успешный inference. Main владеет только Python child: Ollama/веса пользователь устанавливает, запускает и останавливает вручную, Wisp не загружает модель и не управляет чужим процессом. Connection switch/dispose закрывает свои HTTP/task ресурсы и отбрасывает старую generation, без обещания физической остановки чужого вычисления.
+
 ### Bootstrap и readiness
 
 Один UTF-8 JSON record с newline, ≤16 KiB вместе с разделителем; unknown/duplicate
