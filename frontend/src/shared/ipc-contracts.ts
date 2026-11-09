@@ -551,6 +551,7 @@ export interface AIConnectionApiBridge {
 }
 
 export interface WispApiBridge {
+  readonly windowFocus?: import('../application/ports/window-focus-controls.interface').IWindowFocusControls;
   readonly screenObservation?: import('./screen-observation-contracts').ScreenObservationBridge;
   readonly routineHypothesis?: import('./routine-hypothesis-contracts').RoutineHypothesisBridge;
   readonly initiative?: import('../application/ports/initiative-controls.interface').IInitiativeControls;

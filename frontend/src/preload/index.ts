@@ -1,3 +1,4 @@
+import { parseWindowFocusOpen, parseWindowFocusChoose, parseWindowFocusResult } from '../shared/window-focus-validation';
 import { parseScreenCommand, parseScreenState } from '../shared/screen-observation-validation';
 import { parseRoutineRead, parseRoutineCommand, parseRoutineReadResult, parseRoutineResult } from '../shared/routine-hypothesis-validation';
 import { parseVoiceCancel, parseVoiceContext, parseVoiceNull, parseVoiceRequest, parseVoiceResult, parseVoiceStatus, parseVoiceText, parseVoiceTranscribe } from '../shared/voice-input-validation';
@@ -59,6 +60,12 @@ const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown):
 ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
+  windowFocus: {
+    read: async command => parseWindowFocusResult(await ipcRenderer.invoke('wisp:window-focus-read', parseWindowFocusOpen(command))),
+    open: async command => parseWindowFocusResult(await ipcRenderer.invoke('wisp:window-focus-open', parseWindowFocusOpen(command))),
+    choose: async command => parseWindowFocusResult(await ipcRenderer.invoke('wisp:window-focus-choose', parseWindowFocusChoose(command))),
+    cancel: async command => parseWindowFocusResult(await ipcRenderer.invoke('wisp:window-focus-cancel', parseWindowFocusOpen(command))),
+  },
   screenObservation: { command: async command => parseScreenState(await ipcRenderer.invoke('wisp:screen-observation', parseScreenCommand(command))) },
   voiceOutput: {
     configureAtStartup: async () => parseOutputResult(await ipcRenderer.invoke('wisp:voice-output-startup'), parseOutputStatus),

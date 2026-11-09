@@ -1,8 +1,16 @@
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import type { ExternalWindowSurfacesPort, ExternalWindowSurfacesSnapshot } from '../../application/ports/external-window-surfaces.port';
 import type { ExternalWindowSurface } from '../../domain/behavior/surface-kinematics';
+import { parseFocusBridgeResponse, serializeFocusCommand, type FocusBridgeCommand } from './window-focus-protocol';
+import type { WindowFocusOutcome } from '../../application/ports/external-window-focus.port';
 import { parseBridgeResponse, type BridgeWindow } from './window-surfaces-protocol';
 
+type FocusResult = { readonly status: 'prepared'; readonly preparedId: string } | WindowFocusOutcome;
+interface FocusExchange {
+  readonly id: number; readonly command: FocusBridgeCommand; readonly signal: AbortSignal;
+  readonly resolve: (result: FocusResult) => void; readonly reject: (reason: Error) => void;
+  readonly aborted: () => void; startedAtMs?: number;
+}
 const MAX_RESPONSE_BYTES = 256 * 1024;
 export interface WindowsWindowSurfacesOptions {
   readonly now: () => number;
@@ -21,6 +29,8 @@ export class WindowsWindowSurfaces implements ExternalWindowSurfacesPort {
   private deadline: ReturnType<typeof setTimeout> | undefined;
   private request: { id: number; startedAtMs: number } | undefined;
   private sequence = 0;
+  private focusGeneration = 0;
+  private focusExchange: FocusExchange | undefined;
   private ready = false;
   private disposed = false;
   private buffer = Buffer.alloc(0);
@@ -52,6 +62,31 @@ export class WindowsWindowSurfaces implements ExternalWindowSurfacesPort {
     this.listeners.clear();
     this.options.cleanup?.();
   }
+  public actionGeneration(): number { return this.focusGeneration; }
+  /** Data-only action serializes with observations on the SAME child/identity epoch. */
+  public exchangeFocus(command: FocusBridgeCommand, signal: AbortSignal): Promise<FocusResult> {
+    if (this.disposed || !this.ready || !this.child || this.focusExchange || signal.aborted || this.getSnapshot().capability !== 'available') return Promise.reject(new Error('Focus unavailable'));
+    return new Promise<FocusResult>((resolve, reject) => {
+      const aborted = () => {
+        const exchange = this.focusExchange;
+        if (!exchange || exchange.signal !== signal) return;
+        if (exchange.startedAtMs !== undefined) this.fail();
+        else { this.focusExchange = undefined; signal.removeEventListener('abort', aborted); reject(new Error('Focus cancelled')); }
+      };
+      this.focusExchange = { id: ++this.sequence, command, signal, resolve, reject, aborted };
+      signal.addEventListener('abort', aborted, { once: true });
+      clearTimeout(this.timer); this.dispatchFocus();
+    });
+  }
+  private dispatchFocus(): void {
+    const exchange = this.focusExchange;
+    if (!exchange || exchange.startedAtMs !== undefined || this.request || !this.child || !this.ready) return;
+    try {
+      exchange.startedAtMs = this.options.now();
+      this.deadline = setTimeout(() => this.fail(), 250);
+      this.child.stdin.write(serializeFocusCommand(exchange.command, exchange.id));
+    } catch { this.fail(); }
+  }
   private publish(snapshot: ExternalWindowSurfacesSnapshot): void {
     this.snapshot = Object.freeze(snapshot);
     for (const listener of this.listeners) listener(this.snapshot);
@@ -62,7 +97,7 @@ export class WindowsWindowSurfaces implements ExternalWindowSurfacesPort {
   }
   private start(): void {
     if (this.disposed) return;
-    this.ready = false;
+    this.ready = false; this.focusGeneration++;
     this.buffer = Buffer.alloc(0);
     try {
       const child = this.options.spawn();
@@ -88,6 +123,12 @@ export class WindowsWindowSurfaces implements ExternalWindowSurfacesPort {
         if (!this.ready) {
           if (JSON.stringify(message) !== '{"ready":true}') throw new Error('Invalid ready');
           clearTimeout(this.deadline); this.ready = true; this.poll();
+        } else if (this.focusExchange?.startedAtMs !== undefined) {
+          const exchange = this.focusExchange, age = this.options.now() - exchange.startedAtMs!;
+          if (age < 0 || age > 250 || exchange.signal.aborted) throw new Error('Late action response');
+          const result = parseFocusBridgeResponse(message, exchange.id, exchange.command.action);
+          clearTimeout(this.deadline); this.focusExchange = undefined;
+          exchange.signal.removeEventListener('abort', exchange.aborted); exchange.resolve(result); this.schedule();
         } else {
           const request = this.request;
           if (request === undefined || this.options.now() - request.startedAtMs > 250 || this.options.now() < request.startedAtMs) throw new Error('Late response');
@@ -95,7 +136,7 @@ export class WindowsWindowSurfaces implements ExternalWindowSurfacesPort {
           const surfaces = this.options.normalize(records);
           clearTimeout(this.deadline); this.request = undefined;
           this.publish({ capability: 'available', capturedAtMs: request.startedAtMs, revision: this.snapshot.revision + 1, surfaces });
-          this.schedule();
+          if (this.focusExchange) this.dispatchFocus(); else this.schedule();
         }
       } catch { this.fail(); return; }
     }
@@ -106,6 +147,7 @@ export class WindowsWindowSurfaces implements ExternalWindowSurfacesPort {
   }
   private poll(): void {
     if (this.disposed || !this.ready || this.child === undefined || this.request !== undefined) return;
+    if (this.focusExchange) { this.dispatchFocus(); return; }
     const now = this.options.now();
     if (now - this.lastPollAtMs < 100) { this.schedule(); return; }
     this.lastPollAtMs = now;
@@ -119,7 +161,9 @@ export class WindowsWindowSurfaces implements ExternalWindowSurfacesPort {
   }
   private clear(): void {
     clearTimeout(this.timer); clearTimeout(this.deadline);
-    const child = this.child; this.child = undefined;
+    const child = this.child; this.child = undefined; this.focusGeneration++;
+    const exchange = this.focusExchange; this.focusExchange = undefined;
+    if (exchange) { exchange.signal.removeEventListener('abort', exchange.aborted); exchange.reject(new Error('Focus bridge unavailable')); }
     this.request = undefined; this.ready = false; this.buffer = Buffer.alloc(0);
     child?.kill();
   }

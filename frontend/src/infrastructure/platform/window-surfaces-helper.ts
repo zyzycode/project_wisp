@@ -1,4 +1,5 @@
-/** Fixed, bundled source. Arguments/stdin contain numeric data, never executable text. */
+import { WINDOW_FOCUS_HELPER_CS } from './window-focus-helper';
+/** Fixed, bundled source. Arguments/stdin contain data, never executable text. */
 export const WINDOW_SURFACES_HELPER_PS1 = String.raw`
 $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
@@ -83,6 +84,7 @@ public static class WispWindowSurfaces {
         string[] ids = parts[1].Split(',');
         if (ids.Length > 512) throw new Exception("Invalid request");
         foreach (string id in ids) { uint pid; if (!uint.TryParse(id, out pid) || pid == 0) throw new Exception("Invalid request"); own.Add(pid); }
+        FocusOwn = own; FocusWindows.Clear();
         var enumerated = new HashSet<IntPtr>();
         if (!EnumWindows(delegate(IntPtr hwnd, IntPtr unused) { enumerated.Add(hwnd); return enumerated.Count <= 4096; }, IntPtr.Zero)) throw new Exception("Enumeration unavailable");
         var above = new List<RECT>();
@@ -128,6 +130,7 @@ public static class WispWindowSurfaces {
                     string token;
                     if (!Tokens.TryGetValue(hwnd, out token)) { token = Guid.NewGuid().ToString("N"); Tokens.Add(hwnd, token); }
                     accepted.Add(hwnd);
+                    TrackFocus(hwnd, token, pid, frame, className.ToString());
                     rows.Add("{\"token\":\"" + token + "\",\"x\":" + frame.L.ToString(CultureInfo.InvariantCulture)
                         + ",\"y\":" + frame.T.ToString(CultureInfo.InvariantCulture) + ",\"width\":" + ((long)frame.R-frame.L).ToString(CultureInfo.InvariantCulture)
                         + ",\"height\":" + ((long)frame.B-frame.T).ToString(CultureInfo.InvariantCulture)
@@ -142,6 +145,7 @@ public static class WispWindowSurfaces {
         foreach (IntPtr hwnd in new List<IntPtr>(Tokens.Keys)) if (!accepted.Contains(hwnd)) Tokens.Remove(hwnd);
         return "{\"requestId\":" + requestId.ToString(CultureInfo.InvariantCulture) + ",\"windows\":[" + string.Join(",", rows.ToArray()) + "]}";
     }
+${WINDOW_FOCUS_HELPER_CS}
     public static void Run() {
         IntPtr dpi = SetThreadDpiAwarenessContext(new IntPtr(-4));
         if (dpi == IntPtr.Zero) throw new Exception("DPI context unavailable");
@@ -166,7 +170,7 @@ public static class WispWindowSurfaces {
                 string request;
                 if (Requests.TryDequeue(out request)) {
                     long version = LifecycleVersion;
-                    string result = Sample(request);
+                    string result = request.StartsWith("P ", StringComparison.Ordinal) || request.StartsWith("C ", StringComparison.Ordinal) ? FocusAction(request) : Sample(request);
                     Pump();
                     if (version != LifecycleVersion) throw new Exception("Lifecycle changed during snapshot");
                     if (Encoding.UTF8.GetByteCount(result) > 262143) throw new Exception("Snapshot too large");

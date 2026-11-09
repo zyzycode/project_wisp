@@ -1,4 +1,4 @@
-/** TOOLS-A01 declarations only; #191 activates this finite capability. No native handles. */
+/** Explicit local focus capability. No model commands or native handles cross this port. */
 export interface WindowFocusRequestContext {
   readonly streamId: string;
   readonly conversationId: string;
@@ -91,4 +91,9 @@ export interface ExternalWindowFocusPort {
     signal: AbortSignal): Promise<WindowFocusOutcome>;
   /** Invalidates action state only; shared observation lifetime belongs to Main composition. */
   dispose(): void;
+}
+
+export interface WindowFocusCandidate {
+  readonly target: WindowFocusTarget;
+  readonly preview: Omit<WindowFocusPreviewDTO, 'selectionId'>;
 }

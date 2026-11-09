@@ -51,6 +51,7 @@ export interface RegisterAutonomyIpcHandlersOptions {
   readonly getWindow: () => AutonomyIpcWindow | null;
   readonly getController: () => MainAutonomyIpcController | null;
   readonly admitCharacterInput?: () => boolean;
+  readonly beforeQuietMode?: () => void;
   readonly isCharacterRunning?: () => boolean;
   readonly bodyEventIngress: BodyEventIpcIngress;
   readonly handleAcceptedBodyEvent: (event: Exclude<BodyEventDTO, { readonly type: 'menu_visibility_changed' }>) => void;
@@ -124,7 +125,7 @@ export function registerAutonomyIpcHandlers(options: RegisterAutonomyIpcHandlers
     const { controller } = requireTrustedContext(options, event);
     const command = parseQuietModeCommand(payload);
     if (options.admitCharacterInput && !options.admitCharacterInput()) throw new Error('Character unavailable');
-    return runInBrainTransaction(options, () => controller.setQuietMode(command.enabled));
+    return runInBrainTransaction(options, () => { options.beforeQuietMode?.(); return controller.setQuietMode(command.enabled); });
   });
   options.register('wisp:set-autonomy-enabled', async (event, payload): Promise<void> => {
     const { controller } = requireTrustedContext(options, event);

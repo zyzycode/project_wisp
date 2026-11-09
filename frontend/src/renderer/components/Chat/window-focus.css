@@ -1,0 +1,16 @@
+.window-focus-open { margin: 4px 0; padding: 5px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+.window-focus-panel { position: fixed; inset: 8px; z-index: 1001; overflow: auto; padding: 16px; border-radius: 12px; background: #20252b; color: #f1f3f5; font-size: 13px; line-height: 1.5; cursor: auto; box-shadow: 0 8px 24px #0008; }
+.window-focus-heading { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.window-focus-panel h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.window-focus-panel p { margin: 12px 0; }
+.window-focus-panel button { padding: 7px 10px; font: inherit; border: 0; border-radius: 5px; background: #e8eaf0; color: #192127; cursor: pointer; }
+.window-focus-panel button:hover { background: #fff; }
+.window-focus-panel button:disabled { opacity: .55; cursor: default; }
+.window-focus-panel :focus-visible { outline: 3px solid #91caff; outline-offset: 3px; }
+.window-focus-panel ::selection { background: #36628a; color: #fff; }
+.window-focus-choices { display: grid; gap: 8px; margin: 16px 0; }
+.window-focus-choices > button { display: flex; gap: 12px; align-items: center; text-align: left; }
+.window-focus-choices strong, .window-focus-choices small { display: block; }
+.window-focus-choices small { margin-top: 3px; }
+.window-focus-map { position: relative; flex: 0 0 72px; height: 42px; background: #374858; }
+.window-focus-map > span { position: absolute; box-sizing: border-box; border: 2px solid #fff; background: #91caff33; }

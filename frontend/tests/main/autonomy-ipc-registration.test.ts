@@ -17,7 +17,7 @@ function bodyEvent(
     : { ...meta, type, expanded: true };
 }
 
-function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
+function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }, extra: { readonly beforeQuietMode?: () => void; readonly admitCharacterInput?: () => boolean } = {}) {
   const handlers = new Map<string, RegisteredAutonomyIpcHandler>();
   const trustedSender = {};
   const window = {
@@ -41,6 +41,7 @@ function createRegistrationFixture(currentPosition = { x: 1_600, y: 760 }) {
   const commitBrainTransaction = vi.fn();
 
   registerAutonomyIpcHandlers({
+    ...extra,
     register: (channel, handler) => handlers.set(channel, handler),
     getWindow: () => window,
     getController: () => controller,
@@ -219,4 +220,18 @@ describe('Main: autonomy IPC registration', () => {
     expect(fixture.window.setResizable).toHaveBeenCalledWith(true);
     expect(fixture.window.setSize).toHaveBeenCalledWith(1_140, 620);
   });
+});
+
+it('revokes action authority synchronously only after a trusted validated admitted quiet command', async () => {
+  const order: string[] = [], beforeQuietMode = vi.fn(() => { order.push('revoke'); });
+  const f = createRegistrationFixture(undefined, { beforeQuietMode });
+  f.controller.setQuietMode.mockImplementation(enabled => { order.push('quiet'); return { quiet: enabled }; });
+  const handler = f.handler('wisp:set-quiet-mode');
+  await expect(handler({ sender: {} }, { enabled: true })).rejects.toThrow();
+  await expect(handler({ sender: f.trustedSender }, { enabled: 'true' })).rejects.toThrow();
+  expect(beforeQuietMode).not.toHaveBeenCalled();
+  await handler({ sender: f.trustedSender }, { enabled: true }); expect(order).toEqual(['revoke', 'quiet']);
+  const blocked = createRegistrationFixture(undefined, { beforeQuietMode, admitCharacterInput: () => false });
+  await expect(blocked.handler('wisp:set-quiet-mode')({ sender: blocked.trustedSender }, { enabled: true })).rejects.toThrow();
+  expect(beforeQuietMode).toHaveBeenCalledOnce();
 });

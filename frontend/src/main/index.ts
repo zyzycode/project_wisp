@@ -1,3 +1,5 @@
+import { MainWindowFocus } from './main-window-focus';
+import { registerWindowFocusIpc } from './window-focus-ipc-registration';
 import { MainScreenObservation } from './main-screen-observation';
 import { RoutineHypothesisRuntime } from '../application/services/routine-hypothesis-runtime';
 import { RoutineHypothesisControls } from '../application/services/routine-hypothesis-controls';
@@ -46,7 +48,7 @@ import { registerMemoryIpc } from './memory-ipc-registration';
 import { parseDialogueCommand } from '../shared/dialogue-ipc-validation';
 import { DEFAULT_CHAT_CONTEXT_LIMITS } from '../application/ports/memory-repository.interface';
 import { createMainMemoryComposition } from './main-memory-composition';
-import { createExternalWindowSurfaces } from '../infrastructure/platform/external-window-surfaces.factory';
+import { createExternalWindowComposition } from '../infrastructure/platform/external-window-surfaces.factory';
 import type { ExternalWindowSurfacesPort } from '../application/ports/external-window-surfaces.port';
 import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import path from 'node:path';
@@ -151,6 +153,8 @@ let unregisterMemory: (() => void) | null = null;
 let unregisterSummary: (() => void) | null = null;
 let observationRuntime: ObservationRuntime | null = null;
 let screenObservation: MainScreenObservation | null = null;
+let windowFocus: MainWindowFocus | null = null;
+let unregisterWindowFocus: (() => void) | null = null;
 let observationManagement: ActiveApplicationObservationManagement | null = null;
 let unregisterObservation: (() => void) | null = null;
 let summaryRuntime: SummaryRuntime | null = null;
@@ -174,7 +178,7 @@ let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let externalWindowSurfaces: ExternalWindowSurfacesPort | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
-const quietSupportRuntime = new QuietSupportRuntime(() => { autonomyComposition?.setQuietSupport(true); aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); });
+const quietSupportRuntime = new QuietSupportRuntime(() => { windowFocus?.invalidate(); autonomyComposition?.setQuietSupport(true); aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); });
 let dialogueRuntime: DialogueRuntime | null = null;
 let aiEventRuntime: AIEventRuntime | null = null;
 let unregisterDialogue: (() => void) | null = null;
@@ -346,6 +350,7 @@ function cancelActiveBodyDrag(): void {
 }
 
 function beginBrainStream(): void {
+  windowFocus?.invalidate();
   if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); }
   cancelActiveBodyDrag();
   if (memoryRuntime?.isRunning()) autonomyComposition?.tick();
@@ -353,6 +358,7 @@ function beginBrainStream(): void {
 }
 
 function clearBrainStream(): void {
+  windowFocus?.invalidate();
   screenObservation?.runtime.cancel();
   if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); }
   autonomyComposition?.resetSystemIdle();
@@ -368,6 +374,7 @@ function stopShimejiMotionLoop(): void {
   stopShimejiMotionLoopHandle?.();
   stopShimejiMotionLoopHandle = null;
   shimejiMotionOrchestrator = null;
+  windowFocus?.dispose(); windowFocus = null;
   externalWindowSurfaces?.dispose(); externalWindowSurfaces = null;
 }
 
@@ -507,7 +514,7 @@ function initializeAutonomyComposition(): void {
     screenObservation = ai.screenObservationProvider ? new MainScreenObservation({ provider: ai.screenObservationProvider,
       now: () => brainStatePublisher.now(), getWindow: () => mainWindow, preloadPath: resolvePreloadPath(),
       current: () => summaryStream && dialogueRuntime ? { streamId: summaryStream, conversationId: dialogueRuntime.getPresentation().conversationId } : null,
-      busy: () => !dialogueRuntime?.getPresentation().canSubmit || !!observationRuntime?.isBusy() || summaryGenerating || !!summaryRuntime?.isBusy(),
+      busy: () => !dialogueRuntime?.getPresentation().canSubmit || !!observationRuntime?.isBusy() || summaryGenerating || !!summaryRuntime?.isBusy() || !!windowFocus?.runtime.state().pending,
       loadSelector: async (window, identity) => {
         const query = { wispScreenSelector: '1', streamId: identity.streamId, conversationId: identity.conversationId };
         if (process.env.VITE_DEV_SERVER_URL) { const url = new URL(process.env.VITE_DEV_SERVER_URL); for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value); await window.loadURL(url.href); }
@@ -540,7 +547,7 @@ function initializeAutonomyComposition(): void {
         canGenerate: () => !!dialogueRuntime?.getPresentation().canSubmit && !aiEventRuntime?.isBusy() && !summaryGenerating,
       });
     }
-    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { screenObservation?.runtime.cancel(); initiativeComposition.invalidate(); voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { screenObservation?.runtime.cancel(); if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
+    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); initiativeComposition.invalidate(); voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
@@ -588,8 +595,15 @@ function createMainAutonomyScheduler(run: (callback: () => void) => void = callb
 
 function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): void {
   stopShimejiMotionLoop();
-  externalWindowSurfaces = createExternalWindowSurfaces();
+  const windows = createExternalWindowComposition();
+  externalWindowSurfaces = windows.surfaces;
   clearBrainStream();
+  windowFocus = new MainWindowFocus({ windows, now: () => brainStatePublisher.now(), scheduler: createMainAutonomyScheduler(), getWindow: () => mainWindow,
+    context: () => { const context = memoryRuntime?.context(); return summaryStream && dialogueRuntime && context && memoryRuntime?.isRunning()
+      ? { streamId: summaryStream, conversationId: dialogueRuntime.getPresentation().conversationId, generation: context.generation } : null; },
+    active: () => !!memoryRuntime?.isRunning() && !!dialogueRuntime?.getPresentation().canSubmit
+      && !autonomyComposition?.getAutonomyMode().quiet && !quietSupportRuntime.isActive() && !screenObservation?.runtime.isBusy(),
+  });
   const environment = platformEnvironmentAdapter.getSnapshot();
   const initialMotion: MotionState = {
     phase: 'grounded',
@@ -772,6 +786,8 @@ function trustedVoiceUrl(url: string): boolean {
   } catch { return false; }
 }
 function registerIpcHandlers(): void {
+  unregisterWindowFocus = registerWindowFocusIpc({ register: (channel, handler) => ipcMain.handle(channel, (event, ...args: unknown[]) => handler({ sender: event.sender }, ...args)),
+    remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, controls: () => windowFocus?.runtime });
   ipcMain.handle('wisp:screen-observation', async (event, ...args: unknown[]) => {
     if (args.length !== 1 || !screenObservation) throw new TypeError('Screen unavailable');
     return screenObservation.command(event.sender, args[0]);
@@ -797,7 +813,7 @@ function registerIpcHandlers(): void {
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
   unregisterInitiative = registerInitiativeIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, controls: initiativeComposition.controls, help: () => initiativeComposition.help });
   if (aiConnection) unregisterAIConnection = registerAIConnectionIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
-    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection, beforeConfigure: () => { screenObservation?.runtime.cancel(); initiativeComposition.resetProfile(); } });
+    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection, beforeConfigure: () => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); initiativeComposition.resetProfile(); } });
   unregisterMemory = registerMemoryIpc({ routineHypothesis:routineControls, register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
@@ -810,6 +826,7 @@ function registerIpcHandlers(): void {
     admitCharacterInput: () => memoryRuntime?.admitInput() ?? false,
     isCharacterRunning: () => memoryRuntime?.isRunning() ?? false,
     bodyEventIngress,
+    beforeQuietMode: () => windowFocus?.invalidate(),
     handleAcceptedBodyEvent,
     getNativePosition,
     getScreenBounds: () => platformEnvironmentAdapter.getSnapshot().screenBounds,
@@ -929,6 +946,7 @@ function createWindow(): void {
     // Keep the sole sampler/interval alive; the windowless branch never advances the character.
     autonomyComposition?.stop();
     shimejiMotionOrchestrator?.stop();
+    windowFocus?.dispose(); windowFocus = null;
     externalWindowSurfaces?.dispose(); externalWindowSurfaces = null;
     clearBrainStream();
     mainWindow = null;
@@ -972,7 +990,7 @@ if (!gotTheLock) {
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
       shutdownCapture: () => Promise.all([routineCapture?.shutdown(), deferredInvitationRuntime?.dispose()]).then(() => undefined),
-      pause: () => { routineHypothesis?.endSession(); routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { screenObservation?.runtime.cancel(); copingRuntime?.cancel(); ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
+      pause: () => { routineHypothesis?.endSession(); routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); copingRuntime?.cancel(); ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
       resetCommitted: () => { routineHypothesis?.reset(); voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
@@ -1042,6 +1060,7 @@ app.on('before-quit', event => {
     }
   }
   void voiceInput?.dispose(); void voiceOutput?.dispose(); unregisterVoiceOutput?.(); unregisterVoice?.(); unsubscribeVoiceLifecycle?.();
+  windowFocus?.dispose(); unregisterWindowFocus?.();
   screenObservation?.dispose(); ipcMain.removeHandler('wisp:screen-observation');
   initiativeComposition.dispose(); unregisterInitiative?.(); observationRuntime?.dispose(); unregisterObservation?.(); aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.(); unregisterAIConnection?.();
   disposeAutonomyComposition();
