@@ -17,7 +17,19 @@ AUTH = {"Authorization": "Bearer " + "a1" * 32}
 
 
 @pytest.mark.parametrize(
-    "route", ["/health", "/v1/chat", "/v1/touch", "/v1/events", "/v1/observation", "/v1/summary", "/docs", "/unknown"]
+    "route",
+    [
+        "/health",
+        "/v1/chat",
+        "/v1/touch",
+        "/v1/events",
+        "/v1/observation",
+        "/v1/summary",
+        "/v1/screen-observation",
+        "/v1/screen-observation/capability",
+        "/docs",
+        "/unknown",
+    ],
 )
 def test_every_route_requires_the_token_before_reading_body(tmp_path: Path, route: str) -> None:
     app = create_managed_app(read_bootstrap(io.BytesIO(record(tmp_path))))

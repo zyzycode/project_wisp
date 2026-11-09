@@ -9,7 +9,7 @@ from wisp_backend.api.boundary import CompletionBoundary
 from wisp_backend.api.endpoints import ENDPOINTS
 from wisp_backend.api.logging import RequestLogging
 from wisp_backend.api.responses import error_response
-from wisp_backend.api.routes import events, health, interaction, observation, summary
+from wisp_backend.api.routes import events, health, interaction, observation, screen_observation, summary
 from wisp_backend.errors import ServiceError
 from wisp_backend.logging import get_logger
 
@@ -39,6 +39,7 @@ def install_api(app: FastAPI) -> None:
         events.router,
         summary.router,
         observation.router,
+        screen_observation.router,
         interaction.router,
     ):
         app.include_router(router)

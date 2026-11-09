@@ -1,3 +1,4 @@
+import { MainScreenObservation } from './main-screen-observation';
 import { DeferredGameInvitationRuntime } from '../application/services/deferred-game-invitation-runtime';
 import { OwnGoalsRuntime } from '../application/services/own-goals-runtime';
 import { CopingRuntime } from '../application/services/coping-runtime';
@@ -136,6 +137,7 @@ let routineCapture: RoutineCapture | null = null;
 let unregisterMemory: (() => void) | null = null;
 let unregisterSummary: (() => void) | null = null;
 let observationRuntime: ObservationRuntime | null = null;
+let screenObservation: MainScreenObservation | null = null;
 let observationManagement: ActiveApplicationObservationManagement | null = null;
 let unregisterObservation: (() => void) | null = null;
 let summaryRuntime: SummaryRuntime | null = null;
@@ -338,6 +340,7 @@ function beginBrainStream(): void {
 }
 
 function clearBrainStream(): void {
+  screenObservation?.runtime.cancel();
   if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); }
   autonomyComposition?.resetSystemIdle();
   cancelActiveBodyDrag();
@@ -491,6 +494,17 @@ function initializeAutonomyComposition(): void {
     initiativeComposition.configure(!!ai.eventProvider);
     const recall = !localMock && memoryComposition
       ? new LocalMemoryRecall({ ...memoryComposition, timestamp: () => new Date().toISOString(), beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
+    screenObservation?.dispose();
+    screenObservation = ai.screenObservationProvider ? new MainScreenObservation({ provider: ai.screenObservationProvider,
+      now: () => brainStatePublisher.now(), getWindow: () => mainWindow, preloadPath: resolvePreloadPath(),
+      current: () => summaryStream && dialogueRuntime ? { streamId: summaryStream, conversationId: dialogueRuntime.getPresentation().conversationId } : null,
+      busy: () => !dialogueRuntime?.getPresentation().canSubmit || !!observationRuntime?.isBusy() || summaryGenerating || !!summaryRuntime?.isBusy(),
+      loadSelector: async (window, identity) => {
+        const query = { wispScreenSelector: '1', streamId: identity.streamId, conversationId: identity.conversationId };
+        if (process.env.VITE_DEV_SERVER_URL) { const url = new URL(process.env.VITE_DEV_SERVER_URL); for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value); await window.loadURL(url.href); }
+        else await window.loadFile(path.join(RENDERER_DIST, 'index.html'), { query });
+      },
+    }) : null;
     observationManagement = createActiveApplicationObservation();
     observationRuntime = new ObservationRuntime({ observer: observationManagement.port, ...(ai.observationProvider ? { provider: ai.observationProvider } : {}),
       backendAvailable: () => { const mode = aiConnection?.read().mode; return mode === 'ready' || mode === 'external'; },
@@ -517,7 +531,7 @@ function initializeAutonomyComposition(): void {
         canGenerate: () => !!dialogueRuntime?.getPresentation().canSubmit && !aiEventRuntime?.isBusy() && !summaryGenerating,
       });
     }
-    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { initiativeComposition.invalidate(); voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
+    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { screenObservation?.runtime.cancel(); initiativeComposition.invalidate(); voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { screenObservation?.runtime.cancel(); if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
@@ -749,6 +763,10 @@ function trustedVoiceUrl(url: string): boolean {
   } catch { return false; }
 }
 function registerIpcHandlers(): void {
+  ipcMain.handle('wisp:screen-observation', async (event, ...args: unknown[]) => {
+    if (args.length !== 1 || !screenObservation) throw new TypeError('Screen unavailable');
+    return screenObservation.command(event.sender, args[0]);
+  });
   if (voiceOutput) unregisterVoiceOutput = registerVoiceOutputIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, trustedUrl: trustedVoiceUrl, service: voiceOutput });
   if (voiceInput) unregisterVoice = registerVoiceInputIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, trustedUrl: trustedVoiceUrl, service: voiceInput });
   unregisterDialogue = registerDialogueIpc({
@@ -770,7 +788,7 @@ function registerIpcHandlers(): void {
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, getRuntime: () => summaryRuntime });
   unregisterInitiative = registerInitiativeIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, controls: initiativeComposition.controls, help: () => initiativeComposition.help });
   if (aiConnection) unregisterAIConnection = registerAIConnectionIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
-    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection, beforeConfigure: () => initiativeComposition.resetProfile() });
+    getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection, beforeConfigure: () => { screenObservation?.runtime.cancel(); initiativeComposition.resetProfile(); } });
   unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
@@ -923,7 +941,7 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     const userData = app.getPath('userData');
     aiConnection = new AIConnectionController({ externalUrl: process.env.WISP_BACKEND_URL, store: new ProtectedUserAIKeyStore(userData),
-      backend: new ManagedLocalAIBackend({ python: process.env.WISP_PYTHON, directory: process.env.WISP_LOCAL_BACKEND_DIR, onUnavailable: () => { aiConnection?.backendUnavailable(); observationRuntime?.backendUnavailable(); } }),
+      backend: new ManagedLocalAIBackend({ python: process.env.WISP_PYTHON, directory: process.env.WISP_LOCAL_BACKEND_DIR, onUnavailable: () => { screenObservation?.runtime.cancel(); aiConnection?.backendUnavailable(); observationRuntime?.backendUnavailable(); } }),
       ledgerPath: path.join(userData, 'personal-ai-usage.sqlite3'), createSessionToken: () => randomBytes(32).toString('hex'),
       scheduleRestart: () => { setTimeout(() => { if (!shutdownStarted) { app.relaunch(); app.quit(); } }, 0); },
     });
@@ -945,7 +963,7 @@ if (!gotTheLock) {
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
       shutdownCapture: () => Promise.all([routineCapture?.shutdown(), deferredInvitationRuntime?.dispose()]).then(() => undefined),
-      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { copingRuntime?.cancel(); ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
+      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { screenObservation?.runtime.cancel(); copingRuntime?.cancel(); ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
       resetCommitted: () => { voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
@@ -1007,6 +1025,7 @@ app.on('before-quit', event => {
     }
   }
   void voiceInput?.dispose(); void voiceOutput?.dispose(); unregisterVoiceOutput?.(); unregisterVoice?.(); unsubscribeVoiceLifecycle?.();
+  screenObservation?.dispose(); ipcMain.removeHandler('wisp:screen-observation');
   initiativeComposition.dispose(); unregisterInitiative?.(); observationRuntime?.dispose(); unregisterObservation?.(); aiEventRuntime?.dispose(); clearBrainStream(); dialogueRuntime?.dispose(); unregisterDialogue?.(); unregisterMemory?.(); unregisterSummary?.(); unregisterAIConnection?.();
   disposeAutonomyComposition();
   stopShimejiMotionLoop();

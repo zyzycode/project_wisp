@@ -1,3 +1,4 @@
+import { ScreenRegionSelector } from './components/Chat/ScreenRegionSelector';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
@@ -8,7 +9,7 @@ const rootElement = document.getElementById('root');
 if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <App />
+      {new URLSearchParams(window.location.search).get('wispScreenSelector') === '1' ? <ScreenRegionSelector /> : <App />}
     </React.StrictMode>
   );
 } else {

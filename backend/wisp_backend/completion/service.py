@@ -37,6 +37,7 @@ class _RequestState:
     provider_task: asyncio.Task[ProviderResult] | None = None
     result: ProviderResult | None = None
     outcome: Outcome | None = None
+    cache_result: bool = True
 
     def remaining(self) -> float:
         return self.deadline - asyncio.get_running_loop().time()
@@ -53,6 +54,8 @@ class CompletionService:
         self.ledger = ledger
         self.deadline = deadline
         self.closing = False
+        self.exclusive_active = False
+        self.active_keys: dict[asyncio.Task[Any], tuple[str, str]] = {}
         self.requests: set[asyncio.Task[Any]] = set()
         self.background: set[asyncio.Task[Any]] = set()
 
@@ -68,10 +71,17 @@ class CompletionService:
         """
         current = asyncio.current_task()
         assert current is not None
+        if self.exclusive_active or (job.exclusive and self.requests):
+            matching = next((value for value in self.active_keys.values() if value[0] == job.request_id), None)
+            code = "request_conflict" if matching and matching[1] != digest else "request_in_progress"
+            return job.encoder.failure(code)
+        if job.exclusive:
+            self.exclusive_active = True
         self.requests.add(current)
+        self.active_keys[current] = (job.request_id, digest)
         current.add_done_callback(self.requests.discard)
         duration = min(self.deadline, job.timeout)
-        state = _RequestState(job.request_id, job.encoder, started + duration)
+        state = _RequestState(job.request_id, job.encoder, started + duration, cache_result=job.cache_result)
         try:
             if self.closing:
                 raise ServiceError("upstream_unavailable")
@@ -97,6 +107,9 @@ class CompletionService:
                 await self._settle(state)
             finally:
                 self.requests.discard(current)
+                self.active_keys.pop(current, None)
+                if job.exclusive:
+                    self.exclusive_active = False
         if state.cancelled:
             raise asyncio.CancelledError
         assert state.outcome is not None
@@ -154,7 +167,13 @@ class CompletionService:
         usage = state.result.usage if isinstance(state.result, ProviderResult) else None
         settlement = self._track_background(
             asyncio.create_task(
-                self.ledger.settle(state.request_id, usage, state.outcome, state.deadline, state.publication_cancelled)
+                self.ledger.settle(
+                    state.request_id,
+                    usage,
+                    state.outcome if state.cache_result else None,
+                    state.deadline,
+                    state.publication_cancelled,
+                )
             )
         )
         try:

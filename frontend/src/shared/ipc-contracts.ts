@@ -551,6 +551,7 @@ export interface AIConnectionApiBridge {
 }
 
 export interface WispApiBridge {
+  readonly screenObservation?: import('./screen-observation-contracts').ScreenObservationBridge;
   readonly initiative?: import('../application/ports/initiative-controls.interface').IInitiativeControls;
   readonly windowHelp?: import('../application/ports/window-help.interface').IWindowHelpControls;
   readonly voiceOutput?: import('./voice-output-contracts').VoiceOutputBridge;

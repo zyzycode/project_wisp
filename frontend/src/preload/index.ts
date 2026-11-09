@@ -1,3 +1,4 @@
+import { parseScreenCommand, parseScreenState } from '../shared/screen-observation-validation';
 import { parseVoiceCancel, parseVoiceContext, parseVoiceNull, parseVoiceRequest, parseVoiceResult, parseVoiceStatus, parseVoiceText, parseVoiceTranscribe } from '../shared/voice-input-validation';
 import { parseOutputDevice, parseOutputNull, parseOutputResult, parseOutputStatus, parsePlayback, parsePlaybackAck, parseReplyIdentity, parseVoiceEnabled } from '../shared/voice-output-validation';
 import { parseRoutineStatus } from '../shared/routine-status-validation';
@@ -57,6 +58,7 @@ const brainStateHandler = (_event: Electron.IpcRendererEvent, payload: unknown):
 ipcRenderer.on('wisp:brain-state', brainStateHandler);
 
 const api: WispApiBridge = {
+  screenObservation: { command: async command => parseScreenState(await ipcRenderer.invoke('wisp:screen-observation', parseScreenCommand(command))) },
   voiceOutput: {
     configureAtStartup: async () => parseOutputResult(await ipcRenderer.invoke('wisp:voice-output-startup'), parseOutputStatus),
     readDevice: async () => parseOutputResult(await ipcRenderer.invoke('wisp:voice-output-read-device'), parseOutputDevice),
@@ -180,4 +182,5 @@ const api: WispApiBridge = {
   },
 };
 
-contextBridge.exposeInMainWorld('wispAPI', api);
+// Geometry selector has no access to character/window/memory/connection capabilities.
+contextBridge.exposeInMainWorld('wispAPI', process.argv.includes('--wisp-screen-selector') ? { screenObservation: api.screenObservation } : api);

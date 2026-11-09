@@ -20,6 +20,7 @@ from wisp_backend.managed_bootstrap import BootstrapError, ManagedBootstrap, rea
 
 def create_managed_app(bootstrap: ManagedBootstrap, transport: httpx.AsyncBaseTransport | None = None) -> ASGIApp:
     app = create_app(transport, settings=bootstrap.settings(), expose_docs=False)
+    app.state.managed_openai = True
     return ManagedTokenGuard(app, bootstrap.sessionToken.get_secret_value())
 
 

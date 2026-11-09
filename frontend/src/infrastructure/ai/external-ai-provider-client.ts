@@ -1,3 +1,4 @@
+import { BackendScreenTransport } from './backend-screen-transport';
 import { projectInteractionChat, projectInteractionTouch, parseInteractionChatResponse, parseInteractionTouchResponse, parseInteractionError } from './backend-interaction-validation';
 import type { IObservationProvider, ObservationProviderRequest } from '../../application/ports/observation-provider.interface';
 import { projectObservationRequest, parseObservationResponse, parseObservationError } from './backend-observation-validation';
@@ -77,6 +78,8 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
   private readonly fetch: typeof fetch;
   private readonly headers: Readonly<Record<string, string>>;
   private activeRequestId: string | undefined;
+  private screenLease: string | undefined;
+  public readonly screenObservation: BackendScreenTransport;
   constructor(private readonly options: ExternalAIProviderOptions) {
     const local = options.sessionToken !== undefined;
     if (local && (!/^[a-f0-9]{64}$/u.test(options.sessionToken!) || !/^http:\/\/127\.0\.0\.1:[0-9]{1,5}$/u.test(options.baseUrl))) throw new TypeError('Invalid local backend configuration');
@@ -84,6 +87,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     const development = options.development || local;
     this.urls = { chat: endpoint(options.baseUrl, development, 'chat'), touch: endpoint(options.baseUrl, development, 'touch'), events: endpoint(options.baseUrl, development, 'events'), summary: endpoint(options.baseUrl, development, 'summary'), observation: endpoint(options.baseUrl, development, 'observation') };
     this.fetch = options.fetch ?? globalThis.fetch;
+    this.screenObservation = new BackendScreenTransport({ ...options, fetch: this.fetch, acquire: id => { if (this.activeRequestId || this.screenLease) return false; this.screenLease = id; return true; }, release: id => { if (this.screenLease === id) this.screenLease = undefined; } });
   }
   public canIncludeLifeReflection(request: AIProviderRequest): boolean { return projectInteractionChat(request).lifeReflection !== undefined; }
   public canIncludeSummary(request: AIProviderRequest): boolean {
@@ -97,7 +101,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     const projected = projectInteractionChat(request);
     const body = JSON.stringify(projected);
     if (new TextEncoder().encode(body).byteLength > 32 * 1024) throw new TypeError('Request too large');
-    if (this.activeRequestId) throw new Error('Transport unavailable');
+    if (this.activeRequestId || this.screenLease) throw new Error('Transport unavailable');
     const startedAt = this.options.now();
     try {
       return await this.post<AIProviderResponse>('chat', request.requestId, body, (response, value) => {
@@ -128,7 +132,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     const touch = request.event.type === 'user_touch';
     const projected = touch ? projectInteractionTouch(request) : projectEventRequest(request);
     const body = JSON.stringify(projected);
-    if (this.activeRequestId) throw new Error('Events unavailable');
+    if (this.activeRequestId || this.screenLease) throw new Error('Events unavailable');
     try { return await this.post(touch ? 'touch' : 'events', request.requestId, body, (response, value) => {
       try {
         if (response.status !== 200) {
@@ -148,16 +152,16 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     }
   }
   public async generateSummary(request: Parameters<ISummaryGenerator['generateSummary']>[0], signal: AbortSignal): Promise<string> {
-    if (this.activeRequestId || signal.aborted) throw new Error('Summary unavailable');
+    if (this.activeRequestId || this.screenLease || signal.aborted) throw new Error('Summary unavailable');
     const body = JSON.stringify(parseSummaryRequest({ ...request, stream: false }));
     return this.post('summary', request.requestId, body, (response, value) => {
       if (response.status !== 200) { parseSummaryError(value, request.requestId, response.status); throw new ProtocolError('Summary failed'); }
       return parseSummaryResponse(value, request.requestId).text;
     }, signal);
   }
-  public canStartObservation(): boolean { return this.activeRequestId === undefined; }
+  public canStartObservation(): boolean { return this.activeRequestId === undefined && this.screenLease === undefined; }
   public async generateObservation(request: ObservationProviderRequest, signal: AbortSignal): Promise<string> {
-    if (this.activeRequestId || signal.aborted) throw new Error('Observation unavailable');
+    if (this.activeRequestId || this.screenLease || signal.aborted) throw new Error('Observation unavailable');
     const body = JSON.stringify(projectObservationRequest(request));
     return this.post('observation', request.requestId, body, (response, value) => {
       if (response.status !== 200) { parseObservationError(value, request.requestId, response.status); throw new ProtocolError('Observation unavailable'); }

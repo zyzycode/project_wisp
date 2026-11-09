@@ -13,6 +13,8 @@ def test_public_schema(client_factory, body):
             "/v1/events",
             "/v1/summary",
             "/v1/observation",
+            "/v1/screen-observation",
+            "/v1/screen-observation/capability",
         }
         assert "/v1/chat/completions" not in spec["paths"]
         assert "/v1/assistants" not in spec["paths"]

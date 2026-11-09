@@ -1,3 +1,4 @@
+import type { IScreenObservationProvider } from '../application/ports/screen-observation.interface';
 import type { IObservationProvider } from '../application/ports/observation-provider.interface';
 import type { ISummaryGenerator } from '../application/ports/summary';
 import type { IAIEventProvider } from '../application/ports/ai-event-provider.interface';
@@ -15,12 +16,12 @@ export function createMainAIProvider(options: {
   readonly now: () => number;
   readonly admitEventDispatch?: (requestId: string) => boolean;
   readonly eventDispatched?: (requestId: string) => void;
-}): { readonly interactionEnabled: boolean; readonly provider: IAIProvider; readonly observationProvider?: IObservationProvider; readonly touchProvider?: IAIEventProvider; readonly eventProvider?: IAIEventProvider; readonly summaryGenerator?: ISummaryGenerator } {
+}): { readonly interactionEnabled: boolean; readonly provider: IAIProvider; readonly observationProvider?: IObservationProvider; readonly screenObservationProvider?: IScreenObservationProvider; readonly touchProvider?: IAIEventProvider; readonly eventProvider?: IAIEventProvider; readonly summaryGenerator?: ISummaryGenerator } {
   if (!options.backendUrl?.trim()) return { interactionEnabled: false, provider: new MockAIProvider({ simulatedLatencyMs: 300 }) };
   try {
     const provider = new ExternalAIProviderClient({ baseUrl: options.backendUrl, sessionToken: options.sessionToken, development: options.development, now: options.now,
       admitEventDispatch: options.admitEventDispatch, eventDispatched: options.eventDispatched });
-    return { interactionEnabled: true, provider, observationProvider: provider, touchProvider: provider, eventProvider: provider, ...(options.summaryEnabled ? { summaryGenerator: provider } : {}) };
+    return { interactionEnabled: true, provider, observationProvider: provider, ...(options.sessionToken ? { screenObservationProvider: provider.screenObservation } : {}), touchProvider: provider, eventProvider: provider, ...(options.summaryEnabled ? { summaryGenerator: provider } : {}) };
   } catch {
     // Invalid deployment configuration must not stop local character startup.
     return { interactionEnabled: false, provider: { getStatus: async () => ({ kind: 'offline' }), generateResponse: async () => { throw new Error('Backend unavailable'); } } };

@@ -1,0 +1,424 @@
+{
+  "requests": {
+    "valid": [
+      {
+        "name": "structural-test-double",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "name": "missing-image",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11"
+        }
+      },
+      {
+        "name": "extra-field",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          },
+          "provider": "openai"
+        }
+      },
+      {
+        "name": "null-image",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": null
+        }
+      },
+      {
+        "name": "true-dimension",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": true,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "fractional-dimension",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32.5,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "negative-dimension",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": -1,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "oversize-dimension",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 1025,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "dimension-mismatch",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 33,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "invalid-base64",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "%%"
+          }
+        }
+      },
+      {
+        "name": "whitespace-base64",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q==\n"
+          }
+        }
+      },
+      {
+        "name": "stream-zero",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": 0,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "policy-mismatch",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "other",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "invalid-uuid",
+        "value": {
+          "requestId": "x",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "private-app",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/4QAEeHj/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "trailing-bytes",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2Xg="
+          }
+        }
+      },
+      {
+        "name": "progressive",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wgALCAAgACABAREA/9oACAEBAAA/AAD/2Q=="
+          }
+        }
+      },
+      {
+        "name": "multiple-scan",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "stream": false,
+          "locale": "ru",
+          "policyRevision": "screen-openai-2026-11",
+          "image": {
+            "mimeType": "image/jpeg",
+            "width": 32,
+            "height": 32,
+            "dataBase64": "/9j/wAALCAAgACABAREA/9oACAEBAAA/AAD/2gAIAQEAAD8AAP/Z"
+          }
+        }
+      }
+    ]
+  },
+  "responses": {
+    "valid": [
+      {
+        "name": "visible",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [
+              "A geometric test object."
+            ],
+            "possible": [],
+            "unknown": []
+          }
+        }
+      },
+      {
+        "name": "abstain",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [],
+            "possible": [],
+            "unknown": [
+              "Cannot determine."
+            ]
+          }
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "name": "missing-visible",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "possible": [],
+            "unknown": []
+          }
+        }
+      },
+      {
+        "name": "empty-evidence",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [],
+            "possible": [],
+            "unknown": []
+          }
+        }
+      },
+      {
+        "name": "unknown-key",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [
+              "A geometric test object."
+            ],
+            "possible": [],
+            "unknown": [],
+            "actions": []
+          }
+        }
+      },
+      {
+        "name": "untrimmed",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [
+              " x "
+            ],
+            "possible": [],
+            "unknown": []
+          }
+        }
+      },
+      {
+        "name": "text-overflow",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ],
+            "possible": [],
+            "unknown": []
+          }
+        }
+      },
+      {
+        "name": "forbidden-control",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [
+              "a\u0000b"
+            ],
+            "possible": [],
+            "unknown": []
+          }
+        }
+      },
+      {
+        "name": "array-overflow",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [
+              "A geometric test object."
+            ],
+            "possible": [
+              "a",
+              "b",
+              "c"
+            ],
+            "unknown": []
+          }
+        }
+      },
+      {
+        "name": "null-array",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [
+              "A geometric test object."
+            ],
+            "possible": [],
+            "unknown": null
+          }
+        }
+      },
+      {
+        "name": "total-overflow",
+        "value": {
+          "requestId": "a1111111-1111-4111-8111-111111111111",
+          "observation": {
+            "visible": [
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ],
+            "possible": [
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ],
+            "unknown": [
+              "x"
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

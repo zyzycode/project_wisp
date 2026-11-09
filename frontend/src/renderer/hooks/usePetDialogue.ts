@@ -61,7 +61,10 @@ export function usePetDialogue({
   }, []);
 
   const dismissMessage = useCallback(() => setCurrentMessage(null), []);
-  const closeChat = useCallback(() => setChatOpen(false), []);
+  const closeChat = useCallback(() => {
+    if (streamId && conversationId) void bridge.screenObservation?.command({ type: 'cancel', streamId, conversationId }).catch(() => undefined);
+    setChatOpen(false);
+  }, [bridge, streamId, conversationId]);
 
   return {
     memoryCards: { bridge, snapshot },

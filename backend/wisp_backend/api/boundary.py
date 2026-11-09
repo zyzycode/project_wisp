@@ -10,8 +10,6 @@ from wisp_backend.api.responses import error_response
 from wisp_backend.api.schemas.common import read_request_id
 from wisp_backend.json_codec import decode_json
 
-MAX_REQUEST_BYTES = 32 * 1024
-
 
 class CompletionBoundary:
     def __init__(self, app: ASGIApp) -> None:
@@ -37,7 +35,7 @@ class CompletionBoundary:
                 if message["type"] == "http.disconnect":
                     return "disconnected"
                 chunk = message.get("body", b"")
-                if len(chunks) + len(chunk) > MAX_REQUEST_BYTES:
+                if len(chunks) + len(chunk) > endpoint.max_request_bytes:
                     return "payload_too_large"
                 chunks.extend(chunk)
                 if not message.get("more_body", False):

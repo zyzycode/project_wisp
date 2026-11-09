@@ -1,6 +1,6 @@
 """Transport-independent input and output of one completion execution."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from wisp_backend.accounting.contracts import Usage
@@ -14,6 +14,16 @@ class InferenceRequest:
     blocks: tuple[ContextBlock, ...]
     max_output_tokens: int | None = None
     context_window: int | None = None
+
+
+@dataclass(frozen=True)
+class ScreenInferenceRequest(InferenceRequest):
+    """Ephemeral image; never include it in diagnostic representations."""
+
+    image_base64: str = field(default="", repr=False)
+    locale: str = "ru"
+    width: int = 0
+    height: int = 0
 
 
 @dataclass(frozen=True)
@@ -36,3 +46,5 @@ class CompletionJob:
     inference: InferenceRequest
     timeout: float
     encoder: ReplyEncoder
+    cache_result: bool = True
+    exclusive: bool = False

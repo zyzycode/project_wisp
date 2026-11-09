@@ -11,7 +11,17 @@ LABELS = {
     "operation": {"maintenance", "http", "completion", "provider", "settlement", "cancel"},
     "outcome": {"success", "failure", "cancelled", "expected", "unexpected", "no_response"},
     "method": {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "OTHER"},
-    "route": {"/health", "/v1/chat", "/v1/touch", "/v1/events", "/v1/observation", "/v1/summary", "other"},
+    "route": {
+        "/health",
+        "/v1/chat",
+        "/v1/touch",
+        "/v1/events",
+        "/v1/observation",
+        "/v1/summary",
+        "/v1/screen-observation",
+        "/v1/screen-observation/capability",
+        "other",
+    },
     "category": {
         "invalid_request",
         "payload_too_large",

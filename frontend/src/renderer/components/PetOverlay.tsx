@@ -1,3 +1,4 @@
+import { ScreenObservation } from './Chat/ScreenObservation';
 import { ObservationSettings } from './Interaction/ObservationSettings';
 import { AIConnectionSettings } from './Interaction/AIConnectionSettings';
 import { WindowHelpCard } from './Interaction/WindowHelpCard';
@@ -64,6 +65,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
       <div className={`chat-overlay ${model.dialogue.chatOpen ? 'has-input' : ''}`}>
         <SpeechBubble message={model.dialogue.currentMessage} onDismiss={model.dialogue.dismissMessage} />
         {model.dialogue.chatOpen && <MemoryCards {...model.dialogue.memoryCards} />}
+        <ScreenObservation bridge={window.wispAPI?.screenObservation} open={model.dialogue.chatOpen}
+          identity={model.bodySnapshot?.brain ? { streamId: model.bodySnapshot.brain.streamId, conversationId: model.bodySnapshot.brain.dialogue.conversationId } : null} />
         <ChatInput
           canSubmit={model.dialogue.canSubmit}
           errorMessage={model.dialogue.error}
