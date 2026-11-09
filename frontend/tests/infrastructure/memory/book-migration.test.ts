@@ -23,7 +23,7 @@ function fixture() {
     cause: 'completed', outcome: 'completed', terminalReason: null, executedMs: 1000, participation: 'user_engaged' });
   new LifeHistoryStore(db).read(query);
   restoreLegacyPreferenceColumns(db);
-  db.exec('DROP TABLE IF EXISTS routine_suppression; DELETE FROM schema_migrations WHERE version>=13; PRAGMA user_version=12;');
+  db.exec('DELETE FROM schema_migrations WHERE version>=13; PRAGMA user_version=12;');
   return db;
 }
 it('advances the format gate atomically and rebuilds both indexes in bounded batches without clock rollback', () => {

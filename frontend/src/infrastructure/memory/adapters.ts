@@ -1,3 +1,5 @@
+import type { IRoutineHypothesisRepository } from '../../application/ports/world-context.interface';
+import { routineEvidence } from './routine-hypothesis-validation';
 import type { ILifeHistoryReader } from '../../application/ports/life-history.interface';
 import { lifeWindow } from './life-history-validation';
 import { deferredInvitation } from './deferred-invitation-validation';
@@ -30,6 +32,7 @@ function list<T>(value: unknown, parse: (item: unknown) => T): readonly T[] {
   return value.map(parse);
 }
 export interface MemoryAdapters {
+  readonly routineHypothesis: IRoutineHypothesisRepository;
   readonly lifeHistory: ILifeHistoryReader;
   readonly motivation: IMotivationRepository;
   readonly socialInterpretation: ISocialInterpretationRepository;
@@ -55,6 +58,7 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     try { return { ok: true, value: parse(result.value) }; } catch { return { ok: false, code: 'invalid_data' }; }
   }
   return {
+    routineHypothesis: { readEvidence: (query,c) => call('readRoutineHypothesis',query,c,routineEvidence), setSuppressed: (window,suppressed,c) => call('suppressRoutineHypothesis',{window,suppressed},c,nothing) },
     lifeHistory: { readWindow: (query, c) => call('readLifeWindow', query, c, lifeWindow) },
     motivation: {
       restore: (now,c) => call('restoreMotivation',now,c,value => value === null ? null : motivationRecord(value)),

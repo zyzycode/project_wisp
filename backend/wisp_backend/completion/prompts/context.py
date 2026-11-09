@@ -50,6 +50,7 @@ class InteractionChatContext(CharacterPromptContext):
     dialogue_topic: Snapshot | None = None
     life_reflection: Snapshot | None = None
     life_summary: Snapshot | None = None
+    routine_hypothesis: Snapshot | None = None
     lore: LoreCatalogue | None = None
 
     def __post_init__(self) -> None:

@@ -8,6 +8,7 @@ from wisp_backend.api.schemas.common import RequestId
 from wisp_backend.api.schemas.events import PreviousInitiative
 from wisp_backend.api.schemas.life_history import LifeReflection, LifeSummaryContext
 from wisp_backend.api.schemas.memory import MemoryContext, Timestamp
+from wisp_backend.api.schemas.routine_context import RoutineHypothesis
 from wisp_backend.api.schemas.touch import TouchEvent, TouchFields
 from wisp_backend.completion.interaction_replies import InteractionChatReply, InteractionTouchReply, TouchAppraisal
 from wisp_backend.completion.replies import SummaryModelReply
@@ -90,6 +91,7 @@ class DialogueTopic(Contract):
 
 
 class InteractionChatRequest(ChatFields, InteractionPolicy):
+    routineHypothesis: RoutineHypothesis = omittable()
     lifeReflection: LifeReflection = omittable()
     memory: MemoryContext
     previousInitiative: PreviousInitiative = omittable()

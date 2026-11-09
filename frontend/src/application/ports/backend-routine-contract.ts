@@ -1,4 +1,4 @@
-/** WORLD-A01 target-only wire declaration; #189 activates it on both sides together. */
+/** WORLD-A01 bounded ordinary-chat wire projection; independent from local source identity. */
 export interface BackendRoutineHypothesis {
   readonly scope: 'while_wisp_running';
   readonly validity: 'tentative';

@@ -1,4 +1,5 @@
 import { removeBeveragePreferences } from './remove-beverage-schema';
+import { ROUTINE_HYPOTHESIS_SCHEMA } from './routine-hypothesis-store';
 import { LIFE_DERIVED_SCHEMA } from './life-derived-turn-store';
 import { DEFERRED_INVITATION_SCHEMA } from './deferred-invitation-store';
 import { SOCIAL_INTERPRETATION_SCHEMA } from './social-interpretation-store';
@@ -43,6 +44,8 @@ export function initializeSchema(db: Database.Database, now: string): void {
     if (version >= 5 && ROUTINE_TABLES.some(name => !names.includes(name))) throw new MemoryDataError('corrupt');
     if (version >= 6 && !names.includes('causal_life_episodes')) throw new MemoryDataError('corrupt');
     if (version >= 8 && ['deferred_game_invitation','deferred_invitation_sources'].some(name => !names.includes(name))) throw new MemoryDataError('corrupt');
+    // Dev schemas are disposable: the new current shape is created only from zero.
+    if (!names.includes('routine_suppression')) throw new MemoryDataError('unsupported_version');
     if (version >= 11 && !names.includes('life_derived_turns')) throw new MemoryDataError('corrupt');
     if (version >= 10 && !names.includes('own_motivation')) throw new MemoryDataError('corrupt');
     const entries = db.prepare('SELECT version, name, applied_at FROM schema_migrations ORDER BY version').all();
@@ -125,6 +128,7 @@ export function initializeSchema(db: Database.Database, now: string): void {
     db.pragma('user_version = 13');
   }).immediate();
   if (version < 14) removeBeveragePreferences(db, now);
+  if (version === 0) db.transaction(() => { db.exec(ROUTINE_HYPOTHESIS_SCHEMA); }).immediate();
   const foreignKeyErrors: unknown = db.pragma('foreign_key_check');
   if (!Array.isArray(foreignKeyErrors) || foreignKeyErrors.length !== 0) throw new MemoryDataError('corrupt');
 }

@@ -21,7 +21,7 @@ export function turn(value: unknown): CompletedChatTurn {
   let lifeDerivedUse: CompletedChatTurn['lifeDerivedUse'];
   if (Object.hasOwn(raw, 'lifeDerivedUse')) {
     const use = record(v.lifeDerivedUse, ['requestId','userMessageId','origin']);
-    if (use.origin !== 'reflection' && use.origin !== 'life_summary') throw new MemoryDataError('invalid_data');
+    if (use.origin !== 'reflection' && use.origin !== 'life_summary' && use.origin !== 'routine_hypothesis') throw new MemoryDataError('invalid_data');
     lifeDerivedUse = { requestId: text(use.requestId), userMessageId: text(use.userMessageId), origin: use.origin };
   }
   const s = session(v.session), u = message(v.user), a = message(v.assistant);

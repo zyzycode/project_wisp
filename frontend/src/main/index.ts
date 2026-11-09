@@ -1,4 +1,6 @@
 import { MainScreenObservation } from './main-screen-observation';
+import { RoutineHypothesisRuntime } from '../application/services/routine-hypothesis-runtime';
+import { RoutineHypothesisControls } from '../application/services/routine-hypothesis-controls';
 import { DeferredGameInvitationRuntime } from '../application/services/deferred-game-invitation-runtime';
 import { OwnGoalsRuntime } from '../application/services/own-goals-runtime';
 import { CopingRuntime } from '../application/services/coping-runtime';
@@ -134,6 +136,17 @@ let copingRuntime: CopingRuntime | null = null;
 let causalOwnerSequence = 0;
 let activityRunSequence = 0;
 let routineCapture: RoutineCapture | null = null;
+let routineHypothesis: RoutineHypothesisRuntime | null = null;
+function routineCalendar(utcMs: number) {
+  const date = new Date(utcMs);
+  let zoneId: string | null = null;
+  try { zoneId = Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { /* Unsupported remains unknown. */ }
+  return { zoneId, offsetMinutes:-date.getTimezoneOffset(), localDate:`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}` };
+}
+const routineWindow = () => (Math.floor(new Date().getHours() / 6) * 6) as 0 | 6 | 12 | 18;
+const routineControls = new RoutineHypothesisControls({ runtime:() => routineHypothesis,
+  backendAvailable:() => { const mode = aiConnection?.read().mode; return mode === 'ready' || mode === 'external'; },
+  window:routineWindow, generation:() => memoryRuntime?.currentGeneration() ?? 0 });
 let unregisterMemory: (() => void) | null = null;
 let unregisterSummary: (() => void) | null = null;
 let observationRuntime: ObservationRuntime | null = null;
@@ -184,7 +197,7 @@ let voiceStreamStarted = false;
 let voiceNavigationSeen = false;
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); voiceStreamStarted = true; clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); return id; },
+  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); voiceStreamStarted = true; clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); routineControls.replaceStream(id); return id; },
   prepareSnapshot: () => {
     observationRuntime?.tick();
     aiEventRuntime?.tick();
@@ -345,6 +358,7 @@ function clearBrainStream(): void {
   autonomyComposition?.resetSystemIdle();
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
+  routineControls.replaceStream(null);
   summaryStream = null;
   clearMemory.replaceStream(null); memoryFacts.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null);
   dialogueRuntime?.detachStream();
@@ -415,13 +429,8 @@ function initializeAutonomyComposition(): void {
     },
     cursorPosition: platformAdapter,
     systemIdle: platformAdapter.createSystemIdleSource?.(),
-    routine: { sample: (sample, source) => routineCapture?.sample(sample, source), boundary: () => routineCapture?.boundary(), clockDiscontinuity: () => routineCapture?.clockDiscontinuity() },
-    routineCalendar: utcMs => {
-      const date = new Date(utcMs);
-      let zoneId: string | null = null;
-      try { zoneId = Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { /* Unknown calendar remains unknown. */ }
-      return { zoneId, offsetMinutes: -date.getTimezoneOffset(), localDate: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` };
-    },
+    routine: { sample: (sample, source) => routineCapture?.sample(sample, source), boundary: () => { routineHypothesis?.endSession(); routineCapture?.boundary(); }, clockDiscontinuity: () => routineCapture?.clockDiscontinuity() },
+    routineCalendar,
     wallNow: Date.now,
     clock: { now: () => brainStatePublisher.now() },
     scheduler: createMainAutonomyScheduler(callback => {
@@ -493,7 +502,7 @@ function initializeAutonomyComposition(): void {
     const ai = createMainAIProvider({ backendUrl: aiRoute.backendUrl, sessionToken: aiRoute.sessionToken, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now(), admitEventDispatch: id => initiativeComposition.admitDispatch(id), eventDispatched: () => initiativeComposition.controls.dispatched() });
     initiativeComposition.configure(!!ai.eventProvider);
     const recall = !localMock && memoryComposition
-      ? new LocalMemoryRecall({ ...memoryComposition, timestamp: () => new Date().toISOString(), beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
+      ? new LocalMemoryRecall({ ...memoryComposition, now:() => brainStatePublisher.now(), ...(routineHypothesis ? { routineProjection:routineHypothesis } : {}), timestamp: () => new Date().toISOString(), beforeRead: () => memoryRuntime?.history.whenSettled() ?? Promise.resolve(), scheduler: createMainAutonomyScheduler(), isCurrent: generation => memoryRuntime?.context()?.generation === generation, preference: () => defaultCharacterStateService.getState().preferences['activity.cursor_game'], onFailure: code => memoryRuntime?.failure(code) }) : undefined;
     screenObservation?.dispose();
     screenObservation = ai.screenObservationProvider ? new MainScreenObservation({ provider: ai.screenObservationProvider,
       now: () => brainStatePublisher.now(), getWindow: () => mainWindow, preloadPath: resolvePreloadPath(),
@@ -535,7 +544,7 @@ function initializeAutonomyComposition(): void {
       chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
-      memory: { ...(memoryRuntime ? { lifeReflection: memoryRuntime.lifeReflection } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
+      memory: { ...(routineHypothesis ? { routine:routineHypothesis } : {}), ...(memoryRuntime ? { lifeReflection: memoryRuntime.lifeReflection } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
           now: () => brainStatePublisher.now(), timestamp: () => new Date().toISOString(), createId: randomUUID, notice: publishBrainState, isTurnCurrent: requestId => dialogueRuntime?.isTopicRequestCurrent(requestId) ?? false, onFailure: code => memoryRuntime?.failure(code), isAdmissionCurrent: token => dialogueRuntime?.isAdmissionCurrent(token) ?? false }) } : {}), generation: () => memoryRuntime?.currentGeneration() ?? 0, ...(recall ? { recall } : {}),
         completed: turn => memoryRuntime?.history.completed(turn) ?? Promise.resolve(false), ...(localMock ? { contextLimits: DEFAULT_CHAT_CONTEXT_LIMITS } : {}) },
       timestamp: () => new Date().toISOString(), createId: randomUUID, scheduler: createMainAutonomyScheduler(),
@@ -789,7 +798,7 @@ function registerIpcHandlers(): void {
   unregisterInitiative = registerInitiativeIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, controls: initiativeComposition.controls, help: () => initiativeComposition.help });
   if (aiConnection) unregisterAIConnection = registerAIConnectionIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection, beforeConfigure: () => { screenObservation?.runtime.cancel(); initiativeComposition.resetProfile(); } });
-  unregisterMemory = registerMemoryIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands });
+  unregisterMemory = registerMemoryIpc({ routineHypothesis:routineControls, register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {
@@ -950,7 +959,7 @@ if (!gotTheLock) {
     localMock = !aiRoute.backendUrl;
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
-    memoryRuntime = new MemoryLifecycle({ causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { copingRuntime?.observed(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
+    memoryRuntime = new MemoryLifecycle({ invalidateRoutine:() => routineHypothesis?.invalidate(), causalCommitObserver: { committed: (episode, context, atMs) => deferredInvitationRuntime?.committed(episode, context, atMs) }, causalObserver: (episode, atMs) => { copingRuntime?.observed(episode, atMs); deferredInvitationRuntime?.observed(episode, atMs); }, summary: {
       invalidate: () => { if (summaryRuntime) summaryRuntime.invalidate(); else void memoryComposition?.summaryCache.clear(false, false); },
       reset: async () => {
         if (summaryRuntime) return summaryRuntime.reset();
@@ -963,13 +972,21 @@ if (!gotTheLock) {
       toTimestamp: atMs => new Date(clockOffset + atMs).toISOString(), localMock,
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
       shutdownCapture: () => Promise.all([routineCapture?.shutdown(), deferredInvitationRuntime?.dispose()]).then(() => undefined),
-      pause: () => { routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { screenObservation?.runtime.cancel(); copingRuntime?.cancel(); ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
-      resetCommitted: () => { voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
+      pause: () => { routineHypothesis?.endSession(); routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { screenObservation?.runtime.cancel(); copingRuntime?.cancel(); ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
+      resetCommitted: () => { routineHypothesis?.reset(); voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
-    routineCapture = new RoutineCapture({ repository: memoryComposition.routine,
+    routineCapture = new RoutineCapture({ sourceChanged:() => routineHypothesis?.invalidate(), repository: memoryComposition.routine,
       context: () => memoryRuntime?.context() ?? null,
       storageMode: () => memoryRuntime?.getStatus().mode ?? 'initializing', now: () => brainStatePublisher.now(), createId: randomUUID, appRunId: randomUUID() });
+    routineHypothesis = new RoutineHypothesisRuntime({ repository:memoryComposition.routineHypothesis,
+      source:() => routineCapture?.getSource() ?? null,
+      whenSettled:async () => { await memoryRuntime?.history.whenSettled(); await routineCapture?.whenSettled(); },
+      context:() => memoryRuntime?.context() ?? null,
+      now:() => brainStatePublisher.now(), scheduler:createMainAutonomyScheduler(),
+      calendar:() => { const utcMs = Date.now(); return { ...routineCalendar(utcMs), utcMs, windowStartHour:routineWindow() }; },
+      suppress:(window,suppressed) => memoryRuntime?.suppressRoutine(window,suppressed) ?? Promise.resolve({ ok:false,code:'unavailable' }),
+      changed:() => { dialogueRuntime?.invalidateRoutineProjection(); publishBrainState(); } });
     const voiceInference = new VoiceInferenceCoordinator();
     const voiceAdapter = new LocalVoiceInput(userData, path.join(__dirname, 'voice-worker.js'),
       app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..', '.cache'), voiceInference);

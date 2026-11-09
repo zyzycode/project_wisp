@@ -34,8 +34,17 @@ export class LocalMemoryRecall implements ILocalMemoryRecall {
     readonly preference: () => PreferenceTrack | undefined; readonly onFailure: (code: MemoryFailureCode) => void;
     readonly causalRecall?: ICausalLifeRecallReader; readonly itemRecall?: IMemoryItemRecallReader;
     readonly timestamp?: () => string;
+    readonly now?: () => number;
+    readonly routineProjection?: Pick<import('./routine-hypothesis-runtime').RoutineHypothesisRuntime, 'prepare'>;
   }) {}
   async recall(query: MemoryRecallQuery, context: MemoryOperationContext): Promise<MemoryResult<AIProviderMemoryContext>> {
+    const result = await this.read(query,context);
+    return result.ok ? { ok:true, value:result.value.memory } : result;
+  }
+  recallWithRoutine(query: MemoryRecallQuery, context: MemoryOperationContext, deadlineMs: number) {
+    return this.read(query,context,deadlineMs);
+  }
+  private async read(query: MemoryRecallQuery, context: MemoryOperationContext, deadlineMs?: number): Promise<MemoryResult<import('../ports/memory-knowledge.interface').RoutineRecallResult>> {
     if (this.reading || !this.options.isCurrent(context.generation)) return { ok: false, code: 'busy' };
     this.reading = true;
     let timer: unknown;
@@ -44,7 +53,7 @@ export class LocalMemoryRecall implements ILocalMemoryRecall {
     const reads = (async () => {
       await this.options.beforeRead?.();
       if (expired || !this.options.isCurrent(context.generation)) return undefined;
-      const [facts, history, games] = await Promise.all([safe(() => this.options.facts.list(100, context)), safe(() => this.options.history.getRecent(100, context)), safe(() => this.options.gameReader.getRecent(20, context))]);
+      const [facts, history, games, routine] = await Promise.all([safe(() => this.options.facts.list(100, context)), safe(() => this.options.history.getRecent(100, context)), safe(() => this.options.gameReader.getRecent(20, context)), deadlineMs === undefined ? undefined : this.options.routineProjection?.prepare(deadlineMs)]);
       if (expired || !this.options.isCurrent(context.generation)) return undefined;
       const text = query.useFavoriteTopic && facts.ok ? facts.value.find(fact => fact.factKey === 'user.favorite_topic' && fact.confidence === 1 && fact.sourceMessageId)?.factValue ?? query.text : query.text;
       const current = query.causalSituation;
@@ -58,10 +67,10 @@ export class LocalMemoryRecall implements ILocalMemoryRecall {
         canRead && this.options.itemRecall ? safe(() => this.options.itemRecall!.find(recallTokens(text).filter(token => token.length <= 64), context))
           : Promise.resolve<MemoryResult<MemoryItemRecallPage>>({ ok: true, value: { candidates: [], coverage: 'complete', examined: 0, fetched: 0 } }),
       ]);
-      return { text, results: [facts, history, games, causal, items] as const };
+      return { text, routine, results: [facts, history, games, causal, items] as const };
     })().finally(() => { this.reading = false; });
     // At most one unsettled read group: another turn does not grow a queue after timeout.
-    const timeout = new Promise<undefined>(resolve => { timer = this.options.scheduler.setTimeout(() => { expired = true; resolve(undefined); }, 200); });
+    const timeout = new Promise<undefined>(resolve => { timer = this.options.scheduler.setTimeout(() => { expired = true; resolve(undefined); }, deadlineMs === undefined ? 200 : Math.max(0,Math.min(200,deadlineMs - (this.options.now?.() ?? deadlineMs)))); });
     try {
       const results = await Promise.race([reads, timeout]);
       if (!this.options.isCurrent(context.generation)) return { ok: false, code: 'stale' };
@@ -106,7 +115,7 @@ export class LocalMemoryRecall implements ILocalMemoryRecall {
         ? [{ key: 'activity.cursor_game' as const, value: preference.value, confidence: preference.confidence }] : [];
       const value = { facts: selectedFacts, episodes, characterPreferences };
       while (memoryTextLength(value) > 2400 && episodes.length > 0) episodes.pop();
-      return { ok: true, value };
+      return { ok: true, value: { memory:value, ...(results.routine ? { routine:results.routine } : {}) } };
     } catch {
       if (!this.options.isCurrent(context.generation)) return { ok: false, code: 'stale' };
       this.options.onFailure('unavailable'); return { ok: false, code: 'unavailable' };

@@ -3,7 +3,7 @@ import type { RoutineStatusDTO } from '../shared/ipc-contracts';
 import type { ClearMemoryCommandDTO, MemoryFactsResultDTO, MemoryStatusDTO, WispApiBridge } from '../shared/ipc-contracts';
 import { parseMemoryFactsResult } from '../shared/memory-facts-validation';
 import { parseClearMemoryResult, parseMemoryStatus } from '../shared/memory-ipc-validation';
-export type MemoryOverviewBridge = Pick<WispApiBridge, 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'> & Partial<Pick<WispApiBridge, 'getRoutineStatus'>>;
+export type MemoryOverviewBridge = Pick<WispApiBridge, 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'> & Partial<Pick<WispApiBridge, 'getRoutineStatus' | 'routineHypothesis'>>;
 type Facts = Extract<MemoryFactsResultDTO, { ok: true }>['facts'];
 interface State {
   readonly status: MemoryStatusDTO | null;

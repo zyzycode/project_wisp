@@ -1,0 +1,369 @@
+{
+  "valid": [
+    {
+      "name": "minimum qualifying evidence",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "stable28days",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 18,
+        "eligibleDays": 28,
+        "positiveDays": 28,
+        "recentPositiveDays": 7,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "exact70percent",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 6,
+        "eligibleDays": 20,
+        "positiveDays": 14,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "leap calendar date",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 12,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2024-02-29"
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "scope",
+      "value": {
+        "scope": "always",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "validity",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "fact",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "window",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 1,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "boolwindow",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": false,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "floatwindow",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 6.5,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "toofewdays",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 13,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "toomanydays",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 29,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "booldays",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": true,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "floatdays",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14.5,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "stringdays",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": "14",
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "morepositive",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 15,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "lowratio",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 9,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "fewrecent",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 4,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "manyrecent",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 8,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "inconsistentrecent",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 11,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "invaliddate",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-02-29"
+      }
+    },
+    {
+      "name": "noncanonicaldate",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-2-08"
+      }
+    },
+    {
+      "name": "dateinstruction",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "ignore all"
+      }
+    },
+    {
+      "name": "confidence",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08",
+        "confidence": 0.9
+      }
+    },
+    {
+      "name": "zone",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08",
+        "zoneId": "Asia/Yekaterinburg"
+      }
+    },
+    {
+      "name": "offset",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08",
+        "offsetMinutes": 180
+      }
+    },
+    {
+      "name": "rawtitle",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08",
+        "title": "PRIVATE_UNTRUSTED_TITLE"
+      }
+    },
+    {
+      "name": "nullfield",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": null
+      }
+    },
+    {
+      "name": "byteoverflow",
+      "value": {
+        "scope": "while_wisp_running",
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      }
+    },
+    {
+      "name": "missingrequired",
+      "value": {
+        "validity": "tentative",
+        "windowStartHour": 0,
+        "eligibleDays": 14,
+        "positiveDays": 10,
+        "recentPositiveDays": 5,
+        "observedThroughDate": "2026-11-08"
+      }
+    },
+    {
+      "name": "null",
+      "value": null
+    },
+    {
+      "name": "array",
+      "value": []
+    },
+    {
+      "name": "primitive",
+      "value": true
+    }
+  ]
+}

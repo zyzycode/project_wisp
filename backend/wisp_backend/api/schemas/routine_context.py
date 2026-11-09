@@ -1,5 +1,6 @@
-"""WORLD-A01 target model; active request rollout belongs to #189."""
+"""Bounded tentative timing context for ordinary chat only."""
 
+import json
 from datetime import date
 from typing import Annotated, Literal
 
@@ -38,4 +39,10 @@ class RoutineHypothesis(Contract):
             or self.recentPositiveDays > self.positiveDays
         ):
             raise ValueError("Insufficient routine evidence")
+        payload = self.model_dump()
+        if (
+            len(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) > 512
+            or sum(len(value.encode("utf-16-le")) // 2 for value in payload.values() if isinstance(value, str)) > 128
+        ):
+            raise ValueError("Routine context exceeds limit")
         return self

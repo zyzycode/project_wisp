@@ -10,12 +10,15 @@ export class RoutineCapture {
   private generation: number | null = null;
   private token = 0;
   private sequence = 0;
+  private sourceRevision = 0;
+  private calendar: { readonly zoneId: string; readonly offsetMinutes: number } | null = null;
   private pending: Promise<void> | null = null;
   private failed = false;
   private rotate = false;
   private lastSampleAt: number | null = null;
   private status: RoutineStatusDTO = { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null };
   constructor(private readonly options: {
+    readonly sourceChanged?: () => void;
     readonly repository: IRoutineObservationRepository;
     readonly context: () => MemoryOperationContext | null;
     readonly storageMode: () => 'initializing' | 'persistent' | 'volatile';
@@ -28,8 +31,17 @@ export class RoutineCapture {
     const age = this.lastSampleAt === null ? Infinity : (this.options.now?.() ?? this.lastSampleAt) - this.lastSampleAt;
     return { ...this.status, ...(age < 0 || age > 2500 ? { source: 'unknown' as const } : {}), ...(mode !== 'persistent' ? { storage: mode } : {}) };
   }
+  /** Read-only source proof: never flushes, begins capture or manufactures coverage. */
+  getSource(): import('../ports/world-context.interface').RoutineSourceSnapshot | null {
+    const status = this.getStatus();
+    return this.identity && this.calendar && !this.failed && !this.pending
+      && status.source === 'available' && status.storage === 'persistent'
+      ? { ...this.identity, ...this.calendar, revision:this.sourceRevision } : null;
+  }
+  async whenSettled(): Promise<void> { await this.pending; }
   /** Synchronous generation barrier; a later receipt retains its original identity. */
   invalidate(): void {
+    this.sourceRevision++; this.options.sourceChanged?.(); this.calendar = null;
     this.token++; this.identity = null; this.generation = null; this.failed = false;
     this.aggregator.reset();
   }
@@ -38,11 +50,13 @@ export class RoutineCapture {
     this.status = { ...this.status, lastAcknowledgedAt: null };
   }
   sample(sample: RoutineSample, source: RoutineStatusDTO['source']): void {
+    if (this.calendar?.zoneId !== sample.zoneId || this.calendar?.offsetMinutes !== sample.offsetMinutes || this.status.source !== source) { this.sourceRevision++; this.options.sourceChanged?.(); }
+    this.calendar = sample.zoneId === null ? null : { zoneId:sample.zoneId, offsetMinutes:sample.offsetMinutes };
     this.lastSampleAt = sample.nowMs;
     this.status = { ...this.status, source };
     const context = this.options.context();
     if (!context) { this.aggregator.reset(); return; }
-    if (this.generation !== context.generation) this.invalidate();
+    if (this.generation !== context.generation) { this.invalidate(); this.calendar = sample.zoneId === null ? null : { zoneId:sample.zoneId, offsetMinutes:sample.offsetMinutes }; }
     if (!this.identity) {
       if (!this.pending && !this.failed && sample.zoneId !== null) this.begin(sample, context);
       return;
@@ -78,6 +92,7 @@ export class RoutineCapture {
   private append(aggregate: RoutineAggregate, context: MemoryOperationContext): void {
     if (!this.identity || this.failed) return;
     if (this.pending) { this.degrade(); return; }
+    this.sourceRevision++; this.options.sourceChanged?.();
     const record = { ...aggregate, ...this.identity, appRunId: this.options.appRunId, sequence: ++this.sequence };
     const token = this.token;
     this.pending = (async () => {
@@ -93,6 +108,7 @@ export class RoutineCapture {
     this.boundary(); this.invalidate(); this.rotate = true;
   }
   boundary(): void {
+    this.sourceRevision++; this.options.sourceChanged?.();
     this.lastSampleAt = null; this.status = { ...this.status, source: 'unknown' };
     const aggregate = this.aggregator.flush();
     const context = this.options.context();

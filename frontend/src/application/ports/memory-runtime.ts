@@ -12,6 +12,7 @@ export interface CompletedDialogueMemoryTurn {
   readonly memoryGeneration: number;
 }
 export interface DialogueMemoryHooks {
+  readonly routine?: Pick<import('../services/routine-hypothesis-runtime').RoutineHypothesisRuntime, 'isCurrent'>;
   readonly lifeReflection?: import('./life-history.interface').ILifeReflectionRuntime;
   readonly interestThread?: import('./interest-thread.interface').IInterestThreadDialogue;
   readonly generation: () => number;
@@ -27,6 +28,7 @@ export interface MemoryScheduler {
 export interface InitialDialogueContext { readonly messages: readonly AIProviderContextMessage[] }
 
 export interface MemoryRepositories {
+  readonly routineHypothesis?: import('./world-context.interface').IRoutineHypothesisRepository;
   readonly lifeHistory?: import('./life-history.interface').ILifeHistoryReader;
   readonly motivation?: import('./motivation.interface').IMotivationRepository;
   readonly socialInterpretation?: import('./social-interpretation.interface').ISocialInterpretationRepository;

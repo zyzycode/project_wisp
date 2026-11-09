@@ -8,6 +8,7 @@ from wisp_backend.completion.prompts.blocks import common_blocks
 from wisp_backend.completion.prompts.context import InteractionChatContext
 from wisp_backend.completion.prompts.lore import lore_block
 from wisp_backend.completion.prompts.response_format import describe_reply
+from wisp_backend.completion.prompts.routine import routine_block
 from wisp_backend.completion.prompts.technical import MEMORY_EVIDENCE_RULES
 
 MEMORY_RULES = (
@@ -164,6 +165,8 @@ def build_chat_blocks(
                 (ContextMessage("user", pair[0].content), ContextMessage("assistant", pair[1].content)),
             )
         )
+    if context.routine_hypothesis is not None:
+        blocks.append(routine_block(context.routine_hypothesis))
     blocks.append(
         ContextBlock(
             "current_user", "dialogue", True, 1000, 100, (ContextMessage("user", context.messages[-1].content),)

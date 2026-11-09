@@ -47,6 +47,7 @@ export interface BackendInteractionTouchResponse {
 
 export type BackendInteractionChatRequest = BackendSummaryChatRequest &
   BackendInteractionPolicy & {
+    readonly routineHypothesis?: import('./backend-routine-contract').BackendRoutineHypothesis;
     readonly lifeReflection?: import('./backend-life-history-contract').BackendLifeReflection;
     readonly previousTouch?: BackendPreviousTouchReaction;
     readonly dialogueTopic?: BackendDialogueTopic;

@@ -72,6 +72,7 @@ async function readBoundedJson(response: Response, signal: AbortSignal): Promise
 }
 
 export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, ISummaryGenerator, IObservationProvider {
+  public readonly supportsRoutineHypothesis = true as const;
   public readonly supportsDialogueTopic = true as const;
   private cancellableRequest: { id: string; controller: AbortController } | undefined;
   private readonly urls: Readonly<Record<BackendOperation, URL>>;
@@ -89,6 +90,7 @@ export class ExternalAIProviderClient implements IAIProvider, IAIEventProvider, 
     this.fetch = options.fetch ?? globalThis.fetch;
     this.screenObservation = new BackendScreenTransport({ ...options, fetch: this.fetch, acquire: id => { if (this.activeRequestId || this.screenLease) return false; this.screenLease = id; return true; }, release: id => { if (this.screenLease === id) this.screenLease = undefined; } });
   }
+  public canIncludeRoutineHypothesis(request: AIProviderRequest): boolean { return projectInteractionChat(request).routineHypothesis !== undefined; }
   public canIncludeLifeReflection(request: AIProviderRequest): boolean { return projectInteractionChat(request).lifeReflection !== undefined; }
   public canIncludeSummary(request: AIProviderRequest): boolean {
     return projectInteractionChat(request).summary !== undefined;

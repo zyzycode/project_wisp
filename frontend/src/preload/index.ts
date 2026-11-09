@@ -1,4 +1,5 @@
 import { parseScreenCommand, parseScreenState } from '../shared/screen-observation-validation';
+import { parseRoutineRead, parseRoutineCommand, parseRoutineReadResult, parseRoutineResult } from '../shared/routine-hypothesis-validation';
 import { parseVoiceCancel, parseVoiceContext, parseVoiceNull, parseVoiceRequest, parseVoiceResult, parseVoiceStatus, parseVoiceText, parseVoiceTranscribe } from '../shared/voice-input-validation';
 import { parseOutputDevice, parseOutputNull, parseOutputResult, parseOutputStatus, parsePlayback, parsePlaybackAck, parseReplyIdentity, parseVoiceEnabled } from '../shared/voice-output-validation';
 import { parseRoutineStatus } from '../shared/routine-status-validation';
@@ -116,6 +117,10 @@ const api: WispApiBridge = {
   listMemoryCards: async command => parseMemoryCardListResult(await ipcRenderer.invoke('wisp:list-memory-cards', parseMemoryCardListCommand(command))),
   clearMemory: async command => parseClearMemoryResult(await ipcRenderer.invoke('wisp:clear-memory', parseClearMemoryCommand(command))),
   readMemoryFacts: async command => parseMemoryFactsResult(await ipcRenderer.invoke('wisp:read-memory-facts', parseMemoryFactsRead(command))),
+  routineHypothesis: {
+    read: async command => parseRoutineReadResult(await ipcRenderer.invoke('wisp:read-routine-hypothesis',parseRoutineRead(command))),
+    command: async command => parseRoutineResult(await ipcRenderer.invoke('wisp:command-routine-hypothesis',parseRoutineCommand(command))),
+  },
   getRoutineStatus: async () => parseRoutineStatus(await ipcRenderer.invoke('wisp:get-routine-status')),
   getMemoryStatus: async () => parseMemoryStatus(await ipcRenderer.invoke('wisp:get-memory-status')),
   setQuietMode: async command => parseAutonomyMode(await ipcRenderer.invoke('wisp:set-quiet-mode', parseQuietModeCommand(command))),

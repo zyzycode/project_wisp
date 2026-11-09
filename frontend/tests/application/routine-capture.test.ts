@@ -77,3 +77,10 @@ it('an explicit clock excursion during pending metadata cannot restore the previ
   f.sample(1000); await settle();
   expect(f.repository.begin).toHaveBeenLastCalledWith(expect.objectContaining({ forceNewCohort: true }), { generation: 0 });
 });
+it('publishes only fresh acknowledged source identity and changes proof on append, boundary and calendar change', async () => {
+  const f=fixture(); expect(f.capture.getSource()).toBeNull(); f.sample(0); expect(f.capture.getSource()).toBeNull(); await settle();
+  const first=f.capture.getSource(); expect(first).toMatchObject({datasetEpoch:'epoch',cohortId:'cohort',zoneId:'UTC',offsetMinutes:0});
+  f.sample(1000); f.sample(2000); f.capture.boundary(); expect(f.capture.getSource()).toBeNull(); await settle();
+  f.sample(3000); expect(f.capture.getSource()?.revision).toBeGreaterThan(first!.revision);
+  const second=f.capture.getSource(); f.sample(4000,{offsetMinutes:60}); expect(f.capture.getSource()?.offsetMinutes).toBe(60); expect(f.capture.getSource()?.revision).toBeGreaterThan(second!.revision);
+});

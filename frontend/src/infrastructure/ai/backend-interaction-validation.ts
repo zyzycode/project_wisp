@@ -1,3 +1,4 @@
+import { parseRoutineHypothesis } from './backend-routine-validation';
 import { parseLifeReflection } from './backend-life-reflection';
 import { fitChatRequestBytes } from './backend-history-budget';
 import type { AIProviderRequest } from '../../application/ports/ai-provider.interface';
@@ -80,6 +81,10 @@ export function projectInteractionChat(request: AIProviderRequest): BackendInter
     const lifeReflection = parseLifeReflection({ scope: 'observed_utc_window', validity: 'tentative', kind: r.kind, fromDate: r.fromDateUTC, throughDate: r.throughDateUTC, completedCount: r.completedCount, interruptedCount: r.interruptedCount, completedDays: r.completedUtcDays });
     const enabled = { ...result, lifeReflection };
     if (bytes(enabled) <= 32768) result = enabled;
+  }
+  if (request.routineHypothesis !== undefined) {
+    const withRoutine = { ...result, routineHypothesis:parseRoutineHypothesis(request.routineHypothesis) };
+    if (bytes(withRoutine) <= 32768) result = withRoutine;
   }
   return result;
 }

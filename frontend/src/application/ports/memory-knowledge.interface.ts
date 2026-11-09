@@ -66,7 +66,12 @@ export interface MemoryRecallQuery {
 }
 
 /** Application implementation composes repositories and deterministic selection. */
+export interface RoutineRecallResult {
+  readonly memory: AIProviderMemoryContext;
+  readonly routine?: import('./world-context.interface').RoutineHypothesisCapture;
+}
 export interface ILocalMemoryRecall {
+  recallWithRoutine?(query: MemoryRecallQuery, context: MemoryOperationContext, deadlineMs: number): Promise<MemoryResult<RoutineRecallResult>>;
   recall(query: MemoryRecallQuery, context: MemoryOperationContext): Promise<MemoryResult<AIProviderMemoryContext>>;
 }
 

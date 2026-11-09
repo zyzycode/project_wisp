@@ -63,6 +63,7 @@ def prepare_chat_context(body: InteractionChatRequest, lore: LoreCatalogue | Non
         previous_touch=body.previousTouch.model_dump() if body.previousTouch is not None else None,
         dialogue_topic=body.dialogueTopic.model_dump() if body.dialogueTopic is not None else None,
         life_reflection=body.lifeReflection.model_dump() if body.lifeReflection is not None else None,
+        routine_hypothesis=body.routineHypothesis.model_dump() if body.routineHypothesis is not None else None,
     )
 
 

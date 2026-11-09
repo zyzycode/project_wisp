@@ -58,7 +58,7 @@ export interface ILifeReflectionRuntime {
 export interface LifeDerivedContextUse {
   readonly requestId: string;
   readonly userMessageId: string;
-  readonly origin: 'reflection' | 'life_summary';
+  readonly origin: 'reflection' | 'life_summary' | 'routine_hypothesis';
 }
 
 export interface LifeSummarySource extends CausalLifeSourceReference {

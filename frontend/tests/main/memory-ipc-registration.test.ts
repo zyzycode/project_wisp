@@ -56,3 +56,11 @@ it('exposes only trusted, exact readonly facts commands and validates private ou
   expect(read).not.toHaveBeenCalled(); expect(await handler({ sender: f.sender }, { streamId: 's' })).toEqual({ ok: true, facts: [] });
   unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:read-memory-facts');
 });
+it('keeps routine opt-in commands behind sender/exact-shape validation and releases their handlers', async () => {
+  const f=fixture(), read=vi.fn(async()=>({ok:false as const,code:'unavailable' as const}));
+  const command=vi.fn(async(c: {readonly requestId:string})=>({ok:true as const,requestId:c.requestId}));
+  const dispose=registerMemoryIpc({register:(name,handler)=>f.handlers.set(name,handler),remove:f.remove,getSender:()=>f.sender,getStatus:()=>({mode:'initializing'}),clear:new ClearMemoryUseCase(f.reset),routineHypothesis:{read,command}});
+  const execute=f.handlers.get('wisp:command-routine-hypothesis')!, c={streamId:'s',requestId:'r',sequence:1,kind:'sharing',enabled:true};
+  await expect(execute({sender:{}},c)).rejects.toThrow('Untrusted'); await expect(execute({sender:f.sender},{...c,consent:true})).rejects.toThrow(); expect(command).not.toHaveBeenCalled();
+  expect(await execute({sender:f.sender},c)).toEqual({ok:true,requestId:'r'}); dispose(); expect(f.remove).toHaveBeenCalledWith('wisp:command-routine-hypothesis'); expect(f.remove).toHaveBeenCalledWith('wisp:read-routine-hypothesis');
+});

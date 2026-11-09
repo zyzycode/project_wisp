@@ -16,6 +16,7 @@ import { OwnGameInterestRuntime } from './own-game-interest-runtime';
 import { SocialInterpretationRuntime } from './social-interpretation-runtime';
 
 interface Options {
+  readonly invalidateRoutine?: () => void;
   readonly causalCommitObserver?: import('../ports/causal-life.interface').ICausalLifeCommitObserver;
   readonly causalObserver?: (episode: import('../ports/causal-life.interface').CausalLifeEpisode, atMs: number) => void;
   readonly summary?: Pick<import('../ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>;
@@ -55,7 +56,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   private startupTimer: unknown;
   private shutdownPromise: Promise<void> | undefined;
   constructor(private readonly options: Options) {
-    this.knowledge = new MemoryKnowledge({ invalidateSummary: () => { options.summary?.invalidate(); this.lifeReflection.invalidate(); }, facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
+    this.knowledge = new MemoryKnowledge({ invalidateSummary: () => { options.summary?.invalidate(); this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); }, facts: options.storage.facts, isCurrent: generation => this.context()?.generation === generation && this.phase === 'running', createId: options.createId, onFailure: code => this.failure(code), ...(options.preferenceLearning ? { preferenceLearning: options.preferenceLearning } : {}) });
     this.ownGameInterest = new OwnGameInterestRuntime({ appRunId: () => this.history.currentAppRunId(), repository: options.storage.causalLife, character: options.character, context: () => this.context(), scheduler: options.scheduler });
     this.socialInterpretation = new SocialInterpretationRuntime({ repository: options.storage.socialInterpretation, character: options.character,
       context: () => this.context(), appRunId: () => this.history.currentAppRunId(), now: options.monotonicNow ?? options.now,
@@ -123,7 +124,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     if (!result.ok) { this.failure(result.code); return; }
     const thread = result.value.thread;
     if (!thread || thread.state !== 'unanswered' || (result.value.sourceValid && Date.parse(this.options.timestamp()) < Date.parse(thread.expiresAt))) return;
-    this.generation++; this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.invalidateMemory?.();
+    this.generation++; this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); this.history.causal.invalidate(); this.options.invalidateMemory?.();
     const next = this.generation;
     const closed = await this.safe(() => repository.mutate({ kind: 'close', commandId: this.options.createId(), expected: thread.ref, reason: result.value.sourceValid ? 'expired' : 'source_changed' }, { generation: next }));
     if (this.phase !== 'initializing' || this.generation !== next || !this.storageReady) return;
@@ -133,7 +134,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   /** Returns synchronously: first human input abandons restore, never waits on storage. */
   admitInput(): boolean {
     if (this.phase === 'initializing') {
-      this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: 'unavailable' };
+      this.storageReady = false; this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: 'unavailable' };
       void this.options.storage.abort(); this.start();
     }
     return this.phase === 'running' || this.phase === 'mutating';
@@ -144,11 +145,11 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     this.phase = 'running'; this.options.start(); this.scheduleCheckpoint();
   }
   private startupFailure(code: MemoryFailureCode): void {
-    this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' || code === 'stale' ? 'io_error' : code }; void this.options.storage.abort();
+    this.storageReady = false; this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate(); this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' || code === 'stale' ? 'io_error' : code }; void this.options.storage.abort();
   }
   failure(code: MemoryFailureCode): void {
     if (code === 'stale' || code === 'busy') return;
-    this.storageReady = false; this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
+    this.storageReady = false; this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
     this.status = { mode: 'volatile', reason: code === 'invalid_data' || code === 'conflict' ? 'io_error' : code };
     void this.options.storage.abort();
   }
@@ -162,14 +163,14 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   async upsertFact(fact: UserFact): Promise<MemoryResult<UserFact>> {
     const c = this.context(); if (!c || this.phase !== 'running') return { ok: false, code: 'unavailable' };
-    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate();
+    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); this.history.causal.invalidate();
     const result = await this.safe(() => this.options.storage.facts.upsert(fact, c));
     if (this.context()?.generation !== c.generation) return { ok: false, code: 'stale' };
     if (!result.ok) this.failure(result.code); return result;
   }
   async removeFact(key: string): Promise<MemoryResult<void>> {
     const c = this.context(); if (!c || this.phase !== 'running') return { ok: false, code: 'unavailable' };
-    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate();
+    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); this.history.causal.invalidate();
     const result = await this.safe(() => this.options.storage.facts.removeByKey(key, c));
     if (this.context()?.generation !== c.generation) return { ok: false, code: 'stale' };
     if (!result.ok) this.failure(result.code); return result;
@@ -221,9 +222,14 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
     if (!repository) return { ok: false as const, code: 'unavailable' as const };
     return this.mutateMemory(context => repository.mutate(command, context), admissionToken);
   }
+  async suppressRoutine(window: import('../ports/world-context.interface').RoutineWindowStart, suppressed: boolean): Promise<MemoryResult<void>> {
+    const repository = this.options.storage.routineHypothesis;
+    if (!repository) return { ok:false, code:'unavailable' };
+    return this.mutateMemory(context => repository.setSuppressed(window,suppressed,context));
+  }
   private async mutateMemory<T>(operation: (context: MemoryOperationContext) => Promise<MemoryResult<T>>, admissionToken?: object): Promise<MemoryResult<T>> {
     if (!this.context() || this.phase !== 'running') return { ok: false, code: 'unavailable' };
-    this.phase = 'mutating'; this.generation++; this.stopTimer(); this.lifeReflection.invalidate(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
+    this.phase = 'mutating'; this.generation++; this.stopTimer(); this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); this.history.causal.invalidate(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
     const generation = this.generation;
     // Drop volatile projections even on rollback; local Character, motion and input keep running.
     this.options.summary?.invalidate(); this.options.invalidateMemory?.(admissionToken);
@@ -236,7 +242,7 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
   }
   async reset(): Promise<MemoryResult<void>> {
     if (this.phase !== 'running' || !this.storageReady) return { ok: false, code: 'unavailable' };
-    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.history.causal.invalidate();
+    this.options.summary?.invalidate(); this.lifeReflection.invalidate(); this.options.invalidateRoutine?.(); this.history.causal.invalidate();
     this.phase = 'resetting'; this.generation++; this.stopTimer(); this.options.pause(); this.options.character.invalidateOwnHabit(); this.ownGameInterest.invalidate(); this.relationshipRepair.invalidate(); this.socialInterpretation.invalidate();
     const generation = this.generation;
     const summaryReset = this.options.summary ? await this.options.summary.reset() : undefined;

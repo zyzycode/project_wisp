@@ -1,3 +1,4 @@
+import { RoutineHypothesisStore } from './routine-hypothesis-store';
 import { LifeDerivedTurnStore } from './life-derived-turn-store';
 import { LifeHistoryStore } from './life-history-store';
 import { DeferredInvitationStore } from './deferred-invitation-store';
@@ -43,7 +44,7 @@ export class SqliteMemoryStore {
     try {
       const c = command(input);
       if (c.operation === 'close') { this.db.close(); this.unavailable = true; return { ok: true, value: undefined }; }
-      if ((c.operation === 'clear' || c.operation === 'mutateMemoryItem' || c.operation === 'mutateInterestThread')) {
+      if ((c.operation === 'suppressRoutineHypothesis' || c.operation === 'clear' || c.operation === 'mutateMemoryItem' || c.operation === 'mutateInterestThread')) {
         if (c.generation !== this.generation + 1) return { ok: false, code: 'stale' };
         // The barrier survives rollback: old callbacks never regain write access.
         this.generation = c.generation;
@@ -64,6 +65,8 @@ export class SqliteMemoryStore {
 
   private dispatch(c: Command): unknown {
     switch (c.operation) {
+      case 'readRoutineHypothesis': return new RoutineHypothesisStore(this.db).read(c.payload);
+      case 'suppressRoutineHypothesis': return new RoutineHypothesisStore(this.db).suppress(c.payload);
       case 'restoreMotivation': return new MotivationStore(this.db).read(c.payload,true);
       case 'readMotivation': return new MotivationStore(this.db).read(c.payload);
       case 'replaceMotivation': return new MotivationStore(this.db).replace(c.payload);
@@ -117,7 +120,7 @@ export class SqliteMemoryStore {
         this.db.prepare("INSERT INTO character_state VALUES ('singleton', ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at")
           .run(JSON.stringify({ snapshotVersion: 6, state: snapshot.state }), snapshot.updatedAt); return;
       }
-      case 'clear': return this.db.transaction(() => { new MotivationStore(this.db).clear(); new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new LifeHistoryStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM life_derived_turns; DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
+      case 'clear': return this.db.transaction(() => { new RoutineHypothesisStore(this.db).clear(); new MotivationStore(this.db).clear(); new SocialInterpretationStore(this.db).clearAll(); new DeferredInvitationStore(this.db).clear(); new RoutineStore(this.db).clear(); new CausalRecallStore(this.db).clear(); new LifeHistoryStore(this.db).clear(); new MemoryItemRecallStore(this.db).clear(); this.db.exec('DELETE FROM life_derived_turns; DELETE FROM causal_life_episodes; DELETE FROM interest_thread; DELETE FROM interest_thread_receipts; DELETE FROM memory_item_terms; DELETE FROM memory_item_sources; DELETE FROM memory_items; DELETE FROM memory_suppressed_pairs; DELETE FROM memory_mutation_receipts; DELETE FROM user_facts; DELETE FROM game_episodes; DELETE FROM messages; DELETE FROM conversation_sessions; DELETE FROM character_state;'); }).immediate();
       case 'close': return;
     }
   }

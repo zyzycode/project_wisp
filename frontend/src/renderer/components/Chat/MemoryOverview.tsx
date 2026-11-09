@@ -1,3 +1,4 @@
+import { RoutineHypothesisSettings } from './RoutineHypothesisSettings';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { BrainStateDTO, WispApiBridge } from '../../../shared/ipc-contracts';
 import { getMemoryOverviewClient, type MemoryOverviewBridge } from '../../memory-overview-client';
@@ -63,6 +64,7 @@ export function MemoryOverview({ bridge, snapshot, visible, otherBusy = false, c
         <p>{state.routine.lastAcknowledgedAt === null ? 'Подтверждённых наблюдений пока нет.' : <>Последнее подтверждённое наблюдение: <time dateTime={state.routine.lastAcknowledgedAt}>{state.routine.lastAcknowledgedAt}</time>.</>}</p>
       </>}
     </section>
+    {bridge.routineHypothesis && <RoutineHypothesisSettings bridge={bridge.routineHypothesis} streamId={streamId} disabled={locked || otherBusy} refreshKey={`${state.cleared}/${completed}`} />}
     <fieldset className="memory-actions" disabled={locked}>{children}</fieldset>
     <section aria-label="Очистка локальной памяти">
       <h3>Очистка</h3>

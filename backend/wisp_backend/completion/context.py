@@ -10,6 +10,7 @@ ContextSource = Literal[
     "desktop_memory",
     "desktop_life_reflection",
     "desktop_life_summary",
+    "desktop_routine_hypothesis",
     "desktop_event",
     "desktop_interaction",
     "previous_ai",
@@ -101,7 +102,11 @@ def _selection_steps(
     optional = sorted(
         (block for block in blocks if not block.required),
         key=lambda item: (
-            item.source in ("desktop_life_reflection", "desktop_life_summary"),
+            (
+                2
+                if item.source == "desktop_routine_hypothesis"
+                else 1 if item.source in ("desktop_life_reflection", "desktop_life_summary") else 0
+            ),
             -item.priority,
             -item.order,
             item.key,
