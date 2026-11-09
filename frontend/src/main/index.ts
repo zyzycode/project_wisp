@@ -1,3 +1,4 @@
+import { MainPublishedVisualEpisode } from './main-published-visual-episode';
 import { MainWindowFocus } from './main-window-focus';
 import { registerWindowFocusIpc } from './window-focus-ipc-registration';
 import { MainScreenObservation } from './main-screen-observation';
@@ -199,9 +200,10 @@ const appLogger = new AppLogger({
 });
 let voiceStreamStarted = false;
 let voiceNavigationSeen = false;
+const publishedVisualEpisode = new MainPublishedVisualEpisode();
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); voiceStreamStarted = true; clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); routineControls.replaceStream(id); return id; },
+  createStreamId: () => { publishedVisualEpisode.reset(); const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); voiceStreamStarted = true; clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); routineControls.replaceStream(id); return id; },
   prepareSnapshot: () => {
     observationRuntime?.tick();
     aiEventRuntime?.tick();
@@ -235,8 +237,10 @@ const brainStatePublisher = new BrainStatePublisher({
       activity: autonomyComposition.getActivityTimeline(),
       autonomy: autonomyComposition.getAutonomyMode(),
       motion,
-      visualEpisode: { ...visual, intent: causalVisualExpression(visual.intent, causal, { forced: motion.phase !== 'grounded',
-        awake: autonomyComposition.getSemanticSleepState() === 'awake', priority: autonomyComposition.getActivityPriority() }) },
+      visualEpisode: publishedVisualEpisode.project(visual, causalVisualExpression(visual.intent, causal, {
+        forced: motion.phase !== 'grounded', awake: autonomyComposition.getSemanticSleepState() === 'awake',
+        priority: autonomyComposition.getActivityPriority(),
+      }), sampledAtMs),
     });
   },
   deliver: (state) => {
@@ -364,6 +368,7 @@ function clearBrainStream(): void {
   autonomyComposition?.resetSystemIdle();
   cancelActiveBodyDrag();
   brainStatePublisher.clearStream();
+  publishedVisualEpisode.reset();
   routineControls.replaceStream(null);
   summaryStream = null;
   clearMemory.replaceStream(null); memoryFacts.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null);

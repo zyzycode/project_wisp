@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen, session } = require('electron');
+const { app, BrowserWindow, screen, session, powerMonitor } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ async function until(predicate, label, timeout = 10_000) {
   while (Date.now() < deadline) { if (await predicate()) return; await sleep(50); }
   throw new Error(`${label} timeout`);
 }
-process.on('uncaughtException', error => { record('uncaught-main-error', 'FAIL', error.name); save(); app.exit(1); });
+process.on('uncaughtException', error => { console.error(error.stack); record('uncaught-main-error', 'FAIL', `${error.name}: ${String(error.message).slice(0,200)}`); save(); app.exit(1); });
 process.on('unhandledRejection', error => { record('unhandled-main-rejection', 'FAIL', error?.name || 'Error'); save(); app.exit(1); });
 app.on('web-contents-created', (_event, contents) => {
   contents.on('console-message', event => {
@@ -60,14 +60,25 @@ app.whenReady().then(() => {
     callback({ cancel: !local && !['file:', 'data:', 'blob:', 'devtools:'].includes(url.protocol) });
   });
 });
-require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
+const lifeCase = process.env.WISP_SMOKE_LIFE_CASE;
+if (lifeCase !== undefined && lifeCase !== 'causal') throw new Error('Unknown life smoke case');
+let lifeFixture; let lifeInputs;
 
 (async () => {
   try {
     await app.whenReady();
+    if (lifeCase) {
+      lifeFixture = require(path.resolve(__dirname, '../../dist-electron/main/life-smoke.js'));
+      const { installLifeInputs } = require('./causal-life.cjs');
+      report.lifeCase = lifeCase;
+      report.lifeInitialConditions = lifeFixture.seedLifeProfile(profile);
+      lifeInputs = installLifeInputs({ screen, powerMonitor, rootPivotOffset: lifeFixture.rootPivotOffset });
+    }
+    require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     await until(() => BrowserWindow.getAllWindows().some(win => win.isVisible()), 'Visible window');
     const win = BrowserWindow.getAllWindows().find(candidate => candidate.isVisible());
     activeWindow = win;
+    lifeInputs?.attach(win);
     const evaluate = expression => win.webContents.executeJavaScript(expression);
     await until(() => evaluate('Boolean(document.querySelector(".wisp-character-root") && window.wispAPI)'), 'Renderer and preload');
     assert.equal(app.getPath('userData'), profile);
@@ -85,6 +96,16 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
     assert.ok(ping);
     await evaluate('window.wispAPI.setAutonomyEnabled({enabled:false})');
     record('typed-bridge', 'PASS');
+    if (lifeCase === 'causal') {
+      const { runCausalLife } = require('./causal-life.cjs');
+      report.causalLife = await runCausalLife({ win, evaluate, until, sleep, record, output, profile, inputs: lifeInputs, fixture: lifeFixture });
+      assert.equal(errors.length, 0, 'Renderer/preload runtime errors');
+      lifeInputs.dispose();
+      completed = true;
+      save();
+      await evaluate('window.wispAPI.closeApp()').catch(() => { /* Real quit closes the Renderer. */ });
+      return;
+    }
     const colour = await evaluate('getComputedStyle(document.body).backgroundColor');
     assert.equal(colour, 'rgba(0, 0, 0, 0)');
     record('transparent-body-style', 'PASS', 'CSS only; compositor transparency remains manual');
@@ -275,10 +296,12 @@ require(path.resolve(__dirname, '../../dist-electron/main/index.js'));
       ['tray', 'No tray implementation in current product; verify if capability is introduced'],
     ]) record(name, 'NOT RUN', detail);
     assert.equal(errors.length, 0, 'Renderer/preload runtime errors');
+    lifeInputs?.dispose();
     completed = true;
     save();
     await evaluate('window.wispAPI.closeApp()').catch(() => { /* Renderer closes during the real quit path. */ });
   } catch (error) {
+    report.lifeTrace=lifeInputs?.trace();
     record('native-scenario', 'FAIL', error.message);
     if (activeWindow && !activeWindow.isDestroyed()) {
       report.failureWindow = { bounds: activeWindow.getBounds(), focused: activeWindow.isFocused() };

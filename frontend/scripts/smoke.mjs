@@ -31,6 +31,11 @@ const run = (promise, duration, label) => bounded(promise, duration, label, cont
 process.on('SIGINT', abort);
 process.on('SIGTERM', abort);
 try {
+  // Explicit life cases use a separate synthetic profile; no case preserves the generic smoke.
+  const lifeCase = process.env.WISP_SMOKE_LIFE_CASE;
+  if (lifeCase !== undefined && lifeCase !== 'causal') throw new Error('WISP_SMOKE_LIFE_CASE must be causal when set');
+  if (lifeCase && nativeMode) throw new Error('Life and native TTS cases cannot be combined');
+  if (lifeCase) environment.WISP_SMOKE_LIFE_CASE = lifeCase;
   const lifeSoakMs = Number(process.env.WISP_LIFE_SOAK_MS ?? 10_000);
   if (!Number.isSafeInteger(lifeSoakMs) || lifeSoakMs < 10_000 || lifeSoakMs > 300_000) {
     throw new Error('WISP_LIFE_SOAK_MS must be an integer between 10000 and 300000');
@@ -57,7 +62,7 @@ try {
     httpServer.listen(0, '127.0.0.1', resolve);
   }), 30_000, 'Vite startup');
   await run(compileElectron({
-    entry: { index: 'src/main/index.ts', 'memory-worker': 'src/infrastructure/memory/worker.ts', 'voice-worker': 'src/infrastructure/voice/worker.ts', 'speech-worker': 'src/infrastructure/voice-output/worker.ts', 'voice-smoke': 'tests/smoke/voice-fixture.ts', 'speech-seeded': 'tests/smoke/speech-seeded.ts' },
+    entry: { index: 'src/main/index.ts', 'memory-worker': 'src/infrastructure/memory/worker.ts', 'voice-worker': 'src/infrastructure/voice/worker.ts', 'speech-worker': 'src/infrastructure/voice-output/worker.ts', 'voice-smoke': 'tests/smoke/voice-fixture.ts', 'life-smoke': 'tests/smoke/life-fixture.ts', 'speech-seeded': 'tests/smoke/speech-seeded.ts' },
     vite: { root: frontend, mode: 'development', envDir: false,
       build: { outDir: 'dist-electron/main', minify: false,
         rolldownOptions: { external: ['electron', 'better-sqlite3', '@huggingface/transformers', 'onnxruntime-node', /^node:/] } } },
@@ -78,7 +83,7 @@ try {
   closed = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
   const smokeDeadlineMs = environment.WISP_TTS_NATIVE_PROBE
     ? 240_000 + (nativeRegression ? 0 : lifeSoakMs - 10_000)
-    : 50_000 + lifeSoakMs;
+    : lifeCase ? 120_000 : Math.min(120_000, 50_000 + lifeSoakMs);
   const code = await run(closed, smokeDeadlineMs, 'Electron smoke');
   const native = JSON.parse(await readFile(path.join(output, 'electron.json'), 'utf8'));
   if (native.runId !== runId) throw new Error('Missing current Electron receipt (old output directory)');

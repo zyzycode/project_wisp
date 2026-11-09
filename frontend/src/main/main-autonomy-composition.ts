@@ -408,7 +408,8 @@ export class MainAutonomyComposition {
     this.providerAdmission.tick();
     const returnStarted = returnCandidate && this.tryReturn();
     const cursorChanged = !returnStarted && this.pollCursor(nowMs);
-    const activityChanged = this.activity.tick(nowMs);
+    // Cursor/return admission can start a run after the earlier frame sample.
+    const activityChanged = this.activity.tick(this.options.clock.now());
     const secondStarted = this.trySocialFollowup();
     const reactionChanged = this.finishDirectReaction(nowMs);
     const showFall = this.jumpFallAtMs !== null && nowMs >= this.jumpFallAtMs && this.activity.isJumpStep();

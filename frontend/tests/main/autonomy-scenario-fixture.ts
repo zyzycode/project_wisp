@@ -11,7 +11,7 @@ import type { IPlatformAdapter } from '../../src/application/ports/platform-adap
 export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialState?: CharacterState,
   cursorPosition?: Pick<IPlatformAdapter, 'getCursorScreenPosition'>,
   hooks: Partial<Pick<MainAutonomyCompositionOptions, 'ownHabit' | 'coping' | 'createActivitySequence' | 'onCursorGameResult' | 'onActivityOutcome' | 'onActivityCommitted' | 'onActivityStarted' | 'onSocialBidStarted' | 'onAIInvalidated' | 'onUserContact' | 'systemIdle' | 'routine' | 'routineCalendar' | 'onUnsolicitedBlocked' | 'onPresentationChanged' | 'onSleepStateChanged' | 'deferredInvitation' | 'ownGoals'>> = {},
-  useAuthoredTraits = false) {
+  useAuthoredTraits = false, clockReadStepMs = 0) {
   let now = 0; let id = 0; let nextTimer = 0; let root = { x: 400, y: 790 }; let target: typeof root | null = null;
   let movable = true; let supportValid = true; let random = randomUnit;
   const timers = new Map<number, { atMs: number; callback: () => void }>();
@@ -27,7 +27,7 @@ export function scenario(needs: Partial<Needs> = {}, randomUnit = .2, initialSta
   const move = vi.fn((command: { readonly targetRootPosition: typeof root; readonly speedPxPerSec: number }) => {
     if (!movable) return false; target = command.targetRootPosition; return true;
   });
-  const main = new MainAutonomyComposition({ ...hooks, cursorPosition, clock: { now: () => now }, wallNow: () => now, scheduler: {
+  const main = new MainAutonomyComposition({ ...hooks, cursorPosition, clock: { now: () => { const sampled = now; now += clockReadStepMs; return sampled; } }, wallNow: () => now, scheduler: {
     setTimeout: (callback, delay) => { const key = ++nextTimer; timers.set(key, { callback, atMs: now + delay }); return key; },
     clearTimeout: key => { timers.delete(key as number); } },
     prng: { next: () => random }, prngMetadata: { algorithm: 'constant', seed: 1 },
