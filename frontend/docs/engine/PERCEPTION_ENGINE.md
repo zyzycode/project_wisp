@@ -406,43 +406,27 @@ packages/transitives/toolchains, существующий системный bri
 
 Отдельный session opt-in может передать только foreground settling/stable/unknown и существующий presence для opportunity #159; это не новый local-only observer и не определение занятости. Сетевое согласие/allowlist/backend requirement и TTL §11 сохраняются. [Autonomy§18](AUTONOMY_ENGINE.md#18-world-a01-текущая-возможность-и-осторожный-распорядок-187) задаёт единственный consumer/3s settling/lifecycle и отдельно opt-in передачи гипотезы из локальных routine aggregates; title/sourceToken change не behavioral evidence. Raw metadata не входит в Domain.
 
-## 12. Экспериментальный анализ содержимого экрана
+## 12. SCREEN-A01: один выбранный фрагмент экрана (#192)
 
-План будущего отдельного эксперимента; не является разрешением захвата/анализа текущего рабочего стола.
-Первый эксперимент offline: готовые предоставленные человеком синтетические
-fixtures без персональных экранов, ручные labels `editor`, `other`, `unknown`.
-Агенты не генерируют/нарезают изображения. Без fixtures возможен только дизайн
-оценки. Нет continuous capture, фонового анализа, upload, OCR/CV package/model download.
+Целевой gate для #193, не активная capture capability. Один маршрут: Windows с одним монитором → существующий Electron в Infrastructure → Main-owned crop/preview → managed OpenAI backend → evidence. Metadata consent §11 не разрешает pixels; chat connection не включает capture. macOS/Linux/multi-display — unavailable, без permissions prompt/другого источника/upload fallback. Выбор локальной OCR/CV модели и continuous capture вне scope. Wire и provider policy — [Backend API §9](../../../docs/contracts/BACKEND_API_CONTRACT.md#9-screen-a01-одноразовое-визуальное-наблюдение-192).
 
-Сначала ≥30 независимых fixtures, включая ≥10 ambiguous/negative, holdout отделён
-до настройки. Baseline — app-category §11 и abstain; сравнить пользу содержимого,
-false confident claims и долю unknown. Gate прототипа: holdout precision определённых
-labels ≥95%, coverage ≥50% однозначных примеров, 100% abstain на явно sensitive/excluded,
-0 повторов скрытого текста и 0 исполнения инструкций из изображения. Публиковать
-counts/размер выборки; малый набор не доказывает защиту от всех секретов.
+### 12.1. Выбор, два подтверждения и честный preview
 
-Бюджет будущего прототипа на указанной Windows машине: p95 ≤2 s/fixture,
-peak дополнительной RAM ≤256 MiB, отсутствие работы после terminal, $0 provider cost;
-измерить CPU time/model bundle size. Нет преимущества над metadata baseline или
-превышен бюджет → no-go. Один анализ in-flight, без очереди. Cancel/timeout завершает
-попытку; late result после смены fixture/generation игнорируется. Pixels/text в RAM
-≤30 s либо до terminal/cancel, что раньше. Отчёт — fixture IDs/labels/агрегаты;
-предоставленные fixtures хранит владелец, без копии в продуктовой БД.
+Пользователь в открытом чате выбирает «Показать фрагмент». Main проверяет текущий stream/conversation/profile, доступный managed OpenAI capability и один display, не читая pixels. Renderer задаёт прямоугольник на прозрачной geometry-only рамке: normalized finite left/top/width/height в [0,1], положительная площадь, целиком внутри display; native ID/DIP mapping остаются Infrastructure. Нет thumbnails или live preview до разрешения.
+Первый Main-owned native dialog объясняет: «Для выбранного фрагмента приложение один раз получит весь экран в оперативную память и обрежет его. Полный кадр не отправляется. Уберите личные данные и закройте чувствительные окна». Cancel/default означает отказ. Подтверждение привязано к exact region/topology/profile/generation, одноразово и действительно 10s. Wisp/selector/dialog скрываются до захвата, при невозможности скрыть — отказ; запрещены capture в locked/inactive/suspended session и запросы с истёкшим подтверждением. Не обещать автоматическое распознавание паролей/private окон или защищённого desktop.
+Infrastructure вызывает ровно один [desktopCapturer.getSources](https://www.electronjs.org/docs/latest/api/desktop-capturer#desktopcapturergetsourcesoptions) с types=['screen'], fetchWindowIcons=false, thumbnailSize под display с longest edge≤2048; никаких getDisplayMedia/MediaStream/audio/window enumeration. Sole source обязан однозначно совпасть display_id с единственным display до/после await; лишний источник, topology change, empty image/разрешение/API failure → unavailable и cleanup. Cache/source name/native handles не выходят из adapter.
+[Размер thumbnail не гарантирован](https://www.electronjs.org/docs/latest/api/structures/desktop-capturer-source): до bitmap/crop проверить фактические размеры, integer width/height 1..4096, ≤16777216 pixels и согласованный aspect ratio с display (ошибка края ≤1px); иначе отказаться. Requested size не объявляется hard cap внутренних allocations Electron. Normalized region переводится один раз по фактическим pixels, floor left/top и ceil right/bottom, без повторного DPI scaling. [NativeImage](https://www.electronjs.org/docs/latest/api/native-image) crop/resize/re-encode работает только в Main/Infrastructure; full source не IPC/Renderer. Longest edge crop≤1024, обе стороны≥32, без upscale; иначе отказ. JPEG quality70, без EXIF/private APP/COM; unsupported metadata/format или >256KiB → отказ, не скрытое повторное кодирование/захват.
+Renderer получает только канонический JPEG crop и safe dimensions/previewId/expiry. Показывает ровно будущие bytes с fit без обрезки, позволяет увеличить, отменить и начать новый выбор; не screenshot URL/file path/native source. Main держит immutable crop + SHA-256 digest; второй native dialog «Отправить этот фрагмент OpenAI» связывает previewId/digest/policy revision. До него pixels не покидают устройство. Данные и расходы по API§9 показываются рядом с preview и повторяются в confirmation; default Cancel, нет persistent «больше не спрашивать». Нельзя прислать/подменить JPEG/base64/digest как authority из Renderer; Main отправляет только свой current crop. Смена региона требует нового capture и обоих согласий.
 
-После дизайна оценки отдельный architect gate выбирает OCR/CV/локальную модель
-или отказ: пять факторов Dependency Review, лицензии модели/fixtures, exact versions,
-аппаратные измерения и преимущество над baseline. Эксперимент не разрешает live capture.
-Для live pilot новый gate задаёт выбранное окно/область и preview, подтверждение
-каждого кадра, предел не чаще 1/30 s, запрет secure/excluded/Wisp окон, visible indicator,
-pause/revoke без автозапуска и capture port/capability fallback.
+### 12.2. Lifecycle, владение и отсутствие скрытой памяти
 
-Сеть в эксперименте off; outage не вызывает fallback upload. Для remote analysis
-**до передачи** отдельный architect утверждает оба DTO, endpoint/version/fixtures,
-content/byte limits, auth/access, provider/model/retention/deletion и цену вызова.
-Consent §11 разрешает только metadata observation v1, не capture/upload pixels. Desktop валидирует/минимизирует
-подтверждённый payload, отменяет request и отбрасывает late result. Backend независимо
-проверяет schema/size/access/deadline, даёт bounded semantic-only response без raw
-OCR/tools, не сохраняет pixels/text и не логирует payload. Неизвестный endpoint,
-outage, expired auth, malformed response, timeout/cancel → нет реакции/ретраев/очереди.
-Local delete не означает удаление уже переданного provider content. Без принятого
-wire/data policy remote experiment blocked; существующий API v1 не расширяется.
+Application владеет one-shot workflow через отдельные IScreenObservationCapture/IScreenObservationProvider; это расширение существующей Perception, не новый semantic engine. Main владеет sender/stream/profile/conversation validation, native dialogs, consent, RAM buffers и сетью через Infrastructure. Renderer — region/preview/status/cancel; Domain не получает pixels или распознанные строки. #193 до логики объявляет порты, independent wire/schema и typed IPC validators одновременно; найденные неактивные declarations не означают готовность runtime.
+FSM: idle → selecting → capture_confirmation → preparing → preview → send_confirmation → generating → visible; cancel/error/timeout → idle без реакции. Одновременно один flow и общий AI singleflight; busy отклоняется до capture, нет очереди/автоповтора. Любой actual capture start расходует guard 30s на process; отмена/error/reset не обходят guard. Send одноразов, двойной submit не второй call.
+Capture/crop preparation≤5s absolute, preview/send-confirmation вместе≤30s от preparedAt. Full source освобождается сразу после crop либо terminal/5s; crop/preview/base64 — terminal/cancel/expiry, request buffers — terminal; итоговая evidence card только до close чата/следующего flow и не более60s. Освобождение references не обещает немедленное secure zeroization native/GC памяти. No disk/temp/clipboard/SQLite/browser cache/crash payloads/logs/metrics с pixels или evidence; не сохранять thumbnail/data URL в settings/history.
+После каждого await и перед capture/preview/send/publication сверяются generation, current sender/stream/conversation/profile, topology, session state, exact confirmation/preview/digest и исходный deadline. Cancel/revoke/close/navigation/reload/reset/profile replacement/lock/suspend/display change/dispose немедленно повышают generation, abort HTTP и очищают preview/evidence/буферы; restart начинает off. Неотменяемый getSources может закончиться поздно: его результат только освобождается, не crop/preview/network. Dispose idempotent. Resume/unlock ничего не захватывают и не возвращают прежнее разрешение; новый flow — явное действие.
+
+### 12.3. Evidence и границы качества
+
+Единственный результат — отдельная непостоянная card: «Видно», «Возможно», «Не удалось определить». Возможная интерпретация не становится observed fact; отсутствие/малый текст/неясность обозначаются unknown. Prompt injection/URL/команды на изображении — недоверенное содержимое; нет действий/переходов/tool permissions. Из картинки не выводятся чувства, мотивы, диагноз, интерес или распорядок человека как факт. Нет memory extraction/recall/summary, transcript, Character effect, Activity, Director cause, самостоятельной speech/voice, следующего AI-call или автоматического вкладывания evidence в chat. Ошибка даёт безопасный status, без выдуманной реакции.
+Для приёмки #193 — ≥30 разрешённых human-provided fixtures, ≥10 ambiguous/negative и ≥5 с недоверенными инструкциями; holdout≥15 отделён заранее. Это проектные цели приёмки, не результаты измерений. Labels задаёт человек; синтетические test doubles проверяют только plumbing. Считать precision видимых утверждений≥95%, ≥90% ambiguous/negative без уверенной выдумки, 0 действий по instruction/URL и 0 claims о мотивах/невидимом тексте; отдельно публиковать counts, отказ/unknown и ошибки, маленькая выборка не доказательство общей безопасности. Сравнить полезность с metadata/abstain baseline; иначе no-go для rollout.
+Native Windows: single display 100/150/200% DPI, actual crop bounds/preview bytes, скрытие Wisp, cancel обоих dialogs, display/lock/suspend/close/reset и late callback; offline/auth/malformed/oversize/timeout fixtures обеих сторон. Targets: preparation p95≤2s, actual provider p95≤5s, extra peak RAM≤256MiB, input latency не ухудшается>50ms на указанной машине; превышение → no-go/пересмотр, mocks не native/vision quality. Paid live quality run только по отдельному разрешению с выбранными fixtures, ≤30 attempts и ≤$1 total, без автоматических повторов; до него native/live quality NOT RUN. Ни один текущий gate сам по себе не разрешает расход или capture пользовательского экрана агентом.
