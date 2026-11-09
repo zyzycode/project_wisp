@@ -171,7 +171,7 @@ const interestThreadCommands = new InterestThreadCommands({ runtime: () => memor
 const memoryFacts = new MemoryFactsReader(() => memoryRuntime);
 const clearMemory = new ClearMemoryUseCase(() => memoryRuntime?.reset() ?? Promise.resolve({ ok: false, code: 'unavailable' }));
 const platformAdapter = createPlatformAdapter();
-const platformEnvironmentAdapter = new PlatformEnvironmentAdapter();
+const platformEnvironmentAdapter = new PlatformEnvironmentAdapter(() => brainStatePublisher.now());
 let positionService: PetPositionService | null = null;
 let unsubscribeEnvironmentChanges: (() => void) | null = null;
 let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;

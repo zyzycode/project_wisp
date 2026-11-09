@@ -10,8 +10,9 @@ import type { ActivityOutcomeFeedback } from '../../src/application/ports/shimej
 import type { AnimationIntent, AnimationIntentKind } from '../../src/domain/animation/animation-intent';
 
 const book = { kind: 'book', source: 'timer', priority: 'normal', reason: 'local_utility' } as const;
-function fixture() {
+function fixture(advancingReads = false, environmentTimestampShiftMs = 0) {
   let now = 0, rawId = 0, supported = true, allowed = true;
+  const clockRead = () => { if (advancingReads) now += .1; return now; };
   const bounds = { id: 'screen', x: 0, y: 0, width: 1000, height: 800 };
   const insets = { left: 50, right: 50, top: 90, bottom: 10 }, root = { x: 500, y: 790 };
   const character = new CharacterStateService({ now: () => now, monotonicNow: () => now });
@@ -19,9 +20,9 @@ function fixture() {
   const observed: CausalLifeEpisode[] = [], outcomes: ActivityOutcomeFeedback[] = [], visuals: AnimationIntent<AnimationIntentKind>[] = [];
   const recorder = new CausalLifeRecorder({ appRunId: () => 'app', context: () => null, generation: () => 0,
     toTimestamp: at => new Date(at).toISOString(), onFailure: vi.fn(), onObserved: (event, at) => { observed.push(event); character.observeCausalEpisode(event, at); } });
-  const environment = () => ({ capturedAtMs: now, screenBounds: bounds,
+  const environment = () => ({ capturedAtMs: clockRead() + environmentTimestampShiftMs, screenBounds: bounds,
     currentSurface: { id: 'floor', kind: 'screen_floor' as const, bounds, isValidSupport: supported } });
-  const runtime = new BrainActivityRuntime({ clock: { now: () => now }, canBook: () => allowed,
+  const runtime = new BrainActivityRuntime({ clock: { now: clockRead }, canBook: () => allowed,
     getCharacterSnapshot: () => createCharacterAutonomySnapshot(character.getState()),
     getSelectionContext: () => ({ character: character.getSnapshot(), synthesizedTone: 'neutral', environment: environment() }),
     getRootPosition: () => root, getCollisionInsets: () => insets, nextRandom: () => .5,
@@ -32,6 +33,20 @@ function fixture() {
     at: (at: number) => { now = at; runtime.tick(now); },
     setSupported: () => { supported = false; }, setAllowed: () => { allowed = false; } };
 }
+it('uses a coherent check time after collecting a fresh environment on a real advancing clock', () => {
+  const f = fixture(true);
+  expect(f.runtime.canStart(book)).toBe(true);
+  expect(f.runtime.start(book)).toBe(true);
+  f.at(1202);
+  expect(f.runtime.getRuntime()?.currentStepId).toBe('with_book');
+  expect(f.observed).toHaveLength(0);
+  f.at(13203); expect(f.runtime.getRuntime()?.currentStepId).toBe('finish');
+  f.at(14004); expect(f.observed).toHaveLength(1);
+  expect(f.observed[0]).toMatchObject({ activity: 'book', cause: 'completed' });
+});
+it.each([1, -301])('still rejects genuinely future or stale environment timestamp shift %d', shift => {
+  expect(fixture(false, shift).runtime.start(book)).toBe(false);
+});
 it('runs three actual elapsed phases offline, rewards only a real terminal once and applies terminal cooldown', () => {
   const f = fixture(); expect(f.runtime.start(book)).toBe(true);
   expect(f.visuals.at(-1)).toMatchObject({ kind: 'book_settle', propHint: 'none' });

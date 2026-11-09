@@ -131,12 +131,12 @@ export class BrainActivityRuntime {
   }
 
   private prepare(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog, preview = false): PreparedBrainActivity | null {
-    const nowMs = this.options.clock.now();
     const selectionContext = {
       ...this.options.getSelectionContext(),
       repetition: this.repetition,
       cooldowns: this.cooldowns,
     };
+    const nowMs = this.options.clock.now();
     const selectedDefinition = selectActivityForResolvedIntent(
       intent,
       selectionContext,
@@ -226,8 +226,10 @@ export class BrainActivityRuntime {
     const runtime = this.runtime;
     if (definition === null || runtime === null) return false;
     if (definition.id === 'book') {
+      const environment = this.options.getSelectionContext().environment;
+      nowMs = Math.max(nowMs, this.options.clock.now());
       if (isBookDeadlineReached(runtime.startedAtMs, nowMs)) return this.applyUpdate(definition, this.runner.cancel(runtime, 'step_timeout', nowMs));
-      if (!hasBookSupport(this.options.getSelectionContext().environment, this.options.getRootPosition(), this.options.getCollisionInsets(), nowMs)) return this.applyUpdate(definition, this.runner.cancel(runtime, 'environment_invalidated', nowMs));
+      if (!hasBookSupport(environment, this.options.getRootPosition(), this.options.getCollisionInsets(), nowMs)) return this.applyUpdate(definition, this.runner.cancel(runtime, 'environment_invalidated', nowMs));
       if (this.options.canBook && !this.options.canBook()) return this.applyUpdate(definition, this.runner.cancel(runtime, 'explicit_cancel', nowMs));
     }
     if (this.cursorGame) return this.updateCursorGame(nowMs);

@@ -12,10 +12,12 @@ export type EnvironmentSnapshotListener = (snapshot: EnvironmentSnapshot) => voi
 export class PlatformEnvironmentAdapter {
   private lastCapturedAtMs = 0;
 
+  constructor(private readonly now: () => number = () => performance.now()) {}
+
   public getSnapshot(position?: Vector2Dto): EnvironmentSnapshot {
     const display = position === undefined ? screen.getPrimaryDisplay() : screen.getDisplayNearestPoint({ x: Math.round(position.x), y: Math.round(position.y) });
     const workArea = display.workArea;
-    const capturedAtMs = Math.max(performance.now(), this.lastCapturedAtMs);
+    const capturedAtMs = Math.max(this.now(), this.lastCapturedAtMs);
     this.lastCapturedAtMs = capturedAtMs;
 
     const screenBounds = {
