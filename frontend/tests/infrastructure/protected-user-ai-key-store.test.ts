@@ -13,7 +13,10 @@ async function fixture() {
     encryptStringAsync: vi.fn(async () => Buffer.from('OS-encrypted-test-ciphertext')),
     decryptStringAsync: vi.fn(async () => ({ result: 'synthetic-test-key', shouldReEncrypt: false })),
   };
-  return { root, encryption, store: new ProtectedUserAIKeyStore(root, encryption, fs, 'darwin'), file: path.join(root, 'personal-openai-key.encrypted') };
+  const files = { ...fs };
+  const calls = { writeFile: vi.spyOn(files, 'writeFile'), chmod: vi.spyOn(files, 'chmod'), rename: vi.spyOn(files, 'rename'),
+    lstat: vi.spyOn(files, 'lstat'), readFile: vi.spyOn(files, 'readFile') };
+  return { root, encryption, files, calls, store: new ProtectedUserAIKeyStore(root, encryption, files), file: path.join(root, 'personal-openai-key.encrypted') };
 }
 describe('protected personal key file', () => {
   it('stores only OS ciphertext with restricted permissions and exposes presence separately', async () => {
@@ -21,7 +24,14 @@ describe('protected personal key file', () => {
     expect(await f.store.hasSavedKey()).toEqual({ ok: true, value: false });
     expect(await f.store.save('synthetic-test-key')).toEqual({ ok: true, value: undefined });
     expect(await fs.readFile(f.file, 'utf8')).toBe('OS-encrypted-test-ciphertext');
-    expect((await fs.stat(f.file)).mode & 0o777).toBe(0o600);
+    expect(f.files.writeFile).toHaveBeenCalledExactlyOnceWith(expect.stringContaining(`${f.file}.`),
+      Buffer.from('OS-encrypted-test-ciphertext'), { flag: 'wx', mode: 0o600 });
+    const temporary = f.calls.writeFile.mock.calls[0]?.[0];
+    expect(temporary).toEqual(expect.stringMatching(/\.tmp$/));
+    expect(f.files.chmod).toHaveBeenCalledExactlyOnceWith(temporary, 0o600);
+    expect(f.files.rename).toHaveBeenCalledExactlyOnceWith(temporary, f.file);
+    expect(f.calls.writeFile.mock.invocationCallOrder[0]).toBeLessThan(f.calls.chmod.mock.invocationCallOrder[0]!);
+    expect(f.calls.chmod.mock.invocationCallOrder[0]).toBeLessThan(f.calls.rename.mock.invocationCallOrder[0]!);
     expect(await f.store.load()).toEqual({ ok: true, value: 'synthetic-test-key' });
     expect(f.encryption.encryptStringAsync).toHaveBeenCalledOnce();
   });
@@ -34,7 +44,7 @@ describe('protected personal key file', () => {
   });
   it('preserves the previous encrypted file when an atomic replacement fails', async () => {
     const f = await fixture(); await fs.writeFile(f.file, 'previous-ciphertext');
-    const store = new ProtectedUserAIKeyStore(f.root, f.encryption, { ...fs, rename: vi.fn(async () => { throw new Error('sensitive internal details'); }) }, 'darwin');
+    const store = new ProtectedUserAIKeyStore(f.root, f.encryption, { ...fs, rename: vi.fn(async () => { throw new Error('sensitive internal details'); }) });
     expect(await store.save('synthetic-test-key')).toEqual({ ok: false, code: 'storage_error' });
     expect(await fs.readFile(f.file, 'utf8')).toBe('previous-ciphertext');
     expect(await fs.readdir(f.root)).toEqual(['personal-openai-key.encrypted']);
@@ -49,9 +59,18 @@ describe('protected personal key file', () => {
     expect(await f.store.remove()).toEqual({ ok: true, value: undefined });
     expect(await f.store.hasSavedKey()).toEqual({ ok: true, value: false });
   });
-  it('rejects a symlink rather than decrypting a file outside userData', async () => {
-    const f = await fixture(); await fs.symlink(path.join(f.root, 'elsewhere'), f.file);
+  it.each([
+    { kind: 'symlink', isFile: true, isSymbolicLink: true },
+    { kind: 'non-file', isFile: false, isSymbolicLink: false },
+  ])('rejects a $kind from lstat before reading or decrypting its target', async ({ isFile, isSymbolicLink }) => {
+    const f = await fixture(); await fs.writeFile(f.file, 'outside-userData-ciphertext');
+    const stat = await fs.lstat(f.file);
+    vi.spyOn(stat, 'isFile').mockReturnValue(isFile);
+    vi.spyOn(stat, 'isSymbolicLink').mockReturnValue(isSymbolicLink);
+    f.calls.lstat.mockResolvedValue(stat);
     expect(await f.store.load()).toEqual({ ok: false, code: 'storage_error' });
+    expect(f.files.lstat).toHaveBeenCalledExactlyOnceWith(f.file);
+    expect(f.files.readFile).not.toHaveBeenCalled();
     expect(f.encryption.decryptStringAsync).not.toHaveBeenCalled();
   });
 });
