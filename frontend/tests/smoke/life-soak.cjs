@@ -63,7 +63,8 @@ exports.measureLifeSoak = async ({ app, win, profile, evaluate }) => {
         'Ping round-trip and Main heartbeat are responsiveness proxies, not Domain tick latency.',
         'Resource counts cover Main Node handles and Electron listeners, not all Chromium/native owners.',
         'STT/TTS inference here uses existing smoke fixtures; no native inference performance claim.',
-        'A bounded soak does not establish multi-day native stability; pending LIFE dependencies remain unverified.'] };
+        'A bounded soak does not establish multi-day native stability.',
+        'This dwell does not itself exercise every causal/plan/habit/book/world branch; their accelerated and lifecycle results are reported separately.'] };
   } finally {
     clearInterval(heartbeat);
     await evaluate('window.wispAPI.setAutonomyEnabled({enabled:false})');

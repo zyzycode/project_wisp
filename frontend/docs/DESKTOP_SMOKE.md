@@ -37,8 +37,10 @@ Main RSS/heap, Electron process CPU/RAM, размеры SQLite/WAL/SHM, Main act
 не время Domain tick, а Node resource counts не покрывают все native/Chromium ресурсы.
 PASS означает завершение измерения и успешные IPC ответы; численного общего бюджета
 CPU/RAM/latency нет. Короткий soak не подтверждает многодневную native устойчивость.
-Состояние новых планов, привычек и других ещё не реализованных зависимостей #196
-проверяется после их отдельных implementation gates.
+Этот dwell сам по себе не упражняет все ветки causal/plans/habits/book/world.
+Их ускоренные истории, failure/reset/restart и отдельные native life cases
+проверяются дополнительно; наличие реализованных механизмов не означает,
+что idle soak автоматически проверил каждый из них.
 
 Ускоренные сценарии ядра запускаются отдельно из корня:
 
@@ -48,8 +50,13 @@ node scripts/wisp.mjs test:frontend tests/main/life-autonomy.test.ts tests/appli
 
 В JSON metadata тестов: `life` — семь simulated days с управляемыми clock/RNG,
 bounded cadence/trace, stale/duplicate callback и stall decay; `lifeMemory` — семь
-simulated days, 1008 synthetic dialogue pairs и game episodes, их exact replay,
-реальные SQLite worker crash/restart/reset и bounded recall. Измерения CPU/RSS
+simulated days, 1008 synthetic dialogue pairs/game episodes и 2016 causal game/book
+events, их exact replay, реальные SQLite worker crash/restart/reset, bounded
+indexed recall и complete/overflow life-history windows. `causalLife` — семь
+simulated days реального Main cursor input → Activity → Character → SQLite,
+bounded source proofs/reflection, checkpoint reopen и reset. Goals/plans/habits,
+book и world-context lifecycle matrix проверяется соответствующими existing tests.
+Измерения CPU/RSS
 Vitest включают тестовый процесс и worker; сравнивать их с Electron RSS нельзя.
 DB retention до reset разрешает рост истории: общего disk cap нет по
 [Memory Engine](engine/MEMORY_ENGINE.md), поэтому рост файла сам по себе не утечка.
