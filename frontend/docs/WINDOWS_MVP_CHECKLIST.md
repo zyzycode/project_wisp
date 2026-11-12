@@ -2,6 +2,39 @@
 
 Ручную приёмку выполняет владелец продукта. Автоматические результаты и закрытые задачи не подтверждают Windows-прогон: фиксировать версию, окружение и результат каждого сценария.
 
+## Целостная жизнь: матрица приёмки #197
+
+Матрица фиксирует согласованный объём до прогона. `PASS` означает только указанный вид проверки; `NOT RUN` не заменяется закрытой Issue. Автоматические сценарии используют synthetic history, управляемые clock/random, временную SQLite и fake providers, без платных вызовов. Разные истории должны менять приобретённое состояние при сохранении авторской личности; это проверка причинности и непрерывности, без утверждения о сознании.
+
+| Обязательное ядро | Автоматическая проверка / evidence | Windows native | macOS / Linux native |
+|---|---|---|---|
+| Две истории: совместные завершения и прерывания; повторяемость, trust/affection, own interest, bounded satiation, Utility | PASS — [whole-life acceptance](../tests/main/whole-life-acceptance.test.ts); повтор каждой истории с одинаковыми входами | NOT RUN | NOT RUN |
+| Два конечных занятия: реальная игра и декоративная книга, terminal → source → appraisal; книга не означает чтение текста | PASS — тот же whole-life scenario и [book runtime](../tests/application/book-activity-runtime.test.ts) | NOT RUN | NOT RUN |
+| Отложенное приглашение, goals/трёхшаговый plan, coping, контекстная привычка; возврат только к разрешённому намерению | PASS — [causal story](../tests/main/causal-life-story.test.ts), [plans](../tests/main/own-plans.test.ts), [coping](../tests/main/coping-integration.test.ts), [habit](../tests/main/own-habit.test.ts) | NOT RUN | NOT RUN |
+| Стороны отношений и постепенное восстановление; время/извинение не стирают историю | PASS — [facets](../tests/application/relationship-facets.test.ts), [repair runtime](../tests/application/relationship-repair-runtime.test.ts), [repair lifecycle](../tests/application/relationship-repair-lifecycle.test.ts) | NOT RUN | NOT RUN |
+| Проверенный recall, cross-day reflection, согласие на summary, source-bound интерес и бытовая гипотеза | PASS — [recall](../tests/application/causal-memory-recall.test.ts), [reflection](../tests/application/life-reflection-runtime.test.ts), [summary](../tests/application/life-summary-runtime.test.ts), [routine hypothesis](../tests/application/routine-hypothesis-runtime.test.ts) | NOT RUN | NOT RUN |
+| Restart/reboot, provider replacement, offline, reset/deletion и поздние результаты | PASS — whole-life, [story dialogue](../tests/main/causal-life-story-dialogue.test.ts), [memory restart](../tests/application/memory-restart.test.ts), [external dialogue](../tests/application/external-dialogue-runtime.test.ts) | NOT RUN | NOT RUN |
+| AFK/молчание не наказываются; foreground settling откладывает инициативу, quiet/menu/sleep/input блокируют её | PASS — [system idle](../tests/main/routine-system-idle.test.ts), [world opportunity](../tests/main/world-opportunity.test.ts), [deferred world context](../tests/application/deferred-game-world-context.test.ts) | NOT RUN | NOT RUN |
+| Dialogue/Face/Body выражают одно causal решение; presentation не создаёт факты | PASS — story dialogue, [causal presentation](../tests/renderer/causal-presentation.test.ts), [render pipeline](../tests/renderer/render-pipeline-integration.test.tsx) | NOT RUN — выразительность оценивает человек | NOT RUN |
+| Долгая жизнь и ресурсы #196 | PASS — автоматическая ресурсная матрица: 24 файла и финальный focused прогон 15 tests; отдельная [ресурсная приёмка](DESKTOP_SMOKE.md) | PASS — ограниченный замер 300130.877 ms / 1158 pings; не полная длительная приёмка | NOT RUN |
+
+Это совокупность сквозных и focused evidence. Whole-life test связывает фактические игры/книгу, source, appraisal, Utility, reflection, SQLite restart и reset; он не изображает единую полную native сессию plans/habits/world/voice. Полная приёмка #197 зависит от результата [#196](https://github.com/zyzycode/project_wisp/issues/196) и ручных строк. Общие desktop gates записываются отдельно после финальных правок.
+
+Автоматический прогон 12.11.2026: Windows host, Node 24, база `98272f6` плюс изменения #197; перечисленные 21 suite / 129 tests PASS. Ускоренные несколько synthetic дней не являются реальными сутками работы. Native клики/движение/качество речи этими результатами не проверялись.
+
+Ограниченный native Windows замер [#196](https://github.com/zyzycode/project_wisp/issues/196): ping p95 2.0105 ms; handles/listeners без изменения; Main RSS 126619648 → 133832704 B, Renderer 108196 → 287792 KiB. Две точки памяти не доказывают ни утечку, ни её отсутствие. В этом sampler `focused=true`: результат не подтверждает режим неактивного окна. Отдельный book wrapper (`show:false`, `focusable:false`, `focused=false` на старте/финише) завершил три фазы за 14020.9239 ms с одним completed terminal. Отдельный native interrupted book прогон PASS: 45.372 s реального времени, отмена через 1316.83 ms (`user_interrupted`, trigger 1), ровно один terminal; подтверждены очистка старой фазы/prop и drag release, focus на старте/финише false, sandbox и штатный quit. Локальный report: `frontend/.cache/life-windows-interrupted-1794504085298/report.json`; итоговый receipt — в #196. Эти измерения не заменяют полные native парные истории, human quality или общий desktop gate; #197 остаётся blocked по полной приёмке.
+
+| Дополнительная ветка | Принятый объём и результат |
+|---|---|
+| Управление окном #191 | Positive gate: только явно подтверждённая попытка focus выбранного Windows-окна; native acceptance NOT RUN. Не расширяет автономные действия. |
+| Кадр экрана #193 | Positive gate: один явно выбранный и подтверждённый кадр на Windows с одним монитором; native/real-provider acceptance NOT RUN. Без запроса нет capture. |
+| Локальная модель #195 | Conditional positive gate; approved Ollama/model не подтверждены доступными. NOT RUN, установка/скачивание не выполнялись. |
+| Rig/body #181–182 | No-go до принятых человеческих ресурсов; full rig сознательно отсутствует, существующие body/face fallback не заменяют его приёмку. |
+| Эмоциональный голос/lip sync #185–186 | No-go для выразительного голоса; существующая neutral-only TTS не подтверждает emotional delivery или lip sync. Human/native quality NOT RUN. |
+| Semantic retrieval upgrade | Не включён в обязательное ядро без positive gate; проверенный ограниченный recall остаётся принятым маршрутом. |
+
+Для двух ручных историй начинать с одинаковых чистых dev-профилей, записать seed/входы/время. В первой завершить совместные игры и занятие с книгой, во второй прерывать их после реального начала; затем сравнить подтверждённые источники, отношения, интерес, допустимый выбор и выражение. Проверить restart, смену fake provider, offline, AFK и reset без событий за выключенное приложение. Критерии правдоподобия: видимая причина реакции, отсутствие противоположных каналов, разнообразие при устойчивой личности и ограниченный возврат к разрешённому намерению. Каждый FAIL получает воспроизводимый сценарий и owner; отсутствие native/human evidence остаётся NOT RUN.
+
 Перед ручной приёмкой выполнить [повторяемый desktop smoke](DESKTOP_SMOKE.md): `node scripts/wisp.mjs smoke:desktop`. Его injected-input проверки не заменяют физический drag, прозрачность композитора и DPI-переходы из ручной матрицы.
 
 ## Запуск и доступные режимы
