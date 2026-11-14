@@ -16,6 +16,10 @@ it('starts disabled; credential capability and reads never dispatch or grant con
   await controls.setConsent({ streamId: 's', profileGeneration: 0, enabled: false });
   expect(revoke).toHaveBeenCalledOnce();
   expect(controls.status()).toMatchObject({ requestsSent: 1, lastFailure: 'timeout', enabled: false });
+  await controls.setConsent({ streamId: 's', profileGeneration: 0, enabled: true });
+  expect(controls.status()).toMatchObject({ requestsSent: 1, lastFailure: 'timeout' });
+  controls.resetProfile();
+  expect(controls.status()).toMatchObject({ requestsSent: 0, lastFailure: 'none', enabled: false, profileGeneration: 1 });
 });
 
 it('revokes before reset storage acknowledgement and rejects delayed consent in unchanged stream', async () => {

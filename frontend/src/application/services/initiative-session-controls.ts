@@ -79,6 +79,8 @@ export class InitiativeSessionControls implements IInitiativeControls {
   public resetProfile(): void {
     this.profileGeneration++;
     this.policyGeneration++;
+    this.requestsSent = 0;
+    this.lastFailure = 'none';
     this.enabled = false;
     this.enabledAtMs = Infinity;
     this.phase = 'waiting';
