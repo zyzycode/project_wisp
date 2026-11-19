@@ -65,7 +65,7 @@ import { PlatformEnvironmentAdapter } from '../infrastructure/platform/platform-
 import { PetPositionService } from '../application/services/pet-position.service';
 import { CharacterStateService } from '../application/services/character-state.service';
 import { CharacterInteractionUseCase } from '../application/services/character-interaction.use-case';
-import { AppLogger, LogBuffer } from '../infrastructure/logging';
+import { createDesktopDiagnostics } from '../infrastructure/logging';
 import { isDebugMode } from '../shared/debug-mode';
 import { performance } from 'node:perf_hooks';
 import { createCharacterAutonomySnapshot } from '../domain/character/autonomy-character-engine';
@@ -192,12 +192,8 @@ let activeBodyDrag: {
 } | null = null;
 const bodyEventIngress = new BodyEventIngress();
 const shimejiStimulusMapper = new ShimejiStimulusMapper();
-const debugLogBuffer = new LogBuffer();
-const appLogger = new AppLogger({
-  level: 'debug',
-  buffer: debugLogBuffer,
-  sink: () => publishDebugTelemetry(),
-});
+const diagnostics = createDesktopDiagnostics(process.env, { publish: () => publishDebugTelemetry() });
+const appLogger = diagnostics.logger;
 let voiceStreamStarted = false;
 let voiceNavigationSeen = false;
 const publishedVisualEpisode = new MainPublishedVisualEpisode();
@@ -251,9 +247,7 @@ const brainStatePublisher = new BrainStatePublisher({
     mainWindow.webContents.send('wisp:brain-state', state);
   },
   revisionSink: bodyEventIngress,
-  onDeliveryError: (error) => {
-    appLogger.warn('IPC', `Brain state delivery failed: ${String(error)}`);
-  },
+  onDeliveryError: () => diagnostics.brainDeliveryFailed(),
 });
 
 const causalExpressionRuntime = new CausalExpressionRuntime({ now: () => brainStatePublisher.now(), read: () => {
@@ -300,7 +294,7 @@ function calculateInitialPosition(): { x: number; y: number } {
 function initializeServices(): void {
   const initialRoot = nativeToRootPosition(calculateInitialPosition(), ROOT_PIVOT_OFFSET);
   positionService = new PetPositionService(initialRoot);
-  appLogger.info('CharacterEngine', 'Main character telemetry initialized');
+  appLogger.debug('CharacterEngine', 'desktop_services_initialized');
 }
 
 function getDebugTelemetry(): DebugTelemetryDTO {
@@ -971,14 +965,19 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(async () => {
+    appLogger.info('IPC', 'desktop_starting');
     const userData = app.getPath('userData');
     aiConnection = new AIConnectionController({ externalUrl: process.env.WISP_BACKEND_URL, store: new ProtectedUserAIKeyStore(userData),
-      backend: new ManagedLocalAIBackend({ python: process.env.WISP_PYTHON, directory: process.env.WISP_LOCAL_BACKEND_DIR, onUnavailable: () => { screenObservation?.runtime.cancel(); aiConnection?.backendUnavailable(); observationRuntime?.backendUnavailable(); } }),
+      backend: new ManagedLocalAIBackend({ python: process.env.WISP_PYTHON, directory: process.env.WISP_LOCAL_BACKEND_DIR, diagnostic: diagnostics.backend, onUnavailable: () => { if (aiConnection?.read().mode === 'ready') appLogger.warn('AIProvider', 'ai_connection_unavailable'); screenObservation?.runtime.cancel(); aiConnection?.backendUnavailable(); observationRuntime?.backendUnavailable(); } }),
       ledgerPath: path.join(userData, 'personal-ai-usage.sqlite3'), createSessionToken: () => randomBytes(32).toString('hex'),
       scheduleRestart: () => { setTimeout(() => { if (!shutdownStarted) { app.relaunch(); app.quit(); } }, 0); },
     });
     aiRoute = await aiConnection.initialize();
     if (shutdownStarted) return;
+    const connectionMode = aiConnection.read().mode;
+    if (connectionMode === 'unavailable') appLogger.warn('AIProvider', 'ai_connection_unavailable');
+    else appLogger.info('AIProvider', connectionMode === 'ready' ? 'ai_connection_ready'
+      : connectionMode === 'external' ? 'ai_connection_external' : 'ai_connection_offline');
     localMock = !aiRoute.backendUrl;
     memoryComposition = createMainMemoryComposition(app.getPath('userData'), __dirname, new Date().toISOString());
     const clockOffset = Date.now() - performance.now();
@@ -1036,6 +1035,7 @@ if (!gotTheLock) {
     initializeServices();
     registerIpcHandlers();
     createWindow();
+    appLogger.info('IPC', 'desktop_started');
     void memoryRuntime.initialize();
     unsubscribeEnvironmentChanges = platformEnvironmentAdapter.onEnvironmentChanged(
       publishEnvironmentSnapshot
@@ -1046,8 +1046,11 @@ if (!gotTheLock) {
         createWindow();
       }
     });
-  });
+  }).catch(() => { appLogger.error('IPC', 'desktop_startup_failed'); app.quit(); });
 }
+
+app.once('before-quit', () => { appLogger.info('IPC', 'desktop_stopping'); });
+app.once('will-quit', () => diagnostics.dispose());
 
 app.on('window-all-closed', () => {
   if (platformAdapter.getPlatformName() !== 'darwin') {

@@ -70,6 +70,7 @@ test('standalone preserves operator settings; dev launches only desktop with tru
     WISP_LOCAL_BACKEND_DIR: '/untrusted-override' });
   assert.equal(backend.command, 'custom-python');
   assert.equal(backend.args.at(-1), '8001');
+  assert.ok(backend.args.includes('--no-access-log'));
   assert.equal(other, undefined);
   assert.equal(frontend.env.WISP_BACKEND_URL, 'http://operator-server');
   assert.equal(frontend.env.WISP_PYTHON, process.execPath);

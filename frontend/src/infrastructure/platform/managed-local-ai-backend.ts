@@ -5,6 +5,8 @@ import path from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import type { ILocalAIBackend, LocalAIBackendBootstrap, LocalAIBackendStartResult } from '../../application/ports/ai-connection.interface';
 import { encodeLocalAIBootstrap, localAIChildEnvironment, parseLocalAIReady, probeLocalAIHealth } from './local-ai-backend-protocol';
+import { attachBackendDiagnostics } from '../logging/backend-diagnostics';
+import type { DiagnosticRecord } from '../logging/diagnostic-output';
 
 export interface ManagedAIChild {
   on(event: 'error', listener: () => void): unknown;
@@ -13,6 +15,7 @@ export interface ManagedAIChild {
   kill(signal: NodeJS.Signals): boolean;
   readonly stdin: Writable | null;
   readonly stdout: Readable | null;
+  readonly stderr: Readable | null;
 }
 interface Options {
   readonly python: string | undefined;
@@ -22,6 +25,7 @@ interface Options {
   readonly validateRuntime?: (python: string, directory: string) => Promise<boolean>;
   readonly health?: typeof probeLocalAIHealth;
   readonly onUnavailable?: () => void;
+  readonly diagnostic?: (record: DiagnosticRecord) => void;
 }
 async function validateRuntime(python: string, directory: string): Promise<boolean> {
   try {
@@ -38,6 +42,7 @@ export class ManagedLocalAIBackend implements ILocalAIBackend {
   private exited = false;
   private stopWork: Promise<void> | null = null;
   private cancelStartup: (() => void) | null = null;
+  private stopDiagnostics: (() => void) | null = null;
   constructor(private readonly options: Options) {}
   start(bootstrap: LocalAIBackendBootstrap): Promise<LocalAIBackendStartResult> {
     if (this.started || this.retired) return Promise.resolve({ ok: false, code: 'startup_failed' });
@@ -71,11 +76,12 @@ export class ManagedLocalAIBackend implements ILocalAIBackend {
         }
         if (this.retired || settled) return;
         const child = (this.options.spawn ?? ((executable, cwd, env) => spawn(executable, ['-m', 'wisp_backend.managed'], {
-          cwd, env, stdio: ['pipe', 'pipe', 'ignore'], shell: false, windowsHide: true,
+          cwd, env, stdio: ['pipe', 'pipe', 'pipe'], shell: false, windowsHide: true,
         })))(python, directory, localAIChildEnvironment(this.options.env ?? process.env));
         this.child = child;
+        if (child.stderr) this.stopDiagnostics = attachBackendDiagnostics(child.stderr, value => this.options.diagnostic?.(value));
         child.on('error', fail);
-        child.once('exit', () => { this.exited = true; if (!this.retired) fail(); });
+        child.once('exit', () => { this.exited = true; this.stopDiagnostics?.(); this.stopDiagnostics = null; if (!this.retired) fail(); });
         if (!child.stdin || !child.stdout) { fail(); return; }
         child.stdin.on('error', () => { if (!this.retired) fail(); });
         child.stdout.on('end', () => { if (!this.retired) fail(); });
@@ -102,6 +108,7 @@ export class ManagedLocalAIBackend implements ILocalAIBackend {
   stop(): Promise<void> {
     if (this.stopWork) return this.stopWork;
     this.retired = true;
+    this.stopDiagnostics?.(); this.stopDiagnostics = null;
     this.cancelStartup?.();
     const child = this.child;
     if (!child || this.exited) return Promise.resolve();

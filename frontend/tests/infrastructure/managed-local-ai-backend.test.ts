@@ -5,15 +5,38 @@ import { ManagedLocalAIBackend, type ManagedAIChild } from '../../src/infrastruc
 import { localAIChildEnvironment, parseLocalAIReady, probeLocalAIHealth } from '../../src/infrastructure/platform/local-ai-backend-protocol';
 const bootstrap = { apiKey: 'synthetic-key', sessionToken: 'a'.repeat(64), ledgerPath: '/trusted/user-data/ledger.sqlite' };
 function fixture(health = vi.fn(async () => true)) {
-  const child = Object.assign(new EventEmitter(), { stdin: new PassThrough(), stdout: new PassThrough(), kill: vi.fn(() => true) }) satisfies ManagedAIChild;
-  const spawn = vi.fn(() => child), onUnavailable = vi.fn();
+  const child = Object.assign(new EventEmitter(), { stdin: new PassThrough(), stdout: new PassThrough(), stderr: new PassThrough(), kill: vi.fn(() => true) }) satisfies ManagedAIChild;
+  const spawn = vi.fn(() => child), onUnavailable = vi.fn(), diagnostic = vi.fn();
   const backend = new ManagedLocalAIBackend({ python: '/trusted/python', directory: '/trusted/backend', spawn,
-    validateRuntime: async () => true, health, onUnavailable, env: { HOME: '/home/test', OPENAI_API_KEY: 'do-not-inherit', WISP_AI_PROVIDER: 'wrong' } });
-  return { child, spawn, onUnavailable, backend, health };
+    validateRuntime: async () => true, health, onUnavailable, diagnostic, env: { HOME: '/home/test', OPENAI_API_KEY: 'do-not-inherit', WISP_AI_PROVIDER: 'wrong' } });
+  return { child, spawn, onUnavailable, backend, health, diagnostic };
 }
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 describe('managed local child', () => {
+  it('keeps diagnostic stderr separate from readiness and clears partial output on stop', async () => {
+    const f = fixture(), starting = f.backend.start(bootstrap); await Promise.resolve();
+    const event = Buffer.from('{"event":"application_started","level":"DEBUG","message":"secret"}\n');
+    f.child.stderr.emit('data', event); f.child.stderr.emit('data', Buffer.from('raw secret error\n'));
+    expect(f.diagnostic).toHaveBeenCalledExactlyOnceWith({ source: 'backend', level: 'DEBUG',
+      event: 'application_started', context: {}, fields: {} });
+    expect(f.health).not.toHaveBeenCalled();
+    f.child.stdout.emit('data', Buffer.from('{"kind":"ready","port":43123}\n'));
+    expect(await starting).toEqual({ ok: true, port: 43123 });
+    f.child.stderr.emit('data', event.subarray(0, 10));
+    const stop = f.backend.stop();
+    for (const name of ['data', 'end', 'error']) expect(f.child.stderr.listenerCount(name)).toBe(0);
+    f.child.stderr.emit('data', event); expect(f.diagnostic).toHaveBeenCalledOnce();
+    f.child.emit('exit', 0); await stop;
+  });
+  it('treats diagnostic stream failure as lost diagnostics and cleans up on child exit', async () => {
+    const f = fixture(), starting = f.backend.start(bootstrap); await Promise.resolve();
+    expect(() => f.child.stderr.emit('error', new Error('synthetic secret'))).not.toThrow();
+    f.child.stdout.emit('data', Buffer.from('{"kind":"ready","port":43123}\n'));
+    expect(await starting).toEqual({ ok: true, port: 43123 }); expect(f.onUnavailable).not.toHaveBeenCalled();
+    f.child.emit('exit', 1); expect(f.onUnavailable).toHaveBeenCalledOnce();
+    expect(f.child.stderr.listenerCount('data')).toBe(0);
+  });
   it('bootstraps privately and accepts only authenticated local health without a provider call', async () => {
     const f = fixture(); const starting = f.backend.start(bootstrap); await Promise.resolve();
     expect(f.spawn).toHaveBeenCalledWith('/trusted/python', '/trusted/backend', expect.not.objectContaining({ OPENAI_API_KEY: expect.anything() }));
@@ -68,7 +91,15 @@ describe('private local protocol', () => {
     expect(() => parseLocalAIReady(Buffer.from(text))).toThrow('Invalid backend readiness');
   });
   it('does not forward inherited credentials or provider overrides', () => {
-    expect(localAIChildEnvironment({ HOME: '/home/test', OPENAI_API_KEY: 'secret', WISP_BACKEND_URL: 'http://example', PYTHONPATH: '/evil' })).toEqual({ HOME: '/home/test', PYTHONUNBUFFERED: '1', PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1' });
+    expect(localAIChildEnvironment({ HOME: '/home/test', OPENAI_API_KEY: 'secret', WISP_BACKEND_URL: 'http://example', PYTHONPATH: '/evil' })).toEqual({ HOME: '/home/test', PYTHONUNBUFFERED: '1', PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1', WISP_LOG_LEVEL: 'WARNING' });
+  });
+  it('forwards only a validated backend log level without desktop level, format or module overrides', () => {
+    for (const level of ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL', 'OFF']) {
+      const env = localAIChildEnvironment({ WISP_LOG_LEVEL: level, WISP_DESKTOP_LOG_LEVEL: 'silent',
+        WISP_LOG_FORMAT: 'console', WISP_LOG_OVERRIDES: '{"secret":"DEBUG"}', OPENAI_API_KEY: 'secret' });
+      expect(env).toEqual({ PYTHONUNBUFFERED: '1', PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1', WISP_LOG_LEVEL: level });
+    }
+    expect(localAIChildEnvironment({ WISP_LOG_LEVEL: 'secret-invalid' }).WISP_LOG_LEVEL).toBe('WARNING');
   });
   it('requires health status and bounded JSON; refuses redirects and credentials', async () => {
     const fetcher = vi.fn<typeof fetch>(async () => new Response('{"status":"ok"}', { headers: { 'content-type': 'application/json' } }));

@@ -85,7 +85,7 @@ export class AppLogger implements ILogger {
     };
 
     this.buffer.append(entry);
-    this.sink?.(entry);
+    try { this.sink?.(entry); } catch { /* Diagnostic output must not interrupt runtime. */ }
   }
 
   public getLevel(): LogLevel {

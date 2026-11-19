@@ -22,6 +22,12 @@ function createLogger(options: {
 }
 
 describe('Infrastructure: structured logging', () => {
+  it('keeps runtime and bounded entries available when the output sink fails', () => {
+    const logger = new AppLogger({ sink: () => { throw new Error('synthetic secret output failure'); } });
+    expect(() => logger.warn('IPC', 'brain_delivery_failed')).not.toThrow();
+    expect(logger.getBufferedEntries()).toMatchObject([{ message: 'brain_delivery_failed' }]);
+  });
+
   it('buffers structured log entries and forwards accepted entries to the sink', () => {
     const sinkEntries: LogEntry[] = [];
     const logger = createLogger({ level: 'debug', sinkEntries });

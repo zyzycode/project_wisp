@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { LocalAIBackendBootstrap, LocalAIBackendReady } from '../../application/ports/ai-connection.interface';
 import { parsePersonalAIKey } from '../../shared/ai-connection-validation';
+import { backendLogPolicy } from '../logging/diagnostic-config';
 
 export function encodeLocalAIBootstrap(value: LocalAIBackendBootstrap): string {
   const apiKey = parsePersonalAIKey(value.apiKey);
@@ -53,7 +54,8 @@ export async function probeLocalAIHealth(port: number, token: string, signal: Ab
 
 /** Only OS runtime essentials pass to the child; never inherit provider settings or secrets. */
 export function localAIChildEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const result: NodeJS.ProcessEnv = { PYTHONUNBUFFERED: '1', PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1' };
+  const result: NodeJS.ProcessEnv = { PYTHONUNBUFFERED: '1', PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1',
+    WISP_LOG_LEVEL: backendLogPolicy(source.WISP_LOG_LEVEL).level };
   for (const name of ['PATH', 'HOME', 'USERPROFILE', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL']) {
     const value = source[name];
     if (value !== undefined) result[name] = value;

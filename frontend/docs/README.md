@@ -7,6 +7,7 @@
 | Владение, семантика движков, IPC и локальная память | [Engine contracts](engine/README.md) |
 | Наблюдаемое поведение и приёмочные сценарии | [Каталог поведения](behaviors/README.md) |
 | Ручной запуск и проверка на Windows | [Windows checklist](WINDOWS_MVP_CHECKLIST.md) |
+| Уровни desktop/managed-backend диагностики и ограничения вывода | [Logging](LOGGING.md) |
 | Причины desktop-решений | [Motion ADR-014](adr/ADR-014-native-window-motion.md), [Utility ADR-015](adr/ADR-015-utility-ai-without-xstate.md), [SQLite ADR-016](adr/ADR-016-local-memory-sqlite.md) |
 | Реализованные локальные предпочтения | [#66 (CHAR-A01)](https://github.com/zyzycode/project_wisp/issues/66); канонический контракт — [Character §9.1](engine/CHARACTER_ENGINE.md#91-char-a01-следующий-локальный-набор-предпочтений) |
 

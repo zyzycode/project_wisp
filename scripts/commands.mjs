@@ -25,7 +25,7 @@ export function backendCommand(mode, env = process.env) {
     throw new Error('WISP_BACKEND_PORT must be a port between 1 and 65535');
   }
   const commands = {
-    dev: ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', port],
+    dev: ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--no-access-log', '--port', port],
     test: ['-m', 'pytest', '-q', '-p', 'no:cacheprovider'],
     check: ['-m', 'pip', 'check'],
   };
