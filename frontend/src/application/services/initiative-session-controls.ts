@@ -34,16 +34,13 @@ export class InitiativeSessionControls implements IInitiativeControls {
 
   public status(): InitiativeControlStatusDTO {
     const conditions = this.options.conditions();
-    const blockReason: InitiativeBlockReason = !this.enabled ? 'disabled'
-      : conditions.quiet ? 'quiet' : conditions.sleeping ? 'sleeping'
-        : conditions.away ? 'away' : !conditions.capability ? 'provider_unavailable'
-          : !conditions.memory ? 'memory_unavailable' : conditions.busy ? 'busy' : 'none';
+    const blockReason = this.blockReason(conditions);
     return { profileGeneration: this.profileGeneration, enabled: this.enabled,
       capability: conditions.capability && conditions.memory ? 'ready' : 'unavailable',
       phase: !this.enabled ? 'off' : blockReason === 'none' ? this.phase : 'waiting',
       blockReason, requestsSent: this.requestsSent, lastFailure: this.lastFailure };
   }
-  public allowed(): boolean { return this.status().blockReason === 'none'; }
+  public allowed(): boolean { return this.blockReason(this.options.conditions()) === 'none'; }
   public getPolicyGeneration(): number { return this.policyGeneration; }
   public sourceAllowed(atMs: number): boolean {
     return this.enabled && Number.isFinite(atMs) && atMs >= this.enabledAtMs;
@@ -91,6 +88,12 @@ export class InitiativeSessionControls implements IInitiativeControls {
   public dispatched(): void { this.requestsSent++; this.lastFailure = 'none'; }
   public failed(failure: Failure): void { this.lastFailure = failure; this.options.changed?.(); }
   public setPhase(phase: Exclude<Phase, 'off'>): void { this.phase = phase; this.options.changed?.(); }
+  private blockReason(conditions: InitiativeSessionConditions): InitiativeBlockReason {
+    return !this.enabled ? 'disabled'
+      : conditions.quiet ? 'quiet' : conditions.sleeping ? 'sleeping'
+        : conditions.away ? 'away' : !conditions.capability ? 'provider_unavailable'
+          : !conditions.memory ? 'memory_unavailable' : conditions.busy ? 'busy' : 'none';
+  }
   private validRead(command: InitiativeControlCommandDTO): boolean {
     return typeof command === 'object' && command !== null && typeof command.streamId === 'string'
       && command.streamId.length > 0 && command.streamId.length <= 512;

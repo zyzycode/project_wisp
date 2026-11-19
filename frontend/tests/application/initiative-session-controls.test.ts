@@ -63,3 +63,33 @@ it('does not replay a natural source from before the latest explicit enable and 
   now = 200; await controls.setConsent({ streamId: 's', profileGeneration: 0, enabled: true });
   expect(controls.sourceAllowed(150)).toBe(false); expect(controls.getPolicyGeneration()).toBe(3);
 });
+
+it('keeps admission and status consistent with blocker priority for every current condition and consent combination', async () => {
+  for (const enabled of [false, true]) {
+    let conditions: InitiativeSessionConditions = { capability: true, memory: true, quiet: false,
+      sleeping: false, away: false, busy: false };
+    const readConditions = vi.fn(() => conditions), revoke = vi.fn(), changed = vi.fn();
+    const controls = new InitiativeSessionControls({ streamId: () => 's', conditions: readConditions, revoke, changed });
+    if (enabled) await controls.setConsent({ streamId: 's', profileGeneration: 0, enabled });
+    revoke.mockClear(); changed.mockClear();
+    for (let mask = 0; mask < 64; mask++) {
+      conditions = { capability: !(mask & 1), memory: !(mask & 2), quiet: !!(mask & 4),
+        sleeping: !!(mask & 8), away: !!(mask & 16), busy: !!(mask & 32) };
+      const blockers = [
+        [!enabled, 'disabled'], [conditions.quiet, 'quiet'], [conditions.sleeping, 'sleeping'],
+        [conditions.away, 'away'], [!conditions.capability, 'provider_unavailable'],
+        [!conditions.memory, 'memory_unavailable'], [conditions.busy, 'busy'],
+      ] as const;
+      const expected = blockers.find(([blocked]) => blocked)?.[1] ?? 'none';
+      readConditions.mockClear();
+      const allowed = controls.allowed();
+      expect(readConditions).toHaveBeenCalledTimes(1);
+      const status = controls.status();
+      expect(readConditions).toHaveBeenCalledTimes(2);
+      expect(status.blockReason).toBe(expected);
+      expect(allowed).toBe(expected === 'none');
+      expect(allowed).toBe(status.blockReason === 'none');
+    }
+    expect(revoke).not.toHaveBeenCalled(); expect(changed).not.toHaveBeenCalled();
+  }
+});
