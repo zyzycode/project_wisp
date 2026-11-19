@@ -12,14 +12,20 @@ import httpx
 import uvicorn
 from starlette.types import ASGIApp
 from wisp_backend.application import create_app
-from wisp_backend.logging.config import LoggingSettings
+from wisp_backend.logging.config import LoggingSettings, logging_settings
 from wisp_backend.logging.output import configure_logging
 from wisp_backend.managed_auth import ManagedTokenGuard
 from wisp_backend.managed_bootstrap import BootstrapError, ManagedBootstrap, read_bootstrap
 
 
-def create_managed_app(bootstrap: ManagedBootstrap, transport: httpx.AsyncBaseTransport | None = None) -> ASGIApp:
-    app = create_app(transport, settings=bootstrap.settings(), expose_docs=False)
+def create_managed_app(
+    bootstrap: ManagedBootstrap,
+    transport: httpx.AsyncBaseTransport | None = None,
+    *,
+    logging: LoggingSettings | None = None,
+) -> ASGIApp:
+    settings = bootstrap.settings().model_copy(update={"logging": logging or LoggingSettings(format="json")})
+    app = create_app(transport, settings=settings, expose_docs=False)
     app.state.managed_openai = True
     return ManagedTokenGuard(app, bootstrap.sessionToken.get_secret_value())
 
@@ -56,13 +62,17 @@ def watch_parent(stream: BinaryIO, loop: asyncio.AbstractEventLoop, server: Read
 
 
 async def run_managed(bootstrap: ManagedBootstrap, source: BinaryIO, output: TextIO) -> None:
-    configure_logging(LoggingSettings())
+    # One log-only snapshot: never read dotenv, provider/transport env or overrides.
+    logging = logging_settings({"WISP_LOG_LEVEL": os.environ.get("WISP_LOG_LEVEL")}).model_copy(
+        update={"format": "json"}
+    )
+    configure_logging(logging)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
         listener.setblocking(False)
         port = listener.getsockname()[1]
         config = uvicorn.Config(
-            create_managed_app(bootstrap),
+            create_managed_app(bootstrap, logging=logging),
             host="127.0.0.1",
             port=port,
             workers=1,

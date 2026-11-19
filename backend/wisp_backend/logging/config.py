@@ -14,7 +14,7 @@ class LoggingSettings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     format: Literal["console", "json"] = "console"
-    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "OFF"] = "INFO"
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "OFF"] = "WARNING"
     overrides: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("overrides")

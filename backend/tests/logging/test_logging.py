@@ -9,6 +9,71 @@ from wisp_backend.logging.config import LoggingSettings
 from wisp_backend.logging.output import configure_logging
 
 
+def test_default_policy_is_warning():
+    assert LoggingSettings().level == "WARNING"
+
+
+@pytest.mark.parametrize("route", ["/health", "/v1/screen-observation/capability"])
+def test_successful_polling_is_debug_only(route):
+    from wisp_backend.api.logging import RequestLogging
+
+    async def app(scope, receive, send):
+        await send({"type": "http.response.start", "status": 200})
+        await send({"type": "http.response.body", "body": b""})
+
+    async def receive():
+        return {"type": "http.request"}
+
+    async def send(message):
+        pass
+
+    for level in ("INFO", "DEBUG"):
+        output = io.StringIO()
+        configure_logging(LoggingSettings(format="json", level=level), output)
+        asyncio.run(RequestLogging(app)({"type": "http", "path": route, "method": "GET"}, receive, send))
+        records = [json.loads(line) for line in output.getvalue().splitlines()]
+        if level == "INFO":
+            assert records == []
+        else:
+            terminal = [r for r in records if r["event"] == "http_finished"]
+            assert len(terminal) == 1 and terminal[0]["level"] == "DEBUG"
+
+
+@pytest.mark.parametrize("status", [None, 400, 503])
+@pytest.mark.parametrize("level", ["WARNING", "DEBUG"])
+def test_http_failures_have_one_safe_terminal_event_at_normal_level(status, level):
+    from wisp_backend.api.logging import RequestLogging
+
+    output = io.StringIO()
+    configure_logging(LoggingSettings(format="json", level=level), output)
+
+    async def app(scope, receive, send):
+        if status is None:
+            raise RuntimeError("PRIVATE_MARKER")
+        await send({"type": "http.response.start", "status": status})
+        await send({"type": "http.response.body", "body": b""})
+
+    async def receive():
+        return {"type": "http.request"}
+
+    async def send(message):
+        pass
+
+    run = RequestLogging(app)({"type": "http", "path": "/v1/chat", "method": "POST"}, receive, send)
+    if status is None:
+        with pytest.raises(RuntimeError):
+            asyncio.run(run)
+    else:
+        asyncio.run(run)
+    records = [json.loads(line) for line in output.getvalue().splitlines()]
+    records = [r for r in records if r["event"] in {"http_finished", "http_failed"}]
+    assert len(records) == 1
+    assert records[0]["level"] == ("ERROR" if status is None else "WARNING")
+    assert records[0]["fields"]["outcome"] == ("unexpected" if status is None else "failure")
+    assert "duration_ms" in records[0]["fields"]
+    assert "PRIVATE_MARKER" not in output.getvalue()
+
+
 def test_private_messages_fields_and_exceptions_are_never_rendered():
     output = io.StringIO()
     configure_logging(LoggingSettings(format="json", level="DEBUG"), output)
@@ -30,7 +95,7 @@ def test_private_messages_fields_and_exceptions_are_never_rendered():
 
 def test_context_isolation_cleanup_and_lazy_disabled_fields():
     output = io.StringIO()
-    configure_logging(LoggingSettings(format="json"), output)
+    configure_logging(LoggingSettings(format="json", level="INFO"), output)
     logger = get_logger("wisp_backend.test_logging")
 
     async def worker():

@@ -18,11 +18,11 @@ from tests.test_managed_bootstrap import record
 BACKEND = Path(__file__).resolve().parents[1]
 
 
-def child() -> subprocess.Popen[bytes]:
+def child(log_env: dict[str, str] | None = None) -> subprocess.Popen[bytes]:
     return subprocess.Popen(
         [sys.executable, "-m", "wisp_backend.managed"],
         cwd=BACKEND,
-        env={"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", "")},
+        env={"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""), **(log_env or {})},
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -89,6 +89,44 @@ def test_rejected_bootstrap_produces_no_ready_or_secret_dump() -> None:
     assert process.returncode == 1
     assert stdout == b""
     assert stderr == b"Invalid managed bootstrap\n"
+
+
+@pytest.mark.parametrize("level", ["DEBUG", "WARNING", "OFF"])
+def test_managed_logging_policy_survives_lifespan_and_never_changes_stdout(tmp_path: Path, level: str) -> None:
+    process = child({"WISP_LOG_LEVEL": level, "WISP_LOG_FORMAT": "console", "WISP_LOG_OVERRIDES": "PRIVATE_MARKER"})
+    try:
+        assert process.stdin is not None and process.stdout is not None and process.stderr is not None
+        process.stdin.write(record(tmp_path))
+        process.stdin.flush()
+        ready = json.loads(ready_line(process))
+        with httpx.Client(base_url=f"http://127.0.0.1:{ready['port']}", trust_env=False, timeout=1) as client:
+            assert client.get("/health", headers=AUTH).status_code == 200
+        process.stdin.close()
+        assert process.wait(timeout=3) == 0
+        assert process.stdout.read() == b""
+        raw = process.stderr.read().decode("utf-8")
+        assert "PRIVATE_MARKER" not in raw and "synthetic-openai-key" not in raw and "a1" * 32 not in raw
+        records = [json.loads(line) for line in raw.splitlines()]
+        if level == "DEBUG":
+            assert {"application_started", "application_stopped", "http_finished"} <= {r["event"] for r in records}
+            health = [r for r in records if r["event"] == "http_finished"]
+            assert len(health) == 1 and health[0]["level"] == "DEBUG"
+        else:
+            assert records == []
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=3)
+        for stream in (process.stdin, process.stdout, process.stderr):
+            if stream is not None:
+                stream.close()
+
+
+def test_invalid_managed_log_level_fails_without_echo_or_ready(tmp_path: Path) -> None:
+    process = child({"WISP_LOG_LEVEL": "PRIVATE_MARKER"})
+    stdout, stderr = process.communicate(record(tmp_path), timeout=5)
+    assert process.returncode == 1
+    assert stdout == b"" and stderr == b"Managed backend failed\n"
 
 
 def test_startup_failure_exits_with_parent_pipe_still_open(tmp_path: Path) -> None:

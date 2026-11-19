@@ -28,8 +28,13 @@ with log_context(operation="maintenance"):
 не сохраняются. Циклы причин обрываются. Ожидаемые ошибки используют category из
 ServiceError и outcome=expected; неожиданные — unexpected.
 
-DEBUG — подробности этапов; INFO — завершение операции/lifecycle;
+Обычный уровень — WARNING. DEBUG — подробности этапов и успешные health/capability polls;
+INFO — прочие успешные операции/lifecycle;
 WARNING — ожидаемый отказ; ERROR — сбой; CRITICAL — невозможность продолжать runtime.
+HTTP middleware пишет ровно одно terminal-событие: `http_finished` с outcome либо
+`http_failed` при неожиданном exception; duration/outcome сохраняются и для ошибок.
+Ожидаемые HTTP отказы (включая безопасно обработанный upstream failure) — WARNING,
+необработанный exception/отсутствующий ответ — ERROR, отмена — WARNING.
 Ленивый `fields=lambda: ...` вызывается только для включённого уровня. Callback должен
 быть быстрым и без побочных эффектов; его программные ошибки не маскируются.
 
@@ -51,12 +56,13 @@ route или `other`, без query, body и адреса клиента.
 
 ## Настройка
 
-Перезапуск обязателен; process environment приоритетнее backend/.env.
+Перезапуск обязателен в dev и packaged production. Для standalone process environment
+приоритетнее backend/.env.
 
 | Переменная | Default | Допустимые значения |
 |---|---|---|
 | WISP_LOG_FORMAT | console | console, json |
-| WISP_LOG_LEVEL | INFO | DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF |
+| WISP_LOG_LEVEL | WARNING | DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF |
 | WISP_LOG_OVERRIDES | {} | JSON object module → level, до 32 overrides |
 
 Overrides наследуются дочерними logger по правилам stdlib. Для уже загруженных
@@ -73,18 +79,57 @@ Handler остаётся установленным после shutdown: поз�
 аргументы, exception text и произвольный extra не сериализуются. Подробности HTTP
 дают собственные события. Нельзя устанавливать сторонние handlers после startup.
 
+### Standalone и managed backend
+
+Managed backend, запускаемый desktop, принимает только проверенный `WISP_LOG_LEVEL`
+из environment. Формат всегда safe JSON в stderr; `WISP_LOG_FORMAT`, overrides,
+dotenv и provider/transport environment не читаются. Один snapshot применяется
+до старта Uvicorn и в lifespan. Private stdin bootstrap не меняется; stdout содержит
+только ready record. Неверный уровень при прямом backend-запуске завершает startup
+фиксированной ошибкой без исходного значения. Desktop заменяет неверный forwarded
+уровень на WARNING по [общему контракту](../../docs/contracts/BACKEND_API_CONTRACT.md#переключаемая-диагностика-202203).
+
+Из корня репозитория, Linux/macOS shell:
+
+```sh
+# Standalone: подробная диагностика; WARNING — normal, OFF — выключить.
+WISP_LOG_LEVEL=DEBUG node scripts/wisp.mjs dev:backend
+# Managed backend из desktop, без вывода desktop-диагностики.
+WISP_LOG_LEVEL=DEBUG WISP_DESKTOP_LOG_LEVEL=silent node scripts/wisp.mjs dev
+```
+
+PowerShell, из корня репозитория:
+
+```powershell
+$env:WISP_LOG_LEVEL = 'DEBUG' # WARNING — normal, OFF — выключить.
+node scripts/wisp.mjs dev:backend
+# После остановки standalone можно запустить managed через desktop:
+$env:WISP_DESKTOP_LOG_LEVEL = 'silent'
+node scripts/wisp.mjs dev
+# Перед следующим запуском вернуть normal:
+$env:WISP_LOG_LEVEL = 'WARNING'
+Remove-Item Env:WISP_DESKTOP_LOG_LEVEL
+```
+
+Для packaged desktop задавать те же переменные перед обычным запуском приложения;
+перезапускать desktop/managed child после изменения. Backend level независим от desktop
+level: `silent` desktop не выключает явно выбранную диагностику backend. Desktop
+печатает только ограниченную безопасную проекцию JSON, не raw stderr; подробности,
+формат и пределы — в общем контракте выше. Реальные provider calls для переключения
+уровня не нужны.
+
 ## Формат и поиск
 
 Console (без цвета, пригоден для pipe):
 
 ```text
-2026-10-23T10:00:00.000+00:00 INFO wisp_backend.api.logging http_finished {"context":{"correlation_id":"..."},"fields":{"duration_ms":12.5,"status_code":200}}
+2026-10-23T10:00:00.000+00:00 DEBUG wisp_backend.api.logging http_finished {"context":{"correlation_id":"..."},"fields":{"duration_ms":12.5,"status_code":200}}
 ```
 
 JSON lines (timestamp всегда UTC):
 
 ```json
-{"timestamp":"2026-10-23T10:00:00.000+00:00","level":"INFO","module":"wisp_backend.api.logging","event":"http_finished","context":{"correlation_id":"...","operation":"http","route":"/health","method":"GET"},"fields":{"status_code":200,"duration_ms":12.5,"outcome":"success"}}
+{"timestamp":"2026-10-23T10:00:00.000+00:00","level":"DEBUG","module":"wisp_backend.api.logging","event":"http_finished","context":{"correlation_id":"...","operation":"http","route":"/health","method":"GET"},"fields":{"status_code":200,"duration_ms":12.5,"outcome":"success"}}
 ```
 
 Для диагностики задержки включить `WISP_LOG_OVERRIDES={"wisp_backend.completion":"DEBUG"}`:

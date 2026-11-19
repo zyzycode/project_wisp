@@ -1,6 +1,7 @@
 """Observe HTTP lifetime without headers, body, address, query or raw path."""
 
 import asyncio
+import logging
 import time
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -47,6 +48,7 @@ class RequestLogging:
         ):
             logger.debug("http_started")
             outcome = "success"
+            failure: Exception | None = None
             try:
                 await self.app(scope, observed_receive, observed_send)
             except asyncio.CancelledError:
@@ -54,7 +56,7 @@ class RequestLogging:
                 raise
             except Exception as error:
                 outcome = "unexpected"
-                logger.error("http_failed", error=error, fields={"category": "unexpected"})
+                failure = error
                 raise
             finally:
                 if outcome == "success":
@@ -64,11 +66,21 @@ class RequestLogging:
                         outcome = "no_response"
                     elif status >= 400:
                         outcome = "failure"
-                logger.info(
-                    "http_finished",
-                    fields={
+                level = logging.INFO
+                if outcome in {"unexpected", "no_response"}:
+                    level = logging.ERROR
+                elif outcome != "success":
+                    level = logging.WARNING
+                elif route in {"/health", "/v1/screen-observation/capability"}:
+                    level = logging.DEBUG
+                logger.log(
+                    level,
+                    "http_failed" if failure is not None else "http_finished",
+                    error=failure,
+                    fields=lambda: {
                         "status_code": status,
                         "duration_ms": (time.monotonic() - started) * 1000,
                         "outcome": outcome,
+                        **({"category": "unexpected"} if failure is not None else {}),
                     },
                 )
