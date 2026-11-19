@@ -260,7 +260,8 @@ Backend не отправляет запросы удаления в OpenAI; л�
 Это отдельный способ запуска существующего Python/FastAPI runtime, не новый inference
 API и не управление чужим deployment. Main запускает ровно один собственный child
 из доверенного backend/Python path; без shell, reload, дополнительных workers и
-наследования provider/transport/logging overrides. Обычный standalone `main:app`
+наследования provider/transport overrides. Единственное log-only исключение —
+валидированный `WISP_LOG_LEVEL` по политике ниже. Обычный standalone `main:app`
 сохраняет конфигурацию §5. Managed entry не загружает `.env` или server credentials;
 создаёт `Settings` явно для существующего default OpenAI profile, `trust_env=false`,
 фиксированного provider URL и прежних deadlines/validation/accounting. Gemini,
@@ -300,8 +301,8 @@ Child заранее привязывает socket к `127.0.0.1:0`; ОС выб
 проверки-освобождения/rebind race. После успешного lifespan startup child выдаёт одну
 строку `LocalAIBackendReady` (`kind=ready`, integer port 1–65535), ≤256 bytes. Stdout
 используется только для этого control record; unknown/лишний вывод или EOF до ready
-означает startup failure. Main не логирует stdout/stderr child, stderr игнорируется
-или ограниченно дренируется без сохранения. Backend logging остаётся санитизированным;
+означает startup failure. Main никогда не выводит raw stdout/stderr child; stderr
+дренируется через ограниченную безопасную проекцию ниже. Backend logging остаётся санитизированным;
 bootstrap validation errors не должны печатать исходный ввод или exception dump.
 
 Общий startup deadline Main — 10 s, включая spawn, bootstrap, ready и один
@@ -310,6 +311,52 @@ authenticated `GET /health`; ответ и чтение bounded прежним 1
 provider. Готовность локального backend не доказывает действительность ключа.
 Ошибка/timeout закрывают child и оставляют desktop offline, без автоматических
 повторов. Поздний ready не подключает retired process.
+
+### Переключаемая диагностика (#202/#203)
+
+Политика одинакова в dev и packaged production, применяется при запуске; новые UI/IPC,
+файлы и доставка логов не вводятся. Desktop: `WISP_DESKTOP_LOG_LEVEL` =
+`debug|info|warn|error|silent`, default `warn`; существующий AppLogger/буфер≤100 записей.
+Уровень не зависит от dev-only debug UI; `silent` исключает вывод и пополнение буфера.
+Неверное значение заменяется `warn`, допускается одно статическое предупреждение без echo.
+Backend: `WISP_LOG_LEVEL` = `DEBUG|INFO|WARNING|ERROR|CRITICAL|OFF`, default `WARNING`;
+standalone сохраняет существующие format/module overrides по [Logging](../../backend/docs/LOGGING.md).
+Managed наследует **только** проверенный уровень, без `WISP_LOG_FORMAT`, overrides,
+dotenv или прочих provider/transport настроек; формат принудительно safe JSON в stderr.
+Неверный уровень из desktop environment заменяется `WARNING` с одним безопасным
+предупреждением; прямой managed/standalone запуск с неверным уровнем завершается
+фиксированной ошибкой без rejected values. Lifespan использует ту же log policy,
+не переустанавливает defaults. Успешный `/health`/capability polling — DEBUG,
+ожидаемый HTTP отказ — WARNING, неожиданный сбой — ERROR; один terminal HTTP event,
+без дублирующего terminal после exception. Нет tick/frame/token событий. Dev launcher
+передаёт Uvicorn `--no-access-log`, сохраняя собственную request diagnostics policy.
+
+Managed stderr — JSON lines: строка≤4096 UTF-8 bytes, retained framing buffer≤4096 bytes;
+invalid UTF-8/JSON, oversized строка, EOF с неполной строкой отбрасываются. После
+overflow дренировать до newline без накопления. Raw bytes существуют только во framing
+buffer; frontend не сохраняет их и не передаёт stderr/metadata в Renderer. Проекция принимает только события:
+`application_starting`, `application_started`, `application_stopped`, `application_failed`,
+`maintenance_started`, `maintenance_finished`, `ledger_maintenance_failed`,
+`lore_catalogue_unavailable`, `http_started`, `http_finished`, `http_failed`,
+`completion_rejected`, `provider_started`, `provider_finished`,
+`completion_background_finished`, `completion_background_failed`.
+Уровни — закрытый backend enum без OFF. Вывод заново формируется с постоянным
+source=`backend`; исходные timestamp/module/error/message/stack и unknown поля не копируются.
+Допустимы только `duration_ms`, `count`, `status_code` — конечные числа 0..1e12;
+`category`, `outcome`, `operation`, `method`, `route` — closed enums из
+[logging fields](../../backend/wisp_backend/logging/fields.py), correlation_id — только 32 lowercase hex.
+Correlation ID создаёт backend, это не user request ID. Остальные данные отбрасываются.
+
+Frontend принимает≤20 строк/s на child (фиксированные монотонные окна1s, без очереди);
+лишние строки silently drop. Backend output не фильтруется desktop уровнем: явно
+включённый backend DEBUG виден и при desktop `silent`. При stderr backpressure
+нет ожидания/очереди: новые строки отбрасываются до `drain`; write error выключает
+этот sink, не backend/Character runtime. End/stop/dispose снимают listeners и буфер;
+поздние chunks retired child игнорируются. Output best effort, без retry и loss counters.
+Desktop события — source-code constants и bounded allowlisted scalar metadata;
+повтор одной ошибки доставки Brain ограничен одной записью/1s без очереди/catch-up;
+raw errors/секреты/диалоги/prompts/window titles/пути запрещены при любом уровне.
+При отсутствии безопасной записи потеря диагностики предпочтительнее raw fallback.
 
 ### Локальная защита и lifecycle
 
