@@ -1,5 +1,6 @@
 """Native Gemini generateContent; credentials and wire translation stay server-side."""
 
+import time
 from typing import Any
 
 import httpx
@@ -9,7 +10,10 @@ from wisp_backend.completion.contracts import InferenceRequest
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.errors import ServiceError
 from wisp_backend.json_codec import decode_json
+from wisp_backend.logging import get_logger
 from wisp_backend.providers.http_provider import HTTPProvider
+
+logger = get_logger(__name__)
 
 
 class GeminiProvider(HTTPProvider):
@@ -49,11 +53,22 @@ class GeminiProvider(HTTPProvider):
     async def select_blocks(
         self, request: InferenceRequest, cap: int, allowance: int, deadline: float
     ) -> tuple[ContextBlock, ...]:
+        started = time.monotonic()
+        count_calls = 0
+
         async def count(blocks: tuple[ContextBlock, ...]) -> int:
+            nonlocal count_calls
             _, payload = self.request(render_messages(blocks), self.settings, cap)
+            count_calls += 1
             return await self.count_tokens(payload, deadline)
 
-        return await select_context_async(request.blocks, allowance, count)
+        try:
+            return await select_context_async(request.blocks, allowance, count)
+        finally:
+            logger.debug(
+                "gemini_preflight_finished",
+                fields=lambda: {"duration_ms": (time.monotonic() - started) * 1000, "count": count_calls},
+            )
 
     async def count_tokens(self, payload: dict[str, Any], deadline: float) -> int:
         """Official model preflight of the exact generateContent payload.

@@ -59,7 +59,7 @@ class LedgerEntry(Base):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True, nullable=True)
     digest: Mapped[str] = mapped_column(Text)
-    admitted: Mapped[float] = mapped_column(REAL)
+    admitted: Mapped[float] = mapped_column(REAL, index=True)
     bucket: Mapped[int] = mapped_column(Integer)
     state: Mapped[str] = mapped_column(Text)
     corrected: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))

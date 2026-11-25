@@ -14,7 +14,7 @@ class MemoryLedger:
     admissions: int = 0
     settlements: list[tuple[Usage | None, Outcome | None]] = field(default_factory=list)
 
-    async def admit(self, request_id: str, digest: str, legacy_digest: str | None = None) -> Admission:
+    async def admit(self, request_id: str, digest: str) -> Admission:
         self.admissions += 1
         return Admission(self.replay)
 

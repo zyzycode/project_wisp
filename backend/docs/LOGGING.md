@@ -134,6 +134,9 @@ JSON lines (timestamp всегда UTC):
 
 Для диагностики задержки включить `WISP_LOG_OVERRIDES={"wisp_backend.completion":"DEBUG"}`:
 provider_started/provider_finished и http_finished имеют один correlation_id и duration_ms.
+Для Gemini в standalone дополнительно включите DEBUG для `wisp_backend.providers.gemini`:
+`gemini_preflight_finished` сообщает время подбора контекста и число попыток
+`countTokens` для сравнения с общим временем provider.
 Фильтрация внешнего JSON-потока: `jq 'select(.context.correlation_id == "ID")'`;
 ошибки: `jq 'select(.level == "ERROR" or .level == "CRITICAL")'`.
 

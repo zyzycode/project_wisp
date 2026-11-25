@@ -19,15 +19,18 @@ class ReplayCache:
     def __contains__(self, request_id: str) -> bool:
         return request_id in self._entries
 
-    def get(self, request_id: str) -> Outcome | None:
+    def get(self, request_id: str, now: float) -> Outcome | None:
         entry = self._entries.get(request_id)
         if entry is None:
             return None
-        _, outcome, cancelled = entry
-        if cancelled is not None and cancelled.is_set():
+        created, outcome, cancelled = entry
+        if created + CACHE_TTL <= now or (cancelled is not None and cancelled.is_set()):
             del self._entries[request_id]
             return None
         return outcome
+
+    def discard(self, request_id: str) -> None:
+        self._entries.pop(request_id, None)
 
     def publish(
         self, request_id: str, outcome: Outcome, now: float, deadline: float | None, cancelled: Event | None

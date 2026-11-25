@@ -6,6 +6,7 @@ import sqlite3
 import pytest
 from tests.helpers import Clock
 from wisp_backend.accounting.contracts import RESERVATION, Usage
+from wisp_backend.accounting.policy import ID_TTL
 from wisp_backend.accounting.sqlite_ledger import SQLiteLedger
 from wisp_backend.errors import ServiceError
 from wisp_backend.outcomes import Outcome
@@ -70,6 +71,36 @@ def test_boundaries_utc_ttl_and_backward_clock(tmp_path):
         clock.now += 86_400
         await ledger.admit("one", "changed")
         await ledger.close()
+
+    asyncio.run(run())
+
+
+def test_expired_id_can_be_reused_before_maintenance_without_pruning_other_ids(tmp_path):
+    async def run():
+        clock = Clock()
+        path = tmp_path / "ledger.sqlite"
+        ledger = await SQLiteLedger.open(path, clock)
+        try:
+            for request_id in ("reused", "untouched"):
+                await ledger.admit(request_id, "original")
+                await ledger.settle(request_id, Usage(0, 0, 0), Outcome(200, b"{}"))
+            await ledger.admit("in-flight", "original")
+            clock.now += ID_TTL
+
+            assert (await ledger.admit("reused", "new")).replay is None
+            with pytest.raises(ServiceError, match="request_in_progress"):
+                await ledger.admit("in-flight", "original")
+            with sqlite3.connect(path) as db:
+                assert db.execute("SELECT id, state FROM entries ORDER BY id").fetchall() == [
+                    ("in-flight", "flight"),
+                    ("reused", "flight"),
+                    ("untouched", "confirmed"),
+                ]
+            await ledger.maintain()
+            with sqlite3.connect(path) as db:
+                assert db.execute("SELECT id FROM entries ORDER BY id").fetchall() == [("in-flight",), ("reused",)]
+        finally:
+            await ledger.close()
 
     asyncio.run(run())
 

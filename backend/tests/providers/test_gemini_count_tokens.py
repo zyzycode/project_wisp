@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import sqlite3
 from collections.abc import Callable
 
@@ -25,7 +26,10 @@ REQUEST = InferenceRequest(
 )
 
 
-def test_exact_count_keeps_russian_v1_history_and_counts_the_generated_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_exact_count_keeps_russian_v1_history_and_counts_the_generated_payload(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.DEBUG, logger="wisp_backend.providers.gemini")
     body = json.loads((CONTRACT_FIXTURES / "desktop-backend-v1/interaction/request.chat.json").read_bytes())
     body["messages"] = [
         turn
@@ -56,6 +60,10 @@ def test_exact_count_keeps_russian_v1_history_and_counts_the_generated_payload(m
 
     asyncio.run(run())
     assert len(calls) == 2
+    (preflight,) = [record.wisp_event.data for record in caplog.records if record.msg == "gemini_preflight_finished"]
+    assert preflight["fields"]["count"] == 1
+    assert preflight["fields"]["duration_ms"] >= 0
+    assert preflight["fields"].keys() == {"count", "duration_ms"}
     count_payload = json.loads(calls[0].content)["generateContentRequest"]
     generated = json.loads(calls[1].content)
     assert count_payload == {"model": "models/gemini-3.5-flash-lite", **generated}

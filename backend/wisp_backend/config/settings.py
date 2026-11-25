@@ -50,7 +50,9 @@ class Settings(BaseModel):
     connect_timeout: float = Field(default=3, gt=0, le=3)
     pool_timeout: float = Field(default=3, gt=0, le=3)
     upstream_trust_env: bool = False
-    ledger_path: Path = Path.home() / ".local" / "state" / "wisp-backend" / "ledger.sqlite"
+    ledger_path: Path = Field(
+        default_factory=lambda: Path.home() / ".local" / "state" / "wisp-backend" / "ledger.sqlite"
+    )
 
     @model_validator(mode="before")
     @classmethod

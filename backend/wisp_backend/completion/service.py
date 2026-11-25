@@ -59,9 +59,7 @@ class CompletionService:
         self.requests: set[asyncio.Task[Any]] = set()
         self.background: set[asyncio.Task[Any]] = set()
 
-    async def complete(
-        self, job: CompletionJob, digest: str, started: float, legacy_digest: str | None = None
-    ) -> Outcome:
+    async def complete(self, job: CompletionJob, digest: str, started: float) -> Outcome:
         """Admit once, generate and settle under the original HTTP deadline.
 
         ``started`` is monotonic time captured before reading the request body.
@@ -87,7 +85,7 @@ class CompletionService:
                 raise ServiceError("upstream_unavailable")
             if state.remaining() <= 0:
                 raise ServiceError("upstream_timeout")
-            replay = await self._admit(state, digest, legacy_digest)
+            replay = await self._admit(state, digest)
             if replay is not None:
                 return replay
             await self._generate(state, job)
@@ -115,8 +113,8 @@ class CompletionService:
         assert state.outcome is not None
         return state.outcome
 
-    async def _admit(self, state: _RequestState, digest: str, legacy_digest: str | None) -> Outcome | None:
-        state.admission_task = asyncio.create_task(self.ledger.admit(state.request_id, digest, legacy_digest))
+    async def _admit(self, state: _RequestState, digest: str) -> Outcome | None:
+        state.admission_task = asyncio.create_task(self.ledger.admit(state.request_id, digest))
         done, _ = await asyncio.wait({state.admission_task}, timeout=state.remaining())
         if not done:
             self._track_background(

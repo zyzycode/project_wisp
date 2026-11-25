@@ -281,10 +281,10 @@ def test_admission_deadline_can_expire_without_opening_a_stream(
         entered, release = asyncio.Event(), asyncio.Event()
 
         class PendingLedger(MemoryLedger):
-            async def admit(self, request_id: str, digest: str, legacy_digest: str | None = None) -> Admission:
+            async def admit(self, request_id: str, digest: str) -> Admission:
                 entered.set()
                 await release.wait()
-                return await super().admit(request_id, digest, legacy_digest)
+                return await super().admit(request_id, digest)
 
         app = app_factory(lambda _: pytest.fail("Expired admission must not open a provider stream"))
         async with app.router.lifespan_context(app):

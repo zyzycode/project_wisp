@@ -32,7 +32,7 @@ class Admission:
 
 
 class Ledger(Protocol):
-    async def admit(self, request_id: str, digest: str, legacy_digest: str | None = None) -> Admission: ...
+    async def admit(self, request_id: str, digest: str) -> Admission: ...
 
     async def settle(
         self,

@@ -89,22 +89,26 @@ class SQLiteLedger:
         session.execute(delete(DailyUsage).where(DailyUsage.bucket <= int(now // ID_TTL) - 30))
         self.cache.expire(now)
 
-    async def admit(self, request_id: str, digest: str, legacy_digest: str | None = None) -> Admission:
-        return await self._run(self._admit, request_id, digest, legacy_digest)
+    async def admit(self, request_id: str, digest: str) -> Admission:
+        return await self._run(self._admit, request_id, digest)
 
-    def _admit(self, request_id: str, digest: str, legacy_digest: str | None) -> Admission:
+    def _admit(self, request_id: str, digest: str) -> Admission:
         # A single process lock plus SQLite transaction covers every admission decision.
         with ledger_session(self.db) as session:
             now = self._now(session)
-            self._cleanup(session, now)
             entry = session.get(LedgerEntry, request_id)
+            if entry is not None and entry.state != "flight" and entry.admitted <= now - ID_TTL:
+                session.delete(entry)
+                session.flush()
+                self.cache.discard(request_id)
+                entry = None
             if entry is not None:
-                if entry.digest != digest and (legacy_digest is None or entry.digest != legacy_digest):
+                if entry.digest != digest:
                     raise ServiceError("request_conflict")
                 if entry.state == "flight":
                     raise ServiceError("request_in_progress")
                 if entry.state == "confirmed":
-                    outcome = self.cache.get(request_id)
+                    outcome = self.cache.get(request_id, now)
                     if outcome is not None:
                         return Admission(outcome)
                 raise ServiceError("request_conflict")

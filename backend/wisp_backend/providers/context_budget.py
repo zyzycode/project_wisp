@@ -15,6 +15,14 @@ CONTEXT_WINDOWS = {
 }
 
 
+def _payload_json(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+
+
+def _framing_cost(message_count: int) -> int:
+    return 256 + 64 * message_count
+
+
 def estimate_input(payload: dict[str, Any], message_count: int) -> int:
     """One unit per encoded JSON byte, plus per-message/template safety margins.
 
@@ -22,8 +30,7 @@ def estimate_input(payload: dict[str, Any], message_count: int) -> int:
     the final adapter payload. This overestimates ordinary text; it is not a
     provider tokenizer proof. Hidden framing has a 256 + 64/message allowance.
     """
-    encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
-    return len(encoded) + 256 + 64 * message_count
+    return len(_payload_json(payload).encode("utf-8")) + _framing_cost(message_count)
 
 
 BYTE_ESTIMATE_METHOD = "UTF-8 payload JSON bytes + 256 + 64 * message count"
@@ -47,10 +54,9 @@ def estimate_openai_input(payload: dict[str, Any], message_count: int) -> int:
     the 20% margin and framing are local caution, not a universal token guarantee.
     Estimate the complete final payload, never sum independently rounded blocks.
     """
-    legacy = estimate_input(payload, message_count)
     if openai_estimate_method(str(payload.get("model")), payload.get("reasoning_effort")) == BYTE_ESTIMATE_METHOD:
-        return legacy
-    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+        return estimate_input(payload, message_count)
+    text = _payload_json(payload)
     units = 0
     for part in _WORD_RUNS.findall(text):
         if part.isascii() and part.isalpha() and len(part) <= 32:
@@ -59,4 +65,4 @@ def estimate_openai_input(payload: dict[str, Any], message_count: int) -> int:
             units += len(part)
         else:
             units += len(part.encode("utf-8"))
-    return min(legacy, (6 * units + 4) // 5 + 256 + 64 * message_count)
+    return min(len(text.encode("utf-8")), (6 * units + 4) // 5) + _framing_cost(message_count)

@@ -88,7 +88,7 @@ def test_rejected_bootstrap_produces_no_ready_or_secret_dump() -> None:
     )
     assert process.returncode == 1
     assert stdout == b""
-    assert stderr == b"Invalid managed bootstrap\n"
+    assert stderr.replace(b"\r\n", b"\n") == b"Invalid managed bootstrap\n"
 
 
 @pytest.mark.parametrize("level", ["DEBUG", "WARNING", "OFF"])
@@ -126,7 +126,7 @@ def test_invalid_managed_log_level_fails_without_echo_or_ready(tmp_path: Path) -
     process = child({"WISP_LOG_LEVEL": "PRIVATE_MARKER"})
     stdout, stderr = process.communicate(record(tmp_path), timeout=5)
     assert process.returncode == 1
-    assert stdout == b"" and stderr == b"Managed backend failed\n"
+    assert stdout == b"" and stderr.replace(b"\r\n", b"\n") == b"Managed backend failed\n"
 
 
 def test_startup_failure_exits_with_parent_pipe_still_open(tmp_path: Path) -> None:
