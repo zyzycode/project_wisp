@@ -74,13 +74,6 @@ html, body {
   cursor: grabbing;
 }
 
-.wisp-sprite-stage {
-  display: block;
-  user-select: none;
-  -webkit-user-select: none;
-  pointer-events: none;
-}
-
 /* Speech & Thought Dialogue Bubbles */
 .chat-overlay {
   position: absolute;
@@ -354,8 +347,7 @@ html, body {
   margin-top: 4px;
 }
 
-.debug-anim-btn-grid,
-.menu-anim-btn-grid {
+.debug-anim-btn-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 4px;
