@@ -22,32 +22,19 @@ State/expression, память, история и события — факти�
 задаёт единые правила для всех character-bearing сценариев. Исключения локальной речи
 определены ниже; они не являются prompt examples или вторым профилем характера.
 
-### Владельцы речи и локальные подтверждения
+<a id="владельцы-речи-и-локальные-подтверждения"></a>
 
-Desktop владеет смыслом фактической квитанции и допустимостью публикации. Модель
-выбирает свободную формулировку обычного ответа по карточке в единственном существующем
-provider call; Application валидирует и публикует его. ACK не отправляется модели на
-перефразирование, не превращается в synthetic user message и не вызывает вторую реплику.
+### Владельцы речи и локальные статусы
+
+Модель формулирует обычный ответ по карточке и разрешённому фактическому контексту в одном provider call. Application проверяет результат и определяет допустимость публикации.
 
 | Путь | Формулировка и основание | Публикация и история |
 |---|---|---|
 | Обычный chat, topic follow-up/reply | Provider по карточке и разрешённому фактическому контексту | Один dialogue turn; capture, source suppression и commit — по Memory |
-| Motion start/refusal/clarification/stop/terminal | Локальный технический текст из ChatMotion receipt/terminal, без tone/trait/style selector | Правила [локальных команд](#локальные-команды-движения); terminal не переписывает сохранённый start |
-| Quiet-support | Единственный фиксированный ACK [Character §6.1](CHARACTER_ENGINE.md#61-тихая-поддержка-после-явной-реплики), не генератор сочувствия | Latch до ACK, localOnly/non-confirmable pair; без повторной AI-реплики |
 | Offline/provider failure/timeout | Детерминированный безопасный fallback текущего dialogue turn | Показанная пара по [lifecycle](#deadline-fallback-и-физически-незавершённые-вызовы), без успешного appraisal/intent |
-| Topic refusal, memory mutation, sleep/busy/error notice | Локальный статус соответствующего use case, не речь персонажа | Существующий status/receipt/UI path; не создавать assistant pair ради уведомления |
+| Topic refusal, memory mutation, sleep/busy/error notice | Локальный статус соответствующего use case | Существующий status/receipt/UI path без assistant pair |
 
-Локальные технические тексты RU/EN сообщают только подтверждённый результат,
-недоступность или необходимое уточнение; не симулируют новый разговор, настроение или
-событие. Quiet-support остаётся точным исключением с прежним текстом/latch. Отдельные
-Mock и игровая речь сохраняют свои существующие ограниченные каталоги, без расширения
-на содержательный offline-диалог или серверные examples.
-
-Motion/quiet-support ACK публикуется в текущей Main transaction без status/recall/network
-ожидания; history write асинхронен. Нет второго deadline, retry, фонового paraphrase или
-call на terminal. Sleep gate, identity/generation и reset/dispose проверяются до публикации;
-stop/cleanup и Character admission не ждут формулировки модели. Provider timeout не
-откатывает уже исполненное локальное действие; инвалидированный dialogue turn не получает поздний ACK.
+Локальные технические тексты RU/EN сообщают о недоступности или результате операции. Mock и игровая речь используют свои ограниченные каталоги. Эти тексты не служат примерами для модели.
 
 ## Форма интерфейса
 
@@ -229,7 +216,7 @@ Main предоставляет Application readonly-доступ к semantic sl
   `submissionMessage`: RU «Wisp спит», EN “Wisp is sleeping”. Это статус ввода,
   не speech/history/context. При disposed/unbound notice отсутствует.
 - Valid send во сне потребляет sequence и возвращает существующий
-  `rejected/unavailable` до accepted-contact, user stimulus, local ACK, memory
+  `rejected/unavailable` до accepted-contact, user stimulus, memory
   admission/recall и provider call. Reset остаётся разрешённым; сон не меняется.
 - Вход в сон инвалидирует pending admission и active turn, снимает только их
   thinking/deadline/behavior context и переводит turn в `idle`, без fallback,
@@ -245,8 +232,7 @@ Main предоставляет Application readonly-доступ к semantic sl
   Поздние success/rejection/timeout ничего не публикуют и не коммитят. Нового
   provider call, retry, очереди или автоматического resend после wake нет.
 - Wake обновляет доступность в полном snapshot; `canSubmit=true` только после
-  освобождения существующих execution/admission guards. Локальные motion/support
-  ACK подчиняются тому же send gate; rejected send не исполняет команду.
+  освобождения существующих execution/admission guards.
 
 Main wiring проверяется с реальным semantic sleep owner; deferred-provider тесты
 покрывают сон до send, во время status/recall/generation, sleep → wake до settlement,
@@ -278,7 +264,7 @@ Cancellation API нет. Timeout/reset отменяют запрос **логи�
 
 ### Контекст, reset и lifecycle
 
-- Volatile context — суффикс целых завершённых пар user/reply с исходом success под конечными safety bounds: ≤20 сообщений и ≤8000 UTF-16 units суммарно; provider budget может оставить меньше. Локальные квитанции и показанные fallback сохраняются в [локальной истории](MEMORY_ENGINE.md#5-история-подбор-и-ai-context) и целиком исключаются до отбора пар по исходу turn. Прежние ограничения для пар с производным контекстом сохраняются. Request получает копию, current userMessage отдельно. Текст сообщения не обрезается ради вместимости; превышающая лимит пара останавливает расширение суффикса. Пара добавляется атомарно; error/reset/cancel не добавляют половину. User ≤240, reply ≤2000.
+- Volatile context — суффикс целых завершённых пар user/reply с исходом success под конечными safety bounds: ≤20 сообщений и ≤8000 UTF-16 units суммарно; provider budget может оставить меньше. Показанные fallback сохраняются в [локальной истории](MEMORY_ENGINE.md#5-история-подбор-и-ai-context) и исключаются целиком до отбора пар по исходу turn. Прежние ограничения для пар с производным контекстом сохраняются. Request получает копию, current userMessage отдельно. Текст сообщения не обрезается ради вместимости; превышающая лимит пара останавливает расширение суффикса. Пара добавляется атомарно; error/reset/cancel не добавляют половину. User ≤240, reply ≤2000.
 - Persistent hydration: [Memory §5](MEMORY_ENGINE.md#5-история-подбор-и-ai-context) задаёт долговременную гидратацию только локального Mock; для сетевого провайдера сохраняется volatile policy этой секции до явного подключения персистентности памяти. Лимит хранения не равен лимиту отправляемого context. Полный memory reset отдельный от dialogue reset, его generation barrier — [Memory §6](MEMORY_ENGINE.md#6-полный-reset-и-защита-от-поздних-записей).
 - Reset допустим при thinking: новая conversationId/generation, пустой context, turn=idle, отмена deadline. Needs/relationship и уже применённый user_message не откатываются; execution guard ждёт settlement.
 - Reload/replacement webContents меняет stream и сбрасывает conversation/context как reset. Старые commands/receipts/results не переносятся. React remount только переподписывается, не сбрасывает Main.
@@ -303,14 +289,6 @@ Fake scheduler/deferred provider регрессии: duplicate/resend; timeout �
 - Без CSS/React names, SVG paths, sprite sheets/asset paths, frame indexes/fps.
 
 ## Thinking и latency
-
-### Локальные команды движения
-
-До provider execution Application использует [ограниченную грамматику](BEHAVIOR_INTENTS.md#просьбы-о-движении-через-чат). Ветка ChatMotion возвращает существующий `completed` turn с локальным outcome `chat_motion`, без provider call, fallback, memory-confirmable source, topic claim или semantic appraisal. Обычный once-only user stimulus сохраняется. Пара user/local reply может сохраняться существующим `localOnly` путём, без model fact candidates; командный run/статус хранится только в RAM и не восстанавливается после restart.
-
-Ответ строится из локальной квитанции: «Иду влево» только после started; сон/усталость/перегруз/край/недоступность — конкретный отказ; no-op stop не утверждает остановку падения. Завершение/отмена обновляет текст только ещё актуального local command turn; оно не создаёт новый user turn/LLM-вызов, не меняет уже сохранённую пару и не перезаписывает последующий диалог. Текст старта в истории обозначает начало, не доказательство завершения. Различение исполнения опирается на [типизированные квитанции](../../src/application/ports/chat-motion.ts) и Runner/Motion, не RP-текст.
-
-Локальная квитанция освобождает dialogue single-flight сразу, не ждёт locomotion terminal: во время прогулки `canSubmit` позволяет stop/замену. Любое следующее принятое обычное сообщение отменяет chat run до начала provider turn. Provider single-flight, deadline и guard retired calls не ослабляются; зависший старый provider не разрешает новый обычный send. Reset/reload/dispose инвалидируют оба lifecycle. Provider text/suggestedBehavior никогда не запускают направленную прогулку этого slice.
 
 <a id="правила-1"></a>
 

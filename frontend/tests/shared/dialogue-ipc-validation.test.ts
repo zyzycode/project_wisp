@@ -39,13 +39,7 @@ it('exposes exact distinct memory source ids only for a successfully completed t
   }
 });
 
-it('accepts a local support ACK and strictly forbids memory/topic/extra payloads', () => {
-  const turn = { phase: 'completed', requestId: 'r', replyText: 'Поняла. Я рядом.', outcome: { kind: 'local', reason: 'quiet_support' } };
-  const presentation = { conversationId: 'c', canSubmit: true, turn };
-  expect(parseDialoguePresentation(presentation).turn).toEqual(turn);
-  for (const bad of [{ ...turn, memorySource: { userMessageId: 'u', assistantMessageId: 'a' } },
-    { ...turn, interestThread: { threadId: 't', revision: 1 } }, { ...turn, extra: true },
-    { ...turn, outcome: { ...turn.outcome, extra: true } }, { ...turn, outcome: { kind: 'local', reason: 'offline' } }]) {
-    expect(() => parseDialoguePresentation({ ...presentation, turn: bad })).toThrow();
-  }
+it.each(['quiet_support', 'chat_motion'])('rejects the removed local outcome %s', reason => {
+  const turn = { phase: 'completed', requestId: 'r', replyText: 'Ответ', outcome: { kind: 'local', reason } };
+  expect(() => parseDialoguePresentation({ conversationId: 'c', canSubmit: true, turn })).toThrow();
 });

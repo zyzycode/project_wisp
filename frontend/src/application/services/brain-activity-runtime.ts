@@ -125,11 +125,6 @@ export class BrainActivityRuntime {
       && this.startDefinition(prepared.definition, prepared.plan, this.options.clock.now(), intent);
   }
 
-  public startChatWalk(definition: ActivityDefinition, intent: BehaviorIntent): boolean {
-    return definition.id === 'chat_walk' && intent.kind === 'wander' && intent.source === 'user'
-      && this.startDefinition(definition, null, this.options.clock.now(), intent);
-  }
-
   private prepare(intent: BehaviorIntent, catalog?: ActivitySelectionCatalog, preview = false): PreparedBrainActivity | null {
     const selectionContext = {
       ...this.options.getSelectionContext(),
@@ -394,7 +389,7 @@ export class BrainActivityRuntime {
       : definition.id === 'zoomies' ? 'play'
       : definition.tags?.includes('cursor') ? 'cursor_interest'
       : definition.id === 'social_bid' ? 'social_bid' : definition.id.startsWith('rest') ? 'rest' : 'calm';
-    if (definition.id !== 'chat_walk') this.options.onOutcome?.({ type: 'activity_outcome', eventId: `${runtime.runId}:terminal`,
+    this.options.onOutcome?.({ type: 'activity_outcome', eventId: `${runtime.runId}:terminal`,
       activityRunId: runtime.runId, activitySequence: Number(runtime.runId.slice(0, runtime.runId.indexOf(':'))), atMs, family, outcome: result.status,
       ...(definition.id === 'book' ? { activity: 'book' as const } : definition.id === 'cursor_interest' ? { activity: 'cursor_game' as const } : {}),
       terminalReason: result.status === 'completed' ? null : result.reason,

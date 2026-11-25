@@ -69,11 +69,9 @@ export class MemoryHistory {
     if (!this.isCurrent(c.generation)) return false;
     if (result.ok) {
       this.session = session;
-      if (!turn.localOnly) {
-        await this.options.onPersisted?.(turn, c);
-        if (this.isCurrent(c.generation)) await this.options.onUserMessagePersisted?.({ conversationSessionId: session.id,
-          userMessageId: turn.user.id, text: turn.user.text, createdAt: turn.user.createdAt }, c);
-      }
+      await this.options.onPersisted?.(turn, c);
+      if (this.isCurrent(c.generation)) await this.options.onUserMessagePersisted?.({ conversationSessionId: session.id,
+        userMessageId: turn.user.id, text: turn.user.text, createdAt: turn.user.createdAt }, c);
     } else this.options.onFailure(result.code);
     return result.ok;
   }

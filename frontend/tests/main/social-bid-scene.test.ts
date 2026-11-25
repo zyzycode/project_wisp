@@ -52,10 +52,9 @@ describe('SCENE-I01 local invitation ending', () => {
     f.advance(10000); expect(f.main.getActivityTimeline()).toBeNull();
     expect(f.outcomes).toHaveLength(1); f.main.dispose();
   });
-  it.each(['quiet', 'quietSupport', 'menu', 'disabled', 'drag', 'forced', 'critical', 'stop', 'dispose'] as const)('cancels the ending for %s without delayed completion', gate => {
+  it.each(['quiet', 'menu', 'disabled', 'drag', 'forced', 'critical', 'stop', 'dispose'] as const)('cancels the ending for %s without delayed completion', gate => {
     const f = scene('disengage');
     if (gate === 'quiet') f.main.setQuietMode(true);
-    if (gate === 'quietSupport') f.main.setQuietSupport(true);
     if (gate === 'menu') f.main.setMenuOpen(true);
     if (gate === 'disabled') f.main.setEnabled(false);
     if (gate === 'drag') f.main.beginDrag();

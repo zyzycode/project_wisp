@@ -5,8 +5,6 @@ export interface CompletedDialogueMemoryTurn {
   readonly lifeDerivedUse?: import('./life-history.interface').LifeDerivedContextUse;
   readonly interestThread?: import('./interest-thread.interface').InterestThreadTurnUse;
   readonly memoryConfirmable?: boolean;
-  /** Local acknowledgement is history only, never fact extraction or learning. */
-  readonly localOnly?: true;
   readonly user: { readonly id: string; readonly text: string; readonly createdAt: string };
   readonly assistant: { readonly id: string; readonly text: string; readonly createdAt: string };
   readonly memoryGeneration: number;

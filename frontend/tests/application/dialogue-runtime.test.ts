@@ -23,6 +23,20 @@ function fixture(statusPending = false, sleepState: 'awake' | 'sleeping' = 'awak
   return { acceptedContact, lifecycleReset, runtime, provider, status, response, applyStimulus, offerIntent, publish, endThinking, command, success };
 }
 afterEach(() => vi.useRealTimers());
+it.each([
+  'Иди влево', 'Можешь пройтись вправо', 'Остановись', 'Please walk left',
+  'Мне от этого не легче', "That doesn't make me feel better",
+])('sends %s through the usual provider turn after a successful reply', async text => {
+  const f = fixture();
+  expect(f.runtime.receive(f.command()).status).toBe('accepted');
+  await flush(); f.response.resolve(f.success()); await flush();
+  expect(f.runtime.receive({ ...f.command(2), text }).status).toBe('accepted');
+  expect(f.runtime.getPresentation().turn.phase).toBe('thinking');
+  await flush();
+  expect(f.provider.generateResponse).toHaveBeenCalledTimes(2);
+  expect(f.provider.generateResponse.mock.calls[1]![0].userMessage.text).toBe(text);
+  expect(f.offerIntent).not.toHaveBeenCalled();
+});
 it('rejects malformed payloads before any provider call or semantic stimulus', async () => {
   const f = fixture();
   expect(f.runtime.receive({ ...f.command(), text: '\u0000' })).toEqual({ status: 'rejected', reason: 'invalid_input' });
@@ -96,8 +110,10 @@ it('offers explicit behavior with Main-owned request freshness metadata only aft
   });
 });
 it('keeps text-only success out of behavior admission', async () => {
-  const f = fixture(); f.runtime.receive(f.command()); await flush(); f.response.resolve(f.success()); await flush();
-  expect(f.runtime.getPresentation().turn.phase).toBe('completed'); expect(f.offerIntent).not.toHaveBeenCalled();
+  const f = fixture(); f.runtime.receive(f.command()); await flush();
+  f.response.resolve({ ...f.success(), reply: { text: 'Иду влево.' } }); await flush();
+  expect(f.runtime.getPresentation().turn).toMatchObject({ phase: 'completed', replyText: 'Иду влево.' });
+  expect(f.offerIntent).not.toHaveBeenCalled();
 });
 
 it('signals accepted contact synchronously before provider awaits; rejects and reset never signal contact', async () => {

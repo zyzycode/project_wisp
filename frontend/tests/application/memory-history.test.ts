@@ -74,11 +74,3 @@ it('notifies the event observer only after a current acknowledged game write', a
   f.append.mockImplementationOnce(() => new Promise(resolve => { ack = resolve; })); const late = f.history.game({ ...game, activityRunId: 'late' }, 0);
   f.setContext({ generation: 1 }); ack({ ok: true, value: undefined }); await late; expect(committed).toHaveBeenCalledTimes(1);
 });
-
-it('persists local acknowledgement only as nonconfirmable history and never runs extraction or game observer', async () => {
-  const committed = vi.fn(), f = fixture({ committed });
-  await f.history.completed({ ...turn, localOnly: true, memoryConfirmable: false });
-  expect(f.appendTurn).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ memoryConfirmable: false }), { generation: 0 });
-  expect(f.onPersisted).not.toHaveBeenCalled(); expect(committed).not.toHaveBeenCalled(); expect(f.append).not.toHaveBeenCalled();
-  await f.history.completed(turn); expect(f.onPersisted).toHaveBeenCalledOnce();
-});

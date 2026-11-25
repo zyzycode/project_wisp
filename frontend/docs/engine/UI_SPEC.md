@@ -338,7 +338,7 @@ User off, lock/suspend/session deactivation, reset/reload, forced cancellation �
 
 Текст/голос представляют одну готовую реплику Dialogue: TTS — только
 `completed` + `outcome.kind=success`, без дописывания/LLM. Ошибки, fallback,
-local acknowledgements, game/initiative/observation остаются текстовыми.
+game/initiative/observation остаются текстовыми.
 
 - Renderer-local вывод принимает неизменяемые identity/text одной проекции. При поступлении
   реплики координатор выбирает один adapter: звук выключен — text сразу; включён — voice

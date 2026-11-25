@@ -30,7 +30,6 @@ import { ManagedLocalAIBackend } from '../infrastructure/platform/managed-local-
 import { RoutineCapture } from '../application/services/routine-capture';
 import { MemoryFactsReader } from '../application/services/memory-facts-reader';
 import { MemoryDialogueReader } from '../application/services/memory-dialogue-reader';
-import { QuietSupportRuntime } from '../application/services/quiet-support-runtime';
 import { InterestThreadCommands } from '../application/services/interest-thread-commands';
 import { InterestThreadDialogue } from '../application/services/interest-thread';
 import { DialogueAdmission } from '../application/services/dialogue-admission';
@@ -181,7 +180,6 @@ let shimejiMotionOrchestrator: ShimejiMotionOrchestrator | null = null;
 let externalWindowSurfaces: ExternalWindowSurfacesPort | null = null;
 let stopShimejiMotionLoopHandle: (() => void) | null = null;
 let autonomyComposition: MainAutonomyComposition | null = null;
-const quietSupportRuntime = new QuietSupportRuntime(() => { windowFocus?.invalidate(); autonomyComposition?.setQuietSupport(true); aiEventRuntime?.suppressUnsolicited(); observationRuntime?.invalidate(); });
 let dialogueRuntime: DialogueRuntime | null = null;
 let aiEventRuntime: AIEventRuntime | null = null;
 let unregisterDialogue: (() => void) | null = null;
@@ -271,7 +269,7 @@ const initiativeComposition = new MainInitiativeComposition({ now: () => brainSt
   screen: surface => platformEnvironmentAdapter.getSnapshot({ x: surface.bounds.x + surface.bounds.width / 2, y: surface.bounds.y }).screenBounds,
   insets: () => DEFAULT_MOTION_CONSTRAINTS.collisionInsets,
   conditions: () => ({ memory: !!memoryRuntime?.isRunning(),
-    quiet: !!autonomyComposition?.getAutonomyMode().quiet || quietSupportRuntime.isActive(),
+    quiet: !!autonomyComposition?.getAutonomyMode().quiet,
     sleeping: autonomyComposition?.getSemanticSleepState() !== 'awake',
     away: autonomyComposition?.isComputerPresenceBlocked() === true,
     busy: !dialogueRuntime?.getPresentation().canSubmit || !!observationRuntime?.isBusy() || summaryGenerating || !!summaryRuntime?.isBusy(),
@@ -448,7 +446,6 @@ function initializeAutonomyComposition(): void {
     prng,
     prngMetadata: { algorithm: 'xorshift32', seed: AUTONOMY_SEED },
     getCharacterSnapshot: () => createCharacterAutonomySnapshot(defaultCharacterStateService.getState(), defaultCharacterStateService.getCursorGameSatiation(), defaultCharacterStateService.getCausalEmotion(), defaultCharacterStateService.getOwnGameInterest().multiplier, defaultCharacterStateService.getBookSatiation(), defaultCharacterStateService.getOwnBookInterest().multiplier),
-    onChatMotionTerminal: event => dialogueRuntime?.chatMotionTerminal(event),
     onActivityCommitted: (runId, activityId) => { causalOwnerSequence++; ownGoalsRuntime?.activityStarted(runId, activityId); if (activityId === 'cursor_interest' || activityId === 'book') memoryRuntime?.socialInterpretation.gameStarted(); },
     onActivityStarted: (_run, activity) => { if (activity !== 'calm') { initiativeComposition.invalidate(); aiEventRuntime?.activityStarted(); } },
     onSocialBidStarted: (runId, atMs) => aiEventRuntime?.socialStarted(runId, atMs),
@@ -504,7 +501,6 @@ function initializeAutonomyComposition(): void {
       onOpportunityFinished: () => composition.finishDeferredInvitationOpportunity() });
     void deferredInvitationRuntime.restore();
   }
-  autonomyComposition.setQuietSupport(quietSupportRuntime.isActive());
   if (memoryRuntime?.isRunning() && mainWindow !== null && !mainWindow.isDestroyed()) autonomyComposition.start();
   if (dialogueRuntime === null) {
     const ai = createMainAIProvider({ backendUrl: aiRoute.backendUrl, sessionToken: aiRoute.sessionToken, eventsEnabled: process.env.WISP_AI_EVENTS_ENABLED === 'true', summaryEnabled: process.env.WISP_SUMMARY_ENABLED === 'true', development: !app.isPackaged, now: () => performance.now(), admitEventDispatch: id => initiativeComposition.admitDispatch(id), eventDispatched: () => initiativeComposition.controls.dispatched() });
@@ -548,8 +544,7 @@ function initializeAutonomyComposition(): void {
         canGenerate: () => !!dialogueRuntime?.getPresentation().canSubmit && !aiEventRuntime?.isBusy() && !summaryGenerating,
       });
     }
-    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); initiativeComposition.invalidate(); voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, quietSupport: { isActive: () => quietSupportRuntime.isActive(), enter: () => quietSupportRuntime.enter(), resumeForUserDialogue: () => { quietSupportRuntime.resumeForUserDialogue(); autonomyComposition?.setQuietSupport(false); }, resetMemory: () => { quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); }, dispose: () => { quietSupportRuntime.dispose(); autonomyComposition?.setQuietSupport(false); } }, observation: observationRuntime,
-      chatMotion: { submit: request => autonomyComposition?.submitChatMotion(request) ?? { status: 'rejected', requestId: request.requestId, reason: 'unavailable' }, cancel: reason => autonomyComposition?.cancelChatMotion(reason) },
+    dialogueRuntime = new DialogueRuntime({ causalExpression: causalExpressionRuntime, getSemanticSleepState: () => autonomyComposition?.getSemanticSleepState() ?? 'unavailable', onAcceptedUserInput: () => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); initiativeComposition.invalidate(); voiceOutput?.stop(); voiceInput?.invalidate(); autonomyComposition?.acceptDialogueContact(); }, onLifecycleReset: () => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); if (voiceStreamStarted) { voiceOutput?.reset(); voiceInput?.disable(); } autonomyComposition?.invalidateSocialFollowup(); }, observation: observationRuntime,
       ...(summaryRuntime ? { summary: summaryRuntime } : {}),
       ...ai, ...(aiEventRuntime ? { events: aiEventRuntime } : {}), now: () => brainStatePublisher.now(),
       memory: { ...(routineHypothesis ? { routine:routineHypothesis } : {}), ...(memoryRuntime ? { lifeReflection: memoryRuntime.lifeReflection } : {}), ...(memoryComposition?.interestThread ? { interestThread: new InterestThreadDialogue({ runtime: () => memoryRuntime, repository: memoryComposition.interestThread,
@@ -603,7 +598,7 @@ function initializeShimejiMotionLoop(initialWindowPosition: PetPositionDTO): voi
     context: () => { const context = memoryRuntime?.context(); return summaryStream && dialogueRuntime && context && memoryRuntime?.isRunning()
       ? { streamId: summaryStream, conversationId: dialogueRuntime.getPresentation().conversationId, generation: context.generation } : null; },
     active: () => !!memoryRuntime?.isRunning() && !!dialogueRuntime?.getPresentation().canSubmit
-      && !autonomyComposition?.getAutonomyMode().quiet && !quietSupportRuntime.isActive() && !screenObservation?.runtime.isBusy(),
+      && !autonomyComposition?.getAutonomyMode().quiet && !screenObservation?.runtime.isBusy(),
   });
   const environment = platformEnvironmentAdapter.getSnapshot();
   const initialMotion: MotionState = {
@@ -997,7 +992,7 @@ if (!gotTheLock) {
       hydrate: context => dialogueRuntime?.hydrateInitialContext(context), start: startCharacterRuntime,
       shutdownCapture: () => Promise.all([routineCapture?.shutdown(), deferredInvitationRuntime?.dispose()]).then(() => undefined),
       pause: () => { routineHypothesis?.endSession(); routineCapture?.invalidate(); pauseCharacterRuntime(); }, invalidateMemory: token => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); copingRuntime?.cancel(); ownGoalsRuntime?.invalidate(); deferredInvitationRuntime?.invalidate(); routineCapture?.invalidate(); dialogueRuntime?.clearMemoryContext(token); aiEventRuntime?.invalidate(); },
-      resetCommitted: () => { routineHypothesis?.reset(); voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); quietSupportRuntime.resetMemory(); autonomyComposition?.setQuietSupport(false); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
+      resetCommitted: () => { routineHypothesis?.reset(); voiceOutput?.reset(); voiceInput?.disable(); routineCapture?.resetCommitted(); autonomyComposition?.resetSocialFollowupMemory(); dialogueRuntime?.clearMemoryContext(); memoryCards.clearReceipts(); },
       resume: () => { initializeAutonomyComposition(); startCharacterRuntime(); },
     });
     routineCapture = new RoutineCapture({ sourceChanged:() => routineHypothesis?.invalidate(), repository: memoryComposition.routine,

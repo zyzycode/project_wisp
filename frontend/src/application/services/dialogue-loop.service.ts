@@ -1,10 +1,6 @@
 import type { RoutineHypothesisCapture } from '../ports/world-context.interface';
 import type { SummaryCapture } from '../ports/summary';
 import type { LifeReflectionCapture } from '../ports/life-history.interface';
-import { recognizeChatMotion } from './chat-motion-recognition';
-import { chatMotionReply, chatMotionTerminalReply } from './chat-motion-reply';
-import type { ChatMotionRecognition, ChatMotionTerminal } from '../ports/chat-motion';
-import { isQuietSupportCue } from './quiet-support-runtime';
 import { recognizeInterruptionReport } from '../../domain/character/social-interpretation';
 import { localDialogueText } from './dialogue-local-text';
 import { isTopicRefusal } from './interest-thread';
@@ -28,12 +24,10 @@ export class DialogueRuntime {
   private readonly routineCaptures = new WeakMap<Turn, RoutineHypothesisCapture>();
   private readonly dispatchedRoutine = new WeakSet<Turn>();
   private publishedRoutine: RoutineHypothesisCapture | undefined;
-  private chatRun: { requestId: string; runId: string; generation: number; conversationId: string } | null = null;
   private readonly admission: DialogueAdmission;
   private pending: object | null = null;
   private lastOffered: InterestThreadRef | undefined;
   private sourceUserText: string | null = null;
-  private supportEligible = false;
   private readonly lifeSummaryCaptures = new WeakMap<Turn, SummaryCapture>();
   private readonly dispatchedLifeSummary = new WeakSet<Turn>();
   private readonly lifeCaptures = new WeakMap<Turn, LifeReflectionCapture>();
@@ -63,7 +57,7 @@ export class DialogueRuntime {
     this.initialContext = boundMemoryContext(messages, this.options.memory.contextLimits);
     if (this.hasStartedStream) { this.context = [...this.initialContext]; this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []); this.initialContext = null; }
   }
-  public cancelForMemoryReset(): void { this.options.quietSupport?.resetMemory(); const context = this.context; const messageIds = this.contextMessageIds; this.options.transaction(() => { this.reset(); this.context = context; this.contextMessageIds = messageIds; this.options.publish(); }); }
+  public cancelForMemoryReset(): void { const context = this.context; const messageIds = this.contextMessageIds; this.options.transaction(() => { this.reset(); this.context = context; this.contextMessageIds = messageIds; this.options.publish(); }); }
   public clearMemoryContext(admissionToken?: object): void { const own = admissionToken !== undefined && this.pending === admissionToken; const pending = own ? this.pending : null; this.hydrationAllowed = false; this.initialContext = null; this.options.transaction(() => { this.reset(); if (own) { this.pending = pending; this.executing = true; } this.options.publish(); }); }
   public isTopicRequestCurrent(requestId: string): boolean { return this.active !== null && this.active.request.requestId === requestId && this.isCurrent(this.active); }
   public isAdmissionCurrent(token: object): boolean { return this.options.getSemanticSleepState() === 'awake' && !this.disposed && this.streamId !== null && this.pending === token; }
@@ -79,7 +73,7 @@ export class DialogueRuntime {
       if (this.options.getSemanticSleepState() !== 'awake') {
         this.generation++;
         this.retiredAdmission = this.admission.isPending();
-        this.chatRun = null; this.supportEligible = false; this.sourceUserText = null;
+        this.sourceUserText = null;
         const active = this.active;
         if (this.pending) { this.pending = null; this.executing = false; this.turn = { phase: 'idle' }; }
         if (active) {
@@ -97,13 +91,13 @@ export class DialogueRuntime {
     const active = this.active, capture = active && this.routineCaptures.get(active);
     if (active && capture && this.dispatchedRoutine.has(active) && !this.options.memory?.routine?.isCurrent(capture)) this.discardCausal(active);
     if (this.publishedRoutine && !this.options.memory?.routine?.isCurrent(this.publishedRoutine)) {
-      this.publishedRoutine = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null; this.supportEligible = false;
+      this.publishedRoutine = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null;
     }
   }
   public getPresentation(): DialoguePresentationDTO {
-    if (this.publishedRoutine && !this.options.memory?.routine?.isCurrent(this.publishedRoutine)) { this.publishedRoutine = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null; this.supportEligible = false; }
+    if (this.publishedRoutine && !this.options.memory?.routine?.isCurrent(this.publishedRoutine)) { this.publishedRoutine = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null; }
     if (this.publishedCausal && !this.options.causalExpression?.isCurrent(this.publishedCausal)) {
-      this.publishedCausal = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null; this.supportEligible = false;
+      this.publishedCausal = undefined; this.turn = { phase: 'idle' }; this.sourceUserText = null;
     }
     const bound = !this.disposed && this.streamId !== null;
     const sleep = this.options.getSemanticSleepState();
@@ -124,7 +118,7 @@ export class DialogueRuntime {
     if (this.disposed) return;
     this.options.transaction(() => { if (this.hasStartedStream) this.hydrationAllowed = false; this.reset(); this.streamId = null; });
   }
-  public dispose(): void { this.detachStream(); this.options.quietSupport?.dispose(); this.disposed = true; }
+  public dispose(): void { this.detachStream(); this.disposed = true; }
   public receive(payload: unknown): DialogueCommandReceiptDTO {
     let command;
     try { command = parseDialogueCommand(payload); } catch { return { status: 'rejected', reason: 'invalid_input' }; }
@@ -141,18 +135,6 @@ export class DialogueRuntime {
     this.options.onAcceptedUserInput?.();
     this.publishedRoutine = undefined;
     this.publishedCausal = undefined;
-    this.options.quietSupport?.resumeForUserDialogue();
-    const motion = recognizeChatMotion(command.text);
-    if (motion.kind !== 'none') {
-      this.acknowledgeMotion(command.text, motion);
-      return { status: 'accepted', conversationId: this.conversationId };
-    }
-    this.options.chatMotion?.cancel('user_input');
-    if (!command.replyToInterestThread && this.supportEligible && isQuietSupportCue(command.text) && this.options.quietSupport) {
-      this.acknowledgeSupport(command.text);
-      return { status: 'accepted', conversationId: this.conversationId };
-    }
-    this.supportEligible = false;
     const requestedAtMs = this.options.now();
     const deadline = requestedAtMs + 15000;
     const admissionDeadline = requestedAtMs + 200;
@@ -176,54 +158,6 @@ export class DialogueRuntime {
         }).catch(() => { if (this.isAdmissionCurrent(token)) { this.pending = null; this.executing = false; if (scopedRefusal) this.options.publish(); else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, false); } });
     } else this.startTurn(command, requestedAtMs, deadline, admissionDeadline, true);
     return { status: 'accepted', conversationId: this.conversationId };
-  }
-  public chatMotionTerminal(event: ChatMotionTerminal): void {
-    const run = this.chatRun;
-    if (!run || this.disposed || this.streamId === null || run.requestId !== event.requestId || run.runId !== event.runId
-        || run.generation !== this.generation || run.conversationId !== this.conversationId) return;
-    this.chatRun = null;
-    if (this.turn.phase !== 'completed' || this.turn.requestId !== event.requestId || this.turn.outcome.kind !== 'local' || this.turn.outcome.reason !== 'chat_motion') return;
-    this.options.transaction(() => {
-      this.turn = { phase: 'completed', requestId: event.requestId, replyText: chatMotionTerminalReply(event, this.options.locale === 'en'), outcome: { kind: 'local', reason: 'chat_motion' } };
-      this.options.publish();
-    });
-  }
-  private acknowledgeMotion(text: string, recognition: Exclude<ChatMotionRecognition, { kind: 'none' }>): void {
-    this.options.transaction(() => {
-      this.supportEligible = false; this.lastOffered = undefined; this.sourceUserText = null;
-      this.options.observation?.invalidate(); this.options.events?.suppressUnsolicited?.();
-      const requestId = this.options.createId(), createdAt = this.options.timestamp();
-      this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text, createdAt });
-      let replyText: string;
-      if (recognition.kind === 'clarify') {
-        this.options.chatMotion?.cancel('user_input');
-        replyText = localDialogueText('motion_clarify', this.options.locale);
-      } else {
-        const receipt = this.options.chatMotion?.submit({ requestId, conversationId: this.conversationId, generation: this.generation, command: recognition.command })
-          ?? { status: 'rejected' as const, requestId, reason: 'unavailable' as const };
-        replyText = chatMotionReply(receipt, recognition.command, this.options.locale === 'en');
-        this.chatRun = receipt.status === 'started' ? { requestId, runId: receipt.runId, generation: this.generation, conversationId: this.conversationId } : null;
-      }
-      const user = { id: this.options.createId(), text, createdAt };
-      const assistant = { id: this.options.createId(), text: replyText, createdAt };
-      this.turn = { phase: 'completed', requestId, replyText, outcome: { kind: 'local', reason: 'chat_motion' } };
-      this.options.publish();
-      this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
-    });
-  }
-  private acknowledgeSupport(text: string): void {
-    this.options.transaction(() => {
-      this.supportEligible = false; this.lastOffered = undefined; this.sourceUserText = null;
-      this.options.quietSupport!.enter();
-      this.options.observation?.invalidate(); this.options.events?.suppressUnsolicited?.();
-      const requestId = this.options.createId(), createdAt = this.options.timestamp();
-      const user = { id: this.options.createId(), text, createdAt };
-      const assistant = { id: this.options.createId(), text: localDialogueText('support_quiet_ack', this.options.locale), createdAt };
-      this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text, createdAt });
-      this.turn = { phase: 'completed', requestId, replyText: assistant.text, outcome: { kind: 'local', reason: 'quiet_support' } };
-      this.options.publish();
-      this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
-    });
   }
   private startTurn(command: Extract<import('../../shared/ipc-contracts').DialogueCommandDTO, { type: 'send' }>, requestedAtMs: number, deadline: number, admissionDeadline: number, enrich: boolean): void {
     if (this.options.getSemanticSleepState() !== 'awake') { this.notifySleepStateChanged(); return; }
@@ -251,10 +185,9 @@ export class DialogueRuntime {
   private reset(): void {
     this.publishedRoutine = undefined;
     this.publishedCausal = undefined;
-    this.chatRun = null; this.options.chatMotion?.cancel('reset');
     this.options.onLifecycleReset?.();
     if (this.pending) this.executing = false;
-    this.pending = null; this.lastOffered = undefined; this.sourceUserText = null; this.supportEligible = false;
+    this.pending = null; this.lastOffered = undefined; this.sourceUserText = null;
     this.options.observation?.reset();
     this.options.events?.invalidate();
     this.options.summary?.interrupt();
@@ -444,7 +377,6 @@ export class DialogueRuntime {
       this.turn = presentation.turn;
       this.publishedRoutine = this.dispatchedRoutine.has(active) ? routine : undefined;
       this.publishedCausal = causal;
-      this.supportEligible = reason === undefined;
       const ordinarySuccess = reason === undefined && !capture && !this.dispatchedLife.has(active)
         && !this.dispatchedLifeSummary.has(active) && !this.dispatchedRoutine.has(active);
       this.sourceUserText = ordinarySuccess ? active.request.userMessage.text : null;

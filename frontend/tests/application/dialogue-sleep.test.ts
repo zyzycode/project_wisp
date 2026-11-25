@@ -30,15 +30,13 @@ function fixture(stage: Stage = 'response', locale = 'ru', interaction = false) 
   };
   const completed = vi.fn(), accepted = vi.fn(), applyStimulus = vi.fn(), offerIntent = vi.fn();
   const beginThinking = vi.fn(), endThinking = vi.fn(), setBehaviorContext = vi.fn(), publish = vi.fn();
-  const chatMotion = { submit: vi.fn(), cancel: vi.fn() };
-  const quietSupport = { isActive: vi.fn(() => false), enter: vi.fn(), resumeForUserDialogue: vi.fn(), resetMemory: vi.fn(), dispose: vi.fn() };
   const beginInteraction = vi.fn(() => ({ sequence: 1, generation: 0, signature: 'admitted', effectPolicy: 'eligible' as const }));
   const commitInteraction = vi.fn<NonNullable<DialogueRuntimeOptions['commitInteraction']>>(() => ({ effect: 'accepted', reason: 'applied' }));
   const getCharacterSnapshot = vi.fn(() => new CharacterStateService().getSnapshot());
   const options: DialogueRuntimeOptions = {
     getSemanticSleepState: () => sleepState, provider, locale, onAcceptedUserInput: accepted,
     ...(interaction ? { interactionEnabled: true, beginInteraction, commitInteraction } : {}),
-    chatMotion, quietSupport, now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
+    now: Date.now, timestamp: () => new Date().toISOString(), createId: () => `id-${++id}`,
     scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
     getCharacterSnapshot, applyStimulus, offerIntent, beginThinking, endThinking, setBehaviorContext,
     transaction: commit => commit(), publish,
@@ -58,7 +56,7 @@ function fixture(stage: Stage = 'response', locale = 'ru', interaction = false) 
   };
   const reload = () => { streamId = 'replacement'; sequence = 0; runtime.replaceStream(streamId); };
   return { runtime, options, provider, status, response, recall, admit, completed, accepted, applyStimulus, offerIntent,
-    beginThinking, endThinking, setBehaviorContext, publish, chatMotion, quietSupport, getCharacterSnapshot,
+    beginThinking, endThinking, setBehaviorContext, publish, getCharacterSnapshot,
     command, send, setSleep, success, settle, reload, beginInteraction, commitInteraction };
 }
 afterEach(() => vi.useRealTimers());
@@ -73,8 +71,7 @@ it.each([['ru', 'Wisp спит'], ['en', 'Wisp is sleeping']])('rejects sleeping
   expect(f.send('побудь рядом')).toEqual({ status: 'rejected', reason: 'unavailable' });
   expect(f.accepted).not.toHaveBeenCalled(); expect(f.applyStimulus).not.toHaveBeenCalled();
   expect(f.admit).not.toHaveBeenCalled(); expect(f.provider.getStatus).not.toHaveBeenCalled();
-  expect(f.chatMotion.submit).not.toHaveBeenCalled(); expect(f.quietSupport.enter).not.toHaveBeenCalled();
-  expect(f.quietSupport.resumeForUserDialogue).not.toHaveBeenCalled(); expect(f.completed).not.toHaveBeenCalled();
+  expect(f.completed).not.toHaveBeenCalled();
   const { text: _text, ...reset } = f.command();
   expect(f.runtime.receive({ ...reset, type: 'reset' })).toMatchObject({ status: 'accepted' });
   expect(f.runtime.getPresentation()).toMatchObject({ canSubmit: false, submissionMessage: message });

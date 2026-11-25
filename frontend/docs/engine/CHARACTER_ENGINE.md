@@ -59,7 +59,7 @@ P2 sleep срабатывает после P0 physics/P1 input. Direct drag (P1)
 ### Диалог во время сна
 
 Семантический `sleeping` запрещает новый chat send и публикацию новой chat-реплики,
-включая локальные ACK/fallback. `sleepy` tone при `awake` диалог не блокирует;
+включая fallback. `sleepy` tone при `awake` диалог не блокирует;
 визуальный клип и recovery metabolism не заменяют semantic sleep state.
 Main читает факт сна из Character, Application применяет локальный dialogue gate;
 Renderer только показывает доступность и статус. Chat не будит персонажа,
@@ -67,15 +67,6 @@ Renderer только показывает доступность и стату�
 
 Admission, отмена при входе в сон, once-only effects и статус заданы
 в [AI Provider: sleep gate](AI_PROVIDER_CONTRACT.md#локальный-sleep-gate-диалога).
-
-### Просьбы о движении и право на отказ
-
-Ниже описан Character admission команды; chat send сначала проходит sleep gate.
-Во сне chat не выдаёт ACK отказа, а отдельный локальный stop/cleanup остаётся допустимым.
-
-Явная chat-команда — добровольный user `wander`, а не forced drag: P1 ownership даёт приоритет над занятием, но не отменяет Character admission. Character проверяет актуальный snapshot после once-only user input: semantic sleeping → `sleeping`; иначе `energy <= 20` → `low_energy`; иначе `comfort >= 80` → `overloaded`; иначе прогулка допустима по Character. Используется тот же источник порогов, что `requiresVitalSleep`; копирование чисел в parser/adapter/UI запрещено. Команда не будит персонажа и не откладывается до пробуждения. Quiet сохраняется и не запрещает спокойную явную прогулку. Stop допустим независимо от Needs/sleep: это cleanup, а не просьба продолжить нагрузку.
-
-Во время прогулки пересечение vital sleep gate отменяет run с `critical_need`, затем продолжается штатный P2 sleep. Локальная реплика — техническая квитанция по [владению речью](AI_PROVIDER_CONTRACT.md#владельцы-речи-и-локальные-подтверждения), без отдельной режиссуры Mood/tone/личности. Character не вводит случайный отказ, новые friendship/consent пороги или изменение Needs. Прогулка не игра/автономное Explore: не выдаёт play/social/Explore completion rewards и не обучает предпочтения. Обычный once-only эффект принятого user message сохраняется; повторный callback и отказ не создают второй эффект. Physical availability/support проверяет Motion после Character, с отдельной фактической причиной отказа.
 
 <a id="22-устойчивый-quiet-auto-a09"></a>
 ## 2.2. Устойчивый тихий режим (Quiet Mode)
@@ -143,18 +134,6 @@ Revision 2 — предыдущая поставка #123; обе стороны
 | independence | 0.68 | 0.45–0.88 | 0.25–0.98 | Спокойное собственное занятие без вины |
 
 Критерий mapping: стартовая shyness=0.4985, ниже прежнего порога 0.65; даже край soft-области даёт ≤0.644. Формула §4 и приоритет tone §8 остаются общими, `shy` допустим как ситуативное состояние, а не обязательный core. `guarded` означает мало знакомства, а не приказ быть робкой; `close` не романтика. `expression`/tone не содержат скрытого второго архетипа; локальные нейтральные каталоги остаются допустимыми, реализация planned selector §8.1 не prerequisite этого профиля. Проверять узнаваемость на восьми сценах #108 отдельно от offline сборки.
-
-### 6.1. Тихая поддержка после явной реплики
-
-Application/Main владеет session latch `quietSupport`, default false, отдельно от ручного quiet (§2.2). Это bounded реакция на явный текст, не LLM-классификация эмоций/неудачной шутки. После реально опубликованного successful ordinary dialogue reply текущей conversation принимается полный direct user text «мне от этого не легче» / “that doesn't make me feel better”. Нормализация только NFC, trim, lowercase, `’`→`'`, удаление конечных `. ! ?` и пробелов; точное равенство одной из двух строк. Цитаты/добавочные слова/история/summary/fallback/автономная реплика не являются trigger. Предыдущий reply не доказывает, что был шуткой; общий «стоп» остаётся boundary, не распознавателем поддержки.
-
-На accepted send, до async recall/provider, latch включается и инвалидирует queued/in-flight unsolicited speech; один локальный ACK публикуется по текущим dialogue identity/generation guards: новый speech key `support_quiet_ack`, RU «Поняла. Я рядом.», EN “I understand. I'm here.” Нет provider call, appraisal, suggestion, extraction, topic attempt или нового memory evidence. ACK — [QuietSupportAcknowledgementDTO](../../src/shared/ipc-contracts.ts), outcome `local/quiet_support`: strict parser запрещает memorySource/interestThread/extra keys для этого outcome, Renderer показывает обычную реплику без error/fallback warning. Пара сохраняется обычным history path с `memoryConfirmable=false`, её source исключён из подтверждения memory items/topic; extraction не запускается. Ввод пользователя не штрафуется и не считается hostile; обычный once-only user stimulus допустим, synthetic provider stimulus запрещён. Rejected/stale/busy command и duplicate sequence не включают latch и не переиздают ACK.
-
-Support cue без явного `replyToInterestThread` обрабатывается до 200ms topic admission: `lastOffered` очищается, но confirmed topic не закрывается/не резервируется и попытка не расходуется. При явном `replyToInterestThread` сохраняется существующий topic path; цитата ответа по выбранной теме не является support trigger. После local ACK eligibility предыдущего successful reply потребляется, чтобы повтор cue считался следующим user continuation, а не повторным ACK. History persistence асинхронна и не задерживает ACK; failure не повторяет публикацию. В одной Main transaction enter/invalidate/generation guards предшествуют ACK, все поздние autonomous callbacks повторяют gate перед commit.
-
-Latch подавляет новые/поздние SocialBid, cursor approach/игровые приглашения, unsolicited game/event/observation speech и follow-up инициативы; отменяет несовместимый текущий run через существующие lifecycle hooks. До recall, transport и commit все эти пути проверяют latch как quiet-compatible gate. Разрешены P0/P1/P2, sleep/wake, спокойные Rest/Explore, ненавязчивое собственное занятие. Нет нового таймера, очереди, budget refill, увеличения Need deficit или ручного quiet toggle. Прямое user play/touch проходит свои текущие gates и не снимает latch; пассивный курсор/AFK-return/restore/provider/tick тоже не снимают.
-
-Следующий принятый user chat send сначала снимает latch, затем проходит обычный dialogue pipeline; он может снова включить latch только при новом eligible previous reply. Dialogue reset/detach/replaceStream и Renderer reload сохраняют latch в Main session; eligibility прошлого reply очищается, старый ACK не восстанавливается. Full memory reset, Main restart и dispose очищают latch/eligibility и инвалидируют pending ACK; manual quiet сохраняет свой lifecycle. Late results не снимают/не обходят latch. Порт [IQuietSupportRuntime](../../src/application/ports/dialogue-runtime.ts) — локальный, без wire/IPC/SQLite поля. Неизвестные парафразы остаются обычным диалогом по карточке и фактическому контексту, без отдельной серверной инструкции стиля поддержки: полнота NLP-распознавания здесь не заявляется.
 
 ## 7. Intimacy & Romantic Charge
 

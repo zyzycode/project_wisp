@@ -366,8 +366,6 @@ export type DialogueFallbackReasonDTO =
   | 'invalid_response';
 
 export type DialogueTurnPresentationDTO =
-  | QuietSupportAcknowledgementDTO
-  | ChatMotionAcknowledgementDTO
   | { readonly phase: 'idle' }
   | { readonly phase: 'thinking'; readonly requestId: string }
   | {
@@ -386,28 +384,6 @@ export type DialogueTurnPresentationDTO =
       readonly requestId: string;
       readonly message: string;
     };
-
-/** Local deterministic support acknowledgement.
- * It has no provider result, fallback, confirmable memory source or topic claim.
- */
-export interface QuietSupportAcknowledgementDTO {
-  readonly memorySource?: never;
-  readonly interestThread?: never;
-  readonly phase: 'completed';
-  readonly requestId: string;
-  readonly replyText: string;
-  readonly outcome: { readonly kind: 'local'; readonly reason: 'quiet_support' };
-}
-
-/** Local chat command acknowledgement; reply text describes authoritative execution facts. */
-export interface ChatMotionAcknowledgementDTO {
-  readonly memorySource?: never;
-  readonly interestThread?: never;
-  readonly phase: 'completed';
-  readonly requestId: string;
-  readonly replyText: string;
-  readonly outcome: { readonly kind: 'local'; readonly reason: 'chat_motion' };
-}
 
 export interface DialoguePresentationDTO {
   readonly conversationId: string;

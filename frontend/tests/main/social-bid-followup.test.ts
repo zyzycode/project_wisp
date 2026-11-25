@@ -61,7 +61,7 @@ describe('SOC-A01 Main lifecycle and admission', () => {
     if (gate === 'dialogue') f.main.invalidateSocialFollowup();
     if (gate === 'critical') { const state = f.character.getState(); f.character.replaceRestoredState({ ...state, needs: { ...state.needs, energy: 1 } }); }
     f.step(1000); f.reading({ status: 'available', idleMs: 1000 }); f.lifecycle('unlock');
-    f.main.setQuietMode(false); f.main.setQuietSupport(false); f.main.setMenuOpen(false); f.main.setEnabled(true); f.setMovable(true);
+    f.main.setQuietMode(false); f.main.setMenuOpen(false); f.main.setEnabled(true); f.setMovable(true);
     f.step(45000); expect(f.main.getActivityTimeline()?.activityId).not.toBe('social_bid');
     for (let i = 0; i < 3; i++) { f.pulse(); f.finish(); }
     expect(f.social).toHaveBeenCalledOnce(); f.main.dispose();
