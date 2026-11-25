@@ -11,7 +11,7 @@ from wisp_backend.completion.contracts import InferenceRequest, ProviderResult
 from wisp_backend.config.settings import AssistantSettings
 from wisp_backend.errors import ServiceError
 from wisp_backend.json_codec import decode_json
-from wisp_backend.providers.context_budget import BYTE_ESTIMATE_METHOD, CONTEXT_WINDOWS, estimate_input
+from wisp_backend.providers.context_budget import CONTEXT_WINDOWS, estimate_input
 
 MAX_UPSTREAM_BYTES = 256 * 1024
 
@@ -92,10 +92,6 @@ class HTTPProvider(ABC):
         if remaining <= 0:
             raise ServiceError("upstream_timeout")
         return remaining
-
-    @property
-    def estimate_method(self) -> str:
-        return BYTE_ESTIMATE_METHOD
 
     def estimate_payload(self, payload: dict[str, Any], message_count: int) -> int:
         return estimate_input(payload, message_count)

@@ -5,7 +5,7 @@ from typing import Any
 from wisp_backend.accounting.contracts import Usage
 from wisp_backend.completion.contracts import InferenceRequest, ProviderResult, ScreenInferenceRequest
 from wisp_backend.config.settings import AssistantSettings
-from wisp_backend.providers.context_budget import estimate_openai_input, openai_estimate_method
+from wisp_backend.providers.context_budget import estimate_openai_input
 from wisp_backend.providers.http_provider import HTTPProvider
 from wisp_backend.providers.screen_observation import complete_screen
 
@@ -15,10 +15,6 @@ class OpenAIProvider(HTTPProvider):
         if isinstance(request, ScreenInferenceRequest):
             return await complete_screen(self, request, timeout)
         return await super().complete(request, timeout)
-
-    @property
-    def estimate_method(self) -> str:
-        return openai_estimate_method(self.settings.model, "none" if self.settings.model == "gpt-6-sol" else None)
 
     def estimate_payload(self, payload: dict[str, Any], message_count: int) -> int:
         return estimate_openai_input(payload, message_count)
