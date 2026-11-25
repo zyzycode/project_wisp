@@ -79,8 +79,10 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Усыпить');
     expect(markup).toContain('Тихий режим');
     expect(markup).toContain('aria-pressed="true"');
-    expect(markup).toContain('data-menu-link="settings"');
-    expect(markup).toContain('data-menu-link="tools"');
+    expect(markup.match(/role="tab"/g)).toHaveLength(2);
+    expect(markup).toContain('data-menu-tab="main"');
+    expect(markup).toContain('data-menu-tab="settings"');
+    expect(markup).not.toContain('<details');
     expect(markup).not.toContain('Темы оформления');
     expect(markup).not.toContain('menu-theme');
     expect(markup).not.toContain('Космический');

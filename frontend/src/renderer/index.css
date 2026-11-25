@@ -441,8 +441,8 @@ html, body {
   position: fixed;
   top: 12px;
   right: 12px;
-  width: min(340px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
+  width: min(480px, calc(100vw - 24px));
+  height: min(540px, calc(100vh - 24px));
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -451,7 +451,7 @@ html, body {
   border-radius: 14px;
   box-shadow: 0 14px 28px #0008, 0 0 18px #a855f72b;
   color: #f1f5f9;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
   overflow-wrap: anywhere;
   animation: slideInMenu 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -463,8 +463,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 48px;
-  padding: 7px 12px;
+  min-height: 58px;
+  padding: 8px 16px;
   background: linear-gradient(115deg, #28213b, #171d30 72%);
   border-bottom: 1px solid #332e4a;
   flex-shrink: 0;
@@ -473,7 +473,7 @@ html, body {
 .menu-title {
   margin: 0;
   color: #f5edff;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.25;
 }
@@ -486,16 +486,16 @@ html, body {
   padding: 2px 8px;
   color: #ead9fc;
   background: #352b4a;
-  font-size: 11px;
+  font-size: 12px;
 }
 
-.menu-close-btn,
-.menu-back-btn {
+.menu-close-btn {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
+  margin-inline-start: auto;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 7px;
@@ -504,69 +504,104 @@ html, body {
   font: inherit;
 }
 
-.menu-close-btn { margin-inline-start: auto; }
-.menu-back-btn { font-size: 24px; line-height: 1; }
-
-.menu-close-btn:hover,
-.menu-back-btn:hover {
+.menu-close-btn:hover {
   color: #fff;
   background: #34294a;
   border-color: #625079;
 }
 
-.wisp-context-menu :is(button, summary, select, input, a):focus-visible {
+.wisp-context-menu :is(button, select, input, a):focus-visible {
   outline: 2px solid #e0b7ff;
   outline-offset: 2px;
 }
 
+.menu-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #332e4a;
+  flex-shrink: 0;
+}
+
+.menu-tab-btn {
+  min-height: 42px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #c4cde0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.menu-tab-btn:hover,
+.menu-tab-btn[aria-selected='true'] {
+  color: #fff;
+  background: #382851;
+  border-color: #936ac5;
+}
+
 .menu-scroll-body {
+  flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 12px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
   min-height: 0;
   scrollbar-color: #685386 transparent;
   scrollbar-width: thin;
 }
 
 .menu-scroll-body > * { flex-shrink: 0; }
+.menu-scroll-body[hidden] { display: none; }
 
-.menu-navigation,
-.menu-settings {
+.menu-window-controls,
+.menu-debug-controls,
+.menu-settings,
+.observation-settings fieldset {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
-.menu-settings > details {
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid #414963;
-  border-radius: 8px;
+.menu-settings { gap: 20px; }
+
+.menu-settings > section + section {
+  padding-top: 16px;
+  border-top: 1px solid #333d56;
 }
 
-.menu-settings > details[open] {
-  background: #192338;
+.menu-settings-heading {
+  margin: 0 0 6px;
+  color: #f5edff;
+  font-size: 16px;
 }
 
-.menu-settings > details > summary {
-  min-height: 24px;
-  padding-block: 2px;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
+.menu-debug-controls {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #333d56;
 }
 
-.menu-settings fieldset { min-inline-size: 0; }
+.observation-settings p { margin: 4px 0; }
+
+.observation-settings fieldset {
+  min-inline-size: 0;
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+}
 
 .menu-status {
   display: grid;
-  gap: 3px;
+  gap: 5px;
   border-top: 1px solid #333d56;
-  padding-top: 8px;
+  padding-top: 12px;
   color: #c4cde0;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .menu-status p { margin: 0; }
@@ -584,12 +619,6 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 2px;
-}
-
-.ai-connection-settings summary {
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
 }
 
 .ai-connection-settings p {
@@ -685,17 +714,16 @@ html, body {
 .menu-btn-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 10px;
 }
 
-.menu-action-btn,
-.menu-page-btn {
+.menu-action-btn {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  min-height: 38px;
-  padding: 6px 9px;
+  min-height: 42px;
+  padding: 8px 12px;
   border: 1px solid #414963;
   border-radius: 8px;
   background: #1b263b;
@@ -705,17 +733,12 @@ html, body {
   text-align: start;
 }
 
-.menu-page-btn {
-  justify-content: space-between;
-  background: #25243b;
-  border-color: #514669;
+.menu-btn-grid > .menu-action-btn {
+  min-height: 54px;
   font-weight: 600;
 }
 
-.menu-page-btn > span { color: #dab5f6; font-size: 17px; line-height: 1; }
-
-.menu-action-btn:not(:disabled):hover,
-.menu-page-btn:hover {
+.menu-action-btn:not(:disabled):hover {
   background: #34294a;
   border-color: #8b6ab1;
 }
@@ -756,8 +779,9 @@ html, body {
 
 .menu-quit-btn {
   align-self: start;
-  min-height: 32px;
-  padding: 4px 8px;
+  min-height: 42px;
+  padding: 6px 10px;
+  margin-top: auto;
   margin-inline-start: -4px;
   background: transparent;
   border: 1px solid transparent;
@@ -775,6 +799,9 @@ html, body {
 }
 
 @media (max-width: 285px) {
+  .menu-header,
+  .menu-tabs,
+  .menu-scroll-body { padding-inline: 10px; }
   .menu-btn-grid { grid-template-columns: minmax(0, 1fr); }
   .wisp-context-menu .menu-anim-4col-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

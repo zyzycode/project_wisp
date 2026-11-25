@@ -139,41 +139,42 @@ let lifeFixture; let lifeInputs;
     await evaluate(`if(!document.querySelector('.wisp-context-menu')) document.querySelector('.wisp-character-root').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))`);
     assert.equal(await evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage`), 'main');
     assert.equal(await evaluate(`(() => {
-      const body = document.querySelector('.menu-scroll-body');
+      const body = document.querySelector('.menu-scroll-body:not([hidden])');
       const viewport = body.getBoundingClientRect();
-      const actions = [...body.querySelectorAll('.menu-btn-grid button, [data-menu-link="settings"]')];
-      return actions.length === 7 && actions.every(action => {
+      const actions = [...body.querySelectorAll('.menu-btn-grid button')];
+      return actions.length === 6 && actions.every(action => {
         const rect = action.getBoundingClientRect();
         return rect.top >= viewport.top && rect.bottom <= viewport.bottom;
       });
     })()`), true, 'Frequent actions and settings visible without scrolling');
     assert.equal(await evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), false);
     const mainFrame=await win.webContents.capturePage(); fs.writeFileSync(path.join(output,'menu-main.png'),mainFrame.toPNG());
-    const openMenuPage = async page => {
-      await evaluate(`document.querySelector('[data-menu-link="${page}"]').click()`);
-      await until(() => evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage === '${page}'`), page + ' page');
+    const openSettings = async () => {
+      await evaluate(`document.querySelector('[data-menu-tab="settings"]').click()`);
+      await until(() => evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage === 'settings'`), 'Settings tab');
     };
-    const menuBack = () => evaluate('document.querySelector(".menu-back-btn").click()');
     const menuKey = keyCode => {
       win.webContents.sendInputEvent({ type: 'keyDown', keyCode });
-      if (keyCode === 'Enter') win.webContents.sendInputEvent({ type: 'char', keyCode: '\r' });
       win.webContents.sendInputEvent({ type: 'keyUp', keyCode });
     };
     menuKey('Tab');
     await until(() => evaluate(`document.activeElement?.matches('.menu-close-btn:focus-visible')`), 'Visible keyboard focus');
-    await openMenuPage('tools');
-    await openMenuPage('animations');
-    await until(() => evaluate(`Boolean(document.querySelector('[aria-label="Просмотр анимаций"]'))`), 'Animation preview');
-    assert.equal(await evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), false);
+    menuKey('Tab');
+    await until(() => evaluate(`document.activeElement?.matches('[data-menu-tab="main"]:focus-visible')`), 'Main tab focus');
+    menuKey('Right');
+    await until(() => evaluate(`document.activeElement?.matches('[data-menu-tab="settings"][aria-selected="true"]:focus-visible')`), 'Keyboard selects settings');
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('.menu-settings > section > h3')].map(heading => heading.textContent)`),
+      ['Подключение AI', 'Наблюдение', 'Голос и звук', 'Поведение и окно', 'Инструменты']);
+    assert.equal(await evaluate(`Boolean(document.querySelector('.menu-settings details'))`), false);
+    await evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
+    const settingsFrame=await win.webContents.capturePage(); fs.writeFileSync(path.join(output,'menu-settings.png'),settingsFrame.toPNG());
+    await evaluate(`document.querySelector('[aria-label="Просмотр анимаций"]').scrollIntoView({block:'start'})`);
     await evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
     const animationsFrame=await win.webContents.capturePage(); fs.writeFileSync(path.join(output,'menu-animations.png'),animationsFrame.toPNG());
-    menuKey('Tab');
-    await until(() => evaluate(`document.activeElement?.matches('.menu-back-btn:focus-visible')`), 'Keyboard back control');
-    menuKey('Enter');
-    await until(() => evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage === 'tools'`), 'Keyboard back to tools');
-    await menuBack();
-    await openMenuPage('settings');
-    await openMenuPage('voice');
+    menuKey('Left');
+    await until(() => evaluate(`document.activeElement?.matches('[data-menu-tab="main"][aria-selected="true"]:focus-visible')`), 'Keyboard returns to main');
+    await openSettings();
+    await evaluate(`document.querySelector('.audio-output-settings').scrollIntoView({block:'start'})`);
     await until(() => evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), 'Audio settings section');
     await evaluate(`(() => {window.__speechStarts=0; window.__sinkIds=[];
       const start=AudioBufferSourceNode.prototype.start; AudioBufferSourceNode.prototype.start=function(...args){window.__speechStarts++;window.__speechStartedAt=Date.now();return start.apply(this,args);};
@@ -193,10 +194,10 @@ let lifeFixture; let lifeInputs;
     if (!await evaluate(`Boolean(document.querySelector('.wisp-context-menu'))`)) {
       await evaluate(`document.querySelector('.wisp-character-root').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))`);
       await until(() => evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage === 'main'`), 'Reopened main menu');
-      await openMenuPage('settings');
-      await openMenuPage('voice');
+      await openSettings();
     }
     await until(() => evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), 'Audio settings for microphone-off tone');
+    await evaluate(`document.querySelector('.audio-output-settings').scrollIntoView({block:'start'})`);
     await until(() => evaluate(`Array.from(document.querySelectorAll('.audio-output-settings button')).some(b=>b.textContent==='Проверить звук'&&!b.disabled)`), 'Test tone control ready');
     await evaluate(`Array.from(document.querySelectorAll('.audio-output-settings button')).find(b=>b.textContent==='Проверить звук').click()`);
     try { await until(() => evaluate('window.__speechStarts===2'), 'Selected device playback with microphone off'); }

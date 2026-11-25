@@ -41,7 +41,6 @@ interface ElementProps {
   readonly onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
   readonly onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
   readonly onClick?: () => void;
-  readonly onToggle?: (event: { readonly currentTarget: { readonly open: boolean } }) => void;
   readonly value?: string;
   readonly disabled?: boolean;
 }
@@ -93,7 +92,8 @@ describe('AI connection settings', () => {
   it('shows a masked set-only OpenAI form and explains data, cost and restart', async () => {
     const f = fixture({ ...OFFLINE, mode: 'ready', hasSavedKey: true });
     const tree = await f.ready(), markup = renderToStaticMarkup(tree);
-    expect(markup).toContain('Подключение AI');
+    expect(markup).toContain('aria-label="Подключение AI"');
+    expect(markup).not.toContain('<details');
     expect(markup).toContain('type="password"');
     expect(markup).toContain('autoComplete="off"');
     expect(markup).toContain('разрешённая память Wisp передаются OpenAI');
@@ -128,16 +128,13 @@ describe('AI connection settings', () => {
     expect(renderToStaticMarkup(f.render())).toContain('Перезапускаем Wisp в офлайн-режиме. Память сохранится');
   });
 
-  it('clears drafts when the section collapses, the menu closes or stream changes', async () => {
+  it('clears drafts when settings close or the stream changes', async () => {
     const f = fixture();
     enter(await f.ready(), 'synthetic-key-one');
-    element(f.render(), 'details').onToggle?.({ currentTarget: { open: false } });
-    expect(element(f.render(), 'input').value).toBe('');
-    enter(f.render(), 'synthetic-key-two');
     f.setOpen(false); expect(f.render()).toBeNull();
     f.setOpen(true);
     expect(element(await f.ready(), 'input').value).toBe('');
-    enter(f.render(), 'synthetic-key-three');
+    enter(f.render(), 'synthetic-key-two');
     f.setStream('stream-2');
     expect(element(await f.ready(), 'input').value).toBe('');
     expect(f.bridge.configure).not.toHaveBeenCalled();

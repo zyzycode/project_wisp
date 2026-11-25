@@ -39,7 +39,8 @@ export function ObservationSettings({ bridge, streamId, open }: Props) {
     finally { if (lifecycle.current === epoch) setBusy(false); }
   };
   if (!open || !bridge) return null;
-  return <details className="menu-section"><summary>Наблюдение</summary>
+  return <section className="observation-settings menu-section" aria-label="Наблюдение">
+    <h3 className="menu-settings-heading">Наблюдение</h3>
     <p>{OBSERVATION_DISCLOSURE}</p>
     <p>Настройки хранятся только в памяти: после перезапуска список приложений и согласие очищаются. Хранение уже отправленных данных определяется политикой backend и AI-провайдера; локальное удаление их не отзывает.</p>
     <p role="status">{state ? state.reason ? REASONS[state.reason] : 'Наблюдение доступно' : 'Загрузка настроек'}</p>
@@ -56,5 +57,5 @@ export function ObservationSettings({ bridge, streamId, open }: Props) {
       <button type="button" onClick={() => { void command({ type: state.previewOpen ? 'preview-close' : 'preview-open' }); }}>{state.previewOpen ? 'Закрыть preview' : 'Показать preview'}</button>
       {state.previewOpen && <div aria-label="Observation preview">{state.preview ? <><p>{state.preview.appName}</p><p>{state.preview.windowTitle || '(пустой заголовок)'}</p></> : <p>Нет разрешённого актуального окна</p>}</div>}
     </fieldset>}
-  </details>;
+  </section>;
 }

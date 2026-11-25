@@ -109,10 +109,8 @@ export function AIConnectionSettings({ bridge, streamId, open, initiative, initi
       ? 'Ключ удалён. Перезапускаем Wisp в офлайн-режиме. Память сохранится.'
       : busy ? 'Сохраняем настройки…' : state ? connectionStatus(state)
         : error ? 'Настройки подключения недоступны.' : 'Загружаем настройки подключения…';
-  return <details className="ai-connection-settings menu-section" onToggle={event => {
-    if (!event.currentTarget.open) setApiKey('');
-  }}>
-    <summary>Подключение AI</summary>
+  return <section className="ai-connection-settings menu-section" aria-label="Подключение AI">
+    <h3 className="menu-settings-heading">Подключение AI</h3>
     <p>OpenAI</p>
     <p role="status" aria-live="polite">{statusText}</p>
     {error && <p role="alert">{error}</p>}
@@ -137,5 +135,5 @@ export function AIConnectionSettings({ bridge, streamId, open, initiative, initi
     </>}
     {external && <p>Личный ключ здесь не используется. Настройки внешнего сервера меняются отдельно.</p>}
     <InitiativeSettings bridge={initiative} status={initiativeStatus} streamId={streamId} open={open} />
-  </details>;
+  </section>;
 }
