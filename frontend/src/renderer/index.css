@@ -436,26 +436,24 @@ html, body {
 .debug-log-error { color: #f87171; }
 .debug-log-empty { color: #64748b; }
 
-/* Compact Desktop Pet Context Menu */
+/* Desktop pet context menu */
 .wisp-context-menu {
-  position: absolute;
+  position: fixed;
   top: 12px;
   right: 12px;
-  bottom: 12px;
-  width: 340px;
-  max-height: calc(100% - 24px);
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 0;
-  background: rgba(15, 23, 42, 0.94);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(168, 85, 247, 0.35);
+  background: #101728;
+  border: 1px solid #514168;
   border-radius: 14px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 20px rgba(168, 85, 247, 0.18);
-  color: #ffffff;
-  font-size: 11px;
+  box-shadow: 0 14px 28px #0008, 0 0 18px #a855f72b;
+  color: #f1f5f9;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
   animation: slideInMenu 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: default;
   z-index: 100;
@@ -463,116 +461,115 @@ html, body {
 
 .menu-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px 8px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
-}
-
-.menu-header-left {
-  display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 48px;
+  padding: 7px 12px;
+  background: linear-gradient(115deg, #28213b, #171d30 72%);
+  border-bottom: 1px solid #332e4a;
+  flex-shrink: 0;
 }
 
 .menu-title {
-  font-size: 12px;
+  margin: 0;
+  color: #f5edff;
+  font-size: 16px;
   font-weight: 700;
-  color: #c084fc;
-  letter-spacing: 0.3px;
+  line-height: 1.25;
 }
+
+.menu-title:focus { outline: none; }
 
 .menu-status-pill {
-  background: rgba(168, 85, 247, 0.18);
-  border: 1px solid rgba(168, 85, 247, 0.35);
+  border: 1px solid #64517d;
   border-radius: 999px;
   padding: 2px 8px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #d8b4fe;
-}
-
-.menu-close-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 3px 6px;
-  border-radius: 6px;
-  transition: all 0.15s;
-  line-height: 1;
-}
-
-.menu-close-btn:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.menu-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  padding: 6px 14px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  flex-shrink: 0;
-}
-
-.menu-tab-btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
-
-.menu-tab-btn:focus-visible { outline: 2px solid #c084fc; outline-offset: 1px; }
-
-.menu-tab-btn {
-  min-height: 34px;
-  padding: 5px 8px;
+  color: #ead9fc;
+  background: #352b4a;
   font-size: 11px;
-  font-weight: 600;
-  color: #94a3b8;
+}
+
+.menu-close-btn,
+.menu-back-btn {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 7px;
+  color: #cfd6e5;
   cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
+  font: inherit;
 }
 
-.menu-tab-btn:hover {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.05);
+.menu-close-btn { margin-inline-start: auto; }
+.menu-back-btn { font-size: 24px; line-height: 1; }
+
+.menu-close-btn:hover,
+.menu-back-btn:hover {
+  color: #fff;
+  background: #34294a;
+  border-color: #625079;
 }
 
-.menu-tab-btn.active {
-  color: #ffffff;
-  background: rgba(168, 85, 247, 0.25);
-  border-color: rgba(168, 85, 247, 0.45);
+.wisp-context-menu :is(button, summary, select, input, a):focus-visible {
+  outline: 2px solid #e0b7ff;
+  outline-offset: 2px;
 }
 
 .menu-scroll-body {
-  flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
-  padding: 10px 14px;
+  overscroll-behavior: contain;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   min-height: 0;
+  scrollbar-color: #685386 transparent;
+  scrollbar-width: thin;
 }
 
-.menu-scroll-body::-webkit-scrollbar {
-  width: 4px;
+.menu-scroll-body > * { flex-shrink: 0; }
+
+.menu-navigation,
+.menu-settings {
+  display: grid;
+  gap: 6px;
 }
 
-.menu-scroll-body::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
+.menu-settings > details {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #414963;
+  border-radius: 8px;
 }
 
-.menu-scroll-body::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.35);
-  border-radius: 4px;
+.menu-settings > details[open] {
+  background: #192338;
 }
+
+.menu-settings > details > summary {
+  min-height: 24px;
+  padding-block: 2px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.menu-settings fieldset { min-inline-size: 0; }
+
+.menu-status {
+  display: grid;
+  gap: 3px;
+  border-top: 1px solid #333d56;
+  padding-top: 8px;
+  color: #c4cde0;
+  font-size: 12px;
+}
+
+.menu-status p { margin: 0; }
 
 .menu-section {
   display: flex;
@@ -687,36 +684,68 @@ html, body {
 
 .menu-btn-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
-.menu-action-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.menu-action-btn,
+.menu-page-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 9px;
+  border: 1px solid #414963;
+  border-radius: 8px;
+  background: #1b263b;
   color: #f1f5f9;
-  padding: 6px 8px;
-  font-size: 10.5px;
-  font-weight: 500;
-  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font: inherit;
+  text-align: start;
 }
 
-.menu-action-btn:hover {
-  background: rgba(168, 85, 247, 0.22);
-  border-color: rgba(168, 85, 247, 0.45);
-  transform: translateY(-1px);
+.menu-page-btn {
+  justify-content: space-between;
+  background: #25243b;
+  border-color: #514669;
+  font-weight: 600;
 }
 
-.menu-action-btn.active {
-  background: rgba(168, 85, 247, 0.35);
-  border-color: #a855f7;
-  color: #ffffff;
+.menu-page-btn > span { color: #dab5f6; font-size: 17px; line-height: 1; }
+
+.menu-action-btn:not(:disabled):hover,
+.menu-page-btn:hover {
+  background: #34294a;
+  border-color: #8b6ab1;
+}
+
+.menu-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+}
+
+.menu-action-btn.active,
+.menu-toggle[aria-pressed='true'] {
+  background: #382851;
+  border-color: #936ac5;
+  color: #fff;
+}
+
+.menu-toggle { justify-content: space-between; }
+
+.menu-toggle-state {
+  flex-shrink: 0;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: #374158;
+  color: #e2e8f0;
+  font-size: 11px;
+}
+
+.menu-toggle[aria-pressed='true'] .menu-toggle-state {
+  background: #6b4298;
+  color: #fff;
 }
 
 .menu-divider {
@@ -726,45 +755,32 @@ html, body {
 }
 
 .menu-quit-btn {
-  width: 100%;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  align-self: start;
+  min-height: 32px;
+  padding: 4px 8px;
+  margin-inline-start: -4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
   color: #fca5a5;
-  padding: 6px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
+  font: inherit;
+  text-align: start;
 }
 
 .menu-quit-btn:hover {
-  background: rgba(239, 68, 68, 0.28);
-  border-color: #ef4444;
-  color: #ffffff;
+  background: #412533;
+  border-color: #905360;
+  color: #ffe4e6;
 }
 
-.telemetry-panel {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 10px 14px;
-  min-height: 0;
+@media (max-width: 285px) {
+  .menu-btn-grid { grid-template-columns: minmax(0, 1fr); }
+  .wisp-context-menu .menu-anim-4col-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.telemetry-panel::-webkit-scrollbar {
-  width: 4px;
-}
-
-.telemetry-panel::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
-}
-
-.telemetry-panel::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.35);
-  border-radius: 4px;
+@media (prefers-reduced-motion: reduce) {
+  .wisp-context-menu { animation: none; }
 }
 
 @keyframes slideInMenu {

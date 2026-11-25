@@ -1,8 +1,6 @@
-import { cloneElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  calculateContextMenuPosition,
   ContextMenu,
   createInteractionMenuActions,
   subscribeToOutsideMouseDown,
@@ -31,19 +29,21 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toBe('');
   });
 
-  it('renders actions without theme or character size controls', () => {
+  it('puts frequent actions and section entry points on the main page', () => {
     const menu = (
       <ContextMenu
         isOpen
-        activeTab="main"
         tone="affectionate"
         autoWanderEnabled
+        quietMode
+        onToggleQuietMode={vi.fn()}
         isSleeping={false}
         debugHudEnabled
         debugContent={<div>Debug Telemetry</div>}
         isAlwaysOnTop={true}
         voiceContent={<div>Audio device selector</div>}
         aiConnectionContent={<div>Подключение AI</div>}
+        observationContent={<div>Наблюдение</div>}
         onClose={vi.fn()}
         onPet={vi.fn()}
         onPlay={vi.fn()}
@@ -54,57 +54,33 @@ describe('Renderer: ContextMenu', () => {
         onToggleDebugHud={vi.fn()}
         onToggleAlwaysOnTop={vi.fn()}
         onResetPosition={vi.fn()}
-        previewContent={<AnimationPreviewControls
-          bodyKeys={['body_idle', 'body_walk', 'body_petting', 'body_thinking', 'body_sit', 'body_lie', 'body_stand_up', 'body_run', 'body_surface_touch']}
-          faceKeys={['face_happy', 'face_sad', 'face_angry']}
-          bodyKey="body_sit" faceKey={null} loop
-          onSelectBody={vi.fn()} onSelectFace={vi.fn()} onToggleLoop={vi.fn()} onReplay={vi.fn()}
-        />}
+        previewContent={<div>Animation preview</div>}
         onQuit={vi.fn()}
       />
     );
 
     const markup = renderToStaticMarkup(menu);
-    const previewMarkup = renderToStaticMarkup(cloneElement(menu, { activeTab: 'animations' }));
-    const voiceMarkup = renderToStaticMarkup(cloneElement(menu, { activeTab: 'voice', debugHudEnabled: false }));
-    expect(markup).not.toContain('body_idle');
+    expect(markup).not.toContain('Animation preview');
     expect(markup).not.toContain('Audio device selector');
-    expect(previewMarkup).not.toContain('Подключение AI');
-    expect(voiceMarkup).toContain('Audio device selector');
-    expect(voiceMarkup).not.toContain('body_idle');
-    expect(voiceMarkup).not.toContain('Подключение AI');
-    expect(voiceMarkup).not.toContain('>Debug<');
+    expect(markup).not.toContain('Подключение AI');
+    expect(markup).not.toContain('Наблюдение');
+    expect(markup).not.toContain('Сбросить позицию');
+    expect(markup).not.toContain('Отладка');
+    expect(markup).not.toContain('Debug Telemetry');
+    expect(markup.match(/<button\b/g)).toHaveLength(10);
 
-    expect(markup).toContain('Wisp Companion');
-    expect(markup).toContain('Подключение AI');
-    expect(markup).toContain('Автономность приостановлена');
+    expect(markup).toContain('>Wisp</h2>');
+    expect(markup).toContain('Автономность на паузе. После закрытия возобновится.');
     expect(markup).toContain('Нежное');
     expect(markup).toContain('Погладить');
     expect(markup).toContain('Поиграть');
     expect(markup).toContain('Покормить');
     expect(markup).toContain('Подумать');
     expect(markup).toContain('Усыпить');
-    expect(markup).toContain('После закрытия: автономность ВКЛ');
-    expect(markup).toContain('Анимации и позы');
-    expect(previewMarkup).toContain('body_surface_touch');
-    expect(previewMarkup).toContain('С начала');
-    expect(previewMarkup).toContain('Сбросить просмотр');
-    expect(previewMarkup).toContain('Повтор: ВКЛ');
-    expect(previewMarkup).toContain('Выражения лица');
-    expect(previewMarkup).toContain('face_happy');
-    expect(previewMarkup).toContain('face_sad');
-    expect(previewMarkup).toContain('face_angry');
-    expect(previewMarkup).toContain('body_idle');
-    expect(previewMarkup).toContain('body_walk');
-    expect(previewMarkup).toContain('body_petting');
-    expect(previewMarkup).toContain('body_thinking');
-    expect(previewMarkup).toContain('body_sit');
-    expect(previewMarkup).toContain('body_lie');
-    expect(previewMarkup).toContain('body_stand_up');
-    expect(previewMarkup).toContain('body_run');
-    expect(markup).toContain('Сбросить позицию');
-    expect(markup).toContain('Поверх окон: ВКЛ');
-    expect(markup).toContain('Debug HUD: ВЫКЛ');
+    expect(markup).toContain('Тихий режим');
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).toContain('data-menu-link="settings"');
+    expect(markup).toContain('data-menu-link="tools"');
     expect(markup).not.toContain('Темы оформления');
     expect(markup).not.toContain('menu-theme');
     expect(markup).not.toContain('Космический');
@@ -115,62 +91,29 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).not.toContain('Увеличить');
     expect(markup).not.toContain('100%');
     expect(markup).toContain('Выйти из приложения');
-    expect(markup).toContain('Главное');
-    expect(markup).toContain('Debug');
-    // Verify it doesn't force inline position style so docked CSS layout applies
-    expect(markup).not.toContain('style="left:');
   });
 
-  it('renders debug panel when activeTab is debug and debugHudEnabled is true', () => {
-    const markup = renderToStaticMarkup(
-      <ContextMenu
-        isOpen
-        activeTab="debug"
-        autoWanderEnabled
-        isSleeping={false}
-        debugHudEnabled
-        debugContent={<div data-testid="debug-view">Telemetry Active</div>}
-        onClose={vi.fn()}
-        onPet={vi.fn()}
-        onThink={vi.fn()}
-        onToggleSleep={vi.fn()}
-        onToggleWander={vi.fn()}
-        onQuit={vi.fn()}
-      />
-    );
+  it('keeps the animation preview commands and named face and body poses', () => {
+    const bodyKeys = [
+      'body_idle', 'body_walk', 'body_petting', 'body_thinking', 'body_sit',
+      'body_lie', 'body_stand_up', 'body_run', 'body_surface_touch',
+    ];
+    const faceKeys = ['face_happy', 'face_sad', 'face_angry'];
+    const markup = renderToStaticMarkup(<AnimationPreviewControls
+      bodyKeys={bodyKeys}
+      faceKeys={faceKeys}
+      bodyKey="body_sit"
+      faceKey={null}
+      loop
+      onSelectBody={vi.fn()}
+      onSelectFace={vi.fn()}
+      onToggleLoop={vi.fn()}
+      onReplay={vi.fn()}
+    />);
 
-    expect(markup).toContain('Telemetry Active');
-    expect(markup).toContain('telemetry-panel');
-    expect(markup).not.toContain('menu-scroll-body');
-  });
-
-  it('applies positioned style when explicit position anchor is provided', () => {
-    const markup = renderToStaticMarkup(
-      <ContextMenu
-        isOpen
-        position={{ x: 100, y: 50 }}
-        autoWanderEnabled
-        isSleeping={false}
-        debugHudEnabled={false}
-        onClose={vi.fn()}
-        onPet={vi.fn()}
-        onThink={vi.fn()}
-        onToggleSleep={vi.fn()}
-        onToggleWander={vi.fn()}
-        onQuit={vi.fn()}
-      />
-    );
-
-    expect(markup).toContain('style="left:100px;top:50px;right:auto;bottom:auto;width:340px"');
-  });
-
-  it('clamps cursor-based position inside every viewport edge', () => {
-    expect(calculateContextMenuPosition({ x: -100, y: -50 }, { width: 880, height: 580 }))
-      .toEqual({ x: 12, y: 12 });
-    expect(calculateContextMenuPosition({ x: 999, y: 999 }, { width: 880, height: 580 }))
-      .toEqual({ x: 528, y: 68 });
-    expect(calculateContextMenuPosition({ x: 100, y: 100 }, { width: 200, height: 180 }))
-      .toEqual({ x: 12, y: 12 });
+    for (const label of [...bodyKeys, ...faceKeys, 'С начала', 'Сбросить просмотр', 'Повтор: ВКЛ', 'Выражения лица']) {
+      expect(markup).toContain(label);
+    }
   });
 
   it('binds interaction callbacks to the expected menu actions', () => {
@@ -188,8 +131,6 @@ describe('Renderer: ContextMenu', () => {
     expect(callbacks.onPlay).toHaveBeenCalledOnce();
     expect(callbacks.onFeed).toHaveBeenCalledOnce();
     expect(callbacks.onThink).toHaveBeenCalledOnce();
-
-
   });
 
   it('unsubscribes mouse event listener correctly on outside clicks', () => {
@@ -224,7 +165,7 @@ describe('external window status in ordinary menu', () => {
     ['unsupported', 'Опоры на окнах не поддерживаются'], ['unavailable', 'Окна недоступны'],
     [undefined, 'Доступность окон пока неизвестна'],
   ] as const)('shows %s without enabling debug', (externalWindowSupport, label) => {
-    const markup = renderToStaticMarkup(<ContextMenu isOpen activeTab="main" externalWindowSupport={externalWindowSupport}
+    const markup = renderToStaticMarkup(<ContextMenu isOpen externalWindowSupport={externalWindowSupport}
       autoWanderEnabled isSleeping={false} debugHudEnabled={false}
       onClose={vi.fn()} onPet={vi.fn()} onThink={vi.fn()} onToggleSleep={vi.fn()} onToggleWander={vi.fn()}
       onQuit={vi.fn()} />);

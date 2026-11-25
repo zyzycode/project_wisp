@@ -3,7 +3,7 @@ import { ScreenObservation } from './Chat/ScreenObservation';
 import { ObservationSettings } from './Interaction/ObservationSettings';
 import { AIConnectionSettings } from './Interaction/AIConnectionSettings';
 import { WindowHelpCard } from './Interaction/WindowHelpCard';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { RenderPresentationState } from '../render-engine';
 import { PET_PRESENTATION_LAYOUT, calculateWindowRootPivotOffset } from '../../shared/pet-presentation-layout';
 import { CharacterRenderer } from './Character/CharacterRenderer';
@@ -26,6 +26,8 @@ export interface PetOverlayProps {
 export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
   const [presentation, setPresentation] = useState<RenderPresentationState>();
   const [assetLoadError, setAssetLoadError] = useState<string>();
+  const { setMenuOpen } = model;
+  const closeMenu = useCallback(() => setMenuOpen(false), [setMenuOpen]);
   const labelAnchor = calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT);
   const debugHud = (
     <DebugHUD
@@ -115,7 +117,7 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
           onToggleLoop={model.togglePreviewLoop}
           onReplay={model.replayPreview}
         />}
-        onClose={() => model.setMenuOpen(false)}
+        onClose={closeMenu}
         onPet={model.petFromMenu}
         onPlay={model.playFromMenu}
         onFeed={model.feedFromMenu}

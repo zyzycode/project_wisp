@@ -137,19 +137,43 @@ let lifeFixture; let lifeInputs;
     record('context-menu-injected-input', 'PASS');
     await sleep(200);
     await evaluate(`if(!document.querySelector('.wisp-context-menu')) document.querySelector('.wisp-character-root').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))`);
+    assert.equal(await evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage`), 'main');
+    assert.equal(await evaluate(`(() => {
+      const body = document.querySelector('.menu-scroll-body');
+      const viewport = body.getBoundingClientRect();
+      const actions = [...body.querySelectorAll('.menu-btn-grid button, [data-menu-link="settings"]')];
+      return actions.length === 7 && actions.every(action => {
+        const rect = action.getBoundingClientRect();
+        return rect.top >= viewport.top && rect.bottom <= viewport.bottom;
+      });
+    })()`), true, 'Frequent actions and settings visible without scrolling');
     assert.equal(await evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), false);
     const mainFrame=await win.webContents.capturePage(); fs.writeFileSync(path.join(output,'menu-main.png'),mainFrame.toPNG());
-    await evaluate(`Array.from(document.querySelectorAll('[role="tab"]')).find(b=>b.textContent==='Анимации и позы').click()`);
-    await until(() => evaluate(`Boolean(document.querySelector('[aria-label="Просмотр анимаций"]'))`), 'Animations tab');
+    const openMenuPage = async page => {
+      await evaluate(`document.querySelector('[data-menu-link="${page}"]').click()`);
+      await until(() => evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage === '${page}'`), page + ' page');
+    };
+    const menuBack = () => evaluate('document.querySelector(".menu-back-btn").click()');
+    const menuKey = keyCode => {
+      win.webContents.sendInputEvent({ type: 'keyDown', keyCode });
+      if (keyCode === 'Enter') win.webContents.sendInputEvent({ type: 'char', keyCode: '\r' });
+      win.webContents.sendInputEvent({ type: 'keyUp', keyCode });
+    };
+    menuKey('Tab');
+    await until(() => evaluate(`document.activeElement?.matches('.menu-close-btn:focus-visible')`), 'Visible keyboard focus');
+    await openMenuPage('tools');
+    await openMenuPage('animations');
+    await until(() => evaluate(`Boolean(document.querySelector('[aria-label="Просмотр анимаций"]'))`), 'Animation preview');
     assert.equal(await evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), false);
-    await evaluate(`(() => {const tab=Array.from(document.querySelectorAll('[role="tab"]')).find(b=>b.textContent==='Анимации и позы');tab.focus();tab.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));})()`);
-    await until(() => evaluate(`document.activeElement?.textContent==='Голос и звук' && document.activeElement?.getAttribute('aria-selected')==='true'`), 'Keyboard voice tab');
-    await evaluate(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}))`);
-    await until(() => evaluate(`document.activeElement?.textContent==='Анимации и позы' && document.activeElement?.getAttribute('aria-selected')==='true'`), 'Keyboard animations tab');
-    assert.equal(await evaluate(`Array.from(document.querySelectorAll('[role="tab"]')).every(b=>b.scrollWidth<=b.clientWidth)`), true);
     await evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
     const animationsFrame=await win.webContents.capturePage(); fs.writeFileSync(path.join(output,'menu-animations.png'),animationsFrame.toPNG());
-    await evaluate(`Array.from(document.querySelectorAll('[role="tab"]')).find(b=>b.textContent==='Голос и звук').click()`);
+    menuKey('Tab');
+    await until(() => evaluate(`document.activeElement?.matches('.menu-back-btn:focus-visible')`), 'Keyboard back control');
+    menuKey('Enter');
+    await until(() => evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage === 'tools'`), 'Keyboard back to tools');
+    await menuBack();
+    await openMenuPage('settings');
+    await openMenuPage('voice');
     await until(() => evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), 'Audio settings section');
     await evaluate(`(() => {window.__speechStarts=0; window.__sinkIds=[];
       const start=AudioBufferSourceNode.prototype.start; AudioBufferSourceNode.prototype.start=function(...args){window.__speechStarts++;window.__speechStartedAt=Date.now();return start.apply(this,args);};
@@ -166,7 +190,12 @@ let lifeFixture; let lifeInputs;
     await until(async () => {const s=await evaluate('window.wispAPI.voiceOutput.readStatus()');return s.ok&&!s.value.active;}, 'Test tone lease acknowledged');
     await evaluate('window.wispAPI.voiceInput.disable()');
     await until(() => evaluate(`Array.from(document.querySelectorAll('.chat-voice-controls button')).some(b=>b.textContent==='Включить микрофон')`), 'Microphone explicitly off for playback');
-    await evaluate(`if(!document.querySelector('.wisp-context-menu')) document.querySelector('.wisp-character-root').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))`);
+    if (!await evaluate(`Boolean(document.querySelector('.wisp-context-menu'))`)) {
+      await evaluate(`document.querySelector('.wisp-character-root').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))`);
+      await until(() => evaluate(`document.querySelector('.wisp-context-menu')?.dataset.menuPage === 'main'`), 'Reopened main menu');
+      await openMenuPage('settings');
+      await openMenuPage('voice');
+    }
     await until(() => evaluate(`Boolean(document.querySelector('.audio-output-settings'))`), 'Audio settings for microphone-off tone');
     await until(() => evaluate(`Array.from(document.querySelectorAll('.audio-output-settings button')).some(b=>b.textContent==='Проверить звук'&&!b.disabled)`), 'Test tone control ready');
     await evaluate(`Array.from(document.querySelectorAll('.audio-output-settings button')).find(b=>b.textContent==='Проверить звук').click()`);
@@ -175,8 +204,8 @@ let lifeFixture; let lifeInputs;
     await until(async () => {const s=await evaluate('window.wispAPI.voiceOutput.readStatus()');return s.ok&&!s.value.active;}, 'Microphone-off tone acknowledged');
     const audioFrame=await win.webContents.capturePage(); fs.writeFileSync(path.join(output,'voice-settings.png'),audioFrame.toPNG());
     record('voice-output-selected-device-settings', 'PASS', 'Persisted explicit device → setSinkId → tone/ack with microphone on AND off');
-    await evaluate('document.querySelector(".menu-close-btn").click()');
-    await until(() => evaluate('!document.querySelector(".wisp-context-menu")'), 'Menu close');
+    menuKey('Escape');
+    await until(() => evaluate('!document.querySelector(".wisp-context-menu")'), 'Escape dismissal');
     // Injected DOM pointer events exercise React → typed IPC → Main, not global OS pointer capture.
     const before = await evaluate('window.wispAPI.getPosition()');
     await evaluate(`(() => { const target=document.querySelector('.wisp-character-root'); const options={bubbles:true,pointerId:1,button:0,buttons:1,screenX:300,screenY:300}; target.dispatchEvent(new PointerEvent('pointerdown',options)); window.dispatchEvent(new PointerEvent('pointermove',{...options,screenX:320})); })()`);

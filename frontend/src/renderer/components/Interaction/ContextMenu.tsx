@@ -1,20 +1,12 @@
-import React, { useState, useEffect, useRef, useId } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import type { SynthesizedEmotionalTone } from '../../../domain/character/types';
-
 import type { BrainStateDTO } from '../../../shared/ipc-contracts';
 
-export type ContextMenuTab = 'main' | 'animations' | 'voice' | 'debug';
-
-export interface ContextMenuPosition {
-  x: number;
-  y: number;
-}
+type ContextMenuPage = 'main' | 'settings' | 'voice' | 'window' | 'tools' | 'animations' | 'debug';
 
 export interface ContextMenuProps {
   isOpen: boolean;
   externalWindowSupport?: BrainStateDTO['externalWindowSupport'];
-  position?: ContextMenuPosition;
-  activeTab?: ContextMenuTab;
   tone?: SynthesizedEmotionalTone;
   autoWanderEnabled: boolean;
   quietMode?: boolean;
@@ -23,12 +15,11 @@ export interface ContextMenuProps {
   debugHudEnabled: boolean;
   debugHudVisible?: boolean;
   isAlwaysOnTop?: boolean;
-  debugContent?: React.ReactNode;
-  previewContent?: React.ReactNode;
-  aiConnectionContent?: React.ReactNode;
-  observationContent?: React.ReactNode;
-  voiceContent?: React.ReactNode;
-  onTabChange?: (tab: ContextMenuTab) => void;
+  debugContent?: ReactNode;
+  previewContent?: ReactNode;
+  aiConnectionContent?: ReactNode;
+  observationContent?: ReactNode;
+  voiceContent?: ReactNode;
   onClose: () => void;
   onPet: () => void;
   onPlay?: () => void;
@@ -42,6 +33,25 @@ export interface ContextMenuProps {
   onQuit: () => void;
 }
 
+const PAGE_TITLES: Record<ContextMenuPage, string> = {
+  main: 'Wisp',
+  settings: 'Настройки',
+  voice: 'Голос и звук',
+  window: 'Поведение и окно',
+  tools: 'Инструменты',
+  animations: 'Анимации и позы',
+  debug: 'Отладка',
+};
+
+const PARENT_PAGE: Record<Exclude<ContextMenuPage, 'main'>, ContextMenuPage> = {
+  settings: 'main',
+  voice: 'settings',
+  window: 'settings',
+  tools: 'main',
+  animations: 'tools',
+  debug: 'tools',
+};
+
 const TONE_LABELS_RU: Record<SynthesizedEmotionalTone, string> = {
   shy: 'Скромное',
   sleepy: 'Сонное',
@@ -52,18 +62,20 @@ const TONE_LABELS_RU: Record<SynthesizedEmotionalTone, string> = {
   neutral: 'Спокойное',
 };
 
+const SUPPORT_LABELS: Record<NonNullable<BrainStateDTO['externalWindowSupport']>, string> = {
+  available: 'Опоры на окнах доступны',
+  initializing: 'Проверяем доступность окон…',
+  unsupported: 'Опоры на окнах не поддерживаются — используются границы экрана',
+  unavailable: 'Окна недоступны — используются границы экрана',
+};
+
 export interface ContextMenuAction {
   id: string;
   label: string;
   onSelect: () => void;
 }
 
-export function createInteractionMenuActions(callbacks: {
-  onPet: () => void;
-  onPlay?: () => void;
-  onFeed?: () => void;
-  onThink: () => void;
-}): ContextMenuAction[] {
+export function createInteractionMenuActions(callbacks: Pick<ContextMenuProps, 'onPet' | 'onPlay' | 'onFeed' | 'onThink'>): ContextMenuAction[] {
   return [
     { id: 'pet', label: 'Погладить', onSelect: callbacks.onPet },
     ...(callbacks.onPlay ? [{ id: 'play', label: 'Поиграть', onSelect: callbacks.onPlay }] : []),
@@ -75,248 +87,155 @@ export function createInteractionMenuActions(callbacks: {
 export function subscribeToOutsideMouseDown(
   ownerDocument: Document,
   menuElement: Pick<HTMLDivElement, 'contains'>,
-  onClose: () => void
+  onClose: () => void,
 ): () => void {
   const handleMouseDown = (event: MouseEvent): void => {
-    const target = event.target;
-    if (target !== null && !menuElement.contains(target as Node)) onClose();
+    if (event.target !== null && !menuElement.contains(event.target as Node)) onClose();
   };
 
   ownerDocument.addEventListener('mousedown', handleMouseDown);
   return () => ownerDocument.removeEventListener('mousedown', handleMouseDown);
 }
 
-const MENU_MARGIN = 12;
-const MENU_WIDTH = 340;
-const MENU_MAX_HEIGHT = 500;
-
-export function calculateContextMenuPosition(
-  anchor: ContextMenuPosition,
-  viewport: { width: number; height: number }
-): ContextMenuPosition {
-  const availableWidth = Math.max(0, viewport.width - MENU_MARGIN * 2);
-  const availableHeight = Math.max(0, viewport.height - MENU_MARGIN * 2);
-  const renderedWidth = Math.min(MENU_WIDTH, availableWidth);
-  const renderedHeight = Math.min(MENU_MAX_HEIGHT, availableHeight);
-
-  return {
-    x: Math.min(Math.max(MENU_MARGIN, anchor.x), Math.max(MENU_MARGIN, viewport.width - renderedWidth - MENU_MARGIN)),
-    y: Math.min(Math.max(MENU_MARGIN, anchor.y), Math.max(MENU_MARGIN, viewport.height - renderedHeight - MENU_MARGIN)),
-  };
+function keepTabFocus(event: ReactKeyboardEvent<HTMLDivElement>): void {
+  if (event.key !== 'Tab') return;
+  const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+    'button:enabled, input:enabled, select:enabled, textarea:enabled, summary, a[href], [tabindex="0"]',
+  )).filter(control => control.getClientRects().length > 0);
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (!first || !last) return;
+  const active = event.currentTarget.ownerDocument.activeElement;
+  const edge = event.shiftKey ? first : last;
+  if (active === edge || active?.getAttribute('tabindex') === '-1') {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  }
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({
-  isOpen,
-  externalWindowSupport,
-  position,
-  activeTab,
-  tone = 'neutral',
-  autoWanderEnabled,
-  quietMode = false,
-  onToggleQuietMode,
-  isSleeping,
-  debugHudEnabled,
-  debugHudVisible = false,
-  isAlwaysOnTop = false,
-  debugContent,
-  previewContent,
-  aiConnectionContent,
-  observationContent,
-  voiceContent,
-  onTabChange,
-  onClose,
-  onPet,
-  onPlay,
-  onFeed,
-  onThink,
-  onToggleSleep,
-  onToggleWander,
-  onToggleDebugHud,
-  onToggleAlwaysOnTop,
-  onResetPosition,
-  onQuit,
-}) => {
-  const [internalTab, setInternalTab] = useState<ContextMenuTab>('main');
-  const tabId = useId();
+function MenuToggle({ label, enabled, onToggle }: { label: string; enabled: boolean; onToggle?: () => void }) {
+  return <button type="button" className="menu-action-btn menu-toggle" aria-pressed={enabled} onClick={onToggle} disabled={!onToggle}>
+    <span>{label}</span>
+    <span className="menu-toggle-state" aria-hidden="true">{enabled ? 'Вкл' : 'Выкл'}</span>
+  </button>;
+}
+
+export function ContextMenu({ isOpen, ...props }: ContextMenuProps) {
+  return isOpen ? <OpenContextMenu {...props} /> : null;
+}
+
+function OpenContextMenu({
+  externalWindowSupport, tone = 'neutral', autoWanderEnabled,
+  quietMode = false, onToggleQuietMode, isSleeping, debugHudEnabled, debugHudVisible = false,
+  isAlwaysOnTop = false, debugContent, previewContent, aiConnectionContent, observationContent, voiceContent,
+  onClose, onPet, onPlay, onFeed, onThink, onToggleSleep, onToggleWander, onToggleDebugHud,
+  onToggleAlwaysOnTop, onResetPosition, onQuit,
+}: Omit<ContextMenuProps, 'isOpen'>) {
+  const [requestedPage, setPage] = useState<ContextMenuPage>('main');
+  const toolsAvailable = Boolean(previewContent) || debugHudEnabled;
+  const availability: Partial<Record<ContextMenuPage, boolean>> = {
+    voice: Boolean(voiceContent), tools: toolsAvailable, animations: Boolean(previewContent), debug: debugHudEnabled,
+  };
+  const page = availability[requestedPage] === false ? 'main' : requestedPage;
+  const titleId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const previous = menuRef.current?.ownerDocument.activeElement;
+    return () => {
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    bodyRef.current?.scrollTo(0, 0);
+    titleRef.current?.focus({ preventScroll: true });
+  }, [page]);
 
   useEffect(() => {
-    if (!isOpen) return undefined;
     const menuElement = menuRef.current;
-    if (!menuElement) return undefined;
-    const cleanupOutside = subscribeToOutsideMouseDown(document, menuElement, onClose);
+    if (!menuElement) return;
+    const owner = menuElement.ownerDocument;
+    const cleanup = subscribeToOutsideMouseDown(owner, menuElement, onClose);
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault();
+        onClose();
+      }
     };
-    document.addEventListener('keydown', handleKeyDown);
+    owner.addEventListener('keydown', handleKeyDown);
     return () => {
-      cleanupOutside();
-      document.removeEventListener('keydown', handleKeyDown);
+      cleanup();
+      owner.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [onClose]);
 
-  if (!isOpen) return null;
-
-  const tabs: readonly { id: ContextMenuTab; label: string }[] = [
-    { id: 'main', label: 'Главное' },
-    ...(previewContent ? [{ id: 'animations' as const, label: 'Анимации и позы' }] : []),
-    ...(voiceContent ? [{ id: 'voice' as const, label: 'Голос и звук' }] : []),
-    ...(debugHudEnabled ? [{ id: 'debug' as const, label: 'Debug' }] : []),
-  ];
-  const selectedTab = activeTab ?? internalTab;
-  const currentTab = tabs.some(tab => tab.id === selectedTab) ? selectedTab : 'main';
-
-  const handleTabSelect = (tab: ContextMenuTab) => {
-    setInternalTab(tab);
-    onTabChange?.(tab);
-  };
-
-  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 880;
-  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 580;
-  const menuPosition = position === undefined
-    ? undefined
-    : calculateContextMenuPosition(position, { width: viewportWidth, height: viewportHeight });
-  const positionedStyle = menuPosition === undefined ? undefined : {
-    left: menuPosition.x,
-    top: menuPosition.y,
-    right: 'auto',
-    bottom: 'auto',
-    width: Math.min(MENU_WIDTH, Math.max(0, viewportWidth - MENU_MARGIN * 2)),
-  };
-  const interactionActions = createInteractionMenuActions({ onPet, onPlay, onFeed, onThink });
+  const pageButton = (destination: ContextMenuPage) => (
+    <button type="button" className="menu-page-btn" data-menu-link={destination} onClick={() => setPage(destination)}>
+      {PAGE_TITLES[destination]}<span aria-hidden="true">›</span>
+    </button>
+  );
 
   return (
-    <div
-      ref={menuRef}
-      className={`wisp-context-menu tab-${currentTab}`}
-      data-wisp-interactive="true"
-      style={positionedStyle}
-      onClick={(e) => e.stopPropagation()}
-      onContextMenu={(e) => e.preventDefault()}
-      role="dialog"
-      aria-label="Wisp Companion Menu"
-    >
-      <div className="menu-header">
-        <div className="menu-header-left">
-          <span className="menu-title">Wisp Companion</span>
-          <span className="menu-status-pill">
-            {TONE_LABELS_RU[tone] ?? tone}
-          </span>
-        </div>
-        <button type="button" className="menu-close-btn" aria-label="Close control panel" onClick={onClose}>
-          ✕
-        </button>
-      </div>
+    <div ref={menuRef} className="wisp-context-menu" data-wisp-interactive="true" data-menu-page={page}
+      onClick={event => event.stopPropagation()} onKeyDown={keepTabFocus}
+      onContextMenu={event => event.preventDefault()} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <header className="menu-header">
+        {page !== 'main' && <button type="button" className="menu-back-btn" aria-label="Назад"
+          onClick={() => setPage(PARENT_PAGE[page])}>‹</button>}
+        <h2 ref={titleRef} id={titleId} className="menu-title" tabIndex={-1}>{PAGE_TITLES[page]}</h2>
+        {page === 'main' && <span className="menu-status-pill">{TONE_LABELS_RU[tone] ?? tone}</span>}
+        <button type="button" className="menu-close-btn" aria-label="Закрыть меню" onClick={onClose}>✕</button>
+      </header>
 
-      <div className="menu-section" role="status">
-        Автономность приостановлена, пока открыто меню.
-      </div>
-
-      <div className="menu-tabs" role="tablist" aria-label="Разделы меню"
-        onKeyDown={event => {
-          const index = tabs.findIndex(tab => tab.id === currentTab);
-          const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
-            : event.key === 'ArrowRight' ? (index + 1) % tabs.length
-            : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : null;
-          if (next === null) return;
-          event.preventDefault(); handleTabSelect(tabs[next]!.id);
-          event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
-        }}>
-        {tabs.map(tab => <button key={tab.id} type="button" role="tab"
-          id={`${tabId}-${tab.id}`} aria-controls={`${tabId}-panel`}
-          aria-selected={currentTab === tab.id} tabIndex={currentTab === tab.id ? 0 : -1}
-          className={`menu-tab-btn ${currentTab === tab.id ? 'active' : ''}`}
-          onClick={() => handleTabSelect(tab.id)}>{tab.label}</button>)}
-      </div>
-
-      {currentTab === 'debug' && debugHudEnabled ? (
-        <div className="telemetry-panel" role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-debug`}>
-          {debugContent ?? <div className="debug-log-empty">Нет данных отладки</div>}
-        </div>
-      ) : currentTab === 'animations' || currentTab === 'voice' ? (
-        <div className="menu-scroll-body" role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-${currentTab}`}>
-          {currentTab === 'animations' ? previewContent : voiceContent}
-        </div>
-      ) : (
-        <div className="menu-scroll-body" role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-main`}>
-          <p role="status" style={{ fontSize: 12, margin: '8px 0' }}>
-            {externalWindowSupport === 'available' ? 'Опоры на окнах доступны'
-              : externalWindowSupport === 'initializing' ? 'Проверяем доступность окон…'
-              : externalWindowSupport === 'unsupported' ? 'Опоры на окнах не поддерживаются — используются границы экрана'
-              : externalWindowSupport === 'unavailable' ? 'Окна недоступны — используются границы экрана'
-              : 'Доступность окон пока неизвестна'}
-          </p>
-          {aiConnectionContent}
-          {observationContent}
-          {/* Actions */}
-          <div className="menu-section">
-            <div className="menu-section-title">Действия</div>
-            <div className="menu-btn-grid">
-              {interactionActions.map((action) => (
-                <button key={action.id} type="button" className="menu-action-btn" onClick={action.onSelect}>
-                  {action.label}
-                </button>
-              ))}
-              <button type="button" className={`menu-action-btn ${quietMode ? 'active' : ''}`} onClick={onToggleQuietMode}>
-                {quietMode ? 'Тихий режим: ВКЛ' : 'Тихий режим: ВЫКЛ'}
-              </button>
-              <button type="button" className="menu-action-btn" onClick={onToggleSleep}>
-                {isSleeping ? 'Разбудить' : 'Усыпить'}
-              </button>
-              <button
-                type="button"
-                className={`menu-action-btn ${autoWanderEnabled ? 'active' : ''}`}
-                onClick={onToggleWander}
-              >
-                {autoWanderEnabled ? 'После закрытия: автономность ВКЛ' : 'После закрытия: автономность ВЫКЛ'}
-              </button>
-            </div>
-          </div>
-
-          {/* Window & Tools */}
-          {onResetPosition || onToggleAlwaysOnTop || (debugHudEnabled && onToggleDebugHud) ? (
-            <div className="menu-section">
-              <div className="menu-divider" />
-              <div className="menu-section-title">Окно и инструменты</div>
-              <div className="menu-btn-grid">
-                {onResetPosition ? (
-                  <button type="button" className="menu-action-btn" onClick={onResetPosition}>
-                    Сбросить позицию
-                  </button>
-                ) : null}
-                {onToggleAlwaysOnTop ? (
-                  <button
-                    type="button"
-                    className={`menu-action-btn ${isAlwaysOnTop ? 'active' : ''}`}
-                    aria-pressed={isAlwaysOnTop}
-                    onClick={onToggleAlwaysOnTop}
-                  >
-                    Поверх окон: {isAlwaysOnTop ? 'ВКЛ' : 'ВЫКЛ'}
-                  </button>
-                ) : null}
-                {debugHudEnabled && onToggleDebugHud ? (
-                  <button
-                    type="button"
-                    className={`menu-action-btn ${debugHudVisible ? 'active' : ''}`}
-                    aria-pressed={debugHudVisible}
-                    onClick={onToggleDebugHud}
-                  >
-                    Debug HUD: {debugHudVisible ? 'ВКЛ' : 'ВЫКЛ'}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Quit */}
-          <div className="menu-section">
-            <div className="menu-divider" />
-            <button type="button" className="menu-quit-btn" onClick={onQuit}>
-              Выйти из приложения
+      <div ref={bodyRef} className="menu-scroll-body">
+        {page === 'main' && <>
+          <div className="menu-btn-grid" role="group" aria-label="Действия с Wisp">
+            {createInteractionMenuActions({ onPet, onPlay, onFeed, onThink }).map(action =>
+              <button key={action.id} type="button" className="menu-action-btn" onClick={action.onSelect}>{action.label}</button>
+            )}
+            <MenuToggle label="Тихий режим" enabled={quietMode} onToggle={onToggleQuietMode} />
+            <button type="button" className="menu-action-btn" onClick={onToggleSleep}>
+              {isSleeping ? 'Разбудить' : 'Усыпить'}
             </button>
           </div>
-        </div>
-      )}
+          <nav className="menu-navigation" aria-label="Разделы меню">
+            {pageButton('settings')}
+            {toolsAvailable && pageButton('tools')}
+          </nav>
+          <div className="menu-status" role="status">
+            <p>Автономность на паузе. После закрытия {autoWanderEnabled ? 'возобновится' : 'останется выключенной'}.</p>
+            <p>{externalWindowSupport ? SUPPORT_LABELS[externalWindowSupport] : 'Доступность окон пока неизвестна'}</p>
+          </div>
+          <button type="button" className="menu-quit-btn" onClick={onQuit}>Выйти из приложения</button>
+        </>}
+
+        {page === 'settings' && <div className="menu-settings">
+          {aiConnectionContent}
+          {observationContent}
+          {voiceContent && pageButton('voice')}
+          {pageButton('window')}
+        </div>}
+
+        {page === 'window' && <div className="menu-navigation">
+          <MenuToggle label="Автономность после закрытия" enabled={autoWanderEnabled} onToggle={onToggleWander} />
+          {onToggleAlwaysOnTop && <MenuToggle label="Поверх окон" enabled={isAlwaysOnTop} onToggle={onToggleAlwaysOnTop} />}
+          {onResetPosition && <button type="button" className="menu-action-btn" onClick={onResetPosition}>Сбросить позицию</button>}
+        </div>}
+
+        {page === 'tools' && <div className="menu-navigation">
+          {previewContent && pageButton('animations')}
+          {debugHudEnabled && pageButton('debug')}
+        </div>}
+        {page === 'voice' && voiceContent}
+        {page === 'animations' && previewContent}
+        {page === 'debug' && <>
+          {onToggleDebugHud && <MenuToggle label="Показывать панель отладки" enabled={debugHudVisible} onToggle={onToggleDebugHud} />}
+          {debugContent ?? <div className="debug-log-empty">Нет данных отладки</div>}
+        </>}
+      </div>
     </div>
   );
-};
+}
