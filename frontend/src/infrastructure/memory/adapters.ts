@@ -96,7 +96,7 @@ export function createMemoryAdapters(client: MemoryWorkerClient): MemoryAdapters
     },
     history: {
       appendTurn: (turn, c) => call('appendTurn', turn, c, nothing),
-      getRecent: (limit, c) => call('getRecent', limit, c, value => list(value, v.message)),
+      getRecent: (limit, c) => call('getRecent', limit, c, value => list(value, v.storedMessage)),
       closeSession: (sessionId, endedAt, c) => call('closeSession', { sessionId, endedAt }, c, nothing),
       closeUnfinishedSessions: (endedAt, c) => call('closeUnfinishedSessions', endedAt, c, nothing),
     },

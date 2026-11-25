@@ -28,6 +28,8 @@ export interface ChatMessageDraft {
 
 export interface PersistedChatMessage extends ChatMessageDraft {
   readonly id: string;
+  /** Read-side evidence that this row belongs to a displayed successful turn. */
+  readonly memoryConfirmable?: true;
 }
 
 export type ChatMessage = PersistedChatMessage;
@@ -44,7 +46,7 @@ export interface CompletedChatTurn {
   readonly lifeDerivedUse?: import('./life-history.interface').LifeDerivedContextUse;
   /** Suppress the whole pair; a successful reply also atomically closes the matching topic as answered. */
   readonly interestThread?: import('./interest-thread.interface').InterestThreadTurnUse;
-  /** Only a displayed successful result can be selected for explicit confirmation. */
+  /** Set only for a displayed successful turn, on both rows. Also gates provider history. */
   readonly memoryConfirmable?: boolean;
   readonly session: ConversationSession;
   readonly user: PersistedChatMessage & { readonly role: 'user' };

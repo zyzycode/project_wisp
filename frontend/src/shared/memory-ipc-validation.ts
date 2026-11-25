@@ -1,6 +1,17 @@
-import type { ClearMemoryCommandDTO, ClearMemoryResultDTO, MemoryStatusDTO } from './ipc-contracts';
-import { exactRecord } from './validation-primitives';
+import type { ClearMemoryCommandDTO, ClearMemoryResultDTO, MemoryFactsResultDTO, MemoryStatusDTO } from './ipc-contracts';
+import { enumValue, exactRecord, plainText } from './validation-primitives';
 const failures = ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'io_error'] as const;
+export function parseMemoryStreamRead(input: unknown): { readonly streamId: string } {
+  const record = exactRecord(input, ['streamId']);
+  const streamId = plainText(record.streamId, 128);
+  if (streamId !== streamId.trim()) throw new TypeError('Invalid memory stream');
+  return { streamId };
+}
+export function parseMemoryReadFailure(input: unknown): Extract<MemoryFactsResultDTO, { ok: false }> {
+  const record = exactRecord(input, ['ok', 'code']);
+  if (record.ok !== false) throw new TypeError('Invalid memory read result');
+  return { ok: false, code: enumValue(record.code, [...failures, 'invalid_data', 'conflict', 'stale']) };
+}
 function id(value: unknown): string { if (typeof value !== 'string' || !value.trim() || value.length > 128) throw new TypeError('Invalid memory command'); return value; }
 function reason(value: unknown): (typeof failures)[number] { if (typeof value !== 'string' || !failures.some(code => code === value)) throw new TypeError('Invalid memory status'); return value as (typeof failures)[number]; }
 export function parseClearMemoryCommand(input: unknown): ClearMemoryCommandDTO {

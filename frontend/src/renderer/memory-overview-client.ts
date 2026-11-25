@@ -1,14 +1,16 @@
 import { parseRoutineStatus } from '../shared/routine-status-validation';
 import type { RoutineStatusDTO } from '../shared/ipc-contracts';
-import type { ClearMemoryCommandDTO, MemoryFactsResultDTO, MemoryStatusDTO, WispApiBridge } from '../shared/ipc-contracts';
+import type { ClearMemoryCommandDTO, MemoryFactsResultDTO, MemoryHistoryResultDTO, MemoryStatusDTO, WispApiBridge } from '../shared/ipc-contracts';
 import { parseMemoryFactsResult } from '../shared/memory-facts-validation';
+import { parseMemoryHistoryResult } from '../shared/memory-history-validation';
 import { parseClearMemoryResult, parseMemoryStatus } from '../shared/memory-ipc-validation';
-export type MemoryOverviewBridge = Pick<WispApiBridge, 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'> & Partial<Pick<WispApiBridge, 'getRoutineStatus' | 'routineHypothesis'>>;
+export type MemoryOverviewBridge = Pick<WispApiBridge, 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'> & Partial<Pick<WispApiBridge, 'getRoutineStatus' | 'routineHypothesis' | 'readMemoryHistory'>>;
 type Facts = Extract<MemoryFactsResultDTO, { ok: true }>['facts'];
 interface State {
   readonly status: MemoryStatusDTO | null;
   readonly routine: RoutineStatusDTO | null;
   readonly facts: Facts | null;
+  readonly history: MemoryHistoryResultDTO | null;
   readonly loading: boolean;
   readonly busy: boolean;
   readonly uncertain: boolean;
@@ -22,7 +24,7 @@ async function boundedWait<T>(promise: Promise<T>): Promise<T> {
   try { return await Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Memory acknowledgement timeout')), IPC_WAIT_MS); })]); }
   finally { if (timer !== undefined) clearTimeout(timer); }
 }
-const empty = (): State => ({ status: null, routine: null, facts: null, loading: false, busy: false, uncertain: false, confirming: false, cleared: 0, message: null });
+const empty = (): State => ({ status: null, routine: null, facts: null, history: null, loading: false, busy: false, uncertain: false, confirming: false, cleared: 0, message: null });
 /** Only document-local presentation and command correlation; durable decisions stay in Main. */
 export class MemoryOverviewClient {
   private streamId: string | null = null;
@@ -45,7 +47,10 @@ export class MemoryOverviewClient {
       this.epoch++; this.sequence = 0; this.consumedClear = 0; this.pending = null; this.state = empty();
     }
     this.streamId = streamId; this.conversationId = conversationId;
-    this.patch({ facts: null, status: null, routine: null, loading: false, confirming: false });
+    this.patch({ facts: null, history: null, status: null, routine: null, loading: false, confirming: false });
+  }
+  isCurrentIdentity(streamId: string | null, conversationId: string | null): boolean {
+    return this.streamId === streamId && this.conversationId === conversationId;
   }
   consumeClearRefresh(): boolean {
     if (this.state.cleared === this.consumedClear) return false;
@@ -54,12 +59,18 @@ export class MemoryOverviewClient {
   async read(preserveMessage = false): Promise<void> {
     if (!this.streamId || this.state.busy || this.pending || this.state.loading) return;
     const request = ++this.request, streamId = this.streamId;
-    this.patch({ loading: true, facts: null, status: null, routine: null, ...(!preserveMessage ? { message: null } : {}) });
+    this.patch({ loading: true, facts: null, history: null, status: null, routine: null, ...(!preserveMessage ? { message: null } : {}) });
     try {
-      const [rawStatus, rawFacts, rawRoutine] = await boundedWait(Promise.all([this.bridge.getMemoryStatus(), this.bridge.readMemoryFacts({ streamId }), this.bridge.getRoutineStatus?.()]));
+      const [rawStatus, rawFacts, rawRoutine, history] = await boundedWait(Promise.all([
+        this.bridge.getMemoryStatus(),
+        this.bridge.readMemoryFacts({ streamId }),
+        this.bridge.getRoutineStatus?.(),
+        this.bridge.readMemoryHistory?.({ streamId }).then(parseMemoryHistoryResult)
+          .catch((): MemoryHistoryResultDTO => ({ ok: false, code: 'unavailable' })),
+      ]));
       if (request !== this.request) return;
       const status = parseMemoryStatus(rawStatus), result = parseMemoryFactsResult(rawFacts);
-      this.patch({ status, routine: rawRoutine === undefined ? null : parseRoutineStatus(rawRoutine) });
+      this.patch({ status, routine: rawRoutine === undefined ? null : parseRoutineStatus(rawRoutine), history: status.mode === 'persistent' ? history ?? null : null });
       if (status.mode === 'persistent' && result.ok) this.patch({ facts: result.facts });
       else if (status.mode === 'persistent') this.patch({ message: 'Не удалось загрузить факты. Обновите память и проверьте результат.' });
     } catch { if (request === this.request) this.patch({ message: 'Не удалось загрузить память. Повторите проверку.' }); }
@@ -76,7 +87,7 @@ export class MemoryOverviewClient {
   async retry(): Promise<boolean> { return this.pending && !this.state.busy ? this.execute(this.pending) : false; }
   private async execute(command: ClearMemoryCommandDTO): Promise<boolean> {
     const epoch = this.epoch; this.pending = command; this.request++;
-    this.patch({ busy: true, loading: false, uncertain: false, confirming: false, message: 'Удаляем локальную память…' });
+    this.patch({ busy: true, history: null, loading: false, uncertain: false, confirming: false, message: 'Удаляем локальную память…' });
     let reload = false;
     try {
       const result = parseClearMemoryResult(await boundedWait(this.bridge.clearMemory(command)));

@@ -8,7 +8,8 @@ import type { ICharacterPreferenceLearning } from '../ports/memory-knowledge.int
 import type { MemoryRepositories, MemoryScheduler } from '../ports/memory-runtime';
 import type { MemoryFailureCode, MemoryOperationContext, MemoryResult, UserFact } from '../ports/memory-repository.interface';
 import type { AIProviderContextMessage } from '../ports/ai-provider.interface';
-import type { MemoryStatusDTO } from '../../shared/ipc-contracts';
+import type { MemoryHistoryResultDTO, MemoryStatusDTO } from '../../shared/ipc-contracts';
+import { MAX_MEMORY_HISTORY_PAIRS, parseMemoryHistoryPair } from '../../shared/memory-history-validation';
 import { CharacterStateService } from './character-state.service';
 import { projectCharacterMemory, restoreCharacterMemory } from './character-memory-snapshot';
 import { MemoryHistory } from './memory-history';
@@ -192,6 +193,31 @@ export class MemoryLifecycle implements IUserMemoryFactsReader {
       }
       return { ok: true, value: facts };
     } catch { return { ok: false, code: 'invalid_data' }; }
+  }
+  async readDialogueHistory(): Promise<MemoryHistoryResultDTO> {
+    const context = this.context();
+    if (!context || this.phase !== 'running') return { ok: false, code: 'unavailable' };
+    const isCurrent = () => this.phase === 'running' && this.context()?.generation === context.generation;
+    const messageLimit = MAX_MEMORY_HISTORY_PAIRS * 2;
+    const result = await this.safe(async () => {
+      await this.history.whenSettled();
+      return isCurrent() ? this.options.storage.history.getRecent(messageLimit, context) : { ok: false, code: 'stale' };
+    });
+    if (!isCurrent()) return { ok: false, code: 'stale' };
+    if (!result.ok) return result;
+    if (result.value.length > messageLimit) return { ok: false, code: 'invalid_data' };
+    try {
+      const pairs: ReturnType<typeof parseMemoryHistoryPair>[] = [];
+      for (let index = 1; index < result.value.length; index++) {
+        const user = result.value[index - 1]!, assistant = result.value[index]!;
+        if (user.role !== 'user' || assistant.role !== 'assistant' || user.conversationSessionId !== assistant.conversationSessionId) continue;
+        pairs.push(parseMemoryHistoryPair({ userText: user.content, assistantText: assistant.content }));
+        index++;
+      }
+      return { ok: true, pairs };
+    } catch {
+      return { ok: false, code: 'invalid_data' };
+    }
   }
   async listItems(query: { readonly cursor: number | null; readonly limit: number }): Promise<MemoryResult<MemoryItemPage>> {
     const c = this.context(), items = this.options.storage.items;

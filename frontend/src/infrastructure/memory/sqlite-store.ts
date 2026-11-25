@@ -95,7 +95,11 @@ export class SqliteMemoryStore {
       case 'mutateMemoryItem': return new MemoryItemStore(this.db).mutate(c.payload);
       case 'listMemoryItems': return new MemoryItemStore(this.db).list(c.payload);
       case 'appendTurn': return this.appendTurn(c.payload);
-      case 'getRecent': return this.db.prepare(`SELECT ${messageColumns} FROM (SELECT * FROM messages WHERE NOT EXISTS (SELECT 1 FROM memory_suppressed_pairs s WHERE s.user_message_id = messages.id OR s.assistant_message_id = messages.id) ORDER BY sequence DESC LIMIT ?) ORDER BY sequence`).all(v.integer(c.payload, 1, 100)).map(v.message);
+      case 'getRecent': return this.db.prepare(`SELECT ${messageColumns}, memory_confirmable FROM (SELECT * FROM messages WHERE NOT EXISTS (SELECT 1 FROM memory_suppressed_pairs s WHERE s.user_message_id = messages.id OR s.assistant_message_id = messages.id) ORDER BY sequence DESC LIMIT ?) ORDER BY sequence`)
+        .all(v.integer(c.payload, 1, 100)).map(row => {
+          const { memory_confirmable, ...fields } = v.record(row);
+          return { ...v.message(fields), ...(memory_confirmable === 1 ? { memoryConfirmable: true } : {}) };
+        });
       case 'closeSession': {
         const p = v.record(c.payload);
         this.db.prepare('UPDATE conversation_sessions SET ended_at = max(started_at, ?) WHERE id = ? AND ended_at IS NULL').run(v.timestamp(p.endedAt), v.text(p.sessionId)); return;

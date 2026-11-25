@@ -29,6 +29,7 @@ import { ProtectedUserAIKeyStore } from '../infrastructure/platform/protected-us
 import { ManagedLocalAIBackend } from '../infrastructure/platform/managed-local-ai-backend';
 import { RoutineCapture } from '../application/services/routine-capture';
 import { MemoryFactsReader } from '../application/services/memory-facts-reader';
+import { MemoryDialogueReader } from '../application/services/memory-dialogue-reader';
 import { QuietSupportRuntime } from '../application/services/quiet-support-runtime';
 import { InterestThreadCommands } from '../application/services/interest-thread-commands';
 import { InterestThreadDialogue } from '../application/services/interest-thread';
@@ -170,6 +171,7 @@ const interestThreadCommands = new InterestThreadCommands({ runtime: () => memor
   bounded: work => topicCommandAdmission.run(performance.now() + 200, () => work),
 });
 const memoryFacts = new MemoryFactsReader(() => memoryRuntime);
+const memoryDialogue = new MemoryDialogueReader(() => memoryRuntime);
 const clearMemory = new ClearMemoryUseCase(() => memoryRuntime?.reset() ?? Promise.resolve({ ok: false, code: 'unavailable' }));
 const platformAdapter = createPlatformAdapter();
 const platformEnvironmentAdapter = new PlatformEnvironmentAdapter(() => brainStatePublisher.now());
@@ -199,7 +201,7 @@ let voiceNavigationSeen = false;
 const publishedVisualEpisode = new MainPublishedVisualEpisode();
 const brainStatePublisher = new BrainStatePublisher({
   now: () => performance.now(),
-  createStreamId: () => { publishedVisualEpisode.reset(); const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); voiceStreamStarted = true; clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); routineControls.replaceStream(id); return id; },
+  createStreamId: () => { publishedVisualEpisode.reset(); const id = randomUUID(); summaryStream = id; dialogueRuntime?.replaceStream(id); voiceStreamStarted = true; clearMemory.replaceStream(id); memoryFacts.replaceStream(id); memoryDialogue.replaceStream(id); memoryCards.replaceStream(id); interestThreadCommands.replaceStream(id); routineControls.replaceStream(id); return id; },
   prepareSnapshot: () => {
     observationRuntime?.tick();
     aiEventRuntime?.tick();
@@ -365,7 +367,7 @@ function clearBrainStream(): void {
   publishedVisualEpisode.reset();
   routineControls.replaceStream(null);
   summaryStream = null;
-  clearMemory.replaceStream(null); memoryFacts.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null);
+  clearMemory.replaceStream(null); memoryFacts.replaceStream(null); memoryDialogue.replaceStream(null); memoryCards.replaceStream(null); interestThreadCommands.replaceStream(null);
   dialogueRuntime?.detachStream();
 }
 
@@ -813,7 +815,7 @@ function registerIpcHandlers(): void {
   unregisterInitiative = registerInitiativeIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, controls: initiativeComposition.controls, help: () => initiativeComposition.help });
   if (aiConnection) unregisterAIConnection = registerAIConnectionIpc({ register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel),
     getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, getStream: () => summaryStream, controller: aiConnection, beforeConfigure: () => { windowFocus?.invalidate(); screenObservation?.runtime.cancel(); initiativeComposition.resetProfile(); } });
-  unregisterMemory = registerMemoryIpc({ routineHypothesis:routineControls, register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, cards: memoryCards, interestThread: interestThreadCommands });
+  unregisterMemory = registerMemoryIpc({ routineHypothesis:routineControls, register: (channel, handler) => ipcMain.handle(channel, handler), remove: channel => ipcMain.removeHandler(channel), getSender: () => mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, routineStatus: () => routineCapture?.getStatus() ?? { source: 'unknown', storage: 'initializing', lastAcknowledgedAt: null }, getStatus: () => memoryRuntime?.getStatus() ?? { mode: 'volatile', reason: 'unavailable' }, clear: clearMemory, facts: memoryFacts, dialogueHistory: memoryDialogue, cards: memoryCards, interestThread: interestThreadCommands });
   registerAutonomyIpcHandlers({
     register: (channel, handler) => {
       ipcMain.handle(channel, async (event, payload: unknown): Promise<unknown> => {

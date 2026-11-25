@@ -38,6 +38,7 @@ export function MemoryOverview({ bridge, snapshot, visible, otherBusy = false, c
   useEffect(() => { if (!visible) client.cancelConfirmation(); }, [client, visible]);
   if (!visible) return children;
   const locked = state.busy || state.uncertain;
+  const history = client.isCurrentIdentity(streamId, conversationId) ? state.history : null;
   return <>
     <section aria-label="О вас">
       <h3>О вас</h3>
@@ -50,11 +51,23 @@ export function MemoryOverview({ bridge, snapshot, visible, otherBusy = false, c
         return <div key={key}><dt>{title}</dt><dd>{value === undefined ? 'Не сохранено' : key === 'user.reply_style' || key === 'user.cursor_game' ? labels[value] : value}</dd></div>;
       })}</dl>}
       <p>Здесь только пять известных фактов. Переписка, события и состояние персонажа хранятся отдельно.</p>
-      <button type="button" disabled={locked || state.loading || !snapshot} onClick={() => { void client.read(); }}>Обновить факты и статус</button>
+      <button type="button" disabled={locked || state.loading || !snapshot} onClick={() => { void client.read(); }}>{bridge.readMemoryHistory ? 'Обновить память' : 'Обновить факты и статус'}</button>
       <button type="button" aria-expanded={help} onClick={() => setHelp(!help)}>Как исправить</button>
       {help && <div><p>Отправьте подходящую фразу сами в обычном чате, заменив пример своим значением. Ответ Wisp не подтверждает запись: затем обновите факты. Отдельное удаление факта здесь недоступно.</p>
         <ul>{examples.map(([ru, en]) => <li key={ru}><span lang="ru">{ru}</span><br /><span lang="en">{en}</span></li>)}</ul></div>}
     </section>
+    {bridge.readMemoryHistory && <section aria-label="Недавний диалог">
+      <h3>Недавний диалог</h3>
+      {state.loading || !snapshot || state.status?.mode === 'initializing'
+        ? <p role="status">История ещё загружается.</p>
+        : !locked && (history?.ok
+          ? history.pairs.length > 0
+            ? <ol className="memory-dialogue">{history.pairs.map(({ userText, assistantText }, index) => (
+                <li key={index}><dl><dt>Вы</dt><dd>{userText}</dd><dt>Wisp</dt><dd>{assistantText}</dd></dl></li>
+              ))}</ol>
+            : <p>Сохранённых реплик пока нет.</p>
+          : (history || state.status?.mode === 'volatile' || state.message) && <p role="status">Не удалось загрузить недавний диалог.</p>)}
+    </section>}
     <section aria-label="Наблюдения активности">
       <h3>Активность при работающей Wisp</h3>
       <p>На этом устройстве автоматически сохраняются небольшие сводки системной активности. Они не определяют сон, работу или физическое присутствие. История хранится до полной очистки памяти.</p>

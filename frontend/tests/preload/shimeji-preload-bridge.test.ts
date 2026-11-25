@@ -78,6 +78,19 @@ describe('Preload: Shimeji bridge', () => {
     electronMocks.invoke.mockResolvedValueOnce({ mode: 'volatile', reason: 'private path' });
     await expect(api.getMemoryStatus()).rejects.toThrow(); electronMocks.invoke.mockReset();
   });
+  it('reads the saved dialogue over a validated typed bridge', async () => {
+    const api = exposedApi(); electronMocks.invoke.mockReset();
+    const command = { streamId: 's' };
+    const pair = { userText: 'Что нового?', assistantText: 'Связь недоступна.' };
+    await expect(api.readMemoryHistory!({ streamId: '' })).rejects.toThrow();
+    expect(electronMocks.invoke).not.toHaveBeenCalled();
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, pairs: [pair] });
+    await expect(api.readMemoryHistory!(command)).resolves.toEqual({ ok: true, pairs: [pair] });
+    expect(electronMocks.invoke).toHaveBeenCalledExactlyOnceWith('wisp:read-memory-history', command);
+    electronMocks.invoke.mockResolvedValueOnce({ ok: true, pairs: Array.from({ length: 11 }, () => pair) });
+    await expect(api.readMemoryHistory!(command)).rejects.toThrow();
+    electronMocks.invoke.mockReset();
+  });
   it('validates both directions of the dialogue command channel', async () => {
     const api = exposedApi(); electronMocks.invoke.mockClear();
     electronMocks.invoke.mockResolvedValueOnce({ status: 'accepted', conversationId: 'c' });

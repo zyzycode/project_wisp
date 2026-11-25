@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MemoryHistory } from '../../src/application/services/memory-history';
 import { boundMemoryContext } from '../../src/application/services/memory-context';
-import type { MemoryOperationContext, MemoryResult, IChatHistoryRepository } from '../../src/application/ports/memory-repository.interface';
+import type { MemoryOperationContext, MemoryResult, IChatHistoryRepository, PersistedChatMessage } from '../../src/application/ports/memory-repository.interface';
 const now = '2026-09-18T00:00:00.000Z';
+const savedPair: readonly PersistedChatMessage[] = [
+  { id: 'old-user', role: 'user', conversationSessionId: 'old-session', content: 'Помнишь меня?', createdAt: now, memoryConfirmable: true },
+  { id: 'old', role: 'assistant', conversationSessionId: 'old-session', content: 'Помню тебя', createdAt: now, memoryConfirmable: true },
+];
 function fixture(gameObserver?: import('../../src/application/ports/ai-event-provider.interface').IGameEpisodeCommitObserver) {
   let id = 0; let context: MemoryOperationContext | null = { generation: 0 };
   const appendTurn = vi.fn<IChatHistoryRepository['appendTurn']>(async () => ({ ok: true, value: undefined } as const));
   const append = vi.fn(async () => ({ ok: true, value: undefined } as const));
-  const getRecent = vi.fn(async () => ({ ok: true, value: [{ id: 'old-user', role: 'user' as const, conversationSessionId: 'old-session', content: 'Помнишь меня?', createdAt: now }, { id: 'old', role: 'assistant' as const, conversationSessionId: 'old-session', content: 'Помню тебя', createdAt: now }] } as const));
+  const getRecent = vi.fn<IChatHistoryRepository['getRecent']>(async () => ({ ok: true, value: savedPair }));
   const failure = vi.fn(), onPersisted = vi.fn(async () => undefined);
   const history = new MemoryHistory({ onPersisted, gameObserver, history: { appendTurn, getRecent, closeSession: vi.fn(async () => ({ ok: true, value: undefined } as const)), closeUnfinishedSessions: vi.fn(async () => ({ ok: true, value: undefined } as const)) }, episodes: { append }, context: () => context, createId: () => `id-${++id}`, toTimestamp: ms => new Date(Date.parse(now) + ms).toISOString(), onFailure: failure });
   return { onPersisted, history, appendTurn, append, getRecent, failure, setContext: (c: MemoryOperationContext | null) => { context = c; } };
@@ -15,6 +19,16 @@ function fixture(gameObserver?: import('../../src/application/ports/ai-event-pro
 const turn = { user: { id: 'user', text: 'Привет', createdAt: now }, assistant: { id: 'assistant', text: 'Привет!', createdAt: now }, memoryGeneration: 0 };
 it('maps persistent context once without modifying stored messages', async () => {
   const f = fixture(); expect(await f.history.hydrate()).toEqual([{ sourceMessageId: 'old-user', role: 'user', text: 'Помнишь меня?', createdAt: now }, { sourceMessageId: 'old', role: 'wisp', text: 'Помню тебя', createdAt: now }]); expect(f.getRecent).toHaveBeenCalledWith(20, { generation: 0 });
+});
+it('hydrates only complete pairs with positive evidence on both rows', async () => {
+  const f = fixture();
+  const localUser = { id: 'local-user', role: 'user', conversationSessionId: 'old-session', content: 'иди влево', createdAt: now } as const;
+  const localReply = { id: 'local-reply', role: 'assistant', conversationSessionId: 'old-session', content: 'Иду влево.', createdAt: now } as const;
+  f.getRecent.mockResolvedValueOnce({ ok: true, value: [
+    ...savedPair, localUser, localReply,
+    { ...localUser, id: 'mixed-user', memoryConfirmable: true }, { ...localReply, id: 'mixed-reply' },
+  ] });
+  expect((await f.history.hydrate()).map(message => message.sourceMessageId)).toEqual(['old-user', 'old']);
 });
 it('uses one lazy app session for completed pairs, rotates it only on full memory reset', async () => {
   const f = fixture(); await f.history.completed(turn); await f.history.completed({ ...turn, user: { ...turn.user, id: 'next' } });

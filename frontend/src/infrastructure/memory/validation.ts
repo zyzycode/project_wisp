@@ -14,6 +14,12 @@ export function message(value: unknown): PersistedChatMessage {
   if (v.role !== 'user' && v.role !== 'assistant') throw new MemoryDataError('invalid_data');
   return { id: text(v.id), conversationSessionId: text(v.conversationSessionId), role: v.role, content: plainText(v.content, v.role === 'user' ? 240 : 2000), createdAt: timestamp(v.createdAt) };
 }
+export function storedMessage(value: unknown): PersistedChatMessage {
+  const raw = record(value);
+  const { memoryConfirmable, ...fields } = raw;
+  if (Object.hasOwn(raw, 'memoryConfirmable') && memoryConfirmable !== true) throw new MemoryDataError('invalid_data');
+  return { ...message(fields), ...(memoryConfirmable === true ? { memoryConfirmable } : {}) };
+}
 export function turn(value: unknown): CompletedChatTurn {
   const raw = record(value);
   const v = record(value, ['session', 'user', 'assistant', ...(Object.hasOwn(raw, 'memoryConfirmable') ? ['memoryConfirmable'] : []), ...(Object.hasOwn(raw, 'interestThread') ? ['interestThread'] : []), ...['lifeDerivedUse'].filter(key => Object.hasOwn(raw,key))]);

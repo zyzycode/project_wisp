@@ -1,18 +1,13 @@
 import type { MemoryFactsReadDTO, MemoryFactsResultDTO } from './ipc-contracts';
 import { enumValue, exactRecord, plainText } from './validation-primitives';
+import { parseMemoryReadFailure, parseMemoryStreamRead } from './memory-ipc-validation';
 const keys = ['user.display_name', 'user.preferred_address', 'user.favorite_topic', 'user.reply_style', 'user.cursor_game'] as const;
 export function parseMemoryFactsRead(input: unknown): MemoryFactsReadDTO {
-  const r = exactRecord(input, ['streamId']);
-  const streamId = plainText(r.streamId, 128);
-  if (streamId !== streamId.trim()) throw new TypeError('Invalid memory stream');
-  return { streamId };
+  return parseMemoryStreamRead(input);
 }
 export function parseMemoryFactsResult(input: unknown): MemoryFactsResultDTO {
   const r = exactRecord(input, ['ok'], ['facts', 'code']);
-  if (r.ok === false) {
-    exactRecord(input, ['ok', 'code']);
-    return { ok: false, code: enumValue(r.code, ['unavailable', 'busy', 'storage_full', 'corrupt', 'unsupported_version', 'invalid_data', 'conflict', 'stale', 'io_error']) };
-  }
+  if (r.ok === false) return parseMemoryReadFailure(input);
   exactRecord(input, ['ok', 'facts']);
   if (r.ok !== true || !Array.isArray(r.facts) || r.facts.length > 5) throw new TypeError('Invalid memory facts');
   const seen = new Set<string>();

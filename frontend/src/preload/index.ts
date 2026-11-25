@@ -6,6 +6,7 @@ import { parseOutputDevice, parseOutputNull, parseOutputResult, parseOutputStatu
 import { parseRoutineStatus } from '../shared/routine-status-validation';
 import { parseAIConnectionCommand, parseAIConnectionRead, parseAIConnectionResult, parseAIConnectionStatus } from '../shared/ai-connection-validation';
 import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-facts-validation';
+import { parseMemoryHistoryRead, parseMemoryHistoryResult } from '../shared/memory-history-validation';
 import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
 import { parseObservationCommand, parseObservationSettings } from '../shared/observation-ipc-validation';
 import { parseSummaryPreviewCommand, parseSummaryCommand, parseSummaryConfirm, parseSummaryDeleteResult, parseSummaryPreviewResult, parseSummaryTextResult } from '../shared/summary-ipc-validation';
@@ -124,6 +125,7 @@ const api: WispApiBridge = {
   listMemoryCards: async command => parseMemoryCardListResult(await ipcRenderer.invoke('wisp:list-memory-cards', parseMemoryCardListCommand(command))),
   clearMemory: async command => parseClearMemoryResult(await ipcRenderer.invoke('wisp:clear-memory', parseClearMemoryCommand(command))),
   readMemoryFacts: async command => parseMemoryFactsResult(await ipcRenderer.invoke('wisp:read-memory-facts', parseMemoryFactsRead(command))),
+  readMemoryHistory: async command => parseMemoryHistoryResult(await ipcRenderer.invoke('wisp:read-memory-history', parseMemoryHistoryRead(command))),
   routineHypothesis: {
     read: async command => parseRoutineReadResult(await ipcRenderer.invoke('wisp:read-routine-hypothesis',parseRoutineRead(command))),
     command: async command => parseRoutineResult(await ipcRenderer.invoke('wisp:command-routine-hypothesis',parseRoutineCommand(command))),

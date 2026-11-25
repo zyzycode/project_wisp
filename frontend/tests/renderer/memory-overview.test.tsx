@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { MemoryOverview } from '../../src/renderer/components/Chat/MemoryOverview';
 import { getMemoryOverviewClient } from '../../src/renderer/memory-overview-client';
 import { recognizeMemoryFact } from '../../src/application/services/memory-fact-registry';
-import type { ClearMemoryCommandDTO, ClearMemoryResultDTO, MemoryFactsResultDTO, MemoryStatusDTO } from '../../src/shared/ipc-contracts';
+import type { ClearMemoryCommandDTO, ClearMemoryResultDTO, MemoryFactsResultDTO, MemoryHistoryResultDTO, MemoryStatusDTO } from '../../src/shared/ipc-contracts';
 const hooks = vi.hoisted(() => ({ values: [] as unknown[], index: 0 }));
 vi.mock('react', async importOriginal => ({ ...await importOriginal<typeof import('react')>(),
   useState: <T,>(initial: T) => { const index = hooks.index++; if (!(index in hooks.values)) hooks.values[index] = initial; return [hooks.values[index], (value: T) => { hooks.values[index] = value; }]; },
@@ -18,6 +18,10 @@ function fixture() {
     readMemoryFacts: vi.fn(async (): Promise<MemoryFactsResultDTO> => ({ ok: true, facts: [
       { key: 'user.display_name', value: 'Анна' }, { key: 'user.preferred_address', value: 'Аня' },
       { key: 'user.favorite_topic', value: 'музыка' }, { key: 'user.reply_style', value: 'brief' }, { key: 'user.cursor_game', value: 'dislike' },
+    ] })),
+    readMemoryHistory: vi.fn(async (): Promise<MemoryHistoryResultDTO> => ({ ok: true, pairs: [
+      { userText: 'иди влево', assistantText: 'Иду влево.' },
+      { userText: 'Что нового?', assistantText: 'Связь недоступна.' },
     ] })),
     clearMemory: vi.fn(async (command: ClearMemoryCommandDTO): Promise<ClearMemoryResultDTO> => ({ requestId: command.requestId, status: 'cleared' })),
   };
@@ -86,4 +90,27 @@ it('shows bounded routine status and includes automatic recording in full reset 
   bridge.getRoutineStatus.mockResolvedValueOnce({ source: 'unsupported', storage: 'persistent', lastAcknowledgedAt: '2026-10-26T10:00:00.000Z' });
   await client.read(); html = renderToStaticMarkup(render()); expect(html).toContain('2026-10-26T10:00:00.000Z');
   client.openConfirmation(); expect(renderToStaticMarkup(render())).toContain('наблюдения системной активности');
+});
+
+it('shows saved local replies in order and distinguishes an empty history from a failed read', async () => {
+  const { bridge, client, render } = fixture();
+  expect(renderToStaticMarkup(render(false))).not.toContain('Недавний диалог');
+  await client.read();
+  let html = renderToStaticMarkup(render());
+  expect(bridge.readMemoryHistory).toHaveBeenCalledExactlyOnceWith({ streamId: 's' });
+  expect(html).toContain('Недавний диалог');
+  expect(html).toContain('Иду влево.');
+  expect(html).toContain('Связь недоступна.');
+  expect(html.indexOf('Иду влево.')).toBeLessThan(html.indexOf('Связь недоступна.'));
+
+  bridge.readMemoryHistory.mockResolvedValueOnce({ ok: false, code: 'unavailable' });
+  await client.read();
+  html = renderToStaticMarkup(render());
+  expect(html).toContain('Не удалось загрузить недавний диалог.');
+  expect(html).not.toContain('Сохранённых реплик пока нет.');
+  expect(html).toContain('Анна');
+
+  bridge.readMemoryHistory.mockResolvedValueOnce({ ok: true, pairs: [] });
+  await client.read();
+  expect(renderToStaticMarkup(render())).toContain('Сохранённых реплик пока нет.');
 });

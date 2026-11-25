@@ -106,7 +106,7 @@ export function responseValue(operation: Operation, value: unknown): unknown {
     case 'listMemoryItems': return itemPage(value);
     case 'getRecent': case 'listFacts': {
       if (!Array.isArray(value) || value.length > 100) throw new v.MemoryDataError('invalid_data');
-      return value.map((item: unknown) => operation === 'getRecent' ? v.message(item) : v.fact(item));
+      return operation === 'getRecent' ? value.map(v.storedMessage) : value.map(v.fact);
     }
     case 'getRecentEpisodes': {
       if (!Array.isArray(value) || value.length > 20) throw new v.MemoryDataError('invalid_data');

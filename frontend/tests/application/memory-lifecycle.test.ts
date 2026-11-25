@@ -1,10 +1,11 @@
 import { projectRelationship } from '../../src/domain/character/relationship-facets';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryLifecycle } from '../../src/application/services/memory-lifecycle';
+import { MemoryDialogueReader } from '../../src/application/services/memory-dialogue-reader';
 import { CharacterStateService } from '../../src/application/services/character-state.service';
 import { projectCharacterMemory } from '../../src/application/services/character-memory-snapshot';
 import type { MemoryRepositories } from '../../src/application/ports/memory-runtime';
-import type { MemoryOperationContext, MemoryResult, PersistedCharacterStateSnapshot } from '../../src/application/ports/memory-repository.interface';
+import type { MemoryOperationContext, MemoryResult, PersistedCharacterStateSnapshot, PersistedChatMessage } from '../../src/application/ports/memory-repository.interface';
 
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes; }); return { promise, resolve }; }
 function fixture(summary?: Pick<import('../../src/application/ports/summary').ISummaryRuntime, 'invalidate' | 'reset' | 'dispose'>, shutdownCapture?: () => Promise<void>) {
@@ -24,6 +25,51 @@ function fixture(summary?: Pick<import('../../src/application/ports/summary').IS
   return { lifecycle, storage, character, start, pause, resume, resetCommitted, hydrate, invalidateMemory };
 }
 afterEach(() => vi.useRealTimers());
+it('projects complete stored pairs regardless of reply origin and drops a pending read on reset', async () => {
+  const f = fixture();
+  const row = (id: string, conversationSessionId: string, role: PersistedChatMessage['role'], content: string): PersistedChatMessage => ({
+    id, conversationSessionId, role, content, createdAt: new Date().toISOString(),
+  });
+  const rows = [
+    row('orphan', 'old', 'assistant', 'Отдельная реплика'),
+    row('motion-user', 'old', 'user', 'иди влево'),
+    row('motion-ack', 'old', 'assistant', 'Иду влево.'),
+    { ...row('chat-user', 'next', 'user', 'Что нового?'), memoryConfirmable: true as const },
+    { ...row('chat-assistant', 'next', 'assistant', 'Привет!'), memoryConfirmable: true as const },
+  ];
+  await expect(f.lifecycle.readDialogueHistory()).resolves.toEqual({ ok: false, code: 'unavailable' });
+  await f.lifecycle.initialize();
+  f.storage.history.getRecent.mockResolvedValueOnce({ ok: true, value: rows });
+  await expect(f.lifecycle.readDialogueHistory()).resolves.toEqual({ ok: true, pairs: [
+    { userText: 'иди влево', assistantText: 'Иду влево.' },
+    { userText: 'Что нового?', assistantText: 'Привет!' },
+  ] });
+  expect(f.storage.history.getRecent).toHaveBeenLastCalledWith(20, { generation: 0 });
+
+  const pending = deferred<MemoryResult<readonly PersistedChatMessage[]>>();
+  f.storage.history.getRecent.mockClear();
+  f.storage.history.getRecent.mockReturnValueOnce(pending.promise);
+  const read = f.lifecycle.readDialogueHistory();
+  await vi.waitFor(() => expect(f.storage.history.getRecent).toHaveBeenCalledOnce());
+  await f.lifecycle.reset();
+  pending.resolve({ ok: true, value: rows });
+  await expect(read).resolves.toEqual({ ok: false, code: 'stale' });
+  await f.lifecycle.shutdown();
+});
+it('keeps one unsettled dialogue history read across stream replacement', async () => {
+  const pending = deferred<Awaited<ReturnType<MemoryLifecycle['readDialogueHistory']>>>();
+  const runtime = { readDialogueHistory: vi.fn(() => pending.promise) };
+  const reader = new MemoryDialogueReader(() => runtime);
+  reader.replaceStream('stream');
+  await expect(reader.read({ streamId: 'wrong' })).resolves.toEqual({ ok: false, code: 'stale' });
+  const read = reader.read({ streamId: 'stream' });
+  reader.replaceStream('next');
+  await expect(reader.read({ streamId: 'next' })).resolves.toEqual({ ok: false, code: 'busy' });
+  expect(runtime.readDialogueHistory).toHaveBeenCalledOnce();
+  pending.resolve({ ok: true, pairs: [{ userText: 'Что нового?', assistantText: 'Связь недоступна.' }] });
+  await expect(read).resolves.toEqual({ ok: false, code: 'stale' });
+  await expect(reader.read({ streamId: 'next' })).resolves.toMatchObject({ ok: true });
+});
 it('restores once before start, hydrates Mock and checkpoints only dirty state at five-second cadence', async () => {
   const f = fixture(); const saved = f.character.getState(); saved.relationship.friendship = 321; saved.relationship.familiarity = 321;
   f.storage.character.load.mockResolvedValue({ ok: true, value: projectCharacterMemory(saved, new Date().toISOString()) });

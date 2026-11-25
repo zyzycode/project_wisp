@@ -72,7 +72,10 @@ describe('interest thread worker persistence', () => {
     const answer = { ...pair('offer', eligible), memoryConfirmable: false, interestThread: { ref: ref(), requestId: 'request', userMessageId: 'uoffer', mode: 'reply' } };
     expect(run(f.store, 'appendTurn', answer, 1).ok).toBe(true);
     expect(run(f.store, 'readInterestThread', null, 1)).toMatchObject({ ok: true, value: { thread: { state: 'unanswered', ref: ref() } } });
-    expect(run(f.store, 'getRecent', 100, 1)).toEqual({ ok: true, value: [pair('free', eligible).user, pair('free', eligible).assistant] });
+    const free = pair('free', eligible);
+    expect(run(f.store, 'getRecent', 100, 1)).toEqual({ ok: true, value: [
+      { ...free.user, memoryConfirmable: true }, { ...free.assistant, memoryConfirmable: true },
+    ] });
   });
   it('preserves reverse receipt checks after delete, blocking unbound and altered replays', () => {
     const f = setup(); const answer = { ...pair('offer', eligible), interestThread: { ref: ref(), requestId: 'request', userMessageId: 'uoffer', mode: 'reply' } };

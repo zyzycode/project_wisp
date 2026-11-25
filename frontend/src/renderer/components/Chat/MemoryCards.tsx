@@ -8,7 +8,7 @@ import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import type { BrainStateDTO, MemoryCardContentDTO, MemoryCardDTO, MemoryCardSourceDTO, WispApiBridge } from '../../../shared/ipc-contracts';
 import { getMemoryCardClient } from '../../memory-card-client';
 
-interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary' | 'interestThread'> & Partial<Pick<WispApiBridge, 'postDialogueCommand' | 'getMemoryStatus' | 'readMemoryFacts' | 'clearMemory'>>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
+interface Props { readonly bridge: Pick<WispApiBridge, 'mutateMemoryCard' | 'listMemoryCards' | 'summary' | 'interestThread'> & Partial<Pick<WispApiBridge, 'postDialogueCommand' | 'getMemoryStatus' | 'readMemoryFacts' | 'readMemoryHistory' | 'clearMemory'>>; readonly snapshot: Pick<BrainStateDTO, 'streamId' | 'dialogue'> | null }
 function supportsDialogue(bridge: Props['bridge']): bridge is Props['bridge'] & Pick<WispApiBridge, 'postDialogueCommand'> { return typeof bridge.postDialogueCommand === 'function'; }
 const noSubscribe = () => () => {};
 const noReset = () => 0;

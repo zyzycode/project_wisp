@@ -73,6 +73,12 @@ export type MemoryFactsResultDTO =
     }[] }
   | { readonly ok: false; readonly code: 'unavailable' | 'busy' | 'storage_full' | 'corrupt' | 'unsupported_version' | 'invalid_data' | 'conflict' | 'stale' | 'io_error' };
 
+/** Saved dialogue for local presentation. No persistence IDs or provider metadata. */
+export interface MemoryHistoryReadDTO { readonly streamId: string }
+export type MemoryHistoryResultDTO =
+  | { readonly ok: true; readonly pairs: readonly { readonly userText: string; readonly assistantText: string }[] }
+  | Extract<MemoryFactsResultDTO, { readonly ok: false }>;
+
 /** Explicit local event/joke cards; never a provider DTO. */
 export interface MemoryCardContentDTO {
   readonly category: 'important_event' | 'shared_joke';
@@ -570,6 +576,7 @@ export interface WispApiBridge {
   getMemoryStatus(): Promise<MemoryStatusDTO>;
   getRoutineStatus(): Promise<RoutineStatusDTO>;
   readMemoryFacts(command: MemoryFactsReadDTO): Promise<MemoryFactsResultDTO>;
+  readMemoryHistory?(command: MemoryHistoryReadDTO): Promise<MemoryHistoryResultDTO>;
   setQuietMode(command: SetQuietModeDTO): Promise<AutonomyModeDTO>;
   postDialogueCommand(command: DialogueCommandDTO): Promise<DialogueCommandReceiptDTO>;
   readonly debugEnabled: boolean;

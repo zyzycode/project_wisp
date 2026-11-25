@@ -35,12 +35,12 @@ it('persists individual history/facts/state across real worker restarts and keep
   try {
     await run.lifecycle.initialize(); expect(run.lifecycle.getStatus()).toEqual({ mode: 'persistent', characterRestore: 'default' });
     const now = new Date().toISOString();
-    const pair = { memoryGeneration: 0, user: { id: 'u', text: 'Меня зовут Ира', createdAt: now }, assistant: { id: 'a', text: 'Запомню, Ира', createdAt: now } };
+    const pair = { memoryGeneration: 0, memoryConfirmable: true, user: { id: 'u', text: 'Меня зовут Ира', createdAt: now }, assistant: { id: 'a', text: 'Запомню, Ира', createdAt: now } };
     await run.lifecycle.history.completed(pair);
     expect((await run.lifecycle.upsertFact({ id: 'f', factKey: 'user.display_name', factValue: 'Ира', confidence: 1, sourceMessageId: 'u', createdAt: now, updatedAt: now })).ok).toBe(true);
     await run.lifecycle.history.game({ activityRunId: 'g', atMs: Date.now(), outcome: 'caught', playCompleted: true, executedMs: 1000 }, 0);
     run.advance(300000);
-    await run.lifecycle.history.completed({ memoryGeneration: 0, user: { id: 'u2', text: 'Мне нравится игра с курсором', createdAt: now }, assistant: { id: 'a2', text: 'Хорошо', createdAt: now } });
+    await run.lifecycle.history.completed({ memoryGeneration: 0, memoryConfirmable: true, user: { id: 'u2', text: 'Мне нравится игра с курсором', createdAt: now }, assistant: { id: 'a2', text: 'Хорошо', createdAt: now } });
     expect(run.character.getState().preferences['activity.cursor_game']).toEqual({ value: 2, samples: 1, confidence: 1 / 7 });
     run.character.applyStimulus({ type: 'user_message', source: 'user', text: 'Привет', createdAt: now });
     const expected = run.character.getState(); await run.lifecycle.shutdown();

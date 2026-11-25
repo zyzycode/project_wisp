@@ -1,10 +1,11 @@
 import { expect, it, vi } from 'vitest';
-import type { ClearMemoryCommandDTO, ClearMemoryResultDTO, MemoryFactsResultDTO, MemoryStatusDTO } from '../../src/shared/ipc-contracts';
+import type { ClearMemoryCommandDTO, ClearMemoryResultDTO, MemoryFactsResultDTO, MemoryHistoryResultDTO, MemoryStatusDTO } from '../../src/shared/ipc-contracts';
 import { MemoryOverviewClient } from '../../src/renderer/memory-overview-client';
 function fixture() {
   const bridge = {
     getMemoryStatus: vi.fn(async (): Promise<MemoryStatusDTO> => ({ mode: 'persistent', characterRestore: 'default' })),
     readMemoryFacts: vi.fn(async (): Promise<MemoryFactsResultDTO> => ({ ok: true, facts: [{ key: 'user.display_name', value: 'Анна' }] })),
+    readMemoryHistory: vi.fn(async (): Promise<MemoryHistoryResultDTO> => ({ ok: true, pairs: [{ userText: 'Привет', assistantText: 'Иду влево.' }] })),
     clearMemory: vi.fn(async (command: ClearMemoryCommandDTO): Promise<ClearMemoryResultDTO> => ({ requestId: command.requestId, status: 'cleared' })),
   };
   let id = 0;
@@ -22,6 +23,7 @@ it('requires explicit loaded confirmation and coalesces double reset without hid
   bridge.clearMemory.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
   const clearing = client.clear(); expect(await client.clear()).toBe(false);
   expect(client.getState().facts).toHaveLength(1);
+  expect(client.getState().history).toBeNull();
   finish({ requestId: bridge.clearMemory.mock.calls[0]![0].requestId, status: 'cleared' });
   expect(await clearing).toBe(true); expect(bridge.clearMemory).toHaveBeenCalledTimes(1);
 });
@@ -50,6 +52,7 @@ it('ignores late old reads and reset results after stream replacement', async ()
   const loading = client.read(); client.acceptIdentity('next', 'new');
   read({ ok: true, facts: [{ key: 'user.display_name', value: 'Старое' }] }); await loading;
   expect(client.getState().facts).toBeNull();
+  expect(client.getState().history).toBeNull();
   await client.read(); client.openConfirmation();
   let clear!: (value: ClearMemoryResultDTO) => void;
   bridge.clearMemory.mockImplementationOnce(() => new Promise(resolve => { clear = resolve; }));

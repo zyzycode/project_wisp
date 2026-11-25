@@ -11,7 +11,7 @@ import { CausalLifeRecorder } from '../../src/application/services/causal-life-r
 import { OwnGameInterestRuntime } from '../../src/application/services/own-game-interest-runtime';
 import { DeferredGameInvitationRuntime } from '../../src/application/services/deferred-game-invitation-runtime';
 import { MemoryHistory } from '../../src/application/services/memory-history';
-import { message } from '../../src/infrastructure/memory/validation';
+import { storedMessage } from '../../src/infrastructure/memory/validation';
 import { LifeReflectionRuntime } from '../../src/application/services/life-reflection-runtime';
 import type { CharacterStateService } from '../../src/application/services/character-state.service';
 import type { CurrentComputerContext } from '../../src/application/ports/world-context.interface';
@@ -47,7 +47,7 @@ export function causalStory(filename: string, invitations = false, persistent = 
     history: {
       appendTurn: async (turn, c) => empty(command('appendTurn', turn, c.generation)),
       getRecent: async (n, c) => { const r = command('getRecent', n, c.generation); if (!r.ok) return r;
-        if (!Array.isArray(r.value)) throw new Error('Expected history rows'); return { ok: true, value: r.value.map(message) }; },
+        if (!Array.isArray(r.value)) throw new Error('Expected history rows'); return { ok: true, value: r.value.map(storedMessage) }; },
       closeSession: async (sessionId, endedAt, c) => empty(command('closeSession', { sessionId, endedAt }, c.generation)),
       closeUnfinishedSessions: async (endedAt, c) => empty(command('closeUnfinishedSessions', endedAt, c.generation)),
     } });

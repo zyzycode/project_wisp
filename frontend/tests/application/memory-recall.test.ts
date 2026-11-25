@@ -3,8 +3,8 @@ import { LocalMemoryRecall } from '../../src/application/services/memory-recall'
 import type { GameEpisode, MemoryResult, PersistedChatMessage, UserFact } from '../../src/application/ports/memory-repository.interface';
 const date = '2026-09-18T00:00:00.000Z';
 const pair = (id: string, text: string, reply = 'Ответ'): PersistedChatMessage[] => [
-  { id, conversationSessionId: 's', role: 'user', content: text, createdAt: date },
-  { id: id + 'a', conversationSessionId: 's', role: 'assistant', content: reply, createdAt: date },
+  { id, conversationSessionId: 's', role: 'user', content: text, createdAt: date, memoryConfirmable: true },
+  { id: id + 'a', conversationSessionId: 's', role: 'assistant', content: reply, createdAt: date, memoryConfirmable: true },
 ];
 function fixture(messages: PersistedChatMessage[] = [], facts: UserFact[] = [], games: GameEpisode[] = [], beforeRead?: () => Promise<void>) {
   let current = true;

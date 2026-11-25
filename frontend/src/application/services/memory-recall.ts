@@ -90,6 +90,7 @@ export class LocalMemoryRecall implements ILocalMemoryRecall {
       for (let i = 0; i + 1 < history.value.length; i++) {
         const user = history.value[i]!, assistant = history.value[i + 1]!;
         if (user.role !== 'user' || assistant.role !== 'assistant' || user.conversationSessionId !== assistant.conversationSessionId
+          || user.memoryConfirmable !== true || assistant.memoryConfirmable !== true
           || excluded.has(user.id) || excluded.has(assistant.id) || recognizeMemoryFact(user.content) || recognizeMemoryFact(assistant.content)
           || /^(?:Забудь|Forget|Сегодня будь|Today act as)(?:\s|$)/iu.test(user.content.trim()) || /^(?:Забудь|Forget|Сегодня будь|Today act as)(?:\s|$)/iu.test(assistant.content.trim())) continue;
         const pairTokens = new Set(tokens(`${user.content} ${assistant.content}`));

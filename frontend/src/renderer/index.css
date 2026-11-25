@@ -897,6 +897,11 @@ html, body {
   margin: 0 0 4px;
 }
 
+.memory-dialogue dd {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 /* Voice remains part of the compact, scrollable draft surface. */
 .pet-voice-panel { position: absolute; width: 260px; transform: translateX(-50%); z-index: 65; }
 .chat-voice { color: #f1f5f9; font-size: 11px; text-align: center; }

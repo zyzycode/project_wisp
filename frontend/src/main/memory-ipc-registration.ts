@@ -1,6 +1,7 @@
 import { parseRoutineRead, parseRoutineCommand, parseRoutineReadResult, parseRoutineResult } from '../shared/routine-hypothesis-validation';
 import { parseRoutineStatus } from '../shared/routine-status-validation';
 import { parseMemoryFactsRead, parseMemoryFactsResult } from '../shared/memory-facts-validation';
+import { parseMemoryHistoryRead, parseMemoryHistoryResult } from '../shared/memory-history-validation';
 import { parseInterestThreadCommand, parseInterestThreadRead, parseInterestThreadReadResult, parseInterestThreadMutationResult } from '../shared/interest-thread-validation';
 import { parseMemoryCardCommand, parseMemoryCardListCommand, parseMemoryCardListResult, parseMemoryCardResult } from '../shared/memory-card-validation';
 import type { ClearMemoryUseCase } from '../application/services/clear-memory.use-case';
@@ -15,6 +16,7 @@ interface Options {
   readonly clear: ClearMemoryUseCase;
   readonly routineStatus?: () => import('../shared/ipc-contracts').RoutineStatusDTO;
   readonly facts?: Pick<import('../application/services/memory-facts-reader').MemoryFactsReader, 'read'>;
+  readonly dialogueHistory?: Pick<import('../application/services/memory-dialogue-reader').MemoryDialogueReader, 'read'>;
   readonly interestThread?: import('../shared/ipc-contracts').InterestThreadApiBridge;
   readonly cards?: {
     mutate(command: MemoryCardCommandDTO): Promise<MemoryCardResultDTO>;
@@ -34,6 +36,12 @@ export function registerMemoryIpc(options: Options): () => void {
     trusted(event.sender); if (args.length !== 1) throw new TypeError('Invalid memory facts arguments');
     return parseMemoryFactsResult(await options.facts!.read(parseMemoryFactsRead(args[0])));
   });
+  const dialogueHistory = options.dialogueHistory;
+  if (dialogueHistory) options.register('wisp:read-memory-history', async (event, ...args) => {
+    trusted(event.sender);
+    if (args.length !== 1) throw new TypeError('Invalid memory history arguments');
+    return parseMemoryHistoryResult(await dialogueHistory.read(parseMemoryHistoryRead(args[0])));
+  });
   if (options.interestThread) {
     options.register('wisp:read-interest-thread', async (event, ...args) => { trusted(event.sender); if (args.length !== 1) throw new TypeError('Invalid topic arguments'); return parseInterestThreadReadResult(await options.interestThread!.read(parseInterestThreadRead(args[0]))); });
     options.register('wisp:mutate-interest-thread', async (event, ...args) => { trusted(event.sender); if (args.length !== 1) throw new TypeError('Invalid topic arguments'); return parseInterestThreadMutationResult(await options.interestThread!.mutate(parseInterestThreadCommand(args[0]))); });
@@ -49,5 +57,14 @@ export function registerMemoryIpc(options: Options): () => void {
       return parseMemoryCardListResult(await cards.list(parseMemoryCardListCommand(args[0])));
     });
   }
-  return () => { if (options.routineHypothesis) { options.remove('wisp:read-routine-hypothesis'); options.remove('wisp:command-routine-hypothesis'); } if (options.routineStatus) options.remove('wisp:get-routine-status'); if (options.facts) options.remove('wisp:read-memory-facts'); if (options.interestThread) { options.remove('wisp:read-interest-thread'); options.remove('wisp:mutate-interest-thread'); } if (cards) { options.remove('wisp:mutate-memory-card'); options.remove('wisp:list-memory-cards'); } options.remove('wisp:get-memory-status'); options.remove('wisp:clear-memory'); };
+  return () => {
+    if (dialogueHistory) options.remove('wisp:read-memory-history');
+    if (options.routineHypothesis) { options.remove('wisp:read-routine-hypothesis'); options.remove('wisp:command-routine-hypothesis'); }
+    if (options.routineStatus) options.remove('wisp:get-routine-status');
+    if (options.facts) options.remove('wisp:read-memory-facts');
+    if (options.interestThread) { options.remove('wisp:read-interest-thread'); options.remove('wisp:mutate-interest-thread'); }
+    if (cards) { options.remove('wisp:mutate-memory-card'); options.remove('wisp:list-memory-cards'); }
+    options.remove('wisp:get-memory-status');
+    options.remove('wisp:clear-memory');
+  };
 }

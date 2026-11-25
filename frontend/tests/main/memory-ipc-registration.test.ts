@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { registerMemoryIpc } from '../../src/main/memory-ipc-registration';
 import { ClearMemoryUseCase } from '../../src/application/services/clear-memory.use-case';
+import type { MemoryHistoryResultDTO } from '../../src/shared/ipc-contracts';
 function fixture() {
   const handlers = new Map<string, (event: { sender: object }, ...args: unknown[]) => Promise<unknown>>(); const sender = {};
   const reset = vi.fn(async () => ({ ok: true, value: undefined } as const)); const clear = new ClearMemoryUseCase(reset); clear.replaceStream('stream');
@@ -55,6 +56,34 @@ it('exposes only trusted, exact readonly facts commands and validates private ou
   await expect(handler({ sender: f.sender }, { streamId: 's' }, null)).rejects.toThrow();
   expect(read).not.toHaveBeenCalled(); expect(await handler({ sender: f.sender }, { streamId: 's' })).toEqual({ ok: true, facts: [] });
   unregister(); expect(f.remove).toHaveBeenCalledWith('wisp:read-memory-facts');
+});
+it('validates sender, command and output for saved dialogue readback', async () => {
+  const f = fixture();
+  const pair = { userText: 'иди влево', assistantText: 'Иду влево.' };
+  const read = vi.fn(async (): Promise<MemoryHistoryResultDTO> => ({ ok: true, pairs: [pair] }));
+  const unregister = registerMemoryIpc({
+    register: (channel, handler) => f.handlers.set(channel, handler),
+    remove: f.remove,
+    getSender: () => f.sender,
+    getStatus: () => ({ mode: 'initializing' }),
+    clear: new ClearMemoryUseCase(f.reset),
+    dialogueHistory: { read },
+  });
+  const handler = f.handlers.get('wisp:read-memory-history')!;
+  const event = { sender: f.sender }, command = { streamId: 's' };
+  await expect(handler({ sender: {} }, command)).rejects.toThrow('Untrusted');
+  await expect(handler(event, { ...command, limit: 10 })).rejects.toThrow();
+  await expect(handler(event, command, null)).rejects.toThrow();
+  expect(read).not.toHaveBeenCalled();
+  expect(await handler(event, command)).toEqual({ ok: true, pairs: [pair] });
+
+  const privatePair = { ...pair, id: 'private' };
+  read.mockResolvedValueOnce({ ok: true, pairs: [privatePair] });
+  await expect(handler(event, command)).rejects.toThrow();
+  read.mockResolvedValueOnce({ ok: true, pairs: [{ ...pair, assistantText: 'a'.repeat(2001) }] });
+  await expect(handler(event, command)).rejects.toThrow();
+  unregister();
+  expect(f.remove).toHaveBeenCalledWith('wisp:read-memory-history');
 });
 it('keeps routine opt-in commands behind sender/exact-shape validation and releases their handlers', async () => {
   const f=fixture(), read=vi.fn(async()=>({ok:false as const,code:'unavailable' as const}));

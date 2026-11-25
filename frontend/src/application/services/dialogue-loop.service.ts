@@ -207,8 +207,6 @@ export class DialogueRuntime {
       const user = { id: this.options.createId(), text, createdAt };
       const assistant = { id: this.options.createId(), text: replyText, createdAt };
       this.turn = { phase: 'completed', requestId, replyText, outcome: { kind: 'local', reason: 'chat_motion' } };
-      this.context = boundMemoryContext([...this.context, { role: 'user', ...user, sourceMessageId: user.id }, { role: 'wisp', ...assistant, sourceMessageId: assistant.id }], this.options.memory?.contextLimits);
-      this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
       this.options.publish();
       this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
     });
@@ -223,9 +221,6 @@ export class DialogueRuntime {
       const assistant = { id: this.options.createId(), text: localDialogueText('support_quiet_ack', this.options.locale), createdAt };
       this.options.applyStimulus({ type: 'user_message', source: 'user', requestId, text, createdAt });
       this.turn = { phase: 'completed', requestId, replyText: assistant.text, outcome: { kind: 'local', reason: 'quiet_support' } };
-      const pair: AIProviderContextMessage[] = [{ role: 'user', text, createdAt, sourceMessageId: user.id }, { role: 'wisp', text: assistant.text, createdAt, sourceMessageId: assistant.id }];
-      this.context = boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
-      this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
       this.options.publish();
       this.options.memory?.completed({ user, assistant, localOnly: true, memoryConfirmable: false, memoryGeneration: this.options.memory.generation() });
     });
@@ -450,11 +445,20 @@ export class DialogueRuntime {
       this.publishedRoutine = this.dispatchedRoutine.has(active) ? routine : undefined;
       this.publishedCausal = causal;
       this.supportEligible = reason === undefined;
-      this.sourceUserText = reason === undefined && !capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) && !this.dispatchedRoutine.has(active) ? active.request.userMessage.text : null;
+      const ordinarySuccess = reason === undefined && !capture && !this.dispatchedLife.has(active)
+        && !this.dispatchedLifeSummary.has(active) && !this.dispatchedRoutine.has(active);
+      this.sourceUserText = ordinarySuccess ? active.request.userMessage.text : null;
       this.lastOffered = reason === undefined ? capture?.use.ref : undefined;
       const createdAt = this.options.timestamp();
-      const pair: AIProviderContextMessage[] = [{ role: 'user', text: active.request.userMessage.text, createdAt: active.request.userMessage.createdAt, sourceMessageId: active.request.userMessage.id }, { role: 'wisp', text: replyText, createdAt, sourceMessageId: assistantId }];
-      this.context = capture || this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) || this.dispatchedRoutine.has(active) ? this.context : boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
+      if (ordinarySuccess) {
+        const user = active.request.userMessage;
+        const pair: AIProviderContextMessage[] = [
+          { role: 'user', text: user.text, createdAt: user.createdAt, sourceMessageId: user.id },
+          { role: 'wisp', text: replyText, createdAt, sourceMessageId: assistantId },
+        ];
+        this.context = boundMemoryContext([...this.context, ...pair], this.options.memory?.contextLimits);
+        this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
+      }
       if (reason === undefined && response && !causal) {
         const tone = response.reply.tone;
         this.options.applyStimulus({ type: 'provider_response', source: 'provider', text: replyText, requestId, createdAt,
@@ -467,7 +471,6 @@ export class DialogueRuntime {
         }
       }
       this.options.publish();
-      if (!capture && !this.dispatchedLife.has(active) && !this.dispatchedLifeSummary.has(active) && !this.dispatchedRoutine.has(active)) this.contextMessageIds = this.context.flatMap(message => message.sourceMessageId ? [message.sourceMessageId] : []);
       this.options.memory?.completed({ ...(this.dispatchedRoutine.has(active) ? { lifeDerivedUse:{ requestId, userMessageId:active.request.userMessage.id, origin:'routine_hypothesis' as const } } : {}), ...(this.dispatchedLife.has(active) || this.dispatchedLifeSummary.has(active) ? { lifeDerivedUse: { requestId, userMessageId: active.request.userMessage.id, origin: this.dispatchedLifeSummary.has(active) ? 'life_summary' as const : 'reflection' as const } } : {}), ...(capture ? { interestThread: capture.use } : {}), user: active.request.userMessage,
         assistant: { id: assistantId, text: replyText, createdAt }, memoryConfirmable: reason === undefined, memoryGeneration: active.memoryGeneration });
     });

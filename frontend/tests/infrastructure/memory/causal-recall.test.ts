@@ -42,7 +42,7 @@ it('measures the approved40-query RU/EN corpus after1000 dialogue pairs and1000 
   let contextSource: string | null = null, contextBucket: string | null = null, causalCalls = 0;
   const recall = new LocalMemoryRecall({
     facts: { list: limit => call('listFacts', limit, value => list(value, validation.fact)), upsert: neverWrite, removeByKey: neverWrite },
-    history: { getRecent: limit => call('getRecent', limit, value => list(value, validation.message)), appendTurn: neverWrite, closeSession: neverWrite, closeUnfinishedSessions: neverWrite },
+    history: { getRecent: limit => call('getRecent', limit, value => list(value, validation.storedMessage)), appendTurn: neverWrite, closeSession: neverWrite, closeUnfinishedSessions: neverWrite },
     gameReader: { getRecent: limit => call('getRecentEpisodes', limit, value => list(value, validation.episode)) },
     causalRecall: { find: async query => {
       causalCalls++; contextBucket = query.key; const result = await call('findCausalLife', query, causalRecallPage);

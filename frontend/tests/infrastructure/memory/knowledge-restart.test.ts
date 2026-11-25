@@ -12,6 +12,8 @@ import { LocalMemoryRecall } from '../../../src/application/services/memory-reca
 import { command } from '../../../src/infrastructure/memory/protocol';
 import { randomUUID } from 'node:crypto';
 import { DialogueRuntime } from '../../../src/application/services/dialogue-loop.service';
+import { QuietSupportRuntime } from '../../../src/application/services/quiet-support-runtime';
+import type { BackendInteractionChatRequest } from '../../../src/application/ports/backend-interaction-contract';
 import { ExternalAIProviderClient } from '../../../src/infrastructure/ai/external-ai-provider-client';
 import { providerRequest } from '../backend-ai-fixture';
 import { backendIntegrationFixture } from '../backend-integration-fixture';
@@ -27,7 +29,7 @@ async function open(filename: string) {
   const repos = createMemoryAdapters(client); let id = 0; let generation = 0;
   const learning = vi.fn(), failure = vi.fn();
   const knowledge = new MemoryKnowledge({ facts: repos.facts, isCurrent: g => g === generation, createId: () => `fact-${++id}`, preferenceLearning: { observe: learning }, onFailure: failure });
-  const history = new MemoryHistory({ ...repos, context: () => ({ generation }), createId: () => `local-${++id}`, toTimestamp: () => date, onFailure: failure, onPersisted: (turn, c) => knowledge.persisted(turn, c) });
+  const history = new MemoryHistory({ ...repos, context: () => ({ generation }), createId: randomUUID, toTimestamp: () => date, onFailure: failure, onPersisted: (turn, c) => knowledge.persisted(turn, c) });
   const recall = new LocalMemoryRecall({ ...repos, scheduler: { setTimeout, clearTimeout: h => clearTimeout(h as ReturnType<typeof setTimeout>) }, isCurrent: g => g === generation, preference: () => undefined, onFailure: failure });
   return { client, repos, history, recall, learning, clear: async () => { generation++; await repos.clear.clearUserMemory({ generation }); history.reset(); knowledge.reset(); } };
 }
@@ -104,6 +106,89 @@ it('keeps local preference facts/corrections out of restored provider projection
     expect(completed).toHaveBeenCalledTimes(1);
   } finally { runtime.dispose(); await bridge.close(); expect(bridge.isClosed()).toBe(true); }
 }, 25000);
+
+it('keeps local acknowledgements and fallbacks in SQLite while excluding whole pairs from chat HTTP requests', async () => {
+  const folder = mkdtempSync(path.join(os.tmpdir(), 'wisp-local-dialogue-')); folders.push(folder);
+  const filename = path.join(folder, 'wisp.sqlite3');
+  const first = await open(filename);
+  const requests: BackendInteractionChatRequest[] = [];
+  const fetcher = vi.fn<typeof fetch>(async (url, init) => {
+    expect(String(url)).toBe('https://backend.invalid/v1/chat');
+    expect(init?.method).toBe('POST');
+    const request = JSON.parse(String(init?.body)) as BackendInteractionChatRequest;
+    requests.push(request);
+    const text = request.messages.at(-1)?.content;
+    const response = { requestId: request.requestId };
+    const error = text === 'Проверка таймаута' ? { code: 'upstream_timeout', status: 504 }
+      : text === 'Проверка недоступности' ? { code: 'upstream_unavailable', status: 503 } : undefined;
+    return new Response(JSON.stringify(error ? { ...response, error: { code: error.code } } : {
+      ...response, text: text === 'Первый телескоп' ? 'Иду влево.' : 'Продолжим.',
+      appraisal: { category: 'neutral', intensity: 'low', confidence: 'clear' },
+    }), { status: error?.status ?? 200, headers: { 'Content-Type': 'application/json' } });
+  });
+  const provider = new ExternalAIProviderClient({ baseUrl: 'https://backend.invalid', development: false, now: Date.now, fetch: fetcher });
+  function start(memory: Awaited<ReturnType<typeof open>>) {
+    const runtime = new DialogueRuntime({ getSemanticSleepState: () => 'awake', interactionEnabled: true, provider,
+      quietSupport: new QuietSupportRuntime(() => {}), chatMotion: { submit: request => ({ status: 'started', requestId: request.requestId, runId: 'run' }), cancel: () => {} },
+      memory: { generation: () => 0, recall: memory.recall, completed: turn => memory.history.completed(turn) },
+      now: Date.now, timestamp: () => date, createId: randomUUID, scheduler: { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) },
+      getCharacterSnapshot: () => providerRequest().characterSnapshot, applyStimulus: vi.fn(), beginThinking: vi.fn(), endThinking: vi.fn(),
+      transaction: commit => commit(), publish: vi.fn(), offerIntent: () => ({ status: 'rejected', reason: 'disabled' }) });
+    runtime.replaceStream('stream');
+    let sequence = 0;
+    const send = (text: string) => expect(runtime.receive({ type: 'send', text, sequence: ++sequence, streamId: 'stream',
+      conversationId: runtime.getPresentation().conversationId }).status).toBe('accepted');
+    const waitForReply = async () => {
+      await vi.waitFor(() => expect(runtime.getPresentation()).toMatchObject({ canSubmit: true, turn: { phase: 'completed' } }));
+      await memory.history.whenSettled();
+    };
+    return { runtime, send, waitForReply };
+  }
+
+  const running = start(first);
+  try {
+    running.send('Первый телескоп'); await running.waitForReply();
+    expect(running.runtime.getPresentation().turn).toMatchObject({ outcome: { kind: 'success' } });
+    running.send('иди влево');
+    expect(running.runtime.getPresentation().turn).toMatchObject({ replyText: 'Иду влево.', outcome: { kind: 'local', reason: 'chat_motion' } });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    running.send('Вторая беседа'); await running.waitForReply();
+    running.send('мне от этого не легче');
+    expect(running.runtime.getPresentation().turn).toMatchObject({ replyText: 'Поняла. Я рядом.', outcome: { kind: 'local', reason: 'quiet_support' } });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    running.send('Проверка таймаута'); await running.waitForReply();
+    expect(running.runtime.getPresentation().turn).toMatchObject({ outcome: { kind: 'fallback', reason: 'timeout' } });
+    running.send('Проверка недоступности'); await running.waitForReply();
+    expect(running.runtime.getPresentation().turn).toMatchObject({ outcome: { kind: 'fallback', reason: 'offline' } });
+    running.send('Что нового?'); await running.waitForReply();
+    expect(fetcher).toHaveBeenCalledTimes(5);
+    expect.soft(requests.at(-1)?.messages).toEqual([
+      { role: 'user', content: 'Первый телескоп' }, { role: 'assistant', content: 'Иду влево.' },
+      { role: 'user', content: 'Вторая беседа' }, { role: 'assistant', content: 'Продолжим.' },
+      { role: 'user', content: 'Что нового?' },
+    ]);
+  } finally { running.runtime.dispose(); await first.client.close(0); }
+
+  const reopened = await open(filename);
+  const stored = await reopened.repos.history.getRecent(20, { generation: 0 });
+  expect(stored.ok && stored.value.map(({ content }) => content)).toEqual([
+    'Первый телескоп', 'Иду влево.', 'иди влево', 'Иду влево.', 'Вторая беседа', 'Продолжим.',
+    'мне от этого не легче', 'Поняла. Я рядом.', 'Проверка таймаута', 'Сейчас ответ недоступен. Попробуйте позже.',
+    'Проверка недоступности', 'Сейчас ответ недоступен. Попробуйте позже.', 'Что нового?', 'Продолжим.',
+  ]);
+  expect((await reopened.history.hydrate()).map(message => message.text)).toEqual([
+    'Первый телескоп', 'Иду влево.', 'Вторая беседа', 'Продолжим.', 'Что нового?', 'Продолжим.',
+  ]);
+  const restored = start(reopened);
+  try {
+    expect(restored.runtime.getPresentation().turn.phase).toBe('idle');
+    const query = 'Телескоп влево не легче проверка таймаута недоступности';
+    restored.send(query); await restored.waitForReply();
+    expect(requests.at(-1)).toMatchObject({ messages: [{ role: 'user', content: query }], memory: { episodes: [
+      { kind: 'dialogue', userText: 'Первый телескоп', assistantText: 'Иду влево.', occurredAt: date },
+    ] } });
+  } finally { restored.runtime.dispose(); await reopened.client.close(0); }
+});
 
 it('bounds bridge input and closes its child once even with concurrent teardown', async () => {
   const bridge = await backendIntegrationFixture();

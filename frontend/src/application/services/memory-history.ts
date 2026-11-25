@@ -39,7 +39,16 @@ export class MemoryHistory {
     const result = await this.safe(() => this.options.history.getRecent(20, c));
     if (this.options.context()?.generation !== c.generation) return [];
     if (!result.ok) { this.options.onFailure(result.code); return []; }
-    return boundMemoryContext(result.value.map(message => ({ sourceMessageId: message.id, role: message.role === 'assistant' ? 'wisp' : 'user', text: message.content, createdAt: message.createdAt })));
+    if (result.value.length % 2 !== 0) return [];
+    const messages: AIProviderContextMessage[] = [];
+    for (let end = result.value.length; end > 0; end -= 2) {
+      const user = result.value[end - 2]!, assistant = result.value[end - 1]!;
+      if (user.role !== 'user' || assistant.role !== 'assistant' || user.conversationSessionId !== assistant.conversationSessionId) break;
+      if (user.memoryConfirmable !== true || assistant.memoryConfirmable !== true) continue;
+      messages.unshift({ sourceMessageId: user.id, role: 'user', text: user.content, createdAt: user.createdAt },
+        { sourceMessageId: assistant.id, role: 'wisp', text: assistant.content, createdAt: assistant.createdAt });
+    }
+    return boundMemoryContext(messages);
   }
   completed(turn: CompletedDialogueMemoryTurn): Promise<boolean> {
     const context = this.options.context();
