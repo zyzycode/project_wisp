@@ -5,6 +5,7 @@ import type { BrainStateDTO } from '../../../shared/ipc-contracts';
 const MENU_TABS = [
   { id: 'main', label: 'Главное' },
   { id: 'settings', label: 'Настройки' },
+  { id: 'logs', label: 'Логи' },
 ] as const;
 type ContextMenuPage = (typeof MENU_TABS)[number]['id'];
 
@@ -24,6 +25,7 @@ export interface ContextMenuProps {
   aiConnectionContent?: ReactNode;
   observationContent?: ReactNode;
   voiceContent?: ReactNode;
+  logContent?: ReactNode;
   onClose: () => void;
   onPet: () => void;
   onPlay?: () => void;
@@ -112,7 +114,7 @@ export function ContextMenu({ isOpen, ...props }: ContextMenuProps) {
 function OpenContextMenu({
   externalWindowSupport, tone = 'neutral', autoWanderEnabled,
   quietMode = false, onToggleQuietMode, isSleeping, debugHudEnabled, debugHudVisible = false,
-  isAlwaysOnTop = false, debugContent, previewContent, aiConnectionContent, observationContent, voiceContent,
+  isAlwaysOnTop = false, debugContent, previewContent, aiConnectionContent, observationContent, voiceContent, logContent,
   onClose, onPet, onPlay, onFeed, onThink, onToggleSleep, onToggleWander, onToggleDebugHud,
   onToggleAlwaysOnTop, onResetPosition, onQuit,
 }: Omit<ContextMenuProps, 'isOpen'>) {
@@ -153,24 +155,29 @@ function OpenContextMenu({
   }, [onClose]);
 
   const moveTabFocus = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
-    let next: ContextMenuPage;
+    const selected = MENU_TABS.findIndex(tab => tab.id === page);
+    let nextIndex: number;
     switch (event.key) {
       case 'ArrowLeft':
+        nextIndex = (selected + MENU_TABS.length - 1) % MENU_TABS.length;
+        break;
       case 'ArrowRight':
-        next = page === 'main' ? 'settings' : 'main';
+        nextIndex = (selected + 1) % MENU_TABS.length;
         break;
       case 'Home':
-        next = 'main';
+        nextIndex = 0;
         break;
       case 'End':
-        next = 'settings';
+        nextIndex = MENU_TABS.length - 1;
         break;
       default:
         return;
     }
+    const next = MENU_TABS[nextIndex];
+    if (!next) return;
     event.preventDefault();
-    setPage(next);
-    event.currentTarget.querySelector<HTMLButtonElement>(`[data-menu-tab="${next}"]`)?.focus();
+    setPage(next.id);
+    event.currentTarget.querySelector<HTMLButtonElement>(`[data-menu-tab="${next.id}"]`)?.focus();
   };
 
   return (
@@ -234,6 +241,13 @@ function OpenContextMenu({
             </section>}
           </section>}
         </div>}
+      </div>
+
+      <div ref={page === 'logs' ? bodyRef : undefined} className="menu-scroll-body" role="tabpanel"
+        id={`${titleId}-panel-logs`} aria-labelledby={`${titleId}-tab-logs`} hidden={page !== 'logs'}>
+        {page === 'logs' && (debugHudEnabled && logContent
+          ? logContent
+          : <p className="menu-log-unavailable">Журнал доступен в режиме разработки.</p>)}
       </div>
     </div>
   );

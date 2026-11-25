@@ -67,7 +67,7 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).not.toContain('Сбросить позицию');
     expect(markup).not.toContain('Отладка');
     expect(markup).not.toContain('Debug Telemetry');
-    expect(markup.match(/<button\b/g)).toHaveLength(10);
+    expect(markup.match(/<button\b/g)).toHaveLength(11);
 
     expect(markup).toContain('>Wisp</h2>');
     expect(markup).toContain('Автономность на паузе. После закрытия возобновится.');
@@ -79,9 +79,10 @@ describe('Renderer: ContextMenu', () => {
     expect(markup).toContain('Усыпить');
     expect(markup).toContain('Тихий режим');
     expect(markup).toContain('aria-pressed="true"');
-    expect(markup.match(/role="tab"/g)).toHaveLength(2);
+    expect(markup.match(/role="tab"/g)).toHaveLength(3);
     expect(markup).toContain('data-menu-tab="main"');
     expect(markup).toContain('data-menu-tab="settings"');
+    expect(markup).toContain('data-menu-tab="logs"');
     expect(markup).not.toContain('<details');
     expect(markup).not.toContain('Темы оформления');
     expect(markup).not.toContain('menu-theme');

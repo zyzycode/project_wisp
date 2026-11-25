@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AppLogger, LogBuffer } from '../../src/infrastructure/logging';
 import { mapBehaviorIntentToAnimationIntent, createSystemAnimationIntent } from '../../src/domain/animation';
 import { AssetResolver, AnimationPlayer, type ICharacterRenderer, type NormalizedSpriteManifest, type RenderPresentationState } from '../../src/renderer/render-engine';
-import { DebugHUD } from '../../src/renderer/components/Debug';
+import { DebugHUD, LogViewer } from '../../src/renderer/components/Debug';
 import { SpriteRenderer } from '../../src/renderer/components/Character/SpriteRenderer';
 
 const manifest: NormalizedSpriteManifest = {
@@ -194,11 +194,15 @@ describe('Phase 13: render and telemetry pipeline', () => {
     expect(markup).toMatch(/data-layer-id="face"[^>]*x="136" y="280" width="400" height="240"/);
   });
 
-  it('renders Main-compatible structured log entries and current needs in DebugHUD', () => {
-    const buffer = new LogBuffer(5);
-    const logger = new AppLogger({ level: 'debug', buffer, idFactory: () => 'integration-log', now: () => new Date('2026-08-28T00:00:00.000Z') });
-    logger.warn('RenderEngine', 'using fallback body');
-    const markup = renderToStaticMarkup(
+  it('shows current needs in DebugHUD and every buffered desktop log in the log viewer', () => {
+    const buffer = new LogBuffer(30);
+    let nextId = 0;
+    const logger = new AppLogger({ level: 'debug', buffer, idFactory: () => `integration-log-${nextId++}`,
+      now: () => new Date('2026-08-28T00:00:00.000Z') });
+    for (let index = 1; index <= 30; index++) {
+      logger.warn('RenderEngine', `fallback body entry ${index}`);
+    }
+    const hud = renderToStaticMarkup(
       <DebugHUD
         needs={{ energy: 74, attention: 56, play: 60, comfort: 18 }}
         relationship={{ friendship: 320, love: 0, loveUnlocked: false }}
@@ -206,13 +210,14 @@ describe('Phase 13: render and telemetry pipeline', () => {
         animationState="idle"
         animationIntent={createSystemAnimationIntent('idle_blink', 'shy')}
         fps={60}
-        logs={buffer.entries()}
-        onClearLogs={vi.fn()}
       />
     );
 
-    expect(markup).toContain('aria-valuenow="74"');
-    expect(markup).toContain('using fallback body');
-    expect(markup).toContain('debug-log-warn');
+    const log = renderToStaticMarkup(<LogViewer logs={buffer.entries()} onClear={vi.fn()} />);
+    expect(hud).toContain('aria-valuenow="74"');
+    expect(hud).not.toContain('Записи журнала');
+    expect(log.match(/debug-log-entry debug-log-warn/g)).toHaveLength(30);
+    expect(log).toContain('fallback body entry 1</div>');
+    expect(log).toContain('fallback body entry 30</div>');
   });
 });

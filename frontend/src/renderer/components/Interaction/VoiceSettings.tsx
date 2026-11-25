@@ -7,17 +7,21 @@ interface Props {
   readonly input: ContinuousVoiceClient;
   readonly inputState: ContinuousVoiceState;
   readonly contextReady: boolean;
+  readonly showVoicePanel: boolean;
+  readonly onChangeVoicePanelVisibility: (visible: boolean) => void;
 }
-export function VoiceSettings({ output, outputState, input, inputState, contextReady }: Props) {
+export function VoiceSettings({ output, outputState, input, inputState, contextReady, showVoicePanel, onChangeVoicePanelVisibility }: Props) {
   const audio = useSyncExternalStore(output.audio.subscribe, output.audio.getSnapshot, output.audio.getSnapshot);
   const missing = audio.deviceId && !audio.devices.some(device => device.id === audio.deviceId);
   const active = outputState.phase === 'preparing' || outputState.phase === 'speaking';
   return <section className="ai-connection-settings audio-output-settings menu-section" aria-label="Голос и звук">
     <h3 className="menu-settings-heading">Голос и звук</h3>
+    <label className="voice-setting-toggle"><input type="checkbox" name="show-voice-panel" checked={showVoicePanel}
+      onChange={event => onChangeVoicePanelVisibility(event.target.checked)} />Показывать голосовую панель над Wisp</label>
     <p>Микрофон выключен при запуске. Включение потребует подтверждения. Озвучка включается отдельно.</p>
-    <label className="voice-setting-toggle"><input type="checkbox" checked={inputState.enabled} disabled={!inputState.enabled && !contextReady}
+    <label className="voice-setting-toggle"><input type="checkbox" name="voice-input" checked={inputState.enabled} disabled={!inputState.enabled && !contextReady}
       onChange={event => { if (event.target.checked) void input.enableSelected(); else input.disable(); }} />Микрофон</label>
-    <label className="voice-setting-toggle"><input type="checkbox" checked={outputState.enabled} disabled={!outputState.ready && !outputState.enabled}
+    <label className="voice-setting-toggle"><input type="checkbox" name="voice-output" checked={outputState.enabled} disabled={!outputState.ready && !outputState.enabled}
       onChange={event => { void output.configure(event.target.checked); }} />Озвучивать ответы</label>
     <label>Куда выводить голос
       <select aria-label="Устройство вывода звука" value={audio.deviceId ?? '__loading__'} disabled={audio.busy}

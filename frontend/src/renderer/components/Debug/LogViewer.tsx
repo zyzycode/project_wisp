@@ -6,55 +6,55 @@ export interface LogViewerProps {
   onClear: () => void;
 }
 
-const MAX_VISIBLE_LOGS = 20;
-
 export const LogViewer: React.FC<LogViewerProps> = ({ logs, onClear }) => {
-  const [paused, setPaused] = useState(false);
   const [pausedLogs, setPausedLogs] = useState<readonly DebugLogEntryDTO[] | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const visibleLogs = getVisibleLogs(logs, paused, pausedLogs);
+  const followLatest = useRef(true);
+  const paused = pausedLogs !== null;
+  const visibleLogs = pausedLogs ?? logs;
 
   useEffect(() => {
-    if (!paused && listRef.current !== null) listRef.current.scrollTop = listRef.current.scrollHeight;
+    if (!paused && followLatest.current && listRef.current !== null) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
   }, [paused, visibleLogs]);
 
   return (
-    <section className="debug-log-viewer" aria-label="Live logs">
+    <section className="debug-log-viewer" aria-label="Журнал приложения">
       <div className="debug-log-header">
-        <div className="debug-hud-section-title">Live logs</div>
+        <h3 className="menu-settings-heading">Журнал приложения</h3>
         <div className="debug-log-controls">
           <button
             type="button"
             onClick={() => {
               if (paused) {
-                setPaused(false);
+                followLatest.current = true;
                 setPausedLogs(null);
               } else {
                 setPausedLogs(logs);
-                setPaused(true);
               }
             }}
           >
-            {paused ? 'Resume' : 'Pause'}
+            {paused ? 'Продолжить' : 'Пауза'}
           </button>
-          <button type="button" onClick={onClear}>Clear</button>
+          <button type="button" onClick={() => {
+            if (paused) setPausedLogs([]);
+            onClear();
+          }}>Очистить</button>
         </div>
       </div>
-      <div className="debug-log-list" ref={listRef} aria-live={paused ? 'off' : 'polite'}>
-        {visibleLogs.length === 0 ? <div className="debug-log-empty">No logs yet</div> : visibleLogs.map((entry) => (
+      <div className="debug-log-list" ref={listRef} role="log" aria-label="Записи журнала" tabIndex={0}
+        aria-live={paused ? 'off' : 'polite'} onScroll={event => {
+          const list = event.currentTarget;
+          followLatest.current = list.scrollHeight - list.clientHeight - list.scrollTop <= 2;
+        }}>
+        {visibleLogs.length === 0 ? <div className="debug-log-empty">Записей пока нет.</div> : visibleLogs.map((entry) => (
           <div className={`debug-log-entry debug-log-${entry.level}`} key={entry.id}>
-            <span>{entry.level}</span> <span>{entry.context}</span> {entry.message}
+            <time dateTime={entry.createdAt} title={entry.createdAt}>{entry.createdAt.slice(11, 19)} UTC</time>
+            {' '}<span>{entry.level}</span> <span>{entry.context}</span> {entry.message}
           </div>
         ))}
       </div>
     </section>
   );
 };
-
-export function getVisibleLogs(
-  logs: readonly DebugLogEntryDTO[],
-  paused: boolean,
-  pausedLogs: readonly DebugLogEntryDTO[] | null
-): readonly DebugLogEntryDTO[] {
-  return (paused ? pausedLogs ?? logs : logs).slice(-MAX_VISIBLE_LOGS);
-}

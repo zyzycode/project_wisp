@@ -14,6 +14,7 @@ import { VoiceSettings } from './Interaction/VoiceSettings';
 import { ChatInput } from './Chat/ChatInput';
 import { SpeechBubble } from './Chat/SpeechBubble';
 import { DebugHUD } from './Debug';
+import { LogViewer } from './Debug/LogViewer';
 import { ContextMenu } from './Interaction/ContextMenu';
 import { AnimationPreviewControls } from './Interaction/AnimationPreviewControls';
 import type { useDesktopPetController } from '../hooks/useDesktopPetController';
@@ -22,10 +23,27 @@ export interface PetOverlayProps {
   readonly model: ReturnType<typeof useDesktopPetController>;
 }
 
+const VOICE_PANEL_VISIBILITY_KEY = 'wisp.ui.showVoicePanel';
+
 /** Pure React surface for the state and callbacks composed by DesktopPet. */
 export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
   const [presentation, setPresentation] = useState<RenderPresentationState>();
   const [assetLoadError, setAssetLoadError] = useState<string>();
+  const [showVoicePanel, setShowVoicePanel] = useState(() => {
+    try {
+      return window.localStorage.getItem(VOICE_PANEL_VISIBILITY_KEY) !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const changeVoicePanelVisibility = (visible: boolean): void => {
+    setShowVoicePanel(visible);
+    try {
+      window.localStorage.setItem(VOICE_PANEL_VISIBILITY_KEY, String(visible));
+    } catch {
+      // The preference still applies for the current session.
+    }
+  };
   const { setMenuOpen } = model;
   const closeMenu = useCallback(() => setMenuOpen(false), [setMenuOpen]);
   const labelAnchor = calculateWindowRootPivotOffset(PET_PRESENTATION_LAYOUT);
@@ -38,7 +56,6 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
       animationState={model.animState}
       animationIntent={model.characterAnimationIntent}
       fps={model.renderFps}
-      logs={model.debugTelemetry.logs}
       position={model.position}
       isWandering={model.isWandering}
       flipX={model.flipX}
@@ -47,7 +64,6 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
       selectedBodyAnimationKey={model.inspectorBodyKey}
       selectedFaceAnimationKey={model.inspectorFaceKey}
       showAnchorPoint={model.showAnchorPoint}
-      onClearLogs={model.clearDebugLogs}
       onSelectBodyAnimation={(key) => {
         model.setInspectorBodyKey(key);
         if (key === null) model.setInspectorFaceKey(null);
@@ -83,7 +99,8 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
           onClose={model.dialogue.closeChat}
         />
       </div>
-      <div className="pet-voice-panel" style={{ left: labelAnchor.x, top: labelAnchor.y + 32 }}>
+      <div className="pet-voice-panel" style={{ left: `min(50%, ${labelAnchor.x}px)` }}
+        hidden={!showVoicePanel || model.dialogue.chatOpen || model.dialogue.currentMessage !== null}>
         <VoiceInputControls client={model.dialogue.voice} state={model.dialogue.voiceState}
           available={model.dialogue.voiceAvailable} contextReady={model.dialogue.voiceContextReady} />
         <VoiceOutputControls client={model.dialogue.voiceOutput} state={model.dialogue.outputState}
@@ -101,11 +118,13 @@ export const PetOverlay: React.FC<PetOverlayProps> = ({ model }) => {
         debugHudVisible={model.debugHudVisible}
         isAlwaysOnTop={model.isAlwaysOnTop}
         debugContent={debugHud}
+        logContent={model.debugHudEnabled ? <LogViewer logs={model.debugTelemetry.logs} onClear={model.clearDebugLogs} /> : undefined}
         aiConnectionContent={<AIConnectionSettings bridge={window.wispAPI?.aiConnection} initiative={window.wispAPI?.initiative}
           initiativeStatus={model.bodySnapshot?.brain.initiativeStatus} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
         observationContent={<ObservationSettings bridge={window.wispAPI?.observationCommand} streamId={model.bodySnapshot?.brain.streamId} open={model.menuOpen} />}
         voiceContent={<VoiceSettings output={model.dialogue.voiceOutput} outputState={model.dialogue.outputState}
-          input={model.dialogue.voice} inputState={model.dialogue.voiceState} contextReady={model.dialogue.voiceContextReady} />}
+          input={model.dialogue.voice} inputState={model.dialogue.voiceState} contextReady={model.dialogue.voiceContextReady}
+          showVoicePanel={showVoicePanel} onChangeVoicePanelVisibility={changeVoicePanelVisibility} />}
         previewContent={<AnimationPreviewControls
           bodyKeys={model.manifestAnimations.bodyKeys}
           faceKeys={model.manifestAnimations.faceKeys}
