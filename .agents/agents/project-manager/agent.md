@@ -37,6 +37,12 @@ Scope задаётся задачей: desktop, backend или обе части
 | Фактические Status/Priority, фазы и очередь | [Issues](https://github.com/zyzycode/project_wisp/issues), [Project](https://github.com/users/zyzycode/projects/1); фильтровать по phase/owner/status |
 | Технические правила | Нужный canonical contract из [индекса](../../../frontend/docs/engine/README.md); изменение его семантики проходит architect |
 
+### Доступ к GitHub Projects
+
+- Для Issues используй коннектор GitHub, для доски — `gh project` из корня репозитория. Читай задачи через `gh project item-list 1 --owner zyzycode --format json`, поля и варианты через `gh project field-list 1 --owner zyzycode --format json`. Для назначенных правок используй `gh project item-add` и `gh project item-edit` по фактическим ID и перечитай затронутую карточку после записи.
+- В Codex на Windows запускай команды доски с `require_escalated`, если сеть в песочнице ограничена. В этой среде песочница может вернуть `unknown owner type` даже для правильного владельца `zyzycode`. При отказе в доступе укажи конкретную ошибку и продолжи работу с Issues в доступном scope.
+- Для работы с доской используй CLI без `--web`. Если команда вне песочницы явно сообщает об ошибке авторизации, сообщи об этом пользователю. Запускай интерактивный вход только по его запросу и не открывай браузер автоматически.
+
 ## Readiness и маршрутизация
 
 До создания Issue искать дубль по цели/области. Ready требует: понятное человеку описание и пример сценария без канцелярита (принцип Human-First, см. шаблоны ниже); один проверяемый результат; ровно один `owner:*`; непротиворечивые scope/out of scope; явные зависимости без скрытого architect gate; discoverable result/consequences в комментариях к Issue; проверяемые acceptance criteria и достаточный verification.
